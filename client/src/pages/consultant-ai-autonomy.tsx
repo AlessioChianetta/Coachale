@@ -36,6 +36,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
 import alessiaAvatar from "@assets/alessia-avatar.png";
+import marcoAvatar from "@assets/generated_images/marco_ai_executive_coach_avatar.png";
 
 interface AutonomySettings {
   is_active: boolean;
@@ -68,6 +69,7 @@ interface ActivityItem {
   contact_name?: string;
   is_read: boolean;
   event_data?: any;
+  ai_role?: string;
 }
 
 interface ActivityResponse {
@@ -336,6 +338,8 @@ const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; role: st
   nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
   iris: { avatar: irisAvatar, quote: "Gestisco i ticket email e le risposte automatiche.", role: "Email Hub Manager" },
+  marco: { avatar: marcoAvatar, quote: "Organizzo la tua giornata e ti preparo per ogni incontro.", role: "Executive Coach" },
+  personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
 };
 
 const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string; border: string; text: string }> = {
@@ -344,6 +348,144 @@ const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string; borde
   orange: { ring: "ring-orange-400", badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300", border: "border-orange-300 dark:border-orange-700", text: "text-orange-600 dark:text-orange-400" },
   emerald: { ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-600 dark:text-emerald-400" },
   teal: { ring: "ring-teal-400", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300", border: "border-teal-300 dark:border-teal-700", text: "text-teal-600 dark:text-teal-400" },
+  indigo: { ring: "ring-indigo-400", badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300", border: "border-indigo-300 dark:border-indigo-700", text: "text-indigo-600 dark:text-indigo-400" },
+  gray: { ring: "ring-gray-400", badge: "bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300", border: "border-gray-300 dark:border-gray-700", text: "text-gray-600 dark:text-gray-400" },
+};
+
+const AI_ROLE_CAPABILITIES: Record<string, { 
+  canDo: Array<{ icon: string; text: string }>; 
+  cantDo: Array<{ icon: string; text: string }>;
+  workflow: string;
+}> = {
+  alessia: {
+    canDo: [
+      { icon: "📊", text: "Analizza lo storico delle tue consulenze" },
+      { icon: "📞", text: "Crea task per chiamate vocali AI ai clienti" },
+      { icon: "🔍", text: "Cerca informazioni nei Private Store dei clienti" },
+      { icon: "🧠", text: "Identifica chi non senti da troppo tempo" },
+      { icon: "📋", text: "Prepara istruzioni dettagliate per ogni chiamata" },
+      { icon: "⏰", text: "Decide autonomamente quando serve un follow-up telefonico" },
+    ],
+    cantDo: [
+      { icon: "📧", text: "Non può inviare email" },
+      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
+      { icon: "📱", text: "Non può gestire i social media" },
+      { icon: "📝", text: "Non può creare riepiloghi consulenze" },
+    ],
+    workflow: "Ogni 30 minuti → Legge consulenze e chiamate → Identifica clienti da ricontattare → Crea task chiamata vocale",
+  },
+  millie: {
+    canDo: [
+      { icon: "📧", text: "Crea email personalizzate per ogni cliente" },
+      { icon: "📊", text: "Analizza l'engagement delle email (aperture, click)" },
+      { icon: "🔍", text: "Cerca informazioni nei Private Store dei clienti" },
+      { icon: "🧠", text: "Identifica il momento giusto per ogni email" },
+      { icon: "✍️", text: "Sceglie tono, argomento e struttura dell'email" },
+      { icon: "📈", text: "Monitora il journey email di ogni cliente" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non può fare chiamate vocali" },
+      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
+      { icon: "📱", text: "Non può gestire i social media" },
+    ],
+    workflow: "Ogni 30 minuti → Legge journey email e engagement → Identifica chi ha bisogno di un'email → Crea task email personalizzata",
+  },
+  echo: {
+    canDo: [
+      { icon: "📝", text: "Genera riepiloghi strutturati delle consulenze" },
+      { icon: "🎙️", text: "Analizza trascrizioni e note delle sessioni" },
+      { icon: "🔍", text: "Cerca informazioni nei Private Store dei clienti" },
+      { icon: "📧", text: "Crea task per inviare il riepilogo al cliente via email" },
+      { icon: "📋", text: "Crea report professionali post-sessione" },
+      { icon: "🧠", text: "Prioritizza consulenze urgenti da riepilogare" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non può fare chiamate vocali" },
+      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
+      { icon: "📱", text: "Non può gestire i social media" },
+      { icon: "🔄", text: "Non può creare follow-up autonomi" },
+    ],
+    workflow: "Ogni 30 minuti → Trova consulenze senza riepilogo → Analizza note e trascrizioni → Crea task riepilogo + invio email",
+  },
+  nova: {
+    canDo: [
+      { icon: "📱", text: "Analizza il tuo calendario editoriale" },
+      { icon: "💡", text: "Suggerisce idee per nuovi contenuti" },
+      { icon: "🌐", text: "Ricerca trend del settore sul web" },
+      { icon: "📊", text: "Monitora la frequenza delle pubblicazioni" },
+      { icon: "📝", text: "Propone post con hook e call-to-action" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non può contattare clienti singoli" },
+      { icon: "📧", text: "Non può inviare email ai clienti" },
+      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
+      { icon: "📤", text: "Non pubblica direttamente sui social" },
+    ],
+    workflow: "Ogni 30 minuti → Analizza post recenti e gap nel calendario → Identifica opportunità → Crea task per nuovo contenuto",
+  },
+  stella: {
+    canDo: [
+      { icon: "💬", text: "Monitora tutte le conversazioni WhatsApp" },
+      { icon: "👤", text: "Qualifica i lead non ancora gestiti" },
+      { icon: "🔔", text: "Identifica messaggi senza risposta" },
+      { icon: "📝", text: "Prepara risposte con contesto e tono giusto" },
+      { icon: "🧠", text: "Decide chi ricontattare via WhatsApp" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non può fare chiamate vocali" },
+      { icon: "📧", text: "Non può inviare email" },
+      { icon: "📱", text: "Non può gestire i social media" },
+    ],
+    workflow: "Ogni 30 minuti → Legge conversazioni WhatsApp → Trova messaggi senza risposta e lead → Crea task messaggio WhatsApp",
+  },
+  iris: {
+    canDo: [
+      { icon: "📥", text: "Monitora tutte le email in arrivo" },
+      { icon: "🎫", text: "Gestisce i ticket email aperti" },
+      { icon: "🔔", text: "Identifica email urgenti senza risposta" },
+      { icon: "📧", text: "Suggerisce risposte appropriate" },
+      { icon: "⚡", text: "Classifica le email per priorità" },
+      { icon: "🧠", text: "Decide quali email richiedono azione immediata" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non può fare chiamate vocali" },
+      { icon: "💬", text: "Non può mandare messaggi WhatsApp" },
+      { icon: "📱", text: "Non può gestire i social media" },
+    ],
+    workflow: "Ogni 30 minuti → Legge email non lette e ticket → Identifica urgenze → Crea task risposta email",
+  },
+  marco: {
+    canDo: [
+      { icon: "📅", text: "Analizza la tua agenda e i prossimi appuntamenti" },
+      { icon: "📊", text: "Monitora il tuo carico di lavoro e le performance" },
+      { icon: "📋", text: "Prepara briefing pre-consulenza con contesto cliente" },
+      { icon: "⚠️", text: "Ti avvisa se sei sovraccarico o hai buchi in agenda" },
+      { icon: "📈", text: "Genera report settimanali sulle tue attività" },
+      { icon: "🧠", text: "Suggerisce come organizzare meglio la giornata" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non contatta clienti direttamente" },
+      { icon: "📧", text: "Non invia email ai clienti" },
+      { icon: "💬", text: "Non manda messaggi WhatsApp" },
+      { icon: "👥", text: "Non gestisce relazioni con i clienti" },
+    ],
+    workflow: "Ogni 30 minuti → Analizza agenda, task e carico di lavoro → Identifica preparazioni necessarie → Crea task organizzativi per te",
+  },
+  personalizza: {
+    canDo: [
+      { icon: "⚙️", text: "Completamente configurabile con le tue istruzioni" },
+      { icon: "📞", text: "Può creare task su tutti i canali (voce, email, WhatsApp)" },
+      { icon: "🔍", text: "Può cercare nei Private Store dei clienti" },
+      { icon: "📊", text: "Analizza consulenze, task e dati dei clienti" },
+      { icon: "🧠", text: "Segue le regole che definisci tu nelle istruzioni" },
+      { icon: "🔄", text: "Supporta tutte le categorie di task" },
+    ],
+    cantDo: [
+      { icon: "❓", text: "Senza istruzioni personalizzate non sa cosa fare" },
+      { icon: "🎯", text: "Non ha un focus predefinito come gli altri ruoli" },
+    ],
+    workflow: "Ogni 30 minuti → Legge i dati configurati → Segue le TUE istruzioni personalizzate → Crea task secondo le tue regole",
+  },
 };
 
 const DEFAULT_SETTINGS: AutonomySettings = {
@@ -1377,6 +1519,7 @@ export default function ConsultantAIAutonomyPage() {
     }
   };
 
+  const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [autonomousLogsPage, setAutonomousLogsPage] = useState(1);
   const [autonomousLogTypeFilter, setAutonomousLogTypeFilter] = useState("all");
   const [autonomousLogSeverityFilter, setAutonomousLogSeverityFilter] = useState("all");
@@ -2674,18 +2817,20 @@ export default function ConsultantAIAutonomyPage() {
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <Bot className="h-5 w-5 text-violet-500" />
-                          Dipendenti AI
+                          Crea il tuo Dipendente AI
                         </CardTitle>
                         <CardDescription>
-                          Attiva o disattiva i dipendenti AI specializzati. Ogni ruolo analizza dati diversi e genera task mirati.
+                          Ogni dipendente AI ha competenze specifiche. Attivalo, espandi per vedere cosa sa fare, e personalizzalo con le tue istruzioni.
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-3">
                         {systemStatus?.roles && systemStatus.roles.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="space-y-3">
                             {systemStatus.roles.map((role) => {
                               const profile = AI_ROLE_PROFILES[role.id];
                               const colors = AI_ROLE_ACCENT_COLORS[role.accentColor] || AI_ROLE_ACCENT_COLORS.purple;
+                              const caps = AI_ROLE_CAPABILITIES[role.id];
+                              const isExpanded = expandedRole === role.id;
                               const channelLabel: Record<string, string> = {
                                 voice: "Voce",
                                 email: "Email",
@@ -2696,47 +2841,117 @@ export default function ConsultantAIAutonomyPage() {
                                 <div
                                   key={role.id}
                                   className={cn(
-                                    "relative rounded-xl border-2 bg-card p-5 transition-all duration-200 flex flex-col items-center text-center",
+                                    "rounded-xl border-2 bg-card transition-all duration-200 overflow-hidden",
                                     colors.border,
                                     !role.enabled && "opacity-50 grayscale"
                                   )}
                                 >
-                                  <div className="absolute top-3 right-3">
-                                    <Switch
-                                      checked={role.enabled}
-                                      disabled={togglingRole === role.id}
-                                      onCheckedChange={(checked) => handleToggleRole(role.id, checked)}
-                                    />
+                                  <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
+                                    <div className={cn("w-12 h-12 rounded-full overflow-hidden ring-2 shrink-0", colors.ring)}>
+                                      {profile?.avatar ? (
+                                        <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full bg-muted flex items-center justify-center text-lg">
+                                          {role.id === 'personalizza' ? '⚙️' : '🤖'}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-base">{role.name}</span>
+                                        <Badge className={cn("text-[10px]", colors.badge)}>
+                                          {profile?.role || role.shortDescription}
+                                        </Badge>
+                                        {role.total_tasks_30d > 0 && (
+                                          <Badge variant="outline" className="text-[10px]">{role.total_tasks_30d} task (30gg)</Badge>
+                                        )}
+                                      </div>
+                                      {profile?.quote && (
+                                        <p className="text-sm text-muted-foreground mt-0.5 italic">"{profile.quote}"</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <div className="flex items-center gap-1.5">
+                                        {role.preferredChannels.map(ch => (
+                                          <Badge key={ch} variant="outline" className="text-[9px] px-1.5 py-0">
+                                            {channelLabel[ch] || ch}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                      <Switch
+                                        checked={role.enabled}
+                                        disabled={togglingRole === role.id}
+                                        onCheckedChange={(checked) => {
+                                          handleToggleRole(role.id, checked);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                    </div>
                                   </div>
-                                  <div className={cn("w-20 h-20 rounded-full overflow-hidden ring-4 mb-3", colors.ring)}>
-                                    {profile?.avatar ? (
-                                      <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">🤖</div>
-                                    )}
-                                  </div>
-                                  <p className="text-lg font-bold">{role.name}</p>
-                                  <Badge className={cn("mt-1 text-[10px]", colors.badge)}>
-                                    {profile?.role || role.shortDescription}
-                                  </Badge>
-                                  {profile?.quote && (
-                                    <p className="text-sm italic text-muted-foreground mt-2 px-2">"{profile.quote}"</p>
+
+                                  {isExpanded && caps && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="border-t px-4 pb-4"
+                                    >
+                                      <div className="pt-4 space-y-4">
+                                        <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                                          <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                                            <ArrowRight className="h-3 w-3" />
+                                            Flusso di lavoro
+                                          </p>
+                                          <p className="text-sm">{caps.workflow}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div>
+                                            <p className="text-sm font-semibold text-green-600 dark:text-green-400 mb-2 flex items-center gap-1.5">
+                                              <CheckCircle className="h-4 w-4" />
+                                              Cosa sa fare
+                                            </p>
+                                            <div className="space-y-1.5">
+                                              {caps.canDo.map((item, idx) => (
+                                                <div key={idx} className="flex items-start gap-2 text-sm">
+                                                  <span className="shrink-0 text-sm">{item.icon}</span>
+                                                  <span>{item.text}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <p className="text-sm font-semibold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                                              <XCircle className="h-4 w-4" />
+                                              Cosa NON sa fare
+                                            </p>
+                                            <div className="space-y-1.5">
+                                              {caps.cantDo.map((item, idx) => (
+                                                <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                                  <span className="shrink-0 text-sm">{item.icon}</span>
+                                                  <span>{item.text}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t">
+                                          <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
+                                          <span>•</span>
+                                          <span>Analisi ogni 30 minuti</span>
+                                          {role.total_tasks_30d > 0 && (
+                                            <>
+                                              <span>•</span>
+                                              <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </motion.div>
                                   )}
-                                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{role.description}</p>
-                                  <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
-                                    {role.preferredChannels.map(ch => (
-                                      <Badge key={ch} variant="outline" className="text-[9px] px-1.5 py-0">
-                                        {channelLabel[ch] || ch}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                  <div className="mt-2">
-                                    {role.total_tasks_30d > 0 ? (
-                                      <p className="text-[10px] text-muted-foreground">{role.total_tasks_30d} task (30gg)</p>
-                                    ) : (
-                                      <p className="text-[10px] text-muted-foreground italic">Nessun task</p>
-                                    )}
-                                  </div>
                                 </div>
                               );
                             })}
@@ -2937,7 +3152,7 @@ export default function ConsultantAIAutonomyPage() {
                 )}
 
                 {activitySubTab === "reasoning" && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {loadingReasoning ? (
                       <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -2946,122 +3161,138 @@ export default function ConsultantAIAutonomyPage() {
                       <Card>
                         <CardContent className="py-12 text-center">
                           <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">Nessuna analisi autonoma ancora. Il sistema analizza i tuoi clienti periodicamente.</p>
+                          <p className="text-muted-foreground">Nessuna analisi ancora.</p>
+                          <p className="text-xs text-muted-foreground mt-1">Quando i dipendenti AI analizzano i tuoi dati, qui vedrai il loro ragionamento completo.</p>
                         </CardContent>
                       </Card>
                     ) : (
                       <>
-                        {reasoningData.activities.map((item) => {
-                          const eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
-                          const suggestions = eventData.suggestions || [];
+                        {reasoningData.activities.map((item: any) => {
+                          let eventData: any = {};
+                          try {
+                            eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
+                          } catch { eventData = {}; }
+                          const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
+                          const roleId = item.ai_role || eventData.ai_role || '';
+                          const roleProfile = AI_ROLE_PROFILES[roleId];
+                          const ROLE_COLOR_MAP: Record<string, string> = { alessia: 'pink', millie: 'purple', echo: 'orange', nova: 'pink', stella: 'emerald', iris: 'teal', marco: 'indigo', personalizza: 'gray' };
+                          const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
+                          const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
+                          const displayName = roleProfile ? roleId.charAt(0).toUpperCase() + roleId.slice(1) : (item.title || 'AI');
+
                           return (
-                            <Card key={item.id} className={`transition-colors ${!item.is_read ? "border-purple-500/30 bg-purple-500/5" : ""}`}>
-                              <CardContent className="py-4 px-5">
-                                <div className="flex items-start gap-4">
-                                  <div className="mt-0.5 p-2 rounded-full bg-purple-500/10 text-purple-500">
-                                    <Brain className="h-4 w-4" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-semibold">{item.title}</span>
-                                      {!item.is_read && (
-                                        <Badge variant="outline" className="text-xs border-primary/50 text-primary">Nuovo</Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                                    
-                                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {getRelativeTime(item.created_at)}
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <User className="h-3 w-3" />
-                                        {eventData.total_clients || 0} clienti totali
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <Target className="h-3 w-3" />
-                                        {eventData.eligible_clients || 0} idonei
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <Sparkles className="h-3 w-3" />
-                                        {eventData.tasks_suggested || 0} task suggeriti
-                                      </span>
-                                    </div>
-
-                                    {suggestions.length > 0 && (
-                                      <div className="mt-3 space-y-2">
-                                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                          <Lightbulb className="h-3 w-3" />
-                                          Ragionamento per ogni task:
-                                        </p>
-                                        {suggestions.map((s: any, idx: number) => (
-                                          <div key={idx} className="text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <span className="font-semibold">{s.client_name || 'Cliente'}</span>
-                                              {s.category && (
-                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">{s.category}</Badge>
-                                              )}
-                                              {s.channel && s.channel !== 'none' && (
-                                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                                  {s.channel === 'voice' ? '📞' : s.channel === 'email' ? '📧' : '💬'} {s.channel}
-                                                </Badge>
-                                              )}
-                                              {s.priority && (
-                                                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0",
-                                                  s.priority === 1 ? "border-red-500/50 text-red-500" :
-                                                  s.priority === 2 ? "border-orange-500/50 text-orange-500" :
-                                                  "border-muted-foreground/50"
-                                                )}>
-                                                  P{s.priority}
-                                                </Badge>
-                                              )}
-                                            </div>
-                                            <p className="text-muted-foreground mb-1">{s.instruction}</p>
-                                            {s.reasoning && (
-                                              <p className="text-purple-600 dark:text-purple-400 italic">
-                                                💭 {s.reasoning}
-                                              </p>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    {suggestions.length === 0 && eventData.eligible_clients > 0 && (
-                                      <div className="mt-3 text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
-                                        <p className="text-muted-foreground italic">
-                                          💭 L'AI ha analizzato i clienti e non ha identificato necessità di task proattivi al momento.
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {eventData.eligible_clients === 0 && (
-                                      <div className="mt-3 text-xs bg-muted/50 rounded-lg p-3 border border-border/50">
-                                        <div className="flex flex-wrap gap-3 text-muted-foreground">
-                                          {eventData.clients_with_pending_tasks > 0 && (
-                                            <span>⏳ {eventData.clients_with_pending_tasks} con task pendenti</span>
-                                          )}
-                                          {eventData.clients_with_recent_completion > 0 && (
-                                            <span>✅ {eventData.clients_with_recent_completion} completati di recente</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-
+                            <Card key={item.id} className={cn("transition-all overflow-hidden", !item.is_read && "ring-2 ring-primary/20")}>
+                              <div className={cn("flex items-center gap-3 px-5 py-3 border-b", colors.badge)}>
+                                <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/50 shrink-0">
+                                  {roleProfile?.avatar ? (
+                                    <img src={roleProfile.avatar} alt={displayName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full bg-white/20 flex items-center justify-center text-sm">🤖</div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-sm">{displayName}</p>
+                                  <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs opacity-70">{getRelativeTime(item.created_at)}</span>
                                   {!item.is_read && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="shrink-0"
+                                      className="h-7 w-7"
                                       onClick={() => markReadMutation.mutate(item.id)}
                                       disabled={markReadMutation.isPending}
                                     >
-                                      <Eye className="h-4 w-4" />
+                                      <Eye className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
                                 </div>
+                              </div>
+
+                              <CardContent className="py-4 px-5 space-y-4">
+                                <div className="grid grid-cols-3 gap-3 text-center">
+                                  <div className="bg-muted/40 rounded-lg p-2.5">
+                                    <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
+                                    <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
+                                  </div>
+                                  <div className="bg-muted/40 rounded-lg p-2.5">
+                                    <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
+                                    <p className="text-[10px] text-muted-foreground">Idonei</p>
+                                  </div>
+                                  <div className="bg-muted/40 rounded-lg p-2.5">
+                                    <p className="text-lg font-bold">{suggestions.length}</p>
+                                    <p className="text-[10px] text-muted-foreground">Task creati</p>
+                                  </div>
+                                </div>
+
+                                {eventData.overall_reasoning && (
+                                  <div className="rounded-lg border bg-muted/20 p-4">
+                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                                      <Brain className="h-3.5 w-3.5" />
+                                      Cosa ha pensato
+                                    </p>
+                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                                      {eventData.overall_reasoning}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {!eventData.overall_reasoning && (
+                                  <div className="rounded-lg border bg-muted/20 p-4">
+                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                                      <Brain className="h-3.5 w-3.5" />
+                                      Risultato analisi
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                                  </div>
+                                )}
+
+                                {suggestions.length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-bold flex items-center gap-1.5">
+                                      <Sparkles className="h-3.5 w-3.5" />
+                                      Azioni decise ({suggestions.length})
+                                    </p>
+                                    {suggestions.map((s: any, idx: number) => (
+                                      <div key={idx} className="rounded-lg border p-3 bg-card">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
+                                            {s.channel && s.channel !== 'none' && (
+                                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          {s.priority && (
+                                            <Badge className={cn("text-[10px]",
+                                              s.priority === 1 ? "bg-red-500/20 text-red-600 border-red-500/30" :
+                                              s.priority === 2 ? "bg-orange-500/20 text-orange-600 border-orange-500/30" :
+                                              "bg-muted text-muted-foreground"
+                                            )}>
+                                              {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-sm mb-2">{s.instruction}</p>
+                                        {s.reasoning && (
+                                          <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded p-2">
+                                            <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+                                            <span><strong>Perché:</strong> {s.reasoning}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {suggestions.length === 0 && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-lg p-3">
+                                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                                    <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
                           );

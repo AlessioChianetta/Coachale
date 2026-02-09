@@ -210,6 +210,74 @@ async function fetchIrisData(consultantId: string, clientIds: string[]): Promise
   };
 }
 
+async function fetchMarcoData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
+  const upcomingResult = await db.execute(sql`
+    SELECT c.id, c.client_id, c.scheduled_at, c.duration, c.notes, c.status,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM consultations c
+    JOIN users u ON u.id::text = c.client_id
+    WHERE c.consultant_id = ${consultantId}
+      AND c.status = 'scheduled'
+      AND c.scheduled_at > NOW()
+      AND c.scheduled_at < NOW() + INTERVAL '7 days'
+    ORDER BY c.scheduled_at ASC
+    LIMIT 20
+  `);
+
+  const workloadResult = await db.execute(sql`
+    SELECT 
+      COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '30 days') as completed_30d,
+      COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '7 days') as completed_7d,
+      COUNT(*) FILTER (WHERE status IN ('pending', 'scheduled')) as pending_tasks
+    FROM ai_tasks
+    WHERE consultant_id = ${consultantId}
+  `);
+
+  const clientCountResult = await db.execute(sql`
+    SELECT COUNT(*) as total_clients
+    FROM users u
+    JOIN user_profiles up ON up.user_id = u.id
+    WHERE up.consultant_id = ${consultantId}
+      AND u.is_active = true
+  `);
+
+  return {
+    upcomingConsultations: upcomingResult.rows,
+    workload: workloadResult.rows[0] || {},
+    clientCount: clientCountResult.rows[0]?.total_clients || 0,
+  };
+}
+
+async function fetchPersonalizzaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
+  if (clientIds.length === 0) return { consultations: [], recentTasks: [] };
+
+  const consultationsResult = await db.execute(sql`
+    SELECT c.client_id, c.scheduled_at, c.duration, c.status,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM consultations c
+    JOIN users u ON u.id::text = c.client_id
+    WHERE c.consultant_id = ${consultantId}
+      AND c.scheduled_at > NOW() - INTERVAL '30 days'
+    ORDER BY c.scheduled_at DESC
+    LIMIT 30
+  `);
+
+  const recentTasksResult = await db.execute(sql`
+    SELECT at.id, at.contact_name, at.task_category, at.status,
+           at.preferred_channel, at.ai_role, at.created_at
+    FROM ai_tasks at
+    WHERE at.consultant_id = ${consultantId}
+      AND at.created_at > NOW() - INTERVAL '14 days'
+    ORDER BY at.created_at DESC
+    LIMIT 20
+  `);
+
+  return {
+    consultations: consultationsResult.rows,
+    recentTasks: recentTasksResult.rows,
+  };
+}
+
 export const AI_ROLES: Record<string, AIRoleDefinition> = {
   alessia: {
     id: "alessia",
@@ -732,6 +800,188 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "preferred_channel": "email",
       "urgency": "normale|oggi|settimana",
       "tone": "professionale"
+    }
+  ]
+}`;
+    },
+  },
+
+  marco: {
+    id: "marco",
+    name: "Marco",
+    displayName: "Marco – Executive Coach",
+    avatar: "marco",
+    accentColor: "indigo",
+    description: "Analizza la tua agenda, il carico di lavoro e le performance per aiutarti a organizzare meglio la giornata e prepararti agli incontri.",
+    shortDescription: "Coaching operativo e organizzazione consulente",
+    categories: ["preparation", "monitoring", "report"],
+    preferredChannels: ["none"],
+    typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
+    maxTasksPerRun: 2,
+    fetchRoleData: fetchMarcoData,
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks }) => {
+      const upcomingSummary = (roleData.upcomingConsultations || []).map((c: any) => ({
+        consultation_id: c.id,
+        client: c.client_name,
+        client_id: c.client_id,
+        date: c.scheduled_at,
+        duration: c.duration,
+        status: c.status,
+        has_notes: !!c.notes,
+        notes_preview: c.notes?.substring(0, 200) || null,
+      }));
+
+      const workload = roleData.workload || {};
+      const clientCount = roleData.clientCount || 0;
+
+      return `Sei MARCO, Executive Coach AI. Il tuo ruolo è analizzare l'agenda, il carico di lavoro e le performance del consulente per aiutarlo a organizzare meglio la giornata e prepararsi agli incontri.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+IL TUO FOCUS: Organizzazione agenda, preparazione consulenze, monitoraggio carico di lavoro, coaching operativo per il CONSULENTE (non per i clienti).
+
+CONSULENZE IN PROGRAMMA (prossimi 7 giorni):
+${upcomingSummary.length > 0 ? JSON.stringify(upcomingSummary, null, 2) : 'Nessuna consulenza programmata nei prossimi 7 giorni'}
+
+METRICHE CARICO DI LAVORO:
+- Task completati ultimi 30 giorni: ${workload.completed_30d || 0}
+- Task completati ultimi 7 giorni: ${workload.completed_7d || 0}
+- Task pendenti/programmati: ${workload.pending_tasks || 0}
+- Clienti attivi totali: ${clientCount}
+
+TASK COMPLETATI NEGLI ULTIMI 7 GIORNI:
+${recentCompletedTasks.length > 0 ? JSON.stringify(recentCompletedTasks, null, 2) : 'Nessun task completato di recente'}
+
+CLIENTI ATTIVI:
+${JSON.stringify(clientsList, null, 2)}
+
+ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
+${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
+
+REGOLE DI MARCO:
+1. Suggerisci MASSIMO 2 task
+2. Il tuo focus è sul CONSULENTE, non sui singoli clienti. Aiuta il consulente a organizzarsi meglio.
+3. Priorità:
+   - Consulenze nelle prossime 24-48h senza preparazione → task di preparazione briefing URGENTE
+   - Troppi task pendenti (>10) → task di monitoraggio e riorganizzazione
+   - Gap nell'agenda (giorni senza consulenze) → suggerisci attività produttive
+   - Carico di lavoro squilibrato → suggerisci ottimizzazioni
+4. L'ai_instruction DEVE includere:
+   - Contesto specifico (quale consulenza preparare, quali metriche analizzare)
+   - Azioni concrete suggerite al consulente
+   - Punti chiave da considerare
+5. Il campo preferred_channel DEVE essere "none" (sono task interni per il consulente)
+6. Usa le categorie: preparation, monitoring, report
+7. Per contact_id usa il client_id della consulenza da preparare, o null per task organizzativi generali
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali metriche hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo.",
+  "tasks": [
+    {
+      "contact_id": "uuid del cliente o null",
+      "contact_name": "Nome cliente o Organizzazione",
+      "contact_phone": "N/A",
+      "ai_instruction": "Istruzione dettagliata per il task di coaching/preparazione...",
+      "task_category": "preparation|monitoring|report",
+      "priority": 2,
+      "reasoning": "Motivazione basata sui dati analizzati",
+      "preferred_channel": "none",
+      "urgency": "normale|oggi|settimana",
+      "tone": "professionale"
+    }
+  ]
+}`;
+    },
+  },
+
+  personalizza: {
+    id: "personalizza",
+    name: "Personalizza",
+    displayName: "Personalizza – Assistente Custom",
+    avatar: "personalizza",
+    accentColor: "gray",
+    description: "Un dipendente AI completamente personalizzabile. Definisci tu cosa deve analizzare, quali dati leggere e che tipo di task creare.",
+    shortDescription: "Ruolo personalizzabile con istruzioni libere",
+    categories: ["outreach", "reminder", "followup", "analysis", "report", "monitoring", "preparation"],
+    preferredChannels: ["voice", "email", "whatsapp", "none"],
+    typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "generate_report", "send_email", "send_whatsapp", "voice_call"],
+    maxTasksPerRun: 3,
+    fetchRoleData: fetchPersonalizzaData,
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks }) => {
+      const consultationsSummary = (roleData.consultations || []).map((c: any) => ({
+        client: c.client_name,
+        client_id: c.client_id,
+        date: c.scheduled_at,
+        duration: c.duration,
+        status: c.status,
+      }));
+
+      const tasksSummary = (roleData.recentTasks || []).map((t: any) => ({
+        id: t.id,
+        contact: t.contact_name,
+        category: t.task_category,
+        status: t.status,
+        channel: t.preferred_channel,
+        role: t.ai_role,
+        created: t.created_at,
+      }));
+
+      const hasCustomInstructions = !!(settings.custom_instructions && settings.custom_instructions.trim().length > 0);
+
+      return `Sei PERSONALIZZA, un assistente AI completamente configurabile dal consulente. Il tuo comportamento, le tue analisi e i task che crei dipendono interamente dalle istruzioni personalizzate fornite dal consulente.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+${hasCustomInstructions ? `ISTRUZIONI PERSONALIZZATE DEL CONSULENTE (SEGUI QUESTE ISTRUZIONI COME PRIORITÀ PRINCIPALE):
+${settings.custom_instructions}` : `⚠️ NESSUNA ISTRUZIONE PERSONALIZZATA CONFIGURATA.
+Il consulente non ha ancora definito cosa vuoi che tu faccia. Suggerisci al consulente di configurare le istruzioni personalizzate per questo ruolo, spiegando che può definire:
+- Quali dati analizzare
+- Che tipo di task creare
+- Quali canali usare
+- Quali clienti prioritizzare
+- Qualsiasi logica personalizzata`}
+
+CLIENTI ATTIVI:
+${JSON.stringify(clientsList, null, 2)}
+
+CONSULENZE RECENTI (ultimi 30 giorni):
+${consultationsSummary.length > 0 ? JSON.stringify(consultationsSummary, null, 2) : 'Nessuna consulenza recente'}
+
+TASK AI RECENTI (ultimi 14 giorni):
+${tasksSummary.length > 0 ? JSON.stringify(tasksSummary, null, 2) : 'Nessun task recente'}
+
+TASK COMPLETATI NEGLI ULTIMI 7 GIORNI:
+${recentCompletedTasks.length > 0 ? JSON.stringify(recentCompletedTasks, null, 2) : 'Nessuno'}
+
+REGOLE DI PERSONALIZZA:
+1. Suggerisci MASSIMO 3 task
+2. TUTTE le categorie sono disponibili: outreach, reminder, followup, analysis, report, monitoring, preparation
+3. TUTTI i canali sono disponibili: voice, email, whatsapp, none
+4. Se il consulente ha fornito istruzioni personalizzate, seguile come priorità assoluta
+5. Se NON ci sono istruzioni personalizzate, NON creare task. Restituisci tasks vuoto e nel reasoning spiega che il consulente deve configurare le istruzioni
+6. L'ai_instruction DEVE essere dettagliata e contestualizzata
+7. Adatta il tono e lo stile alle istruzioni del consulente
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali istruzioni personalizzate hai seguito, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo.",
+  "tasks": [
+    {
+      "contact_id": "uuid del cliente o null",
+      "contact_name": "Nome",
+      "contact_phone": "+39... o N/A",
+      "ai_instruction": "Istruzione dettagliata basata sulle istruzioni personalizzate del consulente...",
+      "task_category": "outreach|reminder|followup|analysis|report|monitoring|preparation",
+      "priority": 3,
+      "reasoning": "Motivazione basata sui dati e sulle istruzioni personalizzate",
+      "preferred_channel": "voice|email|whatsapp|none",
+      "urgency": "normale|oggi|settimana",
+      "tone": "professionale|informale|empatico"
     }
   ]
 }`;
