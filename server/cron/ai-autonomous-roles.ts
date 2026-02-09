@@ -236,8 +236,8 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   const clientCountResult = await db.execute(sql`
     SELECT COUNT(*) as total_clients
     FROM users u
-    JOIN user_profiles up ON up.user_id = u.id
-    WHERE up.consultant_id = ${consultantId}
+    WHERE u.consultant_id = ${consultantId}
+      AND u.role = 'client'
       AND u.is_active = true
   `);
 

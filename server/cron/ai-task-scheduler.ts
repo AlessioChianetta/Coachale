@@ -14,8 +14,8 @@ import { sql } from 'drizzle-orm';
 import { withCronLock } from './cron-lock-manager';
 import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, getAutonomySettings } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
+import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
-import { GEMINI_3_MODEL, getGeminiApiKeyForClassifier } from '../ai/provider-factory';
 
 const CRON_JOB_NAME = 'ai-task-scheduler';
 const LOCK_DURATION_MS = 2 * 60 * 1000; // 2 minutes
@@ -1206,9 +1206,42 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     role: t.ai_role || 'generic',
   }));
 
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) {
-    console.error('❌ [AUTONOMOUS-GEN] No Gemini API key available');
+  let aiClient: GeminiClient | null = null;
+  let providerModel = GEMINI_3_MODEL;
+  let providerName = 'Google AI Studio';
+
+  try {
+    const provider = await getAIProvider(consultantId, consultantId);
+    aiClient = provider.client;
+    providerName = provider.metadata?.name || 'Unknown';
+    providerModel = getModelForProviderName(providerName);
+    console.log(`🧠 [AUTONOMOUS-GEN] Using provider: ${providerName} (model: ${providerModel})`);
+  } catch (providerError: any) {
+    console.warn(`⚠️ [AUTONOMOUS-GEN] Provider factory failed: ${providerError.message}, falling back to classifier key`);
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) {
+      console.error('❌ [AUTONOMOUS-GEN] No Gemini API key available');
+      return 0;
+    }
+    const genAI = new GoogleGenAI({ apiKey });
+    aiClient = {
+      generateContent: async (params: any) => {
+        const result = await genAI.models.generateContent({
+          model: params.model,
+          contents: params.contents,
+          config: {
+            ...params.generationConfig,
+          },
+        });
+        const text = typeof result.text === 'function' ? result.text() : (result as any).text;
+        return { response: { text: () => text || '', candidates: [] } };
+      },
+      generateContentStream: async () => { throw new Error('Not supported'); },
+    } as any;
+  }
+
+  if (!aiClient) {
+    console.error('❌ [AUTONOMOUS-GEN] No AI client available');
     return 0;
   }
 
@@ -1233,6 +1266,8 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
       clients_with_pending_tasks: clientsWithPendingTasks.size,
       clients_with_recent_completion: clientsWithRecentCompletion.size,
       active_roles: activeRoles.map(r => r.id),
+      provider_name: providerName,
+      provider_model: providerModel,
     },
   });
 
@@ -1268,19 +1303,33 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
         recentCompletedTasks: recentTasksSummary,
       });
 
-      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini...`);
-      const genAI = new GoogleGenAI({ apiKey });
-      const response = await genAI.models.generateContent({
-        model: GEMINI_3_MODEL,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          temperature: 0.3,
-          maxOutputTokens: 4096,
-          responseMimeType: 'application/json',
-        },
-      });
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
 
-      const responseText = typeof response.text === 'function' ? response.text() : (response as any).text;
+      let responseText: string | undefined;
+      for (let attempt = 0; attempt <= 2; attempt++) {
+        try {
+          const response = await aiClient!.generateContent({
+            model: providerModel,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 4096,
+              responseMimeType: 'application/json',
+            },
+          });
+          responseText = response.response.text();
+          break;
+        } catch (retryErr: any) {
+          const isRetryable = retryErr.message?.includes('503') || retryErr.message?.includes('overloaded') || retryErr.message?.includes('UNAVAILABLE') || retryErr.status === 503;
+          if (isRetryable && attempt < 2) {
+            const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+            console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Retry ${attempt + 1}/2 after ${delay}ms: ${retryErr.message}`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          throw retryErr;
+        }
+      }
       if (!responseText) {
         console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Empty response from Gemini`);
         continue;

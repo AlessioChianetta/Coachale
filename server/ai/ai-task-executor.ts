@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory";
+import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from "./provider-factory";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -39,6 +39,43 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     }
   }
   throw new Error("Unreachable");
+}
+
+interface ResolvedProvider {
+  client: GeminiClient;
+  model: string;
+  providerName: string;
+}
+
+async function resolveProviderForTask(consultantId: string): Promise<ResolvedProvider> {
+  try {
+    const provider = await getAIProvider(consultantId, consultantId);
+    const providerName = provider.metadata?.name || 'Unknown';
+    const model = getModelForProviderName(providerName);
+    console.log(`${LOG_PREFIX} Provider resolved: ${providerName} (source: ${provider.source}, model: ${model})`);
+    return { client: provider.client, model, providerName };
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Provider resolution failed: ${err.message}, using fallback`);
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) throw new Error("No Gemini API key available");
+    const ai = new GoogleGenAI({ apiKey });
+    const fallbackClient: GeminiClient = {
+      generateContent: async (params: any) => {
+        const result = await ai.models.generateContent({
+          model: params.model,
+          contents: params.contents,
+          config: {
+            ...params.generationConfig,
+            ...(params.tools && { tools: params.tools }),
+          },
+        });
+        const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
+        return { response: { text: () => text, candidates: [] } };
+      },
+      generateContentStream: async () => { throw new Error('Not supported in fallback'); },
+    };
+    return { client: fallbackClient, model: GEMINI_3_MODEL, providerName: 'Google AI Studio (fallback)' };
+  }
 }
 
 function generateScheduledCallId(): string {
@@ -422,19 +459,18 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "key_topics": ["argomento chiave 1", "argomento 2", ...]
 }`;
 
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) throw new Error("No Gemini API key available");
-  const ai = new GoogleGenAI({ apiKey });
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  console.log(`${LOG_PREFIX} analyze_patterns using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
-    return await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
+    return await client.generateContent({
+      model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.3, maxOutputTokens: 16384 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
     });
   });
 
-  const text = response.text || "";
+  const text = response.response.text() || "";
   console.log(`${LOG_PREFIX} Gemini analysis response length: ${text.length}`);
 
   try {
@@ -534,19 +570,18 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", "passo successivo 3", "passo successivo 4"]
 }`;
 
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) throw new Error("No Gemini API key available");
-  const ai = new GoogleGenAI({ apiKey });
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  console.log(`${LOG_PREFIX} generate_report using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
-    return await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
+    return await client.generateContent({
+      model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.3, maxOutputTokens: 16384 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
     });
   });
 
-  const text = response.text || "";
+  const text = response.response.text() || "";
   console.log(`${LOG_PREFIX} Gemini report response length: ${text.length}`);
 
   try {
@@ -626,19 +661,18 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "call_topic_summary": "brief summary of what this call is about"
 }`;
 
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) throw new Error("No Gemini API key available");
-  const ai = new GoogleGenAI({ apiKey });
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  console.log(`${LOG_PREFIX} prepare_call using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
-    return await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
+    return await client.generateContent({
+      model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { temperature: 0.4, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
     });
   });
 
-  const text = response.text || "";
+  const text = response.response.text() || "";
   console.log(`${LOG_PREFIX} Gemini call prep response length: ${text.length}`);
 
   try {
@@ -957,9 +991,9 @@ async function handleSendEmail(
   let emailBody = _step.params?.message_summary || "";
 
   if (!emailBody) {
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (apiKey) {
-      const ai = new GoogleGenAI({ apiKey });
+    try {
+      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+      console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 Contesto: ${task.ai_instruction}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
@@ -971,12 +1005,14 @@ REGOLE IMPORTANTI:
 3. NON scrivere un papiro. Il dettaglio è nel report allegato.
 4. Sii diretto e professionale.`;
 
-      const resp = await withRetry(() => ai.models.generateContent({
-        model: GEMINI_3_MODEL,
+      const resp = await withRetry(() => client.generateContent({
+        model: resolvedModel,
         contents: [{ role: "user", parts: [{ text: emailPrompt }] }],
-        config: { temperature: 0.4, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
       }));
-      emailBody = resp.text || "";
+      emailBody = resp.response.text() || "";
+    } catch (provErr: any) {
+      console.warn(`${LOG_PREFIX} Could not resolve provider for email body: ${provErr.message}`);
     }
   }
 
@@ -1078,21 +1114,23 @@ async function handleSendWhatsapp(
   let messageText = _step.params?.message_summary || "";
 
   if (!messageText) {
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (apiKey) {
-      const ai = new GoogleGenAI({ apiKey });
+    try {
+      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+      console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${task.contact_name || 'il cliente'}.
 Contesto: ${task.ai_instruction}
 ${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
 NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;
 
-      const resp = await withRetry(() => ai.models.generateContent({
-        model: GEMINI_3_MODEL,
+      const resp = await withRetry(() => client.generateContent({
+        model: resolvedModel,
         contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
-        config: { temperature: 0.5, maxOutputTokens: 256 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 256 },
       }));
-      messageText = resp.text || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
+      messageText = resp.response.text() || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
+    } catch (provErr: any) {
+      console.warn(`${LOG_PREFIX} Could not resolve provider for whatsapp body: ${provErr.message}`);
     }
   }
 
@@ -1160,11 +1198,10 @@ async function handleWebSearch(
   if (searchQuery.length > 100) {
     console.log(`${LOG_PREFIX} Search query too long (${searchQuery.length} chars), generating focused queries with Gemini`);
     try {
-      const queryGenApiKey = await getGeminiApiKeyForClassifier();
-      if (queryGenApiKey) {
-        const queryGenAi = new GoogleGenAI({ apiKey: queryGenApiKey });
-        const keyTopics = analysisData.key_topics || [];
-        const queryGenPrompt = `Based on the following task context, generate 2-3 concise, focused web search queries (each max 10 words) that would find the most relevant information. Return ONLY the queries, one per line.
+      const { client: queryGenClient, model: queryModel, providerName: queryProvider } = await resolveProviderForTask(task.consultant_id);
+      console.log(`${LOG_PREFIX} web_search query generation using ${queryProvider}`);
+      const keyTopics = analysisData.key_topics || [];
+      const queryGenPrompt = `Based on the following task context, generate 2-3 concise, focused web search queries (each max 10 words) that would find the most relevant information. Return ONLY the queries, one per line.
 
 Task instruction: ${task.ai_instruction.substring(0, 300)}
 Client name: ${contactName}
@@ -1172,19 +1209,18 @@ Task category: ${task.task_category}
 ${keyTopics.length > 0 ? `Key topics: ${keyTopics.join(', ')}` : ''}
 ${step.description ? `Step description: ${step.description}` : ''}`;
 
-        const queryGenResponse = await withRetry(async () => {
-          return await queryGenAi.models.generateContent({
-            model: GEMINI_3_MODEL,
-            contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
-            config: { temperature: 0.3, maxOutputTokens: 256 },
-          });
+      const queryGenResponse = await withRetry(async () => {
+        return await queryGenClient.generateContent({
+          model: queryModel,
+          contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 256 },
         });
+      });
 
-        const generatedQueries = (queryGenResponse.text || "").trim().split('\n').filter((q: string) => q.trim().length > 0);
-        if (generatedQueries.length > 0) {
-          searchQuery = generatedQueries[0].trim().replace(/^\d+[\.\)]\s*/, '');
-          console.log(`${LOG_PREFIX} Generated focused search query: "${searchQuery}" (from ${generatedQueries.length} candidates)`);
-        }
+      const generatedQueries = (queryGenResponse.response.text() || "").trim().split('\n').filter((q: string) => q.trim().length > 0);
+      if (generatedQueries.length > 0) {
+        searchQuery = generatedQueries[0].trim().replace(/^\d+[\.\)]\s*/, '');
+        console.log(`${LOG_PREFIX} Generated focused search query: "${searchQuery}" (from ${generatedQueries.length} candidates)`);
       }
     } catch (queryGenErr: any) {
       console.warn(`${LOG_PREFIX} Failed to generate focused query, using truncated original: ${queryGenErr.message}`);
@@ -1220,26 +1256,22 @@ IMPORTANTE: Riporta SOLO informazioni che trovi realmente dalla ricerca. NON inv
 
 Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
 
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) throw new Error("No Gemini API key available");
-  const ai = new GoogleGenAI({ apiKey });
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  console.log(`${LOG_PREFIX} web_search using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
-    return await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
+    return await client.generateContent({
+      model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.3,
-        maxOutputTokens: 8192,
-        tools: [{ googleSearch: {} }],
-      },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+      tools: [{ googleSearch: {} }],
     });
   });
 
-  const text = response.text || "";
+  const text = response.response.text() || "";
   console.log(`${LOG_PREFIX} Risposta ricerca web, lunghezza: ${text.length}`);
 
-  const groundingMetadata = (response as any).candidates?.[0]?.groundingMetadata;
+  const groundingMetadata = (response as any).response?.candidates?.[0]?.groundingMetadata;
   const groundingChunks = groundingMetadata?.groundingChunks || [];
   const searchQueries = groundingMetadata?.webSearchQueries || [];
 
