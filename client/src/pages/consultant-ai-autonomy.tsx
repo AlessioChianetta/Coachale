@@ -21,7 +21,7 @@ import {
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
   Sparkles, User, Lightbulb,
   ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus, BookOpen, Database, Search, FileText, PhoneCall, Globe, Table2,
-  ExternalLink, Trash2
+  ExternalLink, Trash2, X
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
@@ -1221,7 +1221,7 @@ export default function ConsultantAIAutonomyPage() {
   const [dashboardOriginFilter, setDashboardOriginFilter] = useState<string>("all");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showArchDetails, setShowArchDetails] = useState(true);
-  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showAlessiaChat, setShowAlessiaChat] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showLibrary, setShowLibrary] = useState(true);
   const [newTask, setNewTask] = useState({
@@ -5056,36 +5056,44 @@ export default function ConsultantAIAutonomyPage() {
             </Tabs>
           </div>
         </main>
-        <div className="w-[380px] border-l border-border shrink-0 hidden lg:flex flex-col min-h-0">
-          <AllessiaSidePanel />
-        </div>
         </div>
 
-        {isMobile && (
-          <>
-            <Button
-              onClick={() => setShowMobileChat(!showMobileChat)}
-              size="lg"
-              className={cn(
-                "fixed bottom-6 right-6 z-50 h-12 px-4 rounded-xl shadow-2xl transition-all duration-300 flex items-center gap-2 lg:hidden",
-                "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
-              )}
-            >
-              <Bot className="h-5 w-5 text-white" />
-              <span className="text-white font-medium">Alessia</span>
-            </Button>
-            {showMobileChat && (
-              <div className="fixed inset-0 z-50 lg:hidden flex flex-col bg-white dark:bg-slate-900">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-700">
-                  <span className="font-semibold text-sm">Alessia</span>
-                  <Button variant="ghost" size="sm" onClick={() => setShowMobileChat(false)}>Chiudi</Button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <AllessiaSidePanel />
-                </div>
+        <Button
+          onClick={() => setShowAlessiaChat(!showAlessiaChat)}
+          size="lg"
+          className={cn(
+            "fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center p-0",
+            "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600",
+            showAlessiaChat && "from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800"
+          )}
+        >
+          {showAlessiaChat ? (
+            <X className="h-6 w-6 text-white" />
+          ) : (
+            <Bot className="h-6 w-6 text-white" />
+          )}
+        </Button>
+
+        {showAlessiaChat && (
+          <div className={cn(
+            "fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col overflow-hidden",
+            isMobile
+              ? "inset-0 rounded-none"
+              : "bottom-24 right-6 w-[400px] h-[600px] rounded-2xl"
+          )}>
+            {isMobile && (
+              <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                <span className="font-semibold text-sm flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-cyan-500" />
+                  Alessia
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setShowAlessiaChat(false)}>Chiudi</Button>
               </div>
             )}
-          </>
+            <div className="flex-1 overflow-hidden">
+              <AllessiaSidePanel />
+            </div>
+          </div>
         )}
       </div>
     </div>
