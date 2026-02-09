@@ -565,7 +565,7 @@ router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_adm
       db.execute(sql`SELECT * FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`),
       db.execute(sql`SELECT id, ai_instruction, status, task_category, scheduled_at, result_summary FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' ORDER BY created_at DESC LIMIT 10`),
       db.execute(sql`SELECT event_type, title, description, created_at FROM ai_activity_log WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10`),
-      db.execute(sql`SELECT id, first_name, last_name, email, phone_number FROM users WHERE consultant_id = ${consultantId} AND role = 'client' LIMIT 20`),
+      db.execute(sql`SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number FROM users u JOIN user_role_profiles urp ON u.id = urp.user_id WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client' LIMIT 20`),
     ]);
 
     const settingsJson = settingsResult.rows.length > 0 ? JSON.stringify(settingsResult.rows[0]) : "Nessuna impostazione configurata";
@@ -1028,27 +1028,29 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
       `),
       db.execute(sql`
         SELECT COUNT(*)::int as count FROM users u
-        WHERE u.consultant_id = ${consultantId}
-          AND u.role = 'client'
+        JOIN user_role_profiles urp ON u.id = urp.user_id
+        WHERE urp.consultant_id = ${consultantId}
+          AND urp.role = 'client'
           AND u.is_active = true
           AND u.id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
           AND NOT EXISTS (
             SELECT 1 FROM ai_scheduled_tasks ast
-            WHERE ast.consultant_id = ${consultantId}
-              AND ast.contact_id = u.id::uuid
+            WHERE ast.consultant_id::text = ${consultantId}
+              AND ast.contact_id::text = u.id::text
               AND ast.status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
           )
           AND NOT EXISTS (
             SELECT 1 FROM ai_scheduled_tasks ast2
-            WHERE ast2.consultant_id = ${consultantId}
-              AND ast2.contact_id = u.id::uuid
+            WHERE ast2.consultant_id::text = ${consultantId}
+              AND ast2.contact_id::text = u.id::text
               AND ast2.status = 'completed'
               AND ast2.completed_at > NOW() - INTERVAL '24 hours'
           )
       `),
       db.execute(sql`
-        SELECT COUNT(*)::int as count FROM users
-        WHERE consultant_id = ${consultantId} AND role = 'client' AND is_active = true
+        SELECT COUNT(*)::int as count FROM users u
+        JOIN user_role_profiles urp ON u.id = urp.user_id
+        WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client' AND u.is_active = true
       `),
       db.execute(sql`
         SELECT COUNT(*)::int as count FROM ai_scheduled_tasks

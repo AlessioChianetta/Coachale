@@ -1117,15 +1117,15 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
       u.phone_number,
       (
         SELECT MAX(c.created_at) FROM consultations c 
-        WHERE c.client_id = u.id AND c.consultant_id = ${consultantId}
+        WHERE c.client_id = u.id::text AND c.consultant_id = ${consultantId}
       ) AS last_consultation_date,
       (
         SELECT MAX(t.scheduled_at) FROM ai_scheduled_tasks t 
-        WHERE t.contact_id = u.id::text AND t.consultant_id = ${consultantId}
+        WHERE t.contact_id::text = u.id::text AND t.consultant_id = ${consultantId}::uuid
       ) AS last_task_date
     FROM users u
-    WHERE u.consultant_id = ${consultantId}
-      AND u.role = 'client'
+    JOIN user_role_profiles urp ON u.id = urp.user_id
+    WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY u.first_name ASC
     LIMIT 50
@@ -1139,8 +1139,8 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
   }
 
   const pendingTasksResult = await db.execute(sql`
-    SELECT contact_id FROM ai_scheduled_tasks
-    WHERE consultant_id = ${consultantId}
+    SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
+    WHERE consultant_id = ${consultantId}::uuid
       AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
       AND contact_id IS NOT NULL
   `);
@@ -1149,8 +1149,8 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
   );
 
   const recentCompletedResult = await db.execute(sql`
-    SELECT contact_id FROM ai_scheduled_tasks
-    WHERE consultant_id = ${consultantId}
+    SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
+    WHERE consultant_id = ${consultantId}::uuid
       AND status = 'completed'
       AND completed_at > NOW() - INTERVAL '24 hours'
       AND contact_id IS NOT NULL
@@ -1188,9 +1188,9 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
   }
 
   const recentTasksResult = await db.execute(sql`
-    SELECT t.contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at
+    SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at
     FROM ai_scheduled_tasks t
-    WHERE t.consultant_id = ${consultantId}
+    WHERE t.consultant_id = ${consultantId}::uuid
       AND t.completed_at > NOW() - INTERVAL '7 days'
       AND t.status = 'completed'
     ORDER BY t.completed_at DESC
@@ -1357,12 +1357,12 @@ Rispondi SOLO con un JSON valido nel seguente formato (senza markdown, senza bac
             priority, preferred_channel, tone, urgency,
             max_attempts, recurrence_type
           ) VALUES (
-            ${taskId}, ${consultantId}, ${suggestedTask.contact_name || null},
+            ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
             ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
             ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
             ${taskStatus}, 'autonomous',
             ${suggestedTask.task_category || 'followup'},
-            ${suggestedTask.contact_id}, ${suggestedTask.reasoning || null},
+            ${suggestedTask.contact_id}::uuid, ${suggestedTask.reasoning || null},
             ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
             ${suggestedTask.preferred_channel || 'none'},
             ${suggestedTask.tone || 'professionale'},
