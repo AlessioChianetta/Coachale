@@ -94,6 +94,7 @@ interface AITask {
   scheduled_at?: string;
   completed_at?: string;
   created_at: string;
+  ai_role?: string;
 }
 
 interface TasksResponse {
@@ -1273,6 +1274,21 @@ export default function ConsultantAIAutonomyPage() {
     cron_schedule: string;
     task_execution_schedule: string;
     last_error: { created_at: string; title: string; description: string; data: any } | null;
+    roles?: Array<{
+      id: string;
+      name: string;
+      displayName: string;
+      avatar: string;
+      accentColor: string;
+      description: string;
+      shortDescription: string;
+      categories: string[];
+      preferredChannels: string[];
+      enabled: boolean;
+      last_task_at: string | null;
+      total_tasks_30d: number;
+    }>;
+    enabled_roles?: Record<string, boolean>;
   }>({
     queryKey: ["/api/ai-autonomy/system-status"],
     queryFn: async () => {
@@ -1318,9 +1334,29 @@ export default function ConsultantAIAutonomyPage() {
     }
   };
 
+  const [togglingRole, setTogglingRole] = useState<string | null>(null);
+  const handleToggleRole = async (roleId: string, enabled: boolean) => {
+    setTogglingRole(roleId);
+    try {
+      const res = await fetch("/api/ai-autonomy/roles/toggle", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId, enabled }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/system-status"] });
+      toast({ title: enabled ? "Ruolo attivato" : "Ruolo disattivato", description: `${roleId} è ora ${enabled ? "attivo" : "in pausa"}.` });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile aggiornare il ruolo", variant: "destructive" });
+    } finally {
+      setTogglingRole(null);
+    }
+  };
+
   const [autonomousLogsPage, setAutonomousLogsPage] = useState(1);
   const [autonomousLogTypeFilter, setAutonomousLogTypeFilter] = useState("all");
   const [autonomousLogSeverityFilter, setAutonomousLogSeverityFilter] = useState("all");
+  const [autonomousLogRoleFilter, setAutonomousLogRoleFilter] = useState("all");
   const { data: autonomousLogs } = useQuery<{
     logs: Array<{
       id: string;
@@ -1333,16 +1369,18 @@ export default function ConsultantAIAutonomyPage() {
       event_data: any;
       contact_name: string | null;
       task_id: string | null;
+      ai_role: string | null;
     }>;
     total: number;
     page: number;
     limit: number;
   }>({
-    queryKey: ["/api/ai-autonomy/autonomous-logs", autonomousLogsPage, autonomousLogTypeFilter, autonomousLogSeverityFilter],
+    queryKey: ["/api/ai-autonomy/autonomous-logs", autonomousLogsPage, autonomousLogTypeFilter, autonomousLogSeverityFilter, autonomousLogRoleFilter],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(autonomousLogsPage), limit: "10" });
       if (autonomousLogTypeFilter !== "all") params.set("event_type", autonomousLogTypeFilter);
       if (autonomousLogSeverityFilter !== "all") params.set("severity", autonomousLogSeverityFilter);
+      if (autonomousLogRoleFilter !== "all") params.set("ai_role", autonomousLogRoleFilter);
       const res = await fetch(`/api/ai-autonomy/autonomous-logs?${params}`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
@@ -2191,6 +2229,20 @@ export default function ConsultantAIAutonomyPage() {
                                           <SelectItem value="error">Errore</SelectItem>
                                         </SelectContent>
                                       </Select>
+                                      <Select value={autonomousLogRoleFilter} onValueChange={(val) => { setAutonomousLogRoleFilter(val); setAutonomousLogsPage(1); }}>
+                                        <SelectTrigger className="h-7 text-xs w-[120px]">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="all">Tutti i ruoli</SelectItem>
+                                          <SelectItem value="alessia">Alessia</SelectItem>
+                                          <SelectItem value="millie">Millie</SelectItem>
+                                          <SelectItem value="echo">Echo</SelectItem>
+                                          <SelectItem value="nova">Nova</SelectItem>
+                                          <SelectItem value="stella">Stella</SelectItem>
+                                          <SelectItem value="iris">Iris</SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                   </div>
 
@@ -2219,7 +2271,22 @@ export default function ConsultantAIAutonomyPage() {
                                           <div className="flex items-start gap-2 flex-1 min-w-0">
                                             <span className="text-base shrink-0">{log.icon || "🧠"}</span>
                                             <div className="min-w-0">
-                                              <p className="font-medium truncate">{log.title}</p>
+                                              <div className="flex items-center gap-1.5">
+                                                <p className="font-medium truncate">{log.title}</p>
+                                                {log.ai_role && (
+                                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 shrink-0",
+                                                    log.ai_role === "alessia" ? "border-pink-400 text-pink-600" :
+                                                    log.ai_role === "millie" ? "border-purple-400 text-purple-600" :
+                                                    log.ai_role === "echo" ? "border-orange-400 text-orange-600" :
+                                                    log.ai_role === "nova" ? "border-pink-400 text-pink-600" :
+                                                    log.ai_role === "stella" ? "border-emerald-400 text-emerald-600" :
+                                                    log.ai_role === "iris" ? "border-teal-400 text-teal-600" :
+                                                    "border-gray-400 text-gray-600"
+                                                  )}>
+                                                    {log.ai_role.charAt(0).toUpperCase() + log.ai_role.slice(1)}
+                                                  </Badge>
+                                                )}
+                                              </div>
                                               <p className="text-muted-foreground mt-0.5">{log.description}</p>
                                             </div>
                                           </div>
@@ -2556,6 +2623,103 @@ export default function ConsultantAIAutonomyPage() {
                             </div>
                           ))}
                         </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="rounded-xl shadow-sm border-l-4 border-l-violet-500">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Bot className="h-5 w-5 text-violet-500" />
+                          Dipendenti AI
+                        </CardTitle>
+                        <CardDescription>
+                          Attiva o disattiva i dipendenti AI specializzati. Ogni ruolo analizza dati diversi e genera task mirati.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {systemStatus?.roles && systemStatus.roles.length > 0 ? (
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {systemStatus.roles.map((role) => {
+                              const colorMap: Record<string, string> = {
+                                pink: "from-pink-500/10 to-pink-600/5 border-pink-400/30",
+                                purple: "from-purple-500/10 to-purple-600/5 border-purple-400/30",
+                                orange: "from-orange-500/10 to-orange-600/5 border-orange-400/30",
+                                emerald: "from-emerald-500/10 to-emerald-600/5 border-emerald-400/30",
+                                teal: "from-teal-500/10 to-teal-600/5 border-teal-400/30",
+                              };
+                              const iconColorMap: Record<string, string> = {
+                                pink: "text-pink-500",
+                                purple: "text-purple-500",
+                                orange: "text-orange-500",
+                                emerald: "text-emerald-500",
+                                teal: "text-teal-500",
+                              };
+                              const avatarMap: Record<string, string> = {
+                                alessia: "📞",
+                                millie: "✉️",
+                                echo: "📋",
+                                nova: "🎨",
+                                stella: "💬",
+                                iris: "📥",
+                              };
+                              const channelLabel: Record<string, string> = {
+                                voice: "Voce",
+                                email: "Email",
+                                whatsapp: "WhatsApp",
+                                none: "Interno",
+                              };
+                              return (
+                                <div
+                                  key={role.id}
+                                  className={cn(
+                                    "relative rounded-xl border p-4 bg-gradient-to-br transition-all duration-200",
+                                    colorMap[role.accentColor] || "from-gray-500/10 to-gray-600/5 border-gray-400/30",
+                                    !role.enabled && "opacity-50 grayscale"
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-2xl">{avatarMap[role.id] || "🤖"}</span>
+                                      <div>
+                                        <p className="font-semibold text-sm">{role.name}</p>
+                                        <p className={cn("text-[10px] font-medium", iconColorMap[role.accentColor] || "text-gray-500")}>
+                                          {role.shortDescription}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <Switch
+                                      checked={role.enabled}
+                                      disabled={togglingRole === role.id}
+                                      onCheckedChange={(checked) => handleToggleRole(role.id, checked)}
+                                    />
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2">{role.description}</p>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      {role.preferredChannels.map(ch => (
+                                        <Badge key={ch} variant="outline" className="text-[9px] px-1.5 py-0">
+                                          {channelLabel[ch] || ch}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                    <div className="text-right">
+                                      {role.total_tasks_30d > 0 ? (
+                                        <p className="text-[10px] text-muted-foreground">{role.total_tasks_30d} task (30gg)</p>
+                                      ) : (
+                                        <p className="text-[10px] text-muted-foreground italic">Nessun task</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Caricamento ruoli...
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -3531,9 +3695,22 @@ export default function ConsultantAIAutonomyPage() {
                                 </span>
                                 {task.contact_name && (
                                   <span className="flex items-center gap-1">
-                                    <Bot className="h-3 w-3" />
+                                    <User className="h-3 w-3" />
                                     {task.contact_name}
                                   </span>
+                                )}
+                                {task.ai_role && (
+                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0",
+                                    task.ai_role === "alessia" ? "border-pink-400 text-pink-600" :
+                                    task.ai_role === "millie" ? "border-purple-400 text-purple-600" :
+                                    task.ai_role === "echo" ? "border-orange-400 text-orange-600" :
+                                    task.ai_role === "nova" ? "border-pink-400 text-pink-600" :
+                                    task.ai_role === "stella" ? "border-emerald-400 text-emerald-600" :
+                                    task.ai_role === "iris" ? "border-teal-400 text-teal-600" :
+                                    "border-gray-400 text-gray-600"
+                                  )}>
+                                    {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                                  </Badge>
                                 )}
                                 {task.completed_at && (
                                   <span className="flex items-center gap-1">
@@ -3664,6 +3841,19 @@ export default function ConsultantAIAutonomyPage() {
                                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
                                   <User className="h-3 w-3" /> {task.contact_name}
                                 </span>
+                              )}
+                              {task.ai_role && (
+                                <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0.5",
+                                  task.ai_role === "alessia" ? "border-pink-400 text-pink-600" :
+                                  task.ai_role === "millie" ? "border-purple-400 text-purple-600" :
+                                  task.ai_role === "echo" ? "border-orange-400 text-orange-600" :
+                                  task.ai_role === "nova" ? "border-pink-400 text-pink-600" :
+                                  task.ai_role === "stella" ? "border-emerald-400 text-emerald-600" :
+                                  task.ai_role === "iris" ? "border-teal-400 text-teal-600" :
+                                  "border-gray-400 text-gray-600"
+                                )}>
+                                  {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                                </Badge>
                               )}
                               {executionDuration && (
                                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">

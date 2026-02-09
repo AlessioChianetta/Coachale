@@ -769,17 +769,18 @@ export async function logActivity(consultantId: string, data: {
   contact_name?: string | null;
   contact_id?: string | null;
   event_data?: Record<string, any>;
+  ai_role?: string;
 }): Promise<void> {
   try {
     await db.execute(sql`
       INSERT INTO ai_activity_log (
         consultant_id, event_type, title, description, icon, severity,
-        task_id, contact_name, contact_id, event_data
+        task_id, contact_name, contact_id, event_data, ai_role
       ) VALUES (
         ${consultantId}, ${data.event_type}, ${data.title},
         ${data.description || null}, ${data.icon || null}, ${data.severity || 'info'},
         ${data.task_id || null}, ${data.contact_name || null}, ${data.contact_id || null},
-        ${JSON.stringify(data.event_data || {})}::jsonb
+        ${JSON.stringify(data.event_data || {})}::jsonb, ${data.ai_role || null}
       )
     `);
   } catch (error: any) {
@@ -1108,6 +1109,20 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     return 0;
   }
 
+  const enabledRolesResult = await db.execute(sql`
+    SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+  `);
+  const enabledRoles: Record<string, boolean> = (enabledRolesResult.rows[0] as any)?.enabled_roles || 
+    { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+
+  const { getActiveRoles } = await import("./ai-autonomous-roles");
+  const activeRoles = getActiveRoles(enabledRoles);
+
+  if (activeRoles.length === 0) {
+    console.log(`🧠 [AUTONOMOUS-GEN] No active roles for consultant ${consultantId}`);
+    return 0;
+  }
+
   const clientsResult = await db.execute(sql`
     SELECT 
       u.id,
@@ -1132,11 +1147,6 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
   `);
 
   const clients = clientsResult.rows as any[];
-
-  if (clients.length === 0) {
-    console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultantId} has no active clients`);
-    return 0;
-  }
 
   const pendingTasksResult = await db.execute(sql`
     SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
@@ -1167,46 +1177,6 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     return true;
   });
 
-  if (eligibleClients.length === 0) {
-    console.log(`🧠 [AUTONOMOUS-GEN] No eligible clients for consultant ${consultantId}`);
-    await logActivity(consultantId, {
-      event_type: 'autonomous_analysis',
-      title: 'Analisi autonoma: nessun cliente idoneo',
-      description: `${clients.length} clienti totali, ma tutti hanno task pendenti o completati di recente.`,
-      icon: '🧠',
-      severity: 'info',
-      event_data: {
-        total_clients: clients.length,
-        eligible_clients: 0,
-        clients_with_pending_tasks: clientsWithPendingTasks.size,
-        clients_with_recent_completion: clientsWithRecentCompletion.size,
-        tasks_suggested: 0,
-        suggestions: [],
-      },
-    });
-    return 0;
-  }
-
-  const recentTasksResult = await db.execute(sql`
-    SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at
-    FROM ai_scheduled_tasks t
-    WHERE t.consultant_id = ${consultantId}::uuid
-      AND t.completed_at > NOW() - INTERVAL '7 days'
-      AND t.status = 'completed'
-    ORDER BY t.completed_at DESC
-    LIMIT 20
-  `);
-  const recentCompletedTasks = recentTasksResult.rows as any[];
-
-  const apiKey = await getGeminiApiKeyForClassifier();
-  if (!apiKey) {
-    console.error('❌ [AUTONOMOUS-GEN] No Gemini API key available');
-    return 0;
-  }
-
-  const now = new Date();
-  const romeTimeStr = now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-
   const clientsList = eligibleClients.map(c => ({
     id: c.id,
     name: [c.first_name, c.last_name].filter(Boolean).join(' '),
@@ -1216,193 +1186,228 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
     last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
   }));
 
+  const clientIds = eligibleClients.map((c: any) => c.id?.toString()).filter(Boolean);
+
+  const recentTasksResult = await db.execute(sql`
+    SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at, t.ai_role
+    FROM ai_scheduled_tasks t
+    WHERE t.consultant_id = ${consultantId}::uuid
+      AND t.completed_at > NOW() - INTERVAL '7 days'
+      AND t.status = 'completed'
+    ORDER BY t.completed_at DESC
+    LIMIT 20
+  `);
+  const recentCompletedTasks = recentTasksResult.rows as any[];
   const recentTasksSummary = recentCompletedTasks.map(t => ({
     contact: t.contact_name || t.contact_id,
     category: t.task_category,
     instruction: t.ai_instruction?.substring(0, 100),
     completed: t.completed_at ? new Date(t.completed_at).toISOString() : 'N/A',
+    role: t.ai_role || 'generic',
   }));
 
-  const prompt = `Sei un assistente AI che lavora per un consulente. Il tuo compito è analizzare la lista dei clienti e suggerire PROATTIVAMENTE dei task da eseguire per migliorare il rapporto con i clienti e il servizio offerto.
-
-DATA/ORA ATTUALE: ${romeTimeStr}
-
-CLIENTI ATTIVI (che necessitano attenzione):
-${JSON.stringify(clientsList, null, 2)}
-
-TASK COMPLETATI NEGLI ULTIMI 7 GIORNI:
-${recentTasksSummary.length > 0 ? JSON.stringify(recentTasksSummary, null, 2) : 'Nessun task completato di recente'}
-
-CATEGORIE DI TASK CONSENTITE: ${settings.allowed_task_categories.join(', ')}
-
-CANALI ABILITATI: ${Object.entries(settings.channels_enabled).filter(([, v]) => v).map(([k]) => k).join(', ') || 'nessuno'}
-
-ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
-${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
-
-REGOLE:
-1. Suggerisci MASSIMO ${MAX_AUTONOMOUS_TASKS_PER_RUN} task
-2. Concentrati sui clienti che:
-   - Non hanno avuto consultazioni recenti (>2 settimane)
-   - Non hanno avuto task recenti
-   - Potrebbero beneficiare di un follow-up proattivo
-3. Ogni task deve avere un valore reale per il cliente
-4. Usa solo le categorie consentite
-5. Priorità: 1=urgente, 2=alta, 3=media, 4=bassa
-6. Se non ci sono task necessari, restituisci un array vuoto
-7. Il campo contact_phone DEVE essere il numero di telefono del cliente (usa quello fornito nei dati)
-
-Rispondi SOLO con un JSON valido nel seguente formato (senza markdown, senza backtick):
-{
-  "tasks": [
-    {
-      "contact_id": "uuid del cliente",
-      "contact_name": "Nome del cliente",
-      "contact_phone": "+39...",
-      "ai_instruction": "Descrizione dettagliata di cosa fare",
-      "task_category": "followup|analysis|outreach|reminder",
-      "priority": 3,
-      "reasoning": "Motivazione per questo task",
-      "preferred_channel": "voice|email|whatsapp|none",
-      "urgency": "normale|oggi|settimana",
-      "tone": "professionale|informale|empatico"
-    }
-  ]
-}`;
-
-  try {
-    const genAI = new GoogleGenAI({ apiKey });
-    const response = await genAI.models.generateContent({
-      model: GEMINI_3_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        temperature: 0.3,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const responseText = typeof response.text === 'function' ? response.text() : (response as any).text;
-    if (!responseText) {
-      console.error('❌ [AUTONOMOUS-GEN] Empty response from Gemini');
-      return 0;
-    }
-
-    let parsed: { tasks: AutonomousSuggestedTask[] };
-    try {
-      parsed = JSON.parse(responseText);
-    } catch {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error('❌ [AUTONOMOUS-GEN] Could not parse Gemini response');
-        return 0;
-      }
-      parsed = JSON.parse(jsonMatch[0]);
-    }
-
-    await logActivity(consultantId, {
-      event_type: 'autonomous_analysis',
-      title: `Analisi autonoma: ${eligibleClients.length} clienti valutati`,
-      description: parsed.tasks && parsed.tasks.length > 0 
-        ? `L'AI ha analizzato ${eligibleClients.length} clienti e suggerito ${parsed.tasks.length} task proattivi.`
-        : `L'AI ha analizzato ${eligibleClients.length} clienti e non ha identificato task necessari.`,
-      icon: '🧠',
-      severity: 'info',
-      event_data: {
-        total_clients: clients.length,
-        eligible_clients: eligibleClients.length,
-        clients_with_pending_tasks: clientsWithPendingTasks.size,
-        clients_with_recent_completion: clientsWithRecentCompletion.size,
-        tasks_suggested: parsed.tasks?.length || 0,
-        suggestions: (parsed.tasks || []).map(t => ({
-          client_name: t.contact_name,
-          category: t.task_category,
-          instruction: t.ai_instruction?.substring(0, 150),
-          reasoning: t.reasoning,
-          channel: t.preferred_channel,
-          priority: t.priority,
-        })),
-      },
-    });
-
-    if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-      console.log('🧠 [AUTONOMOUS-GEN] Gemini suggested no tasks for consultant ' + consultantId);
-      return 0;
-    }
-
-    const tasksToCreate = parsed.tasks.slice(0, MAX_AUTONOMOUS_TASKS_PER_RUN);
-    let created = 0;
-
-    const taskStatus = settings.autonomy_level >= 3 ? 'scheduled' : 'waiting_approval';
-
-    const scheduledAt = computeNextWorkingSlot(settings);
-
-    for (const suggestedTask of tasksToCreate) {
-      try {
-        if (!suggestedTask.contact_id || !suggestedTask.ai_instruction) {
-          continue;
-        }
-
-        if (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id)) {
-          continue;
-        }
-
-        const taskId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_name, contact_phone, task_type,
-            ai_instruction, scheduled_at, timezone, status,
-            origin_type, task_category, contact_id, ai_reasoning,
-            priority, preferred_channel, tone, urgency,
-            max_attempts, recurrence_type
-          ) VALUES (
-            ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
-            ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
-            ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
-            ${taskStatus}, 'autonomous',
-            ${suggestedTask.task_category || 'followup'},
-            ${suggestedTask.contact_id}::uuid, ${suggestedTask.reasoning || null},
-            ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
-            ${suggestedTask.preferred_channel || 'none'},
-            ${suggestedTask.tone || 'professionale'},
-            ${suggestedTask.urgency || 'normale'},
-            1, 'once'
-          )
-        `);
-
-        await logActivity(consultantId, {
-          event_type: 'autonomous_task_created',
-          title: `Task autonomo creato: ${suggestedTask.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-          description: suggestedTask.reasoning || 'Task generato proattivamente dal sistema AI',
-          icon: '🤖',
-          severity: 'info',
-          task_id: taskId,
-          contact_name: suggestedTask.contact_name,
-          contact_id: suggestedTask.contact_id,
-          event_data: {
-            task_category: suggestedTask.task_category,
-            priority: suggestedTask.priority,
-            preferred_channel: suggestedTask.preferred_channel,
-            autonomy_level: settings.autonomy_level,
-          },
-        });
-
-        clientsWithPendingTasks.add(suggestedTask.contact_id);
-        created++;
-
-        console.log(`✅ [AUTONOMOUS-GEN] Created task ${taskId} for ${suggestedTask.contact_name} (${suggestedTask.task_category})`);
-      } catch (error: any) {
-        console.error(`❌ [AUTONOMOUS-GEN] Failed to create task for ${suggestedTask.contact_name}:`, error.message);
-      }
-    }
-
-    console.log(`🧠 [AUTONOMOUS-GEN] Created ${created} tasks for consultant ${consultantId}`);
-    return created;
-  } catch (error: any) {
-    console.error(`❌ [AUTONOMOUS-GEN] Gemini error for consultant ${consultantId}:`, error.message);
+  const apiKey = await getGeminiApiKeyForClassifier();
+  if (!apiKey) {
+    console.error('❌ [AUTONOMOUS-GEN] No Gemini API key available');
     return 0;
   }
+
+  const now = new Date();
+  const romeTimeStr = now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
+  const taskStatus = settings.autonomy_level >= 3 ? 'scheduled' : 'waiting_approval';
+  const scheduledAt = computeNextWorkingSlot(settings);
+
+  let totalCreated = 0;
+
+  console.log(`🧠 [AUTONOMOUS-GEN] Running ${activeRoles.length} AI roles for consultant ${consultantId}: ${activeRoles.map(r => r.name).join(', ')}`);
+
+  await logActivity(consultantId, {
+    event_type: 'autonomous_analysis',
+    title: `Analisi multi-ruolo avviata: ${activeRoles.length} dipendenti AI attivi`,
+    description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${eligibleClients.length} clienti idonei su ${clients.length} totali.`,
+    icon: '🧠',
+    severity: 'info',
+    event_data: {
+      total_clients: clients.length,
+      eligible_clients: eligibleClients.length,
+      clients_with_pending_tasks: clientsWithPendingTasks.size,
+      clients_with_recent_completion: clientsWithRecentCompletion.size,
+      active_roles: activeRoles.map(r => r.id),
+    },
+  });
+
+  for (const role of activeRoles) {
+    try {
+      if (role.id !== 'nova' && eligibleClients.length === 0) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No eligible clients, skipping`);
+        continue;
+      }
+
+      const channelRequired = role.preferredChannels[0];
+      if (channelRequired && channelRequired !== 'none' && settings.channels_enabled && !settings.channels_enabled[channelRequired]) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Channel "${channelRequired}" disabled, skipping`);
+        await logActivity(consultantId, {
+          event_type: 'autonomous_analysis',
+          title: `${role.name}: canale disabilitato`,
+          description: `Il ruolo ${role.name} richiede il canale "${channelRequired}" che è disabilitato nelle impostazioni.`,
+          icon: '⏭️',
+          severity: 'info',
+          ai_role: role.id,
+        });
+        continue;
+      }
+
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data...`);
+      const roleData = await role.fetchRoleData(consultantId, clientIds);
+
+      const prompt = role.buildPrompt({
+        clientsList,
+        roleData,
+        settings,
+        romeTimeStr,
+        recentCompletedTasks: recentTasksSummary,
+      });
+
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini...`);
+      const genAI = new GoogleGenAI({ apiKey });
+      const response = await genAI.models.generateContent({
+        model: GEMINI_3_MODEL,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const responseText = typeof response.text === 'function' ? response.text() : (response as any).text;
+      if (!responseText) {
+        console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Empty response from Gemini`);
+        continue;
+      }
+
+      let parsed: { tasks: AutonomousSuggestedTask[] };
+      try {
+        parsed = JSON.parse(responseText);
+      } catch {
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
+          continue;
+        }
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+
+      await logActivity(consultantId, {
+        event_type: 'autonomous_analysis',
+        title: `${role.name}: ${parsed.tasks?.length || 0} task suggeriti`,
+        description: parsed.tasks && parsed.tasks.length > 0
+          ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
+          : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`,
+        icon: '🤖',
+        severity: 'info',
+        ai_role: role.id,
+        event_data: {
+          role_name: role.name,
+          tasks_suggested: parsed.tasks?.length || 0,
+          suggestions: (parsed.tasks || []).map(t => ({
+            client_name: t.contact_name,
+            category: t.task_category,
+            instruction: t.ai_instruction?.substring(0, 150),
+            reasoning: t.reasoning,
+            channel: t.preferred_channel,
+            priority: t.priority,
+          })),
+        },
+      });
+
+      if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No tasks suggested`);
+        continue;
+      }
+
+      const tasksToCreate = parsed.tasks.slice(0, role.maxTasksPerRun);
+
+      for (const suggestedTask of tasksToCreate) {
+        try {
+          if (!suggestedTask.ai_instruction) continue;
+
+          if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
+            continue;
+          }
+
+          const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+          const contactIdValue = suggestedTask.contact_id || null;
+          const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
+
+          await db.execute(sql`
+            INSERT INTO ai_scheduled_tasks (
+              id, consultant_id, contact_name, contact_phone, task_type,
+              ai_instruction, scheduled_at, timezone, status,
+              origin_type, task_category, contact_id, ai_reasoning,
+              priority, preferred_channel, tone, urgency,
+              max_attempts, recurrence_type, ai_role
+            ) VALUES (
+              ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
+              ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
+              ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
+              ${taskStatus}, 'autonomous',
+              ${suggestedTask.task_category || role.categories[0] || 'followup'},
+              ${hasValidContactId ? sql`${contactIdValue}::uuid` : sql`NULL`},
+              ${suggestedTask.reasoning || null},
+              ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
+              ${suggestedTask.preferred_channel || role.preferredChannels[0] || 'none'},
+              ${suggestedTask.tone || 'professionale'},
+              ${suggestedTask.urgency || 'normale'},
+              1, 'once', ${role.id}
+            )
+          `);
+
+          await logActivity(consultantId, {
+            event_type: 'autonomous_task_created',
+            title: `[${role.name}] Task creato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Task AI'}`,
+            description: suggestedTask.reasoning || `Task generato da ${role.name}`,
+            icon: '🤖',
+            severity: 'info',
+            task_id: taskId,
+            contact_name: suggestedTask.contact_name,
+            contact_id: suggestedTask.contact_id,
+            ai_role: role.id,
+            event_data: {
+              task_category: suggestedTask.task_category,
+              priority: suggestedTask.priority,
+              preferred_channel: suggestedTask.preferred_channel,
+              autonomy_level: settings.autonomy_level,
+              role_name: role.name,
+            },
+          });
+
+          if (suggestedTask.contact_id) {
+            clientsWithPendingTasks.add(suggestedTask.contact_id);
+          }
+          totalCreated++;
+
+          console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Created task ${taskId} for ${suggestedTask.contact_name} (${suggestedTask.task_category})`);
+        } catch (error: any) {
+          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Failed to create task for ${suggestedTask.contact_name}:`, error.message);
+        }
+      }
+    } catch (error: any) {
+      console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Error:`, error.message);
+      await logActivity(consultantId, {
+        event_type: 'autonomous_analysis',
+        title: `${role.name}: errore durante l'analisi`,
+        description: error.message,
+        icon: '❌',
+        severity: 'error',
+        ai_role: role.id,
+      });
+    }
+  }
+
+  console.log(`🧠 [AUTONOMOUS-GEN] Total: ${totalCreated} tasks created across ${activeRoles.length} roles for consultant ${consultantId}`);
+  return totalCreated;
 }
 
 function computeNextWorkingSlot(settings: { working_hours_start: string; working_hours_end: string; working_days: number[] }): Date {

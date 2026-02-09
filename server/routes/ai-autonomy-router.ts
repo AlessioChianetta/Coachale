@@ -428,7 +428,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
         SELECT id, consultant_id, contact_name, contact_phone, contact_id, task_type, task_category,
                ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
                execution_plan, result_summary, result_data, scheduled_at,
-               completed_at, created_at, updated_at, call_after_task
+               completed_at, created_at, updated_at, call_after_task, ai_role
         FROM ai_scheduled_tasks
         WHERE ${whereClause}
         ORDER BY created_at DESC
@@ -1111,6 +1111,39 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
     `);
     const lastError = lastErrorResult.rows[0] as any || null;
 
+    const { AI_ROLES } = await import("../cron/ai-autonomous-roles");
+    const enabledRolesData = settings.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+
+    const lastTaskByRoleResult = await db.execute(sql`
+      SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}::uuid
+        AND ai_role IS NOT NULL
+        AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY ai_role
+    `);
+    const roleStats: Record<string, any> = {};
+    for (const row of lastTaskByRoleResult.rows as any[]) {
+      if (row.ai_role) {
+        roleStats[row.ai_role] = { last_task_at: row.last_task_at, total_tasks_30d: row.total_tasks };
+      }
+    }
+
+    const rolesInfo = Object.entries(AI_ROLES).map(([id, role]) => ({
+      id,
+      name: role.name,
+      displayName: role.displayName,
+      avatar: role.avatar,
+      accentColor: role.accentColor,
+      description: role.description,
+      shortDescription: role.shortDescription,
+      categories: role.categories,
+      preferredChannels: role.preferredChannels,
+      enabled: enabledRolesData[id] !== false,
+      last_task_at: roleStats[id]?.last_task_at || null,
+      total_tasks_30d: roleStats[id]?.total_tasks_30d || 0,
+    }));
+
     return res.json({
       is_active: settings.is_active || false,
       autonomy_level: settings.autonomy_level || 0,
@@ -1145,6 +1178,8 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
         description: lastError.description,
         data: lastError.event_data,
       } : null,
+      roles: rolesInfo,
+      enabled_roles: enabledRolesData,
     });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching system status:", error);
@@ -1178,13 +1213,17 @@ router.get("/autonomous-logs", authenticateToken, requireAnyRole(["consultant", 
       ? sql`AND severity = ${severityFilter}`
       : sql``;
 
+    const roleFilter = req.query.ai_role as string || "all";
+    const roleSql = roleFilter !== "all" ? sql`AND ai_role = ${roleFilter}` : sql``;
+
     const [logsResult, totalResult] = await Promise.all([
       db.execute(sql`
-        SELECT id, event_type, title, description, icon, severity, created_at, event_data, contact_name, task_id
+        SELECT id, event_type, title, description, icon, severity, created_at, event_data, contact_name, task_id, ai_role
         FROM ai_activity_log
         WHERE consultant_id = ${consultantId}
           ${eventTypeSql}
           ${severitySql}
+          ${roleSql}
         ORDER BY created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `),
@@ -1193,6 +1232,7 @@ router.get("/autonomous-logs", authenticateToken, requireAnyRole(["consultant", 
         WHERE consultant_id = ${consultantId}
           ${eventTypeSql}
           ${severitySql}
+          ${roleSql}
       `),
     ]);
 
@@ -1243,6 +1283,135 @@ router.post("/trigger-analysis", authenticateToken, requireAnyRole(["consultant"
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error triggering analysis:", error);
     return res.status(500).json({ error: "Failed to trigger analysis" });
+  }
+});
+
+router.get("/roles", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { AI_ROLES } = await import("../cron/ai-autonomous-roles");
+
+    const settingsResult = await db.execute(sql`
+      SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const enabledRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+
+    const lastTaskByRoleResult = await db.execute(sql`
+      SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY ai_role
+    `);
+    const roleStats: Record<string, any> = {};
+    for (const row of lastTaskByRoleResult.rows as any[]) {
+      if (row.ai_role) roleStats[row.ai_role] = { last_task_at: row.last_task_at, total_tasks_30d: row.total_tasks };
+    }
+
+    const roles = Object.entries(AI_ROLES).map(([id, role]) => ({
+      id,
+      name: role.name,
+      displayName: role.displayName,
+      avatar: role.avatar,
+      accentColor: role.accentColor,
+      description: role.description,
+      shortDescription: role.shortDescription,
+      categories: role.categories,
+      preferredChannels: role.preferredChannels,
+      typicalPlan: role.typicalPlan,
+      maxTasksPerRun: role.maxTasksPerRun,
+      enabled: enabledRoles[id] !== false,
+      last_task_at: roleStats[id]?.last_task_at || null,
+      total_tasks_30d: roleStats[id]?.total_tasks_30d || 0,
+    }));
+
+    return res.json({ roles, enabled_roles: enabledRoles });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching roles:", error);
+    return res.status(500).json({ error: "Failed to fetch roles" });
+  }
+});
+
+router.put("/roles/toggle", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId, enabled } = req.body;
+    if (!roleId || typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: "roleId and enabled (boolean) are required" });
+    }
+
+    const { AI_ROLES } = await import("../cron/ai-autonomous-roles");
+    if (!AI_ROLES[roleId]) {
+      return res.status(400).json({ error: `Invalid role: ${roleId}` });
+    }
+
+    const settingsResult = await db.execute(sql`
+      SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const currentRoles = (settingsResult.rows[0] as any)?.enabled_roles || { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
+    currentRoles[roleId] = enabled;
+
+    await db.execute(sql`
+      UPDATE ai_autonomy_settings
+      SET enabled_roles = ${JSON.stringify(currentRoles)}::jsonb,
+          updated_at = NOW()
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      title: `Ruolo ${AI_ROLES[roleId].name} ${enabled ? 'attivato' : 'disattivato'}`,
+      description: `Il consulente ha ${enabled ? 'attivato' : 'disattivato'} il dipendente AI "${AI_ROLES[roleId].displayName}".`,
+      icon: enabled ? '✅' : '⏸️',
+      severity: 'info',
+      ai_role: roleId,
+    });
+
+    return res.json({ success: true, enabled_roles: currentRoles });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error toggling role:", error);
+    return res.status(500).json({ error: "Failed to toggle role" });
+  }
+});
+
+router.put("/roles/bulk-toggle", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { enabled_roles } = req.body;
+    if (!enabled_roles || typeof enabled_roles !== 'object') {
+      return res.status(400).json({ error: "enabled_roles object is required" });
+    }
+
+    const { AI_ROLES } = await import("../cron/ai-autonomous-roles");
+    const validatedRoles: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(enabled_roles)) {
+      if (AI_ROLES[key] && typeof value === 'boolean') {
+        validatedRoles[key] = value;
+      }
+    }
+
+    for (const roleId of Object.keys(AI_ROLES)) {
+      if (validatedRoles[roleId] === undefined) {
+        validatedRoles[roleId] = true;
+      }
+    }
+
+    await db.execute(sql`
+      UPDATE ai_autonomy_settings
+      SET enabled_roles = ${JSON.stringify(validatedRoles)}::jsonb,
+          updated_at = NOW()
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    return res.json({ success: true, enabled_roles: validatedRoles });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error bulk toggling roles:", error);
+    return res.status(500).json({ error: "Failed to bulk toggle roles" });
   }
 });
 
