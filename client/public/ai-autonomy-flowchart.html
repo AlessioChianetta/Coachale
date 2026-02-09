@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Autonomy - Diagramma di Flusso</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .arrow {
+    width: 2px;
+    height: 32px;
+    background: #475569;
+    position: relative;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #475569;
+  }
+  .arrow.yes-label::before {
+    content: 'SI';
+    position: absolute;
+    left: 12px;
+    top: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4ade80;
+    letter-spacing: 0.5px;
+  }
+  .arrow.no-label::before {
+    content: 'NO';
+    position: absolute;
+    left: 12px;
+    top: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #f87171;
+    letter-spacing: 0.5px;
+  }
+  .node {
+    border-radius: 14px;
+    padding: 18px 28px;
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .node:hover { transform: translateY(-2px); }
+  .node .icon { font-size: 24px; margin-bottom: 6px; }
+  .node .title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .node .desc { font-size: 12px; opacity: 0.8; line-height: 1.5; }
+
+  .start {
+    background: linear-gradient(135deg, #1e3a5f, #1e293b);
+    border: 1.5px solid #3b82f6;
+    box-shadow: 0 0 20px rgba(59,130,246,0.15);
+  }
+  .decision {
+    background: linear-gradient(135deg, #312e3a, #1e1b2e);
+    border: 1.5px solid #a78bfa;
+    box-shadow: 0 0 20px rgba(167,139,250,0.1);
+    border-radius: 14px;
+    transform: none;
+    clip-path: none;
+  }
+  .decision .title { color: #c4b5fd; }
+  .process {
+    background: linear-gradient(135deg, #1a2e1a, #1e293b);
+    border: 1.5px solid #4ade80;
+    box-shadow: 0 0 20px rgba(74,222,128,0.1);
+  }
+  .roles-section {
+    background: linear-gradient(135deg, #1e1b2e, #0f1117);
+    border: 1.5px solid #8b5cf6;
+    box-shadow: 0 0 25px rgba(139,92,246,0.12);
+    padding: 24px;
+    max-width: 900px;
+    border-radius: 18px;
+  }
+  .roles-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #c4b5fd;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  @media(max-width: 700px) {
+    .roles-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .role-card {
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  .role-card:hover { transform: scale(1.03); }
+  .role-card .emoji { font-size: 28px; margin-bottom: 6px; }
+  .role-card .name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .role-card .role-desc { font-size: 11px; opacity: 0.85; line-height: 1.4; }
+  .role-card .data-source { font-size: 10px; margin-top: 6px; padding: 3px 8px; border-radius: 6px; display: inline-block; font-weight: 600; }
+
+  .alessia { background: linear-gradient(135deg, #3b1a3b, #1e1025); border: 1px solid #ec4899; }
+  .alessia .name { color: #f472b6; }
+  .alessia .data-source { background: rgba(236,72,153,0.15); color: #f9a8d4; }
+
+  .millie { background: linear-gradient(135deg, #2d1a4e, #1a1030); border: 1px solid #a78bfa; }
+  .millie .name { color: #c4b5fd; }
+  .millie .data-source { background: rgba(167,139,250,0.15); color: #ddd6fe; }
+
+  .echo { background: linear-gradient(135deg, #3b2a10, #1e1a0f); border: 1px solid #f59e0b; }
+  .echo .name { color: #fbbf24; }
+  .echo .data-source { background: rgba(245,158,11,0.15); color: #fde68a; }
+
+  .nova { background: linear-gradient(135deg, #3b1a2a, #1e1020); border: 1px solid #f43f5e; }
+  .nova .name { color: #fb7185; }
+  .nova .data-source { background: rgba(244,63,94,0.15); color: #fda4af; }
+
+  .stella { background: linear-gradient(135deg, #0f2e2e, #0a1f1f); border: 1px solid #10b981; }
+  .stella .name { color: #34d399; }
+  .stella .data-source { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+
+  .iris { background: linear-gradient(135deg, #0f2a3b, #0a1a2a); border: 1px solid #06b6d4; }
+  .iris .name { color: #22d3ee; }
+  .iris .data-source { background: rgba(6,182,212,0.15); color: #67e8f9; }
+
+  .gemini-node {
+    background: linear-gradient(135deg, #1a1040, #0f0a2e);
+    border: 1.5px solid #818cf8;
+    box-shadow: 0 0 30px rgba(129,140,248,0.12);
+  }
+  .gemini-node .title { color: #a5b4fc; }
+
+  .save-node {
+    background: linear-gradient(135deg, #0f2e1a, #0a1f10);
+    border: 1.5px solid #22c55e;
+    box-shadow: 0 0 20px rgba(34,197,94,0.12);
+  }
+
+  .end-node {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1.5px solid #64748b;
+  }
+
+  .skip-node {
+    background: linear-gradient(135deg, #2a1a1a, #1e0f0f);
+    border: 1px solid #ef4444;
+    max-width: 300px;
+    padding: 12px 20px;
+  }
+  .skip-node .title { color: #fca5a5; font-size: 13px; }
+
+  .branch-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 40px;
+    justify-content: center;
+  }
+  .branch-left, .branch-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .horizontal-line {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .h-line {
+    width: 60px;
+    height: 2px;
+    background: #475569;
+  }
+
+  .loop-indicator {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 20px;
+    background: rgba(139,92,246,0.1);
+    border: 1px dashed #8b5cf6;
+    font-size: 12px;
+    color: #c4b5fd;
+    font-weight: 600;
+    max-width: 360px;
+  }
+  .loop-indicator .loop-icon { font-size: 16px; }
+
+  .legend {
+    margin-top: 48px;
+    padding: 20px 24px;
+    background: rgba(30,41,59,0.5);
+    border-radius: 14px;
+    border: 1px solid #334155;
+  }
+  .legend-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Sistema AI Autonomo - Multi-Ruolo</h1>
+  <p class="subtitle">Diagramma di flusso dell'architettura del motore decisionale</p>
+
+  <div class="flow">
+
+    <div class="node start">
+      <div class="icon">&#9889;</div>
+      <div class="title">Attivazione Motore Autonomo</div>
+      <div class="desc">Il cron job si attiva periodicamente per ogni consulente</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node process">
+      <div class="icon">&#9881;</div>
+      <div class="title">Carica Impostazioni Consulente</div>
+      <div class="desc">Orari lavorativi, limiti giornalieri, restrizioni canali, ruoli attivi (enabled_roles)</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node decision">
+      <div class="icon">&#128276;</div>
+      <div class="title">Guardrails Check</div>
+      <div class="desc">Siamo in orario lavorativo? Limite giornaliero raggiunto? Sistema in pausa?</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="branch-container">
+      <div class="branch-left">
+        <div class="node skip-node">
+          <div class="title">&#10060; SKIP - Fuori orario o limite raggiunto</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <div class="arrow yes-label" style="height: 0;"></div>
+        <div class="loop-indicator">
+          <span class="loop-icon">&#128257;</span>
+          Per ogni ruolo AI attivo (max 6 ruoli)
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="roles-section">
+      <div class="roles-title">6 Ruoli AI Specializzati</div>
+      <div class="roles-grid">
+        <div class="role-card alessia">
+          <div class="emoji">&#128131;</div>
+          <div class="name">Alessia</div>
+          <div class="role-desc">Consulente vocale<br>Follow-up telefonici</div>
+          <div class="data-source">&#128196; Consultazioni + Chiamate</div>
+        </div>
+        <div class="role-card millie">
+          <div class="emoji">&#9993;</div>
+          <div class="name">Millie</div>
+          <div class="role-desc">Scrittrice email<br>Campagne mirate</div>
+          <div class="data-source">&#128196; Email Journey</div>
+        </div>
+        <div class="role-card echo">
+          <div class="emoji">&#128221;</div>
+          <div class="name">Echo</div>
+          <div class="role-desc">Riassuntore<br>Report consultazioni</div>
+          <div class="data-source">&#128196; Consultazioni non riassunte</div>
+        </div>
+        <div class="role-card nova">
+          <div class="emoji">&#127775;</div>
+          <div class="name">Nova</div>
+          <div class="role-desc">Social media manager<br>Contenuti e posting</div>
+          <div class="data-source">&#128196; Calendario contenuti</div>
+        </div>
+        <div class="role-card stella">
+          <div class="emoji">&#128172;</div>
+          <div class="name">Stella</div>
+          <div class="role-desc">Assistente WhatsApp<br>Messaggi e outreach</div>
+          <div class="data-source">&#128196; Conversazioni WA</div>
+        </div>
+        <div class="role-card iris">
+          <div class="emoji">&#128231;</div>
+          <div class="name">Iris</div>
+          <div class="role-desc">Gestore email hub<br>Ticket e risposte</div>
+          <div class="data-source">&#128196; Ticket email</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node process">
+      <div class="icon">&#128269;</div>
+      <div class="title">Recupero Dati Specifici del Ruolo</div>
+      <div class="desc">Ogni ruolo ha le sue query dedicate per raccogliere i dati rilevanti dal database</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node decision">
+      <div class="icon">&#10067;</div>
+      <div class="title">Ci sono dati rilevanti?</div>
+      <div class="desc">Se non ci sono dati nuovi da analizzare, il ruolo viene saltato</div>
+    </div>
+
+    <div class="arrow yes-label"></div>
+
+    <div class="node gemini-node">
+      <div class="icon">&#129302;</div>
+      <div class="title">Analisi Gemini AI</div>
+      <div class="desc">Il prompt specializzato del ruolo viene inviato a Gemini con i dati del contesto.<br>L'AI analizza e genera da 1 a 2 task mirati con reasoning dettagliato.</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node save-node">
+      <div class="icon">&#128190;</div>
+      <div class="title">Salvataggio Task + Log</div>
+      <div class="desc">Task salvati in <code>ai_scheduled_tasks</code> con campo <code>ai_role</code><br>Log scritti in <code>ai_activity_log</code> con attribuzione ruolo</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="loop-indicator">
+      <span class="loop-icon">&#128257;</span>
+      Ripeti per il prossimo ruolo attivo
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="node end-node">
+      <div class="icon">&#9989;</div>
+      <div class="title">Ciclo Completato</div>
+      <div class="desc">Tutti i ruoli attivi hanno generato i loro task. Il sistema attende la prossima attivazione.</div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Legenda</div>
+    <div class="legend-grid">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Avvio / Trigger</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Decisione / Controllo</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Processo / Azione</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div> Analisi AI (Gemini)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Salvataggio dati</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6; border: 1px dashed #c4b5fd;"></div> Ciclo iterativo</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Skip / Blocco</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Fine ciclo</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
