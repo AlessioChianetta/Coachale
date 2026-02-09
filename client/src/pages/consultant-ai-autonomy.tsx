@@ -3210,136 +3210,180 @@ export default function ConsultantAIAutonomyPage() {
                       </Card>
                     ) : (
                       <>
-                        {reasoningData.activities.map((item: any) => {
-                          let eventData: any = {};
-                          try {
-                            eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
-                          } catch { eventData = {}; }
-                          const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
-                          const roleId = item.ai_role || eventData.ai_role || '';
-                          const roleProfile = AI_ROLE_PROFILES[roleId];
+                        {(() => {
                           const ROLE_COLOR_MAP: Record<string, string> = { alessia: 'pink', millie: 'purple', echo: 'orange', nova: 'pink', stella: 'emerald', iris: 'teal', marco: 'indigo', personalizza: 'gray' };
-                          const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
-                          const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
-                          const displayName = roleProfile ? roleId.charAt(0).toUpperCase() + roleId.slice(1) : (item.title || 'AI');
+                          const grouped: Record<string, any[]> = {};
+                          for (const item of reasoningData.activities) {
+                            const d = new Date(item.created_at);
+                            const today = new Date();
+                            const yesterday = new Date(today);
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            let label: string;
+                            if (d.toDateString() === today.toDateString()) {
+                              label = 'Oggi';
+                            } else if (d.toDateString() === yesterday.toDateString()) {
+                              label = 'Ieri';
+                            } else {
+                              label = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                              label = label.charAt(0).toUpperCase() + label.slice(1);
+                            }
+                            if (!grouped[label]) grouped[label] = [];
+                            grouped[label].push(item);
+                          }
 
-                          return (
-                            <Card key={item.id} className={cn("transition-all overflow-hidden", !item.is_read && "ring-2 ring-primary/20")}>
-                              <div className={cn("flex items-center gap-3 px-5 py-3 border-b", colors.badge)}>
-                                <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/50 shrink-0">
-                                  {roleProfile?.avatar ? (
-                                    <img src={roleProfile.avatar} alt={displayName} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full bg-white/20 flex items-center justify-center text-sm">🤖</div>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-sm">{displayName}</p>
-                                  <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-xs opacity-70">{getRelativeTime(item.created_at)}</span>
-                                  {!item.is_read && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => markReadMutation.mutate(item.id)}
-                                      disabled={markReadMutation.isPending}
-                                    >
-                                      <Eye className="h-3.5 w-3.5" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
+                          return Object.entries(grouped).map(([dateLabel, items]) => {
+                            const totalTasks = items.reduce((sum, item) => {
+                              let ed: any = {};
+                              try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+                              const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
+                              return sum + sug.length;
+                            }, 0);
 
-                              <CardContent className="py-4 px-5 space-y-4">
-                                <div className="grid grid-cols-3 gap-3 text-center">
-                                  <div className="bg-muted/40 rounded-lg p-2.5">
-                                    <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
-                                    <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
+                            return (
+                              <div key={dateLabel} className="space-y-3">
+                                <div className="flex items-center gap-3 pt-2">
+                                  <div className="flex items-center gap-2 bg-muted/60 rounded-full px-4 py-1.5">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-sm font-semibold">{dateLabel}</span>
                                   </div>
-                                  <div className="bg-muted/40 rounded-lg p-2.5">
-                                    <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
-                                    <p className="text-[10px] text-muted-foreground">Idonei</p>
-                                  </div>
-                                  <div className="bg-muted/40 rounded-lg p-2.5">
-                                    <p className="text-lg font-bold">{suggestions.length}</p>
-                                    <p className="text-[10px] text-muted-foreground">Task creati</p>
-                                  </div>
+                                  <div className="flex-1 h-px bg-border" />
+                                  <span className="text-xs text-muted-foreground shrink-0">{items.length} analisi &middot; {totalTasks} task</span>
                                 </div>
 
-                                {eventData.overall_reasoning && (
-                                  <div className="rounded-lg border bg-muted/20 p-4">
-                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                                      <Brain className="h-3.5 w-3.5" />
-                                      Cosa ha pensato
-                                    </p>
-                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                                      {eventData.overall_reasoning}
-                                    </p>
-                                  </div>
-                                )}
+                                {items.map((item: any) => {
+                                  let eventData: any = {};
+                                  try {
+                                    eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
+                                  } catch { eventData = {}; }
+                                  const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
+                                  const roleId = item.ai_role || eventData.ai_role || '';
+                                  const roleProfile = AI_ROLE_PROFILES[roleId];
+                                  const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
+                                  const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
+                                  const displayName = roleProfile ? roleId.charAt(0).toUpperCase() + roleId.slice(1) : (item.title || 'AI');
+                                  const timeStr = new Date(item.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-                                {!eventData.overall_reasoning && (
-                                  <div className="rounded-lg border bg-muted/20 p-4">
-                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                                      <Brain className="h-3.5 w-3.5" />
-                                      Risultato analisi
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                                  </div>
-                                )}
-
-                                {suggestions.length > 0 && (
-                                  <div className="space-y-2">
-                                    <p className="text-xs font-bold flex items-center gap-1.5">
-                                      <Sparkles className="h-3.5 w-3.5" />
-                                      Azioni decise ({suggestions.length})
-                                    </p>
-                                    {suggestions.map((s: any, idx: number) => (
-                                      <div key={idx} className="rounded-lg border p-3 bg-card">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
-                                            {s.channel && s.channel !== 'none' && (
-                                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                                {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {s.priority && (
-                                            <Badge className={cn("text-[10px]",
-                                              s.priority === 1 ? "bg-red-500/20 text-red-600 border-red-500/30" :
-                                              s.priority === 2 ? "bg-orange-500/20 text-orange-600 border-orange-500/30" :
-                                              "bg-muted text-muted-foreground"
-                                            )}>
-                                              {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
-                                            </Badge>
+                                  return (
+                                    <Card key={item.id} className={cn("transition-all overflow-hidden", !item.is_read && "ring-2 ring-primary/20")}>
+                                      <div className={cn("flex items-center gap-3 px-5 py-3 border-b", colors.badge)}>
+                                        <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/50 shrink-0">
+                                          {roleProfile?.avatar ? (
+                                            <img src={roleProfile.avatar} alt={displayName} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <div className="w-full h-full bg-white/20 flex items-center justify-center text-sm">🤖</div>
                                           )}
                                         </div>
-                                        <p className="text-sm mb-2">{s.instruction}</p>
-                                        {s.reasoning && (
-                                          <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded p-2">
-                                            <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
-                                            <span><strong>Perché:</strong> {s.reasoning}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-bold text-sm">{displayName}</p>
+                                          <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="text-xs opacity-70">{timeStr}</span>
+                                          {!item.is_read && (
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7"
+                                              onClick={() => markReadMutation.mutate(item.id)}
+                                              disabled={markReadMutation.isPending}
+                                            >
+                                              <Eye className="h-3.5 w-3.5" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <CardContent className="py-4 px-5 space-y-4">
+                                        <div className="grid grid-cols-3 gap-3 text-center">
+                                          <div className="bg-muted/40 rounded-lg p-2.5">
+                                            <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
+                                            <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
+                                          </div>
+                                          <div className="bg-muted/40 rounded-lg p-2.5">
+                                            <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
+                                            <p className="text-[10px] text-muted-foreground">Idonei</p>
+                                          </div>
+                                          <div className="bg-muted/40 rounded-lg p-2.5">
+                                            <p className="text-lg font-bold">{suggestions.length}</p>
+                                            <p className="text-[10px] text-muted-foreground">Task creati</p>
+                                          </div>
+                                        </div>
+
+                                        {eventData.overall_reasoning && (
+                                          <div className="rounded-lg border bg-muted/20 p-4">
+                                            <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                                              <Brain className="h-3.5 w-3.5" />
+                                              Cosa ha pensato
+                                            </p>
+                                            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                                              {eventData.overall_reasoning}
+                                            </p>
                                           </div>
                                         )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
 
-                                {suggestions.length === 0 && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-lg p-3">
-                                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                                    <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                                        {!eventData.overall_reasoning && (
+                                          <div className="rounded-lg border bg-muted/20 p-4">
+                                            <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                                              <Brain className="h-3.5 w-3.5" />
+                                              Risultato analisi
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">{item.description}</p>
+                                          </div>
+                                        )}
+
+                                        {suggestions.length > 0 && (
+                                          <div className="space-y-2">
+                                            <p className="text-xs font-bold flex items-center gap-1.5">
+                                              <Sparkles className="h-3.5 w-3.5" />
+                                              Azioni decise ({suggestions.length})
+                                            </p>
+                                            {suggestions.map((s: any, idx: number) => (
+                                              <div key={idx} className="rounded-lg border p-3 bg-card">
+                                                <div className="flex items-center justify-between mb-2">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
+                                                    {s.channel && s.channel !== 'none' && (
+                                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                        {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                  {s.priority && (
+                                                    <Badge className={cn("text-[10px]",
+                                                      s.priority === 1 ? "bg-red-500/20 text-red-600 border-red-500/30" :
+                                                      s.priority === 2 ? "bg-orange-500/20 text-orange-600 border-orange-500/30" :
+                                                      "bg-muted text-muted-foreground"
+                                                    )}>
+                                                      {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                                <p className="text-sm mb-2">{s.instruction}</p>
+                                                {s.reasoning && (
+                                                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded p-2">
+                                                    <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+                                                    <span><strong>Perché:</strong> {s.reasoning}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        {suggestions.length === 0 && (
+                                          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-lg p-3">
+                                            <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                                            <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
+                                          </div>
+                                        )}
+                                      </CardContent>
+                                    </Card>
+                                  );
+                                })}
+                              </div>
+                            );
+                          });
+                        })()}
                         
                         {reasoningData && reasoningData.totalPages > 1 && (
                           <div className="flex items-center justify-center gap-4 pt-4">
