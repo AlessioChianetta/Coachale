@@ -1926,6 +1926,12 @@ export default function ConsultantAIAutonomyPage() {
                                         </>
                                       )}
                                       {settings.autonomy_level >= 3 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                          Generare report, analisi e ricerche in automatico
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level >= 4 && (
                                         <>
                                           <li className="text-xs text-muted-foreground flex items-start gap-1.5">
                                             <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
@@ -1933,15 +1939,9 @@ export default function ConsultantAIAutonomyPage() {
                                           </li>
                                           <li className="text-xs text-muted-foreground flex items-start gap-1.5">
                                             <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                                            Generare report, analisi e ricerche in automatico
+                                            Inviare email e messaggi WhatsApp ai clienti
                                           </li>
                                         </>
-                                      )}
-                                      {settings.autonomy_level >= 4 && (
-                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-                                          Inviare email e messaggi WhatsApp ai clienti
-                                        </li>
                                       )}
                                       {settings.autonomy_level >= 7 && (
                                         <li className="text-xs text-muted-foreground flex items-start gap-1.5">
@@ -1967,14 +1967,12 @@ export default function ConsultantAIAutonomyPage() {
                                           Analizzare clienti e proporre task proattivamente
                                         </li>
                                       )}
-                                      {settings.autonomy_level < 3 && (
-                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
-                                          Eseguire task senza la tua approvazione
-                                        </li>
-                                      )}
                                       {settings.autonomy_level < 4 && (
                                         <>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                            Eseguire task senza la tua approvazione
+                                          </li>
                                           <li className="text-xs text-muted-foreground flex items-start gap-1.5">
                                             <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
                                             Inviare email o WhatsApp senza approvazione
@@ -2054,7 +2052,7 @@ export default function ConsultantAIAutonomyPage() {
                                     <div>
                                       <p className="text-xs font-medium">Esecuzione Task (controllo ogni minuto)</p>
                                       <p className="text-xs text-muted-foreground mt-0.5">
-                                        {settings.autonomy_level >= 3
+                                        {settings.autonomy_level >= 4
                                           ? "I task creati vengono eseguiti automaticamente. L'AI genera un piano multi-step (recupero dati, ricerca documenti, analisi, report, comunicazione) e lo esegue passo dopo passo."
                                           : settings.autonomy_level >= 2
                                             ? "I task vengono messi in attesa di approvazione. Devi approvarli manualmente prima che vengano eseguiti."

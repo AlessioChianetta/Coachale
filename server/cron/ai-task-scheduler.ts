@@ -1214,7 +1214,7 @@ async function generateTasksForConsultant(consultantId: string): Promise<number>
 
   const now = new Date();
   const romeTimeStr = now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-  const taskStatus = settings.autonomy_level >= 3 ? 'scheduled' : 'waiting_approval';
+  const taskStatus = settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
   const scheduledAt = computeNextWorkingSlot(settings);
 
   let totalCreated = 0;
