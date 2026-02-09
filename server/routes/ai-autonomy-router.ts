@@ -1415,4 +1415,32 @@ router.put("/roles/bulk-toggle", authenticateToken, requireAnyRole(["consultant"
   }
 });
 
+router.patch("/tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'cancelled', updated_at = NOW()
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused')
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non cancellabile" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error cancelling task:", error);
+    return res.status(500).json({ error: "Failed to cancel task" });
+  }
+});
+
 export default router;

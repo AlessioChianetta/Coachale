@@ -20,7 +20,8 @@ import {
   XCircle, Info, Loader2, RefreshCw, Eye, ChevronLeft, ChevronRight,
   Save, BarChart3, ListTodo, Target, TrendingUp, Hash, Minus,
   Sparkles, User, Lightbulb,
-  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus, BookOpen, Database, Search, FileText, PhoneCall, Globe, Table2
+  ArrowRight, Play, Cog, Timer, ChevronDown, ChevronUp, Plus, BookOpen, Database, Search, FileText, PhoneCall, Globe, Table2,
+  ExternalLink, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/sidebar";
@@ -29,6 +30,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
+import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_avatar.png";
+import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
+import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";
+import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
+import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
+import alessiaAvatar from "@assets/alessia-avatar.png";
 
 interface AutonomySettings {
   is_active: boolean;
@@ -321,6 +328,23 @@ const TASK_LIBRARY: Array<{
     priority: 2,
   },
 ];
+
+const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; role: string }> = {
+  alessia: { avatar: alessiaAvatar, quote: "Analizzo le consultazioni e i follow-up vocali per non perdere mai un cliente.", role: "Voice Consultant" },
+  millie: { avatar: millieAvatar, quote: "Creo email personalizzate per ogni cliente nel momento giusto.", role: "Email Writer" },
+  echo: { avatar: echoAvatar, quote: "Trasformo le tue consulenze in riepiloghi strutturati.", role: "Summarizer" },
+  nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
+  stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
+  iris: { avatar: irisAvatar, quote: "Gestisco i ticket email e le risposte automatiche.", role: "Email Hub Manager" },
+};
+
+const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string; border: string; text: string }> = {
+  pink: { ring: "ring-pink-400", badge: "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300", border: "border-pink-300 dark:border-pink-700", text: "text-pink-600 dark:text-pink-400" },
+  purple: { ring: "ring-purple-400", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300", border: "border-purple-300 dark:border-purple-700", text: "text-purple-600 dark:text-purple-400" },
+  orange: { ring: "ring-orange-400", badge: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300", border: "border-orange-300 dark:border-orange-700", text: "text-orange-600 dark:text-orange-400" },
+  emerald: { ring: "ring-emerald-400", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-600 dark:text-emerald-400" },
+  teal: { ring: "ring-teal-400", badge: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300", border: "border-teal-300 dark:border-teal-700", text: "text-teal-600 dark:text-teal-400" },
+};
 
 const DEFAULT_SETTINGS: AutonomySettings = {
   is_active: false,
@@ -1986,6 +2010,17 @@ export default function ConsultantAIAutonomyPage() {
                                 </div>
                               </div>
 
+                              <div className="flex justify-center py-2">
+                                <Button
+                                  variant="outline"
+                                  className="border-violet-300 text-violet-600 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                  onClick={() => window.open('/ai-autonomy-flowchart.html', '_blank')}
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  Vedi Diagramma di Flusso Completo
+                                </Button>
+                              </div>
+
                               <div className="rounded-xl border bg-card p-5 space-y-4">
                                 <h4 className="text-sm font-semibold flex items-center gap-2">
                                   <Cog className="h-4 w-4" />
@@ -2638,30 +2673,10 @@ export default function ConsultantAIAutonomyPage() {
                       </CardHeader>
                       <CardContent>
                         {systemStatus?.roles && systemStatus.roles.length > 0 ? (
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {systemStatus.roles.map((role) => {
-                              const colorMap: Record<string, string> = {
-                                pink: "from-pink-500/10 to-pink-600/5 border-pink-400/30",
-                                purple: "from-purple-500/10 to-purple-600/5 border-purple-400/30",
-                                orange: "from-orange-500/10 to-orange-600/5 border-orange-400/30",
-                                emerald: "from-emerald-500/10 to-emerald-600/5 border-emerald-400/30",
-                                teal: "from-teal-500/10 to-teal-600/5 border-teal-400/30",
-                              };
-                              const iconColorMap: Record<string, string> = {
-                                pink: "text-pink-500",
-                                purple: "text-purple-500",
-                                orange: "text-orange-500",
-                                emerald: "text-emerald-500",
-                                teal: "text-teal-500",
-                              };
-                              const avatarMap: Record<string, string> = {
-                                alessia: "📞",
-                                millie: "✉️",
-                                echo: "📋",
-                                nova: "🎨",
-                                stella: "💬",
-                                iris: "📥",
-                              };
+                              const profile = AI_ROLE_PROFILES[role.id];
+                              const colors = AI_ROLE_ACCENT_COLORS[role.accentColor] || AI_ROLE_ACCENT_COLORS.purple;
                               const channelLabel: Record<string, string> = {
                                 voice: "Voce",
                                 email: "Email",
@@ -2672,43 +2687,46 @@ export default function ConsultantAIAutonomyPage() {
                                 <div
                                   key={role.id}
                                   className={cn(
-                                    "relative rounded-xl border p-4 bg-gradient-to-br transition-all duration-200",
-                                    colorMap[role.accentColor] || "from-gray-500/10 to-gray-600/5 border-gray-400/30",
+                                    "relative rounded-xl border-2 bg-card p-5 transition-all duration-200 flex flex-col items-center text-center",
+                                    colors.border,
                                     !role.enabled && "opacity-50 grayscale"
                                   )}
                                 >
-                                  <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-2xl">{avatarMap[role.id] || "🤖"}</span>
-                                      <div>
-                                        <p className="font-semibold text-sm">{role.name}</p>
-                                        <p className={cn("text-[10px] font-medium", iconColorMap[role.accentColor] || "text-gray-500")}>
-                                          {role.shortDescription}
-                                        </p>
-                                      </div>
-                                    </div>
+                                  <div className="absolute top-3 right-3">
                                     <Switch
                                       checked={role.enabled}
                                       disabled={togglingRole === role.id}
                                       onCheckedChange={(checked) => handleToggleRole(role.id, checked)}
                                     />
                                   </div>
-                                  <p className="text-[11px] text-muted-foreground mb-2 line-clamp-2">{role.description}</p>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-1.5">
-                                      {role.preferredChannels.map(ch => (
-                                        <Badge key={ch} variant="outline" className="text-[9px] px-1.5 py-0">
-                                          {channelLabel[ch] || ch}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                    <div className="text-right">
-                                      {role.total_tasks_30d > 0 ? (
-                                        <p className="text-[10px] text-muted-foreground">{role.total_tasks_30d} task (30gg)</p>
-                                      ) : (
-                                        <p className="text-[10px] text-muted-foreground italic">Nessun task</p>
-                                      )}
-                                    </div>
+                                  <div className={cn("w-20 h-20 rounded-full overflow-hidden ring-4 mb-3", colors.ring)}>
+                                    {profile?.avatar ? (
+                                      <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">🤖</div>
+                                    )}
+                                  </div>
+                                  <p className="text-lg font-bold">{role.name}</p>
+                                  <Badge className={cn("mt-1 text-[10px]", colors.badge)}>
+                                    {profile?.role || role.shortDescription}
+                                  </Badge>
+                                  {profile?.quote && (
+                                    <p className="text-sm italic text-muted-foreground mt-2 px-2">"{profile.quote}"</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{role.description}</p>
+                                  <div className="flex items-center gap-1.5 mt-3 flex-wrap justify-center">
+                                    {role.preferredChannels.map(ch => (
+                                      <Badge key={ch} variant="outline" className="text-[9px] px-1.5 py-0">
+                                        {channelLabel[ch] || ch}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                  <div className="mt-2">
+                                    {role.total_tasks_30d > 0 ? (
+                                      <p className="text-[10px] text-muted-foreground">{role.total_tasks_30d} task (30gg)</p>
+                                    ) : (
+                                      <p className="text-[10px] text-muted-foreground italic">Nessun task</p>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -3720,6 +3738,33 @@ export default function ConsultantAIAutonomyPage() {
                                 )}
                               </div>
                             </div>
+                            {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
+                                    fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
+                                      method: "PATCH",
+                                      headers: getAuthHeaders(),
+                                    }).then(res => {
+                                      if (res.ok) {
+                                        toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
+                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                      } else {
+                                        toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
+                                      }
+                                    });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
                           </div>
                         </CardContent>
@@ -3833,6 +3878,35 @@ export default function ConsultantAIAutonomyPage() {
                                   </p>
                                 </div>
                               </div>
+                              {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0 text-red-500 border-red-300 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-950/30"
+                                  onClick={() => {
+                                    if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
+                                      fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
+                                        method: "PATCH",
+                                        headers: getAuthHeaders(),
+                                      }).then(res => {
+                                        if (res.ok) {
+                                          toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
+                                          queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`] });
+                                          queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                          setSelectedTaskId(null);
+                                        } else {
+                                          toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
+                                        }
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Cancella Task
+                                </Button>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
