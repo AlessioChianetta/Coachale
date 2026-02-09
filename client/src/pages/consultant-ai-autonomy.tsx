@@ -1252,6 +1252,35 @@ export default function ConsultantAIAutonomyPage() {
     }
   };
 
+  const { data: systemStatus } = useQuery<{
+    is_active: boolean;
+    autonomy_level: number;
+    is_in_working_hours: boolean;
+    is_working_day: boolean;
+    is_within_hours: boolean;
+    current_time_rome: string;
+    today_counts: { calls: number; emails: number; whatsapp: number; analyses: number };
+    limits: { max_calls: number; max_emails: number; max_whatsapp: number; max_analyses: number };
+    last_autonomous_check: string | null;
+    last_check_data: any;
+    next_check_estimate: string | null;
+    check_interval_minutes: number;
+    eligible_clients: number;
+    total_clients: number;
+    pending_tasks: number;
+    cron_schedule: string;
+    task_execution_schedule: string;
+  }>({
+    queryKey: ["/api/ai-autonomy/system-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/system-status", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: activeTab === "settings",
+    refetchInterval: 30000,
+  });
+
   const { data: activeTasks } = useQuery<AITask[]>({
     queryKey: ["/api/ai-autonomy/active-tasks"],
     queryFn: async () => {
@@ -1734,6 +1763,291 @@ export default function ConsultantAIAutonomyPage() {
                               {autonomyInfo.description}
                             </p>
                           </div>
+
+                          {settings.autonomy_level > 0 && (
+                            <div className="space-y-4 mt-4">
+                              <div className="rounded-xl border bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-semibold flex items-center gap-2">
+                                  <BookOpen className="h-4 w-4" />
+                                  Cosa fa l'AI a livello {settings.autonomy_level}
+                                </h4>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">Cosa PUO' fare</p>
+                                    <ul className="space-y-1.5">
+                                      {settings.autonomy_level >= 1 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                          Eseguire task che crei tu manualmente
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level >= 2 && (
+                                        <>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                            Analizzare i tuoi clienti e proporre task proattivamente
+                                          </li>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                            Cercare nei documenti privati (consulenze, esercizi, knowledge base)
+                                          </li>
+                                        </>
+                                      )}
+                                      {settings.autonomy_level >= 3 && (
+                                        <>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                            Eseguire task autonomi senza la tua approvazione
+                                          </li>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                            Generare report, analisi e ricerche in automatico
+                                          </li>
+                                        </>
+                                      )}
+                                      {settings.autonomy_level >= 4 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                          Inviare email e messaggi WhatsApp ai clienti
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level >= 7 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                          Effettuare chiamate vocali autonomamente
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level >= 10 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                                          Gestire tutto senza alcuna supervisione
+                                        </li>
+                                      )}
+                                    </ul>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Cosa NON PUO' fare</p>
+                                    <ul className="space-y-1.5">
+                                      {settings.autonomy_level < 2 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                          Analizzare clienti e proporre task proattivamente
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level < 3 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                          Eseguire task senza la tua approvazione
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level < 4 && (
+                                        <>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                            Inviare email o WhatsApp senza approvazione
+                                          </li>
+                                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                            Effettuare chiamate vocali autonomamente
+                                          </li>
+                                        </>
+                                      )}
+                                      {settings.autonomy_level >= 4 && settings.autonomy_level < 7 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                          Effettuare chiamate vocali senza approvazione
+                                        </li>
+                                      )}
+                                      {settings.autonomy_level < 10 && (
+                                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                          Operare fuori dall'orario di lavoro configurato
+                                        </li>
+                                      )}
+                                      <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                        <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                        Superare i limiti giornalieri (chiamate, email, ecc.)
+                                      </li>
+                                      <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                        <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                                        Operare su categorie di task non abilitate
+                                      </li>
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="rounded-xl border bg-card p-5 space-y-4">
+                                <h4 className="text-sm font-semibold flex items-center gap-2">
+                                  <Cog className="h-4 w-4" />
+                                  Come funziona il sistema
+                                </h4>
+                                <div className="space-y-3">
+                                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold shrink-0 mt-0.5">1</div>
+                                    <div>
+                                      <p className="text-xs font-medium">Analisi Clienti (ogni {settings.autonomy_level >= 2 ? "30 minuti" : "—"})</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {settings.autonomy_level >= 2
+                                          ? "L'AI analizza i tuoi clienti attivi, esclude chi ha già task pendenti o completati nelle ultime 24h, e identifica chi ha bisogno di attenzione (es: nessuna consulenza da oltre 2 settimane)."
+                                          : "Disattivato a questo livello. Serve almeno livello 2."}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold shrink-0 mt-0.5">2</div>
+                                    <div>
+                                      <p className="text-xs font-medium">Creazione Task (max 3 per ciclo)</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {settings.autonomy_level >= 2
+                                          ? `L'AI usa Gemini per valutare ogni cliente e suggerire azioni concrete. Considera: ultima consulenza, task completati di recente, categorie abilitate (${settings.allowed_task_categories.join(", ")}), e le tue istruzioni personalizzate.`
+                                          : "Disattivato a questo livello. Serve almeno livello 2."}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold shrink-0 mt-0.5">3</div>
+                                    <div>
+                                      <p className="text-xs font-medium">Esecuzione Task (controllo ogni minuto)</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {settings.autonomy_level >= 3
+                                          ? "I task creati vengono eseguiti automaticamente. L'AI genera un piano multi-step (recupero dati, ricerca documenti, analisi, report, comunicazione) e lo esegue passo dopo passo."
+                                          : settings.autonomy_level >= 2
+                                            ? "I task vengono messi in attesa di approvazione. Devi approvarli manualmente prima che vengano eseguiti."
+                                            : "Solo i task che crei manualmente vengono eseguiti."}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold shrink-0 mt-0.5">4</div>
+                                    <div>
+                                      <p className="text-xs font-medium">Notifiche e Log</p>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        Ogni azione viene registrata nel Feed Attività. Puoi vedere ogni step: quali dati ha recuperato, quali documenti ha consultato, quale analisi ha fatto, e il risultato finale.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {systemStatus && (
+                                <div className="rounded-xl border bg-card p-5 space-y-4">
+                                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                                    <Activity className="h-4 w-4" />
+                                    Stato Sistema in Tempo Reale
+                                  </h4>
+
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="p-3 rounded-lg bg-muted/30 text-center">
+                                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                                        <div className={cn("h-2 w-2 rounded-full", systemStatus.is_active ? "bg-green-500 animate-pulse" : "bg-red-500")} />
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Stato</p>
+                                      </div>
+                                      <p className={cn("text-sm font-semibold", systemStatus.is_active ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+                                        {systemStatus.is_active ? "Attivo" : "Disattivo"}
+                                      </p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-muted/30 text-center">
+                                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                                        <div className={cn("h-2 w-2 rounded-full", systemStatus.is_in_working_hours ? "bg-green-500 animate-pulse" : "bg-yellow-500")} />
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orario</p>
+                                      </div>
+                                      <p className={cn("text-sm font-semibold", systemStatus.is_in_working_hours ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400")}>
+                                        {systemStatus.is_in_working_hours ? "In orario" : "Fuori orario"}
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground">{systemStatus.current_time_rome} (Roma)</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-muted/30 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Clienti Eleggibili</p>
+                                      <p className="text-sm font-semibold">{systemStatus.eligible_clients} <span className="text-muted-foreground font-normal">/ {systemStatus.total_clients}</span></p>
+                                      <p className="text-[10px] text-muted-foreground">senza task pendenti</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-muted/30 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Task Pendenti</p>
+                                      <p className="text-sm font-semibold">{systemStatus.pending_tasks}</p>
+                                      <p className="text-[10px] text-muted-foreground">in coda o in esecuzione</p>
+                                    </div>
+                                  </div>
+
+                                  <Separator />
+
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limiti Giornalieri Utilizzati Oggi</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                      <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/20">
+                                        <Phone className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-medium">{systemStatus.today_counts.calls}/{systemStatus.limits.max_calls}</p>
+                                          <p className="text-[10px] text-muted-foreground">Chiamate</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/20">
+                                        <Mail className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-medium">{systemStatus.today_counts.emails}/{systemStatus.limits.max_emails}</p>
+                                          <p className="text-[10px] text-muted-foreground">Email</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/20">
+                                        <MessageSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-medium">{systemStatus.today_counts.whatsapp}/{systemStatus.limits.max_whatsapp}</p>
+                                          <p className="text-[10px] text-muted-foreground">WhatsApp</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/20">
+                                        <BarChart3 className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                                        <div>
+                                          <p className="text-xs font-medium">{systemStatus.today_counts.analyses}/{systemStatus.limits.max_analyses}</p>
+                                          <p className="text-[10px] text-muted-foreground">Analisi</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <Separator />
+
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controllo Autonomo</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                      <div className="p-2.5 rounded-lg bg-muted/20">
+                                        <p className="text-[10px] text-muted-foreground">Ultimo controllo</p>
+                                        <p className="text-xs font-medium">
+                                          {systemStatus.last_autonomous_check
+                                            ? new Date(systemStatus.last_autonomous_check).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                                            : "Mai eseguito"}
+                                        </p>
+                                      </div>
+                                      <div className="p-2.5 rounded-lg bg-muted/20">
+                                        <p className="text-[10px] text-muted-foreground">Prossimo controllo (stima)</p>
+                                        <p className="text-xs font-medium">
+                                          {systemStatus.next_check_estimate
+                                            ? new Date(systemStatus.next_check_estimate).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                                            : "Al prossimo ciclo"}
+                                        </p>
+                                      </div>
+                                      <div className="p-2.5 rounded-lg bg-muted/20">
+                                        <p className="text-[10px] text-muted-foreground">Frequenza controllo</p>
+                                        <p className="text-xs font-medium">Ogni {systemStatus.check_interval_minutes} minuti</p>
+                                      </div>
+                                    </div>
+                                    {systemStatus.last_check_data && (
+                                      <div className="p-2.5 rounded-lg bg-muted/20">
+                                        <p className="text-[10px] text-muted-foreground mb-1">Risultato ultimo controllo</p>
+                                        <p className="text-xs">
+                                          {systemStatus.last_check_data.eligible_clients !== undefined
+                                            ? `${systemStatus.last_check_data.eligible_clients} clienti analizzati, ${systemStatus.last_check_data.tasks_suggested || 0} task suggeriti`
+                                            : "Dati non disponibili"}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <Separator />

@@ -1001,4 +1001,137 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const [settingsResult, lastAutonomousCheckResult, todayCountsResult, eligibleClientsResult, totalClientsResult, pendingTasksResult] = await Promise.all([
+      db.execute(sql`SELECT * FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`),
+      db.execute(sql`
+        SELECT created_at, event_data FROM ai_activity_log
+        WHERE consultant_id = ${consultantId}
+          AND event_type IN ('autonomous_task_created', 'autonomous_analysis')
+        ORDER BY created_at DESC LIMIT 1
+      `),
+      db.execute(sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN event_type IN ('voice_call', 'call_completed', 'call_initiated') THEN 1 ELSE 0 END), 0) AS calls,
+          COALESCE(SUM(CASE WHEN event_type IN ('email_sent', 'send_email') THEN 1 ELSE 0 END), 0) AS emails,
+          COALESCE(SUM(CASE WHEN event_type IN ('whatsapp_sent', 'send_whatsapp') THEN 1 ELSE 0 END), 0) AS whatsapp,
+          COALESCE(SUM(CASE WHEN event_type IN ('analysis_completed', 'analyze_patterns', 'generate_report') THEN 1 ELSE 0 END), 0) AS analyses
+        FROM ai_activity_log
+        WHERE consultant_id = ${consultantId}
+          AND created_at >= (NOW() AT TIME ZONE 'Europe/Rome')::date
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count FROM users u
+        WHERE u.consultant_id = ${consultantId}
+          AND u.role = 'client'
+          AND u.is_active = true
+          AND u.id::text NOT IN (
+            SELECT COALESCE(contact_id, '') FROM ai_scheduled_tasks
+            WHERE consultant_id = ${consultantId}
+              AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
+              AND contact_id IS NOT NULL
+          )
+          AND u.id::text NOT IN (
+            SELECT COALESCE(contact_id, '') FROM ai_scheduled_tasks
+            WHERE consultant_id = ${consultantId}
+              AND status = 'completed'
+              AND completed_at > NOW() - INTERVAL '24 hours'
+              AND contact_id IS NOT NULL
+          )
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count FROM users
+        WHERE consultant_id = ${consultantId} AND role = 'client' AND is_active = true
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId}
+          AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
+      `),
+    ]);
+
+    const settings = settingsResult.rows[0] as any || {};
+    const lastCheck = lastAutonomousCheckResult.rows[0] as any || null;
+    const counts = todayCountsResult.rows[0] as any || {};
+    const eligibleCount = (eligibleClientsResult.rows[0] as any)?.count || 0;
+    const totalClients = (totalClientsResult.rows[0] as any)?.count || 0;
+    const pendingTasks = (pendingTasksResult.rows[0] as any)?.count || 0;
+
+    const checkInterval = settings.proactive_check_interval_minutes || 60;
+    let nextCheckEstimate: string | null = null;
+    if (lastCheck?.created_at) {
+      const lastCheckTime = new Date(lastCheck.created_at);
+      const nextCheck = new Date(lastCheckTime.getTime() + checkInterval * 60 * 1000);
+      nextCheckEstimate = nextCheck.toISOString();
+    }
+
+    const now = new Date();
+    const romeFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Rome",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const dayFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Rome",
+      weekday: "short",
+    });
+    const timeParts = romeFormatter.format(now).split(":");
+    const currentHour = parseInt(timeParts[0], 10);
+    const currentMinute = parseInt(timeParts[1], 10);
+    const currentTimeMinutes = currentHour * 60 + currentMinute;
+    const dayStr = dayFormatter.format(now);
+    const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+    const currentDay = dayMap[dayStr] ?? 1;
+
+    const workingDays = settings.working_days || [1, 2, 3, 4, 5];
+    const [startH, startM] = (settings.working_hours_start || "08:00").toString().split(":").map(Number);
+    const [endH, endM] = (settings.working_hours_end || "20:00").toString().split(":").map(Number);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    const isWorkingDay = workingDays.includes(currentDay);
+    const isWithinHours = currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
+    const isInWorkingHours = isWorkingDay && isWithinHours;
+
+    return res.json({
+      is_active: settings.is_active || false,
+      autonomy_level: settings.autonomy_level || 0,
+      is_in_working_hours: isInWorkingHours,
+      is_working_day: isWorkingDay,
+      is_within_hours: isWithinHours,
+      current_time_rome: `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`,
+      today_counts: {
+        calls: parseInt(counts.calls || "0"),
+        emails: parseInt(counts.emails || "0"),
+        whatsapp: parseInt(counts.whatsapp || "0"),
+        analyses: parseInt(counts.analyses || "0"),
+      },
+      limits: {
+        max_calls: settings.max_daily_calls || 10,
+        max_emails: settings.max_daily_emails || 20,
+        max_whatsapp: settings.max_daily_whatsapp || 30,
+        max_analyses: settings.max_daily_analyses || 50,
+      },
+      last_autonomous_check: lastCheck?.created_at || null,
+      last_check_data: lastCheck?.event_data || null,
+      next_check_estimate: nextCheckEstimate,
+      check_interval_minutes: checkInterval,
+      eligible_clients: eligibleCount,
+      total_clients: totalClients,
+      pending_tasks: pendingTasks,
+      cron_schedule: "ogni 30 minuti",
+      task_execution_schedule: "ogni minuto",
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching system status:", error);
+    return res.status(500).json({ error: "Failed to fetch system status" });
+  }
+});
+
 export default router;
