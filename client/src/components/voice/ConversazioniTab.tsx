@@ -1,10 +1,20 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Phone,
   PhoneIncoming,
@@ -20,8 +30,10 @@ import {
   Play,
   Mic2,
   ArrowLeft,
+  Trash2,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { it } from "date-fns/locale";
@@ -326,6 +338,9 @@ export default function ConversazioniTab() {
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [deletePhone, setDeletePhone] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: conversationsData, isLoading } = useQuery<{ conversations: Conversation[] }>({
     queryKey: ["/api/voice/conversations"],
@@ -335,6 +350,28 @@ export default function ConversazioniTab() {
       });
       if (!res.ok) throw new Error("Failed to fetch conversations");
       return res.json();
+    },
+  });
+
+  const deleteConversation = useMutation({
+    mutationFn: async (phone: string) => {
+      const res = await fetch(`/api/voice/conversations/${encodeURIComponent(phone)}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to delete conversation");
+      return res.json();
+    },
+    onSuccess: (_data, phone) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/conversations"] });
+      if (selectedPhone === phone) {
+        setSelectedPhone(null);
+        setMobileShowChat(false);
+      }
+      toast({ title: "Conversazione eliminata", description: `Tutte le chiamate con ${phone} sono state rimosse.` });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Non è stato possibile eliminare la conversazione.", variant: "destructive" });
     },
   });
 
@@ -448,6 +485,14 @@ export default function ConversazioniTab() {
                     <Clock className="h-3 w-3 mr-1" />
                     {formatDuration(selectedConversation.total_duration)}
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => setDeletePhone(selectedPhone)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
               <ConversationView phone={selectedPhone} />
@@ -457,6 +502,36 @@ export default function ConversazioniTab() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!deletePhone} onOpenChange={(open) => !open && setDeletePhone(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa conversazione?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tutte le chiamate e i messaggi con il numero <strong>{deletePhone}</strong> verranno eliminati definitivamente. Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (deletePhone) {
+                  deleteConversation.mutate(deletePhone);
+                  setDeletePhone(null);
+                }
+              }}
+            >
+              {deleteConversation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-1" />
+              )}
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

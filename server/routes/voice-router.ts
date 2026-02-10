@@ -624,6 +624,75 @@ router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consulta
   }
 });
 
+// DELETE /api/voice/conversations/:phone - Cancella tutte le conversazioni per un numero
+router.delete("/conversations/:phone", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const { phone } = req.params;
+    
+    if (!phone) {
+      return res.status(400).json({ error: "Numero di telefono richiesto" });
+    }
+    
+    const vcConsultantCond = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
+    const svcConsultantCond = consultantId ? sql`AND consultant_id = ${consultantId}` : sql``;
+    
+    let deletedVoiceCalls = 0;
+    let deletedScheduled = 0;
+    let deletedAiConversations = 0;
+    let deletedAiMessages = 0;
+
+    const vcResult = await db.execute(sql`
+      DELETE FROM voice_calls 
+      WHERE (caller_id = ${phone} OR called_number = ${phone})
+        ${vcConsultantCond}
+    `);
+    deletedVoiceCalls = vcResult.rowCount || 0;
+
+    const svcResult = await db.execute(sql`
+      DELETE FROM scheduled_voice_calls 
+      WHERE target_phone = ${phone}
+        ${svcConsultantCond}
+    `);
+    deletedScheduled = svcResult.rowCount || 0;
+
+    const convIds = await db.execute(sql`
+      SELECT id FROM ai_conversations 
+      WHERE caller_phone = ${phone} AND mode = 'live_voice'
+    `);
+    
+    if (convIds.rows.length > 0) {
+      const ids = (convIds.rows as any[]).map(r => r.id);
+      for (const convId of ids) {
+        const msgResult = await db.execute(sql`
+          DELETE FROM ai_messages WHERE conversation_id = ${convId}
+        `);
+        deletedAiMessages += msgResult.rowCount || 0;
+      }
+      const acResult = await db.execute(sql`
+        DELETE FROM ai_conversations 
+        WHERE caller_phone = ${phone} AND mode = 'live_voice'
+      `);
+      deletedAiConversations = acResult.rowCount || 0;
+    }
+
+    console.log(`[Voice] Deleted conversations for ${phone}: ${deletedVoiceCalls} voice_calls, ${deletedScheduled} scheduled, ${deletedAiConversations} ai_conversations, ${deletedAiMessages} ai_messages`);
+    
+    res.json({ 
+      success: true, 
+      deleted: {
+        voice_calls: deletedVoiceCalls,
+        scheduled: deletedScheduled,
+        ai_conversations: deletedAiConversations,
+        ai_messages: deletedAiMessages,
+      }
+    });
+  } catch (error) {
+    console.error("[Voice] Error deleting conversation:", error);
+    res.status(500).json({ error: "Errore nella cancellazione della conversazione" });
+  }
+});
+
 // GET /api/voice/calls/:id - Dettaglio singola chiamata con eventi
 router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
