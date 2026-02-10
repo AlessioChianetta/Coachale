@@ -26,6 +26,7 @@ export const TASK_CATEGORIES = [
   { value: "research", label: "Ricerca", description: "Ricercare informazioni di mercato e normative" },
   { value: "preparation", label: "Preparazione", description: "Preparare materiale per consulenze e incontri" },
   { value: "monitoring", label: "Monitoraggio", description: "Monitorare proattivamente situazioni e scadenze clienti" },
+  { value: "scheduling", label: "Schedulazione", description: "Monitorare e ricordare la programmazione delle consulenze" },
 ];
 
 export const TASK_LIBRARY: TaskLibraryItem[] = [
@@ -329,6 +330,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "⚠️", text: "Ti avvisa se sei sovraccarico o hai buchi in agenda" },
       { icon: "📈", text: "Genera report settimanali sulle tue attività" },
       { icon: "🧠", text: "Suggerisce come organizzare meglio la giornata" },
+      { icon: "📅", text: "Monitora consulenze future e ti chiama se dimentichi di programmarle" },
     ],
     cantDo: [
       { icon: "📞", text: "Non contatta clienti direttamente" },
@@ -336,7 +338,7 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "💬", text: "Non manda messaggi WhatsApp" },
       { icon: "👥", text: "Non gestisce relazioni con i clienti" },
     ],
-    workflow: "Ogni 30 minuti → Analizza agenda, task e carico di lavoro → Identifica preparazioni necessarie → Crea task organizzativi per te",
+    workflow: "Ogni 30 minuti → Analizza agenda, task, carico di lavoro e schedulazione consulenze → Identifica preparazioni necessarie e gap di programmazione → Crea task organizzativi e promemoria vocali",
   },
   personalizza: {
     canDo: [

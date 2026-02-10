@@ -324,11 +324,45 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
   `);
 
+  const schedulingGapsResult = await db.execute(sql`
+    WITH months AS (
+      SELECT generate_series(
+        date_trunc('month', NOW()),
+        date_trunc('month', NOW()) + INTERVAL '2 months',
+        INTERVAL '1 month'
+      ) as month_start
+    )
+    SELECT 
+      u.id as client_id,
+      u.first_name || ' ' || u.last_name as client_name,
+      u.monthly_consultation_limit,
+      u.phone_number,
+      m.month_start,
+      to_char(m.month_start, 'YYYY-MM') as month_label,
+      to_char(m.month_start, 'TMMonth YYYY') as month_name,
+      COALESCE(scheduled_count.cnt, 0)::int as scheduled_count
+    FROM users u
+    CROSS JOIN months m
+    LEFT JOIN (
+      SELECT client_id, date_trunc('month', scheduled_at) as month, COUNT(*)::int as cnt
+      FROM consultations
+      WHERE consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'completed')
+      GROUP BY client_id, date_trunc('month', scheduled_at)
+    ) scheduled_count ON scheduled_count.client_id = u.id::text AND scheduled_count.month = m.month_start
+    WHERE u.consultant_id = ${consultantId}
+      AND u.role = 'client'
+      AND u.is_active = true
+      AND u.monthly_consultation_limit IS NOT NULL
+    ORDER BY u.first_name, m.month_start
+  `);
+
   return {
     upcomingConsultations: upcomingResult.rows,
     workload: workloadResult.rows[0] || {},
     clientCount: clientCountResult.rows[0]?.total_clients || 0,
     consultationMonitoring: consultationMonitoringResult.rows,
+    schedulingGaps: schedulingGapsResult.rows,
   };
 }
 
@@ -911,8 +945,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     accentColor: "indigo",
     description: "Analizza la tua agenda, il carico di lavoro e le performance per aiutarti a organizzare meglio la giornata e prepararti agli incontri.",
     shortDescription: "Coaching operativo e organizzazione consulente",
-    categories: ["preparation", "monitoring", "report"],
-    preferredChannels: ["none"],
+    categories: ["preparation", "monitoring", "report", "scheduling"],
+    preferredChannels: ["voice", "none"],
     typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchMarcoData,
@@ -947,6 +981,31 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         };
       });
 
+      const schedulingGaps = (roleData.schedulingGaps || []);
+      const clientSchedulingMap: Record<string, any> = {};
+      for (const gap of schedulingGaps) {
+        if (!clientSchedulingMap[gap.client_id]) {
+          clientSchedulingMap[gap.client_id] = {
+            client: gap.client_name,
+            client_id: gap.client_id,
+            phone: gap.phone_number,
+            limite_mensile: gap.monthly_consultation_limit,
+            mesi: [],
+          };
+        }
+        const missing = Math.max(0, gap.monthly_consultation_limit - gap.scheduled_count);
+        clientSchedulingMap[gap.client_id].mesi.push({
+          mese: gap.month_name,
+          programmate: gap.scheduled_count,
+          mancanti: missing,
+          stato: missing === 0 ? 'COMPLETO' : missing === gap.monthly_consultation_limit ? 'NESSUNA_PROGRAMMATA' : 'PARZIALE',
+        });
+      }
+
+      const clientsNeedingScheduling = Object.values(clientSchedulingMap).filter((c: any) => 
+        c.mesi.some((m: any) => m.mancanti > 0)
+      );
+
       return `Sei MARCO, Executive Coach AI. Il tuo ruolo è analizzare l'agenda, il carico di lavoro e le performance del consulente per aiutarlo a organizzare meglio la giornata e prepararsi agli incontri.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
@@ -965,6 +1024,9 @@ METRICHE CARICO DI LAVORO:
 MONITORAGGIO CONSULENZE LIMITATE:
 ${monitoringSummary.length > 0 ? JSON.stringify(monitoringSummary, null, 2) : 'Nessun cliente con pacchetto consulenze limitato'}
 
+SCHEDULAZIONE CONSULENZE FUTURE (prossimi 3 mesi):
+${clientsNeedingScheduling.length > 0 ? JSON.stringify(clientsNeedingScheduling, null, 2) : 'Tutti i clienti con pacchetti hanno consulenze programmate per i prossimi mesi'}
+
 ${buildTaskMemorySection(recentAllTasks, 'marco')}
 
 CLIENTI ATTIVI:
@@ -979,6 +1041,7 @@ REGOLE DI MARCO:
 3. Priorità:
    - Consulenze nelle prossime 24-48h senza preparazione → task di preparazione briefing URGENTE
    - Clienti con pacchetto consulenze ESAURITO o QUASI_ESAURITO → task di monitoraggio per avvisare il consulente
+   - Clienti con mesi senza consulenze programmate (stato NESSUNA_PROGRAMMATA o PARZIALE) → task URGENTE per ricordare al consulente di programmare le consulenze. Il preferred_channel DEVE essere "voice" per questi task.
    - Troppi task pendenti (>10) → task di monitoraggio e riorganizzazione
    - Gap nell'agenda (giorni senza consulenze) → suggerisci attività produttive
    - Carico di lavoro squilibrato → suggerisci ottimizzazioni
@@ -986,8 +1049,8 @@ REGOLE DI MARCO:
    - Contesto specifico (quale consulenza preparare, quali metriche analizzare)
    - Azioni concrete suggerite al consulente
    - Punti chiave da considerare
-5. Il campo preferred_channel DEVE essere "none" (sono task interni per il consulente)
-6. Usa le categorie: preparation, monitoring, report
+5. Il campo preferred_channel DEVE essere "none" per task interni. MA per promemoria schedulazione consulenze mancanti, DEVE essere "voice" per chiamare il consulente e ricordarglielo.
+6. Usa le categorie: preparation, monitoring, report, scheduling
 7. Per contact_id usa il client_id della consulenza da preparare, o null per task organizzativi generali
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
@@ -1001,7 +1064,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "contact_name": "Nome cliente o Organizzazione",
       "contact_phone": "N/A",
       "ai_instruction": "Istruzione dettagliata per il task di coaching/preparazione...",
-      "task_category": "preparation|monitoring|report",
+      "task_category": "preparation|monitoring|report|scheduling",
       "priority": 2,
       "reasoning": "Motivazione basata sui dati analizzati",
       "preferred_channel": "none",
