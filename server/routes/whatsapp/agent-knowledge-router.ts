@@ -14,7 +14,7 @@ import {
   whatsappMessages,
 } from "../../../shared/schema";
 import { eq, and, asc, notInArray, desc, isNotNull, inArray, sql } from "drizzle-orm";
-import { extractTextFromFile, getKnowledgeItemType } from "../../services/document-processor";
+import { extractTextFromFile, extractTextFromPDFWithFallback, getKnowledgeItemType } from "../../services/document-processor";
 import { ensureGeminiFileValid } from "../../services/gemini-file-manager";
 import { FileSearchService } from "../../ai/file-search-service";
 import fs from "fs/promises";
@@ -176,7 +176,12 @@ router.post(
 
         // Extract text from file
         try {
-          content = await extractTextFromFile(file.path, file.mimetype);
+          if (type === 'pdf') {
+            const pdfResult = await extractTextFromPDFWithFallback(file.path, title);
+            content = pdfResult.text;
+          } else {
+            content = await extractTextFromFile(file.path, file.mimetype);
+          }
           filePath = file.path;
           fileName = file.originalname;
           fileSize = file.size;

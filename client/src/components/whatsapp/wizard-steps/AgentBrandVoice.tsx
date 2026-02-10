@@ -31,7 +31,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
-  Library
+  Library,
+  ClipboardPaste
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDropzone } from "react-dropzone";
@@ -97,6 +98,10 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isSyncingFileSearch, setIsSyncingFileSearch] = useState(false);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteContent, setPasteContent] = useState('');
+  const [isPasting, setIsPasting] = useState(false);
 
   const handleAddValue = () => {
     if (valueInput.trim()) {
@@ -548,6 +553,37 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
       } finally {
         setIsSyncingFileSearch(false);
       }
+    }
+  };
+
+  const handlePasteText = async () => {
+    if (!agentId || !pasteContent.trim()) return;
+    setIsPasting(true);
+    try {
+      const response = await fetch(`/api/whatsapp/agent-config/${agentId}/knowledge`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title: pasteTitle.trim() || "Testo incollato",
+          type: "text", 
+          content: pasteContent.trim() 
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setKnowledgeItems(prev => [...prev, data.data]);
+        toast({ title: "Testo salvato", description: "Il testo è stato aggiunto alla knowledge base" });
+        setPasteDialogOpen(false);
+        setPasteTitle('');
+        setPasteContent('');
+      } else {
+        const err = await response.json();
+        toast({ title: "Errore", description: err.error || "Errore nel salvataggio", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Errore", description: "Errore nel salvataggio del testo", variant: "destructive" });
+    } finally {
+      setIsPasting(false);
     }
   };
 
@@ -1371,6 +1407,17 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                   <Download className="h-4 w-4 mr-2" />
                   📥 Importa da Knowledge Base
                 </Button>
+                <Button
+                  type="button"
+                  onClick={() => setPasteDialogOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-green-500/30 hover:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-950/20"
+                  disabled={!agentId}
+                >
+                  <ClipboardPaste className="h-4 w-4 mr-2" />
+                  Incolla Testo
+                </Button>
               </div>
             </CardContent>
           </CollapsibleContent>
@@ -1509,6 +1556,66 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardPaste className="h-5 w-5 text-green-500" />
+              Incolla Testo
+            </DialogTitle>
+            <DialogDescription>
+              Incolla il testo che vuoi aggiungere alla knowledge base dell'agente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Titolo</Label>
+              <Input
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+                placeholder="Es: Informazioni sui prodotti, FAQ..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Contenuto</Label>
+              <Textarea
+                value={pasteContent}
+                onChange={(e) => setPasteContent(e.target.value)}
+                placeholder="Incolla qui il testo..."
+                rows={12}
+                className="font-mono text-sm"
+              />
+              {pasteContent && (
+                <p className="text-xs text-muted-foreground text-right">
+                  {pasteContent.length} caratteri
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasteDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={handlePasteText} 
+              disabled={!pasteContent.trim() || isPasting}
+            >
+              {isPasting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvataggio...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salva Testo
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh]">

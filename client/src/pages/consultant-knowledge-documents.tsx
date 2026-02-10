@@ -78,6 +78,8 @@ import {
   Plus,
   History,
   HardDrive,
+  ClipboardPaste,
+  Save,
 } from "lucide-react";
 import {
   Collapsible,
@@ -338,6 +340,10 @@ export default function ConsultantKnowledgeDocuments() {
   const [syncHistoryDocumentId, setSyncHistoryDocumentId] = useState<string | null>(null);
   const [isDriveSectionOpen, setIsDriveSectionOpen] = useState(true);
   const [isUploadedSectionOpen, setIsUploadedSectionOpen] = useState(true);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteContent, setPasteContent] = useState('');
+  const [isPasting, setIsPasting] = useState(false);
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -1080,6 +1086,33 @@ export default function ConsultantKnowledgeDocuments() {
     }
   };
 
+  const handlePasteText = async () => {
+    if (!pasteContent.trim()) return;
+    setIsPasting(true);
+    try {
+      const title = pasteTitle.trim() || "Testo incollato";
+      const file = new File([pasteContent], `${title.replace(/[^a-zA-Z0-9àèéìòù\s-]/g, '').replace(/\s+/g, '-').toLowerCase()}.txt`, { type: "text/plain" });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", title);
+      formData.append("description", "");
+      formData.append("category", "other");
+      formData.append("priority", "5");
+      if (selectedFolderId) {
+        formData.append("folderId", selectedFolderId);
+      }
+      uploadMutation.mutate(formData);
+      setPasteDialogOpen(false);
+      setPasteTitle('');
+      setPasteContent('');
+      toast({ title: "Testo inviato", description: "Il testo è stato inviato per l'elaborazione" });
+    } catch (err) {
+      toast({ title: "Errore", description: "Errore nel salvataggio del testo", variant: "destructive" });
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
   const handleEdit = (doc: KnowledgeDocument) => {
     setEditingDocument(doc);
     setEditForm({
@@ -1563,6 +1596,15 @@ export default function ConsultantKnowledgeDocuments() {
                     )}
                   </div>
                 </Card>
+
+                <Button
+                  variant="outline"
+                  className="w-full mt-3 border-green-500/30 hover:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-950/20"
+                  onClick={() => setPasteDialogOpen(true)}
+                >
+                  <ClipboardPaste className="w-4 h-4 mr-2" />
+                  Incolla Testo
+                </Button>
               </div>
             )}
 
@@ -1881,6 +1923,66 @@ export default function ConsultantKnowledgeDocuments() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardPaste className="h-5 w-5 text-green-500" />
+              Incolla Testo
+            </DialogTitle>
+            <DialogDescription>
+              Incolla il testo che vuoi aggiungere alla knowledge base.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Titolo</Label>
+              <Input
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+                placeholder="Es: Informazioni sui prodotti, FAQ..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Contenuto</Label>
+              <Textarea
+                value={pasteContent}
+                onChange={(e) => setPasteContent(e.target.value)}
+                placeholder="Incolla qui il testo..."
+                rows={12}
+                className="font-mono text-sm"
+              />
+              {pasteContent && (
+                <p className="text-xs text-muted-foreground text-right">
+                  {pasteContent.length} caratteri
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasteDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={handlePasteText} 
+              disabled={!pasteContent.trim() || isPasting}
+            >
+              {isPasting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvataggio...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salva Testo
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
