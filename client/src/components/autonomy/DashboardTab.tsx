@@ -90,6 +90,20 @@ function DashboardTab({
 }: DashboardTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
+
+  const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
 
   const getRoleBadge = (role: string) => {
     const colorMap: Record<string, string> = {
@@ -871,7 +885,7 @@ function DashboardTab({
                         "hover:shadow-md hover:border-primary/30",
                         getPriorityBorderColor(task.priority)
                       )}
-                      onClick={() => setSelectedTaskId(task.id)}
+                      onClick={(e) => toggleTaskExpand(task.id, e)}
                     >
                       <CardContent className="py-3 px-4">
                         <div className="flex items-start gap-3">
@@ -882,11 +896,17 @@ function DashboardTab({
                                 <span className="text-xs font-semibold text-foreground">{task.contact_name}</span>
                               </div>
                             )}
-                            <p className="text-sm text-foreground line-clamp-2 leading-relaxed">
+                            <p className={cn(
+                              "text-sm text-foreground leading-relaxed transition-all duration-200",
+                              !expandedTaskIds.has(task.id) && "line-clamp-2"
+                            )}>
                               {task.ai_instruction}
                             </p>
                             {task.origin_type === 'autonomous' && task.ai_reasoning && (
-                              <p className="text-xs text-muted-foreground mt-1.5 italic line-clamp-1 bg-purple-50 dark:bg-purple-950/20 rounded-lg px-2 py-1 border border-purple-200/50 dark:border-purple-800/30">
+                              <p className={cn(
+                                "text-xs text-muted-foreground mt-1.5 italic bg-purple-50 dark:bg-purple-950/20 rounded-lg px-2 py-1 border border-purple-200/50 dark:border-purple-800/30 transition-all duration-200",
+                                !expandedTaskIds.has(task.id) && "line-clamp-1"
+                              )}>
                                 <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
                                 {task.ai_reasoning}
                               </p>
@@ -970,7 +990,18 @@ function DashboardTab({
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              title="Apri dettaglio"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTaskId(task.id);
+                              }}
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </Button>
                           </div>
                         </div>
                       </CardContent>
