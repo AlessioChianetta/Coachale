@@ -230,7 +230,7 @@ router.get("/kb-documents-list", authenticateToken, requireAnyRole(["consultant"
     const result = await db.execute(sql`
       SELECT id, title, category, file_type, status, file_size, created_at 
       FROM consultant_knowledge_documents 
-      WHERE consultant_id = ${consultantId}::uuid AND status = 'indexed'
+      WHERE consultant_id = ${consultantId} AND status = 'indexed'
       ORDER BY title ASC
     `);
 
