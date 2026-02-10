@@ -1077,7 +1077,7 @@ export default function ConsultantClientsPage() {
                             <div className="mt-2 space-y-1.5">
                               {Array.from({ length: schedulingMonths }, (_, i) => {
                                 const d = new Date();
-                                d.setMonth(d.getMonth() + i + 1);
+                                d.setMonth(d.getMonth() + i);
                                 const monthLabel = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
                                 const extraCount = schedulingExtraMonths[i] || 0;
                                 return (

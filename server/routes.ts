@@ -4079,8 +4079,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         existingDateStrings.push(d.toISOString().split('T')[0]);
       }
 
+      try {
+        const calConnected = await googleCalendarService.isGoogleCalendarConnected(consultantId);
+        if (calConnected) {
+          const calStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          const calEvents = await googleCalendarService.listEvents(consultantId, calStart, endDate);
+          const HIDDEN = ['INIZIO GIORNATA', 'PRANZO', 'FINE GIORNATA'];
+          for (const evt of calEvents) {
+            if (HIDDEN.includes(evt.summary?.trim())) continue;
+            if (!evt.attendeeEmails || evt.attendeeEmails.length === 0) continue;
+            const hasClient = evt.attendeeEmails.some(e => e.toLowerCase() === client.email?.toLowerCase());
+            if (!hasClient) continue;
+            const evtDateStr = evt.start.toISOString().split('T')[0];
+            if (existingDateStrings.includes(evtDateStr)) continue;
+            existingDateStrings.push(evtDateStr);
+            const evtMonth = `${evt.start.getFullYear()}-${evt.start.getMonth()}`;
+            existingByMonth[evtMonth] = (existingByMonth[evtMonth] || 0) + 1;
+          }
+        }
+      } catch (err) {
+        console.error('[SCHEDULE-PROPOSAL] Calendar existing check error:', err);
+      }
+
       const proposals: Array<{date: string, time: string, month: string}> = [];
       const allProposedDateStrings: string[] = [...existingDateStrings];
+
+      const proposedByMonth: Record<string, number> = {};
 
       if (intervalDays > 0) {
         let cursor = new Date(now);
@@ -4105,10 +4129,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const dateStr = cursor.toISOString().split('T')[0];
-          if (!allProposedDateStrings.includes(dateStr)) {
+          const cursorMonthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`;
+          const totalInMonth = (existingByMonth[cursorMonthKey] || 0) + (proposedByMonth[cursorMonthKey] || 0);
+
+          if (!allProposedDateStrings.includes(dateStr) && totalInMonth < perMonth) {
             const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
             proposals.push({ date: dateStr, time: proposalTime, month: monthName });
             allProposedDateStrings.push(dateStr);
+            proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
           }
 
           cursor.setDate(cursor.getDate() + intervalDays);
@@ -4118,7 +4146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         for (let m = 0; m < months; m++) {
-          const targetMonth = new Date(now.getFullYear(), now.getMonth() + m + 1, 1);
+          const targetMonth = new Date(now.getFullYear(), now.getMonth() + m, 1);
           const monthKey = `${targetMonth.getFullYear()}-${targetMonth.getMonth()}`;
           const alreadyInMonth = existingByMonth[monthKey] || 0;
           const slotsToFill = Math.max(0, perMonth - alreadyInMonth);
@@ -4148,6 +4176,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
+            if (proposedDate <= now) {
+              continue;
+            }
             const dateStr = proposedDate.toISOString().split('T')[0];
             const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
 
@@ -4165,7 +4196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const count = Math.max(0, Math.min(5, parseInt(extra.count) || 0));
           if (count === 0 || isNaN(monthIndex)) continue;
 
-          const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthIndex + 1, 1);
+          const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthIndex, 1);
           const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
 
           let added = 0;
