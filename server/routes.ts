@@ -4152,6 +4152,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
               proposals.push({ date: dateStr, time: proposalTime, month: monthName });
               allProposedDateStrings.push(dateStr);
               proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
+            } else {
+              console.log(`[SCHEDULE-PROPOSAL] Slot busy at ${dateStr} ${proposalTime}, trying alternatives...`);
+              const altHours = timePreference === 'afternoon'
+                ? [14, 15, 16, 17, 9, 10, 11]
+                : timePreference === 'morning'
+                  ? [9, 10, 11, 12, 14, 15, 16]
+                  : [9, 10, 11, 14, 15, 16, 17];
+              let found = false;
+              for (const altHour of altHours) {
+                const altTime = `${String(altHour).padStart(2, '0')}:00`;
+                const altSlotISO = new Date(dateStr + 'T' + altTime + ':00').toISOString();
+                if (!consultantBusySlots.has(altSlotISO)) {
+                  const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                  proposals.push({ date: dateStr, time: altTime, month: monthName });
+                  allProposedDateStrings.push(dateStr);
+                  proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
+                  console.log(`[SCHEDULE-PROPOSAL] Found alternative: ${dateStr} ${altTime}`);
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) {
+                console.log(`[SCHEDULE-PROPOSAL] No free slot on ${dateStr}, trying nearby days...`);
+                for (let dayOffset = 1; dayOffset <= 3; dayOffset++) {
+                  const altDate = new Date(cursor);
+                  altDate.setDate(altDate.getDate() + dayOffset);
+                  while (altDate.getDay() === 0 || altDate.getDay() === 6) altDate.setDate(altDate.getDate() + 1);
+                  const altDateStr = altDate.toISOString().split('T')[0];
+                  if (allProposedDateStrings.includes(altDateStr)) continue;
+                  const altMonthKey = `${altDate.getFullYear()}-${altDate.getMonth()}`;
+                  if (altMonthKey !== cursorMonthKey) break;
+                  for (const altHour of altHours) {
+                    const altTime = `${String(altHour).padStart(2, '0')}:00`;
+                    const altSlotISO = new Date(altDateStr + 'T' + altTime + ':00').toISOString();
+                    if (!consultantBusySlots.has(altSlotISO)) {
+                      const monthName = altDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                      proposals.push({ date: altDateStr, time: altTime, month: monthName });
+                      allProposedDateStrings.push(altDateStr);
+                      proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
+                      console.log(`[SCHEDULE-PROPOSAL] Found nearby alternative: ${altDateStr} ${altTime}`);
+                      found = true;
+                      break;
+                    }
+                  }
+                  if (found) break;
+                }
+              }
             }
           }
 
@@ -4203,6 +4250,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!consultantBusySlots.has(slotISO)) {
                 proposals.push({ date: dateStr, time: proposalTime, month: monthName });
                 allProposedDateStrings.push(dateStr);
+              } else {
+                console.log(`[SCHEDULE-PROPOSAL] Monthly slot busy at ${dateStr} ${proposalTime}, trying alternatives...`);
+                const altHoursM = timePreference === 'afternoon'
+                  ? [14, 15, 16, 17, 9, 10, 11]
+                  : timePreference === 'morning'
+                    ? [9, 10, 11, 12, 14, 15, 16]
+                    : [9, 10, 11, 14, 15, 16, 17];
+                let foundAlt = false;
+                for (const altHour of altHoursM) {
+                  const altTime = `${String(altHour).padStart(2, '0')}:00`;
+                  const altSlotISO = new Date(dateStr + 'T' + altTime + ':00').toISOString();
+                  if (!consultantBusySlots.has(altSlotISO)) {
+                    proposals.push({ date: dateStr, time: altTime, month: monthName });
+                    allProposedDateStrings.push(dateStr);
+                    console.log(`[SCHEDULE-PROPOSAL] Found monthly alternative: ${dateStr} ${altTime}`);
+                    foundAlt = true;
+                    break;
+                  }
+                }
+                if (!foundAlt) {
+                  for (let dayOff = 1; dayOff <= 3; dayOff++) {
+                    const altD = new Date(proposedDate);
+                    altD.setDate(altD.getDate() + dayOff);
+                    while (altD.getDay() === 0 || altD.getDay() === 6) altD.setDate(altD.getDate() + 1);
+                    if (altD.getMonth() !== targetMonth.getMonth()) break;
+                    const altDS = altD.toISOString().split('T')[0];
+                    if (allProposedDateStrings.includes(altDS)) continue;
+                    for (const altHour of altHoursM) {
+                      const altTime = `${String(altHour).padStart(2, '0')}:00`;
+                      const altSlotISO = new Date(altDS + 'T' + altTime + ':00').toISOString();
+                      if (!consultantBusySlots.has(altSlotISO)) {
+                        const altMN = altD.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                        proposals.push({ date: altDS, time: altTime, month: altMN });
+                        allProposedDateStrings.push(altDS);
+                        console.log(`[SCHEDULE-PROPOSAL] Found nearby monthly alternative: ${altDS} ${altTime}`);
+                        foundAlt = true;
+                        break;
+                      }
+                    }
+                    if (foundAlt) break;
+                  }
+                }
               }
             }
           }
