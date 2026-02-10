@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info, Settings, Link2, Unlink, RefreshCw, CalendarPlus } from "lucide-react";
+import { Calendar, Clock, User, Plus, Edit, Trash2, Save, X, CheckCircle, AlertCircle, AlertTriangle, XCircle, Users, CalendarDays, CalendarIcon, List, ChevronLeft, ChevronRight, ChevronDown, Sparkles, BookOpen, Zap, Star, Activity, ClipboardCheck, Search, Lightbulb, Maximize2, Minimize2, ListTodo, Mail, TrendingUp, FileText, Eye, Send, Loader2, Video, Play, Wand2, Info, Settings, Link2, Unlink, RefreshCw, CalendarPlus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths, formatDistanceToNow } from "date-fns";
@@ -3487,6 +3487,28 @@ export default function ConsultantAppointments() {
                         <Form {...updateForm}>
                           <form onSubmit={updateForm.handleSubmit(onUpdateSubmit)} className="space-y-6">
                             
+                            {/* Email Warning */}
+                            {editingAppointment && (() => {
+                              const apt = (appointments as any[])?.find((a: any) => a.id === editingAppointment);
+                              const hasEmail = apt?.clientEmail || apt?.client?.email || (apt?.attendeeEmails && apt.attendeeEmails.length > 0);
+                              const isFromGoogle = apt?.source === 'google' || apt?.source === 'synced';
+                              if (!hasEmail && isFromGoogle) {
+                                return (
+                                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="text-sm font-semibold text-amber-800">Email partecipante mancante</p>
+                                      <p className="text-xs text-amber-600 mt-1">
+                                        Questo appuntamento non ha un'email del partecipante su Google Calendar. 
+                                        Aggiungi l'email del cliente come partecipante nell'evento Google Calendar per collegarlo automaticamente.
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                            
                             {/* SEZIONE 1: Informazioni Base */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
                               <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
@@ -3590,6 +3612,27 @@ export default function ConsultantAppointments() {
                                   )}
                                 />
                               </div>
+
+                              {/* Client Email */}
+                              {editingAppointment && (() => {
+                                const apt = (appointments as any[])?.find((a: any) => a.id === editingAppointment);
+                                const email = apt?.clientEmail || apt?.client?.email;
+                                const attendeeEmails = apt?.attendeeEmails || [];
+                                if (email || attendeeEmails.length > 0) {
+                                  return (
+                                    <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Mail className="w-4 h-4 text-emerald-600" />
+                                        <span className="text-sm font-medium text-emerald-700">Email Cliente Collegato</span>
+                                      </div>
+                                      <p className="text-sm text-emerald-800 font-mono">
+                                        {email || attendeeEmails.join(', ')}
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                             
                             {/* SEZIONE 2: Prima della Call */}
@@ -4349,6 +4392,15 @@ export default function ConsultantAppointments() {
                                 </div>
                               </div>
                               {getStatusBadge(appointment.status)}
+                              {/* Missing email warning */}
+                              {!appointment.clientEmail && !appointment.client?.email && 
+                               (!appointment.attendeeEmails || appointment.attendeeEmails.length === 0) &&
+                               (appointment.source === 'google' || appointment.source === 'synced') && (
+                                <div className="mt-2 flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  <span className="text-xs">Email partecipante mancante su Google Calendar</span>
+                                </div>
+                              )}
                               {appointment.notes && (
                                 <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
                                   <p className="text-sm text-slate-700 dark:text-slate-300">{appointment.notes}</p>
@@ -4571,6 +4623,16 @@ export default function ConsultantAppointments() {
                               Riassunto
                             </div>
                           </div>
+
+                          {/* Missing email warning in list view */}
+                          {!appointment.clientEmail && !appointment.client?.email && 
+                           (!appointment.attendeeEmails || appointment.attendeeEmails.length === 0) &&
+                           (appointment.source === 'google' || appointment.source === 'synced') && (
+                            <div className="mt-3 flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                              <span className="text-xs font-medium">Email partecipante mancante su Google Calendar</span>
+                            </div>
+                          )}
 
                           {/* Stato Email e Azioni Contestuali */}
                           <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-700">
