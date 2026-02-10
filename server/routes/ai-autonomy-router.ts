@@ -234,7 +234,7 @@ router.get("/kb-documents-list", authenticateToken, requireAnyRole(["consultant"
       ORDER BY title ASC
     `);
 
-    return res.json(result.rows);
+    return res.json({ documents: result.rows });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching kb documents list:", error.message);
     return res.status(500).json({ error: "Errore nel recupero dei documenti" });
