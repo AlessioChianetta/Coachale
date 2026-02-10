@@ -1,0 +1,307 @@
+Cosa ha pensato
+
+L'analisi dell'agenda e del carico di lavoro evidenzia due priorità immediate. In primo luogo, la consulenza con 'Giusy e Alessio' prevista per domani, 11 febbraio alle 14:00, richiede una preparazione specifica (Task 1). Sebbene il ruolo Echo stia già gestendo un'analisi su Giusy Dattilo, il consulente deve preparare il proprio briefing operativo per la sessione. In secondo luogo, il monitoraggio della schedulazione futura mostra che Marco Massi ha solo una delle due consulenze mensili programmate per febbraio (stato PARZIALE). Seguendo la regola 3, è necessario un intervento tramite canale 'voice' per sollecitare la programmazione della sessione mancante (Task 2). Ho evitato di riproporre task di pulizia database o analisi strategica poiché recentemente rifiutati dal consulente, e ho notato che altri ruoli (Millie, Alessia) stanno già coprendo i follow-up su altri clienti attivi.
+
+Azioni decise (2)
+
+Giusy e Alessio
+Urgente
+Preparazione briefing per la consulenza di domani alle 14:00. Analizza gli obiettivi della sessione con Giusy e Alessio, considerando che il ruolo Ech
+
+Perché: Consulenza programmata nelle prossime 24 ore che richiede preparazione specifica per garantire la qualità del servizio.
+marco massi
+📞 Chiamata
+Alta
+Promemoria per il consulente: la pianificazione di Marco Massi per il mese di febbraio è incompleta (1 su 2 sessioni programmate). Chiama il consulent
+
+Perché: Il cliente ha un limite mensile di 2 consulenze ma solo 1 è programmata per febbraio (stato PARZIALE).
+Base dati utilizzata
+Clienti analizzati (5 di 13)
+
+dsfsdf
+Luca Mattei
+Riccardo Goghero
+Silvia Caldironi
+simone salina
+Clienti esclusi
+
+Con task pendenti: 8
+Completati di recente: 0
+Dati ruolo-specifici
+
+{
+  "workload": {
+    "completed_7d": "0",
+    "completed_30d": "0",
+    "pending_tasks": "1"
+  },
+  "clientCount": "5",
+  "schedulingGaps": [
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "February 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "March 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "April 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "February 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 1,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "March 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "April 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    }
+  ],
+  "upcomingConsultations": [
+    {
+      "id": "gcal_0_1770750000000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-10T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_1_1770793200000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-11T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_2_1770811200000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-11T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_3_1770818400000",
+      "notes": "Giusy e Alessio",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Giusy e Alessio",
+      "scheduled_at": "2026-02-11T14:00:00.000Z"
+    },
+    {
+      "id": "gcal_4_1770836400000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-11T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_5_1770879600000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-12T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_6_1770897600000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-12T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_7_1770922800000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-12T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_8_1770966000000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-13T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_9_1770984000000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-13T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_10_1770991200000",
+      "notes": "Gloria e Alessio",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Gloria e Alessio",
+      "scheduled_at": "2026-02-13T14:00:00.000Z"
+    },
+    {
+      "id": "gcal_11_1771009200000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-13T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_12_1771225200000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-16T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_13_1771243200000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-16T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_14_1771254000000",
+      "notes": "Marco Massi e Alessio",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Marco Massi e Alessio",
+      "scheduled_at": "2026-02-16T15:00:00.000Z"
+    },
+    {
+      "id": "gcal_15_1771268400000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-16T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_16_1771311600000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-17T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_17_1771329600000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-17T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_18_1771354800000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-17T19:00:00.000Z"
+    }
+  ],
+  "consultationMonitoring": [
+    {
+      "id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "client_name": "Gloria Santi",
+      "consultations_used": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "client_name": "marco massi",
+      "consultations_used": 1,
+      "monthly_consultation_limit": 2
+    }
+  ]
+}

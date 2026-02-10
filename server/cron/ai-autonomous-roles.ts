@@ -335,7 +335,6 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     SELECT COUNT(*) as total_clients
     FROM users u
     WHERE u.consultant_id = ${consultantId}
-      AND u.role = 'client'
       AND u.is_active = true
   `);
 
@@ -390,7 +389,6 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
         AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
     ) c_notes ON true
     WHERE u.consultant_id = ${consultantId}
-      AND u.role = 'client'
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
     ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
@@ -423,7 +421,6 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       GROUP BY client_id, date_trunc('month', scheduled_at)
     ) scheduled_count ON scheduled_count.client_id = u.id::text AND scheduled_count.month = m.month_start
     WHERE u.consultant_id = ${consultantId}
-      AND u.role = 'client'
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
     ORDER BY u.first_name, m.month_start

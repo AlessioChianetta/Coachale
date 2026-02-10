@@ -5,6 +5,13 @@ This full-stack web application is a comprehensive consultation platform designe
 Preferred communication style: Simple, everyday language.
 User requested "obsessive-compulsive" attention to detail when verifying what works and what doesn't.
 
+# CRITICAL: User Data Model Rules
+**NEVER filter only `role = 'client'` when counting or listing a consultant's users/clients.**
+- A consultant's "clients" include BOTH `role='client'` AND `role='consultant'` users who have `consultant_id` pointing to them (consultants who are clients of another consultant).
+- The correct filter is: `WHERE u.consultant_id = :consultantId AND u.is_active = true` (no role filter).
+- **Gold (Oro) users** (level 3 active subscriptions in `client_level_subscriptions`) have separate licenses and must be EXCLUDED from license counting. Use a `NOT IN` subquery on `client_level_subscriptions WHERE level = '3' AND status = 'active'`.
+- This applies EVERYWHERE: license counting, AI autonomous roles (Marco, etc.), client listing, monitoring, and any query that retrieves "all clients of a consultant".
+
 # System Architecture
 The application features a modern UI/UX built with React 18, TypeScript, Vite, Tailwind CSS, and `shadcn/ui`, prioritizing accessibility and responsiveness. The backend is powered by Express.js, TypeScript, JWT, bcrypt, and PostgreSQL (Drizzle ORM), implementing a robust role-based access control (consultant, client, super_admin) and multi-profile system.
 
