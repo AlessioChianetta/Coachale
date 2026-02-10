@@ -372,6 +372,7 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
   allowed_task_categories: ["outreach", "reminder", "followup"],
   custom_instructions: "",
   proactive_check_interval_minutes: 60,
+  role_frequencies: {},
 };
 
 export const EMPTY_NEW_TASK: NewTaskData = {

@@ -1394,6 +1394,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     });
   }
 
+  const roleFrequencies: Record<string, string> = settings.role_frequencies || {};
+
   for (const role of activeRoles) {
     try {
       if (role.id !== 'nova' && eligibleClients.length === 0) {
@@ -1441,6 +1443,42 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
           });
         }
         continue;
+      }
+
+      const configuredFrequencyMinutes = parseInt(roleFrequencies[role.id] || '30', 10);
+      if (!dryRun && configuredFrequencyMinutes > 30) {
+        const lastRunResult = await db.execute(sql`
+          SELECT created_at FROM ai_activity_log
+          WHERE consultant_id = ${consultantId}::uuid
+            AND ai_role = ${role.id}
+            AND event_type = 'autonomous_analysis'
+            AND title NOT LIKE '%canale disabilitato%'
+            AND title NOT LIKE '%frequenza non raggiunta%'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `);
+        const lastRunRow = lastRunResult.rows[0] as any;
+        if (lastRunRow?.created_at) {
+          const lastRunTime = new Date(lastRunRow.created_at);
+          const minutesSinceLastRun = (Date.now() - lastRunTime.getTime()) / (1000 * 60);
+          if (minutesSinceLastRun < configuredFrequencyMinutes) {
+            const remainingMinutes = Math.ceil(configuredFrequencyMinutes - minutesSinceLastRun);
+            console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Frequency not reached (${configuredFrequencyMinutes}min configured, last run ${Math.round(minutesSinceLastRun)}min ago, next in ~${remainingMinutes}min), skipping`);
+            
+            // Log this frequency skip so the frequency check has consistent data
+            await logActivity(consultantId, {
+              event_type: 'autonomous_analysis',
+              title: `${role.name}: frequenza non raggiunta`,
+              description: `Il ruolo ${role.name} richiede una frequenza di ${configuredFrequencyMinutes}min. Ultima esecuzione ${Math.round(minutesSinceLastRun)}min fa. Prossima esecuzione tra ~${remainingMinutes}min.`,
+              icon: '⏸️',
+              severity: 'info',
+              ai_role: role.id,
+              cycle_id: cycleId,
+            });
+            
+            continue;
+          }
+        }
       }
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data...`);

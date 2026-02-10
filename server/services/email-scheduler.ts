@@ -336,7 +336,44 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
       );
       
       if (todayDraft) {
-        console.log(`⏭️  ${client.firstName} - already has draft for template ${todayTemplateDay} (skipping)`);
+        const clientAutomation = await storage.getClientEmailAutomation(consultantId, client.id);
+        const shouldAutoSendDraft = smtpSettings?.automationEnabled && clientAutomation?.enabled && !clientAutomation?.saveAsDraft;
+        
+        if (shouldAutoSendDraft) {
+          console.log(`📤 ${client.firstName} - sending existing draft for template ${todayTemplateDay} (auto-send mode)`);
+          
+          const emailLog = await storage.createEmailLog({
+            clientId: client.id,
+            emailType: 'motivation_reminder',
+            journeyDay: todayTemplateDay,
+            subject: todayDraft.subject,
+            body: todayDraft.body,
+            includesTasks: todayDraft.includesTasks || false,
+            includesGoals: todayDraft.includesGoals || false,
+            includesState: todayDraft.includesState || false,
+            tasksCount: todayDraft.tasksCount || 0,
+            goalsCount: todayDraft.goalsCount || 0
+          });
+          
+          const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("./email-html-wrapper");
+          const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
+          const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+          const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+          const htmlWithTracking = enhanceEmailTypography(todayDraft.body, trackingPixelUrl);
+          
+          await sendEmail({
+            to: client.email,
+            subject: todayDraft.subject,
+            html: htmlWithTracking,
+            consultantId: consultantId
+          });
+          
+          await storage.updateEmailDraftStatus(todayDraft.id, "sent", new Date());
+          
+          console.log(`✅ ${client.firstName} - draft sent successfully with tracking pixel`);
+        } else {
+          console.log(`⏭️  ${client.firstName} - already has draft for template ${todayTemplateDay} (skipping)`);
+        }
         continue;
       }
       
@@ -639,21 +676,12 @@ async function sendAutomatedEmailToClient(client: {
     }
 
     if (shouldAutoSend) {
-      // Send email immediately (existing logic)
-      console.log(`📧 Sending email to ${client.email}...`);
-      await sendEmail({
-        to: client.email,
-        subject: emailContent.subject,
-        html: emailContent.body,
-        consultantId: client.consultantId
-      });
-      
-      // Log email as sent
+      // Log email first to get ID for tracking pixel
       console.log(`💾 Logging email for ${client.firstName}...`);
-      await storage.createEmailLog({
+      const emailLog = await storage.createEmailLog({
         clientId: client.id,
         emailType: 'motivation_reminder',
-        journeyDay: templateDay, // Track which template was used
+        journeyDay: templateDay,
         subject: emailContent.subject,
         body: emailContent.body,
         includesTasks: incompleteTasks.length > 0,
@@ -661,6 +689,22 @@ async function sendAutomatedEmailToClient(client: {
         includesState: true,
         tasksCount: incompleteTasks.length,
         goalsCount: activeGoals.length
+      });
+      
+      // Generate tracking pixel and enhance email body
+      const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("./email-html-wrapper");
+      const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
+      const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+      const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+      const htmlWithTracking = enhanceEmailTypography(emailContent.body, trackingPixelUrl);
+      
+      // Send email with tracking pixel
+      console.log(`📧 Sending email to ${client.email}...`);
+      await sendEmail({
+        to: client.email,
+        subject: emailContent.subject,
+        html: htmlWithTracking,
+        consultantId: client.consultantId
       });
       
       // Update journey progress after sending (including currentDay for DB sync)

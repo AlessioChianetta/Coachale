@@ -576,7 +576,8 @@ router.post("/consultant/ai-email/test-generate", authenticateToken, requireRole
 
     // Generate tracking pixel URL
     const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'http://localhost:5000';
+    const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
+    const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
 
     // Add test banner with tracking pixel
@@ -1121,7 +1122,8 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
 
     // Generate tracking pixel URL and enhance HTML
     const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'http://localhost:5000';
+    const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
+    const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
     const htmlWithTracking = enhanceEmailTypography(draft.body, trackingPixelUrl);
 

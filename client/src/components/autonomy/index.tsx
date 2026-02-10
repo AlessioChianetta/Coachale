@@ -109,6 +109,7 @@ export default function ConsultantAIAutonomyPage() {
           ...DEFAULT_SETTINGS.channels_enabled,
           ...(settingsData.channels_enabled || {}),
         },
+        role_frequencies: settingsData.role_frequencies || {},
       });
     }
   }, [settingsData]);

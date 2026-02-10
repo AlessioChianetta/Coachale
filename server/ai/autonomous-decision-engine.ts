@@ -41,6 +41,7 @@ export interface AutonomySettings {
   is_active: boolean;
   custom_instructions: string | null;
   channels_enabled: Record<string, boolean>;
+  role_frequencies: Record<string, string>;
 }
 
 export interface DailyActionCounts {
@@ -103,6 +104,7 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   is_active: false,
   custom_instructions: null,
   channels_enabled: { voice: true, email: false, whatsapp: false },
+  role_frequencies: {},
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -154,6 +156,7 @@ export async function getAutonomySettings(consultantId: string): Promise<Autonom
       is_active: row.is_active ?? DEFAULT_AUTONOMY_SETTINGS.is_active,
       custom_instructions: row.custom_instructions ?? null,
       channels_enabled: row.channels_enabled ?? DEFAULT_AUTONOMY_SETTINGS.channels_enabled,
+      role_frequencies: row.role_frequencies ?? DEFAULT_AUTONOMY_SETTINGS.role_frequencies,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Error fetching autonomy settings:`, error.message);

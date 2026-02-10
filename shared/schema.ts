@@ -10053,6 +10053,7 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   isActive: boolean("is_active").default(false),
   customInstructions: text("custom_instructions"),
   channelsEnabled: jsonb("channels_enabled").$type<Record<string, boolean>>().default(sql`'{"voice": true, "email": false, "whatsapp": false}'::jsonb`),
+  roleFrequencies: jsonb("role_frequencies").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });

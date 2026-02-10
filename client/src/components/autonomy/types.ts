@@ -17,6 +17,7 @@ export interface AutonomySettings {
   allowed_task_categories: string[];
   custom_instructions: string;
   proactive_check_interval_minutes: number;
+  role_frequencies: Record<string, string>;
 }
 
 export interface ActivityItem {

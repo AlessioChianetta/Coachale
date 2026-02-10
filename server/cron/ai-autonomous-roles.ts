@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { listEvents } from "../google-calendar-service";
 
 function buildTaskMemorySection(recentAllTasks: any[], roleId: string): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
@@ -259,6 +260,7 @@ async function fetchIrisData(consultantId: string, clientIds: string[]): Promise
 async function fetchMarcoData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
   const upcomingResult = await db.execute(sql`
     SELECT c.id, c.client_id, c.scheduled_at, c.duration, c.notes, c.status,
+           c.google_calendar_event_id,
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
@@ -269,6 +271,56 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     ORDER BY c.scheduled_at ASC
     LIMIT 20
   `);
+
+  const dbConsultations = upcomingResult.rows.map((row: any) => ({
+    ...row,
+    source: 'database' as const,
+  }));
+
+  let mergedConsultations = [...dbConsultations];
+
+  try {
+    const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const calendarEvents = await listEvents(consultantId, now, sevenDaysLater);
+
+    if (calendarEvents && calendarEvents.length > 0) {
+      const dbScheduledTimes = new Set(
+        dbConsultations.map((c: any) => Math.floor(new Date(c.scheduled_at).getTime() / 60000))
+      );
+
+      const calendarOnlyEvents = calendarEvents.filter(event => {
+        const eventTimeRounded = Math.floor(event.start.getTime() / 60000);
+        return !dbScheduledTimes.has(eventTimeRounded);
+      });
+
+      const mappedCalendarEvents = calendarOnlyEvents.map((event, index) => {
+        const durationMs = event.end.getTime() - event.start.getTime();
+        const durationMinutes = Math.round(durationMs / 60000);
+
+        return {
+          id: `gcal_${index}_${event.start.getTime()}`,
+          client_id: null,
+          scheduled_at: event.start.toISOString(),
+          duration: durationMinutes,
+          notes: event.summary,
+          status: 'scheduled',
+          client_name: event.summary,
+          source: 'google_calendar' as const,
+        };
+      });
+
+      mergedConsultations = [...mergedConsultations, ...mappedCalendarEvents];
+    }
+  } catch (error: any) {
+    console.log(`⚠️ [MARCO] Failed to fetch Google Calendar events for consultant ${consultantId}: ${error.message}`);
+  }
+
+  mergedConsultations.sort((a: any, b: any) => {
+    const timeA = new Date(a.scheduled_at).getTime();
+    const timeB = new Date(b.scheduled_at).getTime();
+    return timeA - timeB;
+  });
 
   const workloadResult = await db.execute(sql`
     SELECT 
@@ -358,7 +410,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   `);
 
   return {
-    upcomingConsultations: upcomingResult.rows,
+    upcomingConsultations: mergedConsultations,
     workload: workloadResult.rows[0] || {},
     clientCount: clientCountResult.rows[0]?.total_clients || 0,
     consultationMonitoring: consultationMonitoringResult.rows,

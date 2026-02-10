@@ -1335,7 +1335,34 @@ function SettingsTab({
                           <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground border-t">
                             <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
                             <span>•</span>
-                            <span>Analisi ogni 30 minuti</span>
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <Timer className="h-3 w-3" />
+                              <Select
+                                value={settings.role_frequencies[role.id] || "30"}
+                                onValueChange={(value) => {
+                                  setSettings(prev => ({
+                                    ...prev,
+                                    role_frequencies: {
+                                      ...prev.role_frequencies,
+                                      [role.id]: value,
+                                    },
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="h-7 w-[160px] text-xs rounded-lg border-border">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                                  <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                                  <SelectItem value="60">Ogni ora</SelectItem>
+                                  <SelectItem value="120">Ogni 2 ore</SelectItem>
+                                  <SelectItem value="240">Ogni 4 ore</SelectItem>
+                                  <SelectItem value="480">Ogni 8 ore</SelectItem>
+                                  <SelectItem value="1440">Una volta al giorno</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                             {role.total_tasks_30d > 0 && (
                               <>
                                 <span>•</span>
