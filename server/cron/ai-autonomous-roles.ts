@@ -361,12 +361,10 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   const consultationMonitoringResult = await db.execute(sql`
     SELECT 
       u.id,
+      u.email,
       u.first_name || ' ' || u.last_name as client_name,
       u.monthly_consultation_limit,
-      (
-        COALESCE(c_direct.consultation_count, 0) +
-        COALESCE(c_notes.consultation_count, 0)
-      )::int as consultations_used
+      COALESCE(c_direct.consultation_count, 0)::int as consultations_used
     FROM users u
     LEFT JOIN (
       SELECT client_id, COUNT(*)::int as consultation_count
@@ -378,20 +376,10 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
         AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
       GROUP BY client_id
     ) c_direct ON c_direct.client_id = u.id::text
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*)::int as consultation_count
-      FROM consultations
-      WHERE consultant_id = ${consultantId}
-        AND client_id IS NULL
-        AND status IN ('completed', 'scheduled')
-        AND scheduled_at >= date_trunc('month', NOW())
-        AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
-        AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
-    ) c_notes ON true
     WHERE u.consultant_id = ${consultantId}
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
-    ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
+    ORDER BY (u.monthly_consultation_limit - COALESCE(c_direct.consultation_count, 0)) ASC
   `);
 
   const schedulingGapsResult = await db.execute(sql`
@@ -404,13 +392,14 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     )
     SELECT 
       u.id as client_id,
+      u.email,
       u.first_name || ' ' || u.last_name as client_name,
       u.monthly_consultation_limit,
       u.phone_number,
       m.month_start,
       to_char(m.month_start, 'YYYY-MM') as month_label,
       to_char(m.month_start, 'TMMonth YYYY') as month_name,
-      (COALESCE(c_direct.cnt, 0) + COALESCE(c_notes.cnt, 0))::int as scheduled_count
+      COALESCE(c_direct.cnt, 0)::int as scheduled_count
     FROM users u
     CROSS JOIN months m
     LEFT JOIN (
@@ -421,21 +410,97 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
         AND status IN ('scheduled', 'completed')
       GROUP BY client_id, date_trunc('month', scheduled_at)
     ) c_direct ON c_direct.client_id = u.id::text AND c_direct.month = m.month_start
-    LEFT JOIN LATERAL (
-      SELECT COUNT(*)::int as cnt
-      FROM consultations
-      WHERE consultant_id = ${consultantId}
-        AND client_id IS NULL
-        AND status IN ('scheduled', 'completed')
-        AND scheduled_at >= m.month_start
-        AND scheduled_at < m.month_start + INTERVAL '1 month'
-        AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
-    ) c_notes ON true
     WHERE u.consultant_id = ${consultantId}
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
     ORDER BY u.first_name, m.month_start
   `);
+
+  // Enrich with Google Calendar events matched by attendee email (same logic as monitoring page)
+  let calendarEventsForCounting: Array<{ start: Date; end: Date; summary: string; attendeeEmails: string[] }> = [];
+  try {
+    const calConnected = await (await import("../google-calendar-service")).isGoogleCalendarConnected(consultantId);
+    if (calConnected) {
+      const calStart = new Date();
+      calStart.setDate(1); calStart.setHours(0, 0, 0, 0);
+      const calEnd = new Date(calStart);
+      calEnd.setMonth(calEnd.getMonth() + 3);
+      calendarEventsForCounting = await listEvents(consultantId, calStart, calEnd);
+    }
+  } catch (err: any) {
+    console.log(`⚠️ [MARCO] Failed to fetch calendar events for counting: ${err.message}`);
+  }
+
+  if (calendarEventsForCounting.length > 0) {
+    const HIDDEN_EVENTS = ['INIZIO GIORNATA', 'PRANZO', 'FINE GIORNATA'];
+    const clientCalEvents = calendarEventsForCounting.filter(
+      e => !HIDDEN_EVENTS.includes(e.summary?.trim()) && e.attendeeEmails?.length > 0
+    );
+
+    // Build email -> client_id map from both result sets
+    const emailToClientId: Record<string, string> = {};
+    for (const row of consultationMonitoringResult.rows as any[]) {
+      if (row.email) emailToClientId[row.email.toLowerCase()] = row.id;
+    }
+
+    // Get existing DB consultation dates to avoid double-counting
+    const dbConsultationDates = await db.execute(sql`
+      SELECT client_id, scheduled_at::date as sdate
+      FROM consultations
+      WHERE consultant_id = ${consultantId}
+        AND client_id IS NOT NULL
+        AND status IN ('completed', 'scheduled')
+        AND scheduled_at >= date_trunc('month', NOW())
+        AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '3 months'
+    `);
+    const existingDates = new Set(
+      (dbConsultationDates.rows as any[]).map(r => `${r.client_id}-${r.sdate}`)
+    );
+
+    // Count calendar events per client per month
+    const calCountByClientMonth: Record<string, number> = {};
+    const calCountByClientCurrentMonth: Record<string, number> = {};
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    for (const evt of clientCalEvents) {
+      for (const email of evt.attendeeEmails) {
+        const clientId = emailToClientId[email.toLowerCase()];
+        if (!clientId) continue;
+        const dateKey = `${clientId}-${evt.start.toISOString().split('T')[0]}`;
+        if (existingDates.has(dateKey)) continue;
+        existingDates.add(dateKey);
+
+        // For schedulingGaps: month key
+        const monthKey = `${clientId}-${evt.start.getFullYear()}-${evt.start.getMonth()}`;
+        calCountByClientMonth[monthKey] = (calCountByClientMonth[monthKey] || 0) + 1;
+
+        // For consultationMonitoring: current month only
+        if (evt.start >= currentMonthStart && evt.start < currentMonthEnd) {
+          calCountByClientCurrentMonth[clientId] = (calCountByClientCurrentMonth[clientId] || 0) + 1;
+        }
+      }
+    }
+
+    // Enrich consultationMonitoring rows
+    for (const row of consultationMonitoringResult.rows as any[]) {
+      const extra = calCountByClientCurrentMonth[row.id] || 0;
+      if (extra > 0) {
+        row.consultations_used = (parseInt(row.consultations_used) || 0) + extra;
+      }
+    }
+
+    // Enrich schedulingGaps rows
+    for (const row of schedulingGapsResult.rows as any[]) {
+      const monthDate = new Date(row.month_start);
+      const monthKey = `${row.client_id}-${monthDate.getFullYear()}-${monthDate.getMonth()}`;
+      const extra = calCountByClientMonth[monthKey] || 0;
+      if (extra > 0) {
+        row.scheduled_count = (parseInt(row.scheduled_count) || 0) + extra;
+      }
+    }
+  }
 
   return {
     upcomingConsultations: mergedConsultations,
