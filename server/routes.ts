@@ -4062,7 +4062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const endDate = new Date(now.getFullYear(), now.getMonth() + months + 1, 0);
 
-      const existingResult = await db.execute(sql`
+      const existingClientResult = await db.execute(sql`
         SELECT scheduled_at, status FROM consultations
         WHERE consultant_id = ${consultantId}
           AND (client_id = ${clientId} OR client_email = ${client.email})
@@ -4072,11 +4072,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `);
       const existingByMonth: Record<string, number> = {};
       const existingDateStrings: string[] = [];
-      for (const row of existingResult.rows as any[]) {
+      for (const row of existingClientResult.rows as any[]) {
         const d = new Date(row.scheduled_at);
         const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
         existingByMonth[monthKey] = (existingByMonth[monthKey] || 0) + 1;
         existingDateStrings.push(d.toISOString().split('T')[0]);
+      }
+
+      const allConsultantSlotsResult = await db.execute(sql`
+        SELECT scheduled_at FROM consultations
+        WHERE consultant_id = ${consultantId}
+          AND status IN ('scheduled', 'completed')
+          AND scheduled_at >= ${new Date(now.getFullYear(), now.getMonth(), 1).toISOString()}
+          AND scheduled_at <= ${endDate.toISOString()}
+      `);
+      const consultantBusySlots: Set<string> = new Set();
+      for (const row of allConsultantSlotsResult.rows as any[]) {
+        const d = new Date(row.scheduled_at);
+        consultantBusySlots.add(d.toISOString());
       }
 
       try {
@@ -4133,10 +4146,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const totalInMonth = (existingByMonth[cursorMonthKey] || 0) + (proposedByMonth[cursorMonthKey] || 0);
 
           if (!allProposedDateStrings.includes(dateStr) && totalInMonth < perMonth) {
-            const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-            proposals.push({ date: dateStr, time: proposalTime, month: monthName });
-            allProposedDateStrings.push(dateStr);
-            proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
+            const slotISO = new Date(dateStr + 'T' + proposalTime + ':00').toISOString();
+            if (!consultantBusySlots.has(slotISO)) {
+              const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+              proposals.push({ date: dateStr, time: proposalTime, month: monthName });
+              allProposedDateStrings.push(dateStr);
+              proposedByMonth[cursorMonthKey] = (proposedByMonth[cursorMonthKey] || 0) + 1;
+            }
           }
 
           cursor.setDate(cursor.getDate() + intervalDays);
@@ -4183,8 +4199,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
 
             if (!allProposedDateStrings.includes(dateStr)) {
-              proposals.push({ date: dateStr, time: proposalTime, month: monthName });
-              allProposedDateStrings.push(dateStr);
+              const slotISO = new Date(dateStr + 'T' + proposalTime + ':00').toISOString();
+              if (!consultantBusySlots.has(slotISO)) {
+                proposals.push({ date: dateStr, time: proposalTime, month: monthName });
+                allProposedDateStrings.push(dateStr);
+              }
             }
           }
         }
@@ -4211,11 +4230,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (candidate.getDay() !== 0 && candidate.getDay() !== 6) {
                 const dateStr = candidate.toISOString().split('T')[0];
                 if (!allProposedDateStrings.includes(dateStr)) {
-                  const monthName = candidate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-                  proposals.push({ date: dateStr, time: proposalTime, month: monthName });
-                  allProposedDateStrings.push(dateStr);
-                  added++;
-                  break;
+                  const slotISO = new Date(dateStr + 'T' + proposalTime + ':00').toISOString();
+                  if (!consultantBusySlots.has(slotISO)) {
+                    const monthName = candidate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                    proposals.push({ date: dateStr, time: proposalTime, month: monthName });
+                    allProposedDateStrings.push(dateStr);
+                    added++;
+                    break;
+                  }
                 }
               }
               candidate.setDate(candidate.getDate() + 1);
@@ -4250,8 +4272,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return slot.start.toISOString().split('T')[0] === proposal.date &&
             proposalStart < slot.end && proposalEnd > slot.start;
         });
+        const hasDbSlotConflict = consultantBusySlots.has(proposalStart.toISOString());
 
-        if (conflictsOnDay.length === 0) {
+        if (conflictsOnDay.length === 0 && !hasDbSlotConflict) {
           validProposals.push(proposal);
           continue;
         }
@@ -4264,14 +4287,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let resolved = false;
         for (const altHour of alternatives) {
-          const altStart = new Date(proposal.date + 'T' + String(altHour).padStart(2, '0') + ':00:00');
+          const altTimeStr = `${String(altHour).padStart(2, '0')}:00`;
+          const altStart = new Date(proposal.date + 'T' + altTimeStr + ':00');
           const altEnd = new Date(altStart.getTime() + 60 * 60 * 1000);
-          const hasConflict = calendarBusySlots.some(slot => {
+          const hasCalendarConflict = calendarBusySlots.some(slot => {
             return slot.start.toISOString().split('T')[0] === proposal.date &&
               altStart < slot.end && altEnd > slot.start;
           });
-          if (!hasConflict) {
-            proposal.time = `${String(altHour).padStart(2, '0')}:00`;
+          const hasDbConflict = consultantBusySlots.has(altStart.toISOString());
+          if (!hasCalendarConflict && !hasDbConflict) {
+            proposal.time = altTimeStr;
             validProposals.push(proposal);
             resolved = true;
             break;
@@ -4291,15 +4316,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (allProposedDateStrings.includes(nextDateStr)) continue;
 
             for (const altHour of alternatives) {
-              const altStart = new Date(nextDateStr + 'T' + String(altHour).padStart(2, '0') + ':00:00');
+              const altTimeStr = `${String(altHour).padStart(2, '0')}:00`;
+              const altStart = new Date(nextDateStr + 'T' + altTimeStr + ':00');
               const altEnd = new Date(altStart.getTime() + 60 * 60 * 1000);
-              const hasConflict = calendarBusySlots.some(slot => {
+              const hasCalendarConflict = calendarBusySlots.some(slot => {
                 return slot.start.toISOString().split('T')[0] === nextDateStr &&
                   altStart < slot.end && altEnd > slot.start;
               });
-              if (!hasConflict) {
+              const hasDbConflict = consultantBusySlots.has(altStart.toISOString());
+              if (!hasCalendarConflict && !hasDbConflict) {
                 proposal.date = nextDateStr;
-                proposal.time = `${String(altHour).padStart(2, '0')}:00`;
+                proposal.time = altTimeStr;
                 proposal.month = nextDay.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
                 allProposedDateStrings.push(nextDateStr);
                 validProposals.push(proposal);
