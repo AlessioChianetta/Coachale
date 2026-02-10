@@ -16,6 +16,7 @@ import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWi
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
+import { FileSearchService } from '../ai/file-search-service';
 
 const CRON_JOB_NAME = 'ai-task-scheduler';
 const LOCK_DURATION_MS = 2 * 60 * 1000; // 2 minutes
@@ -1467,6 +1468,19 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         recentAllTasks: recentAllTasksSummary,
       });
 
+      let marcoFileSearchTool: any = null;
+      if (role.id === 'marco' && roleData.fileSearchStoreNames?.length > 0) {
+        try {
+          const fileSearchService = new FileSearchService();
+          marcoFileSearchTool = fileSearchService.buildFileSearchTool(roleData.fileSearchStoreNames);
+          if (marcoFileSearchTool) {
+            console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] File Search enabled with ${roleData.fileSearchStoreNames.length} stores`);
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to build file search tool: ${err.message}`);
+        }
+      }
+
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
 
       let responseText: string | undefined;
@@ -1480,6 +1494,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               maxOutputTokens: 4096,
               responseMimeType: 'application/json',
             },
+            ...(marcoFileSearchTool ? { tools: [marcoFileSearchTool] } : {}),
           });
           responseText = response.response.text();
           break;

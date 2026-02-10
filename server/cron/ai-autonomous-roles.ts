@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { listEvents } from "../google-calendar-service";
+import { FileSearchService } from "../ai/file-search-service";
 
 function buildTaskMemorySection(recentAllTasks: any[], roleId: string): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
@@ -344,18 +345,25 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   `);
   const marcoContext = (marcoContextResult.rows[0] as any)?.marco_context || {};
 
-  let kbDocumentsContent: Array<{title: string, content: string}> = [];
+  let kbDocumentTitles: string[] = [];
+  let fileSearchStoreNames: string[] = [];
   const linkedIds = marcoContext.linkedKbDocumentIds || [];
   if (linkedIds.length > 0) {
     const kbResult = await db.execute(sql`
-      SELECT title, SUBSTRING(extracted_content, 1, 3000) as content
+      SELECT title
       FROM consultant_knowledge_documents
       WHERE id = ANY(${linkedIds}::varchar[])
       AND consultant_id = ${consultantId}
       AND status = 'indexed'
-      LIMIT 10
     `);
-    kbDocumentsContent = kbResult.rows.map((r: any) => ({ title: r.title, content: r.content }));
+    kbDocumentTitles = kbResult.rows.map((r: any) => r.title);
+
+    try {
+      const fileSearchService = new FileSearchService();
+      fileSearchStoreNames = await fileSearchService.getConsultantOwnStores(consultantId);
+    } catch (err: any) {
+      console.error(`⚠️ [MARCO] Failed to get file search stores: ${err.message}`);
+    }
   }
 
   const consultationMonitoringResult = await db.execute(sql`
@@ -509,7 +517,8 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     consultationMonitoring: consultationMonitoringResult.rows,
     schedulingGaps: schedulingGapsResult.rows,
     marcoContext,
-    kbDocumentsContent,
+    kbDocumentTitles,
+    fileSearchStoreNames,
   };
 }
 
@@ -1194,10 +1203,11 @@ ${roleData.marcoContext?.roadmap || 'Nessuna roadmap definita'}
 
 DOCUMENTI DI RIFERIMENTO (dalla Knowledge Base):
 ${(() => {
-  const docs = roleData.kbDocumentsContent || [];
-  if (docs.length === 0) return 'Nessun documento collegato';
-  return docs.map((d: any) => `📄 ${d.title}:\n${d.content || 'Contenuto non disponibile'}`).join('\n\n');
+  const titles = roleData.kbDocumentTitles || [];
+  if (titles.length === 0) return 'Nessun documento collegato';
+  return titles.map((t: string, i: number) => `${i + 1}. 📄 ${t}`).join('\n');
 })()}
+I contenuti di questi documenti sono disponibili tramite il sistema File Search. Usa le informazioni recuperate per contestualizzare la tua analisi.
 
 STILE REPORT PREFERITO: ${roleData.marcoContext?.reportStyle || 'bilanciato'}
 ${roleData.marcoContext?.reportFocus ? `FOCUS REPORT: ${roleData.marcoContext.reportFocus}` : ''}
