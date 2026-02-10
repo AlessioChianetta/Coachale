@@ -3109,6 +3109,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Consultation monitoring endpoint
+  app.get("/api/clients/consultation-monitoring", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'consultant' && user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const consultantId = user.id;
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      const result = await db.execute(sql`
+        SELECT 
+          u.id,
+          u.first_name,
+          u.last_name,
+          u.email,
+          u.phone_number,
+          u.monthly_consultation_limit,
+          u.is_active,
+          COALESCE(c.consultation_count, 0)::int as consultations_used
+        FROM users u
+        LEFT JOIN (
+          SELECT client_id, COUNT(*)::int as consultation_count
+          FROM consultations
+          WHERE consultant_id = ${consultantId}
+            AND status IN ('completed', 'scheduled')
+            AND scheduled_at >= ${monthStart.toISOString()}
+            AND scheduled_at < ${monthEnd.toISOString()}
+          GROUP BY client_id
+        ) c ON c.client_id = u.id::text
+        WHERE u.consultant_id = ${consultantId}
+          AND u.role = 'client'
+          AND u.is_active = true
+          AND u.monthly_consultation_limit IS NOT NULL
+        ORDER BY (u.monthly_consultation_limit - COALESCE(c.consultation_count, 0)) ASC
+      `);
+
+      const monitoringData = result.rows.map((row: any) => {
+        const limit = row.monthly_consultation_limit;
+        const used = row.consultations_used;
+        const remaining = Math.max(0, limit - used);
+        return {
+          id: row.id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          email: row.email,
+          phoneNumber: row.phone_number,
+          monthlyConsultationLimit: limit,
+          consultationsUsedThisMonth: used,
+          remaining,
+          isActive: row.is_active,
+        };
+      });
+
+      res.json(monitoringData);
+    } catch (error: any) {
+      console.error("Error fetching consultation monitoring:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Client routes
   app.get("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

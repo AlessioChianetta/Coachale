@@ -34,7 +34,11 @@ import {
   Loader2,
   Briefcase,
   UserCog,
-  UserMinus
+  UserMinus,
+  BarChart3,
+  AlertTriangle,
+  CheckCircle,
+  Clock
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -90,6 +94,9 @@ export default function ConsultantClientsPage() {
   
   // Bulk selection state
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  
+  // In-page tab state
+  const [activeTab, setActiveTab] = useState<'clienti' | 'monitoraggio'>('clienti');
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -218,6 +225,19 @@ export default function ConsultantClientsPage() {
       const data = await response.json();
       return data;
     },
+  });
+
+  // Fetch consultation monitoring data
+  const { data: monitoringData = [], isLoading: monitoringLoading } = useQuery({
+    queryKey: ["/api/clients/consultation-monitoring"],
+    queryFn: async () => {
+      const response = await fetch("/api/clients/consultation-monitoring", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch monitoring data");
+      return response.json();
+    },
+    enabled: activeTab === 'monitoraggio',
   });
 
   // Fetch exercise assignments
@@ -492,6 +512,7 @@ export default function ConsultantClientsPage() {
               { label: "Clienti", href: "/consultant/clients", icon: Users },
               { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
               { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
+              { label: "Monitoraggio", href: "/consultant/clients", icon: BarChart3 },
             ]}
           />
 
@@ -592,7 +613,221 @@ export default function ConsultantClientsPage() {
             </Card>
           </div>
 
-          {/* Enhanced Clients Grid */}
+          {/* In-page Tab Switcher */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab('clienti')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'clienti'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-white/80 text-slate-600 hover:bg-white border border-slate-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Elenco Clienti
+            </button>
+            <button
+              onClick={() => setActiveTab('monitoraggio')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'monitoraggio'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'bg-white/80 text-slate-600 hover:bg-white border border-slate-200'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Monitoraggio Consulenze
+            </button>
+          </div>
+
+          {activeTab === 'monitoraggio' ? (
+            /* Monitoring Content */
+            (() => {
+              const totalMonitored = monitoringData.length;
+              const avgUsage = totalMonitored > 0
+                ? Math.round(monitoringData.reduce((acc: number, c: any) => acc + (c.consultationsUsedThisMonth / c.monthlyConsultationLimit) * 100, 0) / totalMonitored)
+                : 0;
+              const atRiskCount = monitoringData.filter((c: any) => {
+                const pct = c.remaining / c.monthlyConsultationLimit;
+                return pct < 0.25;
+              }).length;
+
+              return (
+                <div className="space-y-4">
+                  {/* Summary Header */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+                          <Users className="w-5 h-5 text-cyan-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Clienti monitorati</p>
+                          <p className="text-xl font-bold text-slate-800">{totalMonitored}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
+                          <BarChart3 className="w-5 h-5 text-teal-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Utilizzo medio</p>
+                          <p className="text-xl font-bold text-slate-800">{avgUsage}%</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                          <AlertTriangle className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Clienti a rischio</p>
+                          <p className="text-xl font-bold text-slate-800">{atRiskCount}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Monitoring Table */}
+                  <Card className="border border-slate-200 shadow-sm bg-white/80">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg font-bold text-slate-800">
+                        Monitoraggio Pacchetti Consulenze
+                      </CardTitle>
+                      <p className="text-sm text-slate-500">Utilizzo mensile dei pacchetti consulenze limitate</p>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {monitoringLoading ? (
+                        <div className="flex items-center justify-center py-16">
+                          <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+                          <span className="ml-2 text-slate-500">Caricamento...</span>
+                        </div>
+                      ) : monitoringData.length === 0 ? (
+                        <div className="text-center py-16 px-4">
+                          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <BarChart3 className="w-8 h-8 text-slate-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-slate-800 mb-2">Nessun pacchetto limitato</h3>
+                          <p className="text-sm text-slate-500">Nessun cliente ha un limite di consulenze mensile configurato</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">Telefono</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Pacchetto</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Utilizzate</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Rimanenti</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Stato</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {monitoringData.map((client: any) => {
+                                const usagePct = client.monthlyConsultationLimit > 0
+                                  ? (client.consultationsUsedThisMonth / client.monthlyConsultationLimit) * 100
+                                  : 0;
+                                const remainingPct = client.monthlyConsultationLimit > 0
+                                  ? (client.remaining / client.monthlyConsultationLimit) * 100
+                                  : 100;
+
+                                const remainingColor = remainingPct > 50
+                                  ? 'text-emerald-600'
+                                  : remainingPct >= 25
+                                    ? 'text-amber-600'
+                                    : 'text-red-600';
+
+                                const remainingBg = remainingPct > 50
+                                  ? 'bg-emerald-50'
+                                  : remainingPct >= 25
+                                    ? 'bg-amber-50'
+                                    : 'bg-red-50';
+
+                                const statusLabel = client.remaining === 0
+                                  ? 'Esaurito'
+                                  : remainingPct < 25
+                                    ? 'Quasi esaurito'
+                                    : 'In linea';
+
+                                const statusIcon = client.remaining === 0
+                                  ? <AlertTriangle className="w-3 h-3" />
+                                  : remainingPct < 25
+                                    ? <Clock className="w-3 h-3" />
+                                    : <CheckCircle className="w-3 h-3" />;
+
+                                const statusBadgeClass = client.remaining === 0
+                                  ? 'bg-red-100 text-red-700 border-red-200'
+                                  : remainingPct < 25
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                    : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+
+                                const progressBarColor = remainingPct > 50
+                                  ? 'from-cyan-500 to-teal-500'
+                                  : remainingPct >= 25
+                                    ? 'from-amber-400 to-amber-500'
+                                    : 'from-red-400 to-red-500';
+
+                                return (
+                                  <tr key={client.id} className="hover:bg-cyan-50/50 transition-colors">
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2.5">
+                                        <Avatar className="w-8 h-8 flex-shrink-0">
+                                          <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-medium text-xs">
+                                            {client.firstName?.[0]}{client.lastName?.[0]}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-medium text-sm text-slate-800">
+                                          {client.firstName} {client.lastName}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 hidden md:table-cell">
+                                      <span className="text-xs text-slate-500">{client.phoneNumber || '—'}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className="text-sm font-semibold text-slate-700">{client.monthlyConsultationLimit}/mese</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex flex-col items-center gap-1">
+                                        <span className="text-sm font-semibold text-slate-700">{client.consultationsUsedThisMonth}</span>
+                                        <div className="w-20 bg-slate-200 rounded-full h-1.5">
+                                          <div
+                                            className={`bg-gradient-to-r ${progressBarColor} h-1.5 rounded-full transition-all`}
+                                            style={{ width: `${Math.min(usagePct, 100)}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-sm font-bold ${remainingColor} ${remainingBg}`}>
+                                        {client.remaining}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <Badge className={`text-xs px-2 py-0.5 ${statusBadgeClass} border`}>
+                                        <span className="flex items-center gap-1">
+                                          {statusIcon}
+                                          {statusLabel}
+                                        </span>
+                                      </Badge>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()
+          ) : (
+          /* Existing Client List Content */
           <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
             <CardHeader className="pb-4">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -981,6 +1216,7 @@ export default function ConsultantClientsPage() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
 

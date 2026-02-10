@@ -287,10 +287,34 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       AND u.is_active = true
   `);
 
+  const consultationMonitoringResult = await db.execute(sql`
+    SELECT 
+      u.id,
+      u.first_name || ' ' || u.last_name as client_name,
+      u.monthly_consultation_limit,
+      COALESCE(c.consultation_count, 0)::int as consultations_used
+    FROM users u
+    LEFT JOIN (
+      SELECT client_id, COUNT(*)::int as consultation_count
+      FROM consultations
+      WHERE consultant_id = ${consultantId}
+        AND status IN ('completed', 'scheduled')
+        AND scheduled_at >= date_trunc('month', NOW())
+        AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
+      GROUP BY client_id
+    ) c ON c.client_id = u.id::text
+    WHERE u.consultant_id = ${consultantId}
+      AND u.role = 'client'
+      AND u.is_active = true
+      AND u.monthly_consultation_limit IS NOT NULL
+    ORDER BY (u.monthly_consultation_limit - COALESCE(c.consultation_count, 0)) ASC
+  `);
+
   return {
     upcomingConsultations: upcomingResult.rows,
     workload: workloadResult.rows[0] || {},
     clientCount: clientCountResult.rows[0]?.total_clients || 0,
+    consultationMonitoring: consultationMonitoringResult.rows,
   };
 }
 
@@ -893,6 +917,22 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       const workload = roleData.workload || {};
       const clientCount = roleData.clientCount || 0;
 
+      const monitoringSummary = (roleData.consultationMonitoring || []).map((m: any) => {
+        const limit = m.monthly_consultation_limit;
+        const used = m.consultations_used;
+        const remaining = Math.max(0, limit - used);
+        const percentUsed = Math.round((used / limit) * 100);
+        return {
+          client: m.client_name,
+          client_id: m.id,
+          limite_mensile: limit,
+          usate_questo_mese: used,
+          rimanenti: remaining,
+          percentuale_usata: `${percentUsed}%`,
+          stato: remaining === 0 ? 'ESAURITO' : percentUsed >= 75 ? 'QUASI_ESAURITO' : 'OK',
+        };
+      });
+
       return `Sei MARCO, Executive Coach AI. Il tuo ruolo è analizzare l'agenda, il carico di lavoro e le performance del consulente per aiutarlo a organizzare meglio la giornata e prepararsi agli incontri.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
@@ -908,6 +948,9 @@ METRICHE CARICO DI LAVORO:
 - Task pendenti/programmati: ${workload.pending_tasks || 0}
 - Clienti attivi totali: ${clientCount}
 
+MONITORAGGIO CONSULENZE LIMITATE:
+${monitoringSummary.length > 0 ? JSON.stringify(monitoringSummary, null, 2) : 'Nessun cliente con pacchetto consulenze limitato'}
+
 ${buildTaskMemorySection(recentAllTasks, 'marco')}
 
 CLIENTI ATTIVI:
@@ -921,6 +964,7 @@ REGOLE DI MARCO:
 2. Il tuo focus è sul CONSULENTE, non sui singoli clienti. Aiuta il consulente a organizzarsi meglio.
 3. Priorità:
    - Consulenze nelle prossime 24-48h senza preparazione → task di preparazione briefing URGENTE
+   - Clienti con pacchetto consulenze ESAURITO o QUASI_ESAURITO → task di monitoraggio per avvisare il consulente
    - Troppi task pendenti (>10) → task di monitoraggio e riorganizzazione
    - Gap nell'agenda (giorni senza consulenze) → suggerisci attività produttive
    - Carico di lavoro squilibrato → suggerisci ottimizzazioni
