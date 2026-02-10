@@ -44,6 +44,12 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 
 # Recent Changes
 
+## 2026-02-10: Consultation Scheduling Wizard & Monitoring Enhancements
+- **Monitoring table improvements**: Added "Programmate" (scheduled count), "Prossima" (next scheduled date), and "Azioni" (scheduling button) columns to consultation monitoring table
+- **Scheduling wizard**: 3-step dialog (Overview → Proposal → Review) per client to plan future consultations. Overview shows package stats; Proposal generates evenly-spaced dates across N months (1-6) avoiding weekends and existing dates, respecting monthly package limits; Review confirms and batch-creates consultations
+- **Backend endpoints**: `POST /api/consultations/schedule-proposal` (generates proposals capped by existing usage per month) and `POST /api/consultations/batch-create` (creates up to 60 consultations with validation)
+- **NavigationTabs duplicate key fix**: Changed "Monitoraggio" href from `/consultant/clients` to `/consultant/clients/monitoring`
+
 ## 2026-02-10: AI Autonomy Page — Cycle Grouping, Data Transparency, Personalizza Config
 - **Cycle-based activity grouping**: Added `cycle_id` column to `ai_activity_log`; backend generates unique cycle IDs per autonomous analysis run and passes to all log entries. Frontend groups activities by cycle in both "All" and "Reasoning" tabs with accordion UI (header: "Analisi #XXXXX — date/time")
 - **Data transparency**: Backend enriches `event_data` with `clients_list`, `role_specific_data`, `excluded_clients`, `recent_tasks_summary`. Frontend shows expandable "Base dati utilizzata" section in each role's reasoning card
