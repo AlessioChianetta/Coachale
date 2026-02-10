@@ -4028,10 +4028,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const row of historyResult.rows as any[]) {
         const d = new Date(row.scheduled_at);
-        const hour = d.getHours();
-        const timeStr = `${String(hour).padStart(2, '0')}:00`;
+        const italianTime = d.toLocaleString('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hour12: false });
+        const italianDay = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Rome' })).getDay();
+        const [hStr, mStr] = italianTime.split(':');
+        const hour = parseInt(hStr);
+        const min = parseInt(mStr);
+        const roundedMin = min < 15 ? '00' : min < 45 ? '30' : '00';
+        const roundedHour = roundedMin === '00' && min >= 45 ? hour + 1 : hour;
+        const timeStr = `${String(roundedHour).padStart(2, '0')}:${roundedMin}`;
         pastTimes[timeStr] = (pastTimes[timeStr] || 0) + 1;
-        pastDays[d.getDay()] = (pastDays[d.getDay()] || 0) + 1;
+        pastDays[italianDay] = (pastDays[italianDay] || 0) + 1;
       }
 
       if (Object.keys(pastTimes).length > 0) {
