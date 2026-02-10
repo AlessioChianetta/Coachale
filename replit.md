@@ -44,7 +44,16 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 
 # Recent Changes
 
-## 2026-02-10: Consultation Scheduling Wizard & Monitoring Enhancements
+## 2026-02-10: Intelligent Consultation Scheduling Wizard
+- **Custom intervals**: Scheduling wizard supports "every X days" (10, 15, 20, 25, 30) in addition to per-month package limits
+- **Per-month extras**: Ability to add extra consultations (+1 to +5) for specific months via +/- steppers
+- **Time preference**: Morning/Afternoon/Auto selector; Auto uses detected historical pattern
+- **Pattern detection**: Analyzes last 20 completed consultations to detect preferred day of week and time, biases proposals toward those patterns
+- **Google Calendar conflict avoidance**: Checks busy slots on each proposed date, tries alternative hours, then alternative days (up to 3), removes proposals if fully busy
+- **Monitoring Google Calendar integration**: Fetches events 7 months forward, matches attendee emails to clients, includes in consultation counts avoiding duplicates
+- **Business hours normalization**: Detected times outside 8-18 are clamped to business hours
+
+## 2026-02-10: Consultation Scheduling Wizard & Monitoring Enhancements (earlier)
 - **Monitoring table improvements**: Added "Programmate" (scheduled count), "Prossima" (next scheduled date), and "Azioni" (scheduling button) columns to consultation monitoring table
 - **Scheduling wizard**: 3-step dialog (Overview → Proposal → Review) per client to plan future consultations. Overview shows package stats; Proposal generates evenly-spaced dates across N months (1-6) avoiding weekends and existing dates, respecting monthly package limits; Review confirms and batch-creates consultations
 - **Backend endpoints**: `POST /api/consultations/schedule-proposal` (generates proposals capped by existing usage per month) and `POST /api/consultations/batch-create` (creates up to 60 consultations with validation)
