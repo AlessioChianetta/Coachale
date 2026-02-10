@@ -973,7 +973,7 @@ export async function listEvents(
   startDate: Date,
   endDate: Date,
   agentConfigId?: string
-): Promise<Array<{ start: Date; end: Date; summary: string; status: string }>> {
+): Promise<Array<{ start: Date; end: Date; summary: string; status: string; attendeeEmails: string[] }>> {
   try {
     let calendar;
     let calendarId: string | null = null;
@@ -1051,7 +1051,8 @@ export async function listEvents(
         start: new Date(event.start?.dateTime || event.start?.date || ''),
         end: new Date(event.end?.dateTime || event.end?.date || ''),
         summary: event.summary || 'Busy',
-        status: event.status || 'confirmed'
+        status: event.status || 'confirmed',
+        attendeeEmails: (event.attendees || []).map(a => a.email).filter(Boolean) as string[],
       }))
       .filter(event => !isNaN(event.start.getTime()) && !isNaN(event.end.getTime()));
     

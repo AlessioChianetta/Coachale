@@ -38,7 +38,11 @@ import {
   BarChart3,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  CalendarPlus,
+  CalendarDays,
+  X,
+  Plus as PlusIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -97,6 +101,14 @@ export default function ConsultantClientsPage() {
   
   // In-page tab state
   const [activeTab, setActiveTab] = useState<'clienti' | 'monitoraggio'>('clienti');
+  
+  // Scheduling wizard state
+  const [schedulingClient, setSchedulingClient] = useState<any>(null);
+  const [schedulingStep, setSchedulingStep] = useState<'overview' | 'proposal' | 'review'>('overview');
+  const [proposedDates, setProposedDates] = useState<Array<{date: string, time: string, month: string}>>([]);
+  const [schedulingMonths, setSchedulingMonths] = useState(3);
+  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
+  const [isCreatingConsultations, setIsCreatingConsultations] = useState(false);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -439,6 +451,56 @@ export default function ConsultantClientsPage() {
     setSelectedClients(newSelected);
   };
 
+  const handleGenerateProposal = async () => {
+    if (!schedulingClient) return;
+    setIsGeneratingProposal(true);
+    try {
+      const response = await fetch('/api/consultations/schedule-proposal', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: schedulingClient.id,
+          months: schedulingMonths,
+          consultationsPerMonth: schedulingClient.monthlyConsultationLimit
+        })
+      });
+      if (!response.ok) throw new Error('Failed to generate proposal');
+      const data = await response.json();
+      setProposedDates(data.proposals);
+      setSchedulingStep('proposal');
+    } catch (error) {
+      toast({ title: "Errore", description: "Impossibile generare la proposta", variant: "destructive" });
+    } finally {
+      setIsGeneratingProposal(false);
+    }
+  };
+
+  const handleCreateConsultations = async () => {
+    if (!schedulingClient || proposedDates.length === 0) return;
+    setIsCreatingConsultations(true);
+    try {
+      const response = await fetch('/api/consultations/batch-create', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: schedulingClient.id,
+          consultations: proposedDates
+        })
+      });
+      if (!response.ok) throw new Error('Failed to create consultations');
+      const data = await response.json();
+      toast({ title: "Consulenze programmate!", description: data.message });
+      setSchedulingClient(null);
+      setSchedulingStep('overview');
+      setProposedDates([]);
+      queryClient.invalidateQueries({ queryKey: ['/api/clients/consultation-monitoring'] });
+    } catch (error) {
+      toast({ title: "Errore", description: "Impossibile creare le consulenze", variant: "destructive" });
+    } finally {
+      setIsCreatingConsultations(false);
+    }
+  };
+
   const SortIcon = ({ column }: { column: typeof sortColumn }) => {
     if (sortColumn !== column) return <ChevronUp className="w-3 h-3 opacity-30" />;
     return sortDirection === 'asc' 
@@ -512,7 +574,7 @@ export default function ConsultantClientsPage() {
               { label: "Clienti", href: "/consultant/clients", icon: Users },
               { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
               { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
-              { label: "Monitoraggio", href: "/consultant/clients", icon: BarChart3 },
+              { label: "Monitoraggio", href: "/consultant/clients/monitoring", icon: BarChart3 },
             ]}
           />
 
@@ -721,8 +783,11 @@ export default function ConsultantClientsPage() {
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">Telefono</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Pacchetto</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Utilizzate</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Programmate</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Prossima</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Rimanenti</th>
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Stato</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Azioni</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -804,17 +869,53 @@ export default function ConsultantClientsPage() {
                                             style={{ width: `${Math.min(usagePct, 100)}%` }}
                                           />
                                         </div>
-                                        {client.consultations && client.consultations.length > 0 && (
+                                        {client.consultations && client.consultations.filter((c: any) => c.status === 'completed').length > 0 && (
                                           <div className="flex flex-wrap gap-1 mt-1">
-                                            {client.consultations.map((c: any, i: number) => (
-                                              <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${c.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                            {client.consultations.filter((c: any) => c.status === 'completed').map((c: any, i: number) => (
+                                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">
                                                 {new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
-                                                {c.status === 'scheduled' && ' (prev)'}
                                               </span>
                                             ))}
                                           </div>
                                         )}
                                       </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {(() => {
+                                        const scheduled = client.consultations?.filter((c: any) => c.status === 'scheduled') || [];
+                                        return (
+                                          <div className="flex flex-col items-center gap-1">
+                                            <span className="text-sm font-semibold text-blue-600">{scheduled.length}</span>
+                                            {scheduled.length > 0 && (
+                                              <div className="flex flex-wrap gap-1 mt-1">
+                                                {scheduled.map((c: any, i: number) => (
+                                                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                                                    {new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {(() => {
+                                        const scheduled = client.consultations?.filter((c: any) => c.status === 'scheduled') || [];
+                                        const now = new Date();
+                                        const upcoming = scheduled
+                                          .map((c: any) => new Date(c.date))
+                                          .filter((d: Date) => d >= now)
+                                          .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+                                        const next = upcoming[0];
+                                        return next ? (
+                                          <span className="text-xs font-medium text-blue-600">
+                                            {next.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs text-slate-400">—</span>
+                                        );
+                                      })()}
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-sm font-bold ${remainingColor} ${remainingBg}`}>
@@ -829,6 +930,22 @@ export default function ConsultantClientsPage() {
                                         </span>
                                       </Badge>
                                     </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSchedulingClient(client);
+                                          setSchedulingStep('overview');
+                                          setProposedDates([]);
+                                          setSchedulingMonths(3);
+                                        }}
+                                        className="text-xs h-7 px-2 border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                                      >
+                                        <CalendarPlus className="w-3 h-3 mr-1" />
+                                        Programma
+                                      </Button>
+                                    </td>
                                   </tr>
                                 );
                               })}
@@ -838,6 +955,204 @@ export default function ConsultantClientsPage() {
                       )}
                     </CardContent>
                   </Card>
+                  {/* Scheduling Wizard Dialog */}
+                  <Dialog open={!!schedulingClient} onOpenChange={() => { setSchedulingClient(null); setSchedulingStep('overview'); setProposedDates([]); }}>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <CalendarPlus className="w-5 h-5 text-cyan-600" />
+                          Programma Consulenze
+                        </DialogTitle>
+                      </DialogHeader>
+                      
+                      {schedulingStep === 'overview' && (
+                        <div className="space-y-4">
+                          <div className="bg-slate-50 rounded-xl p-4">
+                            <h3 className="font-semibold text-slate-800">{schedulingClient?.firstName} {schedulingClient?.lastName}</h3>
+                            <div className="grid grid-cols-3 gap-3 mt-3">
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-slate-800">{schedulingClient?.monthlyConsultationLimit}</p>
+                                <p className="text-xs text-slate-500">Pacchetto/mese</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-emerald-600">{schedulingClient?.consultationsUsedThisMonth}</p>
+                                <p className="text-xs text-slate-500">Fatte questo mese</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-cyan-600">{schedulingClient?.consultations?.filter((c:any) => c.status === 'scheduled').length || 0}</p>
+                                <p className="text-xs text-slate-500">Programmate</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {schedulingClient?.consultations?.filter((c: any) => c.status === 'scheduled').length > 0 && (
+                            <div className="bg-blue-50 rounded-xl p-3">
+                              <p className="text-xs font-medium text-blue-700 mb-2">Consulenze già programmate:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {schedulingClient.consultations.filter((c: any) => c.status === 'scheduled').map((c: any, i: number) => (
+                                  <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                                    {new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Per quanti mesi vuoi programmare?</label>
+                            <select 
+                              value={schedulingMonths}
+                              onChange={(e) => setSchedulingMonths(parseInt(e.target.value))}
+                              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                            >
+                              {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n === 1 ? 'mese' : 'mesi'}</option>)}
+                            </select>
+                          </div>
+                          
+                          <Button 
+                            onClick={handleGenerateProposal}
+                            disabled={isGeneratingProposal}
+                            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
+                          >
+                            {isGeneratingProposal ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Generazione...</> : 'Genera Proposta'}
+                          </Button>
+                        </div>
+                      )}
+
+                      {schedulingStep === 'proposal' && (
+                        <div className="space-y-4">
+                          <p className="text-sm text-slate-600">Modifica le date proposte, poi procedi alla conferma.</p>
+                          <div className="max-h-[400px] overflow-y-auto space-y-3">
+                            {(() => {
+                              const grouped = proposedDates.reduce((acc: Record<string, Array<{date: string, time: string, month: string, idx: number}>>, d, idx) => {
+                                if (!acc[d.month]) acc[d.month] = [];
+                                acc[d.month].push({ ...d, idx });
+                                return acc;
+                              }, {});
+                              return Object.entries(grouped).map(([month, dates]) => (
+                                <div key={month} className="bg-slate-50 rounded-xl p-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-slate-700 capitalize">{month}</h4>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newDate = dates[dates.length - 1];
+                                        const nextDay = new Date(newDate.date);
+                                        nextDay.setDate(nextDay.getDate() + 7);
+                                        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+                                          nextDay.setDate(nextDay.getDate() + 1);
+                                        }
+                                        setProposedDates(prev => [...prev, {
+                                          date: nextDay.toISOString().split('T')[0],
+                                          time: '10:00',
+                                          month
+                                        }]);
+                                      }}
+                                      className="h-6 text-xs text-cyan-600 hover:text-cyan-700"
+                                    >
+                                      <PlusIcon className="w-3 h-3 mr-1" />
+                                      Aggiungi
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {dates.map((d) => (
+                                      <div key={d.idx} className="flex items-center gap-2">
+                                        <input
+                                          type="date"
+                                          value={d.date}
+                                          onChange={(e) => {
+                                            setProposedDates(prev => prev.map((p, i) => i === d.idx ? { ...p, date: e.target.value } : p));
+                                          }}
+                                          className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg"
+                                        />
+                                        <input
+                                          type="time"
+                                          value={d.time}
+                                          onChange={(e) => {
+                                            setProposedDates(prev => prev.map((p, i) => i === d.idx ? { ...p, time: e.target.value } : p));
+                                          }}
+                                          className="w-24 px-2 py-1 text-sm border border-slate-200 rounded-lg"
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setProposedDates(prev => prev.filter((_, i) => i !== d.idx));
+                                          }}
+                                          className="h-7 w-7 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setSchedulingStep('overview')}
+                              className="flex-1"
+                            >
+                              Indietro
+                            </Button>
+                            <Button
+                              onClick={() => setSchedulingStep('review')}
+                              disabled={proposedDates.length === 0}
+                              className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                            >
+                              Rivedi ({proposedDates.length} consulenze)
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {schedulingStep === 'review' && (
+                        <div className="space-y-4">
+                          <div className="bg-slate-50 rounded-xl p-4">
+                            <h4 className="font-semibold text-slate-800 mb-2">Riepilogo</h4>
+                            <p className="text-sm text-slate-600">
+                              Stai per creare <strong>{proposedDates.length} consulenze</strong> per {schedulingClient?.firstName} {schedulingClient?.lastName}
+                            </p>
+                          </div>
+                          <div className="max-h-[300px] overflow-y-auto space-y-1">
+                            {proposedDates.map((d, i) => (
+                              <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-slate-100">
+                                <CalendarDays className="w-4 h-4 text-cyan-500 flex-shrink-0" />
+                                <span className="text-sm text-slate-700">
+                                  {new Date(d.date).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                </span>
+                                <span className="text-sm font-medium text-slate-800">{d.time}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setSchedulingStep('proposal')}
+                              className="flex-1"
+                            >
+                              Modifica
+                            </Button>
+                            <Button
+                              onClick={handleCreateConsultations}
+                              disabled={isCreatingConsultations}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              {isCreatingConsultations ? (
+                                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Creazione...</>
+                              ) : (
+                                <>Conferma e Crea</>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
                 </div>
               );
             })()

@@ -2653,7 +2653,11 @@ export default function ConsultantAppointments() {
     retry: 1,
   });
   
-  const appointments = mergedData?.appointments || [];
+  const HIDDEN_EVENT_NAMES = ['INIZIO GIORNATA', 'PRANZO', 'FINE GIORNATA'];
+  const appointments = (mergedData?.appointments || []).filter((apt: any) => {
+    const title = (apt.notes || apt.googleEventSummary || '').trim().toUpperCase();
+    return !HIDDEN_EVENT_NAMES.includes(title);
+  });
   const googleCalendarConnected = mergedData?.googleCalendarConnected || false;
 
   // Query per ottenere lista clienti
@@ -2759,7 +2763,12 @@ export default function ConsultantAppointments() {
   // Mutation per aggiornare appuntamento
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateAppointmentForm }) => {
-      return apiRequest("PUT", `/api/consultations/${id}`, data);
+      const appointment = (appointments as any[]).find((apt: any) => apt.id === id);
+      const payload = { ...data };
+      if (appointment?.attendeeEmails) {
+        (payload as any).attendeeEmails = appointment.attendeeEmails;
+      }
+      return apiRequest("PUT", `/api/consultations/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultations/consultant/merged"] });
@@ -2831,11 +2840,15 @@ export default function ConsultantAppointments() {
       // Empty string/null/undefined will clear the existing transcript
       updateData.transcript = data.transcript || null;
 
+      const appointment = (appointments as any[]).find((apt: any) => apt.id === id);
+      if (appointment?.attendeeEmails) {
+        updateData.attendeeEmails = appointment.attendeeEmails;
+      }
+
       await apiRequest("PUT", `/api/consultations/${id}`, updateData);
 
       // Se richiesto, crea task di follow-up
       if (data.createFollowUpTask) {
-        const appointment = (appointments as any[]).find((apt: any) => apt.id === id);
         if (appointment) {
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 3); // Task scade tra 3 giorni

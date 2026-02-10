@@ -3134,7 +3134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           u.is_active,
           (
             COALESCE(c_direct.consultation_count, 0) +
-            COALESCE(c_notes.consultation_count, 0)
+            COALESCE(c_email.consultation_count, 0)
           )::int as consultations_used
         FROM users u
         LEFT JOIN (
@@ -3147,20 +3147,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             AND scheduled_at < ${monthEnd.toISOString()}
           GROUP BY client_id
         ) c_direct ON c_direct.client_id = u.id::text
-        LEFT JOIN LATERAL (
-          SELECT COUNT(*)::int as consultation_count
+        LEFT JOIN (
+          SELECT client_email, COUNT(*)::int as consultation_count
           FROM consultations
           WHERE consultant_id = ${consultantId}
             AND client_id IS NULL
+            AND client_email IS NOT NULL
             AND status IN ('completed', 'scheduled')
             AND scheduled_at >= ${monthStart.toISOString()}
             AND scheduled_at < ${monthEnd.toISOString()}
-            AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
-        ) c_notes ON true
+          GROUP BY client_email
+        ) c_email ON c_email.client_email = u.email
         WHERE u.consultant_id = ${consultantId}
           AND u.is_active = true
           AND u.monthly_consultation_limit IS NOT NULL
-        ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
+        ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_email.consultation_count, 0))) ASC
       `);
 
       const clientIds = result.rows.map((r: any) => r.id);
@@ -3186,30 +3187,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        const namesForNotesSearch = result.rows.map((r: any) => ({
-          id: r.id,
-          fullName: `${r.first_name} ${r.last_name}`,
-        }));
         const unlinkedResult = await db.execute(sql`
-          SELECT scheduled_at, status, duration, notes
+          SELECT client_email, scheduled_at, status, duration, notes
           FROM consultations
           WHERE consultant_id = ${consultantId}
             AND client_id IS NULL
+            AND client_email IS NOT NULL
             AND status IN ('completed', 'scheduled')
             AND scheduled_at >= ${monthStart.toISOString()}
             AND scheduled_at < ${monthEnd.toISOString()}
         `);
         for (const row of unlinkedResult.rows as any[]) {
-          for (const client of namesForNotesSearch) {
-            if (row.notes && row.notes.toLowerCase().includes(client.fullName.toLowerCase())) {
-              if (!consultationDetails[client.id]) consultationDetails[client.id] = [];
-              consultationDetails[client.id].push({
-                date: row.scheduled_at,
-                status: row.status,
-                duration: row.duration,
-                matchedByNotes: true,
-              });
-            }
+          const matchedClient = result.rows.find((r: any) => r.email?.toLowerCase() === row.client_email?.toLowerCase());
+          if (matchedClient) {
+            const clientId = (matchedClient as any).id;
+            if (!consultationDetails[clientId]) consultationDetails[clientId] = [];
+            consultationDetails[clientId].push({
+              date: row.scheduled_at,
+              status: row.status,
+              duration: row.duration,
+              matchedByEmail: true,
+            });
           }
         }
       }
@@ -3671,7 +3669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : new Date(new Date().setMonth(new Date().getMonth() + 6)); // 6 months from now
       
       // Fetch Google Calendar events
-      let googleEvents: Array<{ start: Date; end: Date; summary: string; status: string }> = [];
+      let googleEvents: Array<{ start: Date; end: Date; summary: string; status: string; attendeeEmails: string[] }> = [];
       try {
         googleEvents = await googleCalendarService.listEvents(consultantId, start, end);
       } catch (error) {
@@ -3690,6 +3688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         googleEventSummary: event.summary,
         googleEventStart: event.start.toISOString(),
         googleEventEnd: event.end.toISOString(),
+        attendeeEmails: event.attendeeEmails || [],
       }));
       
       // Merge and detect duplicates (within 5 minute tolerance)
@@ -3714,6 +3713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...localApt,
             source: 'synced' as const,
             googleEventSummary: googleEventsFormatted[matchIndex].googleEventSummary,
+            attendeeEmails: googleEventsFormatted[matchIndex].attendeeEmails || [],
           });
         } else {
           // Local only
@@ -3875,10 +3875,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Create a new local consultation record with all validated data
+        let autoLinkedClientId = validatedData.clientId || null;
+        let autoLinkedClientEmail = null;
+
+        if (!autoLinkedClientId && req.body.attendeeEmails && req.body.attendeeEmails.length > 0) {
+          const attendeeEmails = req.body.attendeeEmails as string[];
+          const matchResult = await db.execute(sql`
+            SELECT id, email FROM users 
+            WHERE consultant_id = ${consultantId}
+              AND email IN (${sql.join(attendeeEmails.map(e => sql`${e}`), sql`,`)})
+              AND is_active = true
+            LIMIT 1
+          `);
+          
+          if (matchResult.rows.length > 0) {
+            autoLinkedClientId = (matchResult.rows[0] as any).id;
+            autoLinkedClientEmail = (matchResult.rows[0] as any).email;
+            console.log(`🔗 [CONSULTATIONS] Auto-linked client ${autoLinkedClientId} (${autoLinkedClientEmail}) via attendee email`);
+          }
+        }
+
         const newConsultation = await storage.createConsultation({
           consultantId,
-          clientId: validatedData.clientId || null,
+          clientId: autoLinkedClientId,
           scheduledAt: scheduledDate,
           duration: validatedData.duration || 60,
           notes: validatedData.notes || null,
@@ -3887,6 +3906,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fathomRecordingLink: validatedData.fathomRecordingLink || null,
           consultationSummary: validatedData.consultationSummary || null,
         });
+
+        if (autoLinkedClientEmail && newConsultation.id) {
+          await db.execute(sql`UPDATE consultations SET client_email = ${autoLinkedClientEmail} WHERE id = ${newConsultation.id}`);
+        }
         
         console.log(`✅ [CONSULTATIONS] Created local consultation ${newConsultation.id} from Google event ${consultationId}`);
         return res.json(newConsultation);
@@ -3913,6 +3936,196 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[CONSULTATIONS] Update error:', error);
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/consultations/schedule-proposal", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { clientId, months: rawMonths, consultationsPerMonth: rawPerMonth } = req.body;
+
+      if (!clientId) return res.status(400).json({ message: "clientId is required" });
+      const months = Math.max(1, Math.min(6, parseInt(rawMonths) || 3));
+
+      const clientResult = await db.execute(sql`
+        SELECT id, first_name, last_name, monthly_consultation_limit, email
+        FROM users WHERE id = ${clientId} AND consultant_id = ${consultantId}
+      `);
+      if (clientResult.rows.length === 0) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      const client = clientResult.rows[0] as any;
+      const perMonth = Math.max(1, Math.min(10, parseInt(rawPerMonth) || client.monthly_consultation_limit || 2));
+
+      const now = new Date();
+      const endDate = new Date(now.getFullYear(), now.getMonth() + months + 1, 0);
+
+      const existingResult = await db.execute(sql`
+        SELECT scheduled_at, status FROM consultations
+        WHERE consultant_id = ${consultantId}
+          AND (client_id = ${clientId} OR client_email = ${client.email})
+          AND status IN ('scheduled', 'completed')
+          AND scheduled_at >= ${new Date(now.getFullYear(), now.getMonth(), 1).toISOString()}
+          AND scheduled_at <= ${endDate.toISOString()}
+      `);
+      const existingByMonth: Record<string, number> = {};
+      const existingDateStrings: string[] = [];
+      for (const row of existingResult.rows as any[]) {
+        const d = new Date(row.scheduled_at);
+        const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+        existingByMonth[monthKey] = (existingByMonth[monthKey] || 0) + 1;
+        existingDateStrings.push(d.toISOString().split('T')[0]);
+      }
+
+      const proposals: Array<{date: string, time: string, month: string}> = [];
+
+      for (let m = 0; m < months; m++) {
+        const targetMonth = new Date(now.getFullYear(), now.getMonth() + m + 1, 1);
+        const monthKey = `${targetMonth.getFullYear()}-${targetMonth.getMonth()}`;
+        const alreadyInMonth = existingByMonth[monthKey] || 0;
+        const slotsToFill = Math.max(0, perMonth - alreadyInMonth);
+
+        if (slotsToFill === 0) continue;
+
+        const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+        const spacing = Math.floor(daysInMonth / (slotsToFill + 1));
+
+        for (let c = 0; c < slotsToFill; c++) {
+          let dayOfMonth = spacing * (c + 1);
+          let proposedDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), dayOfMonth);
+
+          while (proposedDate.getDay() === 0 || proposedDate.getDay() === 6) {
+            proposedDate.setDate(proposedDate.getDate() + 1);
+          }
+
+          const dateStr = proposedDate.toISOString().split('T')[0];
+          const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+
+          if (!existingDateStrings.includes(dateStr)) {
+            proposals.push({ date: dateStr, time: '10:00', month: monthName });
+          }
+        }
+      }
+
+      res.json({
+        client: { id: client.id, name: `${client.first_name} ${client.last_name}`, limit: client.monthly_consultation_limit },
+        proposals,
+        existingScheduled: existingDateStrings.length
+      });
+    } catch (error: any) {
+      console.error("[SCHEDULE-PROPOSAL] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/consultations/batch-create", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { clientId, consultations: consultationList } = req.body;
+
+      if (!clientId || !Array.isArray(consultationList) || consultationList.length === 0) {
+        return res.status(400).json({ message: "clientId and non-empty consultations array required" });
+      }
+      if (consultationList.length > 60) {
+        return res.status(400).json({ message: "Maximum 60 consultations per batch" });
+      }
+
+      const clientResult = await db.execute(sql`
+        SELECT id, first_name, last_name, email FROM users 
+        WHERE id = ${clientId} AND consultant_id = ${consultantId}
+      `);
+      if (clientResult.rows.length === 0) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      const client = clientResult.rows[0] as any;
+
+      const created = [];
+      for (const c of consultationList) {
+        if (!c.date || !c.time) continue;
+        const scheduledAt = new Date(`${c.date}T${c.time}:00`);
+        if (isNaN(scheduledAt.getTime())) continue;
+
+        const newConsultation = await storage.createConsultation({
+          consultantId,
+          clientId,
+          scheduledAt,
+          duration: 60,
+          notes: `Consulenza programmata con ${client.first_name} ${client.last_name}`,
+          status: 'scheduled',
+        });
+
+        if (client.email) {
+          await db.execute(sql`UPDATE consultations SET client_email = ${client.email} WHERE id = ${newConsultation.id}`);
+        }
+
+        created.push(newConsultation);
+      }
+
+      res.json({ 
+        message: `${created.length} consulenze programmate con successo`,
+        created: created.length 
+      });
+    } catch (error: any) {
+      console.error("[BATCH-CREATE] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/consultations/backfill-client-links", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const clientsResult = await db.execute(sql`
+        SELECT id, first_name, last_name, email FROM users 
+        WHERE consultant_id = ${consultantId} AND is_active = true AND id != ${consultantId}
+      `);
+      
+      const clients = clientsResult.rows as any[];
+      
+      const unlinkedResult = await db.execute(sql`
+        SELECT id, notes, client_email FROM consultations
+        WHERE consultant_id = ${consultantId} AND client_id IS NULL
+      `);
+      
+      const unlinked = unlinkedResult.rows as any[];
+      let linkedCount = 0;
+      
+      for (const consultation of unlinked) {
+        if (consultation.client_email) {
+          const matchByEmail = clients.find(c => c.email?.toLowerCase() === consultation.client_email?.toLowerCase());
+          if (matchByEmail) {
+            await db.execute(sql`UPDATE consultations SET client_id = ${matchByEmail.id} WHERE id = ${consultation.id}`);
+            linkedCount++;
+            continue;
+          }
+        }
+        
+        if (consultation.notes) {
+          const notesLower = consultation.notes.toLowerCase();
+          const matchesByName = clients.filter(c => {
+            const firstName = c.first_name?.toLowerCase();
+            return firstName && firstName.length > 2 && notesLower.includes(firstName);
+          });
+          
+          if (matchesByName.length === 1) {
+            await db.execute(sql`
+              UPDATE consultations 
+              SET client_id = ${matchesByName[0].id}, client_email = ${matchesByName[0].email}
+              WHERE id = ${consultation.id}
+            `);
+            linkedCount++;
+          }
+        }
+      }
+      
+      res.json({ 
+        message: `Backfill completato: ${linkedCount} consulenze collegate su ${unlinked.length} non collegate`,
+        linked: linkedCount,
+        total: unlinked.length 
+      });
+    } catch (error: any) {
+      console.error("[BACKFILL] Error:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
