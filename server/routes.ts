@@ -3167,6 +3167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientIds = result.rows.map((r: any) => r.id);
       let consultationDetails: Record<string, any[]> = {};
       
+      const futureEnd = new Date(now.getFullYear(), now.getMonth() + 7, 1);
+
       if (clientIds.length > 0) {
         const detailsResult = await db.execute(sql`
           SELECT client_id, scheduled_at, status, duration, notes
@@ -3174,7 +3176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           WHERE consultant_id = ${consultantId}
             AND status IN ('completed', 'scheduled')
             AND scheduled_at >= ${monthStart.toISOString()}
-            AND scheduled_at < ${monthEnd.toISOString()}
+            AND scheduled_at < ${futureEnd.toISOString()}
             AND client_id IS NOT NULL
           ORDER BY scheduled_at ASC
         `);
@@ -3195,7 +3197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             AND client_email IS NOT NULL
             AND status IN ('completed', 'scheduled')
             AND scheduled_at >= ${monthStart.toISOString()}
-            AND scheduled_at < ${monthEnd.toISOString()}
+            AND scheduled_at < ${futureEnd.toISOString()}
         `);
         for (const row of unlinkedResult.rows as any[]) {
           const matchedClient = result.rows.find((r: any) => r.email?.toLowerCase() === row.client_email?.toLowerCase());
@@ -3212,10 +3214,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      let googleEvents: Array<{ start: Date; end: Date; summary: string; status: string; attendeeEmails: string[] }> = [];
+      try {
+        const calConnected = await googleCalendarService.isGoogleCalendarConnected(consultantId);
+        if (calConnected) {
+          googleEvents = await googleCalendarService.listEvents(consultantId, now, futureEnd);
+        }
+      } catch (err) {
+        console.error('[MONITORING] Error fetching Google Calendar events:', err);
+      }
+
+      if (googleEvents.length > 0) {
+        const emailToClientId: Record<string, string> = {};
+        for (const row of result.rows as any[]) {
+          if (row.email) emailToClientId[row.email.toLowerCase()] = row.id;
+        }
+
+        const localDates = new Set<string>();
+        for (const clientId in consultationDetails) {
+          for (const c of consultationDetails[clientId]) {
+            const d = new Date(c.date);
+            localDates.add(`${clientId}-${d.toISOString().split('T')[0]}`);
+          }
+        }
+
+        const HIDDEN = ['INIZIO GIORNATA', 'PRANZO', 'FINE GIORNATA'];
+        for (const event of googleEvents) {
+          if (HIDDEN.includes(event.summary?.trim())) continue;
+          if (!event.attendeeEmails || event.attendeeEmails.length === 0) continue;
+
+          for (const attendeeEmail of event.attendeeEmails) {
+            const clientId = emailToClientId[attendeeEmail.toLowerCase()];
+            if (!clientId) continue;
+
+            const dateKey = `${clientId}-${event.start.toISOString().split('T')[0]}`;
+            if (localDates.has(dateKey)) continue;
+
+            if (!consultationDetails[clientId]) consultationDetails[clientId] = [];
+            consultationDetails[clientId].push({
+              date: event.start.toISOString(),
+              status: 'scheduled',
+              duration: Math.round((event.end.getTime() - event.start.getTime()) / 60000),
+              source: 'google',
+            });
+            localDates.add(dateKey);
+          }
+        }
+      }
+
       const monitoringData = result.rows.map((row: any) => {
         const limit = row.monthly_consultation_limit;
-        const used = row.consultations_used;
-        const remaining = Math.max(0, limit - used);
+        const details = consultationDetails[row.id] || [];
+        const thisMonthCount = details.filter((c: any) => {
+          const d = new Date(c.date);
+          return d >= monthStart && d < monthEnd;
+        }).length;
+        const remaining = Math.max(0, limit - thisMonthCount);
         return {
           id: row.id,
           firstName: row.first_name,
@@ -3224,10 +3278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phoneNumber: row.phone_number,
           role: row.role,
           monthlyConsultationLimit: limit,
-          consultationsUsedThisMonth: used,
+          consultationsUsedThisMonth: thisMonthCount,
           remaining,
           isActive: row.is_active,
-          consultations: consultationDetails[row.id] || [],
+          consultations: details,
         };
       });
 
