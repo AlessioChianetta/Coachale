@@ -410,16 +410,27 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       m.month_start,
       to_char(m.month_start, 'YYYY-MM') as month_label,
       to_char(m.month_start, 'TMMonth YYYY') as month_name,
-      COALESCE(scheduled_count.cnt, 0)::int as scheduled_count
+      (COALESCE(c_direct.cnt, 0) + COALESCE(c_notes.cnt, 0))::int as scheduled_count
     FROM users u
     CROSS JOIN months m
     LEFT JOIN (
       SELECT client_id, date_trunc('month', scheduled_at) as month, COUNT(*)::int as cnt
       FROM consultations
       WHERE consultant_id = ${consultantId}
+        AND client_id IS NOT NULL
         AND status IN ('scheduled', 'completed')
       GROUP BY client_id, date_trunc('month', scheduled_at)
-    ) scheduled_count ON scheduled_count.client_id = u.id::text AND scheduled_count.month = m.month_start
+    ) c_direct ON c_direct.client_id = u.id::text AND c_direct.month = m.month_start
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int as cnt
+      FROM consultations
+      WHERE consultant_id = ${consultantId}
+        AND client_id IS NULL
+        AND status IN ('scheduled', 'completed')
+        AND scheduled_at >= m.month_start
+        AND scheduled_at < m.month_start + INTERVAL '1 month'
+        AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
+    ) c_notes ON true
     WHERE u.consultant_id = ${consultantId}
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
