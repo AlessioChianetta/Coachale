@@ -91,6 +91,7 @@ function DashboardTab({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
+  const [dashboardRoleFilter, setDashboardRoleFilter] = React.useState<string>("all");
 
   const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -127,10 +128,24 @@ function DashboardTab({
     }
   };
 
+  const availableRoles = useMemo(() => {
+    if (!tasksData?.tasks) return [];
+    const roles = new Set<string>();
+    tasksData.tasks.forEach(task => {
+      if (task.ai_role) roles.add(task.ai_role);
+    });
+    return Array.from(roles).sort();
+  }, [tasksData?.tasks]);
+
   const groupedTasks = useMemo(() => {
     if (!tasksData?.tasks) return [];
-    const groups: Record<string, typeof tasksData.tasks> = {};
-    tasksData.tasks.forEach(task => {
+    const filteredTasks = dashboardRoleFilter === 'all'
+      ? tasksData.tasks
+      : dashboardRoleFilter === '__manual__'
+        ? tasksData.tasks.filter(t => !t.ai_role)
+        : tasksData.tasks.filter(t => t.ai_role === dashboardRoleFilter);
+    const groups: Record<string, typeof filteredTasks> = {};
+    filteredTasks.forEach(task => {
       const role = task.ai_role || '__manual__';
       if (!groups[role]) groups[role] = [];
       groups[role].push(task);
@@ -141,7 +156,7 @@ function DashboardTab({
       return a.localeCompare(b);
     });
     return roleOrder.map(role => ({ role, tasks: groups[role] }));
-  }, [tasksData?.tasks]);
+  }, [tasksData?.tasks, dashboardRoleFilter]);
 
   return (
     <div className="space-y-6">
@@ -816,6 +831,146 @@ function DashboardTab({
           </SelectContent>
         </Select>
       </div>
+
+      {availableRoles.length > 0 && (
+        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+          <button
+            onClick={() => setDashboardRoleFilter("all")}
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px]",
+              dashboardRoleFilter === "all"
+                ? "bg-primary/10 ring-2 ring-primary/40"
+                : "hover:bg-muted/60"
+            )}
+          >
+            <div className={cn(
+              "h-10 w-10 rounded-full bg-muted flex items-center justify-center transition-all",
+              dashboardRoleFilter === "all" && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+            )}>
+              <ListTodo className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <span className={cn(
+              "text-[10px] font-medium leading-tight text-center",
+              dashboardRoleFilter === "all" ? "text-primary" : "text-muted-foreground"
+            )}>Tutti</span>
+          </button>
+          {availableRoles.map(role => {
+            const profile = AI_ROLE_PROFILES[role];
+            const isActive = dashboardRoleFilter === role;
+            const roleRingColors: Record<string, string> = {
+              alessia: "ring-pink-400",
+              millie: "ring-purple-400",
+              echo: "ring-orange-400",
+              nova: "ring-pink-400",
+              stella: "ring-emerald-400",
+              iris: "ring-teal-400",
+              marco: "ring-indigo-400",
+            };
+            const roleBgColors: Record<string, string> = {
+              alessia: "bg-pink-50 dark:bg-pink-950/30",
+              millie: "bg-purple-50 dark:bg-purple-950/30",
+              echo: "bg-orange-50 dark:bg-orange-950/30",
+              nova: "bg-pink-50 dark:bg-pink-950/30",
+              stella: "bg-emerald-50 dark:bg-emerald-950/30",
+              iris: "bg-teal-50 dark:bg-teal-950/30",
+              marco: "bg-indigo-50 dark:bg-indigo-950/30",
+            };
+            const roleTextColors: Record<string, string> = {
+              alessia: "text-pink-600 dark:text-pink-400",
+              millie: "text-purple-600 dark:text-purple-400",
+              echo: "text-orange-600 dark:text-orange-400",
+              nova: "text-pink-600 dark:text-pink-400",
+              stella: "text-emerald-600 dark:text-emerald-400",
+              iris: "text-teal-600 dark:text-teal-400",
+              marco: "text-indigo-600 dark:text-indigo-400",
+            };
+            const taskCount = tasksData?.tasks?.filter(t => t.ai_role === role).length || 0;
+            return (
+              <button
+                key={role}
+                onClick={() => setDashboardRoleFilter(isActive ? "all" : role)}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px] relative",
+                  isActive
+                    ? cn(roleBgColors[role] || "bg-primary/10", "ring-2", roleRingColors[role] || "ring-primary/40")
+                    : "hover:bg-muted/60"
+                )}
+              >
+                {profile?.avatar ? (
+                  <img
+                    src={profile.avatar}
+                    alt={role}
+                    className={cn(
+                      "h-10 w-10 rounded-full object-cover transition-all",
+                      isActive
+                        ? cn("ring-2 ring-offset-2 ring-offset-background", roleRingColors[role] || "ring-primary")
+                        : "ring-1 ring-border opacity-75 hover:opacity-100"
+                    )}
+                  />
+                ) : (
+                  <div className={cn(
+                    "h-10 w-10 rounded-full bg-muted flex items-center justify-center",
+                    isActive && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  )}>
+                    <ListTodo className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <span className={cn(
+                  "text-[10px] font-medium leading-tight text-center max-w-[64px] truncate",
+                  isActive ? (roleTextColors[role] || "text-primary") : "text-muted-foreground"
+                )}>
+                  {profile?.role || role.charAt(0).toUpperCase() + role.slice(1)}
+                </span>
+                {taskCount > 0 && (
+                  <span className={cn(
+                    "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted-foreground/20 text-muted-foreground"
+                  )}>
+                    {taskCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          {tasksData?.tasks?.some(t => !t.ai_role) && (
+            <button
+              onClick={() => setDashboardRoleFilter(dashboardRoleFilter === "__manual__" ? "all" : "__manual__")}
+              className={cn(
+                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px] relative",
+                dashboardRoleFilter === "__manual__"
+                  ? "bg-muted ring-2 ring-muted-foreground/40"
+                  : "hover:bg-muted/60"
+              )}
+            >
+              <div className={cn(
+                "h-10 w-10 rounded-full bg-muted flex items-center justify-center transition-all",
+                dashboardRoleFilter === "__manual__" && "ring-2 ring-muted-foreground ring-offset-2 ring-offset-background"
+              )}>
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <span className={cn(
+                "text-[10px] font-medium leading-tight text-center",
+                dashboardRoleFilter === "__manual__" ? "text-foreground" : "text-muted-foreground"
+              )}>Manuali</span>
+              {(() => {
+                const count = tasksData?.tasks?.filter(t => !t.ai_role).length || 0;
+                return count > 0 ? (
+                  <span className={cn(
+                    "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
+                    dashboardRoleFilter === "__manual__"
+                      ? "bg-muted-foreground text-background"
+                      : "bg-muted-foreground/20 text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                ) : null;
+              })()}
+            </button>
+          )}
+        </div>
+      )}
 
       {loadingTasks ? (
         <div className="flex items-center justify-center py-12">
