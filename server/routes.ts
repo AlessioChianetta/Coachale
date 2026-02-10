@@ -4371,10 +4371,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const created = [];
       let calendarCreated = 0;
       let calendarErrors = 0;
+      let skippedDuplicates = 0;
       for (const c of consultationList) {
         if (!c.date || !c.time) continue;
         const scheduledAt = new Date(`${c.date}T${c.time}:00`);
         if (isNaN(scheduledAt.getTime())) continue;
+
+        const existingCheck = await db.execute(sql`
+          SELECT id FROM consultations 
+          WHERE consultant_id = ${consultantId} AND scheduled_at = ${scheduledAt}
+          LIMIT 1
+        `);
+        if (existingCheck.rows.length > 0) {
+          console.log(`[BATCH-CREATE] Skipping duplicate: ${c.date} ${c.time} (already exists)`);
+          skippedDuplicates++;
+          continue;
+        }
 
         const newConsultation = await storage.createConsultation({
           consultantId,
@@ -4420,18 +4432,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         created.push(newConsultation);
       }
 
-      const calendarMessage = calendarConnected
-        ? calendarErrors > 0
-          ? ` (${calendarCreated} eventi calendario creati, ${calendarErrors} errori)`
-          : ` — ${calendarCreated} eventi creati su Google Calendar con invito al cliente`
-        : '';
+      const parts = [`${created.length} consulenze programmate con successo`];
+      if (calendarConnected) {
+        if (calendarErrors > 0) {
+          parts.push(`(${calendarCreated} eventi calendario creati, ${calendarErrors} errori)`);
+        } else if (calendarCreated > 0) {
+          parts.push(`— ${calendarCreated} eventi creati su Google Calendar con invito al cliente`);
+        }
+      }
+      if (skippedDuplicates > 0) {
+        parts.push(`(${skippedDuplicates} date saltate perché già esistenti)`);
+      }
 
       res.json({ 
-        message: `${created.length} consulenze programmate con successo${calendarMessage}`,
+        message: parts.join(' '),
         created: created.length,
         calendarCreated,
         calendarErrors,
         calendarConnected,
+        skippedDuplicates,
       });
     } catch (error: any) {
       console.error("[BATCH-CREATE] Error:", error);
