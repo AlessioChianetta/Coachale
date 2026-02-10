@@ -3327,8 +3327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actualCountResult = await db.execute(sql`
         SELECT COUNT(*)::int as total FROM users 
         WHERE consultant_id = ${consultantId} 
-        AND role = 'client' 
-        AND is_active = true
+        AND role = 'client'
       `);
       const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
 
@@ -3444,8 +3443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           SET employee_used = (
             SELECT COUNT(*)::int FROM users 
             WHERE consultant_id = ${consultantId} 
-            AND role = 'client' 
-            AND is_active = true
+            AND role = 'client'
           )
           WHERE consultant_id = ${consultantId}
         `);
@@ -13308,12 +13306,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         license = newLicense;
       }
 
-      // Count ACTUAL users for accurate display
+      // Count ACTUAL users for accurate display (all users count, not just active)
       const actualCountResult = await db.execute(sql`
         SELECT COUNT(*)::int as total FROM users 
         WHERE consultant_id = ${consultantId} 
-        AND role = 'client' 
-        AND is_active = true
+        AND role = 'client'
       `);
       const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
 
