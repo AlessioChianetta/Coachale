@@ -113,6 +113,60 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   }
 });
 
+router.get("/personalizza-config", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const result = await db.execute(sql`
+      SELECT personalizza_config FROM ai_autonomy_settings 
+      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    `);
+
+    const config = (result.rows[0] as any)?.personalizza_config || {
+      custom_name: "",
+      detailed_instructions: "",
+      preferred_channels: ["voice", "email", "whatsapp"],
+      task_categories: ["outreach", "reminder", "followup", "analysis"],
+      client_segments: "all",
+      analysis_frequency: "every_cycle",
+      tone_of_voice: "professionale",
+      max_tasks_per_run: 3,
+      priority_rules: "",
+    };
+
+    return res.json(config);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching personalizza config:", error.message);
+    return res.status(500).json({ error: "Errore nel recupero della configurazione" });
+  }
+});
+
+router.put("/personalizza-config", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const config = req.body;
+
+    if (!config || typeof config !== 'object') {
+      return res.status(400).json({ error: "Configurazione non valida" });
+    }
+
+    await db.execute(sql`
+      UPDATE ai_autonomy_settings 
+      SET personalizza_config = ${JSON.stringify(config)}::jsonb,
+          updated_at = NOW()
+      WHERE consultant_id = ${consultantId}::uuid
+    `);
+
+    return res.json({ success: true, message: "Configurazione salvata" });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error saving personalizza config:", error.message);
+    return res.status(500).json({ error: "Errore nel salvataggio della configurazione" });
+  }
+});
+
 router.get("/activity", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

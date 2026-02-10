@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Activity, Brain, Clock, CheckCircle, Loader2, Eye, ChevronLeft, ChevronRight,
-  Zap, BarChart3, Sparkles, Lightbulb, Bot, Calendar, Play, Database, FileText, Search
+  Zap, BarChart3, Sparkles, Lightbulb, Bot, Calendar, Play, Database, FileText, Search,
+  Users, ChevronDown
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,355 @@ function ActivityTab({
   simulationResult, setSimulationResult, simulationLoading, setSimulationLoading,
 }: ActivityTabProps) {
   const { toast } = useToast();
+  const [openCycleId, setOpenCycleId] = React.useState<string | null>(null);
+  const [expandedReasoningCycles, setExpandedReasoningCycles] = React.useState<Set<string>>(new Set());
+
+  const groupedByCycle = React.useMemo(() => {
+    if (!activityData?.activities) return { cycles: [], standalone: [] };
+    const cycleMap = new Map<string, ActivityItem[]>();
+    const standalone: ActivityItem[] = [];
+    for (const item of activityData.activities) {
+      if (item.cycle_id) {
+        if (!cycleMap.has(item.cycle_id)) cycleMap.set(item.cycle_id, []);
+        cycleMap.get(item.cycle_id)!.push(item);
+      } else {
+        standalone.push(item);
+      }
+    }
+    const cycles = Array.from(cycleMap.entries()).map(([cycleId, items]) => ({
+      cycleId,
+      items,
+      firstTime: items[0]?.created_at,
+      shortId: cycleId.slice(-5),
+    }));
+    return { cycles, standalone };
+  }, [activityData?.activities]);
+
+  const reasoningGroupedByCycle = React.useMemo(() => {
+    if (!reasoningData?.activities) return { cycles: [], standalone: [] };
+    const cycleMap = new Map<string, ActivityItem[]>();
+    const standalone: ActivityItem[] = [];
+    for (const item of reasoningData.activities) {
+      if (item.cycle_id) {
+        if (!cycleMap.has(item.cycle_id)) cycleMap.set(item.cycle_id, []);
+        cycleMap.get(item.cycle_id)!.push(item);
+      } else {
+        standalone.push(item);
+      }
+    }
+    const cycles = Array.from(cycleMap.entries()).map(([cycleId, items]) => {
+      let totalEligible = 0;
+      let totalTasks = 0;
+      for (const item of items) {
+        let ed: any = {};
+        try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+        totalEligible += (ed.eligible_clients || 0);
+        const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
+        totalTasks += sug.length;
+      }
+      return {
+        cycleId,
+        items,
+        firstTime: items[0]?.created_at,
+        shortId: cycleId.slice(-5),
+        totalRoles: items.length,
+        totalEligible,
+        totalTasks,
+      };
+    });
+    return { cycles, standalone };
+  }, [reasoningData?.activities]);
+
+  const toggleReasoningCycle = (cycleId: string) => {
+    setExpandedReasoningCycles(prev => {
+      const next = new Set(prev);
+      if (next.has(cycleId)) next.delete(cycleId);
+      else next.add(cycleId);
+      return next;
+    });
+  };
+
+  const formatCycleDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+      ' ore ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderActivityCard = (item: ActivityItem) => (
+    <motion.div
+      key={item.id}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Card className={cn(
+        "border border-border rounded-xl shadow-sm transition-colors",
+        !item.is_read && "border-primary/30 bg-primary/5"
+      )}>
+        <CardContent className="py-4 px-5">
+          <div className="flex items-start gap-4">
+            <div className={cn(
+              "mt-0.5 p-2 rounded-xl",
+              item.severity === "error" ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400" :
+              item.severity === "warning" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400" :
+              item.severity === "success" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400" :
+              "bg-primary/10 text-primary"
+            )}>
+              {getActivityIcon(item.icon)}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold">{item.title}</span>
+                {getSeverityBadge(item.severity)}
+                {!item.is_read && (
+                  <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                    Nuovo
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {getRelativeTime(item.created_at)}
+                </span>
+                {item.contact_name && (
+                  <span className="flex items-center gap-1">
+                    <Bot className="h-3 w-3" />
+                    {item.contact_name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {!item.is_read && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                onClick={() => onMarkRead(item.id)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  const renderReasoningCard = (item: any) => {
+    let eventData: any = {};
+    try {
+      eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
+    } catch { eventData = {}; }
+    const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
+    const roleId = item.ai_role || eventData.ai_role || '';
+    const roleProfile = AI_ROLE_PROFILES[roleId];
+    const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
+    const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
+    const displayName = roleProfile ? roleId.charAt(0).toUpperCase() + roleId.slice(1) : (item.title || 'AI');
+    const timeStr = new Date(item.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+    return (
+      <motion.div
+        key={item.id}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <Card className={cn(
+          "border border-border rounded-xl shadow-sm transition-all overflow-hidden",
+          !item.is_read && "ring-2 ring-primary/20"
+        )}>
+          <div className={cn("flex items-center gap-3 px-5 py-3 border-b", colors.badge)}>
+            <div className="w-8 h-8 rounded-xl overflow-hidden ring-2 ring-white/50 shrink-0">
+              {roleProfile?.avatar ? (
+                <img src={roleProfile.avatar} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-white/20 flex items-center justify-center text-sm">🤖</div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">{displayName}</p>
+              <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs opacity-70">{timeStr}</span>
+              {!item.is_read && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onMarkRead(item.id)}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <CardContent className="py-4 px-5 space-y-4">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-muted/40 rounded-xl p-2.5">
+                <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
+                <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
+              </div>
+              <div className="bg-muted/40 rounded-xl p-2.5">
+                <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
+                <p className="text-[10px] text-muted-foreground">Idonei</p>
+              </div>
+              <div className="bg-muted/40 rounded-xl p-2.5">
+                <p className="text-lg font-bold">{suggestions.length}</p>
+                <p className="text-[10px] text-muted-foreground">Task creati</p>
+              </div>
+            </div>
+
+            {eventData.overall_reasoning && (
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5" />
+                  Cosa ha pensato
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {eventData.overall_reasoning}
+                </p>
+              </div>
+            )}
+
+            {!eventData.overall_reasoning && (
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5" />
+                  Risultato analisi
+                </p>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+            )}
+
+            {suggestions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Azioni decise ({suggestions.length})
+                </p>
+                {suggestions.map((s: any, idx: number) => (
+                  <div key={idx} className="rounded-xl border p-3 bg-card">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
+                        {s.channel && s.channel !== 'none' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
+                          </Badge>
+                        )}
+                      </div>
+                      {s.priority && (
+                        <Badge className={cn("text-[10px]",
+                          s.priority === 1 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
+                          s.priority === 2 ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
+                          "bg-muted text-muted-foreground"
+                        )}>
+                          {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm mb-2">{s.instruction}</p>
+                    {s.reasoning && (
+                      <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded-xl p-2">
+                        <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span><strong>Perché:</strong> {s.reasoning}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {eventData.clients_list && (
+              <details className="text-xs group">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1">
+                  <Database className="h-3 w-3" />
+                  Base dati utilizzata
+                  <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="mt-2 space-y-2">
+                  {eventData.clients_list && (
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <p className="text-xs font-semibold mb-1.5 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        Clienti analizzati ({eventData.clients_list.length}{eventData.total_clients ? ` di ${eventData.total_clients}` : ''})
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {eventData.clients_list.map((c: any, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[10px]">
+                            {c.name || c.first_name || `ID: ${c.id?.substring(0, 8)}`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {eventData.excluded_clients && (
+                    <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 p-3">
+                      <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                        <Search className="h-3 w-3" />
+                        Clienti esclusi
+                      </p>
+                      <div className="flex gap-3 text-[10px] text-muted-foreground">
+                        <span>Con task pendenti: {eventData.excluded_clients.with_pending_tasks || 0}</span>
+                        <span>Completati di recente: {eventData.excluded_clients.with_recent_completion || 0}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {eventData.role_specific_data && (
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Dati ruolo-specifici
+                      </p>
+                      <pre className="text-[10px] overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap text-muted-foreground">
+                        {JSON.stringify(eventData.role_specific_data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {eventData.recent_tasks_summary && eventData.recent_tasks_summary.length > 0 && (
+                    <div className="rounded-xl border bg-muted/20 p-3">
+                      <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Task recenti ({eventData.recent_tasks_summary.length})
+                      </p>
+                      <div className="space-y-1">
+                        {eventData.recent_tasks_summary.map((t: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span className="font-medium">{t.contact_name || 'N/A'}</span>
+                            <span>·</span>
+                            <span>{t.task_category || t.category}</span>
+                            <span>·</span>
+                            <span>{t.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+
+            {suggestions.length === 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-xl p-3">
+                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -143,69 +493,53 @@ function ActivityTab({
             </Card>
           ) : (
             <div className="space-y-3">
-              {activityData.activities.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Card className={cn(
-                    "border border-border rounded-xl shadow-sm transition-colors",
-                    !item.is_read && "border-primary/30 bg-primary/5"
-                  )}>
-                    <CardContent className="py-4 px-5">
-                      <div className="flex items-start gap-4">
-                        <div className={cn(
-                          "mt-0.5 p-2 rounded-xl",
-                          item.severity === "error" ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400" :
-                          item.severity === "warning" ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400" :
-                          item.severity === "success" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400" :
-                          "bg-primary/10 text-primary"
-                        )}>
-                          {getActivityIcon(item.icon)}
-                        </div>
+              {groupedByCycle.cycles.map((cycle) => {
+                const isOpen = openCycleId === cycle.cycleId;
+                const totalTasks = cycle.items.reduce((sum, item) => {
+                  let ed: any = {};
+                  try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+                  const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
+                  return sum + sug.length;
+                }, 0);
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold">{item.title}</span>
-                            {getSeverityBadge(item.severity)}
-                            {!item.is_read && (
-                              <Badge variant="outline" className="text-xs border-primary/50 text-primary">
-                                Nuovo
-                              </Badge>
-                            )}
+                return (
+                  <div key={cycle.cycleId}>
+                    <Card
+                      className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
+                      onClick={() => setOpenCycleId(isOpen ? null : cycle.cycleId)}
+                    >
+                      <CardContent className="py-3 px-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                              <BarChart3 className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">
+                                Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {cycle.items.length} {cycle.items.length === 1 ? 'analisi ruolo' : 'analisi ruoli'} · {totalTasks} task creati
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {getRelativeTime(item.created_at)}
-                            </span>
-                            {item.contact_name && (
-                              <span className="flex items-center gap-1">
-                                <Bot className="h-3 w-3" />
-                                {item.contact_name}
-                              </span>
-                            )}
-                          </div>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            isOpen && "rotate-180"
+                          )} />
                         </div>
-
-                        {!item.is_read && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => onMarkRead(item.id)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        )}
+                      </CardContent>
+                    </Card>
+                    {isOpen && (
+                      <div className="pl-4 border-l-2 border-l-primary/20 ml-3 mt-2 space-y-3">
+                        {cycle.items.map((item) => renderActivityCard(item))}
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
+
+              {groupedByCycle.standalone.map((item) => renderActivityCard(item))}
             </div>
           )}
 
@@ -289,188 +623,52 @@ function ActivityTab({
             </Card>
           ) : (
             <>
-              {(() => {
-                const grouped: Record<string, any[]> = {};
-                for (const item of reasoningData.activities) {
-                  const d = new Date(item.created_at);
-                  const today = new Date();
-                  const yesterday = new Date(today);
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  let label: string;
-                  if (d.toDateString() === today.toDateString()) {
-                    label = 'Oggi';
-                  } else if (d.toDateString() === yesterday.toDateString()) {
-                    label = 'Ieri';
-                  } else {
-                    label = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                    label = label.charAt(0).toUpperCase() + label.slice(1);
-                  }
-                  if (!grouped[label]) grouped[label] = [];
-                  grouped[label].push(item);
-                }
+              {reasoningGroupedByCycle.cycles.map((cycle) => {
+                const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
 
-                return Object.entries(grouped).map(([dateLabel, items]) => {
-                  const totalTasks = items.reduce((sum, item) => {
-                    let ed: any = {};
-                    try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
-                    const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
-                    return sum + sug.length;
-                  }, 0);
-
-                  return (
-                    <div key={dateLabel} className="space-y-3">
-                      <div className="flex items-center gap-3 pt-2">
-                        <div className="flex items-center gap-2 bg-muted/60 rounded-xl px-4 py-1.5">
-                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-sm font-semibold">{dateLabel}</span>
-                        </div>
-                        <div className="flex-1 h-px bg-border" />
-                        <span className="text-xs text-muted-foreground shrink-0">{items.length} analisi &middot; {totalTasks} task</span>
-                      </div>
-
-                      {items.map((item: any) => {
-                        let eventData: any = {};
-                        try {
-                          eventData = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {});
-                        } catch { eventData = {}; }
-                        const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
-                        const roleId = item.ai_role || eventData.ai_role || '';
-                        const roleProfile = AI_ROLE_PROFILES[roleId];
-                        const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
-                        const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
-                        const displayName = roleProfile ? roleId.charAt(0).toUpperCase() + roleId.slice(1) : (item.title || 'AI');
-                        const timeStr = new Date(item.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-
-                        return (
-                          <motion.div
-                            key={item.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Card className={cn(
-                              "border border-border rounded-xl shadow-sm transition-all overflow-hidden",
-                              !item.is_read && "ring-2 ring-primary/20"
-                            )}>
-                              <div className={cn("flex items-center gap-3 px-5 py-3 border-b", colors.badge)}>
-                                <div className="w-8 h-8 rounded-xl overflow-hidden ring-2 ring-white/50 shrink-0">
-                                  {roleProfile?.avatar ? (
-                                    <img src={roleProfile.avatar} alt={displayName} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full bg-white/20 flex items-center justify-center text-sm">🤖</div>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-bold text-sm">{displayName}</p>
-                                  <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-xs opacity-70">{timeStr}</span>
-                                  {!item.is_read && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => onMarkRead(item.id)}
-                                    >
-                                      <Eye className="h-3.5 w-3.5" />
-                                    </Button>
-                                  )}
-                                </div>
+                return (
+                  <div key={cycle.cycleId} className="space-y-3">
+                    <Card
+                      className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
+                      onClick={() => toggleReasoningCycle(cycle.cycleId)}
+                    >
+                      <CardContent className="py-3 px-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                              <Brain className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">
+                                Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
+                              </p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
                               </div>
+                            </div>
+                          </div>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            isExpanded && "rotate-180"
+                          )} />
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                              <CardContent className="py-4 px-5 space-y-4">
-                                <div className="grid grid-cols-3 gap-3 text-center">
-                                  <div className="bg-muted/40 rounded-xl p-2.5">
-                                    <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
-                                    <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
-                                  </div>
-                                  <div className="bg-muted/40 rounded-xl p-2.5">
-                                    <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
-                                    <p className="text-[10px] text-muted-foreground">Idonei</p>
-                                  </div>
-                                  <div className="bg-muted/40 rounded-xl p-2.5">
-                                    <p className="text-lg font-bold">{suggestions.length}</p>
-                                    <p className="text-[10px] text-muted-foreground">Task creati</p>
-                                  </div>
-                                </div>
+                    {isExpanded && (
+                      <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
+                        {cycle.items.map((item: any) => renderReasoningCard(item))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
-                                {eventData.overall_reasoning && (
-                                  <div className="rounded-xl border bg-muted/20 p-4">
-                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                                      <Brain className="h-3.5 w-3.5" />
-                                      Cosa ha pensato
-                                    </p>
-                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                                      {eventData.overall_reasoning}
-                                    </p>
-                                  </div>
-                                )}
-
-                                {!eventData.overall_reasoning && (
-                                  <div className="rounded-xl border bg-muted/20 p-4">
-                                    <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                                      <Brain className="h-3.5 w-3.5" />
-                                      Risultato analisi
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                                  </div>
-                                )}
-
-                                {suggestions.length > 0 && (
-                                  <div className="space-y-2">
-                                    <p className="text-xs font-bold flex items-center gap-1.5">
-                                      <Sparkles className="h-3.5 w-3.5" />
-                                      Azioni decise ({suggestions.length})
-                                    </p>
-                                    {suggestions.map((s: any, idx: number) => (
-                                      <div key={idx} className="rounded-xl border p-3 bg-card">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
-                                            {s.channel && s.channel !== 'none' && (
-                                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                                {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          {s.priority && (
-                                            <Badge className={cn("text-[10px]",
-                                              s.priority === 1 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
-                                              s.priority === 2 ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
-                                              "bg-muted text-muted-foreground"
-                                            )}>
-                                              {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <p className="text-sm mb-2">{s.instruction}</p>
-                                        {s.reasoning && (
-                                          <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded-xl p-2">
-                                            <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
-                                            <span><strong>Perché:</strong> {s.reasoning}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {suggestions.length === 0 && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-xl p-3">
-                                    <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                                    <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  );
-                });
-              })()}
+              {reasoningGroupedByCycle.standalone.map((item: any) => renderReasoningCard(item))}
 
               {reasoningData && reasoningData.totalPages > 1 && (
                 <div className="flex items-center justify-center gap-4 pt-4">

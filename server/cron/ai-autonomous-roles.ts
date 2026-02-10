@@ -318,9 +318,16 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
     LIMIT 20
   `);
 
+  const configResult = await db.execute(sql`
+    SELECT personalizza_config FROM ai_autonomy_settings 
+    WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+  `);
+  const personalizzaConfig = (configResult.rows[0] as any)?.personalizza_config || null;
+
   return {
     consultations: consultationsResult.rows,
     recentTasks: recentTasksResult.rows,
+    personalizzaConfig,
   };
 }
 
@@ -980,13 +987,30 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         created: t.created_at,
       }));
 
-      const hasCustomInstructions = !!(settings.custom_instructions && settings.custom_instructions.trim().length > 0);
+      const personalizzaConfig = roleData.personalizzaConfig;
+      const hasDetailedConfig = personalizzaConfig && (
+        personalizzaConfig.detailed_instructions?.trim() || 
+        personalizzaConfig.custom_name?.trim()
+      );
+      const hasCustomInstructions = hasDetailedConfig || !!(settings.custom_instructions && settings.custom_instructions.trim().length > 0);
+      const customName = personalizzaConfig?.custom_name?.trim() || 'PERSONALIZZA';
 
-      return `Sei PERSONALIZZA, un assistente AI completamente configurabile dal consulente. Il tuo comportamento, le tue analisi e i task che crei dipendono interamente dalle istruzioni personalizzate fornite dal consulente.
+      return `Sei ${customName}, un assistente AI completamente configurabile dal consulente. Il tuo comportamento, le tue analisi e i task che crei dipendono interamente dalle istruzioni personalizzate fornite dal consulente.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
 
-${hasCustomInstructions ? `ISTRUZIONI PERSONALIZZATE DEL CONSULENTE (SEGUI QUESTE ISTRUZIONI COME PRIORITÀ PRINCIPALE):
+${hasDetailedConfig ? `CONFIGURAZIONE PERSONALIZZATA:
+- Nome: ${personalizzaConfig.custom_name || 'Personalizza'}
+- Tono di voce: ${personalizzaConfig.tone_of_voice || 'professionale'}
+- Canali preferiti: ${(personalizzaConfig.preferred_channels || []).join(', ') || 'tutti'}
+- Categorie task: ${(personalizzaConfig.task_categories || []).join(', ') || 'tutte'}
+- Segmento clienti: ${personalizzaConfig.client_segments || 'tutti'}
+- Frequenza: ${personalizzaConfig.analysis_frequency || 'ogni ciclo'}
+- Max task per ciclo: ${personalizzaConfig.max_tasks_per_run || 3}
+${personalizzaConfig.priority_rules ? `- Regole priorità: ${personalizzaConfig.priority_rules}` : ''}
+
+ISTRUZIONI DETTAGLIATE (SEGUI COME PRIORITÀ PRINCIPALE):
+${personalizzaConfig.detailed_instructions}` : hasCustomInstructions ? `ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
 ${settings.custom_instructions}` : `⚠️ NESSUNA ISTRUZIONE PERSONALIZZATA CONFIGURATA.
 Il consulente non ha ancora definito cosa vuoi che tu faccia. Suggerisci al consulente di configurare le istruzioni personalizzate per questo ruolo, spiegando che può definire:
 - Quali dati analizzare

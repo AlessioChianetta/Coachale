@@ -30,6 +30,20 @@ export interface ActivityItem {
   is_read: boolean;
   event_data?: any;
   ai_role?: string;
+  event_type?: string;
+  cycle_id?: string;
+}
+
+export interface PersonalizzaConfig {
+  custom_name: string;
+  detailed_instructions: string;
+  preferred_channels: string[];
+  task_categories: string[];
+  client_segments: string;
+  analysis_frequency: string;
+  tone_of_voice: string;
+  max_tasks_per_run: number;
+  priority_rules: string;
 }
 
 export interface ActivityResponse {

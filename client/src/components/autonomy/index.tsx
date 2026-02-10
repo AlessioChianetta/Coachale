@@ -14,6 +14,7 @@ import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
 import type {
   AutonomySettings, ActivityResponse, AITask, TasksResponse,
   TasksStats, TaskDetailResponse, SystemStatus, AutonomousLogsResponse, NewTaskData,
+  PersonalizzaConfig,
 } from "./types";
 import { DEFAULT_SETTINGS, EMPTY_NEW_TASK } from "./constants";
 
@@ -49,6 +50,20 @@ export default function ConsultantAIAutonomyPage() {
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggested, setAiSuggested] = useState(false);
   const [clientSearchFilter, setClientSearchFilter] = useState("");
+
+  const [personalizzaConfig, setPersonalizzaConfig] = useState<PersonalizzaConfig>({
+    custom_name: "",
+    detailed_instructions: "",
+    preferred_channels: ["voice", "email", "whatsapp"],
+    task_categories: ["outreach", "reminder", "followup", "analysis"],
+    client_segments: "all",
+    analysis_frequency: "every_cycle",
+    tone_of_voice: "professionale",
+    max_tasks_per_run: 3,
+    priority_rules: "",
+  });
+  const [personalizzaLoading, setPersonalizzaLoading] = useState(false);
+  const [personalizzaSaving, setPersonalizzaSaving] = useState(false);
 
   const [showAlessiaChat, setShowAlessiaChat] = useState(false);
   const [showArchDetails, setShowArchDetails] = useState(true);
@@ -268,6 +283,44 @@ export default function ConsultantAIAutonomyPage() {
     refetchInterval: 30000,
   });
 
+  const fetchPersonalizzaConfig = async () => {
+    try {
+      setPersonalizzaLoading(true);
+      const res = await fetch("/api/ai-autonomy/personalizza-config", {
+        headers: { ...getAuthHeaders() },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPersonalizzaConfig(data);
+      }
+    } catch (err) {
+      console.error("Error fetching personalizza config:", err);
+    } finally {
+      setPersonalizzaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPersonalizzaConfig();
+  }, []);
+
+  const savePersonalizzaConfig = async () => {
+    try {
+      setPersonalizzaSaving(true);
+      const res = await fetch("/api/ai-autonomy/personalizza-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(personalizzaConfig),
+      });
+      if (!res.ok) throw new Error("Errore nel salvataggio");
+      toast({ title: "Salvato", description: "Configurazione Personalizza aggiornata" });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setPersonalizzaSaving(false);
+    }
+  };
+
   const handleTriggerAnalysis = async () => {
     setIsTriggering(true);
     setTriggerResult(null);
@@ -478,6 +531,11 @@ export default function ConsultantAIAutonomyPage() {
                     setAutonomousLogSeverityFilter={setAutonomousLogSeverityFilter}
                     autonomousLogRoleFilter={autonomousLogRoleFilter}
                     setAutonomousLogRoleFilter={setAutonomousLogRoleFilter}
+                    personalizzaConfig={personalizzaConfig}
+                    setPersonalizzaConfig={setPersonalizzaConfig}
+                    personalizzaLoading={personalizzaLoading}
+                    personalizzaSaving={personalizzaSaving}
+                    onSavePersonalizza={savePersonalizzaConfig}
                   />
                 </TabsContent>
 

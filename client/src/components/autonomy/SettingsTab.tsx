@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { AutonomySettings, SystemStatus, AutonomousLogsResponse } from "./types";
+import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor } from "./utils";
 
@@ -48,6 +48,11 @@ interface SettingsTabProps {
   setAutonomousLogSeverityFilter: (filter: string) => void;
   autonomousLogRoleFilter: string;
   setAutonomousLogRoleFilter: (filter: string) => void;
+  personalizzaConfig: PersonalizzaConfig;
+  setPersonalizzaConfig: React.Dispatch<React.SetStateAction<PersonalizzaConfig>>;
+  personalizzaLoading: boolean;
+  personalizzaSaving: boolean;
+  onSavePersonalizza: () => void;
 }
 
 function SettingsTab({
@@ -73,6 +78,11 @@ function SettingsTab({
   setAutonomousLogSeverityFilter,
   autonomousLogRoleFilter,
   setAutonomousLogRoleFilter,
+  personalizzaConfig,
+  setPersonalizzaConfig,
+  personalizzaLoading,
+  personalizzaSaving,
+  onSavePersonalizza,
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
@@ -1345,6 +1355,203 @@ function SettingsTab({
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Caricamento ruoli...
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm border-l-4 border-l-gray-400">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Cog className="h-5 w-5" />
+            Configura Agente Personalizzato
+          </CardTitle>
+          <CardDescription>
+            Personalizza completamente il comportamento del tuo agente AI custom. Queste impostazioni guidano come Personalizza analizza i clienti e crea task.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {personalizzaLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Nome personalizzato</Label>
+                  <Input
+                    value={personalizzaConfig.custom_name}
+                    onChange={(e) => setPersonalizzaConfig(prev => ({ ...prev, custom_name: e.target.value }))}
+                    placeholder="Es: Sofia, Luca, Assistente VIP..."
+                    className="rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground">Come vuoi che si presenti questo agente</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Tono di voce</Label>
+                  <Select
+                    value={personalizzaConfig.tone_of_voice}
+                    onValueChange={(v) => setPersonalizzaConfig(prev => ({ ...prev, tone_of_voice: v }))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="professionale">Professionale</SelectItem>
+                      <SelectItem value="amichevole">Amichevole</SelectItem>
+                      <SelectItem value="formale">Formale</SelectItem>
+                      <SelectItem value="empatico">Empatico</SelectItem>
+                      <SelectItem value="diretto">Diretto e conciso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Istruzioni dettagliate</Label>
+                <Textarea
+                  value={personalizzaConfig.detailed_instructions}
+                  onChange={(e) => setPersonalizzaConfig(prev => ({ ...prev, detailed_instructions: e.target.value }))}
+                  placeholder="Descrivi in dettaglio cosa deve fare questo agente. Es: Contatta i clienti che non si fanno sentire da più di 2 settimane. Concentrati sui clienti con portafoglio sopra i 50.000€. Non disturbare mai il lunedì mattina..."
+                  rows={5}
+                  className="rounded-xl"
+                />
+                <p className="text-xs text-muted-foreground">Queste istruzioni hanno la massima priorità nel comportamento dell'agente</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Canali preferiti</Label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { id: "voice", label: "Voce", icon: <Phone className="h-3.5 w-3.5" /> },
+                    { id: "email", label: "Email", icon: <Mail className="h-3.5 w-3.5" /> },
+                    { id: "whatsapp", label: "WhatsApp", icon: <MessageSquare className="h-3.5 w-3.5" /> },
+                  ].map(ch => (
+                    <label key={ch.id} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={personalizzaConfig.preferred_channels.includes(ch.id)}
+                        onCheckedChange={(checked) => {
+                          setPersonalizzaConfig(prev => ({
+                            ...prev,
+                            preferred_channels: checked
+                              ? [...prev.preferred_channels, ch.id]
+                              : prev.preferred_channels.filter(c => c !== ch.id)
+                          }));
+                        }}
+                      />
+                      <span className="flex items-center gap-1 text-sm">{ch.icon} {ch.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Categorie di task</Label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { id: "outreach", label: "Primo contatto" },
+                    { id: "reminder", label: "Promemoria" },
+                    { id: "followup", label: "Follow-up" },
+                    { id: "analysis", label: "Analisi" },
+                    { id: "report", label: "Report" },
+                    { id: "check_in", label: "Check-in" },
+                  ].map(cat => (
+                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={personalizzaConfig.task_categories.includes(cat.id)}
+                        onCheckedChange={(checked) => {
+                          setPersonalizzaConfig(prev => ({
+                            ...prev,
+                            task_categories: checked
+                              ? [...prev.task_categories, cat.id]
+                              : prev.task_categories.filter(c => c !== cat.id)
+                          }));
+                        }}
+                      />
+                      <span className="text-sm">{cat.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Segmento clienti</Label>
+                  <Select
+                    value={personalizzaConfig.client_segments}
+                    onValueChange={(v) => setPersonalizzaConfig(prev => ({ ...prev, client_segments: v }))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tutti i clienti</SelectItem>
+                      <SelectItem value="active">Solo attivi</SelectItem>
+                      <SelectItem value="inactive">Solo inattivi</SelectItem>
+                      <SelectItem value="high_value">Alto valore</SelectItem>
+                      <SelectItem value="new">Nuovi clienti</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Frequenza analisi</Label>
+                  <Select
+                    value={personalizzaConfig.analysis_frequency}
+                    onValueChange={(v) => setPersonalizzaConfig(prev => ({ ...prev, analysis_frequency: v }))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="every_cycle">Ogni ciclo</SelectItem>
+                      <SelectItem value="daily">Giornaliera</SelectItem>
+                      <SelectItem value="twice_daily">Due volte al giorno</SelectItem>
+                      <SelectItem value="weekly">Settimanale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Max task per ciclo</Label>
+                  <Select
+                    value={String(personalizzaConfig.max_tasks_per_run)}
+                    onValueChange={(v) => setPersonalizzaConfig(prev => ({ ...prev, max_tasks_per_run: parseInt(v) }))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                      <SelectItem value="5">5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Regole di priorità</Label>
+                <Textarea
+                  value={personalizzaConfig.priority_rules}
+                  onChange={(e) => setPersonalizzaConfig(prev => ({ ...prev, priority_rules: e.target.value }))}
+                  placeholder="Es: I clienti premium hanno sempre la priorità. Ignora i clienti che hanno già un appuntamento questa settimana."
+                  rows={3}
+                  className="rounded-xl"
+                />
+                <p className="text-xs text-muted-foreground">Regole aggiuntive per determinare l'ordine di priorità dei clienti</p>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={onSavePersonalizza} disabled={personalizzaSaving} className="rounded-xl">
+                  {personalizzaSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Salva Configurazione Personalizza
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -770,17 +770,19 @@ export async function logActivity(consultantId: string, data: {
   contact_id?: string | null;
   event_data?: Record<string, any>;
   ai_role?: string;
+  cycle_id?: string;
 }): Promise<void> {
   try {
     await db.execute(sql`
       INSERT INTO ai_activity_log (
         consultant_id, event_type, title, description, icon, severity,
-        task_id, contact_name, contact_id, event_data, ai_role
+        task_id, contact_name, contact_id, event_data, ai_role, cycle_id
       ) VALUES (
         ${consultantId}, ${data.event_type}, ${data.title},
         ${data.description || null}, ${data.icon || null}, ${data.severity || 'info'},
         ${data.task_id || null}, ${data.contact_name || null}, ${data.contact_id || null},
-        ${JSON.stringify(data.event_data || {})}::jsonb, ${data.ai_role || null}
+        ${JSON.stringify(data.event_data || {})}::jsonb, ${data.ai_role || null},
+        ${data.cycle_id || null}
       )
     `);
   } catch (error: any) {
@@ -1362,7 +1364,9 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   let totalCreated = 0;
 
-  console.log(`🧠 [AUTONOMOUS-GEN] Running ${activeRoles.length} AI roles for consultant ${consultantId}: ${activeRoles.map(r => r.name).join(', ')}${dryRun ? ' [DRY-RUN]' : ''}`);
+  const cycleId = `cycle_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+  console.log(`🧠 [AUTONOMOUS-GEN] Running ${activeRoles.length} AI roles for consultant ${consultantId}: ${activeRoles.map(r => r.name).join(', ')}${dryRun ? ' [DRY-RUN]' : ''} (cycle: ${cycleId})`);
 
   if (!dryRun) {
     await logActivity(consultantId, {
@@ -1371,6 +1375,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${eligibleClients.length} clienti idonei su ${clients.length} totali.`,
       icon: '🧠',
       severity: 'info',
+      cycle_id: cycleId,
       event_data: {
         total_clients: clients.length,
         eligible_clients: eligibleClients.length,
@@ -1379,6 +1384,12 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         active_roles: activeRoles.map(r => r.id),
         provider_name: providerName,
         provider_model: providerModel,
+        clients_list: clientsList.slice(0, 20),
+        recent_tasks_summary: recentTasksSummary.slice(0, 10),
+        excluded_clients: {
+          with_pending_tasks: clientsWithPendingTasks.size,
+          with_recent_completion: clientsWithRecentCompletion.size,
+        },
       },
     });
   }
@@ -1426,6 +1437,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             icon: '⏭️',
             severity: 'info',
             ai_role: role.id,
+            cycle_id: cycleId,
           });
         }
         continue;
@@ -1541,6 +1553,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
           icon: '🤖',
           severity: 'info',
           ai_role: role.id,
+          cycle_id: cycleId,
           event_data: {
             role_name: role.name,
             overall_reasoning: parsed.overall_reasoning || null,
@@ -1553,6 +1566,15 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               channel: t.preferred_channel,
               priority: t.priority,
             })),
+            clients_list: clientsList.slice(0, 20),
+            role_specific_data: roleData,
+            excluded_clients: {
+              with_pending_tasks: clientsWithPendingTasks.size,
+              with_recent_completion: clientsWithRecentCompletion.size,
+            },
+            recent_tasks_summary: recentTasksSummary.slice(0, 10),
+            total_clients: clients.length,
+            eligible_clients: eligibleClients.length,
           },
         });
       }
@@ -1651,6 +1673,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               contact_name: suggestedTask.contact_name,
               contact_id: suggestedTask.contact_id,
               ai_role: role.id,
+              cycle_id: cycleId,
               event_data: {
                 task_category: suggestedTask.task_category,
                 priority: suggestedTask.priority,
@@ -1693,6 +1716,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
           icon: '❌',
           severity: 'error',
           ai_role: role.id,
+          cycle_id: cycleId,
         });
       }
     }
