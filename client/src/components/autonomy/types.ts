@@ -121,6 +121,8 @@ export interface TasksStats {
   completed: number;
   failed: number;
   pending: number;
+  role_counts?: Array<{role: string, count: number}>;
+  manual_count?: number;
 }
 
 export interface TaskDetailResponse {

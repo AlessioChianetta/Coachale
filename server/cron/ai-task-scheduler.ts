@@ -1100,14 +1100,13 @@ async function runAutonomousTaskGeneration(): Promise<void> {
     console.log('🧠 [AUTONOMOUS-GEN] Starting autonomous task generation...');
 
     const consultantsResult = await db.execute(sql`
-      SELECT DISTINCT aas.consultant_id, 
-             COALESCE(aas.proactive_check_interval_minutes, 60) as check_interval
+      SELECT DISTINCT aas.consultant_id
       FROM ai_autonomy_settings aas
       WHERE aas.autonomy_level >= 2
         AND aas.is_active = true
     `);
 
-    const consultants = consultantsResult.rows as { consultant_id: string; check_interval: number }[];
+    const consultants = consultantsResult.rows as { consultant_id: string }[];
 
     if (consultants.length === 0) {
       console.log('🧠 [AUTONOMOUS-GEN] No eligible consultants found');
@@ -1118,22 +1117,8 @@ async function runAutonomousTaskGeneration(): Promise<void> {
 
     let totalGenerated = 0;
 
-    for (const { consultant_id, check_interval } of consultants) {
+    for (const { consultant_id } of consultants) {
       try {
-        const lastGenResult = await db.execute(sql`
-          SELECT created_at FROM ai_activity_log
-          WHERE consultant_id = ${consultant_id}
-            AND event_type = 'autonomous_task_created'
-          ORDER BY created_at DESC LIMIT 1
-        `);
-        if (lastGenResult.rows.length > 0) {
-          const lastGen = new Date((lastGenResult.rows[0] as any).created_at);
-          const elapsedMinutes = (Date.now() - lastGen.getTime()) / 60000;
-          if (elapsedMinutes < check_interval) {
-            console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultant_id} last gen ${Math.round(elapsedMinutes)}m ago (interval: ${check_interval}m), skipping`);
-            continue;
-          }
-        }
         const count = await generateTasksForConsultant(consultant_id);
         totalGenerated += count;
       } catch (error: any) {
@@ -1446,7 +1431,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       }
 
       const configuredFrequencyMinutes = parseInt(roleFrequencies[role.id] || '30', 10);
-      if (!dryRun && configuredFrequencyMinutes > 30) {
+      if (!dryRun) {
         const lastRunResult = await db.execute(sql`
           SELECT created_at FROM ai_activity_log
           WHERE consultant_id = ${consultantId}::uuid
@@ -1454,6 +1439,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             AND event_type = 'autonomous_analysis'
             AND title NOT LIKE '%canale disabilitato%'
             AND title NOT LIKE '%frequenza non raggiunta%'
+            AND title NOT LIKE '%nessun cliente idoneo%'
           ORDER BY created_at DESC
           LIMIT 1
         `);
@@ -1464,18 +1450,6 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
           if (minutesSinceLastRun < configuredFrequencyMinutes) {
             const remainingMinutes = Math.ceil(configuredFrequencyMinutes - minutesSinceLastRun);
             console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Frequency not reached (${configuredFrequencyMinutes}min configured, last run ${Math.round(minutesSinceLastRun)}min ago, next in ~${remainingMinutes}min), skipping`);
-            
-            // Log this frequency skip so the frequency check has consistent data
-            await logActivity(consultantId, {
-              event_type: 'autonomous_analysis',
-              title: `${role.name}: frequenza non raggiunta`,
-              description: `Il ruolo ${role.name} richiede una frequenza di ${configuredFrequencyMinutes}min. Ultima esecuzione ${Math.round(minutesSinceLastRun)}min fa. Prossima esecuzione tra ~${remainingMinutes}min.`,
-              icon: '⏸️',
-              severity: 'info',
-              ai_role: role.id,
-              cycle_id: cycleId,
-            });
-            
             continue;
           }
         }

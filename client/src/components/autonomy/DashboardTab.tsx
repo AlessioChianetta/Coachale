@@ -129,13 +129,9 @@ function DashboardTab({
   };
 
   const availableRoles = useMemo(() => {
-    if (!tasksData?.tasks) return [];
-    const roles = new Set<string>();
-    tasksData.tasks.forEach(task => {
-      if (task.ai_role) roles.add(task.ai_role);
-    });
-    return Array.from(roles).sort();
-  }, [tasksData?.tasks]);
+    if (!tasksStats?.role_counts) return [];
+    return tasksStats.role_counts.map(rc => rc.role).sort();
+  }, [tasksStats?.role_counts]);
 
   const groupedTasks = useMemo(() => {
     if (!tasksData?.tasks) return [];
@@ -837,7 +833,7 @@ function DashboardTab({
           <button
             onClick={() => setDashboardRoleFilter("all")}
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px]",
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px]",
               dashboardRoleFilter === "all"
                 ? "bg-primary/10 ring-2 ring-primary/40"
                 : "hover:bg-muted/60"
@@ -884,13 +880,13 @@ function DashboardTab({
               iris: "text-teal-600 dark:text-teal-400",
               marco: "text-indigo-600 dark:text-indigo-400",
             };
-            const taskCount = tasksData?.tasks?.filter(t => t.ai_role === role).length || 0;
+            const taskCount = tasksStats?.role_counts?.find(rc => rc.role === role)?.count || 0;
             return (
               <button
                 key={role}
                 onClick={() => setDashboardRoleFilter(isActive ? "all" : role)}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px] relative",
+                  "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px] relative",
                   isActive
                     ? cn(roleBgColors[role] || "bg-primary/10", "ring-2", roleRingColors[role] || "ring-primary/40")
                     : "hover:bg-muted/60"
@@ -916,14 +912,14 @@ function DashboardTab({
                   </div>
                 )}
                 <span className={cn(
-                  "text-[10px] font-medium leading-tight text-center max-w-[64px] truncate",
+                  "text-[10px] font-medium leading-tight text-center max-w-[80px] line-clamp-2",
                   isActive ? (roleTextColors[role] || "text-primary") : "text-muted-foreground"
                 )}>
                   {profile?.role || role.charAt(0).toUpperCase() + role.slice(1)}
                 </span>
                 {taskCount > 0 && (
                   <span className={cn(
-                    "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
+                    "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-background",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted-foreground/20 text-muted-foreground"
@@ -934,11 +930,11 @@ function DashboardTab({
               </button>
             );
           })}
-          {tasksData?.tasks?.some(t => !t.ai_role) && (
+          {(tasksStats?.manual_count ?? 0) > 0 && (
             <button
               onClick={() => setDashboardRoleFilter(dashboardRoleFilter === "__manual__" ? "all" : "__manual__")}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[72px] relative",
+                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px] relative",
                 dashboardRoleFilter === "__manual__"
                   ? "bg-muted ring-2 ring-muted-foreground/40"
                   : "hover:bg-muted/60"
@@ -954,19 +950,16 @@ function DashboardTab({
                 "text-[10px] font-medium leading-tight text-center",
                 dashboardRoleFilter === "__manual__" ? "text-foreground" : "text-muted-foreground"
               )}>Manuali</span>
-              {(() => {
-                const count = tasksData?.tasks?.filter(t => !t.ai_role).length || 0;
-                return count > 0 ? (
-                  <span className={cn(
-                    "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
-                    dashboardRoleFilter === "__manual__"
-                      ? "bg-muted-foreground text-background"
-                      : "bg-muted-foreground/20 text-muted-foreground"
-                  )}>
-                    {count}
-                  </span>
-                ) : null;
-              })()}
+              {(tasksStats?.manual_count ?? 0) > 0 && (
+                <span className={cn(
+                  "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-background",
+                  dashboardRoleFilter === "__manual__"
+                    ? "bg-muted-foreground text-background"
+                    : "bg-muted-foreground/20 text-muted-foreground"
+                )}>
+                  {tasksStats?.manual_count}
+                </span>
+              )}
             </button>
           )}
         </div>

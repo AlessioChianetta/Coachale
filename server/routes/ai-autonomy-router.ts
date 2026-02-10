@@ -670,18 +670,36 @@ router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "sup
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const result = await db.execute(sql`
-      SELECT 
-        COUNT(*) FILTER (WHERE status != 'cancelled')::int as total,
-        COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
-        COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
-        COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
-        COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval'))::int as pending
-      FROM ai_scheduled_tasks
-      WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'
-    `);
+    const [result, roleCountsResult, manualCountResult] = await Promise.all([
+      db.execute(sql`
+        SELECT 
+          COUNT(*) FILTER (WHERE status != 'cancelled')::int as total,
+          COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
+          COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+          COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
+          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval'))::int as pending
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'
+      `),
+      db.execute(sql`
+        SELECT ai_role as role, COUNT(*)::int as count
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' AND status != 'cancelled' AND ai_role IS NOT NULL
+        GROUP BY ai_role
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' AND status != 'cancelled' AND ai_role IS NULL
+      `),
+    ]);
 
-    return res.json(result.rows[0] || { total: 0, active: 0, completed: 0, failed: 0, pending: 0 });
+    const stats = result.rows[0] || { total: 0, active: 0, completed: 0, failed: 0, pending: 0 };
+    return res.json({
+      ...stats,
+      role_counts: roleCountsResult.rows,
+      manual_count: (manualCountResult.rows[0] as any)?.count || 0,
+    });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching task stats:", error);
     return res.status(500).json({ error: "Failed to fetch task stats" });
@@ -1240,7 +1258,7 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
     const totalClients = (totalClientsResult.rows[0] as any)?.count || 0;
     const pendingTasks = (pendingTasksResult.rows[0] as any)?.count || 0;
 
-    const checkInterval = settings.proactive_check_interval_minutes || 60;
+    const checkInterval = 30;
     let nextCheckEstimate: string | null = null;
     if (lastCheck?.created_at) {
       const lastCheckTime = new Date(lastCheck.created_at);
