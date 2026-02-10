@@ -3996,10 +3996,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/consultations/schedule-proposal", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
-      const { clientId, months: rawMonths, consultationsPerMonth: rawPerMonth } = req.body;
+      const { clientId, months: rawMonths, consultationsPerMonth: rawPerMonth, intervalDays: rawIntervalDays, extraConsultations } = req.body;
 
       if (!clientId) return res.status(400).json({ message: "clientId is required" });
       const months = Math.max(1, Math.min(6, parseInt(rawMonths) || 3));
+      const intervalDays = rawIntervalDays ? Math.max(1, Math.min(60, parseInt(rawIntervalDays))) : 0;
 
       const clientResult = await db.execute(sql`
         SELECT id, first_name, last_name, monthly_consultation_limit, email
@@ -4032,34 +4033,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const proposals: Array<{date: string, time: string, month: string}> = [];
+      const allProposedDateStrings: string[] = [...existingDateStrings];
 
-      for (let m = 0; m < months; m++) {
-        const targetMonth = new Date(now.getFullYear(), now.getMonth() + m + 1, 1);
-        const monthKey = `${targetMonth.getFullYear()}-${targetMonth.getMonth()}`;
-        const alreadyInMonth = existingByMonth[monthKey] || 0;
-        const slotsToFill = Math.max(0, perMonth - alreadyInMonth);
+      if (intervalDays > 0) {
+        let cursor = new Date(now);
+        cursor.setDate(cursor.getDate() + 1);
+        while (cursor.getDay() === 0 || cursor.getDay() === 6) {
+          cursor.setDate(cursor.getDate() + 1);
+        }
 
-        if (slotsToFill === 0) continue;
-
-        const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
-        const spacing = Math.floor(daysInMonth / (slotsToFill + 1));
-
-        for (let c = 0; c < slotsToFill; c++) {
-          let dayOfMonth = spacing * (c + 1);
-          let proposedDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), dayOfMonth);
-
-          while (proposedDate.getDay() === 0 || proposedDate.getDay() === 6) {
-            proposedDate.setDate(proposedDate.getDate() + 1);
+        while (cursor <= endDate) {
+          const dateStr = cursor.toISOString().split('T')[0];
+          if (!allProposedDateStrings.includes(dateStr)) {
+            const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+            proposals.push({ date: dateStr, time: '10:00', month: monthName });
+            allProposedDateStrings.push(dateStr);
           }
 
-          const dateStr = proposedDate.toISOString().split('T')[0];
-          const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+          cursor.setDate(cursor.getDate() + intervalDays);
+          while (cursor.getDay() === 0 || cursor.getDay() === 6) {
+            cursor.setDate(cursor.getDate() + 1);
+          }
+        }
+      } else {
+        for (let m = 0; m < months; m++) {
+          const targetMonth = new Date(now.getFullYear(), now.getMonth() + m + 1, 1);
+          const monthKey = `${targetMonth.getFullYear()}-${targetMonth.getMonth()}`;
+          const alreadyInMonth = existingByMonth[monthKey] || 0;
+          const slotsToFill = Math.max(0, perMonth - alreadyInMonth);
 
-          if (!existingDateStrings.includes(dateStr)) {
-            proposals.push({ date: dateStr, time: '10:00', month: monthName });
+          if (slotsToFill === 0) continue;
+
+          const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+          const spacing = Math.floor(daysInMonth / (slotsToFill + 1));
+
+          for (let c = 0; c < slotsToFill; c++) {
+            let dayOfMonth = spacing * (c + 1);
+            let proposedDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), dayOfMonth);
+
+            while (proposedDate.getDay() === 0 || proposedDate.getDay() === 6) {
+              proposedDate.setDate(proposedDate.getDate() + 1);
+            }
+
+            const dateStr = proposedDate.toISOString().split('T')[0];
+            const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+
+            if (!allProposedDateStrings.includes(dateStr)) {
+              proposals.push({ date: dateStr, time: '10:00', month: monthName });
+              allProposedDateStrings.push(dateStr);
+            }
           }
         }
       }
+
+      if (Array.isArray(extraConsultations)) {
+        for (const extra of extraConsultations) {
+          const monthIndex = parseInt(extra.monthIndex);
+          const count = Math.max(0, Math.min(5, parseInt(extra.count) || 0));
+          if (count === 0 || isNaN(monthIndex)) continue;
+
+          const targetMonth = new Date(now.getFullYear(), now.getMonth() + monthIndex + 1, 1);
+          const daysInMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+
+          let added = 0;
+          const spacing = Math.floor(daysInMonth / (count + 1));
+          for (let c = 0; c < count && added < count; c++) {
+            let dayOfMonth = spacing * (c + 1);
+            let candidate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), dayOfMonth);
+
+            let attempts = 0;
+            while (attempts < 31) {
+              if (candidate.getMonth() !== targetMonth.getMonth()) break;
+              if (candidate.getDay() !== 0 && candidate.getDay() !== 6) {
+                const dateStr = candidate.toISOString().split('T')[0];
+                if (!allProposedDateStrings.includes(dateStr)) {
+                  const monthName = candidate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                  proposals.push({ date: dateStr, time: '10:00', month: monthName });
+                  allProposedDateStrings.push(dateStr);
+                  added++;
+                  break;
+                }
+              }
+              candidate.setDate(candidate.getDate() + 1);
+              attempts++;
+            }
+          }
+        }
+      }
+
+      proposals.sort((a, b) => a.date.localeCompare(b.date));
 
       res.json({
         client: { id: client.id, name: `${client.first_name} ${client.last_name}`, limit: client.monthly_consultation_limit },

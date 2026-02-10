@@ -109,6 +109,8 @@ export default function ConsultantClientsPage() {
   const [schedulingMonths, setSchedulingMonths] = useState(3);
   const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
   const [isCreatingConsultations, setIsCreatingConsultations] = useState(false);
+  const [schedulingIntervalDays, setSchedulingIntervalDays] = useState<number>(0);
+  const [schedulingExtraMonths, setSchedulingExtraMonths] = useState<Record<number, number>>({});
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -461,7 +463,11 @@ export default function ConsultantClientsPage() {
         body: JSON.stringify({
           clientId: schedulingClient.id,
           months: schedulingMonths,
-          consultationsPerMonth: schedulingClient.monthlyConsultationLimit
+          consultationsPerMonth: schedulingClient.monthlyConsultationLimit,
+          intervalDays: schedulingIntervalDays || undefined,
+          extraConsultations: Object.entries(schedulingExtraMonths)
+            .filter(([_, count]) => count > 0)
+            .map(([monthIndex, count]) => ({ monthIndex: parseInt(monthIndex), count }))
         })
       });
       if (!response.ok) throw new Error('Failed to generate proposal');
@@ -939,6 +945,8 @@ export default function ConsultantClientsPage() {
                                           setSchedulingStep('overview');
                                           setProposedDates([]);
                                           setSchedulingMonths(3);
+                                          setSchedulingIntervalDays(0);
+                                          setSchedulingExtraMonths({});
                                         }}
                                         className="text-xs h-7 px-2 border-cyan-200 text-cyan-700 hover:bg-cyan-50"
                                       >
@@ -956,7 +964,7 @@ export default function ConsultantClientsPage() {
                     </CardContent>
                   </Card>
                   {/* Scheduling Wizard Dialog */}
-                  <Dialog open={!!schedulingClient} onOpenChange={() => { setSchedulingClient(null); setSchedulingStep('overview'); setProposedDates([]); }}>
+                  <Dialog open={!!schedulingClient} onOpenChange={() => { setSchedulingClient(null); setSchedulingStep('overview'); setProposedDates([]); setSchedulingIntervalDays(0); setSchedulingExtraMonths({}); }}>
                     <DialogContent className="max-w-lg">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -1007,6 +1015,66 @@ export default function ConsultantClientsPage() {
                             >
                               {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n === 1 ? 'mese' : 'mesi'}</option>)}
                             </select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Frequenza consulenze</label>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {[
+                                { value: 0, label: 'Da pacchetto' },
+                                { value: 10, label: 'Ogni 10 giorni' },
+                                { value: 15, label: 'Ogni 15 giorni' },
+                                { value: 20, label: 'Ogni 20 giorni' },
+                                { value: 25, label: 'Ogni 25 giorni' },
+                                { value: 30, label: 'Ogni 30 giorni' },
+                              ].map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setSchedulingIntervalDays(opt.value)}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
+                                    schedulingIntervalDays === opt.value
+                                      ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-300 hover:text-cyan-700'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-slate-700">Consulenze extra per mese</label>
+                            <div className="mt-2 space-y-1.5">
+                              {Array.from({ length: schedulingMonths }, (_, i) => {
+                                const d = new Date();
+                                d.setMonth(d.getMonth() + i + 1);
+                                const monthLabel = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                                const extraCount = schedulingExtraMonths[i] || 0;
+                                return (
+                                  <div key={i} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                                    <span className="text-sm text-slate-700 capitalize">{monthLabel}</span>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => setSchedulingExtraMonths(prev => ({ ...prev, [i]: Math.max(0, extraCount - 1) }))}
+                                        disabled={extraCount <= 0}
+                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 text-xs font-bold"
+                                      >
+                                        −
+                                      </button>
+                                      <span className="text-sm font-semibold text-slate-800 w-4 text-center">{extraCount}</span>
+                                      <button
+                                        onClick={() => setSchedulingExtraMonths(prev => ({ ...prev, [i]: Math.min(5, extraCount + 1) }))}
+                                        disabled={extraCount >= 5}
+                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 text-xs font-bold"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                           
                           <Button 
