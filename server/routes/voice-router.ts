@@ -415,28 +415,52 @@ router.get("/conversations", authenticateToken, requireAnyRole(["consultant", "s
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     const { search } = req.query;
     
-    const consultantCondition = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    const vcConsultantCond = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    const svcConsultantCond = consultantId ? sql`AND svc.consultant_id = ${consultantId}` : sql``;
     const searchCondition = search ? sql`AND (phone ILIKE ${'%' + search + '%'} OR client_name ILIKE ${'%' + search + '%'})` : sql``;
     
     const result = await db.execute(sql`
       SELECT * FROM (
         SELECT 
-          vc.caller_id as phone,
+          phone,
           COALESCE(
-            (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1),
-            vc.caller_id
+            (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = combined.phone LIMIT 1),
+            phone
           ) as client_name,
-          (SELECT u.id FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1) as client_id,
-          COUNT(*) as total_calls,
-          COUNT(CASE WHEN vc.full_transcript IS NOT NULL AND vc.full_transcript != '' THEN 1 END) as calls_with_transcript,
-          MAX(vc.started_at) as last_call_at,
-          MIN(vc.started_at) as first_call_at,
-          SUM(vc.duration_seconds) as total_duration,
-          ARRAY_AGG(DISTINCT vc.outcome) FILTER (WHERE vc.outcome IS NOT NULL) as outcomes
-        FROM voice_calls vc
-        WHERE vc.caller_id IS NOT NULL AND vc.caller_id != ''
-          ${consultantCondition}
-        GROUP BY vc.caller_id
+          (SELECT u.id FROM users u WHERE u.phone_number = combined.phone LIMIT 1) as client_id,
+          SUM(call_count)::int as total_calls,
+          SUM(transcript_count)::int as calls_with_transcript,
+          MAX(last_at) as last_call_at,
+          MIN(first_at) as first_call_at,
+          SUM(total_dur) as total_duration
+        FROM (
+          SELECT 
+            vc.caller_id as phone,
+            COUNT(*) as call_count,
+            COUNT(CASE WHEN vc.full_transcript IS NOT NULL AND vc.full_transcript != '' THEN 1 END) as transcript_count,
+            MAX(vc.started_at) as last_at,
+            MIN(vc.started_at) as first_at,
+            SUM(vc.duration_seconds) as total_dur
+          FROM voice_calls vc
+          WHERE vc.caller_id IS NOT NULL AND vc.caller_id != ''
+            ${vcConsultantCond}
+          GROUP BY vc.caller_id
+
+          UNION ALL
+
+          SELECT 
+            svc.target_phone as phone,
+            COUNT(*) as call_count,
+            0 as transcript_count,
+            MAX(svc.scheduled_at) as last_at,
+            MIN(svc.scheduled_at) as first_at,
+            SUM(svc.duration_seconds) as total_dur
+          FROM scheduled_voice_calls svc
+          WHERE svc.target_phone IS NOT NULL AND svc.target_phone != ''
+            ${svcConsultantCond}
+          GROUP BY svc.target_phone
+        ) combined
+        GROUP BY phone
       ) conversations
       WHERE 1=1 ${searchCondition}
       ORDER BY last_call_at DESC
@@ -459,38 +483,71 @@ router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consulta
       return res.status(400).json({ error: "Numero di telefono richiesto" });
     }
     
-    const consultantCondition = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    const vcConsultantCond = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    const svcConsultantCond = consultantId ? sql`AND svc.consultant_id = ${consultantId}` : sql``;
     
     const result = await db.execute(sql`
-      SELECT 
-        vc.id,
-        vc.caller_id,
-        vc.called_number,
-        vc.client_id,
-        vc.status,
-        vc.started_at,
-        vc.ended_at,
-        vc.duration_seconds,
-        vc.full_transcript,
-        vc.transcript_chunks,
-        vc.outcome,
-        vc.ai_mode,
-        vc.metadata,
-        vc.recording_url,
-        vc.prompt_used,
-        COALESCE(
-          (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1),
-          vc.caller_id
-        ) as client_name
-      FROM voice_calls vc
-      WHERE (vc.caller_id = ${phone} OR vc.called_number = ${phone})
-        ${consultantCondition}
-      ORDER BY vc.started_at ASC
+      SELECT * FROM (
+        SELECT 
+          vc.id,
+          vc.caller_id,
+          vc.called_number,
+          NULL::text as client_id,
+          vc.status,
+          vc.started_at,
+          vc.ended_at,
+          vc.duration_seconds,
+          vc.full_transcript,
+          vc.transcript_chunks,
+          vc.outcome,
+          vc.ai_mode,
+          vc.metadata,
+          vc.recording_url,
+          vc.prompt_used,
+          'voice_call' as source,
+          COALESCE(
+            (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1),
+            vc.caller_id
+          ) as client_name
+        FROM voice_calls vc
+        WHERE (vc.caller_id = ${phone} OR vc.called_number = ${phone})
+          ${vcConsultantCond}
+
+        UNION ALL
+
+        SELECT 
+          svc.id,
+          svc.target_phone as caller_id,
+          svc.target_phone as called_number,
+          NULL::text as client_id,
+          svc.status,
+          svc.scheduled_at as started_at,
+          svc.last_attempt_at as ended_at,
+          svc.duration_seconds,
+          NULL as full_transcript,
+          NULL::jsonb as transcript_chunks,
+          svc.hangup_cause as outcome,
+          svc.ai_mode,
+          NULL::jsonb as metadata,
+          NULL as recording_url,
+          svc.call_instruction as prompt_used,
+          'scheduled' as source,
+          COALESCE(
+            (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = svc.target_phone LIMIT 1),
+            svc.target_phone
+          ) as client_name
+        FROM scheduled_voice_calls svc
+        WHERE svc.target_phone = ${phone}
+          ${svcConsultantCond}
+      ) all_calls
+      ORDER BY started_at ASC
     `);
+    
+    const clientName = result.rows.length > 0 ? (result.rows[0] as any).client_name : phone;
     
     res.json({ 
       phone,
-      client_name: result.rows.length > 0 ? (result.rows[0] as any).client_name : phone,
+      client_name: clientName,
       calls: result.rows 
     });
   } catch (error) {

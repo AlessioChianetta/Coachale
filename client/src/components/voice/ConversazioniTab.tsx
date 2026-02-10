@@ -60,6 +60,7 @@ interface CallDetail {
   recording_url: string | null;
   prompt_used: string | null;
   client_name: string;
+  source?: string;
 }
 
 interface ConversationDetail {
