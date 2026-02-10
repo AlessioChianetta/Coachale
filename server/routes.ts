@@ -3325,9 +3325,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const actualCountResult = await db.execute(sql`
-        SELECT COUNT(*)::int as total FROM users 
-        WHERE consultant_id = ${consultantId} 
-        AND role = 'client'
+        SELECT COUNT(*)::int as total FROM users u
+        WHERE u.consultant_id = ${consultantId} 
+        AND u.is_active = true
+        AND u.id NOT IN (
+          SELECT cls.client_id FROM client_level_subscriptions cls
+          WHERE cls.consultant_id = ${consultantId}
+          AND cls.level = '3' AND cls.status = 'active'
+          AND cls.client_id IS NOT NULL
+        )
       `);
       const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
 
@@ -3441,9 +3447,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await db.execute(sql`
           UPDATE consultant_licenses 
           SET employee_used = (
-            SELECT COUNT(*)::int FROM users 
-            WHERE consultant_id = ${consultantId} 
-            AND role = 'client'
+            SELECT COUNT(*)::int FROM users u
+            WHERE u.consultant_id = ${consultantId} 
+            AND u.is_active = true
+            AND u.id NOT IN (
+              SELECT cls.client_id FROM client_level_subscriptions cls
+              WHERE cls.consultant_id = ${consultantId}
+              AND cls.level = '3' AND cls.status = 'active'
+              AND cls.client_id IS NOT NULL
+            )
           )
           WHERE consultant_id = ${consultantId}
         `);
@@ -13306,11 +13318,17 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         license = newLicense;
       }
 
-      // Count ACTUAL users for accurate display (all users count, not just active)
+      // Count ACTUAL users: active users (any role) minus Gold subscribers
       const actualCountResult = await db.execute(sql`
-        SELECT COUNT(*)::int as total FROM users 
-        WHERE consultant_id = ${consultantId} 
-        AND role = 'client'
+        SELECT COUNT(*)::int as total FROM users u
+        WHERE u.consultant_id = ${consultantId} 
+        AND u.is_active = true
+        AND u.id NOT IN (
+          SELECT cls.client_id FROM client_level_subscriptions cls
+          WHERE cls.consultant_id = ${consultantId}
+          AND cls.level = '3' AND cls.status = 'active'
+          AND cls.client_id IS NOT NULL
+        )
       `);
       const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
 
