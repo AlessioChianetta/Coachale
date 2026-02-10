@@ -292,22 +292,36 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       u.id,
       u.first_name || ' ' || u.last_name as client_name,
       u.monthly_consultation_limit,
-      COALESCE(c.consultation_count, 0)::int as consultations_used
+      (
+        COALESCE(c_direct.consultation_count, 0) +
+        COALESCE(c_notes.consultation_count, 0)
+      )::int as consultations_used
     FROM users u
     LEFT JOIN (
       SELECT client_id, COUNT(*)::int as consultation_count
       FROM consultations
       WHERE consultant_id = ${consultantId}
+        AND client_id IS NOT NULL
         AND status IN ('completed', 'scheduled')
         AND scheduled_at >= date_trunc('month', NOW())
         AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
       GROUP BY client_id
-    ) c ON c.client_id = u.id::text
+    ) c_direct ON c_direct.client_id = u.id::text
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int as consultation_count
+      FROM consultations
+      WHERE consultant_id = ${consultantId}
+        AND client_id IS NULL
+        AND status IN ('completed', 'scheduled')
+        AND scheduled_at >= date_trunc('month', NOW())
+        AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
+        AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
+    ) c_notes ON true
     WHERE u.consultant_id = ${consultantId}
       AND u.role = 'client'
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
-    ORDER BY (u.monthly_consultation_limit - COALESCE(c.consultation_count, 0)) ASC
+    ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
   `);
 
   return {

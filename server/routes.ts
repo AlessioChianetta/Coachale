@@ -3129,25 +3129,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
           u.last_name,
           u.email,
           u.phone_number,
+          u.role,
           u.monthly_consultation_limit,
           u.is_active,
-          COALESCE(c.consultation_count, 0)::int as consultations_used
+          (
+            COALESCE(c_direct.consultation_count, 0) +
+            COALESCE(c_notes.consultation_count, 0)
+          )::int as consultations_used
         FROM users u
         LEFT JOIN (
           SELECT client_id, COUNT(*)::int as consultation_count
           FROM consultations
           WHERE consultant_id = ${consultantId}
+            AND client_id IS NOT NULL
             AND status IN ('completed', 'scheduled')
             AND scheduled_at >= ${monthStart.toISOString()}
             AND scheduled_at < ${monthEnd.toISOString()}
           GROUP BY client_id
-        ) c ON c.client_id = u.id::text
+        ) c_direct ON c_direct.client_id = u.id::text
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::int as consultation_count
+          FROM consultations
+          WHERE consultant_id = ${consultantId}
+            AND client_id IS NULL
+            AND status IN ('completed', 'scheduled')
+            AND scheduled_at >= ${monthStart.toISOString()}
+            AND scheduled_at < ${monthEnd.toISOString()}
+            AND notes ILIKE '%' || u.first_name || ' ' || u.last_name || '%'
+        ) c_notes ON true
         WHERE u.consultant_id = ${consultantId}
-          AND u.role = 'client'
           AND u.is_active = true
           AND u.monthly_consultation_limit IS NOT NULL
-        ORDER BY (u.monthly_consultation_limit - COALESCE(c.consultation_count, 0)) ASC
+        ORDER BY (u.monthly_consultation_limit - (COALESCE(c_direct.consultation_count, 0) + COALESCE(c_notes.consultation_count, 0))) ASC
       `);
+
+      const clientIds = result.rows.map((r: any) => r.id);
+      let consultationDetails: Record<string, any[]> = {};
+      
+      if (clientIds.length > 0) {
+        const detailsResult = await db.execute(sql`
+          SELECT client_id, scheduled_at, status, duration, notes
+          FROM consultations
+          WHERE consultant_id = ${consultantId}
+            AND status IN ('completed', 'scheduled')
+            AND scheduled_at >= ${monthStart.toISOString()}
+            AND scheduled_at < ${monthEnd.toISOString()}
+            AND client_id IS NOT NULL
+          ORDER BY scheduled_at ASC
+        `);
+        for (const row of detailsResult.rows as any[]) {
+          if (!consultationDetails[row.client_id]) consultationDetails[row.client_id] = [];
+          consultationDetails[row.client_id].push({
+            date: row.scheduled_at,
+            status: row.status,
+            duration: row.duration,
+          });
+        }
+        
+        const namesForNotesSearch = result.rows.map((r: any) => ({
+          id: r.id,
+          fullName: `${r.first_name} ${r.last_name}`,
+        }));
+        const unlinkedResult = await db.execute(sql`
+          SELECT scheduled_at, status, duration, notes
+          FROM consultations
+          WHERE consultant_id = ${consultantId}
+            AND client_id IS NULL
+            AND status IN ('completed', 'scheduled')
+            AND scheduled_at >= ${monthStart.toISOString()}
+            AND scheduled_at < ${monthEnd.toISOString()}
+        `);
+        for (const row of unlinkedResult.rows as any[]) {
+          for (const client of namesForNotesSearch) {
+            if (row.notes && row.notes.toLowerCase().includes(client.fullName.toLowerCase())) {
+              if (!consultationDetails[client.id]) consultationDetails[client.id] = [];
+              consultationDetails[client.id].push({
+                date: row.scheduled_at,
+                status: row.status,
+                duration: row.duration,
+                matchedByNotes: true,
+              });
+            }
+          }
+        }
+      }
 
       const monitoringData = result.rows.map((row: any) => {
         const limit = row.monthly_consultation_limit;
@@ -3159,10 +3224,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: row.last_name,
           email: row.email,
           phoneNumber: row.phone_number,
+          role: row.role,
           monthlyConsultationLimit: limit,
           consultationsUsedThisMonth: used,
           remaining,
           isActive: row.is_active,
+          consultations: consultationDetails[row.id] || [],
         };
       });
 

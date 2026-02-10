@@ -775,13 +775,18 @@ export default function ConsultantClientsPage() {
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-2.5">
                                         <Avatar className="w-8 h-8 flex-shrink-0">
-                                          <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-medium text-xs">
+                                          <AvatarFallback className={`${client.role === 'consultant' ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-xs`}>
                                             {client.firstName?.[0]}{client.lastName?.[0]}
                                           </AvatarFallback>
                                         </Avatar>
-                                        <span className="font-medium text-sm text-slate-800">
-                                          {client.firstName} {client.lastName}
-                                        </span>
+                                        <div className="flex flex-col">
+                                          <span className="font-medium text-sm text-slate-800">
+                                            {client.firstName} {client.lastName}
+                                          </span>
+                                          {client.role === 'consultant' && (
+                                            <span className="text-[10px] text-violet-600 font-medium">Consulente</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 hidden md:table-cell">
@@ -799,6 +804,16 @@ export default function ConsultantClientsPage() {
                                             style={{ width: `${Math.min(usagePct, 100)}%` }}
                                           />
                                         </div>
+                                        {client.consultations && client.consultations.length > 0 && (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {client.consultations.map((c: any, i: number) => (
+                                              <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${c.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                {new Date(c.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                                                {c.status === 'scheduled' && ' (prev)'}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
