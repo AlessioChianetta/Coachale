@@ -459,6 +459,20 @@ router.get("/conversations", authenticateToken, requireAnyRole(["consultant", "s
           WHERE svc.target_phone IS NOT NULL AND svc.target_phone != ''
             ${svcConsultantCond}
           GROUP BY svc.target_phone
+
+          UNION ALL
+
+          SELECT
+            ac.caller_phone as phone,
+            COUNT(DISTINCT ac.id) as call_count,
+            COUNT(DISTINCT ac.id) as transcript_count,
+            MAX(ac.last_message_at) as last_at,
+            MIN(ac.created_at) as first_at,
+            0 as total_dur
+          FROM ai_conversations ac
+          WHERE ac.caller_phone IS NOT NULL AND ac.caller_phone != ''
+            AND ac.mode = 'live_voice'
+          GROUP BY ac.caller_phone
         ) combined
         GROUP BY phone
       ) conversations
@@ -486,7 +500,7 @@ router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consulta
     const vcConsultantCond = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
     const svcConsultantCond = consultantId ? sql`AND svc.consultant_id = ${consultantId}` : sql``;
     
-    const result = await db.execute(sql`
+    const voiceCallsResult = await db.execute(sql`
       SELECT * FROM (
         SELECT 
           vc.id,
@@ -542,13 +556,67 @@ router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consulta
       ) all_calls
       ORDER BY started_at ASC
     `);
-    
-    const clientName = result.rows.length > 0 ? (result.rows[0] as any).client_name : phone;
+
+    const aiConversationsResult = await db.execute(sql`
+      SELECT 
+        ac.id as conversation_id,
+        ac.caller_phone,
+        ac.mode,
+        ac.created_at,
+        ac.last_message_at,
+        ac.summary,
+        json_agg(
+          json_build_object(
+            'id', m.id,
+            'role', m.role,
+            'content', m.content,
+            'created_at', m.created_at,
+            'message_type', m.message_type,
+            'duration_seconds', m.duration_seconds
+          ) ORDER BY m.created_at ASC
+        ) FILTER (WHERE m.id IS NOT NULL) as messages
+      FROM ai_conversations ac
+      LEFT JOIN ai_messages m ON m.conversation_id = ac.id
+      WHERE ac.caller_phone = ${phone}
+        AND ac.mode = 'live_voice'
+      GROUP BY ac.id
+      ORDER BY ac.created_at ASC
+    `);
+
+    const aiCalls = (aiConversationsResult.rows as any[]).map((conv: any) => ({
+      id: conv.conversation_id,
+      caller_id: conv.caller_phone,
+      called_number: null,
+      client_id: null,
+      status: 'completed',
+      started_at: conv.created_at,
+      ended_at: conv.last_message_at,
+      duration_seconds: null,
+      full_transcript: (conv.messages || []).map((m: any) => `${m.role === 'user' ? 'Utente' : 'AI'}: ${m.content}`).join('\n'),
+      transcript_chunks: (conv.messages || []).map((m: any) => ({
+        speaker: m.role === 'user' ? 'Utente' : 'AI Alessia',
+        text: m.content,
+        timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : undefined,
+      })),
+      outcome: null,
+      ai_mode: conv.mode,
+      metadata: null,
+      recording_url: null,
+      prompt_used: null,
+      source: 'ai_conversation',
+      client_name: phone,
+      summary: conv.summary,
+    }));
+
+    const allCalls = [...(voiceCallsResult.rows as any[]), ...aiCalls]
+      .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+
+    const clientName = allCalls.length > 0 ? (allCalls[0] as any).client_name : phone;
     
     res.json({ 
       phone,
       client_name: clientName,
-      calls: result.rows 
+      calls: allCalls 
     });
   } catch (error) {
     console.error("[Voice] Error fetching conversation:", error);
