@@ -109,9 +109,11 @@ import {
   Wand2,
   Construction,
   ExternalLink,
+  MessagesSquare,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
+import ConversazioniTab from "@/components/voice/ConversazioniTab";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
@@ -2197,6 +2199,13 @@ export default function ConsultantVoiceCallsPage() {
                 >
                   <BookOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Guida Voce</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="conversazioni" 
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-teal-700 transition-all duration-200"
+                >
+                  <MessagesSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Conversazioni</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -7469,6 +7478,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     </Card>
                   </div>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="conversazioni">
+                <ConversazioniTab />
               </TabsContent>
             </Tabs>
           </div>

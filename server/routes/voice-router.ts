@@ -409,6 +409,96 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
   }
 });
 
+// GET /api/voice/conversations - Lista conversazioni uniche per numero di telefono
+router.get("/conversations", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const { search } = req.query;
+    
+    const consultantCondition = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    const searchCondition = search ? sql`AND (phone ILIKE ${'%' + search + '%'} OR client_name ILIKE ${'%' + search + '%'})` : sql``;
+    
+    const result = await db.execute(sql`
+      SELECT * FROM (
+        SELECT 
+          vc.caller_id as phone,
+          COALESCE(
+            (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1),
+            vc.caller_id
+          ) as client_name,
+          (SELECT u.id FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1) as client_id,
+          COUNT(*) as total_calls,
+          COUNT(CASE WHEN vc.full_transcript IS NOT NULL AND vc.full_transcript != '' THEN 1 END) as calls_with_transcript,
+          MAX(vc.started_at) as last_call_at,
+          MIN(vc.started_at) as first_call_at,
+          SUM(vc.duration_seconds) as total_duration,
+          ARRAY_AGG(DISTINCT vc.outcome) FILTER (WHERE vc.outcome IS NOT NULL) as outcomes
+        FROM voice_calls vc
+        WHERE vc.caller_id IS NOT NULL AND vc.caller_id != ''
+          ${consultantCondition}
+        GROUP BY vc.caller_id
+      ) conversations
+      WHERE 1=1 ${searchCondition}
+      ORDER BY last_call_at DESC
+    `);
+    
+    res.json({ conversations: result.rows });
+  } catch (error) {
+    console.error("[Voice] Error fetching conversations:", error);
+    res.status(500).json({ error: "Errore nel recupero delle conversazioni" });
+  }
+});
+
+// GET /api/voice/conversations/:phone - Tutte le chiamate per un numero di telefono specifico
+router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
+    const { phone } = req.params;
+    
+    if (!phone) {
+      return res.status(400).json({ error: "Numero di telefono richiesto" });
+    }
+    
+    const consultantCondition = consultantId ? sql`AND vc.consultant_id = ${consultantId}` : sql``;
+    
+    const result = await db.execute(sql`
+      SELECT 
+        vc.id,
+        vc.caller_id,
+        vc.called_number,
+        vc.client_id,
+        vc.status,
+        vc.started_at,
+        vc.ended_at,
+        vc.duration_seconds,
+        vc.full_transcript,
+        vc.transcript_chunks,
+        vc.outcome,
+        vc.ai_mode,
+        vc.metadata,
+        vc.recording_url,
+        vc.prompt_used,
+        COALESCE(
+          (SELECT CONCAT(u.first_name, ' ', u.last_name) FROM users u WHERE u.phone_number = vc.caller_id LIMIT 1),
+          vc.caller_id
+        ) as client_name
+      FROM voice_calls vc
+      WHERE (vc.caller_id = ${phone} OR vc.called_number = ${phone})
+        ${consultantCondition}
+      ORDER BY vc.started_at ASC
+    `);
+    
+    res.json({ 
+      phone,
+      client_name: result.rows.length > 0 ? (result.rows[0] as any).client_name : phone,
+      calls: result.rows 
+    });
+  } catch (error) {
+    console.error("[Voice] Error fetching conversation:", error);
+    res.status(500).json({ error: "Errore nel recupero della conversazione" });
+  }
+});
+
 // GET /api/voice/calls/:id - Dettaglio singola chiamata con eventi
 router.get("/calls/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
