@@ -44,6 +44,16 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 
 # Recent Changes
 
+## 2026-02-10: Google Calendar Auto-Sync for Batch-Created Consultations
+- **Automatic event creation**: When consultations are created via the scheduling wizard, events are automatically created on Google Calendar (if connected)
+- **Client as attendee**: Client's email is added as attendee; Google Calendar sends the invite automatically
+- **Google Meet link**: Auto-generated Meet link stored on each consultation record
+- **Event ID tracking**: `google_calendar_event_id` and `google_meet_link` saved on each consultation for future reference/updates
+- **Error handling**: Partial failures (some events fail) are surfaced to the user; consultations are saved regardless of calendar errors
+- **Monthly limit enforcement fix**: Interval-based scheduling now respects monthly consultation limits (existing DB + Calendar events counted)
+- **Current month inclusion**: Scheduling now includes the current month in proposals, not just future months
+- **Timezone fix**: Pattern detection uses Europe/Rome timezone and rounds to nearest 30 minutes
+
 ## 2026-02-10: Intelligent Consultation Scheduling Wizard
 - **Custom intervals**: Scheduling wizard supports "every X days" (10, 15, 20, 25, 30) in addition to per-month package limits
 - **Per-month extras**: Ability to add extra consultations (+1 to +5) for specific months via +/- steppers

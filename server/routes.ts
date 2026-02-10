@@ -4353,7 +4353,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const client = clientResult.rows[0] as any;
 
+      let calendarConnected = false;
+      let consultantName = '';
+      try {
+        calendarConnected = await googleCalendarService.isGoogleCalendarConnected(consultantId);
+        if (calendarConnected) {
+          const consultantResult = await db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId}`);
+          if (consultantResult.rows.length > 0) {
+            const c = consultantResult.rows[0] as any;
+            consultantName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+          }
+        }
+      } catch (err) {
+        console.error('[BATCH-CREATE] Calendar connection check error:', err);
+      }
+
       const created = [];
+      let calendarCreated = 0;
+      let calendarErrors = 0;
       for (const c of consultationList) {
         if (!c.date || !c.time) continue;
         const scheduledAt = new Date(`${c.date}T${c.time}:00`);
@@ -4372,12 +4389,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await db.execute(sql`UPDATE consultations SET client_email = ${client.email} WHERE id = ${newConsultation.id}`);
         }
 
+        if (calendarConnected) {
+          try {
+            const attendees = client.email ? [client.email] : [];
+            const result = await googleCalendarService.createGoogleCalendarEvent(consultantId, {
+              summary: `Consulenza — ${client.first_name} ${client.last_name}`,
+              description: `Consulenza programmata con ${client.first_name} ${client.last_name}${consultantName ? ` e ${consultantName}` : ''}`,
+              startDate: c.date,
+              startTime: c.time,
+              duration: 60,
+              timezone: 'Europe/Rome',
+              attendees,
+            });
+
+            if (result.googleEventId || result.googleMeetLink) {
+              await db.execute(sql`
+                UPDATE consultations 
+                SET google_calendar_event_id = ${result.googleEventId || null},
+                    google_meet_link = ${result.googleMeetLink || null}
+                WHERE id = ${newConsultation.id}
+              `);
+              calendarCreated++;
+            }
+          } catch (calErr: any) {
+            console.error(`[BATCH-CREATE] Calendar event error for ${c.date} ${c.time}:`, calErr.message);
+            calendarErrors++;
+          }
+        }
+
         created.push(newConsultation);
       }
 
+      const calendarMessage = calendarConnected
+        ? calendarErrors > 0
+          ? ` (${calendarCreated} eventi calendario creati, ${calendarErrors} errori)`
+          : ` — ${calendarCreated} eventi creati su Google Calendar con invito al cliente`
+        : '';
+
       res.json({ 
-        message: `${created.length} consulenze programmate con successo`,
-        created: created.length 
+        message: `${created.length} consulenze programmate con successo${calendarMessage}`,
+        created: created.length,
+        calendarCreated,
+        calendarErrors,
+        calendarConnected,
       });
     } catch (error: any) {
       console.error("[BATCH-CREATE] Error:", error);

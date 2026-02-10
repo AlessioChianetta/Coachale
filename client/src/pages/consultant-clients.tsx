@@ -500,6 +500,13 @@ export default function ConsultantClientsPage() {
       if (!response.ok) throw new Error('Failed to create consultations');
       const data = await response.json();
       toast({ title: "Consulenze programmate!", description: data.message });
+      if (data.calendarConnected && data.calendarErrors > 0) {
+        toast({ 
+          title: "Attenzione", 
+          description: `${data.calendarErrors} evento/i non creato/i su Google Calendar. Le consulenze sono state comunque salvate.`, 
+          variant: "destructive" 
+        });
+      }
       setSchedulingClient(null);
       setSchedulingStep('overview');
       setProposedDates([]);
