@@ -41,3 +41,20 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **FreeSWITCH**: Voice telephony integration.
 *   **Google Calendar API**: Appointment scheduling.
 *   **Publer**: Social media scheduling and publishing.
+
+# Recent Changes
+
+## 2026-02-10: AI Autonomy Page UI Refactoring
+- **Decomposed monolithic page** (`consultant-ai-autonomy.tsx`, 5,362 lines) into 9 modular files in `client/src/components/autonomy/`:
+  - `types.ts` (177 lines) — TypeScript interfaces for all data structures
+  - `constants.ts` (390 lines) — Design tokens, role profiles, task library, categories
+  - `utils.tsx` (432 lines) — Shared utilities (badges, formatters, PDF generation)
+  - `index.tsx` (604 lines) — Main orchestrator with all state, queries, mutations
+  - `SettingsTab.tsx` (1,386 lines) — AI roles grid, autonomy slider, working hours, limits, logs
+  - `ActivityTab.tsx` (750 lines) — Activity feed, AI reasoning logs, simulation mode
+  - `DashboardTab.tsx` (1,345 lines) — Task CRUD, detail dialog, execution plans, stats
+  - `DataCatalogTab.tsx` (378 lines) — Static AI data access documentation
+  - `DeepResearchResults.tsx` (283 lines) — Structured AI research results renderer
+- **Design system applied**: `rounded-xl` borders, `shadow-sm` only, no gradient card backgrounds, 8px spacing grid, semantic color palette (primary/emerald/red/amber)
+- **Page file** (`consultant-ai-autonomy.tsx`) is now a 1-line re-export
+- All functionality preserved: API calls, mutations, state management, PDF export, real-time polling

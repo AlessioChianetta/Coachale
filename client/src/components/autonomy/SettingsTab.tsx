@@ -1,0 +1,1386 @@
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Bot, Activity, Phone, Mail, MessageSquare,
+  Clock, Shield, Zap, Brain, CheckCircle, AlertTriangle,
+  XCircle, Info, Loader2, Play,
+  Save, BarChart3, ListTodo,
+  ChevronLeft, ChevronRight,
+  ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
+  Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import type { AutonomySettings, SystemStatus, AutonomousLogsResponse } from "./types";
+import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
+import { getAutonomyLabel, getAutonomyBadgeColor } from "./utils";
+
+interface SettingsTabProps {
+  settings: AutonomySettings;
+  setSettings: React.Dispatch<React.SetStateAction<AutonomySettings>>;
+  systemStatus: SystemStatus | undefined;
+  loadingSettings: boolean;
+  onSave: () => void;
+  isSaving: boolean;
+  expandedRole: string | null;
+  setExpandedRole: (role: string | null) => void;
+  togglingRole: string | null;
+  onToggleRole: (roleId: string, enabled: boolean) => void;
+  isTriggering: boolean;
+  triggerResult: { success: boolean; tasks_generated: number; error?: string } | null;
+  onTriggerAnalysis: () => void;
+  autonomousLogs: AutonomousLogsResponse | undefined;
+  autonomousLogsPage: number;
+  setAutonomousLogsPage: (page: number) => void;
+  autonomousLogTypeFilter: string;
+  setAutonomousLogTypeFilter: (filter: string) => void;
+  autonomousLogSeverityFilter: string;
+  setAutonomousLogSeverityFilter: (filter: string) => void;
+  autonomousLogRoleFilter: string;
+  setAutonomousLogRoleFilter: (filter: string) => void;
+}
+
+function SettingsTab({
+  settings,
+  setSettings,
+  systemStatus,
+  loadingSettings,
+  onSave,
+  isSaving,
+  expandedRole,
+  setExpandedRole,
+  togglingRole,
+  onToggleRole,
+  isTriggering,
+  triggerResult,
+  onTriggerAnalysis,
+  autonomousLogs,
+  autonomousLogsPage,
+  setAutonomousLogsPage,
+  autonomousLogTypeFilter,
+  setAutonomousLogTypeFilter,
+  autonomousLogSeverityFilter,
+  setAutonomousLogSeverityFilter,
+  autonomousLogRoleFilter,
+  setAutonomousLogRoleFilter,
+}: SettingsTabProps) {
+  const [showArchDetails, setShowArchDetails] = useState(true);
+  const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
+
+  const toggleWorkingDay = (day: number) => {
+    setSettings(prev => ({
+      ...prev,
+      working_days: prev.working_days.includes(day)
+        ? prev.working_days.filter(d => d !== day)
+        : [...prev.working_days, day].sort(),
+    }));
+  };
+
+  const toggleCategory = (cat: string) => {
+    setSettings(prev => ({
+      ...prev,
+      allowed_task_categories: prev.allowed_task_categories.includes(cat)
+        ? prev.allowed_task_categories.filter(c => c !== cat)
+        : [...prev.allowed_task_categories, cat],
+    }));
+  };
+
+  if (loadingSettings) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-8"
+    >
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardContent className="py-5 px-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className={cn(
+                "flex items-center justify-center h-14 w-14 rounded-xl text-2xl font-bold text-white",
+                settings.autonomy_level === 0 ? "bg-muted-foreground" :
+                settings.autonomy_level <= 3 ? "bg-emerald-500" :
+                settings.autonomy_level <= 6 ? "bg-amber-500" :
+                settings.autonomy_level <= 9 ? "bg-orange-500" : "bg-red-500"
+              )}>
+                {settings.autonomy_level}
+              </div>
+              {settings.is_active && (
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500" />
+                </span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Stato attuale</p>
+              <p className="text-sm text-foreground">
+                Il tuo Dipendente AI è in modalità{" "}
+                <span className="font-semibold">
+                  {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
+                </span>.{" "}
+                {settings.is_active ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Sta operando con autonomia livello {settings.autonomy_level}.
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Non sta eseguendo azioni autonome.
+                  </span>
+                )}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Activity className="h-3 w-3" />
+                  {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp].filter(Boolean).length} canali attivi
+                </Badge>
+                <Badge className={cn("text-xs", getAutonomyBadgeColor(settings.autonomy_level))}>
+                  {autonomyInfo.label}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader className="cursor-pointer" onClick={() => setShowArchDetails(!showArchDetails)}>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              <span className="text-lg font-semibold">Cosa può fare il tuo Dipendente AI</span>
+            </div>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              {showArchDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            Architettura, modalità operative e guardrail di sicurezza
+          </CardDescription>
+        </CardHeader>
+
+        {showArchDetails && (
+          <CardContent>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="rounded-xl border border-border p-4 space-y-2">
+                <div className="flex items-start gap-4">
+                  <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <div className="space-y-2 flex-1">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      Come funziona
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">Il Cervello</Badge>
+                    </h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      Un <span className="font-medium text-foreground">motore decisionale</span> basato su Gemini analizza il contesto di ogni cliente
+                      (storico, dati, scadenze) e crea <span className="font-medium text-foreground">piani di esecuzione multi-step</span>.
+                      Ragiona come un consulente esperto per decidere cosa fare, quando e come.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Badge variant="outline" className="text-xs gap-1"><Eye className="h-3 w-3" /> Analisi contesto</Badge>
+                      <Badge variant="outline" className="text-xs gap-1"><ListTodo className="h-3 w-3" /> Piani multi-step</Badge>
+                      <Badge variant="outline" className="text-xs gap-1"><Sparkles className="h-3 w-3" /> Reasoning AI</Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Cog className="h-4 w-4" />
+                  Le 3 Modalità
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={cn(
+                    "rounded-xl border border-border p-4 space-y-2",
+                    settings.default_mode === "manual" && "ring-2 ring-primary border-primary/30"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm font-semibold">Manuale</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Tu crei i task, l'AI li esegue quando programmati. Controllo totale su ogni azione.
+                    </p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      Ideale per: chi vuole controllo totale
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "rounded-xl border border-border p-4 space-y-2 relative",
+                    settings.default_mode === "hybrid" && "ring-2 ring-primary border-primary/30"
+                  )}>
+                    <Badge className="absolute -top-2.5 right-3 bg-primary text-primary-foreground text-xs px-2 py-0.5">Consigliata</Badge>
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">Ibrida</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      L'AI propone nuove azioni ma chiede approvazione per quelle importanti.
+                    </p>
+                    <p className="text-xs text-primary">
+                      Ideale per: consulenti e team piccoli
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "rounded-xl border border-border p-4 space-y-2",
+                    settings.default_mode === "automatic" && "ring-2 ring-primary border-primary/30"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-semibold">Automatica</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      L'AI opera in piena autonomia entro i limiti configurati.
+                    </p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      Ideale per: aziende strutturate
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Il Ciclo di Lavoro
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { step: 1, icon: Timer, title: "CRON Scheduler", desc: "Verifica task ogni minuto" },
+                    { step: 2, icon: Brain, title: "Decision Engine", desc: "Analizza contesto e priorità" },
+                    { step: 3, icon: ListTodo, title: "Piano Esecuzione", desc: "Crea piano multi-step" },
+                    { step: 4, icon: Play, title: "Task Executor", desc: "Esegue azioni su tutti i canali" },
+                  ].map((item) => (
+                    <div key={item.step} className="flex items-start gap-2">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-xl bg-primary/10 text-primary text-sm font-bold shrink-0">
+                        {item.step}
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <item.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs font-semibold truncate">{item.title}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { icon: Phone, label: "Chiamate" },
+                    { icon: Mail, label: "Email" },
+                    { icon: MessageSquare, label: "WhatsApp" },
+                    { icon: BarChart3, label: "Analisi" },
+                    { icon: Target, label: "Ricerca" },
+                  ].map((ch) => (
+                    <Badge key={ch.label} variant="outline" className="text-xs gap-1 py-0.5">
+                      <ch.icon className="h-3 w-3" />
+                      {ch.label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="rounded-xl border border-border p-4 bg-amber-50 dark:bg-amber-950/20">
+                <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-amber-500" />
+                  Guardrail di Sicurezza
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  {[
+                    { icon: Clock, text: "Opera solo nell'orario di lavoro configurato" },
+                    { icon: Shield, text: "Limiti giornalieri per ogni canale" },
+                    { icon: Zap, text: "Solo canali e categorie abilitate" },
+                    { icon: AlertCircle, text: "Livello autonomia richiesto per ogni azione" },
+                    { icon: Activity, text: "Ogni azione registrata nel feed attività" },
+                    { icon: CheckCircle, text: "Nessuna azione duplicata o ridondante" },
+                  ].map((rule, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground py-1.5">
+                      <rule.icon className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span>{rule.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </CardContent>
+        )}
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Zap className="h-5 w-5" />
+            Stato e Livello di Autonomia
+          </CardTitle>
+          <CardDescription>
+            Definisci quanto il tuo dipendente AI può operare in modo indipendente
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Abilita Dipendente AI</Label>
+              <p className="text-xs text-muted-foreground">
+                Attiva o disattiva il dipendente AI
+              </p>
+            </div>
+            <Switch
+              checked={settings.is_active}
+              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, is_active: checked }))}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <div className="flex flex-col items-center justify-center py-4">
+              <div className={cn(
+                "flex items-center justify-center h-24 w-24 rounded-full border-4 text-4xl font-bold",
+                settings.autonomy_level === 0 ? "border-muted-foreground/30 text-muted-foreground" :
+                settings.autonomy_level <= 3 ? "border-emerald-500/40 text-emerald-500" :
+                settings.autonomy_level <= 6 ? "border-amber-500/40 text-amber-500" :
+                settings.autonomy_level <= 9 ? "border-orange-500/40 text-orange-500" : "border-red-500/40 text-red-500"
+              )}>
+                {settings.autonomy_level}
+              </div>
+              <p className={cn("text-lg font-semibold mt-2", autonomyInfo.color)}>
+                {autonomyInfo.label}
+              </p>
+              <p className="text-xs text-muted-foreground">su 10</p>
+            </div>
+
+            <div className="rounded-xl border border-border p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Livello di Autonomia</Label>
+                <Badge className={getAutonomyBadgeColor(settings.autonomy_level)}>
+                  {settings.autonomy_level}/10
+                </Badge>
+              </div>
+
+              <Slider
+                value={[settings.autonomy_level]}
+                onValueChange={(val) => setSettings(prev => ({ ...prev, autonomy_level: val[0] }))}
+                max={10}
+                min={0}
+                step={1}
+                className="w-full"
+              />
+
+              <div className="flex justify-between gap-1">
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-muted-foreground">0 Off</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-emerald-600 border-emerald-200 dark:text-emerald-400 dark:border-emerald-800">1-3</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-amber-600 border-amber-200 dark:text-amber-400 dark:border-amber-800">4-6</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-orange-600 border-orange-200 dark:text-orange-400 dark:border-orange-800">7-9</Badge>
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 text-red-600 border-red-200 dark:text-red-400 dark:border-red-800">10</Badge>
+              </div>
+            </div>
+
+            <div className={cn(
+              "p-4 rounded-xl border",
+              autonomyInfo.color === "text-muted-foreground" ? "bg-muted/50 border-muted" :
+              settings.autonomy_level <= 3 ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40" :
+              settings.autonomy_level <= 6 ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40" :
+              settings.autonomy_level <= 9 ? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/40" :
+              "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40"
+            )}>
+              <p className={cn("text-sm flex items-start gap-2", autonomyInfo.color)}>
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                {autonomyInfo.description}
+              </p>
+            </div>
+
+            {settings.autonomy_level > 0 && (
+              <div className="space-y-4 mt-4">
+                <div className="rounded-xl border border-border p-4 space-y-4">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Cosa fa l'AI a livello {settings.autonomy_level}
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Cosa PUO' fare</p>
+                      <ul className="space-y-1.5">
+                        {settings.autonomy_level >= 1 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Eseguire task che crei tu manualmente
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 2 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Analizzare i tuoi clienti e proporre task proattivamente
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Cercare nei documenti privati (consulenze, esercizi, knowledge base)
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level >= 3 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Generare report, analisi e ricerche in automatico
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 4 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Eseguire task autonomi senza la tua approvazione
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                              Inviare email e messaggi WhatsApp ai clienti
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level >= 7 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Effettuare chiamate vocali autonomamente
+                          </li>
+                        )}
+                        {settings.autonomy_level >= 10 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <CheckCircle className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            Gestire tutto senza alcuna supervisione
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Cosa NON PUO' fare</p>
+                      <ul className="space-y-1.5">
+                        {settings.autonomy_level < 2 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Analizzare clienti e proporre task proattivamente
+                          </li>
+                        )}
+                        {settings.autonomy_level < 4 && (
+                          <>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                              Eseguire task senza la tua approvazione
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                              Inviare email o WhatsApp senza approvazione
+                            </li>
+                            <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                              <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                              Effettuare chiamate vocali autonomamente
+                            </li>
+                          </>
+                        )}
+                        {settings.autonomy_level >= 4 && settings.autonomy_level < 7 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Effettuare chiamate vocali senza approvazione
+                          </li>
+                        )}
+                        {settings.autonomy_level < 10 && (
+                          <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                            Operare fuori dall'orario di lavoro configurato
+                          </li>
+                        )}
+                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                          Superare i limiti giornalieri (chiamate, email, ecc.)
+                        </li>
+                        <li className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                          Operare su categorie di task non abilitate
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center py-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open('/ai-autonomy-flowchart.html', '_blank')}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Vedi Diagramma di Flusso Completo
+                  </Button>
+                </div>
+
+                <div className="rounded-xl border border-border p-4 space-y-4">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Cog className="h-4 w-4" />
+                    Come funziona il sistema
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">1</div>
+                      <div>
+                        <p className="text-xs font-medium">Analisi Clienti (ogni {settings.autonomy_level >= 2 ? "30 minuti" : "—"})</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {settings.autonomy_level >= 2
+                            ? "L'AI analizza i tuoi clienti attivi, esclude chi ha già task pendenti o completati nelle ultime 24h, e identifica chi ha bisogno di attenzione (es: nessuna consulenza da oltre 2 settimane)."
+                            : "Disattivato a questo livello. Serve almeno livello 2."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">2</div>
+                      <div>
+                        <p className="text-xs font-medium">Creazione Task (max 3 per ciclo)</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {settings.autonomy_level >= 2
+                            ? `L'AI usa Gemini per valutare ogni cliente e suggerire azioni concrete. Considera: ultima consulenza, task completati di recente, categorie abilitate (${settings.allowed_task_categories.join(", ")}), e le tue istruzioni personalizzate.`
+                            : "Disattivato a questo livello. Serve almeno livello 2."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">3</div>
+                      <div>
+                        <p className="text-xs font-medium">Esecuzione Task (controllo ogni minuto)</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {settings.autonomy_level >= 4
+                            ? "I task creati vengono eseguiti automaticamente. L'AI genera un piano multi-step (recupero dati, ricerca documenti, analisi, report, comunicazione) e lo esegue passo dopo passo."
+                            : settings.autonomy_level >= 2
+                              ? "I task vengono messi in attesa di approvazione. Devi approvarli manualmente prima che vengano eseguiti."
+                              : "Solo i task che crei manualmente vengono eseguiti."}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-4 p-3 rounded-xl border border-border">
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">4</div>
+                      <div>
+                        <p className="text-xs font-medium">Notifiche e Log</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Ogni azione viene registrata nel Feed Attività. Puoi vedere ogni step: quali dati ha recuperato, quali documenti ha consultato, quale analisi ha fatto, e il risultato finale.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {systemStatus && (
+                  <div className="rounded-xl border border-border p-4 space-y-4">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Stato Sistema in Tempo Reale
+                    </h4>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-3 rounded-xl border border-border text-center">
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <div className={cn("h-2 w-2 rounded-full", systemStatus.is_active ? "bg-emerald-500 animate-pulse" : "bg-red-500")} />
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Stato</p>
+                        </div>
+                        <p className={cn("text-sm font-semibold", systemStatus.is_active ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                          {systemStatus.is_active ? "Attivo" : "Disattivo"}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl border border-border text-center">
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <div className={cn("h-2 w-2 rounded-full", systemStatus.is_in_working_hours ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Orario</p>
+                        </div>
+                        <p className={cn("text-sm font-semibold", systemStatus.is_in_working_hours ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                          {systemStatus.is_in_working_hours ? "In orario" : "Fuori orario"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{systemStatus.current_time_rome} (Roma)</p>
+                      </div>
+                      <div className="p-3 rounded-xl border border-border text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Clienti Eleggibili</p>
+                        <p className="text-sm font-semibold">{systemStatus.eligible_clients} <span className="text-muted-foreground font-normal">/ {systemStatus.total_clients}</span></p>
+                        <p className="text-xs text-muted-foreground">senza task pendenti</p>
+                      </div>
+                      <div className="p-3 rounded-xl border border-border text-center">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Task Pendenti</p>
+                        <p className="text-sm font-semibold">{systemStatus.pending_tasks}</p>
+                        <p className="text-xs text-muted-foreground">in coda o in esecuzione</p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limiti Giornalieri Utilizzati Oggi</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
+                          <Phone className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium">{systemStatus.today_counts.calls}/{systemStatus.limits.max_calls}</p>
+                            <p className="text-xs text-muted-foreground">Chiamate</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
+                          <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium">{systemStatus.today_counts.emails}/{systemStatus.limits.max_emails}</p>
+                            <p className="text-xs text-muted-foreground">Email</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
+                          <MessageSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium">{systemStatus.today_counts.whatsapp}/{systemStatus.limits.max_whatsapp}</p>
+                            <p className="text-xs text-muted-foreground">WhatsApp</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 rounded-xl border border-border">
+                          <BarChart3 className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium">{systemStatus.today_counts.analyses}/{systemStatus.limits.max_analyses}</p>
+                            <p className="text-xs text-muted-foreground">Analisi</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Controllo Autonomo</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={onTriggerAnalysis}
+                          disabled={isTriggering || !systemStatus.is_active || systemStatus.autonomy_level < 2}
+                        >
+                          {isTriggering ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Play className="h-3 w-3" />
+                          )}
+                          {isTriggering ? "Analisi in corso..." : "Avvia Analisi Ora"}
+                        </Button>
+                      </div>
+                      {triggerResult && (
+                        <div className={cn(
+                          "p-2.5 rounded-xl border text-xs",
+                          triggerResult.success
+                            ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300"
+                            : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
+                        )}>
+                          {triggerResult.success
+                            ? `Analisi completata: ${triggerResult.tasks_generated} task generati.`
+                            : `Errore: ${triggerResult.error || "Analisi fallita"}`}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div className="p-2.5 rounded-xl border border-border">
+                          <p className="text-xs text-muted-foreground">Ultimo controllo</p>
+                          <p className="text-xs font-medium">
+                            {systemStatus.last_autonomous_check
+                              ? new Date(systemStatus.last_autonomous_check).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                              : "Mai eseguito"}
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-border">
+                          <p className="text-xs text-muted-foreground">Prossimo controllo (stima)</p>
+                          <p className="text-xs font-medium">
+                            {systemStatus.next_check_estimate
+                              ? new Date(systemStatus.next_check_estimate).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                              : "Al prossimo ciclo"}
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-border">
+                          <p className="text-xs text-muted-foreground">Frequenza controllo</p>
+                          <p className="text-xs font-medium">Ogni {systemStatus.check_interval_minutes} minuti</p>
+                        </div>
+                      </div>
+                      {systemStatus.last_check_data && (
+                        <div className="p-2.5 rounded-xl border border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Risultato ultimo controllo</p>
+                          <p className="text-xs">
+                            {systemStatus.last_check_data.eligible_clients !== undefined
+                              ? `${systemStatus.last_check_data.eligible_clients} clienti analizzati, ${systemStatus.last_check_data.tasks_suggested || 0} task suggeriti`
+                              : "Dati non disponibili"}
+                          </p>
+                        </div>
+                      )}
+                      {systemStatus.last_error && (
+                        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-medium text-red-700 dark:text-red-400">Ultimo errore rilevato</p>
+                              <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">{systemStatus.last_error.title}</p>
+                              <p className="text-xs text-red-500/70 dark:text-red-400/70 mt-0.5">{systemStatus.last_error.description}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(systemStatus.last_error.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {autonomousLogs && (
+                  <div className="rounded-xl border border-border p-4 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <Brain className="h-4 w-4" />
+                        Log Ragionamenti AI
+                        <Badge variant="secondary" className="text-xs">{autonomousLogs.total}</Badge>
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <Select value={autonomousLogTypeFilter} onValueChange={(val) => { setAutonomousLogTypeFilter(val); setAutonomousLogsPage(1); }}>
+                          <SelectTrigger className="h-7 text-xs w-[130px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti i tipi</SelectItem>
+                            <SelectItem value="autonomous_analysis">Analisi</SelectItem>
+                            <SelectItem value="autonomous_task_created">Task creati</SelectItem>
+                            <SelectItem value="autonomous_error">Errori</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={autonomousLogSeverityFilter} onValueChange={(val) => { setAutonomousLogSeverityFilter(val); setAutonomousLogsPage(1); }}>
+                          <SelectTrigger className="h-7 text-xs w-[110px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti</SelectItem>
+                            <SelectItem value="info">Info</SelectItem>
+                            <SelectItem value="success">Successo</SelectItem>
+                            <SelectItem value="warning">Warning</SelectItem>
+                            <SelectItem value="error">Errore</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={autonomousLogRoleFilter} onValueChange={(val) => { setAutonomousLogRoleFilter(val); setAutonomousLogsPage(1); }}>
+                          <SelectTrigger className="h-7 text-xs w-[120px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti i ruoli</SelectItem>
+                            <SelectItem value="alessia">Alessia</SelectItem>
+                            <SelectItem value="millie">Millie</SelectItem>
+                            <SelectItem value="echo">Echo</SelectItem>
+                            <SelectItem value="nova">Nova</SelectItem>
+                            <SelectItem value="stella">Stella</SelectItem>
+                            <SelectItem value="iris">Iris</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {autonomousLogs.logs.length === 0 ? (
+                      <div className="flex items-center gap-4 text-muted-foreground py-4">
+                        <Brain className="h-5 w-5" />
+                        <div>
+                          <p className="text-sm font-medium">Nessun log trovato</p>
+                          <p className="text-xs">
+                            {autonomousLogTypeFilter !== "all" || autonomousLogSeverityFilter !== "all"
+                              ? "Prova a cambiare i filtri per vedere altri risultati."
+                              : "Quando l'AI analizzerà i tuoi clienti, qui vedrai ogni decisione, ragionamento e risultato."}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                        {autonomousLogs.logs.map((log) => (
+                          <motion.div
+                            key={log.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className={cn(
+                              "p-3 rounded-xl border text-xs space-y-2",
+                              log.severity === "error" ? "bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-800/30" :
+                              log.event_type === "autonomous_task_created" ? "bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/30" :
+                              "border-border"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <span className="text-base shrink-0">{log.icon || "🧠"}</span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-medium truncate">{log.title}</p>
+                                    {log.ai_role && (
+                                      <Badge variant="outline" className={cn("text-xs px-1 py-0 shrink-0",
+                                        log.ai_role === "alessia" ? "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400" :
+                                        log.ai_role === "millie" ? "border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400" :
+                                        log.ai_role === "echo" ? "border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400" :
+                                        log.ai_role === "nova" ? "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400" :
+                                        log.ai_role === "stella" ? "border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400" :
+                                        log.ai_role === "iris" ? "border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400" :
+                                        "border-muted-foreground/30 text-muted-foreground"
+                                      )}>
+                                        {log.ai_role.charAt(0).toUpperCase() + log.ai_role.slice(1)}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-muted-foreground mt-0.5">{log.description}</p>
+                                  {log.event_data?.overall_reasoning && log.event_data.overall_reasoning !== log.description && (
+                                    <div className="mt-2 p-2 rounded-xl border border-primary/20 bg-primary/5">
+                                      <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
+                                        <Brain className="h-3 w-3" />
+                                        Ragionamento AI:
+                                      </p>
+                                      <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
+                                        {log.event_data.overall_reasoning}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                                {new Date(log.created_at).toLocaleString("it-IT", { timeZone: "Europe/Rome", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+
+                            {log.event_data && (
+                              <div className="space-y-1 pl-8">
+                                {log.event_data.total_clients !== undefined && (
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span>Clienti totali: <strong>{log.event_data.total_clients}</strong></span>
+                                    <span>Eleggibili: <strong>{log.event_data.eligible_clients}</strong></span>
+                                    <span>Con task pendenti: <strong>{log.event_data.clients_with_pending_tasks}</strong></span>
+                                    <span>Completati recenti: <strong>{log.event_data.clients_with_recent_completion}</strong></span>
+                                  </div>
+                                )}
+                                {log.event_data.tasks_suggested > 0 && (
+                                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                    {log.event_data.tasks_suggested} task suggeriti dall'AI
+                                  </p>
+                                )}
+                                {log.event_data.suggestions && Array.isArray(log.event_data.suggestions) && log.event_data.suggestions.length > 0 && (
+                                  <div className="space-y-1 mt-1">
+                                    {log.event_data.suggestions.map((s: any, i: number) => (
+                                      <div key={i} className="p-2 rounded-xl border border-border">
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs px-1 py-0">{s.category}</Badge>
+                                          <span className="font-medium">{s.client_name}</span>
+                                          {s.channel && s.channel !== "none" && (
+                                            <Badge variant="secondary" className="text-xs px-1 py-0">{s.channel}</Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-muted-foreground mt-0.5">{s.instruction}</p>
+                                        {s.reasoning && (
+                                          <p className="text-muted-foreground/70 mt-0.5 italic">Motivazione: {s.reasoning}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {log.event_data.task_category && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Badge variant="outline" className="text-xs px-1 py-0">{log.event_data.task_category}</Badge>
+                                    {log.contact_name && <span>Cliente: <strong>{log.contact_name}</strong></span>}
+                                    {log.event_data.preferred_channel && log.event_data.preferred_channel !== "none" && (
+                                      <Badge variant="secondary" className="text-xs px-1 py-0">{log.event_data.preferred_channel}</Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+
+                    {autonomousLogs.total > 10 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <p className="text-xs text-muted-foreground">
+                          Pagina {autonomousLogsPage} di {Math.ceil(autonomousLogs.total / 10)}
+                        </p>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={autonomousLogsPage <= 1}
+                            onClick={() => setAutonomousLogsPage(autonomousLogsPage - 1)}
+                          >
+                            <ChevronLeft className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={autonomousLogsPage >= Math.ceil(autonomousLogs.total / 10)}
+                            onClick={() => setAutonomousLogsPage(autonomousLogsPage + 1)}
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Modalità Predefinita</Label>
+              <Select
+                value={settings.default_mode}
+                onValueChange={(val) => setSettings(prev => ({ ...prev, default_mode: val }))}
+              >
+                <SelectTrigger className="w-full max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manuale</SelectItem>
+                  <SelectItem value="hybrid">Ibrido</SelectItem>
+                  <SelectItem value="automatic">Automatico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Clock className="h-5 w-5" />
+            Orari di Lavoro
+          </CardTitle>
+          <CardDescription>
+            Imposta quando il dipendente AI può operare
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Ora Inizio</Label>
+              <Input
+                type="time"
+                value={settings.working_hours_start}
+                onChange={(e) => setSettings(prev => ({ ...prev, working_hours_start: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ora Fine</Label>
+              <Input
+                type="time"
+                value={settings.working_hours_end}
+                onChange={(e) => setSettings(prev => ({ ...prev, working_hours_end: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Giorni Lavorativi</Label>
+            <div className="flex flex-wrap gap-2">
+              {DAYS_OF_WEEK.map((day) => (
+                <Button
+                  key={day.value}
+                  variant={settings.working_days.includes(day.value) ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => toggleWorkingDay(day.value)}
+                >
+                  {day.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Shield className="h-5 w-5" />
+            Limiti Giornalieri
+          </CardTitle>
+          <CardDescription>
+            Imposta i limiti massimi di azioni giornaliere
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Phone className="h-4 w-4" /> Chiamate
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={settings.max_daily_calls}
+                onChange={(e) => setSettings(prev => ({ ...prev, max_daily_calls: parseInt(e.target.value) || 0 }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Mail className="h-4 w-4" /> Email
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={settings.max_daily_emails}
+                onChange={(e) => setSettings(prev => ({ ...prev, max_daily_emails: parseInt(e.target.value) || 0 }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <MessageSquare className="h-4 w-4" /> WhatsApp
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={settings.max_daily_whatsapp}
+                onChange={(e) => setSettings(prev => ({ ...prev, max_daily_whatsapp: parseInt(e.target.value) || 0 }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <BarChart3 className="h-4 w-4" /> Analisi
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={settings.max_daily_analyses}
+                onChange={(e) => setSettings(prev => ({ ...prev, max_daily_analyses: parseInt(e.target.value) || 0 }))}
+              />
+            </div>
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Frequenza Analisi Autonoma (minuti)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Ogni quanti minuti l'AI deve analizzare i tuoi clienti e proporre nuovi task. Il cron controlla ogni 30 minuti, ma rispetta questo intervallo tra un'analisi e l'altra.
+            </p>
+            <div className="flex items-center gap-4">
+              <Input
+                type="number"
+                min={30}
+                max={1440}
+                className="w-32"
+                value={settings.proactive_check_interval_minutes}
+                onChange={(e) => setSettings(prev => ({ ...prev, proactive_check_interval_minutes: Math.max(30, parseInt(e.target.value) || 60) }))}
+              />
+              <span className="text-xs text-muted-foreground">
+                {settings.proactive_check_interval_minutes < 60
+                  ? `ogni ${settings.proactive_check_interval_minutes} minuti`
+                  : settings.proactive_check_interval_minutes === 60
+                    ? "ogni ora"
+                    : `ogni ${Math.floor(settings.proactive_check_interval_minutes / 60)}h ${settings.proactive_check_interval_minutes % 60 > 0 ? `${settings.proactive_check_interval_minutes % 60}m` : ""}`
+                }
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Zap className="h-5 w-5" />
+            Canali Abilitati
+          </CardTitle>
+          <CardDescription>
+            Scegli su quali canali il dipendente AI può operare
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-emerald-500" />
+              <Label>Voice (Chiamate)</Label>
+            </div>
+            <Switch
+              checked={settings.channels_enabled.voice}
+              onCheckedChange={(checked) => setSettings(prev => ({
+                ...prev,
+                channels_enabled: { ...prev.channels_enabled, voice: checked },
+              }))}
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              <Label>Email</Label>
+            </div>
+            <Switch
+              checked={settings.channels_enabled.email}
+              onCheckedChange={(checked) => setSettings(prev => ({
+                ...prev,
+                channels_enabled: { ...prev.channels_enabled, email: checked },
+              }))}
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-emerald-500" />
+              <Label>WhatsApp</Label>
+            </div>
+            <Switch
+              checked={settings.channels_enabled.whatsapp}
+              onCheckedChange={(checked) => setSettings(prev => ({
+                ...prev,
+                channels_enabled: { ...prev.channels_enabled, whatsapp: checked },
+              }))}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <ListTodo className="h-5 w-5" />
+            Categorie Task Abilitate
+          </CardTitle>
+          <CardDescription>
+            Scegli quali categorie di task il dipendente AI può gestire
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {TASK_CATEGORIES.map((cat) => (
+              <div key={cat.value} className="flex items-start gap-4 p-3 rounded-xl border border-border">
+                <Checkbox
+                  id={`cat-${cat.value}`}
+                  checked={settings.allowed_task_categories.includes(cat.value)}
+                  onCheckedChange={() => toggleCategory(cat.value)}
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor={`cat-${cat.value}`} className="text-sm font-medium cursor-pointer">
+                    {cat.label}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">{cat.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Bot className="h-5 w-5" />
+            Crea il tuo Dipendente AI
+          </CardTitle>
+          <CardDescription>
+            Ogni dipendente AI ha competenze specifiche. Attivalo, espandi per vedere cosa sa fare, e personalizzalo con le tue istruzioni.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {systemStatus?.roles && systemStatus.roles.length > 0 ? (
+            <div className="space-y-4">
+              {systemStatus.roles.map((role) => {
+                const profile = AI_ROLE_PROFILES[role.id];
+                const colors = AI_ROLE_ACCENT_COLORS[role.accentColor] || AI_ROLE_ACCENT_COLORS.purple;
+                const caps = AI_ROLE_CAPABILITIES[role.id];
+                const isExpanded = expandedRole === role.id;
+                const channelLabel: Record<string, string> = {
+                  voice: "Voce",
+                  email: "Email",
+                  whatsapp: "WhatsApp",
+                  none: "Interno",
+                };
+                return (
+                  <motion.div
+                    key={role.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={cn(
+                      "rounded-xl border-2 transition-all duration-200 overflow-hidden",
+                      colors.border,
+                      !role.enabled && "opacity-50 grayscale"
+                    )}
+                  >
+                    <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
+                      <div className={cn("w-12 h-12 rounded-full overflow-hidden ring-2 shrink-0", colors.ring)}>
+                        {profile?.avatar ? (
+                          <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center text-lg">
+                            {role.id === 'personalizza' ? '⚙️' : '🤖'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm">{role.name}</span>
+                          <Badge className={cn("text-xs", colors.badge)}>
+                            {profile?.role || role.shortDescription}
+                          </Badge>
+                          {role.total_tasks_30d > 0 && (
+                            <Badge variant="outline" className="text-xs">{role.total_tasks_30d} task (30gg)</Badge>
+                          )}
+                        </div>
+                        {profile?.quote && (
+                          <p className="text-xs text-muted-foreground mt-0.5 italic">"{profile.quote}"</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          {role.preferredChannels.map(ch => (
+                            <Badge key={ch} variant="outline" className="text-xs px-1.5 py-0">
+                              {channelLabel[ch] || ch}
+                            </Badge>
+                          ))}
+                        </div>
+                        <Switch
+                          checked={role.enabled}
+                          disabled={togglingRole === role.id}
+                          onCheckedChange={(checked) => {
+                            onToggleRole(role.id, checked);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </div>
+                    </div>
+
+                    {isExpanded && caps && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.2 }}
+                        className="border-t px-4 pb-4"
+                      >
+                        <div className="pt-4 space-y-4">
+                          <div className="rounded-xl border border-border p-3">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                              <ArrowRight className="h-3 w-3" />
+                              Flusso di lavoro
+                            </p>
+                            <p className="text-sm">{caps.workflow}</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                                <CheckCircle className="h-4 w-4" />
+                                Cosa sa fare
+                              </p>
+                              <div className="space-y-1.5">
+                                {caps.canDo.map((item, idx) => (
+                                  <div key={idx} className="flex items-start gap-2 text-sm">
+                                    <span className="shrink-0 text-sm">{item.icon}</span>
+                                    <span>{item.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                                <XCircle className="h-4 w-4" />
+                                Cosa NON sa fare
+                              </p>
+                              <div className="space-y-1.5">
+                                {caps.cantDo.map((item, idx) => (
+                                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                    <span className="shrink-0 text-sm">{item.icon}</span>
+                                    <span>{item.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground border-t">
+                            <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
+                            <span>•</span>
+                            <span>Analisi ogni 30 minuti</span>
+                            {role.total_tasks_30d > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Caricamento ruoli...
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Brain className="h-5 w-5" />
+            Istruzioni Personalizzate
+          </CardTitle>
+          <CardDescription>
+            Fornisci istruzioni specifiche per guidare il comportamento dell'AI
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={settings.custom_instructions}
+            onChange={(e) => setSettings(prev => ({ ...prev, custom_instructions: e.target.value }))}
+            placeholder="Es: Non chiamare mai i clienti prima delle 10. Prioritizza i lead caldi."
+            rows={4}
+          />
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={onSave} disabled={isSaving} size="lg">
+          {isSaving ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          Salva Impostazioni
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
+export default SettingsTab;
