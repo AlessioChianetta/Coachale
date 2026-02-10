@@ -903,7 +903,8 @@ function WeeklyCalendarView({
 
                 {selectedAppointment.status === 'completed' && 
                  selectedAppointment.transcript && 
-                 !selectedAppointment.summaryEmail && (
+                 !selectedAppointment.summaryEmail && 
+                 selectedAppointment.source !== 'google' && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -4340,7 +4341,7 @@ export default function ConsultantAppointments() {
                                   <p className="font-semibold text-slate-800 dark:text-slate-200">
                                     {appointment.client 
                                       ? `${appointment.client.firstName} ${appointment.client.lastName}`
-                                      : appointment.summary || 'Evento Google Calendar'}
+                                      : appointment.googleEventSummary || appointment.notes || 'Evento Google Calendar'}
                                     {appointment.source === 'google' && <span className="ml-2">📅</span>}
                                     {appointment.source === 'synced' && <span className="ml-2">🔗</span>}
                                   </p>
@@ -4574,7 +4575,7 @@ export default function ConsultantAppointments() {
                                 <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 truncate">
                                   {appointment.client 
                                     ? `${appointment.client.firstName} ${appointment.client.lastName}`
-                                    : appointment.summary || 'Evento Google Calendar'}
+                                    : appointment.googleEventSummary || appointment.notes || 'Evento Google Calendar'}
                                   {appointment.source === 'google' && <span className="ml-2 text-sm">📅</span>}
                                   {appointment.source === 'synced' && <span className="ml-2 text-sm">🔗</span>}
                                 </h3>
@@ -4711,7 +4712,8 @@ export default function ConsultantAppointments() {
                               
                               {/* Pulsante Genera Email */}
                               {progress.isCompleted && progress.hasTranscript && 
-                               (progress.emailStatus === 'missing' || !progress.emailStatus) && (
+                               (progress.emailStatus === 'missing' || !progress.emailStatus) && 
+                               appointment.source !== 'google' && (
                                 <Button
                                   size="sm"
                                   onClick={() => {
