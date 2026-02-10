@@ -3307,6 +3307,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const { firstName, lastName, email, password, isEmployee = false } = req.body;
+      const consultantId = req.user!.id;
+
+      // Check license availability - BOTH clients and employees count against license total
+      const licenseResult = await db.execute(sql`
+        SELECT employee_total, employee_used FROM consultant_licenses
+        WHERE consultant_id = ${consultantId}
+      `);
+
+      let licenseTotal = 5;
+      let licenseUsed = 0;
+
+      if (licenseResult.rows.length > 0) {
+        const lic = licenseResult.rows[0] as any;
+        licenseTotal = Math.max(lic.employee_total || 0, 5);
+        licenseUsed = lic.employee_used || 0;
+      }
+
+      const actualCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as total FROM users 
+        WHERE consultant_id = ${consultantId} 
+        AND role = 'client' 
+        AND is_active = true
+      `);
+      const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
+
+      if (actualUsed >= licenseTotal) {
+        return res.status(403).json({ 
+          message: `Hai raggiunto il limite di ${licenseTotal} licenze. Acquista un pacchetto aggiuntivo per aggiungere altri utenti.`,
+          licenseLimit: true,
+          total: licenseTotal,
+          used: actualUsed
+        });
+      }
 
       // Validate required fields for email (always needed)
       if (!email) {
@@ -3320,7 +3353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // EMAIL CONDIVISA: Check if user already has a client profile for this consultant
         const existingProfiles = await storage.getUserRoleProfiles(existingUser.id);
         const hasClientProfileForThisConsultant = existingProfiles.some(
-          p => p.role === 'client' && p.consultantId === req.user!.id
+          p => p.role === 'client' && p.consultantId === consultantId
         );
 
         if (hasClientProfileForThisConsultant) {
@@ -3333,7 +3366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserRoleProfile({
           userId: existingUser.id,
           role: 'client',
-          consultantId: req.user!.id,
+          consultantId: consultantId,
           isDefault: false,
           isActive: true,
         });
@@ -3341,14 +3374,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Initialize email automation and client state tracking for the new profile
         try {
           await storage.upsertClientEmailAutomation({
-            consultantId: req.user!.id,
+            consultantId: consultantId,
             clientId: existingUser.id,
             enabled: false,
           });
 
           await storage.upsertClientState({
             clientId: existingUser.id,
-            consultantId: req.user!.id,
+            consultantId: consultantId,
             currentState: `Nuovo cliente - ${existingUser.firstName} sta iniziando il percorso`,
             idealState: `Da definire durante la prima consulenza`,
             internalBenefit: null,
@@ -3400,15 +3433,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         password: hashedPassword,
         role: "client",
-        consultantId: req.user!.id,
+        consultantId: consultantId,
         isEmployee: isEmployee,
       });
+
+      // Update license used count
+      try {
+        await db.execute(sql`
+          UPDATE consultant_licenses 
+          SET employee_used = (
+            SELECT COUNT(*)::int FROM users 
+            WHERE consultant_id = ${consultantId} 
+            AND role = 'client' 
+            AND is_active = true
+          )
+          WHERE consultant_id = ${consultantId}
+        `);
+      } catch (licErr: any) {
+        console.error("Failed to update license count:", licErr.message);
+      }
 
       // Create default client profile for new user
       await storage.createUserRoleProfile({
         userId: user.id,
         role: 'client',
-        consultantId: req.user!.id,
+        consultantId: consultantId,
         isDefault: true,
         isActive: true,
       });
@@ -3416,14 +3465,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Initialize email automation and client state tracking
       try {
         await storage.upsertClientEmailAutomation({
-          consultantId: req.user!.id,
+          consultantId: consultantId,
           clientId: user.id,
           enabled: false,
         });
 
         await storage.upsertClientState({
           clientId: user.id,
-          consultantId: req.user!.id,
+          consultantId: consultantId,
           currentState: `Nuovo cliente - ${firstName} sta iniziando il percorso`,
           idealState: `Da definire durante la prima consulenza`,
           internalBenefit: null,
@@ -13252,11 +13301,28 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             level2Used: 0,
             level3Total: 10,
             level3Used: 0,
-            employeeTotal: 5, // 5 licenze gratis per dipendenti
+            employeeTotal: 5,
             employeeUsed: 0,
           })
           .returning();
         license = newLicense;
+      }
+
+      // Count ACTUAL users for accurate display
+      const actualCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as total FROM users 
+        WHERE consultant_id = ${consultantId} 
+        AND role = 'client' 
+        AND is_active = true
+      `);
+      const actualUsed = (actualCountResult.rows[0] as any)?.total || 0;
+
+      // Sync the count if out of sync
+      if (actualUsed !== (license.employeeUsed || 0)) {
+        await db.execute(sql`
+          UPDATE consultant_licenses SET employee_used = ${actualUsed}
+          WHERE consultant_id = ${consultantId}
+        `);
       }
 
       res.json({
@@ -13266,8 +13332,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           level2Used: license.level2Used,
           level3Total: license.level3Total,
           level3Used: license.level3Used,
-          employeeTotal: Math.max(license.employeeTotal || 0, 5), // Minimo 5 licenze gratis
-          employeeUsed: license.employeeUsed || 0,
+          employeeTotal: Math.max(license.employeeTotal || 0, 5),
+          employeeUsed: actualUsed,
         },
       });
     } catch (error: any) {

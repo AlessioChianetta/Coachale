@@ -47,6 +47,32 @@ export interface PersonalizzaConfig {
   priority_rules: string;
 }
 
+export interface MarcoObjective {
+  id: string;
+  name: string;
+  deadline: string | null;
+  priority: 'alta' | 'media' | 'bassa';
+  description?: string;
+}
+
+export interface MarcoContext {
+  objectives: MarcoObjective[];
+  roadmap: string;
+  linkedKbDocumentIds: string[];
+  reportStyle: 'sintetico' | 'dettagliato' | 'bilanciato';
+  reportFocus: string;
+}
+
+export interface KbDocument {
+  id: string;
+  title: string;
+  category: string;
+  file_type: string;
+  status: string;
+  file_size: number;
+  created_at: string;
+}
+
 export interface ActivityResponse {
   activities: ActivityItem[];
   total: number;

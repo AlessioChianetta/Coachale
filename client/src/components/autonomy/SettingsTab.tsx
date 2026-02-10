@@ -17,11 +17,12 @@ import {
   Save, BarChart3, ListTodo,
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
-  Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle
+  Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
+  Plus, Trash2, FileText, Calendar, Flag
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig } from "./types";
+import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, MarcoContext, MarcoObjective, KbDocument } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor } from "./utils";
 
@@ -53,6 +54,12 @@ interface SettingsTabProps {
   personalizzaLoading: boolean;
   personalizzaSaving: boolean;
   onSavePersonalizza: () => void;
+  marcoContext: MarcoContext;
+  setMarcoContext: React.Dispatch<React.SetStateAction<MarcoContext>>;
+  marcoContextLoading: boolean;
+  marcoContextSaving: boolean;
+  onSaveMarcoContext: () => void;
+  kbDocuments: KbDocument[];
 }
 
 function SettingsTab({
@@ -83,6 +90,12 @@ function SettingsTab({
   personalizzaLoading,
   personalizzaSaving,
   onSavePersonalizza,
+  marcoContext,
+  setMarcoContext,
+  marcoContextLoading,
+  marcoContextSaving,
+  onSaveMarcoContext,
+  kbDocuments,
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
@@ -1576,6 +1589,234 @@ function SettingsTab({
                     <Save className="h-4 w-4 mr-2" />
                   )}
                   Salva Configurazione Personalizza
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm border-l-4 border-l-indigo-400">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Target className="h-5 w-5 text-indigo-600" />
+            Obiettivi & Contesto di Marco
+          </CardTitle>
+          <CardDescription>
+            Definisci i tuoi obiettivi strategici, la tua roadmap e collega documenti dalla Knowledge Base. Marco userà queste informazioni per personalizzare analisi e suggerimenti.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {marcoContextLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Flag className="h-4 w-4 text-indigo-500" />
+                    Obiettivi Strategici
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMarcoContext(prev => ({
+                        ...prev,
+                        objectives: [...prev.objectives, {
+                          id: crypto.randomUUID(),
+                          name: "",
+                          deadline: null,
+                          priority: "media" as const,
+                        }],
+                      }));
+                    }}
+                    className="text-xs rounded-xl"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Aggiungi Obiettivo
+                  </Button>
+                </div>
+
+                {marcoContext.objectives.length === 0 ? (
+                  <div className="text-sm text-muted-foreground italic py-3 text-center border-2 border-dashed rounded-xl">
+                    Nessun obiettivo definito. Aggiungi i tuoi obiettivi strategici per aiutare Marco a focalizzare l'analisi.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {marcoContext.objectives.map((obj, idx) => (
+                      <div key={obj.id} className="flex items-start gap-3 p-3 border rounded-xl bg-muted/30">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={obj.name}
+                            onChange={(e) => {
+                              const updated = [...marcoContext.objectives];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              setMarcoContext(prev => ({ ...prev, objectives: updated }));
+                            }}
+                            placeholder="Es: Raggiungere 50 clienti attivi entro giugno"
+                            className="rounded-xl text-sm"
+                          />
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Input
+                                type="date"
+                                value={obj.deadline || ""}
+                                onChange={(e) => {
+                                  const updated = [...marcoContext.objectives];
+                                  updated[idx] = { ...updated[idx], deadline: e.target.value || null };
+                                  setMarcoContext(prev => ({ ...prev, objectives: updated }));
+                                }}
+                                className="h-8 w-[160px] text-xs rounded-lg"
+                              />
+                            </div>
+                            <Select
+                              value={obj.priority}
+                              onValueChange={(v) => {
+                                const updated = [...marcoContext.objectives];
+                                updated[idx] = { ...updated[idx], priority: v as 'alta' | 'media' | 'bassa' };
+                                setMarcoContext(prev => ({ ...prev, objectives: updated }));
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="alta">Priorità Alta</SelectItem>
+                                <SelectItem value="media">Priorità Media</SelectItem>
+                                <SelectItem value="bassa">Priorità Bassa</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setMarcoContext(prev => ({
+                              ...prev,
+                              objectives: prev.objectives.filter((_, i) => i !== idx),
+                            }));
+                          }}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4 text-amber-500" />
+                  Roadmap e Note Strategiche
+                </Label>
+                <Textarea
+                  value={marcoContext.roadmap}
+                  onChange={(e) => setMarcoContext(prev => ({ ...prev, roadmap: e.target.value }))}
+                  placeholder="Descrivi la tua roadmap, dove vuoi arrivare, priorità del mese, note strategiche... Marco userà queste informazioni per contestualizzare i suoi suggerimenti."
+                  rows={5}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-500" />
+                  Documenti dalla Knowledge Base
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Seleziona i documenti che Marco deve consultare per le sue analisi. I contenuti verranno inclusi nel suo contesto.
+                </p>
+                
+                {kbDocuments.length === 0 ? (
+                  <div className="text-sm text-muted-foreground italic py-3 text-center border-2 border-dashed rounded-xl">
+                    Nessun documento nella Knowledge Base. Carica documenti nella sezione Base di Conoscenza per poterli collegare a Marco.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-xl p-3">
+                    {kbDocuments.map((doc) => {
+                      const isLinked = marcoContext.linkedKbDocumentIds.includes(doc.id);
+                      return (
+                        <label
+                          key={doc.id}
+                          className={cn(
+                            "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all border",
+                            isLinked ? "border-indigo-300 bg-indigo-50 dark:bg-indigo-950/20" : "border-transparent hover:bg-muted/50"
+                          )}
+                        >
+                          <Checkbox
+                            checked={isLinked}
+                            onCheckedChange={(checked) => {
+                              setMarcoContext(prev => ({
+                                ...prev,
+                                linkedKbDocumentIds: checked
+                                  ? [...prev.linkedKbDocumentIds, doc.id]
+                                  : prev.linkedKbDocumentIds.filter(id => id !== doc.id),
+                              }));
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.category} • {doc.file_type.toUpperCase()} • {(doc.file_size / 1024).toFixed(0)} KB
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {marcoContext.linkedKbDocumentIds.length > 0 && (
+                  <p className="text-xs text-indigo-600">
+                    {marcoContext.linkedKbDocumentIds.length} documento/i collegato/i a Marco
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Stile Report</Label>
+                  <Select
+                    value={marcoContext.reportStyle}
+                    onValueChange={(v) => setMarcoContext(prev => ({ ...prev, reportStyle: v as any }))}
+                  >
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sintetico">Sintetico (breve e diretto)</SelectItem>
+                      <SelectItem value="bilanciato">Bilanciato (via di mezzo)</SelectItem>
+                      <SelectItem value="dettagliato">Dettagliato (analisi approfondita)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Focus Specifico (opzionale)</Label>
+                  <Input
+                    value={marcoContext.reportFocus}
+                    onChange={(e) => setMarcoContext(prev => ({ ...prev, reportFocus: e.target.value }))}
+                    placeholder="Es: crescita clienti, performance team..."
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={onSaveMarcoContext} disabled={marcoContextSaving} className="rounded-xl">
+                  {marcoContextSaving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Salva Contesto di Marco
                 </Button>
               </div>
             </>

@@ -339,6 +339,26 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
       AND u.is_active = true
   `);
 
+  const marcoContextResult = await db.execute(sql`
+    SELECT marco_context FROM ai_autonomy_settings 
+    WHERE consultant_id = ${consultantId} LIMIT 1
+  `);
+  const marcoContext = (marcoContextResult.rows[0] as any)?.marco_context || {};
+
+  let kbDocumentsContent: Array<{title: string, content: string}> = [];
+  const linkedIds = marcoContext.linkedKbDocumentIds || [];
+  if (linkedIds.length > 0) {
+    const kbResult = await db.execute(sql`
+      SELECT title, SUBSTRING(extracted_content, 1, 3000) as content
+      FROM consultant_knowledge_documents
+      WHERE id = ANY(${linkedIds}::varchar[])
+      AND consultant_id = ${consultantId}
+      AND status = 'indexed'
+      LIMIT 10
+    `);
+    kbDocumentsContent = kbResult.rows.map((r: any) => ({ title: r.title, content: r.content }));
+  }
+
   const consultationMonitoringResult = await db.execute(sql`
     SELECT 
       u.id,
@@ -415,6 +435,8 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     clientCount: clientCountResult.rows[0]?.total_clients || 0,
     consultationMonitoring: consultationMonitoringResult.rows,
     schedulingGaps: schedulingGapsResult.rows,
+    marcoContext,
+    kbDocumentsContent,
   };
 }
 
@@ -1087,6 +1109,26 @@ ${JSON.stringify(clientsList, null, 2)}
 ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
 ${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
 
+OBIETTIVI STRATEGICI DEL CONSULENTE:
+${(() => {
+  const objectives = roleData.marcoContext?.objectives || [];
+  if (objectives.length === 0) return 'Nessun obiettivo definito';
+  return objectives.map((obj: any, i: number) => `${i + 1}. ${obj.text || obj}${obj.completed ? ' ✅ COMPLETATO' : ''}`).join('\n');
+})()}
+
+ROADMAP E NOTE STRATEGICHE:
+${roleData.marcoContext?.roadmap || 'Nessuna roadmap definita'}
+
+DOCUMENTI DI RIFERIMENTO (dalla Knowledge Base):
+${(() => {
+  const docs = roleData.kbDocumentsContent || [];
+  if (docs.length === 0) return 'Nessun documento collegato';
+  return docs.map((d: any) => `📄 ${d.title}:\n${d.content || 'Contenuto non disponibile'}`).join('\n\n');
+})()}
+
+STILE REPORT PREFERITO: ${roleData.marcoContext?.reportStyle || 'bilanciato'}
+${roleData.marcoContext?.reportFocus ? `FOCUS REPORT: ${roleData.marcoContext.reportFocus}` : ''}
+
 REGOLE DI MARCO:
 1. Suggerisci MASSIMO 2 task
 2. Il tuo focus è sul CONSULENTE, non sui singoli clienti. Aiuta il consulente a organizzarsi meglio.
@@ -1104,6 +1146,9 @@ REGOLE DI MARCO:
 5. Il campo preferred_channel DEVE essere "none" per task interni. MA per promemoria schedulazione consulenze mancanti, DEVE essere "voice" per chiamare il consulente e ricordarglielo.
 6. Usa le categorie: preparation, monitoring, report, scheduling
 7. Per contact_id usa il client_id della consulenza da preparare, o null per task organizzativi generali
+8. Se il consulente ha definito obiettivi strategici, valuta sempre il progresso verso quegli obiettivi nella tua analisi.
+9. Se ci sono documenti di riferimento dalla Knowledge Base, usa quelle informazioni per contestualizzare i tuoi suggerimenti.
+10. Rispetta lo stile report preferito dal consulente (sintetico = max 3 frasi per sezione, dettagliato = analisi approfondita, bilanciato = via di mezzo).
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 

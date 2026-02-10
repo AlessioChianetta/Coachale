@@ -37,6 +37,7 @@ import {
   UserMinus,
   BarChart3,
   AlertTriangle,
+  Info,
   CheckCircle,
   Clock,
   CalendarPlus,
@@ -55,6 +56,7 @@ import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { useState, useMemo } from "react";
@@ -116,6 +118,18 @@ export default function ConsultantClientsPage() {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const licensesQuery = useQuery({
+    queryKey: ["/api/consultant/licenses"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/licenses", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch licenses");
+      const data = await res.json();
+      return data.data || data;
+    },
+  });
 
   const createClientMutation = useMutation({
     mutationFn: async (data: typeof newClientForm) => {
@@ -1688,6 +1702,26 @@ export default function ConsultantClientsPage() {
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
+            {licensesQuery.data && (
+              <div className={cn(
+                "rounded-xl p-3 border text-sm",
+                (licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal)
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : "bg-blue-50 border-blue-200 text-blue-700"
+              )}>
+                {licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal ? (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Hai raggiunto il limite di <strong>{licensesQuery.data.employeeTotal}</strong> licenze. Acquista un pacchetto aggiuntivo dalla sezione licenze.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 shrink-0" />
+                    <span>Licenze disponibili: <strong>{licensesQuery.data.employeeTotal - licensesQuery.data.employeeUsed}</strong> su {licensesQuery.data.employeeTotal} totali</span>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newFirstName" className="text-right text-sm font-medium">
                 Nome *
@@ -1756,7 +1790,10 @@ export default function ConsultantClientsPage() {
                     className="sr-only"
                   />
                   <Users className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm font-medium">Cliente</span>
+                  <div>
+                    <span className="text-sm font-medium">Cliente</span>
+                    <span className="text-xs text-muted-foreground block mt-0.5">Accede come utente</span>
+                  </div>
                 </label>
                 <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${newClientForm.isEmployee ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
                   <input
@@ -1767,7 +1804,10 @@ export default function ConsultantClientsPage() {
                     className="sr-only"
                   />
                   <Briefcase className="h-4 w-4 text-violet-600" />
-                  <span className="text-sm font-medium">Dipendente</span>
+                  <div>
+                    <span className="text-sm font-medium">Dipendente</span>
+                    <span className="text-xs text-muted-foreground block mt-0.5">Membro del team</span>
+                  </div>
                 </label>
               </div>
             </div>
@@ -1783,7 +1823,7 @@ export default function ConsultantClientsPage() {
             </Button>
             <Button 
               onClick={handleCreateClient}
-              disabled={createClientMutation.isPending}
+              disabled={createClientMutation.isPending || (licensesQuery.data && licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal)}
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
             >
               {createClientMutation.isPending ? (
@@ -1794,7 +1834,7 @@ export default function ConsultantClientsPage() {
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Crea Cliente
+                  {newClientForm.isEmployee ? "Crea Dipendente" : "Crea Cliente"}
                 </>
               )}
             </Button>

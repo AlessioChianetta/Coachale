@@ -1813,15 +1813,16 @@ router.post("/consultant/licenses/checkout", authenticateToken, requireRole("con
     const consultantId = req.user!.id;
     
     // SECURITY FIX: Enforce valid quantities only
-    const allowedQuantities = [10, 20, 50];
-    const requestedQty = parseInt(req.body.quantity, 10) || 10;
-    const quantity = allowedQuantities.includes(requestedQty) ? requestedQty : 10;
+    const allowedQuantities = [5, 10];
+    const requestedQty = parseInt(req.body.quantity, 10) || 5;
+    const quantity = allowedQuantities.includes(requestedQty) ? requestedQty : 5;
     
     const stripe = await getStripeInstance();
     
     // Price calculated server-side based on validated quantity
-    const pricePerLicense = 2000; // 20€ per license in cents
-    const totalAmount = quantity * pricePerLicense;
+    // 5 licenses = €100 (€20/license), 10 licenses = €180 (€18/license, save €20)
+    const pricePerLicenseCents = quantity === 5 ? 2000 : 1800; // €20 or €18 per license
+    const totalAmount = quantity * pricePerLicenseCents;
     
     const baseUrl = process.env.REPLIT_DEV_DOMAIN 
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -1841,8 +1842,10 @@ router.post("/consultant/licenses/checkout", authenticateToken, requireRole("con
         price_data: {
           currency: "eur",
           product_data: {
-            name: `Licenze Dipendenti (${quantity} posti)`,
-            description: `Pacchetto di ${quantity} licenze per dipendenti/collaboratori`,
+            name: `Pacchetto ${quantity} Licenze`,
+            description: quantity === 5 
+              ? `${quantity} licenze per clienti e dipendenti — €20/licenza`
+              : `${quantity} licenze per clienti e dipendenti — €18/licenza (risparmi €20!)`,
           },
           unit_amount: totalAmount,
         },

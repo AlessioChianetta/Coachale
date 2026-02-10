@@ -172,6 +172,75 @@ router.put("/personalizza-config", authenticateToken, requireAnyRole(["consultan
   }
 });
 
+router.get("/marco-context", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const result = await db.execute(sql`
+      SELECT marco_context FROM ai_autonomy_settings 
+      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    `);
+
+    const context = (result.rows[0] as any)?.marco_context || {
+      objectives: [],
+      roadmap: "",
+      linkedKbDocumentIds: [],
+      reportStyle: "bilanciato",
+      reportFocus: "",
+    };
+
+    return res.json(context);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching marco context:", error.message);
+    return res.status(500).json({ error: "Errore nel recupero della configurazione" });
+  }
+});
+
+router.put("/marco-context", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const context = req.body;
+
+    if (!context || typeof context !== 'object') {
+      return res.status(400).json({ error: "Configurazione non valida" });
+    }
+
+    await db.execute(sql`
+      UPDATE ai_autonomy_settings 
+      SET marco_context = ${JSON.stringify(context)}::jsonb,
+          updated_at = NOW()
+      WHERE consultant_id = ${consultantId}::uuid
+    `);
+
+    return res.json({ success: true, message: "Configurazione salvata" });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error saving marco context:", error.message);
+    return res.status(500).json({ error: "Errore nel salvataggio della configurazione" });
+  }
+});
+
+router.get("/kb-documents-list", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const result = await db.execute(sql`
+      SELECT id, title, category, file_type, status, file_size, created_at 
+      FROM consultant_knowledge_documents 
+      WHERE consultant_id = ${consultantId}::uuid AND status = 'indexed'
+      ORDER BY title ASC
+    `);
+
+    return res.json(result.rows);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching kb documents list:", error.message);
+    return res.status(500).json({ error: "Errore nel recupero dei documenti" });
+  }
+});
+
 router.get("/activity", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

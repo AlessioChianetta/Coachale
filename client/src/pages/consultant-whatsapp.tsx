@@ -2883,28 +2883,28 @@ export default function ConsultantWhatsAppPage() {
               <Card className="border-2 border-violet-200 dark:border-violet-800">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5 text-violet-600" />
-                    Licenze Dipendenti
+                    <Users className="h-5 w-5 text-violet-600" />
+                    Le tue Licenze
                   </CardTitle>
                   <CardDescription>
-                    5 licenze gratis incluse + acquista licenze aggiuntive
+                    5 licenze gratis incluse + acquista licenze aggiuntive per clienti e dipendenti
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Info 5 licenze gratis */}
+                  {/* Info licenze */}
                   <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
                     <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                      <strong>5 licenze gratis</strong> per i tuoi dipendenti sono incluse nel tuo piano!
+                      <strong>5 licenze gratis</strong> incluse nel tuo piano! Ogni licenza copre sia clienti che dipendenti.
                     </p>
                   </div>
                   
-                  {/* Current Employee Licenses */}
+                  {/* Current Licenses */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-violet-100 text-violet-700">Dipendenti</Badge>
+                        <Badge className="bg-violet-100 text-violet-700">Clienti + Team</Badge>
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Licenze Team
+                          Licenze Totali
                         </span>
                       </div>
                       <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -2919,41 +2919,76 @@ export default function ConsultantWhatsAppPage() {
                           : "[&>div]:bg-violet-500"
                       }`}
                     />
-                    {licenses.employeeTotal === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        Non hai ancora licenze dipendenti attive
+                    {licenses.employeeUsed >= licenses.employeeTotal && (
+                      <p className="text-sm text-red-600 font-medium">
+                        Hai raggiunto il limite! Acquista un pacchetto per aggiungere altri utenti.
                       </p>
                     )}
                   </div>
 
-                  <div className="pt-4 border-t">
-                    <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-4 mb-4">
+                  <div className="pt-4 border-t space-y-3">
+                    {/* Package 1: 5 licenses */}
+                    <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-violet-700">Pacchetto 10 Licenze</span>
-                        <span className="text-2xl font-bold text-violet-700">€200</span>
+                        <span className="font-semibold text-violet-700">Pacchetto 5 Licenze</span>
+                        <span className="text-2xl font-bold text-violet-700">€100</span>
                       </div>
-                      <p className="text-sm text-violet-600">
-                        €20 per licenza dipendente/mese
+                      <p className="text-sm text-violet-600 mb-3">
+                        €20 per licenza/mese
                       </p>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                        variant="default"
+                        disabled={buyLicensesMutation.isPending}
+                        onClick={() => buyLicensesMutation.mutate(5)}
+                      >
+                        {buyLicensesMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Caricamento...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Acquista 5 Licenze
+                          </>
+                        )}
+                      </Button>
                     </div>
                     
-                    <Button 
-                      className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
-                      disabled={buyLicensesMutation.isPending}
-                      onClick={() => buyLicensesMutation.mutate(10)}
-                    >
-                      {buyLicensesMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Caricamento...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Acquista 10 Licenze
-                        </>
-                      )}
-                    </Button>
+                    {/* Package 2: 10 licenses - best value */}
+                    <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-950/20 dark:to-indigo-950/20 rounded-lg p-4 border-2 border-violet-300 dark:border-violet-700 relative">
+                      <div className="absolute -top-2.5 left-4">
+                        <Badge className="bg-emerald-500 text-white text-xs px-2 py-0.5">Risparmia €20!</Badge>
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-violet-700">Pacchetto 10 Licenze</span>
+                        <div className="text-right">
+                          <span className="text-2xl font-bold text-violet-700">€180</span>
+                          <span className="text-sm text-muted-foreground line-through ml-2">€200</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-violet-600 mb-3">
+                        €18 per licenza/mese — il miglior rapporto qualità-prezzo
+                      </p>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700"
+                        disabled={buyLicensesMutation.isPending}
+                        onClick={() => buyLicensesMutation.mutate(10)}
+                      >
+                        {buyLicensesMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Caricamento...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Acquista 10 Licenze
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
