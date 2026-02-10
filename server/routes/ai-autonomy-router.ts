@@ -281,6 +281,26 @@ router.post("/activity/read-all", authenticateToken, requireAnyRole(["consultant
   }
 });
 
+router.delete("/activity/clear-old", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await db.execute(sql`
+      DELETE FROM ai_activity_log
+      WHERE consultant_id = ${consultantId}
+        AND (cycle_id IS NULL OR cycle_id = '')
+    `);
+
+    return res.json({ success: true, deleted: result.rowCount || 0 });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error clearing old activities:", error);
+    return res.status(500).json({ error: "Failed to clear old activities" });
+  }
+});
+
 router.post("/tasks/analyze", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

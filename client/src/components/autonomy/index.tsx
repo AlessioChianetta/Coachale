@@ -203,6 +203,28 @@ export default function ConsultantAIAutonomyPage() {
     },
   });
 
+  const clearOldFeedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/ai-autonomy/activity/clear-old", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Feed pulito", description: `${data.deleted} attività vecchie rimosse` });
+      queryClient.invalidateQueries({ queryKey: [activityUrl] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && key.includes('/api/ai-autonomy/activity');
+      }});
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile pulire il feed", variant: "destructive" });
+    },
+  });
+
   const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=10${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}`;
 
   const createTaskMutation = useMutation({
@@ -564,6 +586,8 @@ export default function ConsultantAIAutonomyPage() {
                     setSimulationResult={setSimulationResult}
                     simulationLoading={simulationLoading}
                     setSimulationLoading={setSimulationLoading}
+                    onClearOldFeed={() => clearOldFeedMutation.mutate()}
+                    clearingOldFeed={clearOldFeedMutation.isPending}
                   />
                 </TabsContent>
 

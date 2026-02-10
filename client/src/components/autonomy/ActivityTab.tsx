@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Activity, Brain, Clock, CheckCircle, Loader2, Eye, ChevronLeft, ChevronRight,
   Zap, BarChart3, Sparkles, Lightbulb, Bot, Calendar, Play, Database, FileText, Search,
-  Users, ChevronDown
+  Users, ChevronDown, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ interface ActivityTabProps {
   setSimulationResult: (result: any) => void;
   simulationLoading: boolean;
   setSimulationLoading: (loading: boolean) => void;
+  onClearOldFeed: () => void;
+  clearingOldFeed: boolean;
 }
 
 const ROLE_COLOR_MAP: Record<string, string> = {
@@ -66,6 +68,7 @@ function ActivityTab({
   reasoningData, loadingReasoning, reasoningPage, setReasoningPage,
   reasoningPeriod, setReasoningPeriod, reasoningRole, setReasoningRole,
   simulationResult, setSimulationResult, simulationLoading, setSimulationLoading,
+  onClearOldFeed, clearingOldFeed,
 }: ActivityTabProps) {
   const { toast } = useToast();
   const [openCycleId, setOpenCycleId] = React.useState<string | null>(null);
@@ -468,16 +471,36 @@ function ActivityTab({
               </Select>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onMarkAllRead()}
-              disabled={unreadCount === 0}
-              className="rounded-xl"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Segna tutto come letto
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onMarkAllRead()}
+                disabled={unreadCount === 0}
+                className="rounded-xl"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Segna tutto come letto
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm("Eliminare tutte le attività vecchie (senza ciclo)? Le nuove attività con raggruppamento ciclo verranno mantenute.")) {
+                    onClearOldFeed();
+                  }
+                }}
+                disabled={clearingOldFeed}
+                className="rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-200"
+              >
+                {clearingOldFeed ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Pulisci feed vecchio
+              </Button>
+            </div>
           </div>
 
           {loadingActivity ? (
