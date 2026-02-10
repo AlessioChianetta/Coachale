@@ -10054,9 +10054,26 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   customInstructions: text("custom_instructions"),
   channelsEnabled: jsonb("channels_enabled").$type<Record<string, boolean>>().default(sql`'{"voice": true, "email": false, "whatsapp": false}'::jsonb`),
   roleFrequencies: jsonb("role_frequencies").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
+  marcoContext: jsonb("marco_context").$type<MarcoContext>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
+
+export interface MarcoObjective {
+  id: string;
+  name: string;
+  deadline: string | null;
+  priority: 'alta' | 'media' | 'bassa';
+  description?: string;
+}
+
+export interface MarcoContext {
+  objectives?: MarcoObjective[];
+  roadmap?: string;
+  linkedKbDocumentIds?: string[];
+  reportStyle?: 'sintetico' | 'dettagliato' | 'bilanciato';
+  reportFocus?: string;
+}
 
 export type AIAutonomySettings = typeof aiAutonomySettings.$inferSelect;
 export type InsertAIAutonomySettings = typeof aiAutonomySettings.$inferInsert;
