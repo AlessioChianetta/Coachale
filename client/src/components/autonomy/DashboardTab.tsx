@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
   Save, RefreshCw, AlertCircle, Info
 } from "lucide-react";
 import type { AITask, TasksResponse, TasksStats, TaskDetailResponse, NewTaskData, ActivityItem } from "./types";
-import { TASK_LIBRARY, TASK_CATEGORIES, EMPTY_NEW_TASK } from "./constants";
+import { TASK_LIBRARY, TASK_CATEGORIES, EMPTY_NEW_TASK, AI_ROLE_PROFILES } from "./constants";
 import {
   getTaskStatusBadge, getCategoryBadge, getPriorityIndicator,
   getActivityIcon, getRelativeTime, getStepActionLabel,
@@ -103,6 +103,31 @@ function DashboardTab({
     };
     return colorMap[role] || "border-border text-muted-foreground";
   };
+
+  const getPriorityBorderColor = (priority: number) => {
+    switch(priority) {
+      case 1: return 'border-l-red-500';
+      case 2: return 'border-l-amber-500';
+      case 3: return 'border-l-blue-500';
+      default: return 'border-l-gray-300 dark:border-l-gray-600';
+    }
+  };
+
+  const groupedTasks = useMemo(() => {
+    if (!tasksData?.tasks) return [];
+    const groups: Record<string, typeof tasksData.tasks> = {};
+    tasksData.tasks.forEach(task => {
+      const role = task.ai_role || '__manual__';
+      if (!groups[role]) groups[role] = [];
+      groups[role].push(task);
+    });
+    const roleOrder = Object.keys(groups).sort((a, b) => {
+      if (a === '__manual__') return 1;
+      if (b === '__manual__') return -1;
+      return a.localeCompare(b);
+    });
+    return roleOrder.map(role => ({ role, tasks: groups[role] }));
+  }, [tasksData?.tasks]);
 
   return (
     <div className="space-y-6">
@@ -790,128 +815,171 @@ function DashboardTab({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {tasksData.tasks.map((task) => (
-            <Card
-              key={task.id}
-              className="cursor-pointer hover:border-primary/40 transition-colors border border-border rounded-xl shadow-sm"
-              onClick={() => setSelectedTaskId(task.id)}
-            >
-              <CardContent className="py-4 px-5">
-                <div className="flex items-start gap-4">
-                  <div className="mt-0.5 p-2 rounded-xl bg-primary/10">
-                    <Target className="h-5 w-5 text-primary" />
-                  </div>
+        <div className="space-y-6">
+          {groupedTasks.map(({ role, tasks }) => {
+            const profile = role !== '__manual__' ? AI_ROLE_PROFILES[role] : null;
+            const roleAccentMap: Record<string, string> = {
+              alessia: "text-pink-600 dark:text-pink-400",
+              millie: "text-purple-600 dark:text-purple-400",
+              echo: "text-orange-600 dark:text-orange-400",
+              nova: "text-pink-600 dark:text-pink-400",
+              stella: "text-emerald-600 dark:text-emerald-400",
+              iris: "text-teal-600 dark:text-teal-400",
+              marco: "text-indigo-600 dark:text-indigo-400",
+            };
+            const roleRingMap: Record<string, string> = {
+              alessia: "ring-pink-300",
+              millie: "ring-purple-300",
+              echo: "ring-orange-300",
+              nova: "ring-pink-300",
+              stella: "ring-emerald-300",
+              iris: "ring-teal-300",
+              marco: "ring-indigo-300",
+            };
+            const accentText = role !== '__manual__' ? (roleAccentMap[role] || '') : '';
+            const accentRing = role !== '__manual__' ? (roleRingMap[role] || 'ring-border') : 'ring-border';
+            return (
+              <div key={role} className="space-y-2">
+                <div className="flex items-center gap-3 px-1 py-2">
+                  {profile?.avatar ? (
+                    <img src={profile.avatar} alt={role} className={cn("h-8 w-8 rounded-full object-cover ring-2 ring-offset-1 ring-offset-background", accentRing)} />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                      <ListTodo className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold truncate max-w-[400px]">
-                        {task.ai_instruction.length > 80
-                          ? task.ai_instruction.substring(0, 80) + "…"
-                          : task.ai_instruction}
+                    <div className="flex items-center gap-2">
+                      <span className={cn("font-semibold text-sm", accentText)}>
+                        {role === '__manual__' ? 'Task Manuali' : role.charAt(0).toUpperCase() + role.slice(1)}
                       </span>
-                    </div>
-                    {task.origin_type === 'autonomous' && task.ai_reasoning && (
-                      <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2 bg-purple-50 dark:bg-purple-950/20 rounded-xl px-2 py-1 border border-purple-200/50 dark:border-purple-800/30">
-                        <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
-                        {task.ai_reasoning.length > 120
-                          ? task.ai_reasoning.substring(0, 120) + "…"
-                          : task.ai_reasoning}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {getTaskStatusBadge(task.status)}
-                      {getCategoryBadge(task.task_category)}
-                      {getPriorityIndicator(task.priority)}
-                      {task.origin_type === 'autonomous' && (
-                        <Badge className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 text-xs">
-                          <Sparkles className="h-3 w-3 mr-1" />
-                          AI Autonomo
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {getRelativeTime(task.created_at)}
-                      </span>
-                      {task.contact_name && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {task.contact_name}
-                        </span>
-                      )}
-                      {task.ai_role && (
-                        <Badge variant="outline" className={cn("text-[9px] px-1 py-0", getRoleBadge(task.ai_role))}>
-                          {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
-                        </Badge>
-                      )}
-                      {task.completed_at && (
-                        <span className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Completato: {new Date(task.completed_at).toLocaleString("it-IT")}
-                        </span>
+                      {profile && (
+                        <span className="text-xs text-muted-foreground">{profile.role}</span>
                       )}
                     </div>
                   </div>
-                  {task.status === 'waiting_approval' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                      title="Approva task"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                          method: "PATCH",
-                          headers: getAuthHeaders(),
-                        }).then(res => {
-                          if (res.ok) {
-                            toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                            queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                          } else {
-                            toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                          }
-                        });
-                      }}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      title="Cancella task"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
-                          fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
-                            method: "PATCH",
-                            headers: getAuthHeaders(),
-                          }).then(res => {
-                            if (res.ok) {
-                              toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
-                              queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                            } else {
-                              toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
-                            }
-                          });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+                  <Badge variant="outline" className="text-xs tabular-nums">
+                    {tasks.length}
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="space-y-2 pl-2">
+                  {tasks.map((task) => (
+                    <Card
+                      key={task.id}
+                      className={cn(
+                        "cursor-pointer transition-all duration-200 border rounded-xl shadow-sm border-l-4",
+                        "hover:shadow-md hover:border-primary/30",
+                        getPriorityBorderColor(task.priority)
+                      )}
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            {task.contact_name && (
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-semibold text-foreground">{task.contact_name}</span>
+                              </div>
+                            )}
+                            <p className="text-sm text-foreground line-clamp-2 leading-relaxed">
+                              {task.ai_instruction}
+                            </p>
+                            {task.origin_type === 'autonomous' && task.ai_reasoning && (
+                              <p className="text-xs text-muted-foreground mt-1.5 italic line-clamp-1 bg-purple-50 dark:bg-purple-950/20 rounded-lg px-2 py-1 border border-purple-200/50 dark:border-purple-800/30">
+                                <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
+                                {task.ai_reasoning}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                              {getTaskStatusBadge(task.status)}
+                              {getCategoryBadge(task.task_category)}
+                              {getPriorityIndicator(task.priority)}
+                              {task.origin_type === 'autonomous' && (
+                                <Badge className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 text-xs">
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  AI Autonomo
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {getRelativeTime(task.created_at)}
+                              </span>
+                              {task.completed_at && (
+                                <span className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Completato: {new Date(task.completed_at).toLocaleString("it-IT")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {task.status === 'waiting_approval' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                title="Approva task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                    method: "PATCH",
+                                    headers: getAuthHeaders(),
+                                  }).then(res => {
+                                    if (res.ok) {
+                                      toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                    } else {
+                                      toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                    }
+                                  });
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                title="Cancella task"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
+                                    fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
+                                      method: "PATCH",
+                                      headers: getAuthHeaders(),
+                                    }).then(res => {
+                                      if (res.ok) {
+                                        toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
+                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                      } else {
+                                        toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
+                                      }
+                                    });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
