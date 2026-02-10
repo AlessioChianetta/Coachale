@@ -126,10 +126,11 @@ export default function ConsultantClientsPage() {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch licenses");
-      const data = await res.json();
-      return data.data || data;
+      return res.json();
     },
   });
+
+  const licenseData = licensesQuery.data?.data || { employeeTotal: 5, employeeUsed: 0 };
 
   const createClientMutation = useMutation({
     mutationFn: async (data: typeof newClientForm) => {
@@ -1702,26 +1703,24 @@ export default function ConsultantClientsPage() {
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
-            {licensesQuery.data && (
-              <div className={cn(
-                "rounded-xl p-3 border text-sm",
-                (licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal)
-                  ? "bg-red-50 border-red-200 text-red-700"
-                  : "bg-blue-50 border-blue-200 text-blue-700"
-              )}>
-                {licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal ? (
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span>Hai raggiunto il limite di <strong>{licensesQuery.data.employeeTotal}</strong> licenze. Acquista un pacchetto aggiuntivo dalla sezione licenze.</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 shrink-0" />
-                    <span>Licenze disponibili: <strong>{licensesQuery.data.employeeTotal - licensesQuery.data.employeeUsed}</strong> su {licensesQuery.data.employeeTotal} totali</span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className={cn(
+              "rounded-xl p-3 border text-sm",
+              (licenseData.employeeUsed >= licenseData.employeeTotal)
+                ? "bg-red-50 border-red-200 text-red-700"
+                : "bg-blue-50 border-blue-200 text-blue-700"
+            )}>
+              {licenseData.employeeUsed >= licenseData.employeeTotal ? (
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Hai raggiunto il limite di <strong>{licenseData.employeeTotal}</strong> licenze. Acquista un pacchetto aggiuntivo dalla sezione licenze.</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 shrink-0" />
+                  <span>Licenze disponibili: <strong>{licenseData.employeeTotal - licenseData.employeeUsed}</strong> su {licenseData.employeeTotal} totali</span>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="newFirstName" className="text-right text-sm font-medium">
                 Nome *
@@ -1823,7 +1822,7 @@ export default function ConsultantClientsPage() {
             </Button>
             <Button 
               onClick={handleCreateClient}
-              disabled={createClientMutation.isPending || (licensesQuery.data && licensesQuery.data.employeeUsed >= licensesQuery.data.employeeTotal)}
+              disabled={createClientMutation.isPending || (licenseData.employeeUsed >= licenseData.employeeTotal)}
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
             >
               {createClientMutation.isPending ? (
