@@ -1,0 +1,85 @@
+{
+  "workload": {
+    "completed_7d": "0",
+    "completed_30d": "0",
+    "pending_tasks": "1"
+  },
+  "clientCount": "5",
+  "schedulingGaps": [
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "February 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "March 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "April 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "February 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 1,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "March 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "April 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    }
+  ],
+  "upcomingConsultations": [],
+  "consultationMonitoring": [
+    {
+      "id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "client_name": "Gloria Santi",
+      "consultations_used": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "client_name": "marco massi",
+      "consultations_used": 1,
+      "monthly_consultation_limit": 2
+    }
+  ]
+}

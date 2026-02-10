@@ -1,0 +1,46 @@
+⏭️  Skipping - SMTP not configured or inactive
+
+📋 Checking consultant: alessio chianetta (0c73bbe5-51e1-4108-866b-6be7a52fce3b)
+🔒 [exec_1770743047083_q3g29] Attempting to acquire scheduler lock for alessio (0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔒 [LOCK] Attempting to acquire scheduler lock for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔒 [LOCK] Max retries: 3, Timeout threshold: 5 minutes
+✅ [LOCK] Lock acquired successfully for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b at 2026-02-10T17:04:11.439Z (attempt 1)
+✅ [exec_1770743047083_q3g29] Lock acquired successfully! Processing emails for alessio
+🔍 Finding clients who need an email...
+✅ [EMAIL SCHEDULER] Current time 18:04 is WITHIN send window (18:00-19:00). Processing emails...
+🚫 Luca - automation disabled, skipping entirely
+🚫 Cristina - automation disabled, skipping entirely
+🚫 Giulia - automation disabled, skipping entirely
+🚫 marco - automation disabled, skipping entirely
+🚫 Giusy - automation disabled, skipping entirely
+🚫 Sonia - automation disabled, skipping entirely
+🚫 Massimo - automation disabled, skipping entirely
+🚫 Fernando - automation disabled, skipping entirely
+🚫 Riccardo - automation disabled, skipping entirely
+🚫 Gloria - automation disabled, skipping entirely
+🚫 Silvia - automation disabled, skipping entirely
+📊 1/12 clients have automation enabled
+📅 Italy: 10/02/2026 18:04 → Calendar day 10, Template 10/28
+⏰ Prossimo invio: DOMANI 11/02/2026 alle 13:00 (tra 18h 55m)
+⏭️  Alessio - already has draft for template 10 (skipping)
+📊 Found 0 clients eligible for email
+✓ No clients need emails at this time
+🔓 Releasing scheduler lock for alessio...
+🔓 [LOCK] Releasing scheduler lock for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b at 2026-02-10T17:04:14.304Z
+✅ [LOCK] Lock released successfully for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ Lock released for alessio
+
+📋 Checking consultant: Silvia Caldironi (42105c6d-d065-4f4e-b5b2-290742b4dd1d)
+⏭️  Skipping - SMTP not configured or inactive
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 AUTOMATED EMAIL SCHEDULER - Global Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Total clients processed: 0
+✅ Total emails sent: 0
+📝 Total drafts created: 0
+❌ Total failed: 0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [SCHEDULER EXECUTE] Manual execution completed successfully
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
