@@ -3996,7 +3996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/consultations/schedule-proposal", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
-      const { clientId, months: rawMonths, consultationsPerMonth: rawPerMonth, intervalDays: rawIntervalDays, extraConsultations } = req.body;
+      const { clientId, months: rawMonths, consultationsPerMonth: rawPerMonth, intervalDays: rawIntervalDays, extraConsultations, timePreference } = req.body;
 
       if (!clientId) return res.status(400).json({ message: "clientId is required" });
       const months = Math.max(1, Math.min(6, parseInt(rawMonths) || 3));
@@ -4011,6 +4011,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const client = clientResult.rows[0] as any;
       const perMonth = Math.max(1, Math.min(10, parseInt(rawPerMonth) || client.monthly_consultation_limit || 2));
+
+      const historyResult = await db.execute(sql`
+        SELECT scheduled_at FROM consultations
+        WHERE consultant_id = ${consultantId}
+          AND (client_id = ${clientId} OR client_email = ${client.email})
+          AND status = 'completed'
+        ORDER BY scheduled_at DESC
+        LIMIT 20
+      `);
+
+      let detectedTime = '10:00';
+      let detectedDayOfWeek: number | null = null;
+      const pastTimes: Record<string, number> = {};
+      const pastDays: Record<number, number> = {};
+
+      for (const row of historyResult.rows as any[]) {
+        const d = new Date(row.scheduled_at);
+        const hour = d.getHours();
+        const timeStr = `${String(hour).padStart(2, '0')}:00`;
+        pastTimes[timeStr] = (pastTimes[timeStr] || 0) + 1;
+        pastDays[d.getDay()] = (pastDays[d.getDay()] || 0) + 1;
+      }
+
+      if (Object.keys(pastTimes).length > 0) {
+        detectedTime = Object.entries(pastTimes).sort((a, b) => b[1] - a[1])[0][0];
+        const detectedHour = parseInt(detectedTime);
+        if (detectedHour < 8 || detectedHour > 18) {
+          detectedTime = detectedHour < 8 ? '09:00' : '17:00';
+        }
+      }
+      if (Object.keys(pastDays).length > 0) {
+        const sorted = Object.entries(pastDays).sort((a, b) => b[1] - a[1]);
+        detectedDayOfWeek = parseInt(sorted[0][0]);
+      }
+
+      let proposalTime = detectedTime;
+      if (timePreference === 'morning') {
+        proposalTime = detectedTime && parseInt(detectedTime) < 13 ? detectedTime : '10:00';
+      } else if (timePreference === 'afternoon') {
+        proposalTime = detectedTime && parseInt(detectedTime) >= 13 ? detectedTime : '15:00';
+      }
 
       const now = new Date();
       const endDate = new Date(now.getFullYear(), now.getMonth() + months + 1, 0);
@@ -4043,10 +4084,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         while (cursor <= endDate) {
+          if (detectedDayOfWeek !== null && detectedDayOfWeek >= 1 && detectedDayOfWeek <= 5 && cursor.getDay() !== detectedDayOfWeek) {
+            const cursorDay = cursor.getDay();
+            let diff = detectedDayOfWeek - cursorDay;
+            if (diff > 2) diff -= 7;
+            if (diff < -2) diff += 7;
+            if (Math.abs(diff) <= 2) {
+              const adjusted = new Date(cursor);
+              adjusted.setDate(adjusted.getDate() + diff);
+              if (adjusted.getDay() >= 1 && adjusted.getDay() <= 5 && adjusted <= endDate && adjusted > now) {
+                cursor = adjusted;
+              }
+            }
+          }
+
           const dateStr = cursor.toISOString().split('T')[0];
           if (!allProposedDateStrings.includes(dateStr)) {
             const monthName = cursor.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-            proposals.push({ date: dateStr, time: '10:00', month: monthName });
+            proposals.push({ date: dateStr, time: proposalTime, month: monthName });
             allProposedDateStrings.push(dateStr);
           }
 
@@ -4075,11 +4130,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               proposedDate.setDate(proposedDate.getDate() + 1);
             }
 
+            if (detectedDayOfWeek !== null && detectedDayOfWeek >= 1 && detectedDayOfWeek <= 5 && proposedDate.getDay() !== detectedDayOfWeek) {
+              const currentDay = proposedDate.getDay();
+              let diff = detectedDayOfWeek - currentDay;
+              if (diff > 3) diff -= 7;
+              if (diff < -3) diff += 7;
+              const shifted = new Date(proposedDate);
+              shifted.setDate(shifted.getDate() + diff);
+              if (shifted.getDay() >= 1 && shifted.getDay() <= 5 && shifted.getMonth() === targetMonth.getMonth()) {
+                proposedDate = shifted;
+              }
+            }
+
             const dateStr = proposedDate.toISOString().split('T')[0];
             const monthName = proposedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
 
             if (!allProposedDateStrings.includes(dateStr)) {
-              proposals.push({ date: dateStr, time: '10:00', month: monthName });
+              proposals.push({ date: dateStr, time: proposalTime, month: monthName });
               allProposedDateStrings.push(dateStr);
             }
           }
@@ -4108,7 +4175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const dateStr = candidate.toISOString().split('T')[0];
                 if (!allProposedDateStrings.includes(dateStr)) {
                   const monthName = candidate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-                  proposals.push({ date: dateStr, time: '10:00', month: monthName });
+                  proposals.push({ date: dateStr, time: proposalTime, month: monthName });
                   allProposedDateStrings.push(dateStr);
                   added++;
                   break;
@@ -4123,10 +4190,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       proposals.sort((a, b) => a.date.localeCompare(b.date));
 
+      let calendarBusySlots: Array<{ start: Date; end: Date }> = [];
+      try {
+        const calConnected = await googleCalendarService.isGoogleCalendarConnected(consultantId);
+        if (calConnected && proposals.length > 0) {
+          const firstDate = new Date(proposals[0].date);
+          const lastDate = new Date(proposals[proposals.length - 1].date);
+          lastDate.setDate(lastDate.getDate() + 1);
+          const events = await googleCalendarService.listEvents(consultantId, firstDate, lastDate);
+          calendarBusySlots = events.map(e => ({ start: new Date(e.start), end: new Date(e.end) }));
+        }
+      } catch (err) {
+        console.error('[SCHEDULE-PROPOSAL] Calendar check error:', err);
+      }
+
+      const validProposals: Array<{date: string, time: string, month: string}> = [];
+      for (const proposal of proposals) {
+        const proposalStart = new Date(proposal.date + 'T' + proposal.time + ':00');
+        const proposalEnd = new Date(proposalStart.getTime() + 60 * 60 * 1000);
+
+        const conflictsOnDay = calendarBusySlots.filter(slot => {
+          return slot.start.toISOString().split('T')[0] === proposal.date &&
+            proposalStart < slot.end && proposalEnd > slot.start;
+        });
+
+        if (conflictsOnDay.length === 0) {
+          validProposals.push(proposal);
+          continue;
+        }
+
+        const alternatives = timePreference === 'afternoon' 
+          ? [14, 15, 16, 17, 9, 10, 11]
+          : timePreference === 'morning'
+            ? [9, 10, 11, 12, 14, 15, 16]
+            : [9, 10, 11, 14, 15, 16, 17];
+
+        let resolved = false;
+        for (const altHour of alternatives) {
+          const altStart = new Date(proposal.date + 'T' + String(altHour).padStart(2, '0') + ':00:00');
+          const altEnd = new Date(altStart.getTime() + 60 * 60 * 1000);
+          const hasConflict = calendarBusySlots.some(slot => {
+            return slot.start.toISOString().split('T')[0] === proposal.date &&
+              altStart < slot.end && altEnd > slot.start;
+          });
+          if (!hasConflict) {
+            proposal.time = `${String(altHour).padStart(2, '0')}:00`;
+            validProposals.push(proposal);
+            resolved = true;
+            break;
+          }
+        }
+
+        if (!resolved) {
+          let found = false;
+          const baseDate = new Date(proposal.date);
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            const nextDay = new Date(baseDate);
+            nextDay.setDate(nextDay.getDate() + attempt);
+            while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+              nextDay.setDate(nextDay.getDate() + 1);
+            }
+            const nextDateStr = nextDay.toISOString().split('T')[0];
+            if (allProposedDateStrings.includes(nextDateStr)) continue;
+
+            for (const altHour of alternatives) {
+              const altStart = new Date(nextDateStr + 'T' + String(altHour).padStart(2, '0') + ':00:00');
+              const altEnd = new Date(altStart.getTime() + 60 * 60 * 1000);
+              const hasConflict = calendarBusySlots.some(slot => {
+                return slot.start.toISOString().split('T')[0] === nextDateStr &&
+                  altStart < slot.end && altEnd > slot.start;
+              });
+              if (!hasConflict) {
+                proposal.date = nextDateStr;
+                proposal.time = `${String(altHour).padStart(2, '0')}:00`;
+                proposal.month = nextDay.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+                allProposedDateStrings.push(nextDateStr);
+                validProposals.push(proposal);
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+        }
+      }
+
+      validProposals.sort((a, b) => a.date.localeCompare(b.date));
+
       res.json({
         client: { id: client.id, name: `${client.first_name} ${client.last_name}`, limit: client.monthly_consultation_limit },
-        proposals,
-        existingScheduled: existingDateStrings.length
+        proposals: validProposals,
+        existingScheduled: existingDateStrings.length,
+        detectedPattern: {
+          time: detectedTime,
+          dayOfWeek: detectedDayOfWeek,
+          dayName: detectedDayOfWeek !== null ? ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][detectedDayOfWeek] : null,
+          totalPastConsultations: historyResult.rows.length,
+          calendarChecked: calendarBusySlots.length > 0 || false
+        }
       });
     } catch (error: any) {
       console.error("[SCHEDULE-PROPOSAL] Error:", error);

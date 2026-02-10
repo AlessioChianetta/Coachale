@@ -111,6 +111,8 @@ export default function ConsultantClientsPage() {
   const [isCreatingConsultations, setIsCreatingConsultations] = useState(false);
   const [schedulingIntervalDays, setSchedulingIntervalDays] = useState<number>(0);
   const [schedulingExtraMonths, setSchedulingExtraMonths] = useState<Record<number, number>>({});
+  const [schedulingTimePreference, setSchedulingTimePreference] = useState<'auto' | 'morning' | 'afternoon'>('auto');
+  const [detectedPattern, setDetectedPattern] = useState<any>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -467,12 +469,14 @@ export default function ConsultantClientsPage() {
           intervalDays: schedulingIntervalDays || undefined,
           extraConsultations: Object.entries(schedulingExtraMonths)
             .filter(([_, count]) => count > 0)
-            .map(([monthIndex, count]) => ({ monthIndex: parseInt(monthIndex), count }))
+            .map(([monthIndex, count]) => ({ monthIndex: parseInt(monthIndex), count })),
+          timePreference: schedulingTimePreference
         })
       });
       if (!response.ok) throw new Error('Failed to generate proposal');
       const data = await response.json();
       setProposedDates(data.proposals);
+      setDetectedPattern(data.detectedPattern || null);
       setSchedulingStep('proposal');
     } catch (error) {
       toast({ title: "Errore", description: "Impossibile generare la proposta", variant: "destructive" });
@@ -947,6 +951,8 @@ export default function ConsultantClientsPage() {
                                           setSchedulingMonths(3);
                                           setSchedulingIntervalDays(0);
                                           setSchedulingExtraMonths({});
+                                          setSchedulingTimePreference('auto');
+                                          setDetectedPattern(null);
                                         }}
                                         className="text-xs h-7 px-2 border-cyan-200 text-cyan-700 hover:bg-cyan-50"
                                       >
@@ -964,7 +970,7 @@ export default function ConsultantClientsPage() {
                     </CardContent>
                   </Card>
                   {/* Scheduling Wizard Dialog */}
-                  <Dialog open={!!schedulingClient} onOpenChange={() => { setSchedulingClient(null); setSchedulingStep('overview'); setProposedDates([]); setSchedulingIntervalDays(0); setSchedulingExtraMonths({}); }}>
+                  <Dialog open={!!schedulingClient} onOpenChange={() => { setSchedulingClient(null); setSchedulingStep('overview'); setProposedDates([]); setSchedulingIntervalDays(0); setSchedulingExtraMonths({}); setSchedulingTimePreference('auto'); setDetectedPattern(null); }}>
                     <DialogContent className="max-w-lg">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -1044,6 +1050,29 @@ export default function ConsultantClientsPage() {
                           </div>
 
                           <div>
+                            <label className="text-sm font-medium text-slate-700">Preferenza orario</label>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {[
+                                { value: 'auto' as const, label: 'Automatico', desc: 'Basato sullo storico' },
+                                { value: 'morning' as const, label: 'Mattina', desc: '9:00 - 12:00' },
+                                { value: 'afternoon' as const, label: 'Pomeriggio', desc: '14:00 - 17:00' },
+                              ].map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setSchedulingTimePreference(opt.value)}
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
+                                    schedulingTimePreference === opt.value
+                                      ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm'
+                                      : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-300 hover:text-cyan-700'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
                             <label className="text-sm font-medium text-slate-700">Consulenze extra per mese</label>
                             <div className="mt-2 space-y-1.5">
                               {Array.from({ length: schedulingMonths }, (_, i) => {
@@ -1090,6 +1119,18 @@ export default function ConsultantClientsPage() {
                       {schedulingStep === 'proposal' && (
                         <div className="space-y-4">
                           <p className="text-sm text-slate-600">Modifica le date proposte, poi procedi alla conferma.</p>
+                          {detectedPattern && detectedPattern.totalPastConsultations > 0 && (
+                            <div className="bg-amber-50 rounded-xl p-3 flex items-start gap-2">
+                              <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              <div className="text-xs text-amber-800">
+                                <span className="font-semibold">Pattern rilevato:</span>{' '}
+                                {detectedPattern.totalPastConsultations} consulenze passate
+                                {detectedPattern.dayName && <>, di solito il <strong>{detectedPattern.dayName}</strong></>}
+                                {detectedPattern.time && <> alle <strong>{detectedPattern.time}</strong></>}
+                                {detectedPattern.calendarChecked && <> · <span className="text-emerald-700">Calendario verificato</span></>}
+                              </div>
+                            </div>
+                          )}
                           <div className="max-h-[400px] overflow-y-auto space-y-3">
                             {(() => {
                               const grouped = proposedDates.reduce((acc: Record<string, Array<{date: string, time: string, month: string, idx: number}>>, d, idx) => {
