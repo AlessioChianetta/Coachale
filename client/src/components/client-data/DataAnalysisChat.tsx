@@ -8,10 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getAuthHeaders } from "@/lib/auth";
-import { MessageList } from "@/components/ai-assistant/MessageList";
-import { InputArea, AIModel, ThinkingLevel } from "@/components/ai-assistant/InputArea";
+import { Message as MessageComponent } from "@/components/ai-assistant/Message";
+import { InputArea, type AIModel, type ThinkingLevel } from "@/components/ai-assistant/InputArea";
 import { AIPreferencesSheet } from "@/components/ai-assistant/AIPreferencesSheet";
 import { FullAuditDialog } from "./FullAuditDialog";
+import { ChartBlock } from "./ChartBlock";
+import type { ChartData } from "./ChartBlock";
 import {
   Sparkles,
   Bot,
@@ -53,6 +55,7 @@ interface Message {
     data?: any;
   }>;
   queryResult?: QueryResult;
+  chartData?: ChartData[];
 }
 
 interface QueryResult {
@@ -143,7 +146,7 @@ export function DataAnalysisChat({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "history" | "charts">("chat");
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash-preview");
@@ -244,6 +247,7 @@ export function DataAnalysisChat({
       
       const resultActions: Array<{type: string; label: string; data?: any}> = [];
       const queryResult = data;
+      const chartData = data.data?.chartData || [];
       if (queryResult?.success && queryResult?.data) {
         if (queryResult.data.results?.some((r: any) => r.success && r.data?.length > 0) ||
             (queryResult.data.rows && queryResult.data.rows.length > 0)) {
@@ -276,6 +280,7 @@ export function DataAnalysisChat({
         thinkingLevel: thinkingLevel,
         suggestedActions: resultActions.length > 0 ? resultActions : undefined,
         queryResult: data,
+        chartData: chartData.length > 0 ? chartData : undefined,
       };
       setMessages((prev) => [...prev.filter(m => !m.isThinking), assistantMessage]);
       setIsTyping(false);
@@ -363,6 +368,7 @@ export function DataAnalysisChat({
           content: msg.content || "",
           thinking: formatToolCallsAsThinking(msg.toolCalls),
           queryResult: msg.queryResult,
+          chartData: msg.queryResult?.chartData,
         }));
         setMessages(loadedMessages);
       }
@@ -450,7 +456,7 @@ export function DataAnalysisChat({
         </div>
 
         <div className="px-4 pb-3">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "chat" | "history")}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "chat" | "history" | "charts")}>
             <TabsList className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
               <TabsTrigger
                 value="chat"
@@ -465,6 +471,18 @@ export function DataAnalysisChat({
               >
                 <History className="h-4 w-4 mr-1.5" />
                 Cronologia
+              </TabsTrigger>
+              <TabsTrigger
+                value="charts"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-4 py-1.5 text-sm font-medium rounded-md transition-all"
+              >
+                <BarChart3 className="h-4 w-4 mr-1.5" />
+                Grafici
+                {messages.filter(m => m.chartData && m.chartData.length > 0).length > 0 && (
+                  <span className="ml-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 text-xs px-1.5 py-0.5 rounded-full">
+                    {messages.reduce((acc, m) => acc + (m.chartData?.length || 0), 0)}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -582,14 +600,90 @@ export function DataAnalysisChat({
               </ScrollArea>
             ) : (
               <div className="flex-1 overflow-hidden">
-                <MessageList
-                  messages={messages}
-                  isTyping={isTyping}
-                  onActionClick={handleActionClick}
-                />
+                <div className="h-full min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+                  <div className="space-y-4 sm:space-y-5 max-w-3xl mx-auto">
+                    {messages.map((message, index) => (
+                      <div key={message.id}>
+                        <motion.div
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.02, duration: 0.3, ease: "easeOut" }}
+                        >
+                          <MessageComponent message={message} onActionClick={handleActionClick} />
+                        </motion.div>
+                        {message.role === "assistant" && message.chartData && message.chartData.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.02 + 0.15, duration: 0.3 }}
+                            className="mt-3 space-y-3"
+                          >
+                            {message.chartData.map((chart) => (
+                              <ChartBlock key={chart.id} chart={chart} compact />
+                            ))}
+                          </motion.div>
+                        )}
+                      </div>
+                    ))}
+                    {isTyping && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <MessageComponent
+                          message={{ id: "typing", role: "assistant", content: "", isThinking: true, modelName: selectedModel.includes("pro") ? "Pro 3" : "Flash 3" }}
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </>
+        ) : activeTab === "charts" ? (
+          <ScrollArea className="flex-1">
+            <div className="p-6">
+              {(() => {
+                const allCharts = messages.flatMap(m => m.chartData || []);
+                if (allCharts.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                        <BarChart3 className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Nessun grafico
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+                        I grafici appariranno qui quando farai domande sui tuoi dati nella chat.
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab("chat")}
+                        className="mt-4 bg-violet-600 hover:bg-violet-700 text-white"
+                      >
+                        Vai alla chat
+                      </Button>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-violet-500" />
+                        Grafici della conversazione
+                      </h4>
+                      <span className="text-xs text-gray-400">
+                        {allCharts.length} {allCharts.length === 1 ? 'grafico' : 'grafici'}
+                      </span>
+                    </div>
+                    <div className="grid gap-4">
+                      {allCharts.map((chart) => (
+                        <ChartBlock key={chart.id} chart={chart} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </ScrollArea>
         ) : (
           <ScrollArea className="flex-1">
             <div className="p-4">

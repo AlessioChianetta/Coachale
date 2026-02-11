@@ -17,6 +17,7 @@ import { runReconciliationTests, compareAggregations, type ReconciliationReport 
 import { detectAndSaveSemanticMappings, getSemanticMappings, confirmSemanticMappings, rejectSemanticMapping, checkAnalyticsEnabled } from "../services/client-data/semantic-mapping-service";
 import { generateAIMappingSuggestions } from "../ai/data-analysis/ai-column-mapper";
 import { generateSmartQuestions } from "../ai/data-analysis/smart-questions";
+import { buildChartData } from "../ai/data-analysis/chart-builder";
 import { runFullAudit } from "../ai/data-analysis/full-audit";
 import { analyzeFile, detectJoins, buildJoinSQL, type FileSchema, type JoinCandidate } from "../services/client-data/join-detector";
 import fs from "fs";
@@ -1962,13 +1963,15 @@ router.post(
         conversationHistory
       );
 
-      const queryResult = executionResult.results.map((r) => ({
+      const queryResultForDb = executionResult.results.map((r) => ({
         tool: r.toolName,
         success: r.success,
         data: r.result,
         error: r.error,
         executionTimeMs: r.executionTimeMs,
       }));
+
+      const chartData = buildChartData(executionResult.results);
 
       const [assistantMessage] = await db
         .insert(clientDataMessages)
@@ -1978,7 +1981,7 @@ router.post(
           content: explanation,
           toolCalls,
           thinking,
-          queryResult,
+          queryResult: { results: queryResultForDb, chartData },
         })
         .returning();
 
@@ -2002,6 +2005,7 @@ router.post(
         data: {
           userMessage,
           assistantMessage,
+          chartData,
           plan: {
             steps: executionResult.plan.steps,
             complexity: executionResult.plan.estimatedComplexity,
