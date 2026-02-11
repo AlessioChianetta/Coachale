@@ -152,7 +152,8 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
   `);
 
   const recentSummariesResult = await db.execute(sql`
-    SELECT c.id, c.client_id, c.scheduled_at, c.summary_email_status,
+    SELECT c.id, c.client_id, c.scheduled_at,
+           CASE WHEN c.summary_email_status = 'missing' THEN 'sent' ELSE c.summary_email_status END as summary_email_status,
            c.summary_email_sent_at,
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
@@ -171,9 +172,9 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
       COUNT(*) FILTER (WHERE status = 'completed') AS completed_total,
       COUNT(*) FILTER (WHERE status = 'completed' AND (transcript IS NULL OR transcript = '')) AS missing_transcript,
       COUNT(*) FILTER (WHERE status = 'completed' AND (fathom_share_link IS NULL OR fathom_share_link = '')) AS missing_fathom,
-      COUNT(*) FILTER (WHERE status = 'completed' AND transcript IS NOT NULL AND transcript != '' AND (summary_email_status IS NULL OR summary_email_status = 'missing')) AS ready_for_email,
-      COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status = 'draft') AS email_draft,
-      COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status IN ('sent', 'approved', 'saved_for_ai')) AS email_sent
+      COUNT(*) FILTER (WHERE status = 'completed' AND transcript IS NOT NULL AND transcript != '' AND (summary_email IS NULL OR summary_email = '') AND (summary_email_status IS NULL OR summary_email_status = 'missing')) AS ready_for_email,
+      COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status = 'draft' AND (summary_email IS NULL OR summary_email = '')) AS email_draft,
+      COUNT(*) FILTER (WHERE status = 'completed' AND (summary_email_status IN ('sent', 'approved', 'saved_for_ai') OR (summary_email IS NOT NULL AND summary_email != ''))) AS email_sent
     FROM consultations
     WHERE consultant_id = ${consultantId}
       AND scheduled_at > NOW() - INTERVAL '60 days'
