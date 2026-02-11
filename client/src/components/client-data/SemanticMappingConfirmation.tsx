@@ -140,8 +140,8 @@ const ROLE_FUNCTIONS: Record<string, { label: string; functions: string[] }> = {
     label: "Cameriere",
     functions: ["Performance camerieri", "Vendite per operatore", "Confronto staff"]
   },
-  discount_amount: {
-    label: "Importo Sconto",
+  discount_percent: {
+    label: "Sconto Percentuale",
     functions: ["Totale sconti", "Impatto sconti su margine"]
   },
   tax_amount: {

@@ -2262,7 +2262,6 @@ router.get(
         line_id: "ID riga/dettaglio",
         revenue_amount: "Importo riga (già calcolato)",
         customer_id: "ID cliente",
-        customer_name: "Nome cliente",
         product_id: "ID prodotto",
         product_name: "Nome prodotto",
         category: "Categoria prodotto",

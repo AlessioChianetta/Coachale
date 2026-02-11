@@ -38,7 +38,7 @@ interface DatasetContext {
   dateRange: { min: string | null; max: string | null } | null;
 }
 
-const DIMENSION_COLUMNS = ['category', 'product_name', 'payment_method', 'customer_name', 'supplier_name', 'status', 'warehouse'];
+const DIMENSION_COLUMNS = ['category', 'product_name', 'payment_method', 'customer_id', 'supplier_id', 'document_type', 'sales_channel', 'time_slot', 'staff'];
 const MAX_DIMENSION_VALUES = 20;
 
 export function getAvailableMetrics(confirmedMappings: Map<string, string>): { available: string[]; unavailable: string[] } {

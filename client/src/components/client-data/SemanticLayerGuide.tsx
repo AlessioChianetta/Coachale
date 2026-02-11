@@ -324,7 +324,7 @@ Generato il: ${new Date().toLocaleDateString("it-IT")}
                   <div className="flex items-center gap-2">
                     <Tags className="h-4 w-4 text-cyan-600" />
                     <span className="font-medium text-cyan-700 dark:text-cyan-400">Ruoli Logici Standard</span>
-                    <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">20 ruoli</Badge>
+                    <Badge variant="outline" className="text-xs bg-cyan-50 text-cyan-700 border-cyan-200">{LOGICAL_ROLES.length} ruoli</Badge>
                   </div>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">I "ruoli" che l'AI usa per le analisi: <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">revenue_amount</span>, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">quantity</span>, <span className="font-mono text-xs bg-slate-100 dark:bg-slate-700 px-1 rounded">category</span></p>
                 </div>

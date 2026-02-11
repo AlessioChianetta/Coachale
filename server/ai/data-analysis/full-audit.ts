@@ -383,7 +383,7 @@ async function runStep4Costs(ctx: AuditContext): Promise<AuditStep> {
 async function runStep5Customers(ctx: AuditContext): Promise<AuditStep> {
   const startTime = Date.now();
 
-  const customerCol = ctx.confirmedMappings.get("customer_name") || ctx.confirmedMappings.get("customer_id");
+  const customerCol = ctx.confirmedMappings.get("customer_id");
 
   if (!customerCol) {
     return {

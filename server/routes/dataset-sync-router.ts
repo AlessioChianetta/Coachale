@@ -84,8 +84,8 @@ router.get("/schema", async (req: Request, res: Response) => {
     const criticalRoles = ["price", "cost", "quantity", "order_date", "revenue_amount"];
     const documentRoles = ["document_id", "line_id", "document_type"];
     const productRoles = ["product_id", "product_name", "category", "is_sellable"];
-    const customerRoles = ["customer_id", "customer_name"];
-    const financialRoles = ["discount_percent", "total_net", "tax_rate", "payment_method"];
+    const customerRoles = ["customer_id"];
+    const financialRoles = ["discount_percent", "total_net", "tax_rate", "payment_method", "supplier_id"];
     const temporalRoles = ["time_slot", "sales_channel"];
     const staffRoles = ["staff"];
 

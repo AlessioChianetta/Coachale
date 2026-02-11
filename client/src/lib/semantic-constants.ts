@@ -3,8 +3,8 @@
  * Costanti condivise per il mapping automatico delle colonne
  * 
  * Fonte di verità per:
- * - ROLE_DESCRIPTIONS: 20 colonne logiche core per ristoranti
- * - SYSTEM_RULES: 58 pattern di riconoscimento automatico
+ * - ROLE_DESCRIPTIONS: 22 colonne logiche core per ristoranti
+ * - SYSTEM_RULES: pattern di riconoscimento automatico
  */
 
 export interface RoleDescription {
@@ -22,11 +22,12 @@ export interface SystemRule {
 }
 
 /**
- * 20 Colonne Logiche Core per Ristoranti
+ * 22 Colonne Logiche Core per Ristoranti
  * Allineate con server/ai/data-analysis/logical-columns.ts
  */
 export const ROLE_DESCRIPTIONS: Record<string, RoleDescription> = {
-  document_id: { description: "ID documento/scontrino/ordine", type: "TEXT", example: "ORD-2024-001" },
+  document_id: { description: "ID documento/scontrino/ordine univoco", type: "TEXT", example: "ORD-2024-001" },
+  order_id: { description: "ID ordine/scontrino (alias di document_id per POS)", type: "TEXT", example: "ORD-001" },
   order_date: { description: "Data e ora della transazione", type: "DATE", example: "2024-01-15 12:30:00" },
   product_id: { description: "Codice univoco prodotto/SKU", type: "TEXT", example: "PROD-001" },
   product_name: { description: "Nome del prodotto o articolo", type: "TEXT", example: "Pizza Margherita" },
@@ -35,12 +36,13 @@ export const ROLE_DESCRIPTIONS: Record<string, RoleDescription> = {
   price: { description: "Prezzo unitario di vendita (pre-sconto)", type: "NUMERIC", example: "8.50" },
   cost: { description: "Costo unitario di acquisto/produzione", type: "NUMERIC", example: "2.80" },
   revenue_amount: { description: "Totale riga già scontato (pronto per SUM)", type: "NUMERIC", example: "15.30" },
-  discount_amount: { description: "Importo sconto applicato in euro", type: "NUMERIC", example: "1.70" },
+  total_net: { description: "Totale netto dopo sconti", type: "NUMERIC", example: "120.50" },
   discount_percent: { description: "Percentuale di sconto applicata", type: "NUMERIC", example: "10" },
   customer_id: { description: "Identificatore univoco cliente", type: "TEXT", example: "CLI-001" },
-  customer_name: { description: "Nome o ragione sociale cliente", type: "TEXT", example: "Mario Rossi" },
   payment_method: { description: "Metodo di pagamento utilizzato", type: "TEXT", example: "carta" },
   tax_rate: { description: "Aliquota IVA in percentuale", type: "NUMERIC", example: "22" },
+  staff: { description: "Operatore/cameriere che ha gestito l'ordine", type: "TEXT", example: "Marco" },
+  supplier_id: { description: "Identificatore univoco fornitore", type: "TEXT", example: "SUP-001" },
   document_type: { description: "Tipo transazione: sale | refund | void | staff_meal", type: "TEXT", example: "sale" },
   time_slot: { description: "Fascia oraria: breakfast | lunch | dinner | late", type: "TEXT", example: "lunch" },
   sales_channel: { description: "Canale vendita: dine_in | takeaway | delivery", type: "TEXT", example: "dine_in" },
@@ -80,10 +82,11 @@ export const MATCH_TYPE_OPTIONS = [
 export const SYSTEM_RULES: SystemRule[] = [
   // document_id
   { pattern: "idddt", matchType: "startswith", matchTypeLabel: "Inizia con", role: "document_id", description: "DDT italiani" },
-  { pattern: "id_ordine", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "Ordini POS" },
+  { pattern: "ricevuta", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "Ricevuta fiscale" },
   { pattern: "scontrino", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "Scontrini fiscali" },
   { pattern: "numero_ordine", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "Numero ordine" },
-  { pattern: "order_id", matchType: "exact", matchTypeLabel: "Esatto", role: "document_id", description: "ID ordine inglese" },
+  { pattern: "doc_id", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "ID documento" },
+  { pattern: "numero_doc", matchType: "contains", matchTypeLabel: "Contiene", role: "document_id", description: "Numero documento" },
   // order_date
   { pattern: "data", matchType: "startswith", matchTypeLabel: "Inizia con", role: "order_date", description: "Data transazione" },
   { pattern: "dataordine", matchType: "contains", matchTypeLabel: "Contiene", role: "order_date", description: "Data ordine" },
@@ -119,14 +122,25 @@ export const SYSTEM_RULES: SystemRule[] = [
   { pattern: "importo_riga", matchType: "contains", matchTypeLabel: "Contiene", role: "revenue_amount", description: "Totale riga fattura" },
   { pattern: "totale_riga", matchType: "contains", matchTypeLabel: "Contiene", role: "revenue_amount", description: "Totale riga documento" },
   { pattern: "importo2", matchType: "exact", matchTypeLabel: "Esatto", role: "revenue_amount", description: "Export comuni ristoranti" },
-  // discount_amount / discount_percent
-  { pattern: "sconto", matchType: "startswith", matchTypeLabel: "Inizia con", role: "discount_amount", description: "Sconto applicato" },
-  { pattern: "discount", matchType: "contains", matchTypeLabel: "Contiene", role: "discount_amount", description: "Sconto inglese" },
+  // order_id
+  { pattern: "order_id", matchType: "exact", matchTypeLabel: "Esatto", role: "order_id", description: "ID ordine" },
+  { pattern: "id_ordine", matchType: "contains", matchTypeLabel: "Contiene", role: "order_id", description: "ID ordine IT" },
+  // total_net
+  { pattern: "totale_netto", matchType: "contains", matchTypeLabel: "Contiene", role: "total_net", description: "Totale netto" },
+  { pattern: "netto", matchType: "exact", matchTypeLabel: "Esatto", role: "total_net", description: "Importo netto" },
+  { pattern: "total_net", matchType: "exact", matchTypeLabel: "Esatto", role: "total_net", description: "Total net inglese" },
+  // discount_percent
+  { pattern: "sconto", matchType: "startswith", matchTypeLabel: "Inizia con", role: "discount_percent", description: "Sconto applicato" },
+  { pattern: "discount", matchType: "contains", matchTypeLabel: "Contiene", role: "discount_percent", description: "Sconto inglese" },
   { pattern: "sconto_perc", matchType: "contains", matchTypeLabel: "Contiene", role: "discount_percent", description: "Percentuale sconto" },
-  // customer
-  { pattern: "cliente", matchType: "contains", matchTypeLabel: "Contiene", role: "customer_name", description: "Nome cliente" },
+  // customer_id
+  { pattern: "cliente", matchType: "contains", matchTypeLabel: "Contiene", role: "customer_id", description: "ID cliente" },
   { pattern: "id_cliente", matchType: "contains", matchTypeLabel: "Contiene", role: "customer_id", description: "ID cliente" },
-  { pattern: "customer", matchType: "contains", matchTypeLabel: "Contiene", role: "customer_name", description: "Customer inglese" },
+  { pattern: "customer", matchType: "contains", matchTypeLabel: "Contiene", role: "customer_id", description: "Customer ID inglese" },
+  // staff
+  { pattern: "operatore", matchType: "contains", matchTypeLabel: "Contiene", role: "staff", description: "Operatore/cameriere" },
+  { pattern: "cameriere", matchType: "contains", matchTypeLabel: "Contiene", role: "staff", description: "Cameriere" },
+  { pattern: "staff", matchType: "exact", matchTypeLabel: "Esatto", role: "staff", description: "Staff inglese" },
   // payment_method
   { pattern: "pagamento", matchType: "contains", matchTypeLabel: "Contiene", role: "payment_method", description: "Metodo pagamento" },
   { pattern: "payment", matchType: "contains", matchTypeLabel: "Contiene", role: "payment_method", description: "Payment method" },
@@ -154,6 +168,10 @@ export const SYSTEM_RULES: SystemRule[] = [
   { pattern: "id_riga", matchType: "contains", matchTypeLabel: "Contiene", role: "line_id", description: "ID riga dettaglio" },
   { pattern: "line_id", matchType: "exact", matchTypeLabel: "Esatto", role: "line_id", description: "Line ID inglese" },
   { pattern: "idriga", matchType: "contains", matchTypeLabel: "Contiene", role: "line_id", description: "ID riga compatto" },
+  // supplier_id
+  { pattern: "id_fornitore", matchType: "contains", matchTypeLabel: "Contiene", role: "supplier_id", description: "ID fornitore" },
+  { pattern: "fornitore_id", matchType: "contains", matchTypeLabel: "Contiene", role: "supplier_id", description: "ID fornitore" },
+  { pattern: "supplier_id", matchType: "exact", matchTypeLabel: "Esatto", role: "supplier_id", description: "Supplier ID inglese" },
 ];
 
 /**

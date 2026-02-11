@@ -8955,10 +8955,11 @@ export type InsertConsultantColumnMapping = typeof consultantColumnMappings.$inf
 
 export type SemanticLogicalRole = 
   | "price" | "cost" | "quantity" | "order_date" | "order_id"
-  | "customer_id" | "product_name" | "category" | "discount_percent"
+  | "customer_id" | "product_name" | "product_id" | "category" | "discount_percent"
   | "total_net" | "tax_rate" | "payment_method" | "staff"
   | "is_sellable" | "line_id"
-  | "revenue_amount" | "document_type" | "time_slot" | "sales_channel";
+  | "revenue_amount" | "document_type" | "time_slot" | "sales_channel"
+  | "document_id" | "supplier_id";
 
 export type SemanticMappingStatus = "pending" | "confirmed" | "rejected";
 

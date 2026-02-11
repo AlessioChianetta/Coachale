@@ -72,10 +72,8 @@ export async function validateMetricForDataset(
       product_name: "nome_prodotto, product_name, descrizione, descr_prod",
       category: "categoria, category, reparto, gruppo_merceologico",
       customer_id: "id_cliente, customer_id, codice_cliente",
-      customer_name: "nome_cliente, customer_name, ragione_sociale",
       order_date: "data, date, data_ordine, order_date, data_vendita",
       discount_percent: "sconto, discount, sconto_percentuale",
-      discount_amount: "importo_sconto, discount_amount, sconto_euro",
       total_net: "totale_netto, net_total, imponibile",
     };
     const exampleHints = missing
