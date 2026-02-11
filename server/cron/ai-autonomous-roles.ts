@@ -134,7 +134,7 @@ async function fetchMillieData(consultantId: string, clientIds: string[]): Promi
 }
 
 async function fetchEchoData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { unsummarizedConsultations: [], recentSummaries: [] };
+  if (clientIds.length === 0) return { unsummarizedConsultations: [], recentSummaries: [], pipelineStats: null };
 
   const unsummarizedResult = await db.execute(sql`
     SELECT c.id, c.client_id, c.scheduled_at, c.duration, c.notes, c.status,
@@ -165,9 +165,24 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
     LIMIT 10
   `);
 
+  const pipelineStatsResult = await db.execute(sql`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'scheduled') AS scheduled_count,
+      COUNT(*) FILTER (WHERE status = 'completed') AS completed_total,
+      COUNT(*) FILTER (WHERE status = 'completed' AND (transcript IS NULL OR transcript = '')) AS missing_transcript,
+      COUNT(*) FILTER (WHERE status = 'completed' AND (fathom_share_link IS NULL OR fathom_share_link = '')) AS missing_fathom,
+      COUNT(*) FILTER (WHERE status = 'completed' AND transcript IS NOT NULL AND transcript != '' AND (summary_email_status IS NULL OR summary_email_status = 'missing')) AS ready_for_email,
+      COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status = 'draft') AS email_draft,
+      COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status IN ('sent', 'approved', 'saved_for_ai')) AS email_sent
+    FROM consultations
+    WHERE consultant_id = ${consultantId}
+      AND scheduled_at > NOW() - INTERVAL '60 days'
+  `);
+
   return {
     unsummarizedConsultations: unsummarizedResult.rows,
     recentSummaries: recentSummariesResult.rows,
+    pipelineStats: pipelineStatsResult.rows[0] || null,
   };
 }
 
@@ -772,11 +787,23 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         sent_at: c.summary_email_sent_at,
       }));
 
-      return `Sei ECHO, Summarizer AI. Il tuo ruolo è identificare consulenze completate che necessitano di un riepilogo strutturato e generare report professionali post-sessione.
+      const stats = roleData.pipelineStats;
+      const pipelineSection = stats ? `
+STATO PIPELINE CONSULENZE (ultimi 60 giorni):
+- Consulenze programmate (in attesa): ${stats.scheduled_count}
+- Consulenze completate (totale): ${stats.completed_total}
+- Completate SENZA trascrizione/riassunto: ${stats.missing_transcript} ${Number(stats.missing_transcript) > 0 ? '⚠️ ATTENZIONE' : '✅'}
+- Completate SENZA registrazione Fathom: ${stats.missing_fathom}
+- Pronte per generare email (hanno riassunto ma non email): ${stats.ready_for_email} ${Number(stats.ready_for_email) > 0 ? '⚠️ DA GESTIRE' : '✅'}
+- Email in bozza (da inviare): ${stats.email_draft} ${Number(stats.email_draft) > 0 ? '⚠️ BOZZE IN ATTESA' : '✅'}
+- Email inviate/completate: ${stats.email_sent} ✅` : '';
+
+      return `Sei ECHO, Summarizer AI. Il tuo ruolo è identificare consulenze completate che necessitano di un riepilogo strutturato e generare report professionali post-sessione. Monitori anche lo stato complessivo della pipeline consulenze per segnalare colli di bottiglia.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
 
-IL TUO FOCUS: Riepiloghi consulenze, report post-sessione, documentazione professionale.
+IL TUO FOCUS: Riepiloghi consulenze, report post-sessione, documentazione professionale, monitoraggio pipeline.
+${pipelineSection}
 
 CLIENTI ATTIVI:
 ${JSON.stringify(clientsList, null, 2)}
@@ -798,6 +825,8 @@ REGOLE DI ECHO:
    - Consulenze con trascrizione/note ma senza riepilogo → URGENTE
    - Consulenze recenti (ultimi 7 giorni) senza riepilogo → alta priorità
    - Consulenze più vecchie senza riepilogo → media priorità
+   - Consulenze pronte per email (hanno riassunto ma email mancante) → alta priorità
+   - Bozze email non inviate → segnala nel reasoning
 3. L'ai_instruction DEVE includere:
    - ID della consulenza da riepilogare
    - Contesto disponibile (note, trascrizione, Fathom)
