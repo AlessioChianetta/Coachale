@@ -1715,7 +1715,7 @@ router.get("/blocks", authenticateToken, requireAnyRole(["consultant", "super_ad
     const result = await db.execute(sql`
       SELECT b.*, u.first_name || ' ' || u.last_name as contact_display_name
       FROM ai_task_blocks b
-      LEFT JOIN users u ON u.id = b.contact_id
+      LEFT JOIN users u ON u.id::text = b.contact_id::text
       WHERE b.consultant_id = ${consultantId}
       ORDER BY b.blocked_at DESC
     `);
