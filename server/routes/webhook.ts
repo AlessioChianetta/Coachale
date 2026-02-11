@@ -357,22 +357,12 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     const source = payloadSource || 'hubdigital';
 
     // Fetch campaign to apply defaults (obiettivi, desideri, uncino, idealState)
+    // Priority: source_mapping > targetCampaignId (source mapping wins if lead has a mapped source)
     let campaign: any = null;
     let campaignLookupMethod = '';
 
-    if (webhookConfig.targetCampaignId) {
-      const campaigns = await db.select()
-        .from(schema.marketingCampaigns)
-        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
-      
-      if (campaigns.length > 0) {
-        campaign = campaigns[0];
-        campaignLookupMethod = 'targetCampaignId';
-        console.log(`📣 [WEBHOOK] Found campaign via targetCampaignId: ${campaign.campaignName}`);
-      }
-    }
-
-    if (!campaign && payloadSource) {
+    // 1. First try source mapping (highest priority) - matches lead source to campaign
+    if (payloadSource) {
       try {
         const sourceMappingResults = await db.execute(
           sql`SELECT * FROM marketing_campaigns WHERE consultant_id = ${webhookConfig.consultantId} AND is_active = true AND source_mappings @> ${JSON.stringify([payloadSource.toLowerCase()])}::jsonb LIMIT 1`
@@ -386,6 +376,19 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
         }
       } catch (err: any) {
         console.error(`⚠️ [WEBHOOK] Error looking up campaign by source_mapping: ${err.message}`);
+      }
+    }
+
+    // 2. Fallback to targetCampaignId configured on webhook
+    if (!campaign && webhookConfig.targetCampaignId) {
+      const campaigns = await db.select()
+        .from(schema.marketingCampaigns)
+        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
+      
+      if (campaigns.length > 0) {
+        campaign = campaigns[0];
+        campaignLookupMethod = 'targetCampaignId';
+        console.log(`📣 [WEBHOOK] Found campaign via targetCampaignId (fallback): ${campaign.campaignName}`);
       }
     }
 
@@ -804,22 +807,12 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     const source = webhookConfig.defaultSource || 'activecampaign';
 
     // Fetch campaign to apply defaults
+    // Priority: source_mapping > targetCampaignId (source mapping wins if lead has a mapped source)
     let campaign: any = null;
     let campaignLookupMethod = '';
 
-    if (webhookConfig.targetCampaignId) {
-      const campaigns = await db.select()
-        .from(schema.marketingCampaigns)
-        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
-      
-      if (campaigns.length > 0) {
-        campaign = campaigns[0];
-        campaignLookupMethod = 'targetCampaignId';
-        console.log(`📣 [AC-WEBHOOK] Found campaign via targetCampaignId: ${campaign.campaignName}`);
-      }
-    }
-
-    if (!campaign && source) {
+    // 1. First try source mapping (highest priority) - matches lead source to campaign
+    if (source) {
       try {
         const sourceMappingResults = await db.execute(
           sql`SELECT * FROM marketing_campaigns WHERE consultant_id = ${webhookConfig.consultantId} AND is_active = true AND source_mappings @> ${JSON.stringify([source.toLowerCase()])}::jsonb LIMIT 1`
@@ -833,6 +826,19 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
         }
       } catch (err: any) {
         console.error(`⚠️ [AC-WEBHOOK] Error looking up campaign by source_mapping: ${err.message}`);
+      }
+    }
+
+    // 2. Fallback to targetCampaignId configured on webhook
+    if (!campaign && webhookConfig.targetCampaignId) {
+      const campaigns = await db.select()
+        .from(schema.marketingCampaigns)
+        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
+      
+      if (campaigns.length > 0) {
+        campaign = campaigns[0];
+        campaignLookupMethod = 'targetCampaignId';
+        console.log(`📣 [AC-WEBHOOK] Found campaign via targetCampaignId (fallback): ${campaign.campaignName}`);
       }
     }
 

@@ -332,19 +332,19 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
 
   return (
     <Form {...form}>
-      <div onKeyDown={handleKeyDown} className="h-full">
-        <div className="flex gap-6 h-full">
+      <div onKeyDown={handleKeyDown} className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
           {/* Left: Wizard Steps & Form */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             {/* Step Indicator */}
-            <div className="flex items-center justify-between mb-6 px-1">
+            <div className="flex items-center justify-between mb-6 px-1 overflow-x-auto">
               {WIZARD_STEPS.map((step, index) => {
                 const StepIcon = step.icon;
                 const isCompleted = currentStep > step.id;
                 const isCurrent = currentStep === step.id;
                 
                 return (
-                  <div key={step.id} className="flex items-center flex-1">
+                  <div key={step.id} className="flex items-center flex-1 min-w-0">
                     <button
                       type="button"
                       onClick={() => {
@@ -356,7 +356,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                       }}
                       disabled={step.id > currentStep && !isCompleted}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl transition-all w-full",
+                        "flex items-center gap-1 sm:gap-3 p-2 sm:p-3 rounded-xl transition-all w-full",
                         isCurrent && "bg-primary/10 ring-2 ring-primary/30",
                         isCompleted && "bg-green-50 dark:bg-green-950/20 cursor-pointer",
                         !isCurrent && !isCompleted && step.id < currentStep && "hover:bg-muted/50 cursor-pointer",
@@ -364,16 +364,16 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                       )}
                     >
                       <div className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors",
+                        "flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-colors",
                         isCompleted && "bg-green-500 text-white",
                         isCurrent && "bg-primary text-primary-foreground",
                         !isCurrent && !isCompleted && "bg-muted text-muted-foreground"
                       )}>
-                        {isCompleted ? <Check className="h-5 w-5" /> : <StepIcon className="h-5 w-5" />}
+                        {isCompleted ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : <StepIcon className="h-4 w-4 sm:h-5 sm:w-5" />}
                       </div>
-                      <div className="text-left min-w-0">
+                      <div className="text-left min-w-0 hidden sm:block">
                         <p className={cn(
-                          "text-sm font-semibold truncate",
+                          "text-xs sm:text-sm font-semibold truncate",
                           isCurrent && "text-primary",
                           isCompleted && "text-green-700 dark:text-green-400"
                         )}>
@@ -384,7 +384,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                     </button>
                     {index < WIZARD_STEPS.length - 1 && (
                       <div className={cn(
-                        "h-0.5 w-8 mx-2 shrink-0",
+                        "h-0.5 w-2 sm:w-8 mx-1 sm:mx-2 shrink-0",
                         isCompleted ? "bg-green-500" : "bg-muted"
                       )} />
                     )}
@@ -394,7 +394,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
             </div>
 
             {/* Step Content */}
-            <Card className="flex-1 overflow-auto">
+            <Card className="flex-1 overflow-auto min-h-0">
               <CardContent className="p-6">
                 {/* Step 1: Info Base */}
                 {currentStep === 1 && (
@@ -463,7 +463,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Temperatura Lead *</FormLabel>
-                          <div className="grid grid-cols-5 gap-2 mt-2">
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
                             {leadCategoryOptions.map((option) => {
                               const isSelected = field.value === option.value;
                               return (
@@ -868,21 +868,22 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
             </Card>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t sticky bottom-0 bg-background pb-2 z-10 flex-wrap gap-2 sm:gap-4 w-full">
               <Button
                 type="button"
                 variant="outline"
                 onClick={prevStep}
                 disabled={currentStep === 1}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                size="sm"
               >
-                <ChevronLeft className="h-4 w-4" />
-                Indietro
+                <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Indietro</span>
               </Button>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Step {currentStep} di {WIZARD_STEPS.length}
+              <div className="flex items-center gap-1 sm:gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground">
+                  {currentStep}/{WIZARD_STEPS.length}
                 </span>
               </div>
 
@@ -891,21 +892,24 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                   type="button"
                   onClick={nextStep}
                   disabled={!canProceed()}
-                  className="gap-2"
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                  size="sm"
                 >
-                  Avanti
-                  <ChevronRight className="h-4 w-4" />
+                  <span className="hidden sm:inline">Avanti</span>
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               ) : (
                 <Button 
                   type="button" 
                   onClick={handleFinalSubmit}
                   disabled={isLoading || !canProceed()} 
-                  className="gap-2"
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+                  size="sm"
                 >
-                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  <Check className="h-4 w-4" />
-                  {initialData ? "Aggiorna Campagna" : "Crea Campagna"}
+                  {isLoading && <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />}
+                  <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">{initialData ? "Aggiorna Campagna" : "Crea Campagna"}</span>
+                  <span className="sm:hidden">{initialData ? "Aggiorna" : "Crea"}</span>
                 </Button>
               )}
             </div>
