@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RDP - Multi-CSV Join Automatico</title>
+  <style>
+    :root {
+      --primary: #0891b2;
+      --primary-light: #e0f7fa;
+      --secondary: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+    .header { text-align: center; margin-bottom: 48px; }
+    .header h1 { font-size: 2.2rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .header .subtitle { font-size: 1.1rem; color: var(--text-muted); }
+    .header .badge { display: inline-block; background: var(--primary-light); color: var(--primary); padding: 4px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-top: 12px; }
+
+    .section { margin-bottom: 40px; }
+    .section-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 3px solid var(--primary); display: flex; align-items: center; gap: 10px; }
+    .section-title .icon { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: var(--primary); }
+
+    .specs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .spec-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: var(--bg); border-radius: 8px; }
+    .spec-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .spec-label { font-weight: 600; font-size: 0.9rem; }
+    .spec-value { font-size: 0.85rem; color: var(--text-muted); }
+
+    .flow-diagram { position: relative; padding: 20px 0; }
+    .flow-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+    .flow-node { padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; text-align: center; min-width: 180px; position: relative; border: 2px solid transparent; }
+    .flow-node.start { background: linear-gradient(135deg, #0891b2, #06b6d4); color: white; border-radius: 30px; }
+    .flow-node.process { background: white; border: 2px solid var(--primary); color: var(--text); }
+    .flow-node.decision { background: #fef3c7; border: 2px solid var(--warning); color: #92400e; transform: none; padding: 16px 20px; }
+    .flow-node.webhook { background: linear-gradient(135deg, #6366f1, #818cf8); color: white; }
+    .flow-node.manual { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+    .flow-node.result { background: linear-gradient(135deg, #0891b2, #22d3ee); color: white; border-radius: 30px; }
+    .flow-node.error { background: #fef2f2; border: 2px solid var(--danger); color: #991b1b; }
+    .flow-node small { display: block; font-weight: 400; font-size: 0.75rem; margin-top: 4px; opacity: 0.85; }
+
+    .flow-arrow { font-size: 1.5rem; color: var(--primary); font-weight: 700; }
+    .flow-arrow.down { display: block; text-align: center; margin: 4px 0; }
+    .flow-label { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin: -4px 0 4px; font-style: italic; }
+
+    .flow-split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 8px 0; position: relative; }
+    .flow-split::before { content: ''; position: absolute; top: 0; left: 50%; width: 1px; height: 100%; background: var(--border); }
+    .flow-branch { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .flow-branch-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+
+    .algo-steps { counter-reset: step; }
+    .algo-step { display: flex; gap: 16px; padding: 16px; margin-bottom: 12px; background: var(--bg); border-radius: 10px; border-left: 4px solid var(--primary); }
+    .algo-step::before { counter-increment: step; content: counter(step); width: 30px; height: 30px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+    .algo-step-content h4 { font-weight: 600; margin-bottom: 4px; }
+    .algo-step-content p { font-size: 0.85rem; color: var(--text-muted); }
+
+    .table-example { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 12px; }
+    .table-example th { background: var(--primary); color: white; padding: 10px 14px; text-align: left; }
+    .table-example td { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+    .table-example tr:nth-child(even) td { background: var(--bg); }
+
+    .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .tag.green { background: #d1fae5; color: #065f46; }
+    .tag.blue { background: #dbeafe; color: #1e40af; }
+    .tag.yellow { background: #fef3c7; color: #92400e; }
+    .tag.purple { background: #ede9fe; color: #5b21b6; }
+
+    .timeline { position: relative; padding-left: 30px; }
+    .timeline::before { content: ''; position: absolute; left: 12px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+    .timeline-item { position: relative; margin-bottom: 20px; }
+    .timeline-item::before { content: ''; position: absolute; left: -24px; top: 6px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--primary); background: white; }
+    .timeline-item.done::before { background: var(--success); border-color: var(--success); }
+    .timeline-item h4 { font-weight: 600; }
+    .timeline-item p { font-size: 0.85rem; color: var(--text-muted); }
+
+    .footer { text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+
+    @media (max-width: 768px) {
+      .container { padding: 20px 16px; }
+      .header h1 { font-size: 1.6rem; }
+      .flow-split { grid-template-columns: 1fr; gap: 16px; }
+      .flow-split::before { display: none; }
+      .specs-grid { grid-template-columns: 1fr; }
+      .flow-node { min-width: 140px; padding: 10px 16px; font-size: 0.8rem; }
+    }
+
+    @media print {
+      body { background: white; }
+      .card { box-shadow: none; border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <h1>RDP - Multi-CSV Join Automatico</h1>
+      <p class="subtitle">Requisiti di Progetto per il caricamento multiplo CSV con rilevamento automatico delle relazioni</p>
+      <span class="badge">v1.0 - Febbraio 2026</span>
+    </div>
+
+    <!-- SEZIONE 1: OBIETTIVO -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">1</span>
+        Obiettivo del Progetto
+      </div>
+      <div class="card">
+        <p>Implementare il caricamento simultaneo di <strong>4+ file CSV</strong> provenienti da esportazioni Access, con <strong>rilevamento automatico delle relazioni</strong> tra le tabelle e creazione di un <strong>dataset unificato</strong> tramite LEFT JOIN.</p>
+        <br>
+        <div class="specs-grid">
+          <div class="spec-item">
+            <div class="spec-dot" style="background: var(--primary)"></div>
+            <div>
+              <div class="spec-label">Caso d'uso principale</div>
+              <div class="spec-value">Ristoranti con POS che esportano dati in tabelle separate (vendite, righe vendita, prodotti, categorie)</div>
+            </div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-dot" style="background: var(--secondary)"></div>
+            <div>
+              <div class="spec-label">Modalita' supportate</div>
+              <div class="spec-value">Upload manuale (drag & drop) e ricezione automatica via Webhook</div>
+            </div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-dot" style="background: var(--success)"></div>
+            <div>
+              <div class="spec-label">Formato dati</div>
+              <div class="spec-value">CSV con delimitatori misti (virgola, punto e virgola, tab), encoding misto (UTF-8, Windows-1252), decimali italiani</div>
+            </div>
+          </div>
+          <div class="spec-item">
+            <div class="spec-dot" style="background: var(--warning)"></div>
+            <div>
+              <div class="spec-label">Precisione target</div>
+              <div class="spec-value">95%+ di accuratezza nel rilevamento automatico dei join per esportazioni Access standard</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 2: DATI DI ESEMPIO -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">2</span>
+        Struttura Dati Tipica (Export Access POS)
+      </div>
+      <div class="specs-grid">
+        <div class="card">
+          <h3>vendite.csv <span class="tag green">Tabella primaria</span></h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">~7.425 righe - Testata documenti di vendita</p>
+          <table class="table-example">
+            <tr><th>Colonna</th><th>Tipo</th><th>Ruolo</th></tr>
+            <tr><td>id_vendita</td><td>INT</td><td><span class="tag blue">PK</span></td></tr>
+            <tr><td>data</td><td>DATE</td><td>Data transazione</td></tr>
+            <tr><td>totale</td><td>DECIMAL</td><td>Importo totale</td></tr>
+            <tr><td>id_tipologia</td><td>INT</td><td><span class="tag purple">FK</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>vendite_righe.csv <span class="tag yellow">Dettaglio</span></h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">Righe dettaglio delle vendite</p>
+          <table class="table-example">
+            <tr><th>Colonna</th><th>Tipo</th><th>Ruolo</th></tr>
+            <tr><td>id_riga</td><td>INT</td><td><span class="tag blue">PK</span></td></tr>
+            <tr><td>id_vendita</td><td>INT</td><td><span class="tag purple">FK</span></td></tr>
+            <tr><td>id_prodotto</td><td>INT</td><td><span class="tag purple">FK</span></td></tr>
+            <tr><td>qta</td><td>DECIMAL</td><td>Quantita'</td></tr>
+            <tr><td>prezzo</td><td>DECIMAL</td><td>Prezzo unitario</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>prodotti.csv <span class="tag yellow">Anagrafica</span></h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">~676 righe - Catalogo prodotti</p>
+          <table class="table-example">
+            <tr><th>Colonna</th><th>Tipo</th><th>Ruolo</th></tr>
+            <tr><td>id_prodotto</td><td>INT</td><td><span class="tag blue">PK</span></td></tr>
+            <tr><td>nome</td><td>TEXT</td><td>Nome prodotto</td></tr>
+            <tr><td>id_tipologia</td><td>INT</td><td><span class="tag purple">FK</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>tipologie.csv <span class="tag yellow">Lookup</span></h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">~24 righe - Categorie/reparti</p>
+          <table class="table-example">
+            <tr><th>Colonna</th><th>Tipo</th><th>Ruolo</th></tr>
+            <tr><td>id_tipologia</td><td>INT</td><td><span class="tag blue">PK</span></td></tr>
+            <tr><td>nome_tipologia</td><td>TEXT</td><td>Nome categoria</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 3: DIAGRAMMA DI FLUSSO -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">3</span>
+        Diagramma di Flusso
+      </div>
+      <div class="card">
+        <div class="flow-diagram">
+
+          <div class="flow-row">
+            <div class="flow-node start">Ricezione File CSV<small>1 o piu' file</small></div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-row">
+            <div class="flow-node decision">Quanti file ricevuti?</div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-split">
+            <div class="flow-branch">
+              <div class="flow-branch-label">1 file singolo</div>
+              <div class="flow-node process">Flusso standard esistente<small>Upload &rarr; Preview &rarr; Discovery &rarr; Import</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node result">Dataset Singolo<small>Importazione diretta</small></div>
+            </div>
+            <div class="flow-branch">
+              <div class="flow-branch-label">2+ file multipli</div>
+              <div class="flow-node process">Analisi file<small>Encoding, delimitatori, header, sample data</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node process">Join Detector<small>Rileva relazioni tra tabelle</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node decision">Sorgente?</div>
+            </div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-split">
+            <div class="flow-branch">
+              <div class="flow-branch-label">Upload Manuale</div>
+              <div class="flow-node manual">Anteprima Join<small>L'utente conferma i collegamenti</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node manual">Modifica/Conferma<small>Puo' aggiungere/rimuovere join</small></div>
+            </div>
+            <div class="flow-branch">
+              <div class="flow-branch-label">Webhook Automatico</div>
+              <div class="flow-node webhook">Join Automatico<small>Nessun intervento manuale</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node webhook">Validazione risultato<small>Controlla righe e integrita'</small></div>
+            </div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-row">
+            <div class="flow-node process">Creazione Tabelle Staging<small>Una tabella temporanea per ogni file CSV</small></div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-row">
+            <div class="flow-node process">Esecuzione LEFT JOIN SQL<small>Tabella primaria + join con tabelle secondarie</small></div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-row">
+            <div class="flow-node process">Column Discovery<small>Mapping semantico delle colonne unificate</small></div>
+          </div>
+
+          <div class="flow-arrow down">&#8595;</div>
+
+          <div class="flow-row">
+            <div class="flow-node result">Dataset Unificato Pronto<small>Tutte le tabelle collegate in un unico dataset</small></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 4: ALGORITMO -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">4</span>
+        Algoritmo di Rilevamento Join
+      </div>
+      <div class="card">
+        <div class="algo-steps">
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Analisi File</h4>
+              <p>Per ogni CSV: rilevamento automatico encoding (UTF-8, Windows-1252, ISO-8859-1), delimitatore (virgola, punto e virgola, tab, pipe), parsing header e campionamento di 500 righe di dati.</p>
+            </div>
+          </div>
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Confronto Nomi Colonne</h4>
+              <p>Confronto tra tutte le coppie di colonne di file diversi. Match esatto del nome = +50% confidenza. Nome simile (contiene o suffisso _id) = +30% confidenza. I nomi vengono normalizzati (accenti rimossi, lowercase).</p>
+            </div>
+          </div>
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Analisi Sovrapposizione Valori</h4>
+              <p>Per le coppie di colonne candidate, si calcola la percentuale di valori in comune. Se i valori della colonna A esistono anche nella colonna B, la confidenza aumenta proporzionalmente (fino a +40%).</p>
+            </div>
+          </div>
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Rilevamento Pattern PK/FK</h4>
+              <p>Colonne con nomi come "id", "codice", "id_xxx" o "xxx_id" con >90% valori unici vengono identificate come chiavi primarie. Il join viene orientato di conseguenza (+20% confidenza).</p>
+            </div>
+          </div>
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Determinazione Tabella Primaria</h4>
+              <p>La tabella con piu' righe e piu' connessioni viene scelta come tabella primaria. Tutte le altre tabelle vengono collegate ad essa con LEFT JOIN per preservare tutti i record.</p>
+            </div>
+          </div>
+          <div class="algo-step">
+            <div class="algo-step-content">
+              <h4>Ordinamento Join e Generazione SQL</h4>
+              <p>Le tabelle vengono ordinate per confidenza del join. Viene generato l'SQL con alias unici per ogni colonna per evitare conflitti di nome.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 5: FLUSSO WEBHOOK -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">5</span>
+        Flusso Webhook (Automatico)
+      </div>
+      <div class="card">
+        <div class="flow-diagram">
+          <div class="flow-row">
+            <div class="flow-node webhook">Webhook riceve dati<small>POST /api/sync/webhook/:sourceId</small></div>
+          </div>
+          <div class="flow-arrow down">&#8595;</div>
+          <div class="flow-row">
+            <div class="flow-node decision">Tipo payload?</div>
+          </div>
+          <div class="flow-arrow down">&#8595;</div>
+          <div class="flow-split">
+            <div class="flow-branch">
+              <div class="flow-branch-label">File singolo (gia' joinato)</div>
+              <div class="flow-node process">Import diretto<small>Il CSV contiene gia' tutti i dati</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node result">Dataset creato</div>
+            </div>
+            <div class="flow-branch">
+              <div class="flow-branch-label">File multipli (separati)</div>
+              <div class="flow-node process">Raggruppa per sorgente<small>Identifica file dello stesso invio</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node process">Join Detector automatico<small>Analizza e collega i file</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node process">LEFT JOIN + Import<small>Crea dataset unificato</small></div>
+              <div class="flow-arrow down">&#8595;</div>
+              <div class="flow-node result">Dataset unificato creato</div>
+            </div>
+          </div>
+          <div class="flow-arrow down">&#8595;</div>
+          <div class="flow-row">
+            <div class="flow-node process">Notifica + Log<small>Registra nel cronologia sync</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 6: SPECIFICHE TECNICHE -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">6</span>
+        Specifiche Tecniche
+      </div>
+      <div class="specs-grid">
+        <div class="card">
+          <h3>Backend</h3>
+          <table class="table-example">
+            <tr><th>Componente</th><th>Dettaglio</th></tr>
+            <tr><td>join-detector.ts</td><td>Servizio analisi relazioni tra file</td></tr>
+            <tr><td>upload-processor.ts</td><td>Gestione upload multiplo</td></tr>
+            <tr><td>table-generator.ts</td><td>Creazione tabelle e import SQL</td></tr>
+            <tr><td>client-data-router.ts</td><td>Endpoint API REST</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Frontend</h3>
+          <table class="table-example">
+            <tr><th>Componente</th><th>Funzione</th></tr>
+            <tr><td>MultiFileUploader</td><td>Drag & drop multiplo CSV</td></tr>
+            <tr><td>JoinPreview</td><td>Anteprima relazioni trovate</td></tr>
+            <tr><td>DatasetList</td><td>Lista dataset (aggiornata)</td></tr>
+            <tr><td>ExternalSyncDashboard</td><td>Webhook + join automatico</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>API Endpoints</h3>
+          <table class="table-example">
+            <tr><th>Metodo</th><th>Endpoint</th></tr>
+            <tr><td>POST</td><td>/api/client-data/upload-multi</td></tr>
+            <tr><td>POST</td><td>/api/client-data/detect-joins</td></tr>
+            <tr><td>POST</td><td>/api/client-data/create-joined</td></tr>
+            <tr><td>POST</td><td>/api/sync/webhook/:sourceId</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Gestione Formati</h3>
+          <table class="table-example">
+            <tr><th>Caratteristica</th><th>Supporto</th></tr>
+            <tr><td>Delimitatori</td><td>, ; \t |</td></tr>
+            <tr><td>Encoding</td><td>UTF-8, Windows-1252, ISO-8859-1</td></tr>
+            <tr><td>Decimali</td><td>Punto e virgola italiana (1.234,56)</td></tr>
+            <tr><td>Quoting</td><td>Doppi apici con escape</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 7: PIANO DI LAVORO -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">7</span>
+        Piano di Lavoro
+      </div>
+      <div class="card">
+        <div class="timeline">
+          <div class="timeline-item done">
+            <h4>Fase 1: Join Detector <span class="tag green">Completato</span></h4>
+            <p>Servizio backend per analisi file, rilevamento relazioni, generazione SQL con LEFT JOIN</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Fase 2: API Endpoints <span class="tag blue">In corso</span></h4>
+            <p>Upload multiplo, detect-joins, creazione dataset unificato</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Fase 3: Componenti Frontend</h4>
+            <p>MultiFileUploader (drag & drop), JoinPreview (conferma visuale collegamenti)</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Fase 4: Integrazione nella Pagina</h4>
+            <p>Nuovo flusso multi-file nella pagina Analisi Dati, viewMode aggiuntivi</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Fase 5: Webhook Automatico</h4>
+            <p>Supporto join automatico quando i file arrivano via webhook dalla stessa sorgente</p>
+          </div>
+          <div class="timeline-item">
+            <h4>Fase 6: Test e Deploy</h4>
+            <p>Test con dati reali del ristorante, validazione e deploy</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Documento RDP - Multi-CSV Join Automatico &bull; GameStack JS &bull; Febbraio 2026</p>
+    </div>
+
+  </div>
+</body>
+</html>

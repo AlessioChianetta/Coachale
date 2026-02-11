@@ -10,6 +10,8 @@ import { WebhookTestTool } from "./WebhookTestTool";
 import { SchemaReferencePanel } from "./SchemaReferencePanel";
 import { SyncSetupGuide } from "./SyncSetupGuide";
 import { SyncSourceAnalytics } from "./SyncSourceAnalytics";
+import { SemanticLayerGuide } from "./SemanticLayerGuide";
+import { CustomMappingRules } from "./CustomMappingRules";
 
 export function ExternalSyncDashboard() {
   const [activeTab, setActiveTab] = useState("panoramica");
@@ -50,7 +52,11 @@ export function ExternalSyncDashboard() {
           </TabsContent>
 
           <TabsContent value="panoramica">
-            <SyncOverviewCards onViewHistory={handleViewHistory} />
+            <div className="space-y-6">
+              <SyncOverviewCards onViewHistory={handleViewHistory} />
+              <SemanticLayerGuide />
+              <CustomMappingRules />
+            </div>
           </TabsContent>
 
           <TabsContent value="analisi">

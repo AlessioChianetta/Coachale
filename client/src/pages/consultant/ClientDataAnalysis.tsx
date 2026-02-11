@@ -16,8 +16,6 @@ import { ResultsDisplay } from "@/components/client-data/ResultsDisplay";
 import { MetricEditor } from "@/components/client-data/MetricEditor";
 import { ReconciliationReport } from "@/components/client-data/ReconciliationReport";
 import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
-import { CustomMappingRules } from "@/components/client-data/CustomMappingRules";
-import { SemanticLayerGuide } from "@/components/client-data/SemanticLayerGuide";
 import { ExternalSyncDashboard } from "@/components/client-data/ExternalSyncDashboard";
 
 import {
@@ -210,7 +208,7 @@ export default function ClientDataAnalysis() {
 
         <div className="flex-1 overflow-auto p-6">
           {viewMode === "list" && (
-            <div className="space-y-6">
+            <div className="max-w-5xl mx-auto space-y-6">
               <DatasetList
                 onSelectDataset={handleSelectDataset}
                 onQueryDataset={handleQueryDataset}
@@ -218,8 +216,6 @@ export default function ClientDataAnalysis() {
                 selectedDatasetId={selectedDataset?.id}
               />
               <ExternalSyncDashboard />
-              <SemanticLayerGuide datasetId={selectedDataset?.id ? parseInt(selectedDataset.id) : undefined} />
-              <CustomMappingRules />
             </div>
           )}
 
