@@ -176,6 +176,7 @@ interface HubdigitalPayload {
   
   // Metadati CRM
   source?: string;
+  contact_source?: string;
   assignedTo?: string;
   dateAdded?: string;
   date_created?: string;
@@ -259,7 +260,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
 
     // SOURCE FILTER LOGIC: If defaultSource is configured, ONLY accept leads with matching source
     // Leads with different sources are skipped and counted
-    const payloadSource = payload.source || '';
+    const payloadSource = payload.source || payload.contact_source || '';
     const configuredSource = webhookConfig.defaultSource || '';
     
     if (configuredSource && payloadSource !== configuredSource) {
