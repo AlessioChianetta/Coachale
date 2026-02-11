@@ -26,10 +26,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
 import { 
   Loader2, Megaphone, Target, Users, Zap, HandshakeIcon, StoreIcon,
-  ChevronLeft, ChevronRight, Check, Sparkles, MessageSquare, Settings2, AlertCircle
+  ChevronLeft, ChevronRight, Check, Sparkles, MessageSquare, Settings2, AlertCircle,
+  Plus, X, Link
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const campaignFormSchema = z.object({
   campaignName: z.string().min(3, "Il nome deve contenere almeno 3 caratteri"),
@@ -46,6 +48,7 @@ const campaignFormSchema = z.object({
   followupGentleTemplateId: z.string().optional(),
   followupValueTemplateId: z.string().optional(),
   followupFinalTemplateId: z.string().optional(),
+  sourceMappings: z.array(z.string()).optional().default([]),
 });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
@@ -82,6 +85,7 @@ const WIZARD_STEPS = [
 export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [sourceInputValue, setSourceInputValue] = useState("");
 
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignFormSchema),
@@ -98,6 +102,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       followupGentleTemplateId: initialData?.followupGentleTemplateId || "",
       followupValueTemplateId: initialData?.followupValueTemplateId || "",
       followupFinalTemplateId: initialData?.followupFinalTemplateId || "",
+      sourceMappings: initialData?.sourceMappings || [],
     },
   });
 
@@ -121,6 +126,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
       followupGentleTemplateId: data.followupGentleTemplateId || undefined,
       followupValueTemplateId: data.followupValueTemplateId || undefined,
       followupFinalTemplateId: data.followupFinalTemplateId || undefined,
+      sourceMappings: (data.sourceMappings || []).map((s: string) => s.trim().toLowerCase()).filter(Boolean),
     };
     onSubmit(cleanedData);
   };
@@ -483,6 +489,75 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
                         </FormItem>
                       )}
                     />
+
+                    <div className="rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Link className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Fonti Associate (Opzionale)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Le fonti dei lead che verranno automaticamente collegati a questa campagna
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Es: moviefunnel, facebook_ads, google_ads"
+                          value={sourceInputValue}
+                          onChange={(e) => setSourceInputValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const val = sourceInputValue.trim().toLowerCase();
+                              if (val) {
+                                const current = form.getValues("sourceMappings") || [];
+                                if (!current.includes(val)) {
+                                  form.setValue("sourceMappings", [...current, val]);
+                                }
+                                setSourceInputValue("");
+                              }
+                            }
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const val = sourceInputValue.trim().toLowerCase();
+                            if (val) {
+                              const current = form.getValues("sourceMappings") || [];
+                              if (!current.includes(val)) {
+                                form.setValue("sourceMappings", [...current, val]);
+                              }
+                              setSourceInputValue("");
+                            }
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Aggiungi
+                        </Button>
+                      </div>
+                      {(watchedValues.sourceMappings || []).length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {(watchedValues.sourceMappings || []).map((source: string) => (
+                            <Badge key={source} variant="secondary" className="gap-1 pr-1">
+                              {source}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = form.getValues("sourceMappings") || [];
+                                  form.setValue("sourceMappings", current.filter((s: string) => s !== source));
+                                }}
+                                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 

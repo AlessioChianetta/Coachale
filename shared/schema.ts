@@ -3493,6 +3493,8 @@ export const marketingCampaigns = pgTable("marketing_campaigns", {
   openingTwilioTemplateSid: varchar("opening_twilio_template_sid"),
   openingTemplateType: text("opening_template_type").$type<"custom" | "twilio">().default("custom"),
 
+  sourceMappings: jsonb("source_mappings").$type<string[]>().default([]),
+
   // Metrics (calculated from leads)
   totalLeads: integer("total_leads").default(0).notNull(),
   convertedLeads: integer("converted_leads").default(0).notNull(),
@@ -3762,6 +3764,7 @@ export const insertMarketingCampaignSchema = createInsertSchema(marketingCampaig
   campaignName: z.string().min(1, "Il nome della campagna è obbligatorio"),
   campaignType: z.enum(["outbound_ads", "inbound_form", "referral", "recovery", "partner", "walk_in"]),
   leadCategory: z.enum(["freddo", "tiepido", "caldo", "recupero", "referral"]).default("freddo"),
+  sourceMappings: z.array(z.string()).optional().default([]),
 });
 
 export const updateMarketingCampaignSchema = insertMarketingCampaignSchema.partial().omit({

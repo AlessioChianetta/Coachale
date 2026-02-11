@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { db } from '../db';
 import * as schema from '@shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { authenticateToken, type AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -358,6 +358,8 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
 
     // Fetch campaign to apply defaults (obiettivi, desideri, uncino, idealState)
     let campaign: any = null;
+    let campaignLookupMethod = '';
+
     if (webhookConfig.targetCampaignId) {
       const campaigns = await db.select()
         .from(schema.marketingCampaigns)
@@ -365,8 +367,30 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       
       if (campaigns.length > 0) {
         campaign = campaigns[0];
-        console.log(`📣 [WEBHOOK] Found campaign: ${campaign.campaignName} - applying defaults`);
+        campaignLookupMethod = 'targetCampaignId';
+        console.log(`📣 [WEBHOOK] Found campaign via targetCampaignId: ${campaign.campaignName}`);
       }
+    }
+
+    if (!campaign && payloadSource) {
+      try {
+        const sourceMappingResults = await db.execute(
+          sql`SELECT * FROM marketing_campaigns WHERE consultant_id = ${webhookConfig.consultantId} AND is_active = true AND source_mappings @> ${JSON.stringify([payloadSource.toLowerCase()])}::jsonb LIMIT 1`
+        );
+        if (sourceMappingResults.rows && sourceMappingResults.rows.length > 0) {
+          campaign = sourceMappingResults.rows[0];
+          campaignLookupMethod = 'source_mapping';
+          console.log(`📣 [WEBHOOK] Found campaign via source_mapping match "${payloadSource}": ${campaign.campaign_name || campaign.campaignName}`);
+        } else {
+          console.log(`ℹ️ [WEBHOOK] No campaign found via source_mapping for source "${payloadSource}"`);
+        }
+      } catch (err: any) {
+        console.error(`⚠️ [WEBHOOK] Error looking up campaign by source_mapping: ${err.message}`);
+      }
+    }
+
+    if (campaign) {
+      console.log(`📣 [WEBHOOK] Using campaign (found via ${campaignLookupMethod}): ${campaign.campaignName || campaign.campaign_name} - applying defaults`);
     }
 
     // Also fetch agent config for fallback defaults
@@ -781,6 +805,8 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
 
     // Fetch campaign to apply defaults
     let campaign: any = null;
+    let campaignLookupMethod = '';
+
     if (webhookConfig.targetCampaignId) {
       const campaigns = await db.select()
         .from(schema.marketingCampaigns)
@@ -788,8 +814,30 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       
       if (campaigns.length > 0) {
         campaign = campaigns[0];
-        console.log(`📣 [AC-WEBHOOK] Found campaign: ${campaign.campaignName} - applying defaults`);
+        campaignLookupMethod = 'targetCampaignId';
+        console.log(`📣 [AC-WEBHOOK] Found campaign via targetCampaignId: ${campaign.campaignName}`);
       }
+    }
+
+    if (!campaign && source) {
+      try {
+        const sourceMappingResults = await db.execute(
+          sql`SELECT * FROM marketing_campaigns WHERE consultant_id = ${webhookConfig.consultantId} AND is_active = true AND source_mappings @> ${JSON.stringify([source.toLowerCase()])}::jsonb LIMIT 1`
+        );
+        if (sourceMappingResults.rows && sourceMappingResults.rows.length > 0) {
+          campaign = sourceMappingResults.rows[0];
+          campaignLookupMethod = 'source_mapping';
+          console.log(`📣 [AC-WEBHOOK] Found campaign via source_mapping match "${source}": ${campaign.campaign_name || campaign.campaignName}`);
+        } else {
+          console.log(`ℹ️ [AC-WEBHOOK] No campaign found via source_mapping for source "${source}"`);
+        }
+      } catch (err: any) {
+        console.error(`⚠️ [AC-WEBHOOK] Error looking up campaign by source_mapping: ${err.message}`);
+      }
+    }
+
+    if (campaign) {
+      console.log(`📣 [AC-WEBHOOK] Using campaign (found via ${campaignLookupMethod}): ${campaign.campaignName || campaign.campaign_name} - applying defaults`);
     }
 
     // Fetch agent config for fallback defaults
