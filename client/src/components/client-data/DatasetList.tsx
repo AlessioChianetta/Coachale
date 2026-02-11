@@ -17,6 +17,7 @@ import {
   Loader2,
   Plus,
   Settings,
+  Files,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -48,6 +49,7 @@ interface DatasetListProps {
   onSelectDataset: (dataset: Dataset) => void;
   onQueryDataset: (dataset: Dataset) => void;
   onNewDataset: () => void;
+  onNewMultiDataset?: () => void;
   selectedDatasetId?: string;
 }
 
@@ -55,6 +57,7 @@ export function DatasetList({
   onSelectDataset,
   onQueryDataset,
   onNewDataset,
+  onNewMultiDataset,
   selectedDatasetId,
 }: DatasetListProps) {
   const { toast } = useToast();
@@ -160,10 +163,18 @@ export function DatasetList({
             {datasets.length} dataset caricati
           </CardDescription>
         </div>
-        <Button onClick={onNewDataset} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuovo Dataset
-        </Button>
+        <div className="flex items-center gap-2">
+          {onNewMultiDataset && (
+            <Button onClick={onNewMultiDataset} variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+              <Files className="h-4 w-4 mr-2" />
+              Multi-File Join
+            </Button>
+          )}
+          <Button onClick={onNewDataset} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Dataset
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

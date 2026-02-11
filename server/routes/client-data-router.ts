@@ -1,5 +1,5 @@
 import { Router, Response } from "express";
-import { db } from "../db";
+import { pool, db } from "../db";
 import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics, clientDataConversations, clientDataMessages, clientDataAiPreferences, customMappingRules } from "../../shared/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
@@ -2782,5 +2782,320 @@ router.delete(
     }
   }
 );
+
+router.post(
+  "/upload-multi",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  upload.array("files", 10),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      await ensureUploadDir();
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ success: false, error: "No files uploaded" });
+      }
+
+      const results: Array<{ fileSchema: FileSchema; filePath: string }> = [];
+
+      for (const file of files) {
+        const { originalname, path: tempPath } = file;
+        const ext = path.extname(originalname).toLowerCase();
+
+        if (ext !== ".csv") {
+          await fs.promises.unlink(tempPath).catch(() => {});
+          continue;
+        }
+
+        const newPath = path.join(UPLOAD_DIR, `${Date.now()}_${originalname}`);
+        await fs.promises.rename(tempPath, newPath);
+
+        const fileSchema = await analyzeFile(newPath, originalname);
+        results.push({ fileSchema, filePath: newPath });
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No valid CSV files found in upload",
+        });
+      }
+
+      console.log(`[CLIENT-DATA] Multi-upload: ${results.length} files analyzed`);
+
+      res.json({
+        success: true,
+        data: results.map((r) => r.fileSchema),
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Multi-upload error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to process uploaded files",
+      });
+    }
+  }
+);
+
+router.post(
+  "/detect-joins",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { files } = req.body as { files: FileSchema[] };
+
+      if (!files || !Array.isArray(files) || files.length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: "At least 2 files are required for join detection",
+        });
+      }
+
+      console.log(`[CLIENT-DATA] Detecting joins between ${files.length} files`);
+
+      const result = await detectJoins(files);
+
+      res.json({
+        success: true,
+        data: {
+          suggestedJoins: result.suggestedJoins,
+          primaryTable: result.primaryTable,
+          joinOrder: result.joinOrder,
+          overallConfidence: result.overallConfidence,
+        },
+      });
+    } catch (error: any) {
+      console.error("[CLIENT-DATA] Join detection error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to detect joins",
+      });
+    }
+  }
+);
+
+router.post(
+  "/create-joined-dataset",
+  authenticateToken,
+  requireAnyRole(["consultant", "client"]),
+  async (req: AuthRequest, res: Response) => {
+    const client = await pool.connect();
+    const stagingTables: Map<string, string> = new Map();
+
+    try {
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+      const { name, files, joins, primaryTable, joinOrder, clientId: bodyClientId } = req.body as {
+        name: string;
+        files: FileSchema[];
+        joins: JoinCandidate[];
+        primaryTable: string;
+        joinOrder: string[];
+        clientId?: string;
+      };
+
+      if (!name || !files || !joins || !primaryTable || !joinOrder) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields: name, files, joins, primaryTable, joinOrder",
+        });
+      }
+
+      let consultantId: string;
+      let clientId: string | undefined;
+
+      if (userRole === "consultant") {
+        consultantId = userId;
+        clientId = bodyClientId || undefined;
+      } else {
+        clientId = userId;
+        consultantId = req.user!.consultantId || userId;
+      }
+
+      const finalTableName = generateTableName(consultantId, name);
+      const timestamp = Date.now();
+
+      console.log(`[CLIENT-DATA] Creating joined dataset: ${name} -> ${finalTableName}`);
+
+      await client.query("BEGIN");
+
+      const fileByName = new Map(files.map((f) => [f.filename, f]));
+
+      for (let idx = 0; idx < joinOrder.length; idx++) {
+        const fileName = joinOrder[idx];
+        const file = fileByName.get(fileName);
+        if (!file) continue;
+
+        const stagingName = `staging_join_${timestamp}_${idx}`;
+        stagingTables.set(fileName, stagingName);
+
+        const buffer = await fs.promises.readFile(file.filePath);
+        const chardet = await import("chardet");
+        const detected = chardet.default.detect(buffer);
+        const encoding = (detected === "UTF-8" ? "utf-8" : "latin1") as BufferEncoding;
+        const content = buffer.toString(encoding);
+
+        const lines = content.split(/\r?\n/).filter((line: string) => line.trim());
+        if (lines.length < 2) {
+          throw new Error(`File ${fileName} is empty or has no data rows`);
+        }
+
+        const delimiter = file.delimiter || ",";
+        const headers = parseCsvLineForJoin(lines[0], delimiter);
+
+        const sanitizedHeaders = headers.map((h: string) => sanitizeColumnName(h));
+        const columnDefs = sanitizedHeaders.map((h: string) => `"${h}" TEXT`).join(", ");
+
+        await client.query(`CREATE TABLE "${stagingName}" (${columnDefs})`);
+
+        const BATCH_SIZE = 1000;
+        for (let batchStart = 1; batchStart < lines.length; batchStart += BATCH_SIZE) {
+          const batchEnd = Math.min(batchStart + BATCH_SIZE, lines.length);
+          const placeholders: string[] = [];
+          const values: any[] = [];
+          let paramIdx = 1;
+
+          for (let i = batchStart; i < batchEnd; i++) {
+            const rowValues = parseCsvLineForJoin(lines[i], delimiter);
+            const rowPlaceholders: string[] = [];
+            for (let j = 0; j < sanitizedHeaders.length; j++) {
+              rowPlaceholders.push(`$${paramIdx++}`);
+              values.push(rowValues[j] !== undefined ? rowValues[j].trim() : null);
+            }
+            placeholders.push(`(${rowPlaceholders.join(", ")})`);
+          }
+
+          if (placeholders.length > 0) {
+            const insertSQL = `INSERT INTO "${stagingName}" (${sanitizedHeaders.map((h: string) => `"${h}"`).join(", ")}) VALUES ${placeholders.join(", ")}`;
+            await client.query(insertSQL, values);
+          }
+        }
+
+        console.log(`[CLIENT-DATA] Staging table ${stagingName} created with ${lines.length - 1} rows`);
+      }
+
+      const joinResult = buildJoinSQL(files, joins, primaryTable, joinOrder, stagingTables);
+
+      await client.query(`CREATE TABLE "${finalTableName}" AS ${joinResult.sql}`);
+
+      const rowCountResult = await client.query(`SELECT COUNT(*) as count FROM "${finalTableName}"`);
+      const rowCount = parseInt(rowCountResult.rows[0].count, 10);
+
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN id SERIAL`);
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN riga_originale INTEGER DEFAULT 0`);
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN consultant_id VARCHAR(255)`);
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN client_id VARCHAR(255)`);
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN created_at TIMESTAMP DEFAULT NOW()`);
+      await client.query(`UPDATE "${finalTableName}" SET consultant_id = $1`, [consultantId]);
+      if (clientId) {
+        await client.query(`UPDATE "${finalTableName}" SET client_id = $1`, [clientId]);
+      }
+
+      await client.query(`UPDATE "${finalTableName}" SET riga_originale = id`);
+
+      await client.query(`ALTER TABLE "${finalTableName}" ADD PRIMARY KEY (id)`);
+      await client.query(`CREATE INDEX ON "${finalTableName}" (consultant_id)`);
+      await client.query(`CREATE INDEX ON "${finalTableName}" (riga_originale)`);
+
+      const columnMapping: Record<string, { displayName: string; dataType: string; description?: string }> = {};
+      for (const col of joinResult.columns) {
+        const displayName = col.originalName
+          .replace(/_/g, " ")
+          .replace(/([a-z])([A-Z])/g, "$1 $2")
+          .split(" ")
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
+
+        columnMapping[col.name] = {
+          displayName,
+          dataType: "TEXT",
+          description: `From ${col.sourceFile}`,
+        };
+      }
+
+      const datasetData: any = {
+        name,
+        originalFilename: files.map((f) => f.filename).join(", "),
+        tableName: finalTableName,
+        columnMapping,
+        originalColumns: joinResult.columns.map((c) => c.name),
+        rowCount,
+        fileSizeBytes: 0,
+        status: "ready",
+        consultantId,
+      };
+
+      if (clientId) {
+        datasetData.clientId = clientId;
+      }
+
+      const [inserted] = await db
+        .insert(clientDataDatasets)
+        .values(datasetData)
+        .returning();
+
+      for (const [, stagingName] of stagingTables) {
+        await client.query(`DROP TABLE IF EXISTS "${stagingName}" CASCADE`);
+      }
+
+      await client.query("COMMIT");
+
+      console.log(`[CLIENT-DATA] Joined dataset created: ${inserted.id} with ${rowCount} rows`);
+
+      try {
+        const physicalCols = joinResult.columns.map((c) => c.name);
+        await detectAndSaveSemanticMappings(inserted.id, physicalCols);
+      } catch (semErr) {
+        console.warn("[CLIENT-DATA] Semantic mapping detection failed (non-critical):", semErr);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: inserted,
+      });
+    } catch (error: any) {
+      await client.query("ROLLBACK").catch(() => {});
+
+      for (const [, stagingName] of stagingTables) {
+        await client.query(`DROP TABLE IF EXISTS "${stagingName}" CASCADE`).catch(() => {});
+      }
+
+      console.error("[CLIENT-DATA] Error creating joined dataset:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create joined dataset",
+      });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+function parseCsvLineForJoin(line: string, delimiter: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result.map((v) => v.replace(/^"|"$/g, "").trim());
+}
 
 export default router;

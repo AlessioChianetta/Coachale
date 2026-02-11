@@ -1,9 +1,10 @@
 import { Router, Response, Request } from "express";
-import { db } from "../db";
+import { db, pool } from "../db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import { processExcelFile } from "../services/client-data/upload-processor";
+import { analyzeFile, detectJoins, buildJoinSQL, FileSchema } from "../services/client-data/join-detector";
 import { discoverColumns, saveColumnMapping } from "../services/client-data/column-discovery";
 import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName, importDataFromFileWithOptions } from "../services/client-data/table-generator";
 import { detectAndSaveSemanticMappings } from "../services/client-data/semantic-mapping-service";
@@ -502,6 +503,400 @@ router.post(
     }
   }
 );
+
+router.post(
+  "/webhook-multi/:apiKey",
+  upload.array("files", 10),
+  async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const syncId = `sync_${nanoid(12)}`;
+    let sourceId: number | null = null;
+    let sourceData: any = null;
+    const stagingTableNames: string[] = [];
+    const tempFilePaths: string[] = [];
+
+    try {
+      await ensureUploadDir();
+
+      const { apiKey } = req.params;
+      const signature = req.headers['x-dataset-signature'] as string;
+      const timestamp = req.headers['x-dataset-timestamp'] as string;
+      const idempotencyKey = req.headers['x-idempotency-key'] as string;
+
+      if (!apiKey || !apiKey.startsWith('dsync_')) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_API_KEY_FORMAT",
+          message: "Formato API key non valido",
+        });
+      }
+
+      const sourceResult = await db.execute<any>(
+        sql`SELECT * FROM dataset_sync_sources WHERE api_key = ${apiKey} AND is_active = true`
+      );
+      const source = sourceResult.rows || [];
+
+      if (!source || source.length === 0) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_API_KEY",
+          message: "API key non valida o disattivata",
+        });
+      }
+
+      sourceData = source[0];
+      sourceId = sourceData.id;
+
+      const files = req.files as Express.Multer.File[];
+
+      if (signature && sourceData.secret_key && files && files.length > 0) {
+        const firstFilePath = files[0].path;
+        if (firstFilePath) {
+          const fileBuffer = fs.readFileSync(firstFilePath);
+          if (!verifyHmacSignature(fileBuffer, signature, sourceData.secret_key)) {
+            console.warn(`[DATASET-SYNC-MULTI] Invalid HMAC signature for source ${sourceId}`);
+            return res.status(401).json({
+              success: false,
+              error: "INVALID_SIGNATURE",
+              message: "Firma HMAC non valida",
+            });
+          }
+          console.log(`[DATASET-SYNC-MULTI] HMAC signature verified for source ${sourceId}`);
+        }
+      }
+
+      if (timestamp) {
+        if (!verifyTimestamp(timestamp)) {
+          return res.status(401).json({
+            success: false,
+            error: "EXPIRED_TIMESTAMP",
+            message: "Timestamp della richiesta scaduto (max 1 ora)",
+          });
+        }
+      }
+
+      if (idempotencyKey) {
+        const existingResult = await db.execute<any>(
+          sql`SELECT id FROM dataset_sync_history WHERE idempotency_key = ${idempotencyKey}`
+        );
+        const existing = existingResult.rows || [];
+        if (existing && existing.length > 0) {
+          return res.status(200).json({
+            success: true,
+            syncId: "duplicate",
+            message: "Richiesta già processata (idempotenza)",
+          });
+        }
+      }
+
+      if (!files || files.length < 2) {
+        await db.execute(sql`
+          INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, error_code, error_message, idempotency_key, request_ip)
+          VALUES (${sourceId}, ${syncId}, 'failed', 'webhook', 'MISSING_FILES', 'Servono almeno 2 file CSV per il multi-file join', ${idempotencyKey || null}, ${req.ip || null})
+        `);
+        return res.status(400).json({
+          success: false,
+          error: "MISSING_FILES",
+          message: "Servono almeno 2 file CSV per il multi-file join",
+        });
+      }
+
+      for (const file of files) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext !== ".csv") {
+          for (const f of files) {
+            try { await fs.promises.unlink(f.path); } catch {}
+          }
+          await db.execute(sql`
+            INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, error_code, error_message, idempotency_key, request_ip)
+            VALUES (${sourceId}, ${syncId}, 'failed', 'webhook', ${file.originalname}, 'INVALID_FILE_TYPE', 'Solo file CSV supportati per multi-file join', ${idempotencyKey || null}, ${req.ip || null})
+          `);
+          return res.status(400).json({
+            success: false,
+            error: "INVALID_FILE_TYPE",
+            message: `File ${file.originalname} non è un CSV. Solo file CSV supportati per multi-file join.`,
+          });
+        }
+      }
+
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      const fileNames = files.map(f => f.originalname).join(', ');
+
+      await db.execute(sql`
+        INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, file_size_bytes, idempotency_key, request_ip)
+        VALUES (${sourceId}, ${syncId}, 'processing', 'webhook', ${fileNames}, ${totalSize}, ${idempotencyKey || null}, ${req.ip || null})
+      `);
+
+      console.log(`[DATASET-SYNC-MULTI] Processing ${files.length} files: ${fileNames} for source ${sourceId}`);
+
+      const movedFiles: { originalname: string; newPath: string; size: number }[] = [];
+      for (const file of files) {
+        const newPath = path.join(UPLOAD_DIR, `${syncId}_${file.originalname}`);
+        await fs.promises.rename(file.path, newPath);
+        movedFiles.push({ originalname: file.originalname, newPath, size: file.size });
+        tempFilePaths.push(newPath);
+      }
+
+      const fileSchemas: FileSchema[] = [];
+      for (const file of movedFiles) {
+        const schema = await analyzeFile(file.newPath, file.originalname);
+        fileSchemas.push(schema);
+      }
+
+      console.log(`[DATASET-SYNC-MULTI] Analyzed ${fileSchemas.length} files, detecting joins...`);
+
+      const joinResult = await detectJoins(fileSchemas);
+      const { suggestedJoins, primaryTable, joinOrder, overallConfidence } = joinResult;
+
+      console.log(`[DATASET-SYNC-MULTI] Detected ${suggestedJoins.length} joins, primary table: ${primaryTable}, confidence: ${overallConfidence.toFixed(2)}`);
+
+      const pgClient = await pool.connect();
+      const stagingTables = new Map<string, string>();
+
+      try {
+        await pgClient.query("BEGIN");
+
+        for (const schema of fileSchemas) {
+          const stagingName = `staging_multi_${syncId.replace(/[^a-z0-9]/gi, '_')}_${schema.tableName}`.substring(0, 63);
+          stagingTableNames.push(stagingName);
+          stagingTables.set(schema.filename, stagingName);
+
+          const colDefs = schema.columns.map(col => {
+            const sanitized = col
+              .toLowerCase()
+              .replace(/[àáâãäå]/g, "a").replace(/[èéêë]/g, "e")
+              .replace(/[ìíîï]/g, "i").replace(/[òóôõö]/g, "o")
+              .replace(/[ùúûü]/g, "u").replace(/[^a-z0-9]/g, "_")
+              .replace(/_+/g, "_").replace(/^_|_$/g, "").substring(0, 63) || "col";
+            return `"${sanitized}" TEXT`;
+          }).join(", ");
+
+          await pgClient.query(`CREATE TABLE "${stagingName}" (${colDefs})`);
+          console.log(`[DATASET-SYNC-MULTI] Created staging table: ${stagingName} with ${schema.columns.length} columns`);
+
+          const content = (await fs.promises.readFile(schema.filePath)).toString(schema.encoding);
+          const lines = content.split(/\r?\n/).filter((l: string) => l.trim());
+
+          const BATCH = 500;
+          for (let batchStart = 1; batchStart < lines.length; batchStart += BATCH) {
+            const batchEnd = Math.min(batchStart + BATCH, lines.length);
+            const valueSets: string[] = [];
+            const params: any[] = [];
+            let paramIdx = 1;
+
+            for (let li = batchStart; li < batchEnd; li++) {
+              const vals = parseCsvLineSafe(lines[li], schema.delimiter);
+              const placeholders: string[] = [];
+              for (let ci = 0; ci < schema.columns.length; ci++) {
+                placeholders.push(`$${paramIdx++}`);
+                params.push(vals[ci] !== undefined ? vals[ci] : null);
+              }
+              valueSets.push(`(${placeholders.join(",")})`);
+            }
+
+            if (valueSets.length > 0) {
+              const colNames = schema.columns.map(col => {
+                const sanitized = col
+                  .toLowerCase()
+                  .replace(/[àáâãäå]/g, "a").replace(/[èéêë]/g, "e")
+                  .replace(/[ìíîï]/g, "i").replace(/[òóôõö]/g, "o")
+                  .replace(/[ùúûü]/g, "u").replace(/[^a-z0-9]/g, "_")
+                  .replace(/_+/g, "_").replace(/^_|_$/g, "").substring(0, 63) || "col";
+                return `"${sanitized}"`;
+              }).join(",");
+              await pgClient.query(`INSERT INTO "${stagingName}" (${colNames}) VALUES ${valueSets.join(",")}`, params);
+            }
+          }
+
+          console.log(`[DATASET-SYNC-MULTI] Imported ${schema.rowCount} rows into ${stagingName}`);
+        }
+
+        await pgClient.query("COMMIT");
+      } catch (stagingError: any) {
+        await pgClient.query("ROLLBACK").catch(() => {});
+        throw stagingError;
+      } finally {
+        pgClient.release();
+      }
+
+      const { sql: joinSQL, columns: joinColumns } = buildJoinSQL(
+        fileSchemas,
+        suggestedJoins,
+        primaryTable,
+        joinOrder,
+        stagingTables
+      );
+
+      console.log(`[DATASET-SYNC-MULTI] Generated JOIN SQL with ${joinColumns.length} columns`);
+
+      const datasetClientId = sourceData.client_id || sourceData.consultant_id;
+      const datasetName = sourceData.name || fileNames || 'multi_dataset';
+      const finalTableName = generateTableName(sourceData.consultant_id, datasetName);
+
+      const pgClient2 = await pool.connect();
+      let rowsImported = 0;
+
+      try {
+        await pgClient2.query("BEGIN");
+
+        const finalColDefs = [
+          "id SERIAL PRIMARY KEY",
+          "riga_originale INTEGER NOT NULL",
+          "consultant_id VARCHAR(255) NOT NULL",
+          "client_id VARCHAR(255)",
+          "created_at TIMESTAMP DEFAULT NOW()",
+          ...joinColumns.map(col => `"${sanitizeColumnName(col.name)}" TEXT`)
+        ].join(",\n");
+
+        await pgClient2.query(`CREATE TABLE "${finalTableName}" (${finalColDefs})`);
+
+        const selectCols = joinColumns.map(col => `src."${col.name}" AS "${sanitizeColumnName(col.name)}"`).join(", ");
+        const insertCols = joinColumns.map(col => `"${sanitizeColumnName(col.name)}"`).join(", ");
+
+        const insertFromJoinSQL = `
+          INSERT INTO "${finalTableName}" (riga_originale, consultant_id, client_id, ${insertCols})
+          SELECT ROW_NUMBER() OVER () as riga_originale, 
+                 '${sourceData.consultant_id}' as consultant_id,
+                 ${datasetClientId ? `'${datasetClientId}'` : 'NULL'} as client_id,
+                 ${selectCols}
+          FROM (${joinSQL}) src
+        `;
+
+        const insertResult = await pgClient2.query(insertFromJoinSQL);
+        rowsImported = insertResult.rowCount || 0;
+
+        await pgClient2.query(`CREATE INDEX ON "${finalTableName}" (consultant_id)`);
+        await pgClient2.query(`CREATE INDEX ON "${finalTableName}" (riga_originale)`);
+
+        await pgClient2.query("COMMIT");
+        console.log(`[DATASET-SYNC-MULTI] Inserted ${rowsImported} joined rows into ${finalTableName}`);
+      } catch (joinError: any) {
+        await pgClient2.query("ROLLBACK").catch(() => {});
+        throw joinError;
+      } finally {
+        pgClient2.release();
+      }
+
+      const columnMapping: Record<string, { displayName: string; dataType: string; sourceFile?: string }> = {};
+      for (const col of joinColumns) {
+        const dbColName = sanitizeColumnName(col.name);
+        columnMapping[dbColName] = {
+          displayName: col.originalName || col.name,
+          dataType: 'TEXT',
+          sourceFile: col.sourceFile,
+        };
+      }
+
+      const insertedDatasetResult = await db.execute<any>(sql`
+        INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, column_mapping, auto_confirmed, confidence_score, created_at)
+        VALUES (${sourceData.consultant_id}, ${datasetClientId}, ${`Multi-Sync: ${sourceData.name}`}, ${fileNames}, ${finalTableName}, 'ready', ${rowsImported}, ${joinColumns.length}, ${JSON.stringify(columnMapping)}::jsonb, true, ${overallConfidence}, now())
+        RETURNING id
+      `);
+      const insertedDataset = insertedDatasetResult.rows || [];
+      const targetDatasetId = insertedDataset[0].id;
+
+      const physicalColumns = joinColumns.map(c => sanitizeColumnName(c.name));
+      await detectAndSaveSemanticMappings(targetDatasetId, physicalColumns);
+
+      const durationMs = Date.now() - startTime;
+
+      await db.execute(sql`
+        UPDATE dataset_sync_history 
+        SET status = 'completed', completed_at = now(), duration_ms = ${durationMs}, 
+            rows_imported = ${rowsImported}, rows_total = ${rowsImported},
+            columns_detected = ${joinColumns.length},
+            columns_mapped = ${JSON.stringify(physicalColumns)}::jsonb
+        WHERE sync_id = ${syncId}
+      `);
+
+      const pgCleanup = await pool.connect();
+      try {
+        for (const stName of stagingTableNames) {
+          await pgCleanup.query(`DROP TABLE IF EXISTS "${stName}" CASCADE`);
+        }
+      } catch (cleanErr) {
+        console.warn(`[DATASET-SYNC-MULTI] Staging cleanup warning:`, cleanErr);
+      } finally {
+        pgCleanup.release();
+      }
+
+      for (const fp of tempFilePaths) {
+        try { await fs.promises.unlink(fp); } catch {}
+      }
+
+      console.log(`[DATASET-SYNC-MULTI] Completed: ${rowsImported} rows, ${suggestedJoins.length} joins, ${files.length} files in ${durationMs}ms`);
+
+      res.json({
+        success: true,
+        syncId,
+        datasetId: targetDatasetId,
+        filesProcessed: files.length,
+        joinsDetected: suggestedJoins.length,
+        rowsImported,
+        overallConfidence: Math.round(overallConfidence * 100) / 100,
+        durationMs,
+      });
+
+    } catch (error: any) {
+      console.error("[DATASET-SYNC-MULTI] Webhook error:", error);
+
+      const durationMs = Date.now() - startTime;
+
+      if (sourceId) {
+        await db.execute(sql`
+          UPDATE dataset_sync_history 
+          SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+              error_code = 'INTERNAL_ERROR', error_message = ${error.message}
+          WHERE sync_id = ${syncId}
+        `).catch(() => {});
+      }
+
+      const pgCleanup = await pool.connect();
+      try {
+        for (const stName of stagingTableNames) {
+          await pgCleanup.query(`DROP TABLE IF EXISTS "${stName}" CASCADE`);
+        }
+      } catch {} finally {
+        pgCleanup.release();
+      }
+
+      for (const fp of tempFilePaths) {
+        try { await fs.promises.unlink(fp); } catch {}
+      }
+
+      res.status(500).json({
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: error.message,
+      });
+    }
+  }
+);
+
+function parseCsvLineSafe(line: string, delimiter: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result.map(v => v.replace(/^"|"$/g, "").trim());
+}
 
 router.get(
   "/sources",

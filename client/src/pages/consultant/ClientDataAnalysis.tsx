@@ -17,6 +17,8 @@ import { MetricEditor } from "@/components/client-data/MetricEditor";
 import { ReconciliationReport } from "@/components/client-data/ReconciliationReport";
 import { SemanticMappingConfirmation } from "@/components/client-data/SemanticMappingConfirmation";
 import { ExternalSyncDashboard } from "@/components/client-data/ExternalSyncDashboard";
+import { MultiFileUploader } from "@/components/client-data/MultiFileUploader";
+import { JoinPreview } from "@/components/client-data/JoinPreview";
 
 import {
   Database,
@@ -26,6 +28,7 @@ import {
   Calculator,
   FileCheck,
   ChevronLeft,
+  Files,
 } from "lucide-react";
 
 interface Dataset {
@@ -57,7 +60,38 @@ interface ColumnDefinition {
   sampleValues: any[];
 }
 
-type ViewMode = "list" | "upload" | "preview" | "discovery" | "view" | "query" | "results" | "metrics" | "reconcile";
+interface FileSchema {
+  filename: string;
+  filePath: string;
+  tableName: string;
+  columns: string[];
+  sampleValues: Record<string, any[]>;
+  rowCount: number;
+  delimiter: string;
+  encoding: string;
+}
+
+interface JoinCandidate {
+  sourceFile: string;
+  sourceColumn: string;
+  targetFile: string;
+  targetColumn: string;
+  confidence: number;
+  matchType: "exact_name" | "name_similarity" | "value_overlap" | "pk_fk_pattern";
+  valueOverlapPercent: number;
+  joinType: "LEFT" | "INNER";
+  explanation: string;
+}
+
+interface JoinDetectionResult {
+  files: FileSchema[];
+  suggestedJoins: JoinCandidate[];
+  primaryTable: string;
+  joinOrder: string[];
+  overallConfidence: number;
+}
+
+type ViewMode = "list" | "upload" | "upload-multi" | "join-preview" | "preview" | "discovery" | "view" | "query" | "results" | "metrics" | "reconcile";
 
 interface QueryResult {
   success: boolean;
@@ -81,6 +115,11 @@ export default function ClientDataAnalysis() {
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(undefined);
   const [isImporting, setIsImporting] = useState(false);
+
+  const [multiFiles, setMultiFiles] = useState<FileSchema[]>([]);
+  const [joinResult, setJoinResult] = useState<JoinDetectionResult | null>(null);
+  const [isDetectingJoins, setIsDetectingJoins] = useState(false);
+  const [isCreatingJoined, setIsCreatingJoined] = useState(false);
 
   const handleUploadComplete = (result: UploadResult, clientId?: string) => {
     setUploadResult(result);
@@ -134,6 +173,70 @@ export default function ClientDataAnalysis() {
     }
   };
 
+  const handleMultiUploadComplete = async (files: FileSchema[]) => {
+    setMultiFiles(files);
+    setIsDetectingJoins(true);
+
+    try {
+      const response = await apiRequest("POST", "/api/client-data/detect-joins", { files });
+
+      if (response.success) {
+        setJoinResult(response.data);
+        setViewMode("join-preview");
+        toast({
+          title: "Analisi completata",
+          description: `${response.data.suggestedJoins.length} relazioni trovate tra ${files.length} file`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore nell'analisi",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDetectingJoins(false);
+    }
+  };
+
+  const handleJoinConfirm = async (
+    name: string,
+    selectedJoins: JoinCandidate[],
+    primaryTable: string,
+    joinOrder: string[]
+  ) => {
+    setIsCreatingJoined(true);
+
+    try {
+      const response = await apiRequest("POST", "/api/client-data/create-joined-dataset", {
+        name,
+        files: multiFiles,
+        joins: selectedJoins,
+        primaryTable,
+        joinOrder,
+      });
+
+      if (response.success) {
+        toast({
+          title: "Dataset unificato creato",
+          description: `${response.data.rowCount} righe da ${multiFiles.length} file`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/client-data/datasets"] });
+        setViewMode("list");
+        setMultiFiles([]);
+        setJoinResult(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore nella creazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingJoined(false);
+    }
+  };
+
   const handleSelectDataset = (dataset: Dataset) => {
     setSelectedDataset(dataset);
     setViewMode("view");
@@ -153,6 +256,8 @@ export default function ClientDataAnalysis() {
     setViewMode("list");
     setSelectedDataset(null);
     setQueryResult(null);
+    setMultiFiles([]);
+    setJoinResult(null);
   };
 
   const getColumns = () => {
@@ -180,7 +285,7 @@ export default function ClientDataAnalysis() {
             <h1 className="text-xl font-semibold">Analisi Dati Cliente</h1>
           </div>
 
-          {selectedDataset && viewMode !== "list" && viewMode !== "upload" && viewMode !== "discovery" && (
+          {selectedDataset && viewMode !== "list" && viewMode !== "upload" && viewMode !== "upload-multi" && viewMode !== "join-preview" && viewMode !== "discovery" && (
             <div className="flex items-center gap-2">
               <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
                 <TabsList>
@@ -213,6 +318,7 @@ export default function ClientDataAnalysis() {
                 onSelectDataset={handleSelectDataset}
                 onQueryDataset={handleQueryDataset}
                 onNewDataset={() => setViewMode("upload")}
+                onNewMultiDataset={() => setViewMode("upload-multi")}
                 selectedDatasetId={selectedDataset?.id}
               />
               <ExternalSyncDashboard />
@@ -224,6 +330,31 @@ export default function ClientDataAnalysis() {
               <DatasetUploader
                 onUploadComplete={handleUploadComplete}
                 onCancel={() => setViewMode("list")}
+              />
+            </div>
+          )}
+
+          {viewMode === "upload-multi" && (
+            <div className="max-w-2xl mx-auto">
+              <MultiFileUploader
+                onUploadComplete={handleMultiUploadComplete}
+                onCancel={() => setViewMode("list")}
+              />
+            </div>
+          )}
+
+          {viewMode === "join-preview" && joinResult && (
+            <div className="max-w-5xl mx-auto">
+              <JoinPreview
+                files={multiFiles}
+                joinResult={joinResult}
+                onConfirm={handleJoinConfirm}
+                onCancel={() => {
+                  setMultiFiles([]);
+                  setJoinResult(null);
+                  setViewMode("list");
+                }}
+                isCreating={isCreatingJoined}
               />
             </div>
           )}
