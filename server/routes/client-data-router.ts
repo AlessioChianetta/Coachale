@@ -18,6 +18,7 @@ import { detectAndSaveSemanticMappings, getSemanticMappings, confirmSemanticMapp
 import { generateAIMappingSuggestions } from "../ai/data-analysis/ai-column-mapper";
 import { generateSmartQuestions } from "../ai/data-analysis/smart-questions";
 import { runFullAudit } from "../ai/data-analysis/full-audit";
+import { analyzeFile, detectJoins, buildJoinSQL, type FileSchema, type JoinCandidate } from "../services/client-data/join-detector";
 import fs from "fs";
 import path from "path";
 
