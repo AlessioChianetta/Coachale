@@ -1,0 +1,582 @@
+Anteprima Join Automatico
+Confidenza: 65%
+File Caricati (4)
+vendite righe.csv
+Tabella Primaria
+Righe: 67.244
+Colonne: 16
+Delimitatore: Virgola (,)
+Encoding: latin1
+vendite.csv
+Righe: 7423
+Colonne: 17
+Delimitatore: Virgola (,)
+Encoding: latin1
+prodotti.csv
+Righe: 674
+Colonne: 13
+Delimitatore: Punto e virgola (;)
+Encoding: latin1
+tipologie.csv
+Righe: 22
+Colonne: 2
+Delimitatore: Virgola (,)
+Encoding: latin1
+Relazioni Rilevate (46)
+
+vendite righe.csv
+vendite.csv
+order_id
+=
+order_id
+90%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 100%
+Colonna "order_id" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+cost
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "cost" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_foodbev
+=
+costoproduzione_foodbev
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_foodbev" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_materiali
+=
+costoproduzione_materiali
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_materiali" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_extra
+=
+costoproduzione_extra
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_extra" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_personale
+=
+costoproduzione_personale
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_personale" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_struttura
+=
+costoproduzione_struttura
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_struttura" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_consumi
+=
+costoproduzione_consumi
+89%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 98%
+Colonna "costoproduzione_consumi" ha lo stesso nome in entrambi i file
+
+
+vendite.csv
+prodotti.csv
+customer_id
+=
+id
+85%
+PK/FK
+LEFT
+Sovrapposizione valori: 88%
+"id" in prodotti.csv sembra una chiave primaria
+
+
+vendite righe.csv
+prodotti.csv
+product_id
+=
+product_id
+81%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 78%
+Colonna "product_id" ha lo stesso nome in entrambi i file
+
+
+tipologie.csv
+prodotti.csv
+line_id
+=
+id
+79%
+PK/FK
+LEFT
+Sovrapposizione valori: 73%
+"id" in prodotti.csv sembra una chiave primaria
+
+
+vendite righe.csv
+prodotti.csv
+product_id
+=
+id
+78%
+PK/FK
+LEFT
+Sovrapposizione valori: 69%
+"id" in prodotti.csv sembra una chiave primaria
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+cost
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "cost" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_foodbev
+=
+costoproduzione_foodbev
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_foodbev" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_materiali
+=
+costoproduzione_materiali
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_materiali" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_extra
+=
+costoproduzione_extra
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_extra" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_personale
+=
+costoproduzione_personale
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_personale" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_struttura
+=
+costoproduzione_struttura
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_struttura" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_consumi
+=
+costoproduzione_consumi
+69%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 48%
+Colonna "costoproduzione_consumi" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+costoproduzione_consumi
+69%
+Nome Simile
+LEFT
+Sovrapposizione valori: 98%
+Colonna "cost" e "costoproduzione_consumi" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+costoproduzione_foodbev
+66%
+Nome Simile
+LEFT
+Sovrapposizione valori: 91%
+Colonna "cost" e "costoproduzione_foodbev" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+costoproduzione_struttura
+66%
+Nome Simile
+LEFT
+Sovrapposizione valori: 91%
+Colonna "cost" e "costoproduzione_struttura" hanno nomi simili
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+costoproduzione_materiali
+63%
+Nome Simile
+LEFT
+Sovrapposizione valori: 84%
+Colonna "cost" e "costoproduzione_materiali" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+cost
+=
+cost
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "cost" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_foodbev
+=
+costoproduzione_foodbev
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_foodbev" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_materiali
+=
+costoproduzione_materiali
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_materiali" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_extra
+=
+costoproduzione_extra
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_extra" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_personale
+=
+costoproduzione_personale
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_personale" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_struttura
+=
+costoproduzione_struttura
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_struttura" ha lo stesso nome in entrambi i file
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_consumi
+=
+costoproduzione_consumi
+59%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 22%
+Colonna "costoproduzione_consumi" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+costoproduzione_foodbev
+57%
+Nome Simile
+LEFT
+Sovrapposizione valori: 68%
+Colonna "cost" e "costoproduzione_foodbev" hanno nomi simili
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+costoproduzione_struttura
+57%
+Nome Simile
+LEFT
+Sovrapposizione valori: 68%
+Colonna "cost" e "costoproduzione_struttura" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+costoproduzione_personale
+=
+cost
+57%
+Nome Simile
+LEFT
+Sovrapposizione valori: 67%
+Colonna "costoproduzione_personale" e "cost" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+cost
+=
+costoproduzione_materiali
+55%
+Nome Simile
+LEFT
+Sovrapposizione valori: 62%
+Colonna "cost" e "costoproduzione_materiali" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+costoproduzione_materiali
+54%
+Nome Simile
+LEFT
+Sovrapposizione valori: 60%
+Colonna "cost" e "costoproduzione_materiali" hanno nomi simili
+
+
+vendite righe.csv
+tipologie.csv
+line_id
+=
+line_id
+50%
+Nome Esatto
+LEFT
+Sovrapposizione valori: 0%
+Colonna "line_id" ha lo stesso nome in entrambi i file
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+costoproduzione_consumi
+49%
+Nome Simile
+LEFT
+Sovrapposizione valori: 48%
+Colonna "cost" e "costoproduzione_consumi" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+cost
+=
+costoproduzione_extra
+49%
+Nome Simile
+LEFT
+Sovrapposizione valori: 46%
+Colonna "cost" e "costoproduzione_extra" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+cost
+=
+costoproduzione_foodbev
+48%
+Nome Simile
+LEFT
+Sovrapposizione valori: 46%
+Colonna "cost" e "costoproduzione_foodbev" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+cost
+=
+costoproduzione_struttura
+48%
+Nome Simile
+LEFT
+Sovrapposizione valori: 46%
+Colonna "cost" e "costoproduzione_struttura" hanno nomi simili
+
+
+prodotti.csv
+vendite righe.csv
+prezzoAcquisto
+=
+prezzo
+47%
+Nome Simile
+LEFT
+Sovrapposizione valori: 41%
+Colonna "prezzoAcquisto" e "prezzo" hanno nomi simili
+
+
+vendite righe.csv
+vendite.csv
+costoproduzione_personale
+=
+cost
+45%
+Nome Simile
+LEFT
+Sovrapposizione valori: 37%
+Colonna "costoproduzione_personale" e "cost" hanno nomi simili
+
+
+vendite righe.csv
+vendite.csv
+cost
+=
+costoproduzione_extra
+44%
+Nome Simile
+LEFT
+Sovrapposizione valori: 34%
+Colonna "cost" e "costoproduzione_extra" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+cost
+=
+costoproduzione_consumi
+39%
+Nome Simile
+LEFT
+Sovrapposizione valori: 22%
+Colonna "cost" e "costoproduzione_consumi" hanno nomi simili
+
+
+prodotti.csv
+vendite.csv
+costoproduzione_personale
+=
+cost
+38%
+Nome Simile
+LEFT
+Sovrapposizione valori: 21%
+Colonna "costoproduzione_personale" e "cost" hanno nomi simili
+
+
+vendite.csv
+prodotti.csv
+costoproduzione_extra
+=
+cost
+38%
+Nome Simile
+LEFT
+Sovrapposizione valori: 19%
+Colonna "costoproduzione_extra" e "cost" hanno nomi simili
+
+Ordine di Join
+1. vendite righe.csv
+2. vendite.csv
+3. prodotti.csv
+4. tipologie.csv

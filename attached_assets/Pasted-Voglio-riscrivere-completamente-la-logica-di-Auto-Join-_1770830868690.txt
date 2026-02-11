@@ -1,0 +1,49 @@
+Voglio riscrivere completamente la logica di "Auto-Join Detector" per renderla infallibile.
+Abbandona la logica attuale euristica (punteggi +30, +50 basati su stringhe) e implementa questo ALGORITMO DETERMINISTICO A 4 FASI.
+
+Obiettivo: Eliminare i falsi positivi (es. 46 relazioni trovate) e garantire che i join proposti funzionino al 100% a livello di dati.
+
+---
+
+FASE 1: IL "GATEKEEPER" (Filtri Bloccanti)
+Per ogni coppia di colonne (Col A, Col B) tra due file, applica questi veti PRIMA di calcolare qualsiasi punteggio. Se fallisce uno di questi, lo Score è 0 e la relazione è SCARTATA.
+
+1. Veto sui Tipi (Type Check):
+   - Se dtype(A) != dtype(B) (es. String vs Integer), SCARTA.
+   - Eccezione: Int vs Float è accettabile.
+
+2. Veto sull'Overlap (Intersection Check):
+   - Calcola l'intersezione dei valori unici: `len(set(A) & set(B))`.
+   - Se l'intersezione è < 1% dei valori della tabella più piccola (o vuota), SCARTA.
+   - *Regola aurea:* Anche se si chiamano "id" e "id", se non hanno dati in comune, il join è inutile.
+
+---
+
+FASE 2: IL PUNTEGGIO (Scoring)
+Solo per le coppie che hanno superato la Fase 1. Calcola lo score (Max 100):
+
+- Base: Partiamo dall'Overlap %. (Es. 80% overlap = 80 punti base).
+- Bonus Nome Esatto: +20 punti se `Lower(Name A) == Lower(Name B)`.
+- Penalità Nomi Generici: Se il nome è nella blacklist ["id", "name", "date", "description", "note"], il Bonus Nome Esatto è 0. Ci fidiamo SOLO dell'overlap.
+- Penalità Substring: RIMUOVI qualsiasi bonus per "stringa contenuta in altra stringa". (Es. "cost" dentro "costo_produzione" vale 0 bonus).
+- Bonus Chiave Primaria: +10 punti se una delle due colonne ha is_unique=True.
+
+---
+
+FASE 3: LA TOPOLOGIA (Star Schema enforcement)
+Non voglio un grafo "tutti contro tutti".
+1. Identifica la "Tabella dei Fatti" (quella con il maggior numero di righe, es. `vendite_righe`).
+2. Identifica le "Tabelle Dimensionali" (le altre).
+3. L'algoritmo deve cercare PRIMA i join che collegano [Dimensione] -> [Fatti].
+4. Solo se non trova nulla, cerca join tra [Dimensione] -> [Dimensione].
+
+---
+
+FASE 4: OUTPUT PULITO E UX
+1. Selezione: Per ogni coppia di tabelle, tieni SOLO la relazione con il punteggio più alto assoluto. Scarta le altre.
+2. Confidence Reale: La % mostrata all'utente deve essere la media dei soli join SELEZIONATI (i 3-4 finali), NON la media di tutti i tentativi falliti.
+
+---
+
+IMPLEMENTAZIONE RICHIESTA:
+Riscrivi la funzione `detect_relationships` e `build_join_sql` seguendo rigorosamente questi step. I dati (l'overlap) devono avere sempre la priorità sui metadati (i nomi).
