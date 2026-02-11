@@ -490,7 +490,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       idealState: idealState,
       contactSchedule: new Date(),
       status: 'pending',
-      campaignId: webhookConfig.targetCampaignId || undefined,
+      campaignId: (campaign?.id || campaign?.campaign_id) || webhookConfig.targetCampaignId || undefined,
       campaignSnapshot: campaignSnapshot,
     };
 
@@ -902,7 +902,7 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       idealState: idealState,
       contactSchedule: new Date(),
       status: 'pending',
-      campaignId: webhookConfig.targetCampaignId || undefined,
+      campaignId: (campaign?.id || campaign?.campaign_id) || webhookConfig.targetCampaignId || undefined,
       campaignSnapshot: campaignSnapshot,
     };
 
