@@ -148,17 +148,23 @@ interface HubdigitalPayload {
   type?: string;
   locationId?: string;
   id?: string; // ID univoco contatto GHL
+  contact_id?: string; // GHL snake_case variant
+  contact_type?: string;
   
-  // Dati Anagrafici
+  // Dati Anagrafici (camelCase + snake_case variants)
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
   name?: string;
+  full_name?: string;
   dateOfBirth?: string;
   
   // Dati Contatto
   email?: string;
   phone?: string;
   address1?: string;
+  full_address?: string;
   city?: string;
   state?: string;
   postalCode?: string;
@@ -172,9 +178,19 @@ interface HubdigitalPayload {
   source?: string;
   assignedTo?: string;
   dateAdded?: string;
-  tags?: string[];
+  date_created?: string;
+  tags?: string[] | string;
   customFields?: Array<{ id: string; value: any }> | Record<string, any>;
+  customData?: Record<string, any>;
   attachments?: any[];
+  
+  // GHL location/user/workflow context
+  location?: Record<string, any>;
+  user?: Record<string, any>;
+  workflow?: Record<string, any>;
+  triggerData?: Record<string, any>;
+  contact?: Record<string, any>;
+  attributionSource?: Record<string, any>;
   
   // Privacy DND
   dnd?: boolean;
@@ -277,11 +293,12 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       });
     }
 
-    let firstName = payload.firstName || '';
-    let lastName = payload.lastName || '';
+    let firstName = payload.firstName || payload.first_name || '';
+    let lastName = payload.lastName || payload.last_name || '';
     
-    if (!firstName && !lastName && payload.name) {
-      const nameParts = splitFullName(payload.name);
+    if (!firstName && !lastName && (payload.name || payload.full_name)) {
+      const fullName = payload.name || payload.full_name || '';
+      const nameParts = splitFullName(fullName);
       firstName = nameParts.firstName;
       lastName = nameParts.lastName;
     }
@@ -394,25 +411,28 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     if (payload.email) leadInfo.email = payload.email;
     if (payload.companyName) leadInfo.companyName = payload.companyName;
     if (payload.website) leadInfo.website = payload.website;
-    if (payload.customFields) leadInfo.customFields = payload.customFields;
-    if (payload.dateAdded) leadInfo.dateAdded = payload.dateAdded;
+    if (payload.customFields || payload.customData) leadInfo.customFields = payload.customFields || payload.customData;
+    if (payload.dateAdded || payload.date_created) leadInfo.dateAdded = payload.dateAdded || payload.date_created;
     if (payload.dateOfBirth) leadInfo.dateOfBirth = payload.dateOfBirth;
     
     // Indirizzo completo
-    if (payload.address1) leadInfo.address = payload.address1;
+    if (payload.address1 || payload.full_address) leadInfo.address = payload.address1 || payload.full_address;
     if (payload.city) leadInfo.city = payload.city;
     if (payload.state) leadInfo.state = payload.state;
     if (payload.postalCode) leadInfo.postalCode = payload.postalCode;
     if (payload.country) leadInfo.country = payload.country;
     
     // GHL IDs per riferimento
-    if (payload.id) leadInfo.ghlContactId = payload.id;
-    if (payload.locationId) leadInfo.ghlLocationId = payload.locationId;
+    if (payload.id || payload.contact_id) leadInfo.ghlContactId = payload.id || payload.contact_id;
+    if (payload.locationId || (payload.location as any)?.id) leadInfo.ghlLocationId = payload.locationId || (payload.location as any)?.id;
     if (payload.assignedTo) leadInfo.assignedTo = payload.assignedTo;
     
     // Tags
-    if (payload.tags && Array.isArray(payload.tags) && payload.tags.length > 0) {
-      leadInfo.tags = payload.tags;
+    const rawTags = payload.tags;
+    if (rawTags && Array.isArray(rawTags) && rawTags.length > 0) {
+      leadInfo.tags = rawTags;
+    } else if (typeof rawTags === 'string' && rawTags.trim()) {
+      leadInfo.tags = rawTags.split(',').map((t: string) => t.trim()).filter((t: string) => t);
     }
     
     // DND (Do Not Disturb)
