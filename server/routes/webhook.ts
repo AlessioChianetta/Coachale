@@ -430,9 +430,10 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     } = {
       fonte: source,
       // Apply campaign defaults (priority: campaign > agentConfig)
-      obiettivi: campaign?.defaultObiettivi || agentConfig?.defaultObiettivi || undefined,
-      desideri: campaign?.implicitDesires || agentConfig?.defaultDesideri || undefined,
-      uncino: campaign?.hookText || agentConfig?.defaultUncino || undefined,
+      // Support both camelCase (Drizzle ORM) and snake_case (raw SQL from source_mapping)
+      obiettivi: campaign?.defaultObiettivi || campaign?.default_obiettivi || agentConfig?.defaultObiettivi || undefined,
+      desideri: campaign?.implicitDesires || campaign?.implicit_desires || agentConfig?.defaultDesideri || undefined,
+      uncino: campaign?.hookText || campaign?.hook_text || agentConfig?.defaultUncino || undefined,
     };
 
     // Dati contatto base
@@ -467,17 +468,17 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     if (payload.dnd !== undefined) leadInfo.dnd = payload.dnd;
     if (payload.dndSettings) leadInfo.dndSettings = payload.dndSettings;
 
-    // Apply idealState from campaign or agent config
-    const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
+    // Apply idealState from campaign or agent config (support both camelCase and snake_case)
+    const idealState = campaign?.idealStateDescription || campaign?.ideal_state_description || agentConfig?.defaultIdealState || undefined;
 
     // Build campaign snapshot for display in proactive-leads page
     const campaignSnapshot = campaign ? {
-      name: campaign.name || campaign.campaignName,
-      goal: campaign.obiettivi || campaign.defaultObiettivi || campaign.name,
-      obiettivi: campaign.obiettivi || campaign.defaultObiettivi,
-      desideri: campaign.desideri || campaign.implicitDesires,
-      uncino: campaign.uncino || campaign.hookText,
-      statoIdeale: campaign.statoIdeale || campaign.idealStateDescription,
+      name: campaign.campaignName || campaign.campaign_name || campaign.name,
+      goal: campaign.defaultObiettivi || campaign.default_obiettivi || campaign.campaignName || campaign.campaign_name || campaign.name,
+      obiettivi: campaign.defaultObiettivi || campaign.default_obiettivi,
+      desideri: campaign.implicitDesires || campaign.implicit_desires,
+      uncino: campaign.hookText || campaign.hook_text,
+      statoIdeale: campaign.idealStateDescription || campaign.ideal_state_description,
     } : undefined;
 
     const leadData: schema.InsertProactiveLead = {
@@ -866,9 +867,10 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
       list?: string;
     } = {
       fonte: source,
-      obiettivi: campaign?.defaultObiettivi || agentConfig?.defaultObiettivi || undefined,
-      desideri: campaign?.implicitDesires || agentConfig?.defaultDesideri || undefined,
-      uncino: campaign?.hookText || agentConfig?.defaultUncino || undefined,
+      // Support both camelCase (Drizzle ORM) and snake_case (raw SQL from source_mapping)
+      obiettivi: campaign?.defaultObiettivi || campaign?.default_obiettivi || agentConfig?.defaultObiettivi || undefined,
+      desideri: campaign?.implicitDesires || campaign?.implicit_desires || agentConfig?.defaultDesideri || undefined,
+      uncino: campaign?.hookText || campaign?.hook_text || agentConfig?.defaultUncino || undefined,
     };
 
     // Add contact data
@@ -879,17 +881,17 @@ router.post('/activecampaign/:secretKey', async (req: Request, res: Response) =>
     if (contact.orgname) leadInfo.companyName = contact.orgname;
     if (payload.list) leadInfo.list = payload.list;
 
-    // Apply idealState from campaign or agent config
-    const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
+    // Apply idealState from campaign or agent config (support both camelCase and snake_case)
+    const idealState = campaign?.idealStateDescription || campaign?.ideal_state_description || agentConfig?.defaultIdealState || undefined;
 
     // Build campaign snapshot for display in proactive-leads page
     const campaignSnapshot = campaign ? {
-      name: campaign.name || campaign.campaignName,
-      goal: campaign.obiettivi || campaign.defaultObiettivi || campaign.name,
-      obiettivi: campaign.obiettivi || campaign.defaultObiettivi,
-      desideri: campaign.desideri || campaign.implicitDesires,
-      uncino: campaign.uncino || campaign.hookText,
-      statoIdeale: campaign.statoIdeale || campaign.idealStateDescription,
+      name: campaign.campaignName || campaign.campaign_name || campaign.name,
+      goal: campaign.defaultObiettivi || campaign.default_obiettivi || campaign.campaignName || campaign.campaign_name || campaign.name,
+      obiettivi: campaign.defaultObiettivi || campaign.default_obiettivi,
+      desideri: campaign.implicitDesires || campaign.implicit_desires,
+      uncino: campaign.hookText || campaign.hook_text,
+      statoIdeale: campaign.idealStateDescription || campaign.ideal_state_description,
     } : undefined;
 
     const leadData: schema.InsertProactiveLead = {
