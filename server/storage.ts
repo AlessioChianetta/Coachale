@@ -1165,10 +1165,18 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.consultations.clientId, schema.users.id))
       .where(eq(schema.consultations.consultantId, consultantId));
 
-    return consultations.map(row => ({
-      ...row.consultations,
-      client: row.users!
-    }));
+    return consultations.map(row => {
+      const c = row.consultations;
+      const correctedEmailStatus = (
+        c.summaryEmailStatus === 'missing' &&
+        c.summaryEmail && c.summaryEmail.trim() !== ''
+      ) ? 'sent' as const : c.summaryEmailStatus;
+      return {
+        ...c,
+        summaryEmailStatus: correctedEmailStatus,
+        client: row.users!
+      };
+    });
   }
 
   async updateConsultation(id: string, updates: Partial<Consultation>): Promise<Consultation | undefined> {
