@@ -77,7 +77,7 @@ interface JoinCandidate {
   targetFile: string;
   targetColumn: string;
   confidence: number;
-  matchType: "exact_name" | "name_similarity" | "value_overlap" | "pk_fk_pattern";
+  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern";
   valueOverlapPercent: number;
   joinType: "LEFT" | "INNER";
   explanation: string;

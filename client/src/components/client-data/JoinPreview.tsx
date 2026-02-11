@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Link,
   ArrowRight,
@@ -14,6 +13,7 @@ import {
   AlertTriangle,
   Loader2,
   FileSpreadsheet,
+  Unlink,
 } from "lucide-react";
 
 interface FileSchema {
@@ -33,7 +33,7 @@ interface JoinCandidate {
   targetFile: string;
   targetColumn: string;
   confidence: number;
-  matchType: "exact_name" | "name_similarity" | "value_overlap" | "pk_fk_pattern";
+  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern";
   valueOverlapPercent: number;
   joinType: "LEFT" | "INNER";
   explanation: string;
@@ -45,6 +45,7 @@ interface JoinDetectionResult {
   primaryTable: string;
   joinOrder: string[];
   overallConfidence: number;
+  orphanTables?: string[];
 }
 
 interface JoinPreviewProps {
@@ -65,8 +66,7 @@ function getConfidenceColor(confidence: number) {
 function getMatchTypeLabel(matchType: JoinCandidate["matchType"]) {
   switch (matchType) {
     case "exact_name": return "Nome Esatto";
-    case "name_similarity": return "Nome Simile";
-    case "value_overlap": return "Valori Comuni";
+    case "overlap_only": return "Valori Comuni";
     case "pk_fk_pattern": return "PK/FK";
   }
 }
@@ -87,28 +87,13 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
     []
   );
   const [datasetName, setDatasetName] = useState(defaultName);
-  const [enabledJoins, setEnabledJoins] = useState<Set<number>>(
-    () => new Set(joinResult.suggestedJoins.map((_, i) => i))
-  );
-
-  const toggleJoin = (index: number) => {
-    setEnabledJoins((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
 
   const handleConfirm = () => {
-    const selectedJoins = joinResult.suggestedJoins.filter((_, i) => enabledJoins.has(i));
-    onConfirm(datasetName, selectedJoins, joinResult.primaryTable, joinResult.joinOrder);
+    onConfirm(datasetName, joinResult.suggestedJoins, joinResult.primaryTable, joinResult.joinOrder);
   };
 
   const noJoins = joinResult.suggestedJoins.length === 0 || joinResult.overallConfidence === 0;
+  const hasOrphans = joinResult.orphanTables && joinResult.orphanTables.length > 0;
 
   return (
     <div className="space-y-6">
@@ -153,10 +138,17 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {files.map((file) => {
             const isPrimary = file.filename === joinResult.primaryTable;
+            const isOrphan = joinResult.orphanTables?.includes(file.filename);
             return (
               <Card
                 key={file.filename}
-                className={isPrimary ? "border-emerald-400 dark:border-emerald-600" : ""}
+                className={
+                  isPrimary
+                    ? "border-emerald-400 dark:border-emerald-600"
+                    : isOrphan
+                    ? "border-orange-300 dark:border-orange-600 opacity-70"
+                    : ""
+                }
               >
                 <CardContent className="pt-4 pb-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -166,7 +158,12 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
                     </div>
                     {isPrimary && (
                       <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 flex-shrink-0 text-xs">
-                        Tabella Primaria
+                        Tabella Fatti
+                      </Badge>
+                    )}
+                    {isOrphan && (
+                      <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 flex-shrink-0 text-xs">
+                        Non collegata
                       </Badge>
                     )}
                   </div>
@@ -187,25 +184,17 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
             <Table2 className="h-4 w-4" />
-            Relazioni Rilevate ({joinResult.suggestedJoins.length})
+            Relazioni Selezionate ({joinResult.suggestedJoins.length})
           </h3>
           <div className="space-y-3">
             {joinResult.suggestedJoins.map((join, index) => {
-              const enabled = enabledJoins.has(index);
               const confidencePct = Math.round(join.confidence * 100);
               return (
-                <Card
-                  key={index}
-                  className={`transition-opacity ${!enabled ? "opacity-50" : ""}`}
-                >
+                <Card key={index}>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-start gap-3">
-                      <div className="pt-0.5">
-                        <Checkbox
-                          checked={enabled}
-                          onCheckedChange={() => toggleJoin(index)}
-                          disabled={isCreating}
-                        />
+                      <div className="pt-1">
+                        <CheckCircle className="h-4 w-4 text-emerald-500" />
                       </div>
                       <div className="flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -247,6 +236,31 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
             })}
           </div>
         </div>
+      )}
+
+      {hasOrphans && (
+        <Card className="border-orange-300 dark:border-orange-700">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <Unlink className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-orange-800 dark:text-orange-300 text-sm">
+                  Tabelle non collegabili ({joinResult.orphanTables!.length})
+                </p>
+                <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
+                  Le seguenti tabelle non hanno relazioni valide con la tabella principale e verranno escluse dal dataset unificato:
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {joinResult.orphanTables!.map((name) => (
+                    <Badge key={name} variant="outline" className="text-xs text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-600">
+                      {name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div>

@@ -3047,6 +3047,12 @@ router.post(
 
       console.log(`[CLIENT-DATA] Joined dataset created: ${inserted.id} with ${rowCount} rows`);
 
+      for (const file of files) {
+        if (file.filePath) {
+          try { await fs.promises.unlink(file.filePath); } catch {}
+        }
+      }
+
       try {
         const physicalCols = joinResult.columns.map((c) => c.name);
         await detectAndSaveSemanticMappings(inserted.id, physicalCols);
