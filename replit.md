@@ -1,16 +1,9 @@
 # Overview
-This full-stack web application is a comprehensive consultation platform designed to connect consultants and clients, facilitating exercise assignments, progress tracking, and performance analytics. Its core purpose is to leverage an AI assistant for personalized financial insights, enhancing consultant-client interactions, streamlining financial guidance, and improving overall client outcomes and consultant efficiency. The platform includes a multi-tier subscription system for AI agents with revenue sharing, an employee licensing system, and a public landing page for lead generation, aiming to be a holistic solution for modern financial consultation.
+This full-stack web application is a comprehensive consultation platform designed to connect consultants and clients, facilitating exercise assignments, progress tracking, and performance analytics. Its core purpose is to leverage an AI assistant for personalized financial insights, enhancing consultant-client interactions, streamlining financial guidance, and improving overall client outcomes and consultant efficiency. The platform includes a multi-tier subscription system for AI agents with revenue sharing, an employee licensing system, and a a public landing page for lead generation, aiming to be a holistic solution for modern financial consultation.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
 User requested "obsessive-compulsive" attention to detail when verifying what works and what doesn't.
-
-# CRITICAL: User Data Model Rules
-**NEVER filter only `role = 'client'` when counting or listing a consultant's users/clients.**
-- A consultant's "clients" include BOTH `role='client'` AND `role='consultant'` users who have `consultant_id` pointing to them (consultants who are clients of another consultant).
-- The correct filter is: `WHERE u.consultant_id = :consultantId AND u.is_active = true` (no role filter).
-- **Gold (Oro) users** (level 3 active subscriptions in `client_level_subscriptions`) have separate licenses and must be EXCLUDED from license counting. Use a `NOT IN` subquery on `client_level_subscriptions WHERE level = '3' AND status = 'active'`.
-- This applies EVERYWHERE: license counting, AI autonomous roles (Marco, etc.), client listing, monitoring, and any query that retrieves "all clients of a consultant".
 
 # System Architecture
 The application features a modern UI/UX built with React 18, TypeScript, Vite, Tailwind CSS, and `shadcn/ui`, prioritizing accessibility and responsiveness. The backend is powered by Express.js, TypeScript, JWT, bcrypt, and PostgreSQL (Drizzle ORM), implementing a robust role-based access control (consultant, client, super_admin) and multi-profile system.
@@ -25,11 +18,11 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **Communication & Automation:**
     *   **Voice Telephony (Alessia AI Phone):** Integrates FreeSWITCH with Gemini 2.5 Flash Native Audio for real-time voice AI, automatic caller recognition, call management, and recording. Supports both Google AI Studio and Vertex AI with automatic fallback and backend-specific prompt optimization.
     *   **Direction-Based Voice Template System:** Provides separate, configurable templates for inbound and outbound calls with a template library and variable interpolation.
-    *   **AI Task Scheduling:** An automated system for AI-powered voice calls with a database-backed task queue, retry logic, recurrence options, and a comprehensive REST API and frontend UI. It includes bidirectional synchronization with `scheduled_voice_calls`.
-    *   **AI Autonomous Employee (Phase 2 + Multi-Role):** A Decision Engine (`autonomous-decision-engine.ts`) uses Gemini to analyze client context and generate multi-step execution plans. A Task Executor (`ai-task-executor.ts`) runs steps (fetch_client_data, analyze_patterns, generate_report, prepare_call, voice_call, send_email, send_whatsapp) with per-step logging. Guardrails enforce working hours, daily limits, channel restrictions. Frontend dashboard shows task progress, stats, and execution plan stepper. **Multi-Role Architecture (`ai-autonomous-roles.ts`):** 8 specialized AI agents (Alessia=voice follow-up, Millie=email writer, Echo=consultation summarizer, Nova=social media, Stella=WhatsApp, Iris=email hub, Marco=executive coach/consultant-focused, Personalizza=custom configurable role) each with dedicated data queries, Gemini prompts, and task categories. Roles can be individually toggled via `enabled_roles` JSONB in `ai_autonomy_settings`. Tasks and logs include `ai_role` field for attribution with colored badges in the UI. **"Crea il tuo Dipendente AI" UI** shows expandable role cards with clear capabilities (canDo), limitations (cantDo), and workflow descriptions. **Redesigned "Log Ragionamenti AI"** groups entries by role with colored headers, avatars, 3-column stats, prominent "Cosa ha pensato" reasoning section, and "Azioni decise" with "Perché" explanations.
-    *   **Voice Supervisors (LLM Architecture):** Real-time transcript analysis systems (Task and Booking Supervisors) using Gemini 2.5 Flash Lite to detect and manage reminders/tasks and trigger bookings based on conversational intent, ensuring data completeness and conflict detection.
-*   **System Robustness:** Features include a 4-week calendar system for check-ins, universal PDF support, real-time Google Drive sync, a Dataset Sync API for partners, a Data Sync Observability Dashboard, an Intent Follow-Through System, a Partner Webhook Notification System, and a Database-Based Cron Mutex. An Anti-Zombie Connection System prevents stale Gemini WebSocket connections with `lastActivity` tracking, garbage collection, client heartbeats, and silent session detection.
-*   **Content Generation Enhancements:** Includes a Content Studio Platform-Specific Schema Selection with templates, character limits, AI shortening, and writing styles. A Content Autopilot System automates content scheduling with AdVisage AI integration for image generation. AdVisage AI Visual Concept Generator is integrated for generating visual concepts. A Bulk Publish System for Publer enables one-click scheduling. A Content Variety System prevents repetitive AI-generated ads through dynamic pattern and angle rotation, anti-repetition features, and AI compression.
+    *   **AI Task Scheduling:** An automated system for AI-powered voice calls with a database-backed task queue, retry logic, recurrence options, and a comprehensive REST API and frontend UI.
+    *   **AI Autonomous Employee (Multi-Role):** A Decision Engine (`autonomous-decision-engine.ts`) uses Gemini to analyze client context and generate multi-step execution plans. A Task Executor (`ai-task-executor.ts`) runs steps with per-step logging. Guardrails enforce working hours, daily limits, channel restrictions. Eight specialized AI agents (Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza) each with dedicated data queries, Gemini prompts, and task categories. Roles can be individually toggled, and a UI allows configuration of the "Personalizza" agent.
+    *   **Voice Supervisors (LLM Architecture):** Real-time transcript analysis systems (Task and Booking Supervisors) using Gemini 2.5 Flash Lite detect and manage reminders/tasks and trigger bookings based on conversational intent, ensuring data completeness and conflict detection.
+*   **System Robustness:** Features include a 4-week calendar system for check-ins, universal PDF support, real-time Google Drive sync, a Dataset Sync API for partners, a Data Sync Observability Dashboard, an Intent Follow-Through System, a Partner Webhook Notification System, and a Database-Based Cron Mutex. An Anti-Zombie Connection System prevents stale Gemini WebSocket connections.
+*   **Content Generation Enhancements:** Includes a Content Studio Platform-Specific Schema Selection with templates, character limits, AI shortening, and writing styles. A Content Autopilot System automates content scheduling with AdVisage AI integration for image generation. A Bulk Publish System for Publer enables one-click scheduling. A Content Variety System prevents repetitive AI-generated ads through dynamic pattern and angle rotation, anti-repetition features, and AI compression.
 
 # External Dependencies
 *   **Supabase**: PostgreSQL hosting.
@@ -48,50 +41,3 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **FreeSWITCH**: Voice telephony integration.
 *   **Google Calendar API**: Appointment scheduling.
 *   **Publer**: Social media scheduling and publishing.
-
-# Recent Changes
-
-## 2026-02-10: Google Calendar Auto-Sync for Batch-Created Consultations
-- **Automatic event creation**: When consultations are created via the scheduling wizard, events are automatically created on Google Calendar (if connected)
-- **Client as attendee**: Client's email is added as attendee; Google Calendar sends the invite automatically
-- **Google Meet link**: Auto-generated Meet link stored on each consultation record
-- **Event ID tracking**: `google_calendar_event_id` and `google_meet_link` saved on each consultation for future reference/updates
-- **Error handling**: Partial failures (some events fail) are surfaced to the user; consultations are saved regardless of calendar errors
-- **Monthly limit enforcement fix**: Interval-based scheduling now respects monthly consultation limits (existing DB + Calendar events counted)
-- **Current month inclusion**: Scheduling now includes the current month in proposals, not just future months
-- **Timezone fix**: Pattern detection uses Europe/Rome timezone and rounds to nearest 30 minutes
-
-## 2026-02-10: Intelligent Consultation Scheduling Wizard
-- **Custom intervals**: Scheduling wizard supports "every X days" (10, 15, 20, 25, 30) in addition to per-month package limits
-- **Per-month extras**: Ability to add extra consultations (+1 to +5) for specific months via +/- steppers
-- **Time preference**: Morning/Afternoon/Auto selector; Auto uses detected historical pattern
-- **Pattern detection**: Analyzes last 20 completed consultations to detect preferred day of week and time, biases proposals toward those patterns
-- **Google Calendar conflict avoidance**: Checks busy slots on each proposed date, tries alternative hours, then alternative days (up to 3), removes proposals if fully busy
-- **Monitoring Google Calendar integration**: Fetches events 7 months forward, matches attendee emails to clients, includes in consultation counts avoiding duplicates
-- **Business hours normalization**: Detected times outside 8-18 are clamped to business hours
-
-## 2026-02-10: Consultation Scheduling Wizard & Monitoring Enhancements (earlier)
-- **Monitoring table improvements**: Added "Programmate" (scheduled count), "Prossima" (next scheduled date), and "Azioni" (scheduling button) columns to consultation monitoring table
-- **Scheduling wizard**: 3-step dialog (Overview → Proposal → Review) per client to plan future consultations. Overview shows package stats; Proposal generates evenly-spaced dates across N months (1-6) avoiding weekends and existing dates, respecting monthly package limits; Review confirms and batch-creates consultations
-- **Backend endpoints**: `POST /api/consultations/schedule-proposal` (generates proposals capped by existing usage per month) and `POST /api/consultations/batch-create` (creates up to 60 consultations with validation)
-- **NavigationTabs duplicate key fix**: Changed "Monitoraggio" href from `/consultant/clients` to `/consultant/clients/monitoring`
-
-## 2026-02-10: AI Autonomy Page — Cycle Grouping, Data Transparency, Personalizza Config
-- **Cycle-based activity grouping**: Added `cycle_id` column to `ai_activity_log`; backend generates unique cycle IDs per autonomous analysis run and passes to all log entries. Frontend groups activities by cycle in both "All" and "Reasoning" tabs with accordion UI (header: "Analisi #XXXXX — date/time")
-- **Data transparency**: Backend enriches `event_data` with `clients_list`, `role_specific_data`, `excluded_clients`, `recent_tasks_summary`. Frontend shows expandable "Base dati utilizzata" section in each role's reasoning card
-- **Personalizza agent configuration**: Added `personalizza_config` JSONB column to `ai_autonomy_settings`; GET/PUT API endpoints at `/api/ai-autonomy/personalizza-config`; dedicated form in SettingsTab (name, tone, instructions, channels, categories, segments, frequency, max tasks, priority rules); backend wires config into Personalizza role prompt
-
-## 2026-02-10: AI Autonomy Page UI Refactoring (earlier)
-- **Decomposed monolithic page** (`consultant-ai-autonomy.tsx`, 5,362 lines) into 9 modular files in `client/src/components/autonomy/`:
-  - `types.ts` — TypeScript interfaces for all data structures
-  - `constants.ts` — Design tokens, role profiles, task library, categories
-  - `utils.tsx` — Shared utilities (badges, formatters, PDF generation)
-  - `index.tsx` — Main orchestrator with all state, queries, mutations
-  - `SettingsTab.tsx` — AI roles grid, autonomy slider, working hours, limits, logs, Personalizza config form
-  - `ActivityTab.tsx` — Activity feed with cycle grouping, AI reasoning logs, simulation mode
-  - `DashboardTab.tsx` — Task CRUD, detail dialog, execution plans, stats
-  - `DataCatalogTab.tsx` — Static AI data access documentation
-  - `DeepResearchResults.tsx` — Structured AI research results renderer
-- **Design system applied**: `rounded-xl` borders, `shadow-sm` only, no gradient card backgrounds, 8px spacing grid, semantic color palette (primary/emerald/red/amber)
-- **Page file** (`consultant-ai-autonomy.tsx`) is now a 1-line re-export
-- All functionality preserved: API calls, mutations, state management, PDF export, real-time polling

@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
 
-function buildTaskMemorySection(recentAllTasks: any[], roleId: string): string {
+function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanentBlocks?: any[]): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
   const otherRoleTasks = recentAllTasks.filter(t => t.role !== roleId);
   
@@ -43,7 +43,13 @@ function buildTaskMemorySection(recentAllTasks: any[], roleId: string): string {
     section += `\nNessun task creato negli ultimi 7 giorni.`;
   }
   
-  section += `\n\nREGOLA ANTI-DUPLICAZIONE: NON creare task identici o molto simili a quelli già in coda, completati o cancellati. Se un task è stato cancellato, il consulente non lo vuole - non riproporlo. Se un altro ruolo AI ha già un task per quel cliente, evita sovrapposizioni.\n`;
+  const roleBlocks = permanentBlocks?.filter(b => !b.role || b.role === roleId) || [];
+  if (roleBlocks.length > 0) {
+    section += `\n\n🚫 BLOCCHI PERMANENTI (il consulente ha VIETATO questi task - NON proporli MAI):`;
+    section += `\n${JSON.stringify(roleBlocks.map(b => ({ client: b.contactName || b.contactId, category: b.category || 'qualsiasi', role: b.role || 'qualsiasi' })), null, 2)}`;
+  }
+
+  section += `\n\nREGOLA ANTI-DUPLICAZIONE: NON creare task identici o molto simili a quelli già in coda, completati o cancellati. Se un task è stato cancellato, il consulente non lo vuole - non riproporlo. Se c'è un BLOCCO PERMANENTE per un cliente/categoria, NON proporre MAI quel tipo di task. Se un altro ruolo AI ha già un task per quel cliente, evita sovrapposizioni.\n`;
   
   return section;
 }
@@ -67,6 +73,7 @@ export interface AIRoleDefinition {
     romeTimeStr: string;
     recentCompletedTasks: any[];
     recentAllTasks: any[];
+    permanentBlocks?: any[];
   }) => string;
   fetchRoleData: (consultantId: string, clientIds: string[]) => Promise<Record<string, any>>;
 }
@@ -363,12 +370,13 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
 
   let kbDocumentTitles: string[] = [];
   let fileSearchStoreNames: string[] = [];
-  const linkedIds = marcoContext.linkedKbDocumentIds || [];
+  const linkedIds: string[] = marcoContext.linkedKbDocumentIds || [];
   if (linkedIds.length > 0) {
+    const pgArray = `{${linkedIds.map((id: string) => `"${id}"`).join(',')}}`;
     const kbResult = await db.execute(sql`
       SELECT title
       FROM consultant_knowledge_documents
-      WHERE id = ANY(${linkedIds}::varchar[])
+      WHERE id = ANY(${pgArray}::varchar[])
       AND consultant_id = ${consultantId}
       AND status = 'indexed'
     `);
@@ -589,7 +597,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
     typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "prepare_call", "voice_call"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchAlessiaData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const consultationsSummary = (roleData.consultations || []).map((c: any) => ({
         client: c.client_name,
         client_id: c.client_id,
@@ -625,7 +633,7 @@ ${consultationsSummary.length > 0 ? JSON.stringify(consultationsSummary, null, 2
 STORICO CHIAMATE AI RECENTI:
 ${callsSummary.length > 0 ? JSON.stringify(callsSummary, null, 2) : 'Nessuna chiamata AI recente'}
 
-${buildTaskMemorySection(recentAllTasks, 'alessia')}
+${buildTaskMemorySection(recentAllTasks, 'alessia', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
 ${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
@@ -681,7 +689,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "generate_report", "send_email"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchMillieData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const journeySummary = (roleData.journeyProgress || []).map((jp: any) => ({
         client: jp.client_name,
         client_id: jp.client_id,
@@ -713,7 +721,7 @@ ${journeySummary.length > 0 ? JSON.stringify(journeySummary, null, 2) : 'Nessun 
 LOG EMAIL RECENTI (ultimi 14 giorni):
 ${emailLogSummary.length > 0 ? JSON.stringify(emailLogSummary, null, 2) : 'Nessuna email inviata di recente'}
 
-${buildTaskMemorySection(recentAllTasks, 'millie')}
+${buildTaskMemorySection(recentAllTasks, 'millie', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE:
 ${settings.custom_instructions || 'Nessuna'}
@@ -768,7 +776,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "generate_report", "send_email"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchEchoData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const unsummarized = (roleData.unsummarizedConsultations || []).map((c: any) => ({
         consultation_id: c.id,
         client: c.client_name,
@@ -815,7 +823,7 @@ ${unsummarized.length > 0 ? JSON.stringify(unsummarized, null, 2) : 'Tutte le co
 RIEPILOGHI GIÀ GENERATI (ultimi 30 giorni):
 ${summarized.length > 0 ? JSON.stringify(summarized, null, 2) : 'Nessuno'}
 
-${buildTaskMemorySection(recentAllTasks, 'echo')}
+${buildTaskMemorySection(recentAllTasks, 'echo', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE:
 ${settings.custom_instructions || 'Nessuna'}
@@ -873,7 +881,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "web_search", "analyze_patterns", "generate_report"],
     maxTasksPerRun: 1,
     fetchRoleData: fetchNovaData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const postsSummary = (roleData.recentPosts || []).map((p: any) => ({
         title: p.title?.substring(0, 80),
         type: p.content_type,
@@ -903,7 +911,7 @@ ${postsSummary.length > 0 ? JSON.stringify(postsSummary, null, 2) : 'Nessun post
 IDEE PENDENTI:
 ${ideasSummary.length > 0 ? JSON.stringify(ideasSummary, null, 2) : 'Nessuna idea pendente'}
 
-${buildTaskMemorySection(recentAllTasks, 'nova')}
+${buildTaskMemorySection(recentAllTasks, 'nova', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE:
 ${settings.custom_instructions || 'Nessuna'}
@@ -959,7 +967,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "analyze_patterns", "send_whatsapp"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchStellaData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const convSummary = (roleData.conversations || []).slice(0, 15).map((c: any) => ({
         client: c.client_name || c.phone_number,
         phone: c.phone_number,
@@ -994,7 +1002,7 @@ ${convSummary.length > 0 ? JSON.stringify(convSummary, null, 2) : 'Nessuna conve
 MESSAGGI RECENTI (ultimi 7 giorni):
 ${msgSummary.length > 0 ? JSON.stringify(msgSummary, null, 2) : 'Nessun messaggio recente'}
 
-${buildTaskMemorySection(recentAllTasks, 'stella')}
+${buildTaskMemorySection(recentAllTasks, 'stella', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE:
 ${settings.custom_instructions || 'Nessuna'}
@@ -1049,7 +1057,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "analyze_patterns", "send_email"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchIrisData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const emailSummary = (roleData.unansweredEmails || []).map((e: any) => ({
         from: e.from_name || e.from_email,
         email: e.from_email,
@@ -1080,7 +1088,7 @@ ${emailSummary.length > 0 ? JSON.stringify(emailSummary, null, 2) : 'Nessuna ema
 TICKET APERTI:
 ${ticketSummary.length > 0 ? JSON.stringify(ticketSummary, null, 2) : 'Nessun ticket aperto'}
 
-${buildTaskMemorySection(recentAllTasks, 'iris')}
+${buildTaskMemorySection(recentAllTasks, 'iris', permanentBlocks)}
 
 ISTRUZIONI PERSONALIZZATE:
 ${settings.custom_instructions || 'Nessuna'}
@@ -1136,7 +1144,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchMarcoData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const upcomingSummary = (roleData.upcomingConsultations || []).map((c: any) => ({
         consultation_id: c.id,
         client: c.client_name,
@@ -1213,7 +1221,7 @@ ${monitoringSummary.length > 0 ? JSON.stringify(monitoringSummary, null, 2) : 'N
 SCHEDULAZIONE CONSULENZE FUTURE (prossimi 3 mesi):
 ${clientsNeedingScheduling.length > 0 ? JSON.stringify(clientsNeedingScheduling, null, 2) : 'Tutti i clienti con pacchetti hanno consulenze programmate per i prossimi mesi'}
 
-${buildTaskMemorySection(recentAllTasks, 'marco')}
+${buildTaskMemorySection(recentAllTasks, 'marco', permanentBlocks)}
 
 CLIENTI ATTIVI:
 ${JSON.stringify(clientsList, null, 2)}
@@ -1299,7 +1307,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "generate_report", "send_email", "send_whatsapp", "voice_call"],
     maxTasksPerRun: 3,
     fetchRoleData: fetchPersonalizzaData,
-    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks }) => {
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks }) => {
       const consultationsSummary = (roleData.consultations || []).map((c: any) => ({
         client: c.client_name,
         client_id: c.client_id,
@@ -1359,7 +1367,7 @@ ${consultationsSummary.length > 0 ? JSON.stringify(consultationsSummary, null, 2
 TASK AI RECENTI (ultimi 14 giorni):
 ${tasksSummary.length > 0 ? JSON.stringify(tasksSummary, null, 2) : 'Nessun task recente'}
 
-${buildTaskMemorySection(recentAllTasks, 'personalizza')}
+${buildTaskMemorySection(recentAllTasks, 'personalizza', permanentBlocks)}
 
 REGOLE DI PERSONALIZZA:
 1. Suggerisci MASSIMO 3 task

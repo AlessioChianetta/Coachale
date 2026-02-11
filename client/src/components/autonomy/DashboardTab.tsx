@@ -92,6 +92,34 @@ function DashboardTab({
   const { toast } = useToast();
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
   const [dashboardRoleFilter, setDashboardRoleFilter] = React.useState<string>("all");
+  const [cancelDialogTask, setCancelDialogTask] = React.useState<AITask | null>(null);
+  const [isBlockCancel, setIsBlockCancel] = React.useState(false);
+
+  const handleCancelTask = async (taskId: string, block: boolean) => {
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/cancel`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        ...(block ? { body: JSON.stringify({ block: true }) } : {}),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({
+        title: block ? "Task cancellato e bloccato" : "Task cancellato",
+        description: block
+          ? "Il task è stato cancellato e un blocco permanente è stato creato"
+          : "Il task è stato cancellato con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+      if (selectedTaskId === taskId) setSelectedTaskId(null);
+    } catch {
+      toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
+    }
+    setCancelDialogTask(null);
+    setIsBlockCancel(false);
+  };
 
   const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -704,22 +732,7 @@ function DashboardTab({
                     size="sm"
                     variant="outline"
                     className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
-                          method: "PATCH",
-                          headers: getAuthHeaders(),
-                        });
-                        if (!res.ok) throw new Error("Failed");
-                        toast({ title: "Task eliminato", description: "Il task è stato eliminato" });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                      } catch {
-                        toast({ title: "Errore", description: "Impossibile eliminare il task", variant: "destructive" });
-                      }
-                    }}
+                    onClick={() => setCancelDialogTask(task)}
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
                     Elimina
@@ -1118,21 +1131,7 @@ function DashboardTab({
                                 title="Cancella task"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
-                                    fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
-                                      method: "PATCH",
-                                      headers: getAuthHeaders(),
-                                    }).then(res => {
-                                      if (res.ok) {
-                                        toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
-                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                      } else {
-                                        toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
-                                      }
-                                    });
-                                  }
+                                  setCancelDialogTask(task);
                                 }}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1273,25 +1272,7 @@ function DashboardTab({
                         variant="outline"
                         size="sm"
                         className="shrink-0 text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                        onClick={() => {
-                          if (window.confirm("Sei sicuro di voler cancellare questo task?")) {
-                            fetch(`/api/ai-autonomy/tasks/${task.id}/cancel`, {
-                              method: "PATCH",
-                              headers: getAuthHeaders(),
-                            }).then(res => {
-                              if (res.ok) {
-                                toast({ title: "Task cancellato", description: "Il task è stato cancellato con successo" });
-                                queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`] });
-                                queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                setSelectedTaskId(null);
-                              } else {
-                                toast({ title: "Errore", description: "Impossibile cancellare il task", variant: "destructive" });
-                              }
-                            });
-                          }
-                        }}
+                        onClick={() => setCancelDialogTask(task)}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Cancella Task
@@ -1581,6 +1562,62 @@ function DashboardTab({
             <div className="py-12 text-center text-muted-foreground">
               <DialogHeader className="sr-only"><DialogTitle>Task non trovato</DialogTitle><DialogDescription>Il task richiesto non esiste</DialogDescription></DialogHeader>
               Task non trovato
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!cancelDialogTask} onOpenChange={(open) => { if (!open) { setCancelDialogTask(null); setIsBlockCancel(false); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancella Task</DialogTitle>
+            <DialogDescription>
+              Scegli se cancellare semplicemente il task o se bloccarlo permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          {cancelDialogTask && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border p-3 space-y-2">
+                {cancelDialogTask.contact_name && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium">{cancelDialogTask.contact_name}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  {getCategoryBadge(cancelDialogTask.task_category)}
+                  {cancelDialogTask.ai_role && (
+                    <Badge variant="outline" className="text-xs">
+                      {cancelDialogTask.ai_role.charAt(0).toUpperCase() + cancelDialogTask.ai_role.slice(1)}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {cancelDialogTask.ai_instruction}
+                </p>
+              </div>
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 rounded-xl px-3 py-2 border border-amber-200 dark:border-amber-800/40">
+                <Info className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <span>Il blocco permanente impedirà all'AI di proporre task simili per questo cliente in futuro.</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleCancelTask(cancelDialogTask.id, false)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Solo Cancella
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => handleCancelTask(cancelDialogTask.id, true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Cancella e Blocca Permanentemente
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

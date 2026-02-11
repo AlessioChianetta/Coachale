@@ -10099,3 +10099,20 @@ export const aiActivityLog = pgTable("ai_activity_log", {
 
 export type AIActivityLog = typeof aiActivityLog.$inferSelect;
 export type InsertAIActivityLog = typeof aiActivityLog.$inferInsert;
+
+export const aiTaskBlocks = pgTable("ai_task_blocks", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: uuid("consultant_id").notNull(),
+  contactId: uuid("contact_id"),
+  contactName: varchar("contact_name", { length: 255 }),
+  taskCategory: varchar("task_category", { length: 30 }),
+  aiRole: varchar("ai_role", { length: 30 }),
+  reason: text("reason"),
+  sourceTaskId: varchar("source_task_id", { length: 100 }),
+  blockedAt: timestamp("blocked_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_ai_task_blocks_consultant").on(table.consultantId),
+}));
+
+export type AITaskBlock = typeof aiTaskBlocks.$inferSelect;
+export type InsertAITaskBlock = typeof aiTaskBlocks.$inferInsert;

@@ -1270,6 +1270,20 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
   }));
 
+  const blocksResult = await db.execute(sql`
+    SELECT b.contact_id::text, b.task_category, b.ai_role,
+           COALESCE(u.first_name || ' ' || u.last_name, b.contact_id::text) as contact_name
+    FROM ai_task_blocks b
+    LEFT JOIN users u ON u.id = b.contact_id
+    WHERE b.consultant_id = ${consultantId}
+  `);
+  const permanentBlocks = (blocksResult.rows as any[]).map(b => ({
+    contactId: b.contact_id,
+    contactName: b.contact_name,
+    category: b.task_category,
+    role: b.ai_role,
+  }));
+
   let aiClient: GeminiClient | null = null;
   let providerModel = GEMINI_3_MODEL;
   let providerName = 'Google AI Studio';
@@ -1466,6 +1480,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         romeTimeStr,
         recentCompletedTasks: recentTasksSummary,
         recentAllTasks: recentAllTasksSummary,
+        permanentBlocks,
       });
 
       let marcoFileSearchTool: any = null;
@@ -1612,6 +1627,15 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         const tasksWouldCreate = tasksToProcess
           .filter(t => t.ai_instruction)
           .filter(t => !(t.contact_id && (clientsWithPendingTasks.has(t.contact_id) || clientsWithRecentCompletion.has(t.contact_id))))
+          .filter(t => {
+            if (!t.contact_id || permanentBlocks.length === 0) return true;
+            return !permanentBlocks.some(b => {
+              if (b.contactId !== t.contact_id) return false;
+              if (b.role && b.role !== role.id) return false;
+              if (b.category && b.category !== (t.task_category || role.categories[0])) return false;
+              return true;
+            });
+          })
           .map(t => ({
             contactName: t.contact_name || 'N/A',
             contactId: t.contact_id || null,
@@ -1660,6 +1684,19 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
             if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
               continue;
+            }
+
+            if (suggestedTask.contact_id && permanentBlocks.length > 0) {
+              const isBlocked = permanentBlocks.some(b => {
+                if (b.contactId !== suggestedTask.contact_id) return false;
+                if (b.role && b.role !== role.id) return false;
+                if (b.category && b.category !== (suggestedTask.task_category || role.categories[0])) return false;
+                return true;
+              });
+              if (isBlocked) {
+                console.log(`🚫 [AUTONOMOUS-GEN] [${role.name}] Task for ${suggestedTask.contact_name} blocked by permanent block rule`);
+                continue;
+              }
             }
 
             const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

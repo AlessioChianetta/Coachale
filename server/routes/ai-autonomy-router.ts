@@ -1643,6 +1643,18 @@ router.patch("/tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant
     }
 
     const { id } = req.params;
+    const { block } = req.body || {};
+
+    const taskResult = await db.execute(sql`
+      SELECT contact_id, contact_name, task_category, ai_role, ai_instruction
+      FROM ai_scheduled_tasks
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    const task = taskResult.rows[0] as any;
+    if (!task) {
+      return res.status(404).json({ error: "Task non trovato" });
+    }
 
     const result = await db.execute(sql`
       UPDATE ai_scheduled_tasks
@@ -1656,7 +1668,22 @@ router.patch("/tasks/:id/cancel", authenticateToken, requireAnyRole(["consultant
       return res.status(400).json({ error: "Task non trovato o non cancellabile" });
     }
 
-    return res.json({ success: true });
+    if (block && task.contact_id) {
+      await db.execute(sql`
+        INSERT INTO ai_task_blocks (consultant_id, contact_id, contact_name, task_category, ai_role, reason, source_task_id)
+        VALUES (
+          ${consultantId},
+          ${task.contact_id},
+          ${task.contact_name || null},
+          ${task.task_category || null},
+          ${task.ai_role || null},
+          ${`Bloccato da task cancellato: ${(task.ai_instruction || '').substring(0, 200)}`},
+          ${id}
+        )
+      `);
+    }
+
+    return res.json({ success: true, blocked: !!block });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error cancelling task:", error);
     return res.status(500).json({ error: "Failed to cancel task" });
@@ -1677,6 +1704,49 @@ router.post("/simulate", authenticateToken, requireAnyRole(["consultant", "super
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error running simulation:", error);
     return res.status(500).json({ error: "Simulation failed: " + error.message });
+  }
+});
+
+router.get("/blocks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const result = await db.execute(sql`
+      SELECT b.*, u.first_name || ' ' || u.last_name as contact_display_name
+      FROM ai_task_blocks b
+      LEFT JOIN users u ON u.id = b.contact_id
+      WHERE b.consultant_id = ${consultantId}
+      ORDER BY b.blocked_at DESC
+    `);
+
+    return res.json(result.rows);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching blocks:", error);
+    return res.status(500).json({ error: "Failed to fetch blocks" });
+  }
+});
+
+router.delete("/blocks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      DELETE FROM ai_task_blocks
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: "Blocco non trovato" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error deleting block:", error);
+    return res.status(500).json({ error: "Failed to delete block" });
   }
 });
 

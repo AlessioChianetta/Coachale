@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +27,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, MarcoContext, MarcoObjective, KbDocument } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
-import { getAutonomyLabel, getAutonomyBadgeColor } from "./utils";
+import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 
 interface SettingsTabProps {
   settings: AutonomySettings;
@@ -99,6 +102,39 @@ function SettingsTab({
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: blocks = [] } = useQuery<Array<{
+    id: string;
+    consultant_id: string;
+    contact_id: string;
+    contact_name: string | null;
+    contact_display_name: string;
+    task_category: string | null;
+    ai_role: string | null;
+    reason: string | null;
+    blocked_at: string;
+    source_task_id: string | null;
+  }>>({
+    queryKey: ["/api/ai-autonomy/blocks"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/blocks", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  const handleDeleteBlock = async (blockId: string) => {
+    if (!window.confirm("Rimuovere questo blocco? L'AI potrà nuovamente proporre questo tipo di task.")) return;
+    const res = await fetch(`/api/ai-autonomy/blocks/${blockId}`, { method: "DELETE", headers: getAuthHeaders() });
+    if (res.ok) {
+      toast({ title: "Blocco rimosso", description: "L'AI potrà nuovamente proporre questo tipo di task" });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/blocks"] });
+    } else {
+      toast({ title: "Errore", description: "Impossibile rimuovere il blocco", variant: "destructive" });
+    }
+  };
 
   const toggleWorkingDay = (day: number) => {
     setSettings(prev => ({
@@ -1820,6 +1856,57 @@ function SettingsTab({
                 </Button>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border rounded-xl shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Shield className="h-5 w-5" />
+            Blocchi Permanenti
+          </CardTitle>
+          <CardDescription>
+            Task che l'AI non proporrà mai. Rimuovi un blocco per consentire nuovamente quel tipo di task.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {blocks.length === 0 ? (
+            <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3 border border-border">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>Nessun blocco attivo. Puoi bloccare un task dalla Dashboard quando lo cancelli.</span>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {blocks.map((block) => (
+                <div key={block.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-3 flex-wrap min-w-0 flex-1">
+                    <span className="text-sm font-medium truncate">
+                      {block.contact_display_name || block.contact_name || "Tutti i clienti"}
+                    </span>
+                    {block.task_category ? getCategoryBadge(block.task_category) : (
+                      <Badge variant="outline" className="text-xs">Tutte le categorie</Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {block.ai_role
+                        ? (AI_ROLE_PROFILES[block.ai_role]?.role || block.ai_role.charAt(0).toUpperCase() + block.ai_role.slice(1))
+                        : "Tutti i ruoli"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(block.blocked_at).toLocaleDateString("it-IT")}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
+                    onClick={() => handleDeleteBlock(block.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
