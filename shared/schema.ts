@@ -8959,7 +8959,8 @@ export type SemanticLogicalRole =
   | "total_net" | "tax_rate" | "payment_method" | "staff"
   | "is_sellable" | "line_id"
   | "revenue_amount" | "document_type" | "time_slot" | "sales_channel"
-  | "document_id" | "supplier_id";
+  | "document_id" | "supplier_id"
+  | "cost_foodbev" | "cost_materials" | "cost_extra" | "cost_staff" | "cost_structure" | "cost_utilities";
 
 export type SemanticMappingStatus = "pending" | "confirmed" | "rejected";
 

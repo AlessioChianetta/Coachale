@@ -48,6 +48,12 @@ export const ROLE_DESCRIPTIONS: Record<string, RoleDescription> = {
   sales_channel: { description: "Canale vendita: dine_in | takeaway | delivery", type: "TEXT", example: "dine_in" },
   is_sellable: { description: "1 = prodotto vendibile, 0 = modificatore/nota", type: "INTEGER", example: "1" },
   line_id: { description: "ID univoco della riga dettaglio", type: "TEXT", example: "LINE-001" },
+  cost_foodbev: { description: "Costo produzione food & beverage", type: "NUMERIC", example: "1.50" },
+  cost_materials: { description: "Costo produzione materiali", type: "NUMERIC", example: "0.60" },
+  cost_extra: { description: "Costo produzione extra/vari", type: "NUMERIC", example: "0.90" },
+  cost_staff: { description: "Costo produzione personale", type: "NUMERIC", example: "4.50" },
+  cost_structure: { description: "Costo produzione struttura", type: "NUMERIC", example: "1.50" },
+  cost_utilities: { description: "Costo produzione consumi/utenze", type: "NUMERIC", example: "3.00" },
 };
 
 /**
@@ -172,6 +178,26 @@ export const SYSTEM_RULES: SystemRule[] = [
   { pattern: "id_fornitore", matchType: "contains", matchTypeLabel: "Contiene", role: "supplier_id", description: "ID fornitore" },
   { pattern: "fornitore_id", matchType: "contains", matchTypeLabel: "Contiene", role: "supplier_id", description: "ID fornitore" },
   { pattern: "supplier_id", matchType: "exact", matchTypeLabel: "Esatto", role: "supplier_id", description: "Supplier ID inglese" },
+  // cost_foodbev
+  { pattern: "costoproduzione_foodbev", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_foodbev", description: "Costo produzione F&B" },
+  { pattern: "costo_food", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_foodbev", description: "Costo food" },
+  // cost_materials
+  { pattern: "costoproduzione_materiali", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_materials", description: "Costo materiali" },
+  { pattern: "costo_materiali", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_materials", description: "Costo materiali" },
+  // cost_extra
+  { pattern: "costoproduzione_extra", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_extra", description: "Costo extra" },
+  { pattern: "costo_extra", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_extra", description: "Costo extra" },
+  // cost_staff
+  { pattern: "costoproduzione_personale", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_staff", description: "Costo personale" },
+  { pattern: "costo_personale", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_staff", description: "Costo personale" },
+  { pattern: "labor_cost", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_staff", description: "Labor cost" },
+  // cost_structure
+  { pattern: "costoproduzione_struttura", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_structure", description: "Costo struttura" },
+  { pattern: "costo_struttura", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_structure", description: "Costo struttura" },
+  // cost_utilities
+  { pattern: "costoproduzione_consumi", matchType: "exact", matchTypeLabel: "Esatto", role: "cost_utilities", description: "Costo consumi" },
+  { pattern: "costo_consumi", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_utilities", description: "Costo consumi" },
+  { pattern: "costo_utenze", matchType: "contains", matchTypeLabel: "Contiene", role: "cost_utilities", description: "Costo utenze" },
 ];
 
 /**

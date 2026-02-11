@@ -228,6 +228,19 @@ function generateQuestionsFromContext(context: DatasetContext): string[] {
     questions.push("Quali prodotti hanno il margine più basso (da ottimizzare)?");
   }
   
+  if (context.availableMetrics.includes('cost_staff_total')) {
+    questions.push("Quanto incide il costo del personale sul fatturato?");
+  }
+  if (context.availableMetrics.includes('prime_cost')) {
+    questions.push("Qual è il prime cost?");
+  }
+  if (context.availableMetrics.includes('total_production_cost')) {
+    questions.push("Come si distribuiscono i costi di produzione?");
+  }
+  if (context.availableMetrics.includes('cost_foodbev_total')) {
+    questions.push("Quanto pesa il costo food & beverage?");
+  }
+  
   if (context.dimensions['waiter'] && context.dimensions['waiter'].length > 1) {
     const waiters = context.dimensions['waiter'].slice(0, 3).join(', ');
     questions.push(`Come si confrontano le performance dei camerieri (${waiters}...)?`);

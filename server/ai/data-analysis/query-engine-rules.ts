@@ -23,7 +23,8 @@ export interface QueryEnhancement {
 
 const REVENUE_METRICS = [
   "revenue", "fatturato", "gross_margin", "margine", "margin",
-  "food_cost", "profit", "profitto", "utile", "incasso"
+  "food_cost", "profit", "profitto", "utile", "incasso",
+  "prime_cost", "costo personale", "labor cost", "costo produzione", "costo struttura", "costo consumi", "costo materiali", "costo f&b"
 ];
 
 const TIME_SLOT_HOURS: Record<string, { start: number; end: number }> = {

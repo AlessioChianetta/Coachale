@@ -1063,8 +1063,8 @@ Se la domanda richiede dati che NON sono presenti nelle colonne:
 Esempi OBBLIGATORI:
 - "Vendite a pranzo/cena/notte?" → Se non c'è colonna orario/timestamp: "Non ho i dati degli orari"
 - "Vendite weekend vs settimana?" → Se non c'è colonna data: "Non ho le date degli ordini"
-- "Quanto costa il personale?" → Se non c'è labor_cost: "Non ho i costi del personale"
-- "Prime Cost?" → Richiede food_cost + labor_cost. Se manca labor: "Per il Prime Cost mi serve anche il costo del personale, che non è nel dataset"
+- "Quanto costa il personale?" → Se c'è cost_staff: execute_metric(cost_staff_total o cost_staff_percent). Se manca: "Non ho i costi del personale nel dataset"
+- "Prime Cost?" → Se ci sono cost e cost_staff: execute_metric(prime_cost o prime_cost_percent). Se manca cost_staff: "Per il Prime Cost mi serve anche il costo del personale, che non è nel dataset"
 - "Quanti clienti unici?" → Se non c'è customer_id univoco: "Non ho un identificativo cliente affidabile"
 
 REGOLA D'ORO: Se non hai la colonna, NON PUOI rispondere. Dillo chiaramente.
@@ -1085,6 +1085,18 @@ METRICHE PREDEFINITE (execute_metric / aggregate_group):
 - gross_margin_percent → Margine lordo %
 - discount_total → Sconti totali
 - discount_percent_on_revenue → Incidenza sconti %
+- cost_staff_total → Costo personale totale (€)
+- cost_staff_percent → Incidenza personale sul fatturato (%)
+- cost_foodbev_total → Costo food & beverage totale (€)
+- cost_foodbev_percent → Incidenza F&B sul fatturato (%)
+- cost_materials_total → Costo materiali totale (€)
+- cost_extra_total → Costo extra totale (€)
+- cost_structure_total → Costo struttura totale (€)
+- cost_utilities_total → Costo consumi totale (€)
+- prime_cost → Prime Cost: food cost + personale (€)
+- prime_cost_percent → Prime Cost % sul fatturato
+- total_production_cost → Costo produzione totale (€)
+- total_production_cost_percent → Incidenza costi produzione sul fatturato (%)
 
 4) DIVIETO METRICHE DERIVATE INTERNE
 - NON calcolare MAI internamente: "revenue / quantity = prezzo medio"
@@ -1107,6 +1119,13 @@ METRICHE PREDEFINITE (execute_metric / aggregate_group):
 - "margine lordo €", "margine in euro", "profitto €" → execute_metric(gross_margin) - MAI usare revenue!
 - "margine lordo %", "margine percentuale" → execute_metric(gross_margin_percent)
 - "margine medio per scontrino", "margine per ordine" → execute_metric(gross_margin_per_document)
+- "costo personale", "personale", "labor" → execute_metric(cost_staff_total o cost_staff_percent)
+- "prime cost" → execute_metric(prime_cost o prime_cost_percent)
+- "costo produzione", "costi produzione" → execute_metric(total_production_cost)
+- "costo f&b", "food beverage" → execute_metric(cost_foodbev_total o cost_foodbev_percent)
+- "costo struttura" → execute_metric(cost_structure_total)
+- "costo consumi", "costo utenze" → execute_metric(cost_utilities_total)
+- "costo materiali" → execute_metric(cost_materials_total)
 
 REGOLA CRITICA - FILTRI FASCIA ORARIA (time_slot):
 - "a pranzo", "pranzo" → filtra con time_slot = 'lunch' (oppure estrai ora 11:00-15:00 da order_date)

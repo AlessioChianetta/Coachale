@@ -440,6 +440,10 @@ export function detectOutlier(
   const outlierThresholds: Record<string, { min?: number; max?: number; warning: string }> = {
     food_cost_percent: { max: 60, warning: "Food cost superiore al 60% - margini bassi" },
     gross_margin_percent: { min: 30, warning: "Margine lordo sotto il 30% - verificare prezzi" },
+    cost_staff_percent: { max: 50, warning: "Costo personale superiore al 50% - verificare efficienza" },
+    prime_cost_percent: { max: 80, warning: "Prime cost superiore al 80% - margini molto bassi" },
+    cost_foodbev_percent: { max: 40, warning: "Costo F&B superiore al 40% - verificare fornitori" },
+    total_production_cost_percent: { max: 90, warning: "Costi produzione superiori al 90% - attività in perdita" },
   };
   
   const threshold = outlierThresholds[metricName];

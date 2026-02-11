@@ -34,6 +34,18 @@ export const METRIC_ENUM = [
   "gross_margin_percent",
   "discount_total",
   "discount_percent_on_revenue",
+  "cost_staff_total",
+  "cost_staff_percent",
+  "cost_foodbev_total",
+  "cost_foodbev_percent",
+  "cost_materials_total",
+  "cost_extra_total",
+  "cost_structure_total",
+  "cost_utilities_total",
+  "prime_cost",
+  "prime_cost_percent",
+  "total_production_cost",
+  "total_production_cost_percent",
 ] as const;
 
 export type MetricName = typeof METRIC_ENUM[number];
