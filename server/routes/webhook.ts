@@ -201,6 +201,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     const payload: HubdigitalPayload = req.body;
 
     console.log(`📨 [WEBHOOK] Received webhook with secretKey: ${secretKey.substring(0, 8)}...`);
+    console.log(`📨 [WEBHOOK] RAW PAYLOAD:`, JSON.stringify(payload, null, 2));
 
     const webhookConfig = await storage.getWebhookConfigBySecret(secretKey);
     
