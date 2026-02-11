@@ -1,0 +1,234 @@
+Ruoli Critici
+5
+Obbligatori
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+price
+
+Prezzo di Vendita	NUMERIC	
+^price$
+^prezzo$
+^unit_?price
+^prezzo_?unitario
+^selling_?price
++3
+Unit selling price before discounts (use revenue_amount for final values)
+cost
+
+Costo Unitario	NUMERIC	
+^cost$
+^costo$
+^cost_?amount
+^costo_?amount
+^unit_?cost
++10
+Unit cost/purchase price
+quantity
+
+Quantità	NUMERIC	
+^quantity$
+^quantita
+^qty
+^qta
+^numero_?pezzi
++3
+Number of units sold
+order_date
+
+Data Ordine	DATE	
+^order_?date$
+^data$
+^date$
+^data_?doc
+^data_?ordine
++6
+Date of the order/transaction
+revenue_amount
+
+Importo Fatturato (Totale Riga)	NUMERIC	
+^revenue_?amount$
+^prezzo_?finale
+^prezzofinale
+^importo_?riga
+^line_?total
++8
+Final revenue amount per line (post-discount, ready to sum). Use this instead of price*quantity when available.
+
+Ruoli Documento
+3
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+document_id
+
+ID Documento	TEXT	
+^document_?id$
+^order_?id$
+^idddt
+^id_?ddt
+^doc_?id
++10
+Unique document/order/invoice identifier (universal: works for DDT, orders, invoices, receipts)
+line_id
+
+ID Riga	TEXT	
+^line_?id$
+^id_?riga
+^detail_?id
+^idriga
+^riga_?id
++1
+Unique line/detail row identifier
+document_type
+
+Tipo Documento	TEXT	
+^document_?type$
+^tipo_?doc
+^tipodoc
+^doc_?type
+^transaction_?type
++4
+Transaction classification: sale (normal sale), refund (return), void (cancelled), staff_meal (staff consumption). Default: sale if not present.
+
+Ruoli Prodotto
+4
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+product_id
+
+ID Prodotto	TEXT	
+^product_?id$
+^idprodotto
+^id_?prodotto
+^sku
+^codice_?articolo
++5
+Unique product/SKU identifier
+product_name
+
+Nome Prodotto	TEXT	
+^product_?name$
+^descrprod
+^descr_?prod
+^nome_?prodotto
+^descrizione
++4
+Name of the product/item
+category
+
+Categoria	TEXT	
+^category$
+^categoria
+^cat$
+^product_?category
+^tipologia
++5
+Product category
+is_sellable
+
+È Prodotto Vendibile	INTEGER	
+^is_?sellable$
+^vendibile
+^sellable
+^is_?product
+^is_?item
+Whether this line represents a real sellable product (1) or a modifier/note (0). Used for automatic filtering in analytics.
+
+Ruoli Cliente
+1
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+customer_id
+
+ID Cliente	TEXT	
+^customer_?id$
+^idcliente
+^id_?cliente
+^client_?id
+^cod_?cliente
++2
+Unique customer identifier
+
+Ruoli Finanziari
+5
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+discount_percent
+
+Sconto %	NUMERIC	
+^discount_?percent$
+^sconto_?percent
+^sconto_?perc
+^discount_?pct
+^perc_?sconto
+Discount percentage applied
+total_net
+
+Totale Netto	NUMERIC	
+^total_?net$
+^totale_?netto$
+^net_?total$
+^importo_?totale
+^importo$
+Net total after discounts
+tax_rate
+
+Aliquota IVA	NUMERIC	
+^tax_?rate$
+^aliquota
+^vat_?rate
+^iva_?perc
+^perc_?iva
+Tax/VAT rate percentage
+payment_method
+
+Metodo Pagamento	TEXT	
+^payment_?method$
+^pagamento
+^payment
+^tipo_?pagamento
+^modalita_?pagamento
++1
+Payment method used
+supplier_id
+
+ID Fornitore	TEXT	
+^id_?fornitore
+^idfornitore
+^supplier_?id
+^vendor_?id
+^cod_?fornitore
++1
+Unique supplier/vendor identifier
+
+Ruoli Temporali
+2
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+time_slot
+
+Fascia Oraria	TEXT	
+^time_?slot$
+^fascia_?oraria
+^fasciaoraria
+^timeslot
+^turno
++4
+Service time classification: breakfast (06:00-11:00), lunch (11:00-15:00), dinner (18:00-23:00), late (23:00-04:00). Can be calculated from order_date if not present.
+sales_channel
+
+Canale Vendita	TEXT	
+^sales_?channel$
+^canale
+^channel
+^modalita_?servizio
+^service_?mode
++6
+Service modality: dine_in (in-restaurant), takeaway (pickup), delivery (home delivery). Default: dine_in if not present.
+
+Ruoli Staff
+1
+Ruolo ID	Nome	Tipo Dato	Pattern Auto-Detect	Descrizione
+staff
+
+Operatore/Cameriere	TEXT	
+^staff$
+^waiter$
+^cameriere
+^operator$
+^operatore
++5
+Staff member who processed the order (waiter, cashier, operator)
