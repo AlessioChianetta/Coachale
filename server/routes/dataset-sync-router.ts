@@ -2422,14 +2422,23 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
 
     // Controlla se esiste già un dataset per questo cliente dalla stessa sorgente
     const existingDatasetResult = await db.execute<any>(sql`
-      SELECT id, table_name FROM client_datasets 
-      WHERE client_id = ${datasetClientId} AND source = 'sync_api'
+      SELECT id, table_name FROM client_data_datasets 
+      WHERE client_id = ${datasetClientId} AND consultant_id = ${source.consultant_id}
       ORDER BY created_at DESC LIMIT 1
     `);
     const existingDatasets = existingDatasetResult.rows || [];
 
     let targetDatasetId: number;
     let tableName: string;
+
+    const columnMapping: Record<string, { displayName: string; dataType: string }> = {};
+    for (const col of discoveryResult.columns) {
+      const dbColumnName = sanitizeColumnName(col.suggestedName || col.originalName);
+      columnMapping[dbColumnName] = {
+        displayName: col.displayName || col.originalName,
+        dataType: col.dataType || 'TEXT',
+      };
+    }
 
     if (existingDatasets.length > 0) {
       targetDatasetId = existingDatasets[0].id;
@@ -2445,8 +2454,8 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
       await createDynamicTable(tableName, columnDefs);
 
       const datasetInsertResult = await db.execute<any>(sql`
-        INSERT INTO client_datasets (client_id, name, table_name, column_count, row_count, source, consultant_id)
-        VALUES (${datasetClientId}, ${originalname}, ${tableName}, ${headers.length}, ${sheet.rowCount}, 'sync_api', ${source.consultant_id})
+        INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, column_mapping, auto_confirmed, confidence_score, created_at)
+        VALUES (${source.consultant_id}, ${datasetClientId}, ${`Partner: ${originalname}`}, ${originalname}, ${tableName}, 'ready', ${sheet.rowCount}, ${headers.length}, ${JSON.stringify(columnMapping)}::jsonb, ${discoveryResult.autoConfirmed}, ${discoveryResult.overallConfidence}, now())
         RETURNING id
       `);
       targetDatasetId = datasetInsertResult.rows[0].id;
@@ -2456,19 +2465,19 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
     const replaceMode = req.body.replace_mode || 'full';
     const upsertKeyColumns = req.body.upsert_key_columns?.split(',').map((c: string) => c.trim()) || [];
     
-    const columnMapping = discoveryResult.columns.map((col: any) => ({
+    const importColumnMapping = discoveryResult.columns.map((col: any) => ({
       originalName: col.originalName,
       mappedName: sanitizeColumnName(col.suggestedName || col.originalName),
       physicalColumn: col.physicalColumn || col.originalName,
     }));
 
     const importResult = await importDataFromFileWithOptions(
-      newPath, originalname, tableName, columnMapping, replaceMode, upsertKeyColumns
+      newPath, originalname, tableName, importColumnMapping, replaceMode, upsertKeyColumns
     );
 
-    // Aggiorna row count del dataset
+    // Aggiorna row count e column_mapping del dataset
     await db.execute(sql`
-      UPDATE client_datasets SET row_count = (SELECT COUNT(*) FROM ${sql.raw(tableName)}), updated_at = now() WHERE id = ${targetDatasetId}
+      UPDATE client_data_datasets SET row_count = (SELECT COUNT(*) FROM ${sql.raw(tableName)}), column_mapping = ${JSON.stringify(columnMapping)}::jsonb, updated_at = now() WHERE id = ${targetDatasetId}
     `);
 
     // Salva mapping semantico
