@@ -60,6 +60,7 @@ import {
   CheckCircle2,
   XCircle,
   Timer,
+  AlertTriangle,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -630,7 +631,10 @@ export default function SystemDocumentsSection() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="sys-doc-content">Contenuto *</Label>
-                  <span className="text-xs text-muted-foreground">{form.content.length} caratteri</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">{form.content.length} caratteri</span>
+                    <span className="text-xs text-muted-foreground">~{Math.round(form.content.length / 4).toLocaleString()} token</span>
+                  </div>
                 </div>
                 <Textarea
                   id="sys-doc-content"
@@ -659,35 +663,64 @@ export default function SystemDocumentsSection() {
 
                 <div className="space-y-2">
                   <Label>Modalità di Iniezione</Label>
-                  <Select
-                    value={form.injection_mode}
-                    onValueChange={(v: "system_prompt" | "file_search") => setForm(f => ({ ...f, injection_mode: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="system_prompt">
-                        <div className="flex items-center gap-2">
-                          <StickyNote className="h-4 w-4 text-slate-500" />
-                          <span className="font-medium">System Prompt</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="file_search">
-                        <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4 text-amber-500" />
-                          <span className="font-medium">File Search</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {form.injection_mode === "system_prompt"
-                      ? "Sempre in memoria"
-                      : "Cercato solo quando rilevante"}
-                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, injection_mode: 'system_prompt' }))}
+                      className={`text-left p-4 rounded-xl border-2 transition-all ${
+                        form.injection_mode === 'system_prompt'
+                          ? 'border-slate-500 bg-slate-50 dark:bg-slate-900/50 shadow-sm'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <StickyNote className="h-5 w-5 text-slate-600" />
+                        <span className="font-semibold text-sm">System Prompt</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Sempre in memoria ad ogni chiamata AI. Ideale per <strong>brevi istruzioni</strong>, regole di comportamento e linee guida.
+                      </p>
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        Consuma token ad ogni richiesta
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, injection_mode: 'file_search' }))}
+                      className={`text-left p-4 rounded-xl border-2 transition-all ${
+                        form.injection_mode === 'file_search'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 shadow-sm'
+                          : 'border-slate-200 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Search className="h-5 w-5 text-amber-600" />
+                        <span className="font-semibold text-sm">File Search</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Cercato solo quando rilevante. Ideale per <strong>documentazione lunga</strong>, manuali, procedure e riferimenti.
+                      </p>
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Efficiente — usa token solo se necessario
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {form.injection_mode === 'system_prompt' && form.content.length > 5000 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="text-xs text-amber-800 dark:text-amber-200">
+                    <p className="font-medium">Contenuto lungo per System Prompt (~{Math.round(form.content.length / 4).toLocaleString()} token)</p>
+                    <p className="mt-0.5 text-amber-600 dark:text-amber-300">
+                      Questi token verranno consumati ad ogni chiamata AI. Per documentazione lunga, considera la modalità <strong>File Search</strong> che usa i token solo quando il contenuto è rilevante.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <Separator />
 

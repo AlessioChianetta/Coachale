@@ -80,6 +80,8 @@ import {
   HardDrive,
   ClipboardPaste,
   Save,
+  StickyNote,
+  Bot,
 } from "lucide-react";
 import {
   Collapsible,
@@ -1476,32 +1478,382 @@ export default function ConsultantKnowledgeDocuments() {
             </div>
           </div>
 
-          <Card className="mb-6">
-            <Collapsible open={isGoogleDriveOpen} onOpenChange={setIsGoogleDriveOpen}>
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <Tabs defaultValue="documenti" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+              <TabsTrigger value="documenti" className="gap-2">
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">Documenti</span>
+              </TabsTrigger>
+              <TabsTrigger value="sistema" className="gap-2">
+                <StickyNote className="w-4 h-4" />
+                <span className="hidden sm:inline">Istruzioni AI</span>
+              </TabsTrigger>
+              <TabsTrigger value="agenti" className="gap-2">
+                <Bot className="w-4 h-4" />
+                <span className="hidden sm:inline">Agenti AI</span>
+              </TabsTrigger>
+              <TabsTrigger value="drive" className="gap-2">
+                <Cloud className="w-4 h-4" />
+                <span className="hidden sm:inline">Google Drive</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="documenti">
+              <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Documenti della Knowledge Base — visibili solo al consulente e all'AI
+              </p>
+              <div className="flex gap-4">
+                {!isMobile && (
+                  <div className="w-64 shrink-0">
+                    <Card>
+                      <CardHeader className="py-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Folder className="w-4 h-4" />
+                            Cartelle
+                          </CardTitle>
+                          <Button size="sm" variant="ghost" onClick={() => handleOpenFolderDialog()}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-2">
+                        <div
+                          className={cn(
+                            "px-3 py-2 rounded cursor-pointer flex items-center justify-between mb-1",
+                            !selectedFolderId ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                          )}
+                          onClick={() => setSelectedFolderId(null)}
+                        >
+                          <span className="flex items-center gap-2">
+                            <Home className="w-4 h-4" />
+                            Tutti i documenti
+                          </span>
+                          <Badge variant="secondary">{stats?.documents.total ?? 0}</Badge>
+                        </div>
+
+                        {folders.map(folder => (
+                          <div
+                            key={folder.id}
+                            className={cn(
+                              "px-3 py-2 rounded cursor-pointer flex items-center justify-between group mb-1",
+                              selectedFolderId === folder.id ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                            )}
+                            onClick={() => setSelectedFolderId(folder.id)}
+                          >
+                            <span className="flex items-center gap-2 flex-1 min-w-0">
+                              <FolderOpen className="w-4 h-4 shrink-0" style={{ color: folder.color }} />
+                              <span className="truncate">{folder.name}</span>
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="shrink-0">{folder.documentCount}</Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenFolderDialog(folder);
+                                }}
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="mt-4">
+                      <div
+                        {...getRootProps()}
+                        className={`p-4 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
+                          isDragActive
+                            ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                            : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
+                        }`}
+                      >
+                        <input {...getInputProps()} />
+                        <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
+                        {isDragActive ? (
+                          <p className="text-amber-600 font-medium text-sm">Rilascia qui...</p>
+                        ) : (
+                          <>
+                            <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Carica file</p>
+                            <p className="text-xs text-gray-400 mt-1">PDF, DOCX, CSV, ecc.</p>
+                          </>
+                        )}
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">Importa da Google Drive</CardTitle>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          Importa documenti direttamente dal tuo Google Drive
-                        </p>
+                    </Card>
+
+                    <Button
+                      variant="outline"
+                      className="w-full mt-3 border-green-500/30 hover:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-950/20"
+                      onClick={() => setPasteDialogOpen(true)}
+                    >
+                      <ClipboardPaste className="w-4 h-4 mr-2" />
+                      Incolla Testo
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-amber-500" />
+                            Documenti ({totalCount})
+                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant={viewMode === "list" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setViewMode("list")}
+                              className={viewMode === "list" ? "bg-amber-500 hover:bg-amber-600" : ""}
+                            >
+                              <List className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant={viewMode === "grid" ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setViewMode("grid")}
+                              className={viewMode === "grid" ? "bg-amber-500 hover:bg-amber-600" : ""}
+                            >
+                              <LayoutGrid className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <div className="relative flex-1 min-w-[200px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input
+                              placeholder="Cerca documenti..."
+                              value={searchInput}
+                              onChange={(e) => setSearchInput(e.target.value)}
+                              className="pl-9"
+                            />
+                          </div>
+                          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="w-32 sm:w-36">
+                              <Filter className="w-4 h-4 mr-2" />
+                              <SelectValue placeholder="Categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tutte</SelectItem>
+                              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-32 sm:w-36">
+                              <SelectValue placeholder="Stato" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tutti</SelectItem>
+                              <SelectItem value="indexed">Indicizzato</SelectItem>
+                              <SelectItem value="processing">In elaborazione</SelectItem>
+                              <SelectItem value="error">Errore</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {selectedIds.size > 0 && (
+                          <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                            <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                              {selectedIds.size} selezionati
+                            </span>
+                            <Button variant="outline" size="sm" onClick={selectAll}>
+                              Seleziona tutti
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={clearSelection}>
+                              Deseleziona
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleBulkMove}>
+                              <Move className="w-4 h-4 mr-1" />
+                              Sposta
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Elimina
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                        isGoogleDriveOpen ? "rotate-180" : ""
+                    </CardHeader>
+                    <CardContent>
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                        </div>
+                      ) : documents.length === 0 ? (
+                        <div className="text-center py-12">
+                          <FileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                          <p className="text-gray-500 dark:text-gray-400">Nessun documento trovato</p>
+                          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                            Carica il tuo primo documento usando l'area di upload
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          ref={parentRef}
+                          className="h-[calc(100vh-450px)] min-h-[400px] overflow-auto"
+                        >
+                          {googleDriveDocuments.length > 0 && (
+                            <Collapsible open={isDriveSectionOpen} onOpenChange={setIsDriveSectionOpen} className="mb-4">
+                              <CollapsibleTrigger asChild>
+                                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    <span className="font-medium text-blue-800 dark:text-blue-200">Documenti Google Drive</span>
+                                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200">
+                                      {googleDriveDocuments.length}
+                                    </Badge>
+                                  </div>
+                                  <ChevronDown className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${isDriveSectionOpen ? "rotate-180" : ""}`} />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-3 space-y-3">
+                                  {viewMode === "grid" ? (
+                                    <div
+                                      className="grid gap-3"
+                                      style={{
+                                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                      }}
+                                    >
+                                      {googleDriveDocuments.map((doc) => (
+                                        <div key={doc.id}>
+                                          {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    googleDriveDocuments.map((doc) => (
+                                      <div key={doc.id}>
+                                        {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {uploadedDocuments.length > 0 && (
+                            <Collapsible open={isUploadedSectionOpen} onOpenChange={setIsUploadedSectionOpen} className="mb-4">
+                              <CollapsibleTrigger asChild>
+                                <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <HardDrive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                    <span className="font-medium text-amber-800 dark:text-amber-200">Documenti Caricati</span>
+                                    <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200">
+                                      {uploadedDocuments.length}
+                                    </Badge>
+                                  </div>
+                                  <ChevronDown className={`w-5 h-5 text-amber-600 transition-transform duration-200 ${isUploadedSectionOpen ? "rotate-180" : ""}`} />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-3 space-y-3">
+                                  {viewMode === "grid" ? (
+                                    <div
+                                      className="grid gap-3"
+                                      style={{
+                                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                      }}
+                                    >
+                                      {uploadedDocuments.map((doc) => (
+                                        <div key={doc.id}>
+                                          {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    uploadedDocuments.map((doc) => (
+                                      <div key={doc.id}>
+                                        {renderDocumentCard(doc, selectedIds.has(doc.id))}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {isFetchingNextPage && (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                              <span className="ml-2 text-sm text-gray-500">Caricamento...</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {isMobile && (
+                <Card className="mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Upload className="w-5 h-5 text-amber-500" />
+                      Carica Documento
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      {...getRootProps()}
+                      className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                        isDragActive
+                          ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
                       }`}
-                    />
+                    >
+                      <input {...getInputProps()} />
+                      <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
+                      {isDragActive ? (
+                        <p className="text-amber-600 font-medium">Rilascia il file qui...</p>
+                      ) : (
+                        <>
+                          <p className="text-gray-600 dark:text-gray-400 font-medium">Trascina un file qui</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">oppure clicca per selezionare</p>
+                          <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 50MB)</p>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="sistema">
+              <SystemDocumentsSection />
+            </TabsContent>
+
+            <TabsContent value="agenti">
+              <AgentKnowledgeSection />
+            </TabsContent>
+
+            <TabsContent value="drive">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Importa da Google Drive</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-0.5">Importa documenti direttamente dal tuo Google Drive</p>
+                    </div>
                   </div>
                 </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0">
+                <CardContent>
                   <GoogleDriveBrowser
                     apiPrefix="/api/consultant"
                     onImportSuccess={(count) => {
@@ -1514,341 +1866,9 @@ export default function ConsultantKnowledgeDocuments() {
                     }}
                   />
                 </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-
-          <SystemDocumentsSection />
-
-          <AgentKnowledgeSection />
-
-          <div className="flex gap-4">
-            {!isMobile && (
-              <div className="w-64 shrink-0">
-                <Card>
-                  <CardHeader className="py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Folder className="w-4 h-4" />
-                        Cartelle
-                      </CardTitle>
-                      <Button size="sm" variant="ghost" onClick={() => handleOpenFolderDialog()}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-2">
-                    <div
-                      className={cn(
-                        "px-3 py-2 rounded cursor-pointer flex items-center justify-between mb-1",
-                        !selectedFolderId ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                      )}
-                      onClick={() => setSelectedFolderId(null)}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Home className="w-4 h-4" />
-                        Tutti i documenti
-                      </span>
-                      <Badge variant="secondary">{stats?.documents.total ?? 0}</Badge>
-                    </div>
-
-                    {folders.map(folder => (
-                      <div
-                        key={folder.id}
-                        className={cn(
-                          "px-3 py-2 rounded cursor-pointer flex items-center justify-between group mb-1",
-                          selectedFolderId === folder.id ? "bg-amber-100 dark:bg-amber-900/30" : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                        )}
-                        onClick={() => setSelectedFolderId(folder.id)}
-                      >
-                        <span className="flex items-center gap-2 flex-1 min-w-0">
-                          <FolderOpen className="w-4 h-4 shrink-0" style={{ color: folder.color }} />
-                          <span className="truncate">{folder.name}</span>
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Badge variant="secondary" className="shrink-0">{folder.documentCount}</Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenFolderDialog(folder);
-                            }}
-                          >
-                            <Edit3 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card className="mt-4">
-                  <div
-                    {...getRootProps()}
-                    className={`p-4 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
-                      isDragActive
-                        ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
-                    }`}
-                  >
-                    <input {...getInputProps()} />
-                    <Upload className={`w-8 h-8 mx-auto mb-2 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
-                    {isDragActive ? (
-                      <p className="text-amber-600 font-medium text-sm">Rilascia qui...</p>
-                    ) : (
-                      <>
-                        <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Carica file</p>
-                        <p className="text-xs text-gray-400 mt-1">PDF, DOCX, CSV, ecc.</p>
-                      </>
-                    )}
-                  </div>
-                </Card>
-
-                <Button
-                  variant="outline"
-                  className="w-full mt-3 border-green-500/30 hover:border-green-500/50 hover:bg-green-50 dark:hover:bg-green-950/20"
-                  onClick={() => setPasteDialogOpen(true)}
-                >
-                  <ClipboardPaste className="w-4 h-4 mr-2" />
-                  Incolla Testo
-                </Button>
-              </div>
-            )}
-
-            <div className="flex-1 min-w-0">
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-amber-500" />
-                        Documenti ({totalCount})
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant={viewMode === "list" ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setViewMode("list")}
-                          className={viewMode === "list" ? "bg-amber-500 hover:bg-amber-600" : ""}
-                        >
-                          <List className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={viewMode === "grid" ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setViewMode("grid")}
-                          className={viewMode === "grid" ? "bg-amber-500 hover:bg-amber-600" : ""}
-                        >
-                          <LayoutGrid className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                          placeholder="Cerca documenti..."
-                          value={searchInput}
-                          onChange={(e) => setSearchInput(e.target.value)}
-                          className="pl-9"
-                        />
-                      </div>
-                      <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                        <SelectTrigger className="w-32 sm:w-36">
-                          <Filter className="w-4 h-4 mr-2" />
-                          <SelectValue placeholder="Categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutte</SelectItem>
-                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-32 sm:w-36">
-                          <SelectValue placeholder="Stato" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tutti</SelectItem>
-                          <SelectItem value="indexed">Indicizzato</SelectItem>
-                          <SelectItem value="processing">In elaborazione</SelectItem>
-                          <SelectItem value="error">Errore</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {selectedIds.size > 0 && (
-                      <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                        <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          {selectedIds.size} selezionati
-                        </span>
-                        <Button variant="outline" size="sm" onClick={selectAll}>
-                          Seleziona tutti
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={clearSelection}>
-                          Deseleziona
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleBulkMove}>
-                          <Move className="w-4 h-4 mr-1" />
-                          Sposta
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Elimina
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
-                    </div>
-                  ) : documents.length === 0 ? (
-                    <div className="text-center py-12">
-                      <FileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-                      <p className="text-gray-500 dark:text-gray-400">Nessun documento trovato</p>
-                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                        Carica il tuo primo documento usando l'area di upload
-                      </p>
-                    </div>
-                  ) : (
-                    <div
-                      ref={parentRef}
-                      className="h-[calc(100vh-450px)] min-h-[400px] overflow-auto"
-                    >
-                      {googleDriveDocuments.length > 0 && (
-                        <Collapsible open={isDriveSectionOpen} onOpenChange={setIsDriveSectionOpen} className="mb-4">
-                          <CollapsibleTrigger asChild>
-                            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
-                              <div className="flex items-center gap-2">
-                                <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                <span className="font-medium text-blue-800 dark:text-blue-200">Documenti Google Drive</span>
-                                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200">
-                                  {googleDriveDocuments.length}
-                                </Badge>
-                              </div>
-                              <ChevronDown className={`w-5 h-5 text-blue-600 transition-transform duration-200 ${isDriveSectionOpen ? "rotate-180" : ""}`} />
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="mt-3 space-y-3">
-                              {viewMode === "grid" ? (
-                                <div
-                                  className="grid gap-3"
-                                  style={{
-                                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                                  }}
-                                >
-                                  {googleDriveDocuments.map((doc) => (
-                                    <div key={doc.id}>
-                                      {renderDocumentCard(doc, selectedIds.has(doc.id))}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                googleDriveDocuments.map((doc) => (
-                                  <div key={doc.id}>
-                                    {renderDocumentCard(doc, selectedIds.has(doc.id))}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      )}
-
-                      {uploadedDocuments.length > 0 && (
-                        <Collapsible open={isUploadedSectionOpen} onOpenChange={setIsUploadedSectionOpen} className="mb-4">
-                          <CollapsibleTrigger asChild>
-                            <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors">
-                              <div className="flex items-center gap-2">
-                                <HardDrive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                                <span className="font-medium text-amber-800 dark:text-amber-200">Documenti Caricati</span>
-                                <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-200">
-                                  {uploadedDocuments.length}
-                                </Badge>
-                              </div>
-                              <ChevronDown className={`w-5 h-5 text-amber-600 transition-transform duration-200 ${isUploadedSectionOpen ? "rotate-180" : ""}`} />
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="mt-3 space-y-3">
-                              {viewMode === "grid" ? (
-                                <div
-                                  className="grid gap-3"
-                                  style={{
-                                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                                  }}
-                                >
-                                  {uploadedDocuments.map((doc) => (
-                                    <div key={doc.id}>
-                                      {renderDocumentCard(doc, selectedIds.has(doc.id))}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                uploadedDocuments.map((doc) => (
-                                  <div key={doc.id}>
-                                    {renderDocumentCard(doc, selectedIds.has(doc.id))}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      )}
-
-                      {isFetchingNextPage && (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-                          <span className="ml-2 text-sm text-gray-500">Caricamento...</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
               </Card>
-            </div>
-          </div>
-
-          {isMobile && (
-            <Card className="mt-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-amber-500" />
-                  Carica Documento
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                    isDragActive
-                      ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragActive ? "text-amber-500" : "text-gray-400"}`} />
-                  {isDragActive ? (
-                    <p className="text-amber-600 font-medium">Rilascia il file qui...</p>
-                  ) : (
-                    <>
-                      <p className="text-gray-600 dark:text-gray-400 font-medium">Trascina un file qui</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">oppure clicca per selezionare</p>
-                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 50MB)</p>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

@@ -1223,6 +1223,47 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       };
     });
 
+    const AUTONOMOUS_AGENTS = [
+      { id: "alessia", name: "Alessia", displayName: "Alessia – Voice Consultant" },
+      { id: "millie", name: "Millie", displayName: "Millie – Email Nurturing" },
+      { id: "echo", name: "Echo", displayName: "Echo – Summarizer" },
+      { id: "nova", name: "Nova", displayName: "Nova – Content Creator" },
+      { id: "stella", name: "Stella", displayName: "Stella – WhatsApp Manager" },
+      { id: "iris", name: "Iris", displayName: "Iris – Email Manager" },
+      { id: "marco", name: "Marco", displayName: "Marco – Executive Coach" },
+      { id: "personalizza", name: "Personalizza", displayName: "Personalizza – Custom Agent" },
+    ];
+
+    const agentAssignmentsResult = await db.execute(sql`
+      SELECT aka.agent_id, aka.document_id, d.title, d.status, d.file_type, d.file_name
+      FROM agent_knowledge_assignments aka
+      JOIN consultant_knowledge_documents d ON d.id = aka.document_id
+      WHERE aka.consultant_id = ${consultantId}
+    `);
+
+    const agentAssignments = agentAssignmentsResult.rows as any[];
+
+    const autonomousAgentStoresData = AUTONOMOUS_AGENTS.map(agent => {
+      const agentDocs = agentAssignments.filter(a => a.agent_id === agent.id);
+      return {
+        agentId: agent.id,
+        agentName: agent.name,
+        agentDisplayName: agent.displayName,
+        hasDocuments: agentDocs.length > 0,
+        documents: agentDocs.map(d => ({
+          documentId: d.document_id,
+          title: d.title,
+          status: d.status,
+          fileType: d.file_type,
+          fileName: d.file_name,
+        })),
+        totals: {
+          total: agentDocs.length,
+          indexed: agentDocs.filter(d => d.status === 'indexed').length,
+        },
+      };
+    });
+
     // Conta stores inclusi email account
     const emailAccountStoresCount = emailAccountStoresData.filter(e => e.hasStore).length;
     
@@ -1313,6 +1354,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         clientStores: clientStoresData,
         emailAccountStores: emailAccountStoresData,
         whatsappAgentStores: whatsappAgentStoresData,
+        autonomousAgentStores: autonomousAgentStoresData,
       },
       geminiApiKeyConfigured: await fileSearchService.isApiKeyConfigured(consultantId),
     });

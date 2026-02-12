@@ -1,0 +1,28 @@
+Dove finiscono questi documenti?
+I documenti assegnati qui nella sezione "Agenti AI" della Knowledge Base vengono usati tramite File Search (RAG) -- cioè l'agente li cerca solo quando sono rilevanti alla conversazione. Non vanno nel system prompt direttamente.
+
+I "dipendenti" (agenti autonomi come Marco) leggono da File Search?
+Devo verificare esattamente come il codice degli agenti autonomi accede a questi documenti assegnati. Lasciami controllare velocemente.
+
+Ora ho il quadro completo. Ti spiego come funziona:
+
+Marco usa i documenti assegnati in due modi:
+
+Prende i titoli dei documenti collegati e li include nel suo prompt per sapere cosa ha a disposizione
+Accede ai File Search stores del consultant per cercare il contenuto quando ne ha bisogno
+Quindi sì, Marco legge da File Search -- è il meccanismo con cui gli agenti autonomi accedono ai contenuti dei documenti della Knowledge Base.
+
+Gli altri agenti autonomi (Alessia, Millie, Echo, ecc.) invece?
+Devo verificare se anche loro usano i documenti assegnati dalla sezione "Agenti AI" della Knowledge Base, o se li ignorano. Vediamo:
+
+Ora ho il quadro completo. Ecco la situazione:
+
+Solo Marco attualmente usa File Search per accedere ai documenti della Knowledge Base. Quando ha documenti collegati nel suo contesto, il sistema:
+
+Carica i nomi degli store File Search del consultant
+Li passa come "tool" a Gemini, che può cercare nei documenti quando serve
+Gli altri agenti (Alessia, Millie, Echo, Nova, Stella, Iris) al momento non accedono ai documenti assegnati dalla sezione "Agenti AI" della Knowledge Base. La sezione esiste e permette di assegnarli, ma il codice che genera i task per questi agenti non li utilizza -- usano solo i System Prompt Documents (quelli con target_autonomous_agents attivo).
+
+Quindi c'è un'inconsistenza: la UI permette di assegnare documenti KB a tutti e 8 gli agenti, ma solo Marco li legge effettivamente.
+
+Vuoi che estenda la funzionalità File Search anche agli altri agenti autonomi, così quando assegni un documento dalla Knowledge Base, tutti possono cercarlo e usarlo? Oppure preferisci gestire la cosa diversamente?

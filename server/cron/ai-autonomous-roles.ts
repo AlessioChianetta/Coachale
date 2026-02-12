@@ -3,6 +3,32 @@ import { sql } from "drizzle-orm";
 import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
 
+async function fetchAgentKbContext(consultantId: string, agentId: string): Promise<{ kbDocumentTitles: string[]; fileSearchStoreNames: string[] }> {
+  let kbDocumentTitles: string[] = [];
+  let fileSearchStoreNames: string[] = [];
+
+  try {
+    const assignmentsResult = await db.execute(sql`
+      SELECT d.title
+      FROM agent_knowledge_assignments aka
+      JOIN consultant_knowledge_documents d ON d.id = aka.document_id
+      WHERE aka.consultant_id = ${consultantId}
+        AND aka.agent_id = ${agentId}
+        AND d.status = 'indexed'
+    `);
+    kbDocumentTitles = assignmentsResult.rows.map((r: any) => r.title);
+
+    if (kbDocumentTitles.length > 0) {
+      const fileSearchService = new FileSearchService();
+      fileSearchStoreNames = await fileSearchService.getConsultantOwnStores(consultantId);
+    }
+  } catch (err: any) {
+    console.error(`⚠️ [${agentId.toUpperCase()}] Failed to fetch KB context: ${err.message}`);
+  }
+
+  return { kbDocumentTitles, fileSearchStoreNames };
+}
+
 function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanentBlocks?: any[]): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
   const otherRoleTasks = recentAllTasks.filter(t => t.role !== roleId);
@@ -79,7 +105,8 @@ export interface AIRoleDefinition {
 }
 
 async function fetchAlessiaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { consultations: [], voiceCalls: [] };
+  const kbContext = await fetchAgentKbContext(consultantId, 'alessia');
+  if (clientIds.length === 0) return { consultations: [], voiceCalls: [], ...kbContext };
 
   const clientIdsStr = clientIds.map(id => `'${id}'`).join(',');
 
@@ -108,11 +135,13 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
   return {
     consultations: consultationsResult.rows,
     voiceCalls: voiceCallsResult.rows,
+    ...kbContext,
   };
 }
 
 async function fetchMillieData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { journeyProgress: [], emailLogs: [] };
+  const kbContext = await fetchAgentKbContext(consultantId, 'millie');
+  if (clientIds.length === 0) return { journeyProgress: [], emailLogs: [], ...kbContext };
 
   const journeyResult = await db.execute(sql`
     SELECT jp.client_id, jp.current_day, jp.last_email_sent_at,
@@ -137,11 +166,13 @@ async function fetchMillieData(consultantId: string, clientIds: string[]): Promi
   return {
     journeyProgress: journeyResult.rows,
     emailLogs: emailLogsResult.rows,
+    ...kbContext,
   };
 }
 
 async function fetchEchoData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { unsummarizedConsultations: [], recentSummaries: [], pipelineStats: null };
+  const kbContext = await fetchAgentKbContext(consultantId, 'echo');
+  if (clientIds.length === 0) return { unsummarizedConsultations: [], recentSummaries: [], pipelineStats: null, ...kbContext };
 
   const unsummarizedResult = await db.execute(sql`
     SELECT c.id, c.client_id, c.scheduled_at, c.duration, c.notes, c.status,
@@ -191,10 +222,12 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
     unsummarizedConsultations: unsummarizedResult.rows,
     recentSummaries: recentSummariesResult.rows,
     pipelineStats: pipelineStatsResult.rows[0] || null,
+    ...kbContext,
   };
 }
 
 async function fetchNovaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
+  const kbContext = await fetchAgentKbContext(consultantId, 'nova');
   const recentPostsResult = await db.execute(sql`
     SELECT cp.id, cp.title, cp.content_type, cp.platform, cp.status,
            cp.published_at, cp.scheduled_at, cp.created_at
@@ -216,11 +249,13 @@ async function fetchNovaData(consultantId: string, clientIds: string[]): Promise
   return {
     recentPosts: recentPostsResult.rows,
     pendingIdeas: ideasResult.rows,
+    ...kbContext,
   };
 }
 
 async function fetchStellaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { conversations: [], recentMessages: [] };
+  const kbContext = await fetchAgentKbContext(consultantId, 'stella');
+  if (clientIds.length === 0) return { conversations: [], recentMessages: [], ...kbContext };
 
   const conversationsResult = await db.execute(sql`
     SELECT wc.id, wc.phone_number, wc.user_id, wc.last_message_at,
@@ -249,10 +284,12 @@ async function fetchStellaData(consultantId: string, clientIds: string[]): Promi
   return {
     conversations: conversationsResult.rows,
     recentMessages: recentMessagesResult.rows,
+    ...kbContext,
   };
 }
 
 async function fetchIrisData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
+  const kbContext = await fetchAgentKbContext(consultantId, 'iris');
   const unansweredResult = await db.execute(sql`
     SELECT he.id, he.subject, he.from_name, he.from_email, he.snippet,
            he.direction, he.is_read, he.received_at, he.account_id
@@ -278,6 +315,7 @@ async function fetchIrisData(consultantId: string, clientIds: string[]): Promise
   return {
     unansweredEmails: unansweredResult.rows,
     openTickets: ticketsResult.rows,
+    ...kbContext,
   };
 }
 
@@ -368,27 +406,8 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   `);
   const marcoContext = (marcoContextResult.rows[0] as any)?.marco_context || {};
 
-  let kbDocumentTitles: string[] = [];
-  let fileSearchStoreNames: string[] = [];
-  const linkedIds: string[] = marcoContext.linkedKbDocumentIds || [];
-  if (linkedIds.length > 0) {
-    const pgArray = `{${linkedIds.map((id: string) => `"${id}"`).join(',')}}`;
-    const kbResult = await db.execute(sql`
-      SELECT title
-      FROM consultant_knowledge_documents
-      WHERE id = ANY(${pgArray}::varchar[])
-      AND consultant_id = ${consultantId}
-      AND status = 'indexed'
-    `);
-    kbDocumentTitles = kbResult.rows.map((r: any) => r.title);
-
-    try {
-      const fileSearchService = new FileSearchService();
-      fileSearchStoreNames = await fileSearchService.getConsultantOwnStores(consultantId);
-    } catch (err: any) {
-      console.error(`⚠️ [MARCO] Failed to get file search stores: ${err.message}`);
-    }
-  }
+  const kbContext = await fetchAgentKbContext(consultantId, 'marco');
+  const { kbDocumentTitles, fileSearchStoreNames } = kbContext;
 
   const consultationMonitoringResult = await db.execute(sql`
     SELECT 
@@ -547,7 +566,8 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
 }
 
 async function fetchPersonalizzaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
-  if (clientIds.length === 0) return { consultations: [], recentTasks: [] };
+  const kbContext = await fetchAgentKbContext(consultantId, 'personalizza');
+  if (clientIds.length === 0) return { consultations: [], recentTasks: [], ...kbContext };
 
   const consultationsResult = await db.execute(sql`
     SELECT c.client_id, c.scheduled_at, c.duration, c.status,
@@ -580,6 +600,7 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
     consultations: consultationsResult.rows,
     recentTasks: recentTasksResult.rows,
     personalizzaConfig,
+    ...kbContext,
   };
 }
 

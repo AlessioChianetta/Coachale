@@ -1495,12 +1495,12 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error fetching system docs: ${sysDocErr.message}`);
       }
 
-      let marcoFileSearchTool: any = null;
-      if (role.id === 'marco' && roleData.fileSearchStoreNames?.length > 0) {
+      let agentFileSearchTool: any = null;
+      if (roleData.fileSearchStoreNames?.length > 0) {
         try {
           const fileSearchService = new FileSearchService();
-          marcoFileSearchTool = fileSearchService.buildFileSearchTool(roleData.fileSearchStoreNames);
-          if (marcoFileSearchTool) {
+          agentFileSearchTool = fileSearchService.buildFileSearchTool(roleData.fileSearchStoreNames);
+          if (agentFileSearchTool) {
             console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] File Search enabled with ${roleData.fileSearchStoreNames.length} stores`);
           }
         } catch (err: any) {
@@ -1521,7 +1521,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               maxOutputTokens: 4096,
               responseMimeType: 'application/json',
             },
-            ...(marcoFileSearchTool ? { tools: [marcoFileSearchTool] } : {}),
+            ...(agentFileSearchTool ? { tools: [agentFileSearchTool] } : {}),
           });
           responseText = response.response.text();
           break;

@@ -253,6 +253,23 @@ interface HierarchicalData {
       total: number;
     };
   }>;
+  autonomousAgentStores?: Array<{
+    agentId: string;
+    agentName: string;
+    agentDisplayName: string;
+    hasDocuments: boolean;
+    documents: Array<{
+      documentId: string;
+      title: string;
+      status: string;
+      fileType: string;
+      fileName: string;
+    }>;
+    totals: {
+      total: number;
+      indexed: number;
+    };
+  }>;
 }
 
 interface AnalyticsData {
@@ -553,6 +570,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [clientStoresOpen, setClientStoresOpen] = useState(true);
   const [emailAccountStoresOpen, setEmailAccountStoresOpen] = useState(true);
   const [whatsappAgentStoresOpen, setWhatsappAgentStoresOpen] = useState(true);
+  const [autonomousAgentStoresOpen, setAutonomousAgentStoresOpen] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
   
@@ -3327,6 +3345,60 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                               <p className="text-amber-600 text-sm font-medium mb-1">Nessun documento sincronizzato</p>
                                               <p className="text-gray-400 text-xs mt-2">Vai alla tab Audit per sincronizzare</p>
                                             </div>
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
+                              {hData.autonomousAgentStores && hData.autonomousAgentStores.length > 0 && (
+                                <Collapsible open={autonomousAgentStoresOpen} onOpenChange={setAutonomousAgentStoresOpen}>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors">
+                                    {autonomousAgentStoresOpen ? <ChevronDown className="h-5 w-5 text-indigo-600" /> : <ChevronRight className="h-5 w-5 text-indigo-600" />}
+                                    <Bot className="h-5 w-5 text-indigo-600" />
+                                    <span className="font-semibold text-indigo-900">Dipendenti Autonomi</span>
+                                    <Badge className="ml-auto bg-indigo-200 text-indigo-800">
+                                      {hData.autonomousAgentStores.filter(a => a.hasDocuments).length}/{hData.autonomousAgentStores.length} agenti
+                                    </Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                    {hData.autonomousAgentStores.map(agent => (
+                                      <Collapsible key={agent.agentId} open={openClients[`auto-${agent.agentId}`]} onOpenChange={() => toggleClient(`auto-${agent.agentId}`)}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${agent.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-gray-50 border-dashed border-gray-200'}`}>
+                                          {openClients[`auto-${agent.agentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <Bot className={`h-4 w-4 ${agent.hasDocuments ? 'text-indigo-600' : 'text-gray-400'}`} />
+                                          <span className="text-gray-800 font-medium">{agent.agentName}</span>
+                                          <span className="text-gray-400 text-xs hidden md:inline">{agent.agentDisplayName.split(' – ')[1] || ''}</span>
+                                          {agent.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />{agent.totals.total} doc ({agent.totals.indexed} indicizzati)
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto text-gray-500 border-gray-200">
+                                              Nessun documento
+                                            </Badge>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {agent.hasDocuments ? (
+                                            <div className="space-y-1">
+                                              {agent.documents.map((doc: any) => (
+                                                <div key={doc.documentId} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                  <FileText className="h-3 w-3 text-gray-400" />
+                                                  <span className="truncate flex-1">{doc.title}</span>
+                                                  <Badge variant="outline" className="text-xs text-gray-500">{doc.fileType?.toUpperCase()}</Badge>
+                                                  <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-gray-400 text-sm text-center py-2 italic">
+                                              Nessun documento KB assegnato. Vai alla sezione Agenti AI nella Knowledge Base per assegnare documenti.
+                                            </p>
                                           )}
                                         </CollapsibleContent>
                                       </Collapsible>
