@@ -158,7 +158,7 @@ export function SyncSourcesManager() {
     }
   };
 
-  const downloadGuidePDF = async (source: SyncSource) => {
+  const downloadGuidePDF = async (source: SyncSource, withCredentials: boolean = false) => {
     try {
       const { jsPDF } = await import("jspdf");
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -196,72 +196,165 @@ export function SyncSourcesManager() {
         }
       };
 
+      const addCodeBlock = (lines: string[]) => {
+        const codeLineHeight = 3.8;
+        const blockHeight = lines.length * codeLineHeight + 8;
+        checkPageBreak(blockHeight);
+        doc.setFillColor(240, 240, 245);
+        doc.roundedRect(margin, y - 3, contentWidth, blockHeight, 2, 2, 'F');
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(50, 50, 50);
+        for (const line of lines) {
+          doc.text(line, margin + 4, y);
+          y += codeLineHeight;
+        }
+        y += 6;
+      };
+
+      const titleText = withCredentials ? 'Guida Completa Integrazione Partner' : 'Guida Integrazione per Partner';
       doc.setFillColor(20, 30, 50);
       doc.rect(0, 0, pageWidth, 40, 'F');
-      doc.setFontSize(18);
+      doc.setFontSize(17);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('Guida Integrazione per Partner', margin, 22);
+      doc.text(titleText, margin, 22);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(200, 200, 220);
       doc.text(`Sorgente: ${source.name}  |  ${new Date().toLocaleDateString('it-IT')}`, margin, 33);
       y = 50;
 
-      addText('1. Cosa facciamo noi', 13, { bold: true, color: [16, 120, 80] });
-      y += 2;
-      const nostre = [
-        'Riceviamo i dati - Endpoint webhook sicuro pronto a ricevere file',
-        'Mappiamo automaticamente le colonne - Riconosciamo campi come prezzo, quantita, data ordine',
-        'Gestiamo gli aggiornamenti - Full replace, append o upsert in base alla configurazione',
-        'Monitoriamo lo stato - Dashboard con errori, metriche e cronologia sync',
-      ];
-      for (const item of nostre) {
-        checkPageBreak(6);
-        addText(`  \u2022  ${item}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+      if (withCredentials) {
+        addText('FLUSSO COMPLETO: COME FUNZIONA', 14, { bold: true, color: [88, 28, 135] });
+        y += 4;
+        const flusso = [
+          ['Step 1', 'Un cliente acquista una licenza Gold o Silver tramite il link Stripe del consulente.'],
+          ['Step 2', 'Il sistema invia automaticamente una notifica al partner (via webhook POST o coda interna) con email, nome, telefono e tier del nuovo cliente.'],
+          ['Step 3', 'Il partner riceve la notifica e sa che deve preparare i dati per quel cliente. La notifica include anche gli URL e le istruzioni.'],
+          ['Step 4', 'Il partner esporta i dati dal suo gestionale in formato CSV o Excel (intestazioni nella prima riga).'],
+          ['Step 5', 'Il partner invia il file tramite webhook HTTP POST (automatico) oppure carica il file dalla Partner Dashboard (manuale, da browser).'],
+          ['Step 6', 'Il sistema riceve il file, riconosce automaticamente le colonne (prezzo, quantita, data, ecc.), crea il dataset e lo associa al cliente.'],
+          ['Step 7', 'L\'AI analizza i dati del cliente e fornisce insights, report e risposte personalizzate. Il dataset e\' subito disponibile.'],
+        ];
+        for (const [step, desc] of flusso) {
+          checkPageBreak(12);
+          addText(step, 10, { bold: true, color: [88, 28, 135], lineHeight: 4.5 });
+          addText(desc, 9, { color: [60, 60, 60], lineHeight: 4 });
+          y += 3;
+        }
+        y += 4;
+
+        addText('NOTIFICA AUTOMATICA AL PARTNER', 14, { bold: true, color: [194, 65, 12] });
+        y += 3;
+        addText('Quando un cliente acquista, il partner riceve una notifica POST con questo payload JSON:', 9, { color: [60, 60, 60] });
+        y += 3;
+        addCodeBlock([
+          '{',
+          '  "event": "gold_purchase",',
+          '  "timestamp": "2026-01-15T10:30:00.000Z",',
+          '  "subscription": {',
+          '    "client_email": "cliente@example.com",',
+          '    "client_name": "Mario Rossi",',
+          '    "phone": "+39123456789",',
+          '    "tier": "gold",',
+          '    "status": "active",',
+          '    "start_date": "2026-01-15T10:30:00.000Z"',
+          '  },',
+          '  "dataset_sync": {',
+          '    "webhook_url": "URL per inviare i dati",',
+          '    "partner_dashboard_url": "URL per upload manuale",',
+          '    "instructions": "Usa X-Client-Email con l\'email"',
+          '  }',
+          '}',
+        ]);
+        addText('Headers della notifica:', 9, { bold: true, color: [80, 80, 80] });
         y += 1;
-      }
-      y += 4;
+        addText('X-Partner-Signature: sha256=<firma HMAC del payload con Secret Key>', 8, { color: [100, 100, 100], lineHeight: 3.5 });
+        addText('X-Partner-Timestamp: <timestamp ISO 8601>', 8, { color: [100, 100, 100], lineHeight: 3.5 });
+        y += 4;
 
-      addText('2. Cosa ci aspettiamo dal partner', 13, { bold: true, color: [30, 80, 180] });
-      y += 2;
-      const partner = [
-        'Esportare i dati in CSV o Excel - Formato tabellare con intestazioni nella prima riga',
-        'Inviare il file via HTTP POST - All\'endpoint webhook fornito sotto',
-        'Firmare la richiesta con HMAC - Per garantire autenticita e sicurezza',
-        'Specificare le colonne chiave - Solo al primo invio, per identificare record unici',
-      ];
-      for (let i = 0; i < partner.length; i++) {
-        checkPageBreak(6);
-        addText(`  ${i + 1}. ${partner[i]}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        addText('CREDENZIALI DI ACCESSO', 14, { bold: true, color: [30, 30, 30] });
+        y += 4;
+        const endpoint = `POST ${window.location.origin}/api/dataset-sync/webhook/${source.api_key}`;
+        const dashboardUrl = `${window.location.origin}/partner/dashboard/${source.api_key}`;
+        addText('Endpoint Webhook (per invio automatico):', 10, { bold: true, color: [80, 80, 80] });
         y += 1;
+        addText(endpoint, 8, { color: [16, 120, 80], lineHeight: 3.5 });
+        y += 3;
+        addText('Partner Dashboard (per upload manuale da browser):', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText(dashboardUrl, 8, { color: [16, 120, 80], lineHeight: 3.5 });
+        y += 3;
+        addText('API Key:', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText(source.api_key, 9, { color: [16, 120, 80] });
+        y += 3;
+        addText('Secret Key:', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText('Fornita al momento della creazione (conservare in modo sicuro)', 9, { color: [180, 120, 20] });
+        y += 6;
+      } else {
+        addText('1. Cosa facciamo noi', 13, { bold: true, color: [16, 120, 80] });
+        y += 2;
+        const nostre = [
+          'Riceviamo i dati - Endpoint webhook sicuro pronto a ricevere file',
+          'Mappiamo automaticamente le colonne - Riconosciamo campi come prezzo, quantita, data ordine',
+          'Gestiamo gli aggiornamenti - Full replace (consigliato), append o upsert',
+          'Monitoriamo lo stato - Dashboard con errori, metriche e cronologia sync',
+          'Notifichiamo automaticamente - Quando un cliente acquista, il partner riceve email e dati',
+        ];
+        for (const item of nostre) {
+          checkPageBreak(6);
+          addText(`  \u2022  ${item}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+          y += 1;
+        }
+        y += 4;
+
+        addText('2. Cosa deve fare il partner', 13, { bold: true, color: [30, 80, 180] });
+        y += 2;
+        const partner = [
+          'Esportare i dati in CSV o Excel - Formato tabellare con intestazioni nella prima riga',
+          'Inviare il file via HTTP POST - All\'endpoint webhook, usando X-Client-Email per il routing',
+          'Firmare la richiesta con HMAC - Per garantire autenticita e sicurezza',
+        ];
+        for (let i = 0; i < partner.length; i++) {
+          checkPageBreak(6);
+          addText(`  ${i + 1}. ${partner[i]}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+          y += 1;
+        }
+        y += 4;
+
+        addText('3. Credenziali di Accesso', 13, { bold: true, color: [30, 30, 30] });
+        y += 3;
+        const endpoint = `POST ${window.location.origin}/api/dataset-sync/webhook/${source.api_key}`;
+        addText('Endpoint Webhook:', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText(endpoint, 9, { color: [16, 120, 80], lineHeight: 4 });
+        y += 3;
+        addText('Partner Dashboard (upload manuale):', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText(`${window.location.origin}/partner/dashboard/${source.api_key}`, 9, { color: [16, 120, 80], lineHeight: 4 });
+        y += 3;
+        addText('API Key:', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText(source.api_key, 9, { color: [16, 120, 80] });
+        y += 3;
+        addText('Secret Key:', 10, { bold: true, color: [80, 80, 80] });
+        y += 1;
+        addText('Fornita al momento della creazione della sorgente', 9, { color: [180, 120, 20] });
+        y += 6;
       }
-      y += 4;
 
-      addText('3. Credenziali di Accesso', 13, { bold: true, color: [30, 30, 30] });
-      y += 3;
-      const endpoint = `POST ${window.location.origin}/api/dataset-sync/webhook/${source.api_key}`;
-      addText('Endpoint Webhook:', 10, { bold: true, color: [80, 80, 80] });
-      y += 1;
-      addText(endpoint, 9, { color: [16, 120, 80], lineHeight: 4 });
-      y += 3;
-      addText('API Key:', 10, { bold: true, color: [80, 80, 80] });
-      y += 1;
-      addText(source.api_key, 9, { color: [16, 120, 80] });
-      y += 3;
-      addText('Secret Key:', 10, { bold: true, color: [80, 80, 80] });
-      y += 1;
-      addText('Fornita al momento della creazione della sorgente', 9, { color: [180, 120, 20] });
-      y += 6;
-
-      addText('4. Headers HTTP Richiesti', 13, { bold: true, color: [30, 30, 30] });
+      const sectionStart = withCredentials ? 4 : 4;
+      addText(`${sectionStart}. Headers HTTP Richiesti`, 13, { bold: true, color: [30, 30, 30] });
       y += 3;
       const headers = [
         ['Content-Type', 'multipart/form-data', 'Per upload file'],
+        ['X-Client-Email', 'email cliente', 'Email del cliente destinatario (routing multi-cliente)'],
         ['X-Dataset-Timestamp', 'Unix timestamp (es: 1737745200)', 'Secondi da epoch'],
         ['X-Dataset-Signature', 'sha256=...', 'HMAC-SHA256 del file con Secret Key'],
         ['X-Idempotency-Key', '(opzionale)', 'ID univoco per evitare duplicazioni'],
-        ['X-Client-Email', 'email cliente', 'Email del cliente destinatario (routing multi-cliente)'],
       ];
       for (const [name, value, desc] of headers) {
         checkPageBreak(10);
@@ -272,7 +365,7 @@ export function SyncSourcesManager() {
       y += 4;
 
       checkPageBreak(30);
-      addText('4b. Routing Multi-Cliente', 13, { bold: true, color: [63, 81, 181] });
+      addText(`${sectionStart + 1}. Routing Multi-Cliente`, 13, { bold: true, color: [63, 81, 181] });
       y += 3;
       addText('Con una sola sorgente e API key, puoi inviare dati a clienti diversi.', 9, { color: [63, 81, 181] });
       y += 1;
@@ -281,21 +374,21 @@ export function SyncSourcesManager() {
       const routingPoints = [
         'Il sistema cerca il cliente per email e associa i dati al suo account',
         'Ogni cliente ha il suo dataset separato, anche dalla stessa sorgente',
-        'Quando un nuovo cliente acquista, riceverai una notifica con la sua email',
+        'Quando un nuovo cliente acquista, il partner riceve automaticamente una notifica con la sua email',
         'Se l\'email non corrisponde a nessun cliente attivo: errore CLIENT_NOT_FOUND',
       ];
       for (const point of routingPoints) {
         checkPageBreak(6);
-        addText(`• ${point}`, 9, { color: [80, 80, 120], lineHeight: 4.5 });
+        addText(`\u2022 ${point}`, 9, { color: [80, 80, 120], lineHeight: 4.5 });
       }
       y += 4;
 
-      addText('5. Campi del Form (multipart/form-data)', 13, { bold: true, color: [30, 30, 30] });
+      addText(`${sectionStart + 2}. Campi del Form (multipart/form-data)`, 13, { bold: true, color: [30, 30, 30] });
       y += 3;
       const campi = [
         ['file (obbligatorio)', 'File dati in formato CSV, XLSX o XLS'],
-        ['replace_mode (opzionale)', 'full | append | upsert'],
-        ['upsert_key_columns (obbligatorio se upsert)', 'Colonne chiave separate da virgola (es: order_id,line_id)'],
+        ['replace_mode (opzionale)', 'full (default, consigliato) | append | upsert'],
+        ['upsert_key_columns (solo se upsert)', 'Colonne chiave separate da virgola (es: order_id,line_id)'],
       ];
       for (const [name, desc] of campi) {
         checkPageBreak(8);
@@ -305,12 +398,12 @@ export function SyncSourcesManager() {
       }
       y += 4;
 
-      addText('6. Modalita di Aggiornamento', 13, { bold: true, color: [30, 30, 30] });
+      addText(`${sectionStart + 3}. Modalita di Aggiornamento`, 13, { bold: true, color: [30, 30, 30] });
       y += 3;
       const modes = [
-        ['full (default)', 'Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi.'],
+        ['full (default - CONSIGLIATO)', 'Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi. Garantisce consistenza totale dei dati.'],
         ['append', 'Inserisce nuovi record senza toccare quelli esistenti. Utile per log incrementali.'],
-        ['upsert (consigliato)', 'Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Ideale per sync incrementali.'],
+        ['upsert', 'Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Richiede upsert_key_columns.'],
       ];
       for (const [name, desc] of modes) {
         checkPageBreak(10);
@@ -320,17 +413,14 @@ export function SyncSourcesManager() {
       }
       y += 4;
 
-      checkPageBreak(50);
-      addText('7. Esempio Implementazione (cURL)', 13, { bold: true, color: [30, 30, 30] });
+      addText(`${sectionStart + 4}. Esempio Implementazione (cURL)`, 13, { bold: true, color: [30, 30, 30] });
       y += 3;
-      doc.setFillColor(240, 240, 245);
-      const codeBlockY = y;
-      const curlExample = [
+      addCodeBlock([
         '#!/bin/bash',
         '# Configurazione',
         `API_KEY="${source.api_key}"`,
         'SECRET_KEY="<la_tua_secret_key>"',
-        'FILE_PATH="ordini.xlsx"',
+        'FILE_PATH="ordini.csv"',
         'CLIENT_EMAIL="cliente@example.com"',
         `ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"`,
         '',
@@ -339,33 +429,54 @@ export function SyncSourcesManager() {
         'SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 \\',
         '  -hmac "$SECRET_KEY" | cut -d\' \' -f2)',
         '',
-        '# Invio dati per un cliente specifico (con routing)',
+        '# Invio dati con full replace (consigliato)',
         'curl -X POST "$ENDPOINT" \\',
         '  -H "X-Dataset-Timestamp: $TIMESTAMP" \\',
         '  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\',
         '  -H "X-Client-Email: $CLIENT_EMAIL" \\',
-        '  -F "file=@$FILE_PATH" \\',
-        '  -F "replace_mode=upsert" \\',
-        '  -F "upsert_key_columns=order_id,line_id"',
-      ];
-      const codeLineHeight = 4;
-      const codeBlockHeight = curlExample.length * codeLineHeight + 6;
-      doc.roundedRect(margin, codeBlockY - 3, contentWidth, codeBlockHeight, 2, 2, 'F');
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(50, 50, 50);
-      for (const line of curlExample) {
-        doc.text(line, margin + 4, y);
-        y += codeLineHeight;
+        '  -F "file=@$FILE_PATH"',
+      ]);
+
+      if (withCredentials) {
+        checkPageBreak(30);
+        addText(`${sectionStart + 5}. Cosa aspettarsi dopo l'invio`, 13, { bold: true, color: [16, 120, 80] });
+        y += 3;
+        const aspettarsi = [
+          'Risposta 200 OK con syncId, nome tabella e numero di righe importate',
+          'Le colonne vengono riconosciute automaticamente (prezzo, quantita, data, ecc.)',
+          'Il dataset e\' immediatamente disponibile per le analisi AI del cliente',
+          'In caso di errore, la risposta contiene il codice errore e un messaggio descrittivo',
+        ];
+        for (const point of aspettarsi) {
+          checkPageBreak(6);
+          addText(`\u2022 ${point}`, 9, { color: [60, 60, 60], lineHeight: 4.5 });
+        }
+        y += 4;
+
+        addText('CODICI ERRORE COMUNI', 13, { bold: true, color: [180, 40, 40] });
+        y += 3;
+        const errori = [
+          ['INVALID_API_KEY', 'API key non valida o disattivata'],
+          ['INVALID_SIGNATURE', 'Firma HMAC non corretta - verificare la Secret Key'],
+          ['EXPIRED_TIMESTAMP', 'Timestamp della richiesta scaduto (max 1 ora)'],
+          ['CLIENT_NOT_FOUND', 'L\'email nel header X-Client-Email non corrisponde a nessun cliente attivo'],
+          ['MISSING_FILE', 'Nessun file allegato nella richiesta'],
+        ];
+        for (const [code, desc] of errori) {
+          checkPageBreak(8);
+          addText(code, 9, { bold: true, color: [180, 40, 40], lineHeight: 4 });
+          addText(`    ${desc}`, 9, { color: [100, 100, 100], lineHeight: 4 });
+          y += 2;
+        }
       }
-      y += 6;
 
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text(`Pagina ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-      doc.save(`guida-integrazione-${source.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
-      toast({ title: "PDF scaricato!", description: "La guida e stata scaricata correttamente" });
+      const suffix = withCredentials ? '-completo' : '';
+      doc.save(`guida-integrazione${suffix}-${source.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+      toast({ title: "PDF scaricato!", description: withCredentials ? "La guida completa con credenziali e stata scaricata" : "La guida e stata scaricata correttamente" });
     } catch (err) {
       console.error('PDF generation error:', err);
       toast({ title: "Errore", description: "Impossibile generare il PDF", variant: "destructive" });
@@ -1037,6 +1148,37 @@ export function SyncSourcesManager() {
           </DialogHeader>
           {guideSource && (
             <div className="space-y-6 py-4 text-sm">
+              {/* Flusso Completo */}
+              <div className="border-l-4 border-violet-500 bg-violet-50 dark:bg-violet-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-violet-800 dark:text-violet-200 mb-3">Come Funziona il Flusso Completo</h4>
+                <div className="space-y-3 text-xs text-violet-700 dark:text-violet-300">
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">1</span>
+                    <div><strong>Un cliente acquista una licenza</strong> (Gold o Silver) tramite il link Stripe del consulente</div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">2</span>
+                    <div><strong>Il sistema invia una notifica al partner</strong> con email, nome e dati del nuovo cliente (via webhook o coda interna)</div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">3</span>
+                    <div><strong>Il partner esporta i dati</strong> dal suo gestionale in formato CSV o Excel</div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">4</span>
+                    <div><strong>Il partner invia il file</strong> tramite webhook (automatico) o Partner Dashboard (manuale dal browser)</div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">5</span>
+                    <div><strong>Il sistema elabora i dati</strong>: riconosce le colonne, crea il dataset e lo associa al cliente</div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-200 dark:bg-violet-700 flex items-center justify-center font-bold text-violet-800 dark:text-violet-100">6</span>
+                    <div><strong>L'AI puo' analizzare i dati</strong> del cliente e fornire insights personalizzati</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Sezione 1: Cosa facciamo noi */}
               <div className="border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-r-lg">
                 <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-3">Cosa facciamo noi</h4>
@@ -1051,18 +1193,22 @@ export function SyncSourcesManager() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span><strong>Gestiamo gli aggiornamenti</strong> - Full replace, append o upsert in base alla configurazione</span>
+                    <span><strong>Gestiamo gli aggiornamenti</strong> - Full replace (consigliato), append o upsert</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <span><strong>Monitoriamo lo stato</strong> - Dashboard con errori, metriche e cronologia sync</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Notifichiamo automaticamente</strong> - Quando un cliente acquista, il partner riceve email e dati per iniziare subito</span>
                   </li>
                 </ul>
               </div>
 
               {/* Sezione 2: Cosa ci aspettiamo dal partner */}
               <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-r-lg">
-                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Cosa ci aspettiamo dal partner</h4>
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3">Cosa deve fare il partner</h4>
                 <ul className="space-y-2 text-blue-700 dark:text-blue-300">
                   <li className="flex items-start gap-2">
                     <span className="font-bold text-blue-500">1.</span>
@@ -1070,15 +1216,11 @@ export function SyncSourcesManager() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-bold text-blue-500">2.</span>
-                    <span><strong>Inviare il file via HTTP POST</strong> - All'endpoint webhook fornito sotto</span>
+                    <span><strong>Inviare il file via HTTP POST</strong> - All'endpoint webhook, usando l'header X-Client-Email per indicare il cliente</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-bold text-blue-500">3.</span>
                     <span><strong>Firmare la richiesta con HMAC</strong> - Per garantire autenticita e sicurezza</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-bold text-blue-500">4.</span>
-                    <span><strong>Specificare le colonne chiave</strong> - Solo al primo invio, per identificare record unici</span>
                   </li>
                 </ul>
               </div>
@@ -1091,6 +1233,12 @@ export function SyncSourcesManager() {
                     <p className="text-xs text-muted-foreground mb-1">Endpoint Webhook</p>
                     <code className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded block break-all">
                       POST {window.location.origin}/api/dataset-sync/webhook/{guideSource.api_key}
+                    </code>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Partner Dashboard (upload manuale da browser)</p>
+                    <code className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded block break-all">
+                      {window.location.origin}/partner/dashboard/{guideSource.api_key}
                     </code>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1129,6 +1277,11 @@ export function SyncSourcesManager() {
                         <td className="p-2 font-mono text-emerald-600">multipart/form-data</td>
                         <td className="p-2">Per upload file</td>
                       </tr>
+                      <tr className="border-t bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <td className="p-2 font-mono font-bold">X-Client-Email</td>
+                        <td className="p-2 font-mono text-indigo-600">email cliente</td>
+                        <td className="p-2">Email del cliente destinatario dei dati (routing multi-cliente)</td>
+                      </tr>
                       <tr className="border-t">
                         <td className="p-2 font-mono">X-Dataset-Timestamp</td>
                         <td className="p-2 font-mono text-emerald-600">Unix timestamp</td>
@@ -1143,11 +1296,6 @@ export function SyncSourcesManager() {
                         <td className="p-2 font-mono">X-Idempotency-Key</td>
                         <td className="p-2 font-mono text-blue-600">opzionale</td>
                         <td className="p-2">ID univoco per evitare duplicazioni</td>
-                      </tr>
-                      <tr className="border-t bg-indigo-50/50 dark:bg-indigo-900/10">
-                        <td className="p-2 font-mono font-bold">X-Client-Email</td>
-                        <td className="p-2 font-mono text-indigo-600">email cliente</td>
-                        <td className="p-2">Email del cliente destinatario dei dati (routing multi-cliente)</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1171,7 +1319,7 @@ export function SyncSourcesManager() {
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-500" />
-                    <span>Quando un nuovo cliente acquista, riceverai una notifica webhook con la sua email da usare qui</span>
+                    <span>Quando un nuovo cliente acquista, il partner riceve automaticamente una notifica con la sua email</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
@@ -1200,58 +1348,86 @@ export function SyncSourcesManager() {
                         <td className="p-2 text-emerald-600 font-bold">Si</td>
                         <td className="p-2">File dati in formato CSV, XLSX o XLS</td>
                       </tr>
-                      <tr className="border-t bg-purple-50/50 dark:bg-purple-900/10">
+                      <tr className="border-t bg-emerald-50/50 dark:bg-emerald-900/10">
                         <td className="p-2 font-mono">replace_mode</td>
                         <td className="p-2">String</td>
                         <td className="p-2 text-slate-400">No</td>
                         <td className="p-2">
-                          <span className="font-mono bg-slate-200 dark:bg-slate-700 px-1 rounded">full</span> | 
+                          <span className="font-mono bg-emerald-200 dark:bg-emerald-700 px-1 rounded font-bold">full</span> (default, consigliato) | 
                           <span className="font-mono bg-blue-200 dark:bg-blue-700 px-1 rounded ml-1">append</span> | 
                           <span className="font-mono bg-purple-200 dark:bg-purple-700 px-1 rounded ml-1">upsert</span>
                         </td>
                       </tr>
-                      <tr className="border-t bg-purple-50/50 dark:bg-purple-900/10">
+                      <tr className="border-t">
                         <td className="p-2 font-mono">upsert_key_columns</td>
                         <td className="p-2">String</td>
                         <td className="p-2 text-amber-600">*</td>
-                        <td className="p-2">Colonne chiave separate da virgola (es: <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">order_id,line_id</code>)</td>
+                        <td className="p-2">Solo se replace_mode=upsert. Colonne chiave separate da virgola</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-slate-500">* Obbligatorio se replace_mode=upsert. Definisce quali colonne identificano univocamente ogni riga.</p>
               </div>
 
               {/* Sezione 6: Modalità Aggiornamento */}
               <div className="space-y-3">
                 <h4 className="font-semibold border-b pb-2">Modalita di Aggiornamento Dati</h4>
                 <div className="grid gap-2">
-                  <div className="border rounded-lg p-3">
+                  <div className="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-3 bg-emerald-50/30 dark:bg-emerald-900/10">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-xs font-bold">full</span>
+                      <span className="font-mono bg-emerald-200 dark:bg-emerald-700 px-2 py-0.5 rounded text-xs font-bold">full</span>
                       <span className="font-medium">Sostituisci tutto (default)</span>
+                      <span className="text-xs text-emerald-600 font-bold ml-auto">CONSIGLIATO</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi.</p>
+                    <p className="text-xs text-muted-foreground">Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi. Garantisce consistenza totale dei dati.</p>
                   </div>
-                  <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-3 bg-blue-50/30 dark:bg-blue-900/10">
+                  <div className="border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-mono bg-blue-200 dark:bg-blue-700 px-2 py-0.5 rounded text-xs font-bold">append</span>
                       <span className="font-medium">Aggiungi in coda</span>
                     </div>
                     <p className="text-xs text-muted-foreground">Inserisce nuovi record senza toccare quelli esistenti. Utile per log incrementali.</p>
                   </div>
-                  <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-3 bg-purple-50/30 dark:bg-purple-900/10">
+                  <div className="border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-mono bg-purple-200 dark:bg-purple-700 px-2 py-0.5 rounded text-xs font-bold">upsert</span>
                       <span className="font-medium">Aggiorna o inserisci</span>
-                      <span className="text-xs text-purple-600 font-medium">CONSIGLIATO</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Ideale per sync incrementali efficienti.</p>
+                    <p className="text-xs text-muted-foreground">Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Richiede upsert_key_columns.</p>
                   </div>
                 </div>
               </div>
 
-              {/* Sezione 7: Esempio cURL */}
+              {/* Sezione 7: Notifica Webhook Partner */}
+              <div className="border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3">Notifica Automatica al Partner</h4>
+                <p className="text-xs text-orange-700 dark:text-orange-300 mb-3">
+                  Quando un cliente acquista una licenza, il partner riceve automaticamente una notifica POST con questo payload:
+                </p>
+                <div className="bg-slate-900 text-slate-100 rounded-lg p-3 text-xs font-mono overflow-x-auto max-h-[200px] overflow-y-auto">
+                  <pre className="whitespace-pre-wrap">{JSON.stringify({
+                    event: "gold_purchase",
+                    timestamp: "2026-01-15T10:30:00.000Z",
+                    subscription: {
+                      client_email: "cliente@example.com",
+                      client_name: "Mario Rossi",
+                      phone: "+39123456789",
+                      tier: "gold",
+                      status: "active"
+                    },
+                    dataset_sync: {
+                      webhook_url: "URL per inviare i dati",
+                      partner_dashboard_url: "URL per upload manuale",
+                      instructions: "Usa X-Client-Email con l'email del cliente"
+                    }
+                  }, null, 2)}</pre>
+                </div>
+                <p className="text-xs text-orange-700 dark:text-orange-300 mt-2">
+                  La notifica include le istruzioni e gli URL per caricare i dati del nuovo cliente. Configurabile nella sezione "Notifiche Partner".
+                </p>
+              </div>
+
+              {/* Sezione 8: Esempio cURL */}
               <div className="space-y-3">
                 <h4 className="font-semibold border-b pb-2">Esempio Implementazione (cURL)</h4>
                 <div className="bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono overflow-x-auto">
@@ -1259,7 +1435,7 @@ export function SyncSourcesManager() {
 # Configurazione
 API_KEY="${guideSource.api_key}"
 SECRET_KEY="<la_tua_secret_key>"
-FILE_PATH="ordini.xlsx"
+FILE_PATH="ordini.csv"
 CLIENT_EMAIL="cliente@example.com"
 ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"
 
@@ -1267,42 +1443,50 @@ ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"
 TIMESTAMP=$(date +%s)
 SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 -hmac "$SECRET_KEY" | cut -d' ' -f2)
 
-# Invio dati per un cliente specifico (con routing)
+# Invio dati con full replace (consigliato)
 curl -X POST "$ENDPOINT" \\
   -H "X-Dataset-Timestamp: $TIMESTAMP" \\
   -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
   -H "X-Client-Email: $CLIENT_EMAIL" \\
-  -F "file=@$FILE_PATH" \\
-  -F "replace_mode=upsert" \\
-  -F "upsert_key_columns=order_id,line_id"
+  -F "file=@$FILE_PATH"
 
-# Invii successivi per lo stesso cliente
-curl -X POST "$ENDPOINT" \\
-  -H "X-Dataset-Timestamp: $TIMESTAMP" \\
-  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
-  -H "X-Client-Email: $CLIENT_EMAIL" \\
-  -F "file=@$FILE_PATH"`}</pre>
+# Il replace_mode=full e' il default, non serve specificarlo
+# Per invii successivi dello stesso cliente, ripetere lo stesso comando`}</pre>
                 </div>
               </div>
 
-              {/* Nota finale */}
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Nota Importante
-                </h4>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Le opzioni <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">replace_mode</code> e{' '}
-                  <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">upsert_key_columns</code> vengono 
-                  salvate nel sistema al primo invio. Negli invii successivi non e necessario ripeterle.
-                </p>
+              {/* Sezione 9: Cosa aspettarsi */}
+              <div className="border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-3">Cosa aspettarsi dopo l'invio</h4>
+                <div className="space-y-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Risposta 200 OK</strong> con syncId, nome tabella e numero di righe importate</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Le colonne vengono riconosciute</strong> automaticamente (prezzo, quantita, data, ecc.)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>Il dataset e' immediatamente disponibile</strong> per le analisi AI del cliente</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
+                    <span>In caso di errore, la risposta contiene il codice errore e un messaggio descrittivo</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
           <DialogFooter className="flex gap-2 sm:gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => guideSource && downloadGuidePDF(guideSource)}>
+            <Button variant="outline" className="gap-2" onClick={() => guideSource && downloadGuidePDF(guideSource, false)}>
               <Download className="h-4 w-4" />
               Scarica PDF
+            </Button>
+            <Button variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20" onClick={() => guideSource && downloadGuidePDF(guideSource, true)}>
+              <Key className="h-4 w-4" />
+              PDF Completo + Credenziali
             </Button>
             <Button onClick={() => setGuideSource(null)}>
               Chiudi

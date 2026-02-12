@@ -604,6 +604,65 @@ function PartnerWebhookCard() {
             )}
           </div>
         </div>
+
+        {isConfigured && (
+          <div className="pt-4 border-t">
+            <button
+              className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors w-full"
+              onClick={(e) => {
+                const target = e.currentTarget.nextElementSibling;
+                const icon = e.currentTarget.querySelector('.chevron-icon');
+                if (target) {
+                  target.classList.toggle('hidden');
+                  icon?.classList.toggle('rotate-180');
+                }
+              }}
+            >
+              <Eye className="h-4 w-4" />
+              Anteprima Payload Webhook
+              <ChevronDown className="h-4 w-4 chevron-icon transition-transform duration-200 ml-auto" />
+            </button>
+            <div className="hidden mt-3">
+              <p className="text-xs text-muted-foreground mb-2">
+                Questo e' un esempio del payload JSON che il partner ricevera' quando un cliente acquista una licenza:
+              </p>
+              <div className="bg-slate-900 text-slate-100 rounded-lg p-4 text-xs font-mono overflow-x-auto max-h-[400px] overflow-y-auto">
+                <pre className="whitespace-pre-wrap">{JSON.stringify({
+                  event: "gold_purchase",
+                  timestamp: new Date().toISOString(),
+                  consultant_id: "il-tuo-consultant-id",
+                  subscription: {
+                    id: "sub_12345",
+                    client_email: "cliente@example.com",
+                    client_name: "Mario Rossi",
+                    phone: "+39123456789",
+                    tier: "gold",
+                    status: "active",
+                    start_date: new Date().toISOString(),
+                    stripe_subscription_id: "sub_stripe_xxx"
+                  },
+                  dataset_sync: {
+                    webhook_url: `${window.location.origin}/api/dataset-sync/webhook/dsync_xxx`,
+                    partner_dashboard_url: `${window.location.origin}/partner/dashboard/dsync_xxx`,
+                    source_name: "Nome Sorgente",
+                    instructions: "Per inviare i dati di questo cliente, usa l'header X-Client-Email con l'email del cliente nella richiesta webhook. Oppure usa la Partner Dashboard per caricare i file direttamente dal browser."
+                  }
+                }, null, 2)}</pre>
+              </div>
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Headers inviati con la richiesta:</p>
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-xs font-mono space-y-1">
+                  <div><span className="text-blue-600 dark:text-blue-400">Content-Type:</span> application/json</div>
+                  <div><span className="text-blue-600 dark:text-blue-400">X-Partner-Signature:</span> sha256=hmac_firma_del_payload</div>
+                  <div><span className="text-blue-600 dark:text-blue-400">X-Partner-Timestamp:</span> {new Date().toISOString()}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Il campo <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">dataset_sync</code> viene incluso solo se hai una sorgente di sincronizzazione dati attiva collegata. Contiene le istruzioni per il partner su come inviare i dati del nuovo cliente.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {logsQuery.data?.logs?.length > 0 && (
           <div className="pt-4 border-t">
