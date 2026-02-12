@@ -413,16 +413,24 @@ router.post(
         const existingDataset = existingDatasetResult.rows || [];
         if (existingDataset && existingDataset.length > 0) {
           tableName = existingDataset[0].table_name;
-          
-          if (sourceData.replace_mode === 'full') {
-            await db.execute(sql.raw(`TRUNCATE TABLE ${tableName}`));
+
+          const tableCheck = await db.execute<any>(sql`
+            SELECT EXISTS (
+              SELECT FROM information_schema.tables 
+              WHERE table_schema = 'public' AND table_name = ${tableName}
+            ) as exists
+          `);
+          if (!tableCheck.rows[0]?.exists) {
+            console.log(`[DATASET-SYNC] Physical table ${tableName} missing, marking for recreation...`);
+            needsTableCreation = true;
+          } else if (sourceData.replace_mode === 'full') {
+            await db.execute(sql.raw(`TRUNCATE TABLE "${tableName}"`));
           }
         } else {
-          // Dataset ID esiste ma non trovato nel DB - crea nuova tabella
           const datasetName = sourceData.name || originalname || 'dataset';
           tableName = generateTableName(sourceData.consultant_id, datasetName);
           needsTableCreation = true;
-          targetDatasetId = null; // Reset per creare nuovo dataset
+          targetDatasetId = null;
         }
       } else {
         const datasetName = sourceData.name || originalname || 'dataset';
@@ -2443,15 +2451,29 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
     if (existingDatasets.length > 0) {
       targetDatasetId = existingDatasets[0].id;
       tableName = existingDatasets[0].table_name;
+
+      const tableCheck = await db.execute<any>(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = ${tableName}
+        ) as exists
+      `);
+      if (!tableCheck.rows[0]?.exists) {
+        console.log(`[PARTNER UPLOAD] Physical table ${tableName} missing, recreating...`);
+        const createResult = await createDynamicTable(tableName, discoveryResult.columns, source.consultant_id, String(datasetClientId));
+        if (!createResult.success) {
+          throw new Error(`Failed to recreate table ${tableName}: ${createResult.error}`);
+        }
+        console.log(`[PARTNER UPLOAD] Table ${tableName} recreated successfully`);
+      }
     } else {
       tableName = generateTableName(datasetClientId, originalname);
-      
-      const columnDefs = discoveryResult.columns.map((col: any) => ({
-        name: sanitizeColumnName(col.suggestedName || col.originalName),
-        type: col.detectedType === 'number' ? 'numeric' : col.detectedType === 'date' ? 'timestamp' : 'text',
-      }));
-      
-      await createDynamicTable(tableName, columnDefs);
+
+      const createResult = await createDynamicTable(tableName, discoveryResult.columns, source.consultant_id, String(datasetClientId));
+      if (!createResult.success) {
+        throw new Error(`Failed to create table ${tableName}: ${createResult.error}`);
+      }
+      console.log(`[PARTNER UPLOAD] Table ${tableName} created successfully`);
 
       const datasetInsertResult = await db.execute<any>(sql`
         INSERT INTO client_data_datasets (consultant_id, client_id, name, original_filename, table_name, status, row_count, column_count, column_mapping, auto_confirmed, confidence_score, created_at)
