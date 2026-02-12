@@ -25,6 +25,13 @@ export interface QueryResult {
 
 const DEFAULT_TIMEOUT_MS = 3000; // Reduced from 30s to 3s for AI queries (query cost guard)
 const AI_QUERY_TIMEOUT_MS = 3000; // Hard limit for AI-triggered queries
+
+function sanitizeNumericCasts(sql: string): string {
+  return sql.replace(
+    /CAST\("([^"]+)"\s+AS\s+NUMERIC\)/gi,
+    (_, col) => `CAST(REPLACE("${col}", ',', '.') AS NUMERIC)`
+  );
+}
 const DEFAULT_CACHE_TTL_AGGREGATION = 3600;
 const DEFAULT_CACHE_TTL_FILTER = 300;
 export const MAX_GROUP_BY_LIMIT = 500; // Hard limit for GROUP BY queries
@@ -219,13 +226,14 @@ export async function executeQuery(
 ): Promise<QueryResult> {
   const startTime = Date.now();
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
+  const sanitizedSql = sanitizeNumericCasts(sql);
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
     await client.query(`SET LOCAL statement_timeout = '${timeoutMs}ms'`);
 
-    const result = await client.query(sql, params);
+    const result = await client.query(sanitizedSql, params);
 
     await client.query("COMMIT");
 
