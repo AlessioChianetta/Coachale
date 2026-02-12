@@ -75,6 +75,7 @@ const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowl
 const ConsultantKnowledgeApis = lazy(() => import("@/pages/consultant-knowledge-apis"));
 const ConsultantReferrals = lazy(() => import("@/pages/consultant-referrals"));
 const ConsultantReferralSettings = lazy(() => import("@/pages/consultant-referral-settings"));
+const PartnerDashboard = lazy(() => import("@/pages/partner-dashboard"));
 const ClientUniversity = lazy(() => import("@/pages/client-university"));
 const ClientDashboard = lazy(() => import("@/pages/client-dashboard"));
 const ClientExercises = lazy(() => import("@/pages/client-exercises"));
@@ -244,6 +245,9 @@ function Router() {
 
           {/* Agent Selection Page - no auth required (Bronze/Silver users) */}
           <Route path="/c/:slug/select-agent" component={SelectAgent} />
+
+          {/* Partner Dashboard - no auth required (uses API key) */}
+          <Route path="/partner/dashboard/:apiKey" component={PartnerDashboard} />
 
           <Route path="/consultant">
             <AuthGuard requiredRole="consultant">

@@ -2271,8 +2271,9 @@ export async function sendPartnerWebhook(
           : "http://localhost:5000";
         datasetSyncInfo = {
           webhook_url: `${baseUrl}/api/dataset-sync/webhook/${syncRows[0].api_key}`,
+          partner_dashboard_url: `${baseUrl}/partner/dashboard/${syncRows[0].api_key}`,
           source_name: syncRows[0].name,
-          instructions: "Per inviare i dati di questo cliente, usa l'header X-Client-Email con l'email del cliente nella richiesta webhook. Esempio: -H 'X-Client-Email: email_cliente@example.com'"
+          instructions: "Per inviare i dati di questo cliente, usa l'header X-Client-Email con l'email del cliente nella richiesta webhook. Oppure usa la Partner Dashboard per caricare i file direttamente dal browser."
         };
       }
     } catch (e) {
@@ -2342,6 +2343,25 @@ export async function sendPartnerWebhook(
       success,
       errorMessage,
     });
+
+    if (eventType !== "test") {
+      try {
+        const syncSourceResult = await db.execute<any>(
+          sql`SELECT id FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
+        );
+        const syncSourceRows = syncSourceResult.rows || [];
+        const sourceId = syncSourceRows.length > 0 ? syncSourceRows[0].id : null;
+
+        await db.execute(sql`
+          INSERT INTO partner_client_queue (consultant_id, source_id, client_email, client_name, client_phone, tier, stripe_subscription_id, file_status)
+          VALUES (${consultantId}, ${sourceId}, ${subscriptionData.clientEmail}, ${subscriptionData.clientName || null}, ${subscriptionData.phone || null}, ${subscriptionData.tier}, ${subscriptionData.stripeSubscriptionId || null}, 'pending')
+          ON CONFLICT DO NOTHING
+        `);
+        console.log(`[Partner Webhook] Client ${subscriptionData.clientEmail} added to partner queue`);
+      } catch (queueErr: any) {
+        console.warn(`[Partner Webhook] Could not add to partner queue:`, queueErr?.message);
+      }
+    }
     
     return { success, error: errorMessage };
   } catch (error: any) {

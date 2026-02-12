@@ -2272,4 +2272,299 @@ router.get(
   }
 );
 
+// ============================================================================
+// PARTNER DASHBOARD API - Endpoints pubblici per il partner (autenticati via API key)
+// ============================================================================
+
+// GET /partner/:apiKey/clients - Lista clienti in coda per il partner
+router.get("/partner/:apiKey/clients", async (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.params;
+
+    // Verifica API key e recupera sorgente
+    const sourceResult = await db.execute<any>(sql`
+      SELECT id, consultant_id, name, secret_key FROM dataset_sync_sources 
+      WHERE api_key = ${apiKey} AND is_active = true LIMIT 1
+    `);
+    const sourceRows = sourceResult.rows || [];
+    if (sourceRows.length === 0) {
+      return res.status(401).json({ success: false, error: "API key non valida o sorgente disattivata" });
+    }
+
+    const source = sourceRows[0];
+
+    // Recupera i clienti dalla coda (filtrati per source_id O per consultant senza source specifica)
+    const clientsResult = await db.execute<any>(sql`
+      SELECT id, client_email, client_name, client_phone, tier, purchase_date, file_status, file_uploaded_at, file_name, rows_imported, sync_id
+      FROM partner_client_queue
+      WHERE consultant_id = ${source.consultant_id} AND (source_id = ${source.id} OR source_id IS NULL)
+      ORDER BY created_at DESC
+    `);
+
+    res.json({
+      success: true,
+      source_name: source.name,
+      clients: clientsResult.rows || [],
+    });
+  } catch (error: any) {
+    console.error("[PARTNER] Error fetching clients:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /partner/:apiKey/upload - Upload CSV per un cliente specifico
+router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.params;
+    const clientEmail = req.body.client_email;
+    const queueId = req.body.queue_id;
+
+    if (!clientEmail) {
+      return res.status(400).json({ success: false, error: "client_email è obbligatorio" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: "Nessun file caricato" });
+    }
+
+    // Verifica API key
+    const sourceResult = await db.execute<any>(sql`
+      SELECT id, consultant_id, name, secret_key, api_key FROM dataset_sync_sources 
+      WHERE api_key = ${apiKey} AND is_active = true LIMIT 1
+    `);
+    const sourceRows = sourceResult.rows || [];
+    if (sourceRows.length === 0) {
+      return res.status(401).json({ success: false, error: "API key non valida o sorgente disattivata" });
+    }
+
+    const source = sourceRows[0];
+    const { originalname, path: tempPath, size } = req.file;
+
+    console.log(`[PARTNER UPLOAD] File ${originalname} (${size} bytes) for client ${clientEmail} via source ${source.name}`);
+
+    // Prepara il file per l'invio interno al webhook sync
+    const syncId = `partner_upload_${nanoid(12)}`;
+    const startTime = Date.now();
+
+    await ensureUploadDir();
+    const ext = path.extname(originalname).toLowerCase();
+    const newPath = path.join(UPLOAD_DIR, `${syncId}${ext}`);
+    await fs.promises.rename(tempPath, newPath);
+
+    // Inserisci il record nella history
+    await db.execute(sql`
+      INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, file_size_bytes, request_ip, resolved_client_email)
+      VALUES (${source.id}, ${syncId}, 'processing', 'webhook', ${originalname}, ${size}, ${req.ip || null}, ${clientEmail})
+    `);
+
+    // Processa il file
+    const processedFile = await processExcelFile(newPath, originalname);
+
+    if (processedFile.sheets.length === 0 || processedFile.sheets[0].rowCount === 0) {
+      const durationMs = Date.now() - startTime;
+      await db.execute(sql`
+        UPDATE dataset_sync_history 
+        SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, error_code = 'EMPTY_FILE', error_message = 'File vuoto o senza righe valide'
+        WHERE sync_id = ${syncId}
+      `);
+      return res.status(400).json({ success: false, error: "EMPTY_FILE", message: "File vuoto o senza righe valide" });
+    }
+
+    const sheet = processedFile.sheets[0];
+    const headers = sheet.columns.map((c: any) => c.name);
+
+    // Discover columns
+    const sample = {
+      columns: headers,
+      rows: sheet.sampleRows,
+      totalRowCount: sheet.rowCount,
+      sampledFromStart: sheet.sampleRows.length,
+      sampledFromMiddle: 0,
+      sampledFromEnd: 0
+    };
+    const discoveryResult = await discoverColumns(sample, originalname, source.consultant_id);
+    const mappedColumns = discoveryResult.columns.filter((c: any) => c.patternMatched || c.confidence >= 0.8);
+    const unmappedColumns = discoveryResult.columns.filter((c: any) => !c.patternMatched && c.confidence < 0.8);
+
+    // Trova il cliente per email
+    const clientResult = await db.execute<any>(sql`
+      SELECT u.id FROM users u
+      JOIN client_level_subscriptions cls ON cls.client_email = ${clientEmail} AND cls.consultant_id = ${source.consultant_id} AND cls.status = 'active'
+      WHERE LOWER(u.email) = LOWER(${clientEmail})
+      LIMIT 1
+    `);
+    let datasetClientId: string;
+    const clientRows = clientResult.rows || [];
+    
+    if (clientRows.length === 0) {
+      const bronzeResult = await db.execute<any>(sql`
+        SELECT id FROM bronze_users
+        WHERE LOWER(email) = LOWER(${clientEmail}) AND consultant_id = ${source.consultant_id}
+        LIMIT 1
+      `);
+      const bronzeRows = bronzeResult.rows || [];
+      if (bronzeRows.length === 0) {
+        const durationMs = Date.now() - startTime;
+        await db.execute(sql`
+          UPDATE dataset_sync_history 
+          SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+              error_code = 'CLIENT_NOT_FOUND', 
+              error_message = ${'Nessun cliente trovato con email "' + clientEmail + '"'},
+              resolved_client_email = ${clientEmail}
+          WHERE sync_id = ${syncId}
+        `);
+        return res.status(404).json({ success: false, error: "CLIENT_NOT_FOUND", message: `Nessun cliente trovato con email "${clientEmail}"` });
+      }
+      datasetClientId = bronzeRows[0].id;
+    } else {
+      datasetClientId = clientRows[0].id;
+    }
+
+    // Controlla se esiste già un dataset per questo cliente dalla stessa sorgente
+    const existingDatasetResult = await db.execute<any>(sql`
+      SELECT id, table_name FROM client_datasets 
+      WHERE client_id = ${datasetClientId} AND source = 'sync_api'
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    const existingDatasets = existingDatasetResult.rows || [];
+
+    let targetDatasetId: number;
+    let tableName: string;
+
+    if (existingDatasets.length > 0) {
+      targetDatasetId = existingDatasets[0].id;
+      tableName = existingDatasets[0].table_name;
+    } else {
+      tableName = generateTableName(datasetClientId, originalname);
+      
+      const columnDefs = discoveryResult.columns.map((col: any) => ({
+        name: sanitizeColumnName(col.suggestedName || col.originalName),
+        type: col.detectedType === 'number' ? 'numeric' : col.detectedType === 'date' ? 'timestamp' : 'text',
+      }));
+      
+      await createDynamicTable(tableName, columnDefs);
+
+      const datasetInsertResult = await db.execute<any>(sql`
+        INSERT INTO client_datasets (client_id, name, table_name, column_count, row_count, source, consultant_id)
+        VALUES (${datasetClientId}, ${originalname}, ${tableName}, ${headers.length}, ${sheet.rowCount}, 'sync_api', ${source.consultant_id})
+        RETURNING id
+      `);
+      targetDatasetId = datasetInsertResult.rows[0].id;
+    }
+
+    // Importa i dati
+    const replaceMode = req.body.replace_mode || 'full';
+    const upsertKeyColumns = req.body.upsert_key_columns?.split(',').map((c: string) => c.trim()) || [];
+    
+    const columnMapping = discoveryResult.columns.map((col: any) => ({
+      originalName: col.originalName,
+      mappedName: sanitizeColumnName(col.suggestedName || col.originalName),
+      physicalColumn: col.physicalColumn || col.originalName,
+    }));
+
+    const importResult = await importDataFromFileWithOptions(
+      newPath, originalname, tableName, columnMapping, replaceMode, upsertKeyColumns
+    );
+
+    // Aggiorna row count del dataset
+    await db.execute(sql`
+      UPDATE client_datasets SET row_count = (SELECT COUNT(*) FROM ${sql.raw(tableName)}), updated_at = now() WHERE id = ${targetDatasetId}
+    `);
+
+    // Salva mapping semantico
+    try {
+      await detectAndSaveSemanticMappings(targetDatasetId, tableName, source.consultant_id, discoveryResult);
+    } catch (semErr: any) {
+      console.warn(`[PARTNER UPLOAD] Semantic mapping warning:`, semErr?.message);
+    }
+
+    const durationMs = Date.now() - startTime;
+    await db.execute(sql`
+      UPDATE dataset_sync_history 
+      SET status = 'completed', completed_at = now(), duration_ms = ${durationMs},
+          rows_imported = ${importResult.rowsInserted + (importResult.rowsUpdated || 0)},
+          rows_inserted = ${importResult.rowsInserted},
+          rows_updated = ${importResult.rowsUpdated || 0},
+          rows_total = ${sheet.rowCount},
+          columns_detected = ${headers.length}, 
+          columns_mapped = ${JSON.stringify(mappedColumns.map((c: any) => c.suggestedName))}::jsonb,
+          columns_unmapped = ${JSON.stringify(unmappedColumns.map((c: any) => c.physicalColumn || c.originalName))}::jsonb,
+          resolved_client_id = ${datasetClientId},
+          resolved_client_email = ${clientEmail}
+      WHERE sync_id = ${syncId}
+    `);
+
+    // Aggiorna la coda partner (con verifica consultant_id per sicurezza)
+    if (queueId) {
+      await db.execute(sql`
+        UPDATE partner_client_queue 
+        SET file_status = 'uploaded', file_uploaded_at = now(), file_name = ${originalname}, 
+            rows_imported = ${importResult.rowsInserted + (importResult.rowsUpdated || 0)}, sync_id = ${syncId}, updated_at = now()
+        WHERE id = ${parseInt(queueId)} AND consultant_id = ${source.consultant_id}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE partner_client_queue 
+        SET file_status = 'uploaded', file_uploaded_at = now(), file_name = ${originalname}, 
+            rows_imported = ${importResult.rowsInserted + (importResult.rowsUpdated || 0)}, sync_id = ${syncId}, updated_at = now()
+        WHERE client_email = ${clientEmail} AND consultant_id = ${source.consultant_id} AND file_status = 'pending'
+      `);
+    }
+
+    // Cleanup file
+    try { await fs.promises.unlink(newPath); } catch {}
+
+    console.log(`[PARTNER UPLOAD] Success: ${importResult.rowsInserted} inserted, ${importResult.rowsUpdated || 0} updated for client ${clientEmail}`);
+
+    res.json({
+      success: true,
+      sync_id: syncId,
+      client_email: clientEmail,
+      dataset_id: targetDatasetId,
+      rows_imported: importResult.rowsInserted + (importResult.rowsUpdated || 0),
+      rows_inserted: importResult.rowsInserted,
+      rows_updated: importResult.rowsUpdated || 0,
+      columns_mapped: mappedColumns.length,
+      columns_unmapped: unmappedColumns.length,
+      duration_ms: durationMs,
+    });
+  } catch (error: any) {
+    console.error("[PARTNER UPLOAD] Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /partner/:apiKey/add-client - Aggiunge manualmente un cliente alla coda (per test)
+router.post("/partner/:apiKey/add-client", async (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.params;
+    const { client_email, client_name, tier } = req.body;
+
+    if (!client_email) {
+      return res.status(400).json({ success: false, error: "client_email è obbligatorio" });
+    }
+
+    const sourceResult = await db.execute<any>(sql`
+      SELECT id, consultant_id FROM dataset_sync_sources 
+      WHERE api_key = ${apiKey} AND is_active = true LIMIT 1
+    `);
+    const sourceRows = sourceResult.rows || [];
+    if (sourceRows.length === 0) {
+      return res.status(401).json({ success: false, error: "API key non valida" });
+    }
+
+    const source = sourceRows[0];
+
+    await db.execute(sql`
+      INSERT INTO partner_client_queue (consultant_id, source_id, client_email, client_name, tier, file_status)
+      VALUES (${source.consultant_id}, ${source.id}, ${client_email}, ${client_name || null}, ${tier || 'silver'}, 'pending')
+    `);
+
+    res.json({ success: true, message: `Cliente ${client_email} aggiunto alla coda` });
+  } catch (error: any) {
+    console.error("[PARTNER] Error adding client:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
