@@ -1742,6 +1742,31 @@ router.delete(
   }
 );
 
+// ==================== WHATSAPP AGENTS LIST (for system docs UI) ====================
+
+router.get(
+  "/consultant/knowledge/whatsapp-agents",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+
+      const result = await db.execute(sql`
+        SELECT id, agent_name, agent_type, is_active
+        FROM consultant_whatsapp_config
+        WHERE consultant_id = ${consultantId}
+        ORDER BY agent_name ASC
+      `);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [WHATSAPP AGENTS LIST] Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to list WhatsApp agents" });
+    }
+  }
+);
+
 // ==================== SYSTEM PROMPT DOCUMENTS ====================
 
 router.get(
@@ -1755,7 +1780,7 @@ router.get(
       const result = await db.execute(sql`
         SELECT id, consultant_id, title, content, description, is_active,
                target_client_assistant, target_autonomous_agents, target_whatsapp_agents,
-               priority, created_at, updated_at
+               priority, injection_mode, created_at, updated_at
         FROM system_prompt_documents
         WHERE consultant_id = ${consultantId}
         ORDER BY priority ASC, created_at DESC
@@ -1776,7 +1801,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const consultantId = (req as AuthRequest).user!.id;
-      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority } = req.body;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode } = req.body;
 
       if (!title || !content) {
         return res.status(400).json({ success: false, error: "Title and content are required" });
@@ -1787,12 +1812,30 @@ router.post(
 
       const result = await db.execute(sql`
         INSERT INTO system_prompt_documents (id, consultant_id, title, content, description, is_active,
-          target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, created_at, updated_at)
+          target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode, created_at, updated_at)
         VALUES (${id}, ${consultantId}, ${title}, ${content}, ${description || null}, true,
-          ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})},
-          ${target_whatsapp_agents ?? false}, ${priority ?? 5}, ${now}, ${now})
+          ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})}::jsonb,
+          ${JSON.stringify(target_whatsapp_agents || {})}::jsonb, ${priority ?? 5}, ${injection_mode || 'system_prompt'}, ${now}, ${now})
         RETURNING *
       `);
+
+      if ((injection_mode || 'system_prompt') === 'file_search') {
+        setImmediate(async () => {
+          try {
+            if (target_client_assistant) {
+              await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
+            }
+            const waAgents = target_whatsapp_agents || {};
+            for (const [agentId, enabled] of Object.entries(waAgents)) {
+              if (enabled) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+              }
+            }
+          } catch (err: any) {
+            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync failed:', err.message);
+          }
+        });
+      }
 
       res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error: any) {
@@ -1810,7 +1853,7 @@ router.put(
     try {
       const consultantId = (req as AuthRequest).user!.id;
       const { id } = req.params;
-      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, is_active } = req.body;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, is_active, injection_mode } = req.body;
 
       const existing = await db.execute(sql`
         SELECT id FROM system_prompt_documents WHERE id = ${id} AND consultant_id = ${consultantId}
@@ -1827,15 +1870,47 @@ router.put(
             description = COALESCE(${description ?? null}, description),
             target_client_assistant = COALESCE(${target_client_assistant ?? null}, target_client_assistant),
             target_autonomous_agents = COALESCE(${target_autonomous_agents ? JSON.stringify(target_autonomous_agents) : null}::jsonb, target_autonomous_agents),
-            target_whatsapp_agents = COALESCE(${target_whatsapp_agents ?? null}, target_whatsapp_agents),
+            target_whatsapp_agents = COALESCE(${target_whatsapp_agents ? JSON.stringify(target_whatsapp_agents) : null}::jsonb, target_whatsapp_agents),
             priority = COALESCE(${priority ?? null}, priority),
             is_active = COALESCE(${is_active ?? null}, is_active),
+            injection_mode = COALESCE(${injection_mode ?? null}, injection_mode),
             updated_at = ${new Date()}
         WHERE id = ${id} AND consultant_id = ${consultantId}
         RETURNING *
       `);
 
-      res.json({ success: true, data: result.rows[0] });
+      const updatedDoc = result.rows[0] as any;
+      if (updatedDoc) {
+        setImmediate(async () => {
+          try {
+            if (updatedDoc.injection_mode === 'file_search' && updatedDoc.is_active) {
+              if (updatedDoc.target_client_assistant) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
+              } else {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              }
+              const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
+              for (const [agentId, enabled] of Object.entries(waAgents)) {
+                if (enabled) {
+                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+                } else {
+                  await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+                }
+              }
+            } else if (updatedDoc.injection_mode === 'system_prompt' || !updatedDoc.is_active) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
+              for (const agentId of Object.keys(waAgents)) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+              }
+            }
+          } catch (err: any) {
+            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync failed:', err.message);
+          }
+        });
+      }
+
+      res.json({ success: true, data: updatedDoc });
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error updating:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to update system prompt document" });
@@ -1852,14 +1927,35 @@ router.delete(
       const consultantId = (req as AuthRequest).user!.id;
       const { id } = req.params;
 
-      const result = await db.execute(sql`
-        DELETE FROM system_prompt_documents
+      const existing = await db.execute(sql`
+        SELECT id, target_whatsapp_agents, injection_mode
+        FROM system_prompt_documents
         WHERE id = ${id} AND consultant_id = ${consultantId}
-        RETURNING id
       `);
 
-      if (result.rows.length === 0) {
+      if (existing.rows.length === 0) {
         return res.status(404).json({ success: false, error: "System prompt document not found" });
+      }
+
+      const docToDelete = existing.rows[0] as any;
+
+      await db.execute(sql`
+        DELETE FROM system_prompt_documents
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+      `);
+
+      if (docToDelete.injection_mode === 'file_search') {
+        setImmediate(async () => {
+          try {
+            await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+            const waAgents = (typeof docToDelete.target_whatsapp_agents === 'string' ? JSON.parse(docToDelete.target_whatsapp_agents) : docToDelete.target_whatsapp_agents) || {};
+            for (const agentId of Object.keys(waAgents)) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+            }
+          } catch (err: any) {
+            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search removal failed:', err.message);
+          }
+        });
       }
 
       res.json({ success: true, data: { id } });
@@ -1890,7 +1986,34 @@ router.patch(
         return res.status(404).json({ success: false, error: "System prompt document not found" });
       }
 
-      res.json({ success: true, data: result.rows[0] });
+      const toggled = result.rows[0] as any;
+      if (toggled.injection_mode === 'file_search') {
+        setImmediate(async () => {
+          try {
+            if (!toggled.is_active) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              const waAgents = (typeof toggled.target_whatsapp_agents === 'string' ? JSON.parse(toggled.target_whatsapp_agents) : toggled.target_whatsapp_agents) || {};
+              for (const agentId of Object.keys(waAgents)) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+              }
+            } else {
+              if (toggled.target_client_assistant) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
+              }
+              const waAgents = (typeof toggled.target_whatsapp_agents === 'string' ? JSON.parse(toggled.target_whatsapp_agents) : toggled.target_whatsapp_agents) || {};
+              for (const [agentId, enabled] of Object.entries(waAgents)) {
+                if (enabled) {
+                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+                }
+              }
+            }
+          } catch (err: any) {
+            console.error('❌ [SYSTEM PROMPT DOCS] Background file_search toggle sync failed:', err.message);
+          }
+        });
+      }
+
+      res.json({ success: true, data: toggled });
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error toggling:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to toggle system prompt document" });

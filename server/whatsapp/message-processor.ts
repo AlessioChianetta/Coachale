@@ -1146,14 +1146,15 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       console.log(`✅ System prompt ready`);
       console.log(`⏱️  [TIMING] Prompt building: ${promptBuildTime}ms`);
 
-      // Inject system prompt documents for WhatsApp
+      // Inject system prompt documents for WhatsApp (filtered by specific agent ID)
       const whatsappConsultantId = consultantConfig?.consultantId || consultantId;
+      const whatsappAgentConfigId = consultantConfig?.id;
       if (whatsappConsultantId) {
         try {
-          const whatsappSystemDocs = await fetchSystemDocumentsForWhatsApp(whatsappConsultantId);
+          const whatsappSystemDocs = await fetchSystemDocumentsForWhatsApp(whatsappConsultantId, whatsappAgentConfigId);
           if (whatsappSystemDocs) {
             systemPrompt += '\n\n' + whatsappSystemDocs;
-            console.log(`📌 [WHATSAPP] Injected system docs into prompt`);
+            console.log(`📌 [WHATSAPP] Injected system docs into prompt for agent ${whatsappAgentConfigId || 'all'}`);
           }
         } catch (sysDocErr: any) {
           console.warn(`⚠️ [WHATSAPP] Error fetching system docs: ${sysDocErr.message}`);

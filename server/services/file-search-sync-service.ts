@@ -48,7 +48,7 @@ import {
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
 import { fileSearchService, FileSearchService } from "../ai/file-search-service";
-import { eq, and, desc, isNotNull, inArray, or } from "drizzle-orm";
+import { eq, and, desc, isNotNull, inArray, or, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
@@ -8568,6 +8568,119 @@ export class FileSearchSyncService {
     } catch (error: any) {
       console.error(`[FileSync] Error getting all missing external docs:`, error);
       return [];
+    }
+  }
+
+  static async syncSystemPromptDocumentToFileSearch(
+    documentId: string,
+    consultantId: string,
+    target: 'client_assistant' | 'whatsapp_agent',
+    targetOwnerId: string,
+    targetOwnerType: 'consultant' | 'whatsapp_agent',
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const docResult = await db.execute(
+        sql`SELECT id, title, content FROM system_prompt_documents WHERE id = ${documentId} AND consultant_id = ${consultantId} AND is_active = true AND injection_mode = 'file_search'`
+      );
+      const doc = (docResult.rows as any[])[0];
+      if (!doc) {
+        return { success: false, error: 'System prompt document not found or not file_search mode' };
+      }
+
+      let store = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, targetOwnerId),
+          eq(fileSearchStores.ownerType, targetOwnerType),
+        ),
+      });
+
+      if (!store) {
+        const storeName = targetOwnerType === 'consultant' 
+          ? 'Knowledge Base Consulente' 
+          : 'WhatsApp Agent Store';
+        const createResult = await fileSearchService.createStore({
+          displayName: storeName,
+          ownerId: targetOwnerId,
+          ownerType: targetOwnerType,
+          description: `File Search store per ${targetOwnerType}`,
+        });
+        if (!createResult.success || !createResult.storeId) {
+          return { success: false, error: 'Failed to create store for system prompt doc' };
+        }
+        store = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, createResult.storeId),
+        });
+        if (!store) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.storeId, store.id),
+          eq(fileSearchDocuments.sourceType, 'system_prompt_document'),
+          eq(fileSearchDocuments.sourceId, documentId),
+        ),
+      });
+
+      if (existingDoc) {
+        await fileSearchService.deleteDocument(existingDoc.id);
+        console.log(`🔄 [FileSync] Replacing existing system prompt doc in store: ${doc.title}`);
+      }
+
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: doc.content,
+        displayName: `[SP] ${doc.title}`,
+        storeId: store.id,
+        sourceType: 'system_prompt_document',
+        sourceId: documentId,
+        userId: consultantId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] System prompt document synced to file search: ${doc.title}`);
+      }
+
+      return uploadResult.success
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error(`[FileSync] Error syncing system prompt document to file search:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  static async removeSystemPromptDocumentFromFileSearch(
+    documentId: string,
+    storeOwnerId: string,
+    storeOwnerType: 'consultant' | 'whatsapp_agent',
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const store = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, storeOwnerId),
+          eq(fileSearchStores.ownerType, storeOwnerType),
+        ),
+      });
+      if (!store) return { success: true };
+
+      const existingDoc = await db.query.fileSearchDocuments.findFirst({
+        where: and(
+          eq(fileSearchDocuments.storeId, store.id),
+          eq(fileSearchDocuments.sourceType, 'system_prompt_document'),
+          eq(fileSearchDocuments.sourceId, documentId),
+        ),
+      });
+
+      if (existingDoc) {
+        await fileSearchService.deleteDocument(existingDoc.id);
+        console.log(`🗑️ [FileSync] Removed system prompt doc from file search store: ${documentId}`);
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error(`[FileSync] Error removing system prompt doc from file search:`, error);
+      return { success: false, error: error.message };
     }
   }
 }

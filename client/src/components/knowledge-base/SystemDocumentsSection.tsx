@@ -11,6 +11,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -41,9 +48,10 @@ import {
   MessageCircle,
   Bot,
   Users,
-  Settings,
   ChevronDown,
   Loader2,
+  Search,
+  StickyNote,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +67,13 @@ const AUTONOMOUS_AGENTS = [
   { id: "personalizza", name: "Personalizza" },
 ];
 
+interface WhatsAppAgent {
+  id: string;
+  agent_name: string;
+  agent_type: string;
+  is_active: boolean;
+}
+
 interface SystemDocument {
   id: string;
   title: string;
@@ -67,7 +82,8 @@ interface SystemDocument {
   is_active: boolean;
   target_client_assistant: boolean;
   target_autonomous_agents: Record<string, boolean>;
-  target_whatsapp_agents: boolean;
+  target_whatsapp_agents: Record<string, boolean>;
+  injection_mode: "system_prompt" | "file_search";
   priority: number;
   created_at: string;
   updated_at: string;
@@ -79,7 +95,8 @@ interface DocumentForm {
   description: string;
   target_client_assistant: boolean;
   target_autonomous_agents: Record<string, boolean>;
-  target_whatsapp_agents: boolean;
+  target_whatsapp_agents: Record<string, boolean>;
+  injection_mode: "system_prompt" | "file_search";
   priority: number;
 }
 
@@ -89,7 +106,8 @@ const emptyForm = (): DocumentForm => ({
   description: "",
   target_client_assistant: true,
   target_autonomous_agents: Object.fromEntries(AUTONOMOUS_AGENTS.map(a => [a.id, false])),
-  target_whatsapp_agents: false,
+  target_whatsapp_agents: {},
+  injection_mode: "system_prompt",
   priority: 5,
 });
 
@@ -99,6 +117,7 @@ export default function SystemDocumentsSection() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState<DocumentForm>(emptyForm());
   const [agentsOpen, setAgentsOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -114,7 +133,19 @@ export default function SystemDocumentsSection() {
     },
   });
 
+  const { data: whatsappResponse } = useQuery({
+    queryKey: ["/api/consultant/knowledge/whatsapp-agents"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/knowledge/whatsapp-agents", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch WhatsApp agents");
+      return res.json();
+    },
+  });
+
   const documents: SystemDocument[] = response?.data || [];
+  const whatsappAgents: WhatsAppAgent[] = whatsappResponse?.data || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: DocumentForm) => {
@@ -209,23 +240,32 @@ export default function SystemDocumentsSection() {
     setEditingDoc(null);
     setForm(emptyForm());
     setAgentsOpen(false);
+    setWhatsappOpen(false);
   };
 
   const openCreate = () => {
     setEditingDoc(null);
-    setForm(emptyForm());
+    const newForm = emptyForm();
+    if (whatsappAgents.length > 0) {
+      newForm.target_whatsapp_agents = Object.fromEntries(whatsappAgents.map(a => [a.id, false]));
+    }
+    setForm(newForm);
     setShowDialog(true);
   };
 
   const openEdit = (doc: SystemDocument) => {
     setEditingDoc(doc);
+    const waAgents = whatsappAgents.length > 0
+      ? { ...Object.fromEntries(whatsappAgents.map(a => [a.id, false])), ...(doc.target_whatsapp_agents || {}) }
+      : (doc.target_whatsapp_agents || {});
     setForm({
       title: doc.title,
       content: doc.content,
       description: doc.description || "",
       target_client_assistant: doc.target_client_assistant,
       target_autonomous_agents: { ...Object.fromEntries(AUTONOMOUS_AGENTS.map(a => [a.id, false])), ...doc.target_autonomous_agents },
-      target_whatsapp_agents: doc.target_whatsapp_agents,
+      target_whatsapp_agents: waAgents,
+      injection_mode: doc.injection_mode || "system_prompt",
       priority: doc.priority,
     });
     setShowDialog(true);
@@ -246,20 +286,37 @@ export default function SystemDocumentsSection() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   const getTargetBadges = (doc: SystemDocument) => {
-    const badges: { label: string; icon: React.ReactNode; variant: string }[] = [];
+    const badges: { label: string; icon: React.ReactNode; colorClass: string }[] = [];
+
+    badges.push({
+      label: doc.injection_mode === "file_search" ? "File Search" : "System Prompt",
+      icon: doc.injection_mode === "file_search" ? <Search className="h-3 w-3" /> : <StickyNote className="h-3 w-3" />,
+      colorClass: doc.injection_mode === "file_search" ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-800 border-slate-200",
+    });
+
     if (doc.target_client_assistant) {
-      badges.push({ label: "AI Assistant", icon: <Sparkles className="h-3 w-3" />, variant: "blue" });
+      badges.push({ label: "AI Assistant", icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
     }
-    if (doc.target_whatsapp_agents) {
-      badges.push({ label: "WhatsApp", icon: <MessageCircle className="h-3 w-3" />, variant: "green" });
-    }
+
+    const activeWhatsapp = Object.entries(doc.target_whatsapp_agents || {})
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    activeWhatsapp.forEach(agentId => {
+      const agent = whatsappAgents.find(a => a.id === agentId);
+      badges.push({
+        label: agent?.agent_name || agentId.slice(0, 8),
+        icon: <MessageCircle className="h-3 w-3" />,
+        colorClass: "bg-green-100 text-green-800 border-green-200",
+      });
+    });
+
     const activeAgents = Object.entries(doc.target_autonomous_agents || {})
       .filter(([, v]) => v)
       .map(([k]) => k);
     activeAgents.forEach(agentId => {
       const agent = AUTONOMOUS_AGENTS.find(a => a.id === agentId);
       if (agent) {
-        badges.push({ label: agent.name, icon: <Bot className="h-3 w-3" />, variant: "purple" });
+        badges.push({ label: agent.name, icon: <Bot className="h-3 w-3" />, colorClass: "bg-purple-100 text-purple-800 border-purple-200" });
       }
     });
     return badges;
@@ -277,7 +334,7 @@ export default function SystemDocumentsSection() {
               Documenti di Sistema
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Documenti iniettati direttamente nel prompt di sistema dell'AI (sempre in memoria)
+              Istruzioni personalizzate per l'AI — scegli se iniettarle nel System Prompt o nel File Search
             </p>
           </div>
           <Button onClick={openCreate} size="sm" className="gap-1.5">
@@ -295,7 +352,7 @@ export default function SystemDocumentsSection() {
               <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground">Nessun documento di sistema creato</p>
               <p className="text-sm text-muted-foreground/70 mt-1">
-                Crea il tuo primo documento per iniettare istruzioni nel prompt AI
+                Crea il tuo primo documento per iniettare istruzioni nell'AI
               </p>
             </div>
           ) : (
@@ -329,7 +386,7 @@ export default function SystemDocumentsSection() {
                           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             {badges.map((b, i) => (
-                              <Badge key={i} variant="outline" className="text-xs gap-1 py-0.5">
+                              <Badge key={i} variant="outline" className={`text-xs gap-1 py-0.5 ${b.colorClass}`}>
                                 {b.icon}
                                 {b.label}
                               </Badge>
@@ -417,6 +474,43 @@ export default function SystemDocumentsSection() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label>Modalità di Iniezione</Label>
+                <Select
+                  value={form.injection_mode}
+                  onValueChange={(v: "system_prompt" | "file_search") => setForm(f => ({ ...f, injection_mode: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="system_prompt">
+                      <div className="flex items-center gap-2">
+                        <StickyNote className="h-4 w-4 text-slate-500" />
+                        <div>
+                          <span className="font-medium">System Prompt</span>
+                          <span className="text-xs text-muted-foreground ml-2">— sempre in memoria</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="file_search">
+                      <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4 text-amber-500" />
+                        <div>
+                          <span className="font-medium">File Search</span>
+                          <span className="text-xs text-muted-foreground ml-2">— cercato quando serve</span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {form.injection_mode === "system_prompt"
+                    ? "Il documento sarà sempre presente in memoria durante ogni conversazione AI"
+                    : "Il documento sarà indicizzato e cercato automaticamente solo quando rilevante"}
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <Label className="text-base font-medium">Destinatari</Label>
 
@@ -425,7 +519,7 @@ export default function SystemDocumentsSection() {
                     <Sparkles className="h-4 w-4 text-blue-500" />
                     <div>
                       <p className="text-sm font-medium">AI Assistant Clienti</p>
-                      <p className="text-xs text-muted-foreground">Inietta nel prompt dell'assistente AI</p>
+                      <p className="text-xs text-muted-foreground">Visibile nell'assistente AI dei clienti</p>
                     </div>
                   </div>
                   <Switch
@@ -434,19 +528,59 @@ export default function SystemDocumentsSection() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium">Agenti WhatsApp</p>
-                      <p className="text-xs text-muted-foreground">Visibile agli agenti WhatsApp</p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={form.target_whatsapp_agents}
-                    onCheckedChange={v => setForm(f => ({ ...f, target_whatsapp_agents: v }))}
-                  />
-                </div>
+                {whatsappAgents.length > 0 && (
+                  <Collapsible open={whatsappOpen} onOpenChange={setWhatsappOpen}>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <MessageCircle className="h-4 w-4 text-green-500" />
+                          <div>
+                            <p className="text-sm font-medium">Dipendenti WhatsApp</p>
+                            <p className="text-xs text-muted-foreground">
+                              {Object.values(form.target_whatsapp_agents).filter(Boolean).length} di {whatsappAgents.length} selezionati
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${whatsappOpen ? "rotate-180" : ""}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="grid grid-cols-1 gap-2 mt-2 pl-2">
+                        {whatsappAgents.map(agent => (
+                          <label
+                            key={agent.id}
+                            className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+                          >
+                            <Checkbox
+                              checked={!!form.target_whatsapp_agents[agent.id]}
+                              onCheckedChange={(checked) =>
+                                setForm(f => ({
+                                  ...f,
+                                  target_whatsapp_agents: {
+                                    ...f.target_whatsapp_agents,
+                                    [agent.id]: !!checked,
+                                  },
+                                }))
+                              }
+                            />
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <MessageCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                              <span className="text-sm truncate">{agent.agent_name || "Agente senza nome"}</span>
+                              <Badge variant="outline" className="text-xs shrink-0 ml-auto">
+                                {agent.agent_type || "general"}
+                              </Badge>
+                              {!agent.is_active && (
+                                <Badge variant="secondary" className="text-xs shrink-0">
+                                  Inattivo
+                                </Badge>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
 
                 <Collapsible open={agentsOpen} onOpenChange={setAgentsOpen}>
                   <CollapsibleTrigger asChild>

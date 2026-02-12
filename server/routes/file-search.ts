@@ -1027,7 +1027,16 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       .where(eq(emailAccounts.consultantId, consultantId));
     
     const emailAccountIds = emailAccountsList.map(e => e.id);
-    const allOwnerIds = [consultantId, ...clientIds, ...emailAccountIds];
+
+    // Recupera tutti gli agenti WhatsApp del consulente
+    const whatsappAgentsList = await db.execute(sql`
+      SELECT id, agent_name, agent_type, is_active
+      FROM consultant_whatsapp_config
+      WHERE consultant_id = ${consultantId}
+    `);
+    const whatsappAgentIds = (whatsappAgentsList.rows as any[]).map(a => a.id);
+
+    const allOwnerIds = [consultantId, ...clientIds, ...emailAccountIds, ...whatsappAgentIds];
     
     // Get ALL stores: consultant store + client private stores
     const stores = await db
@@ -1189,6 +1198,31 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       };
     });
     
+    // Build WhatsApp agent stores data
+    const whatsappAgentStoresData = (whatsappAgentsList.rows as any[]).map(agent => {
+      const agentStore = stores.find(s => s.ownerId === agent.id && s.ownerType === 'whatsapp_agent');
+      const agentDocuments = documents.filter(d => d.storeOwnerId === agent.id);
+
+      return {
+        agentId: agent.id,
+        agentName: agent.agent_name || 'Agente senza nome',
+        agentType: agent.agent_type || 'general',
+        isActive: agent.is_active,
+        storeId: agentStore?.id || null,
+        storeName: agentStore?.displayName || null,
+        hasStore: !!agentStore,
+        hasDocuments: agentDocuments.length > 0,
+        documents: {
+          knowledgeBase: agentDocuments.filter(d => d.sourceType === 'whatsapp_agent_knowledge'),
+          other: agentDocuments.filter(d => d.sourceType !== 'whatsapp_agent_knowledge'),
+        },
+        totals: {
+          knowledgeBase: agentDocuments.filter(d => d.sourceType === 'whatsapp_agent_knowledge').length,
+          total: agentDocuments.length,
+        },
+      };
+    });
+
     // Conta stores inclusi email account
     const emailAccountStoresCount = emailAccountStoresData.filter(e => e.hasStore).length;
     
@@ -1278,6 +1312,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         consultantStore,
         clientStores: clientStoresData,
         emailAccountStores: emailAccountStoresData,
+        whatsappAgentStores: whatsappAgentStoresData,
       },
       geminiApiKeyConfigured: await fileSearchService.isApiKeyConfigured(consultantId),
     });

@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   Quote,
   MessageSquare,
+  MessageCircle,
   Bot,
   Users,
   BookOpen,
@@ -228,6 +229,24 @@ interface HierarchicalData {
     hasDocuments: boolean;
     documents: {
       knowledgeBase: any[];
+    };
+    totals: {
+      knowledgeBase: number;
+      total: number;
+    };
+  }>;
+  whatsappAgentStores: Array<{
+    agentId: string;
+    agentName: string;
+    agentType: string;
+    isActive: boolean;
+    storeId: string | null;
+    storeName: string | null;
+    hasStore: boolean;
+    hasDocuments: boolean;
+    documents: {
+      knowledgeBase: SyncedDocument[];
+      other: SyncedDocument[];
     };
     totals: {
       knowledgeBase: number;
@@ -533,6 +552,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [consultantStoreOpen, setConsultantStoreOpen] = useState(true);
   const [clientStoresOpen, setClientStoresOpen] = useState(true);
   const [emailAccountStoresOpen, setEmailAccountStoresOpen] = useState(true);
+  const [whatsappAgentStoresOpen, setWhatsappAgentStoresOpen] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
   
@@ -3241,6 +3261,71 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />Knowledge Base Email</Badge>
                                               </div>
                                               <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
+                                            </div>
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+                              {/* WhatsApp Agent Stores Section */}
+                              {hData.whatsappAgentStores && hData.whatsappAgentStores.length > 0 && (
+                                <Collapsible open={whatsappAgentStoresOpen} onOpenChange={setWhatsappAgentStoresOpen}>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors">
+                                    {whatsappAgentStoresOpen ? <ChevronDown className="h-5 w-5 text-green-600" /> : <ChevronRight className="h-5 w-5 text-green-600" />}
+                                    <MessageCircle className="h-5 w-5 text-green-600" />
+                                    <span className="font-semibold text-green-900">Dipendenti WhatsApp</span>
+                                    <Badge className="ml-auto bg-green-200 text-green-800">
+                                      {hData.whatsappAgentStores.filter(a => a.hasDocuments).length}/{hData.whatsappAgentStores.length} agenti
+                                    </Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                    {hData.whatsappAgentStores.map(agent => (
+                                      <Collapsible key={agent.agentId} open={openClients[`wa-${agent.agentId}`]} onOpenChange={() => toggleClient(`wa-${agent.agentId}`)}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${agent.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-amber-50 border-dashed border-amber-200 bg-amber-25'}`}>
+                                          {openClients[`wa-${agent.agentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <MessageCircle className={`h-4 w-4 ${agent.hasDocuments ? 'text-green-600' : 'text-amber-500'}`} />
+                                          <span className="text-gray-800 font-medium">{agent.agentName}</span>
+                                          <Badge variant="outline" className="text-xs">{agent.agentType}</Badge>
+                                          {!agent.isActive && <Badge variant="secondary" className="text-xs">Inattivo</Badge>}
+                                          {agent.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />{agent.totals.total} doc
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">
+                                              <AlertCircle className="h-3 w-3 mr-1" />Da sincronizzare
+                                            </Badge>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {agent.hasDocuments ? (
+                                            <div className="space-y-1">
+                                              {(agent.documents.knowledgeBase || []).map((doc: any) => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                  <FileText className="h-3 w-3 text-gray-400" />
+                                                  <span className="truncate flex-1">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                              {(agent.documents.other || []).map((doc: any) => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                  <FileText className="h-3 w-3 text-gray-400" />
+                                                  <span className="truncate flex-1">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <div className="text-center py-3">
+                                              <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                                              <p className="text-amber-600 text-sm font-medium mb-1">Nessun documento sincronizzato</p>
+                                              <p className="text-gray-400 text-xs mt-2">Vai alla tab Audit per sincronizzare</p>
                                             </div>
                                           )}
                                         </CollapsibleContent>

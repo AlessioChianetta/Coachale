@@ -35,6 +35,7 @@ export async function fetchSystemDocumentsForClientAssistant(consultantId: strin
       WHERE consultant_id = ${consultantId}
         AND is_active = true
         AND target_client_assistant = true
+        AND injection_mode = 'system_prompt'
       ORDER BY priority DESC, created_at ASC
     `);
 
@@ -58,6 +59,7 @@ export async function fetchSystemDocumentsForAgent(consultantId: string, agentId
       WHERE consultant_id = ${consultantId}
         AND is_active = true
         AND target_autonomous_agents->>${agentId} = 'true'
+        AND injection_mode = 'system_prompt'
       ORDER BY priority DESC, created_at ASC
     `);
 
@@ -94,19 +96,33 @@ export async function fetchSystemDocumentsForAgent(consultantId: string, agentId
   }
 }
 
-export async function fetchSystemDocumentsForWhatsApp(consultantId: string): Promise<string> {
+export async function fetchSystemDocumentsForWhatsApp(consultantId: string, whatsappAgentId?: string): Promise<string> {
   try {
-    const result = await db.execute(sql`
-      SELECT title, content
-      FROM system_prompt_documents
-      WHERE consultant_id = ${consultantId}
-        AND is_active = true
-        AND target_whatsapp_agents = true
-      ORDER BY priority DESC, created_at ASC
-    `);
+    let result;
+    if (whatsappAgentId) {
+      result = await db.execute(sql`
+        SELECT title, content
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+          AND is_active = true
+          AND injection_mode = 'system_prompt'
+          AND target_whatsapp_agents->>${whatsappAgentId} = 'true'
+        ORDER BY priority DESC, created_at ASC
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT title, content
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+          AND is_active = true
+          AND injection_mode = 'system_prompt'
+          AND target_whatsapp_agents != '{}'::jsonb
+        ORDER BY priority DESC, created_at ASC
+      `);
+    }
 
     const rows = result.rows as Array<{ title: string; content: string }>;
-    console.log(`📌 [SYSTEM-DOCS] Fetched ${rows.length} system docs for WhatsApp of consultant ${consultantId}`);
+    console.log(`📌 [SYSTEM-DOCS] Fetched ${rows.length} system docs for WhatsApp${whatsappAgentId ? ` agent "${whatsappAgentId}"` : ''} of consultant ${consultantId}`);
 
     if (rows.length === 0) return "";
 
@@ -114,5 +130,49 @@ export async function fetchSystemDocumentsForWhatsApp(consultantId: string): Pro
   } catch (error: any) {
     console.error(`❌ [SYSTEM-DOCS] Error fetching system docs for WhatsApp:`, error.message);
     return "";
+  }
+}
+
+export async function fetchFileSearchDocumentIds(consultantId: string, target: 'client_assistant' | 'autonomous_agent' | 'whatsapp_agent', agentId?: string): Promise<Array<{ id: string; title: string; content: string }>> {
+  try {
+    let result;
+    if (target === 'client_assistant') {
+      result = await db.execute(sql`
+        SELECT id, title, content
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+          AND is_active = true
+          AND target_client_assistant = true
+          AND injection_mode = 'file_search'
+        ORDER BY priority DESC, created_at ASC
+      `);
+    } else if (target === 'autonomous_agent' && agentId) {
+      result = await db.execute(sql`
+        SELECT id, title, content
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+          AND is_active = true
+          AND target_autonomous_agents->>${agentId} = 'true'
+          AND injection_mode = 'file_search'
+        ORDER BY priority DESC, created_at ASC
+      `);
+    } else if (target === 'whatsapp_agent' && agentId) {
+      result = await db.execute(sql`
+        SELECT id, title, content
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+          AND is_active = true
+          AND target_whatsapp_agents->>${agentId} = 'true'
+          AND injection_mode = 'file_search'
+        ORDER BY priority DESC, created_at ASC
+      `);
+    } else {
+      return [];
+    }
+
+    return result.rows as Array<{ id: string; title: string; content: string }>;
+  } catch (error: any) {
+    console.error(`❌ [SYSTEM-DOCS] Error fetching file_search docs for ${target}:`, error.message);
+    return [];
   }
 }
