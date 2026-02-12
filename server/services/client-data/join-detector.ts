@@ -529,6 +529,20 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           continue;
         }
 
+        // BI SAFE GUARD 3a: Block PK↔PK cross-table joins with different names
+        // e.g. tipologie.line_id (PK) → prodotti.product_id (PK) is WRONG
+        // Two primary keys from different tables should not be joined unless they share the same name
+        const fkIsPkCandidate = pkCandidates.some(p => p.filename === fkFile.filename && p.column === fkCol);
+        if (!isSameName && fkIsPkCandidate && pk.uniquenessRatio >= 0.95) {
+          const fkRoot = normFK.replace(/(id|pk|fk|ref|nr|num|key|code|cod)$/i, "").replace(/_$/, "");
+          const pkRoot = normPK.replace(/(id|pk|fk|ref|nr|num|key|code|cod)$/i, "").replace(/_$/, "");
+          const rootsOverlap = fkRoot.length > 2 && pkRoot.length > 2 && (fkRoot.includes(pkRoot) || pkRoot.includes(fkRoot));
+          if (!rootsOverlap) {
+            console.log(`[BI-SAFE] BLOCKED: ${fkFile.filename}.${fkCol} is also a PK candidate, joining ${pk.filename}.${pk.column} (different PK) - PK↔PK cross-table join with unrelated names blocked`);
+            continue;
+          }
+        }
+
         // BI SAFE GUARD 3: Cardinality ratio guard
         // If FK has very low cardinality relative to rows (categorical pattern)
         // and PK is a high-uniqueness technical ID, this is likely a spurious match

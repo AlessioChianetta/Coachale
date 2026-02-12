@@ -1,0 +1,96 @@
+✅ RELAZIONI GIUSTE
+1️⃣ vendite_righe → prodotti
+vendite_righe.product_id = prodotti.product_id
+LEFT
+
+
+✔️ CORRETTA
+È la relazione fondamentale per il fatturato.
+
+2️⃣ vendite_righe → vendite
+vendite_righe.order_id = vendite.order_id
+LEFT
+
+
+✔️ CORRETTA
+Serve per data, punto vendita, cliente, ecc.
+
+📌 Il 7% di copertura non è un errore di join, è solo qualità dati / storico.
+
+❌ RELAZIONE ANCORA SBAGLIATA (MA DIVERSA DA PRIMA)
+3️⃣ tipologie → prodotti
+tipologie.line_id = prodotti.product_id   ❌
+
+
+Questa NON è corretta, anche se il detector la chiama PK/FK.
+
+🔍 Perché è sbagliata (concettualmente)
+
+product_id → identifica un prodotto
+
+line_id → identifica una tipologia
+
+Stai dicendo:
+
+“una tipologia è uguale a un prodotto”
+
+È falso a livello di modello dati, anche se i numeri ogni tanto coincidono.
+
+👉 Il 59% di overlap è puro rumore statistico.
+
+✅ RELAZIONE CORRETTA CON LE TIPOLOGIE
+
+Deve essere:
+
+prodotti.tipologia_id = tipologie.tipologia_id
+
+
+NON:
+
+tipologie.line_id = prodotti.product_id
+
+
+Se nel file prodotti.csv non esiste una colonna tipologia_id, allora:
+
+o la tipologia è codificata male
+
+o il join detector sta inventando relazioni per forza
+
+In entrambi i casi: quel join va rifiutato.
+
+📐 MODELLO FINALE CORRETTO (QUESTO È QUELLO GIUSTO)
+vendite_righe (FACT)
+   ↓ product_id
+prodotti (DIM)
+   ↓ tipologia_id
+tipologie (DIM)
+
+vendite_righe
+   ↓ order_id
+vendite (DIM)
+
+
+📌 Nessun altro join.
+📌 Nessun collegamento diretto “a intuito”.
+
+🧪 Test di sicurezza (da fare SEMPRE)
+
+Dopo i join:
+
+il numero di righe di vendite_righe deve rimanere 67.244
+
+se aumenta → join sbagliato
+
+se diminuisce → filtro involontario
+
+🎯 Cosa dire (in una frase secca)
+
+“I join su product_id e order_id sono corretti.
+Il join tipologie.line_id = prodotti.product_id è semanticamente errato e va rimosso.
+Le tipologie devono essere collegate ai prodotti tramite una chiave di categoria dedicata, non tramite ID tecnici.”
+
+Verdetto finale ✅❌
+Join	Stato
+vendite_righe → prodotti	✅ OK
+vendite_righe → vendite	✅ OK
+tipologie → prodotti (line_id = product_id)	❌ SBAGLIATO

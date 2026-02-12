@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import {
   FileSpreadsheet,
   Unlink,
   Users,
+  Trash2,
+  Plus,
+  Pencil,
 } from "lucide-react";
 
 interface Client {
@@ -100,6 +103,18 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
   );
   const [datasetName, setDatasetName] = useState(defaultName);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [editedJoins, setEditedJoins] = useState<JoinCandidate[]>([...joinResult.suggestedJoins]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newJoinSource, setNewJoinSource] = useState("");
+  const [newJoinSourceCol, setNewJoinSourceCol] = useState("");
+  const [newJoinTarget, setNewJoinTarget] = useState("");
+  const [newJoinTargetCol, setNewJoinTargetCol] = useState("");
+  const [wasEdited, setWasEdited] = useState(false);
+
+  useEffect(() => {
+    setEditedJoins([...joinResult.suggestedJoins]);
+    setWasEdited(false);
+  }, [joinResult.suggestedJoins]);
 
   const { data: clients = [], isLoading: isLoadingClients, error: clientsError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -108,13 +123,82 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
 
   const isClientSelected = selectedClientId && selectedClientId !== "__none__";
 
-  const handleConfirm = () => {
-    const clientId = isClientSelected ? selectedClientId : undefined;
-    onConfirm(datasetName, joinResult.suggestedJoins, joinResult.primaryTable, joinResult.joinOrder, clientId);
+  const handleRemoveJoin = (index: number) => {
+    setEditedJoins(prev => prev.filter((_, i) => i !== index));
+    setWasEdited(true);
   };
 
-  const noJoins = joinResult.suggestedJoins.length === 0 || joinResult.overallConfidence === 0;
-  const hasOrphans = joinResult.orphanTables && joinResult.orphanTables.length > 0;
+  const handleAddJoin = () => {
+    if (!newJoinSource || !newJoinSourceCol || !newJoinTarget || !newJoinTargetCol) return;
+    if (newJoinSource === newJoinTarget) return;
+    const newJoin: JoinCandidate = {
+      sourceFile: newJoinSource,
+      sourceColumn: newJoinSourceCol,
+      targetFile: newJoinTarget,
+      targetColumn: newJoinTargetCol,
+      confidence: 1.0,
+      matchType: "exact_name",
+      valueOverlapPercent: 0,
+      joinType: "LEFT",
+      explanation: "Relazione aggiunta manualmente dall'utente",
+    };
+    setEditedJoins(prev => [...prev, newJoin]);
+    setWasEdited(true);
+    setShowAddForm(false);
+    setNewJoinSource("");
+    setNewJoinSourceCol("");
+    setNewJoinTarget("");
+    setNewJoinTargetCol("");
+  };
+
+  const editedJoinOrder = useMemo(() => {
+    if (!wasEdited) return joinResult.joinOrder;
+    const connected = new Set<string>();
+    connected.add(joinResult.primaryTable);
+    const order = [joinResult.primaryTable];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const j of editedJoins) {
+        if (connected.has(j.sourceFile) && !connected.has(j.targetFile)) {
+          connected.add(j.targetFile);
+          order.push(j.targetFile);
+          changed = true;
+        } else if (connected.has(j.targetFile) && !connected.has(j.sourceFile)) {
+          connected.add(j.sourceFile);
+          order.push(j.sourceFile);
+          changed = true;
+        }
+      }
+    }
+    return order;
+  }, [editedJoins, wasEdited, joinResult.joinOrder, joinResult.primaryTable]);
+
+  const handleConfirm = () => {
+    const clientId = isClientSelected ? selectedClientId : undefined;
+    onConfirm(datasetName, editedJoins, joinResult.primaryTable, editedJoinOrder, clientId);
+  };
+
+  const sourceFileColumns = useMemo(() => {
+    if (!newJoinSource) return [];
+    const f = files.find(fi => fi.filename === newJoinSource);
+    return f ? f.columns : [];
+  }, [newJoinSource, files]);
+
+  const targetFileColumns = useMemo(() => {
+    if (!newJoinTarget) return [];
+    const f = files.find(fi => fi.filename === newJoinTarget);
+    return f ? f.columns : [];
+  }, [newJoinTarget, files]);
+
+  const disconnectedTables = useMemo(() => {
+    if (!wasEdited) return [];
+    const allTableNames = files.map(f => f.filename);
+    return allTableNames.filter(t => !editedJoinOrder.includes(t));
+  }, [wasEdited, editedJoinOrder, files]);
+
+  const noJoins = editedJoins.length === 0;
+  const hasOrphans = (joinResult.orphanTables && joinResult.orphanTables.length > 0) || disconnectedTables.length > 0;
 
   return (
     <div className="space-y-6">
@@ -201,69 +285,209 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
         </div>
       </div>
 
-      {joinResult.suggestedJoins.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-            <Table2 className="h-4 w-4" />
-            Relazioni Selezionate ({joinResult.suggestedJoins.length})
-          </h3>
-          <div className="space-y-3">
-            {joinResult.suggestedJoins.map((join, index) => {
-              const confidencePct = Math.round(join.confidence * 100);
-              return (
-                <Card key={index}>
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="pt-1">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+          <Table2 className="h-4 w-4" />
+          Relazioni {wasEdited ? "Modificate" : "Selezionate"} ({editedJoins.length})
+          {wasEdited && (
+            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs ml-2">
+              <Pencil className="h-3 w-3 mr-1" />
+              Modificato manualmente
+            </Badge>
+          )}
+        </h3>
+        <div className="space-y-3">
+          {editedJoins.map((join, index) => {
+            const confidencePct = Math.round(join.confidence * 100);
+            const isManual = join.explanation === "Relazione aggiunta manualmente dall'utente";
+            return (
+              <Card key={index}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="pt-1">
+                      {isManual ? (
+                        <Plus className="h-4 w-4 text-blue-500" />
+                      ) : (
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-sm">{join.sourceFile}</span>
+                        <ArrowRight className="h-4 w-4 text-slate-400" />
+                        <span className="font-medium text-sm">{join.targetFile}</span>
                       </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-sm">{join.sourceFile}</span>
-                          <ArrowRight className="h-4 w-4 text-slate-400" />
-                          <span className="font-medium text-sm">{join.targetFile}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                            {join.sourceColumn}
-                          </code>
-                          <span className="text-slate-400">=</span>
-                          <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                            {join.targetColumn}
-                          </code>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge className={`text-xs ${getConfidenceColor(join.confidence)}`}>
-                            {confidencePct}%
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                          {join.sourceColumn}
+                        </code>
+                        <span className="text-slate-400">=</span>
+                        <code className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                          {join.targetColumn}
+                        </code>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isManual ? (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 text-xs">
+                            Manuale
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {getMatchTypeLabel(join.matchType)}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {join.joinType}
-                          </Badge>
+                        ) : (
+                          <>
+                            <Badge className={`text-xs ${getConfidenceColor(join.confidence)}`}>
+                              {confidencePct}%
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {getMatchTypeLabel(join.matchType)}
+                            </Badge>
+                          </>
+                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {join.joinType}
+                        </Badge>
+                        {!isManual && (
                           <span className="text-xs text-slate-500 dark:text-slate-400">
                             Sovrapposizione valori: {join.valueOverlapPercent}%
                           </span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                          {join.explanation}
-                        </p>
-                        {(join as any).warning && (
-                          <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1">
-                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                            <span>{(join as any).warning}</span>
-                          </div>
                         )}
                       </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                        {join.explanation}
+                      </p>
+                      {(join as any).warning && (
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1">
+                          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>{(join as any).warning}</span>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 flex-shrink-0"
+                      onClick={() => handleRemoveJoin(index)}
+                      disabled={isCreating}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {editedJoins.length === 0 && (
+            <Card className="border-yellow-300 dark:border-yellow-700">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2 text-sm text-yellow-700 dark:text-yellow-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  Nessuna relazione attiva. Aggiungi almeno una relazione per creare il dataset unificato.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!showAddForm ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddForm(true)}
+              disabled={isCreating}
+              className="w-full border-dashed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Aggiungi Relazione Manualmente
+            </Button>
+          ) : (
+            <Card className="border-blue-300 dark:border-blue-700">
+              <CardContent className="pt-4 pb-4 space-y-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Nuova Relazione Manuale
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">File Sorgente</Label>
+                    <Select value={newJoinSource} onValueChange={(v) => { setNewJoinSource(v); setNewJoinSourceCol(""); }}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Seleziona file..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {files.map(f => (
+                          <SelectItem key={f.filename} value={f.filename} className="text-xs">
+                            {f.filename}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Colonna Sorgente</Label>
+                    <Select value={newJoinSourceCol} onValueChange={setNewJoinSourceCol} disabled={!newJoinSource}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Seleziona colonna..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sourceFileColumns.map(col => (
+                          <SelectItem key={col} value={col} className="text-xs">
+                            {col}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">File Destinazione</Label>
+                    <Select value={newJoinTarget} onValueChange={(v) => { setNewJoinTarget(v); setNewJoinTargetCol(""); }}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Seleziona file..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {files.filter(f => f.filename !== newJoinSource).map(f => (
+                          <SelectItem key={f.filename} value={f.filename} className="text-xs">
+                            {f.filename}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Colonna Destinazione</Label>
+                    <Select value={newJoinTargetCol} onValueChange={setNewJoinTargetCol} disabled={!newJoinTarget}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Seleziona colonna..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {targetFileColumns.map(col => (
+                          <SelectItem key={col} value={col} className="text-xs">
+                            {col}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setShowAddForm(false); setNewJoinSource(""); setNewJoinSourceCol(""); setNewJoinTarget(""); setNewJoinTargetCol(""); }}
+                  >
+                    Annulla
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddJoin}
+                    disabled={!newJoinSource || !newJoinSourceCol || !newJoinTarget || !newJoinTargetCol}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Aggiungi
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
-      )}
+      </div>
 
       {hasOrphans && (
         <Card className="border-orange-300 dark:border-orange-700">
@@ -272,18 +496,28 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
               <Unlink className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium text-orange-800 dark:text-orange-300 text-sm">
-                  Tabelle non collegabili ({joinResult.orphanTables!.length})
+                  Tabelle non collegabili ({(joinResult.orphanTables?.length || 0) + disconnectedTables.length})
                 </p>
                 <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">
                   Le seguenti tabelle non hanno relazioni valide con la tabella principale e verranno escluse dal dataset unificato:
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {joinResult.orphanTables!.map((name) => (
+                  {(joinResult.orphanTables || []).filter(n => !disconnectedTables.includes(n)).map((name) => (
                     <Badge key={name} variant="outline" className="text-xs text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-600">
                       {name}
                     </Badge>
                   ))}
+                  {disconnectedTables.map((name) => (
+                    <Badge key={name} variant="outline" className="text-xs text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-600">
+                      {name} (disconnessa dopo modifica)
+                    </Badge>
+                  ))}
                 </div>
+                {disconnectedTables.length > 0 && (
+                  <p className="text-xs text-orange-600 dark:text-orange-500 mt-2">
+                    Puoi aggiungere una relazione manuale per ricollegare queste tabelle.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -298,7 +532,7 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex flex-wrap items-center gap-2">
-              {joinResult.joinOrder.map((tableName, idx) => (
+              {editedJoinOrder.map((tableName, idx) => (
                 <div key={tableName} className="flex items-center gap-2">
                   {idx > 0 && <ArrowRight className="h-4 w-4 text-slate-400" />}
                   <Badge
