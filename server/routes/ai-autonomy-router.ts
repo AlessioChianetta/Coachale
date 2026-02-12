@@ -215,6 +215,34 @@ router.put("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
       WHERE consultant_id = ${consultantId}::uuid
     `);
 
+    if (Array.isArray(context.linkedKbDocumentIds)) {
+      try {
+        await db.execute(sql`
+          DELETE FROM agent_knowledge_assignments
+          WHERE consultant_id = ${consultantId} AND agent_id = 'marco'
+        `);
+
+        for (const docId of context.linkedKbDocumentIds) {
+          if (docId && typeof docId === 'string') {
+            const docExists = await db.execute(sql`
+              SELECT id FROM consultant_knowledge_documents
+              WHERE id = ${docId} AND consultant_id = ${consultantId}
+              LIMIT 1
+            `);
+            if (docExists.rows?.length > 0) {
+              await db.execute(sql`
+                INSERT INTO agent_knowledge_assignments (consultant_id, agent_id, document_id)
+                VALUES (${consultantId}, 'marco', ${docId})
+                ON CONFLICT (consultant_id, agent_id, document_id) DO NOTHING
+              `);
+            }
+          }
+        }
+      } catch (syncErr: any) {
+        console.warn("[AI-AUTONOMY] Failed to sync marco KB assignments:", syncErr.message);
+      }
+    }
+
     return res.json({ success: true, message: "Configurazione salvata" });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error saving marco context:", error.message);
