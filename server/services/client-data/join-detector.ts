@@ -414,6 +414,10 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
   console.log(`[JOIN-DEBUG] Phase 1 complete: ${pkCandidates.length} PK candidates found:`, pkCandidates.map(p => `${p.filename}.${p.column} (${(p.uniquenessRatio*100).toFixed(1)}%)`));
 
+  const factTable = files.reduce((max, f) => (f.rowCount > max.rowCount ? f : max), files[0]);
+  const factFilename = factTable.filename;
+  console.log(`[BI-SAFE] Fact table identified: ${factFilename} (${factTable.rowCount} rows)`);
+
   // ====== PHASE 2: Find FK→PK joins (Inclusion Dependency detection) ======
   const allCandidates: ScoredCandidate[] = [];
   const semanticRoots = ["prod", "art", "item", "cli", "cust", "forn", "supp", "vend", "sale", "ord", "doc", "riga", "line", "cat", "tipo"];
@@ -476,6 +480,37 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
         if (isFactTableSource && fkRole === "dimension" && !isSameName) {
           console.log(`[BI-SAFE] BLOCKED: Fact table ${fkFile.filename}.${fkCol} is dimension role, not a valid FK (only key columns allowed from fact table)`);
           continue;
+        }
+
+        // BI SAFE GUARD 2b: Fact table should only join to dimensions via columns
+        // that look like foreign keys (ending in _id, _code, etc.) or have the same name as the PK
+        if (isFactTableSource && !isSameName && !isTechnicalIdColumn(fkCol)) {
+          const fkLower = fkCol.toLowerCase();
+          const pkLower = pk.column.toLowerCase();
+          const fkRoot = fkLower.replace(/(_id|_pk|_fk|_ref|_nr|_num|_key|_code|_cod)$/, "");
+          const pkRoot = pkLower.replace(/(_id|_pk|_fk|_ref|_nr|_num|_key|_code|_cod)$/, "");
+          const rootsMatch = fkRoot.length > 2 && pkRoot.length > 2 && (fkRoot.includes(pkRoot) || pkRoot.includes(fkRoot));
+          if (!rootsMatch) {
+            console.log(`[BI-SAFE] BLOCKED: Fact table column ${fkFile.filename}.${fkCol} is not a key-like column and doesn't share root with PK ${pk.filename}.${pk.column} - only explicit FK columns allowed from fact table`);
+            continue;
+          }
+        }
+
+        // BI SAFE GUARD 2c: Cardinality multiplication guard
+        // If the fact table (many rows) joins to a small dimension on a non-key column,
+        // and the dimension PK has fewer unique values than the FK cardinality,
+        // this could create row multiplication
+        if (!isSameName) {
+          const pkFile2 = files.find(f => f.filename === pk.filename)!;
+          const fkRowCount = fkFile.rowCount;
+          const pkRowCount = pkFile2.rowCount;
+          if (fkRowCount > pkRowCount * 10 && pkRowCount < 100) {
+            const fkUniqueCount = new Set(fkValues.map(String)).size;
+            if (fkUniqueCount < pkRowCount && !isTechnicalIdColumn(fkCol)) {
+              console.log(`[BI-SAFE] BLOCKED: ${fkFile.filename}.${fkCol} (${fkRowCount} rows, ${fkUniqueCount} unique) → ${pk.filename}.${pk.column} (${pkRowCount} rows) - high risk of row multiplication from large table to small dimension via non-key column`);
+              continue;
+            }
+          }
         }
 
         const typeFK = detectColumnType(fkValues);
@@ -605,9 +640,6 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
   // ====== PHASE 3: Star Schema Selection ======
   const deduped = deduplicateJoins(allCandidates);
-
-  const factTable = files.reduce((max, f) => (f.rowCount > max.rowCount ? f : max), files[0]);
-  const factFilename = factTable.filename;
 
   const dimensionFiles = files.filter((f) => f.filename !== factFilename);
   const selectedJoins: ScoredCandidate[] = [];
