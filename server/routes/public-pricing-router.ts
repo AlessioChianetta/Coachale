@@ -60,9 +60,6 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       );
 
     const availableAgents = agents.filter(a => a.level === "1" || a.level === "2" || a.level === "3");
-    if (availableAgents.length === 0) {
-      return res.status(404).json({ error: "Nessun agente disponibile" });
-    }
 
     // Get direct payment links for Silver/Gold (100% commission links)
     const directLinks = await db.select({
