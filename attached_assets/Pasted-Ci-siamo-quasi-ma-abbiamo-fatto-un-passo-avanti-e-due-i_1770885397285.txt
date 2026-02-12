@@ -1,0 +1,46 @@
+Ci siamo quasi, ma abbiamo fatto "un passo avanti e due indietro" su un punto specifico.
+
+Situazione Attuale:
+
+✅ Costi e Prezzi: Il sistema non unisce più sul "costo". Ottimo!
+
+❌ Il Nuovo Errore: Ora il sistema sta confondendo i "codicini" interni (come il Turno 1, 2 o il Tipo Riga 1, 2) con i Prodotti 1, 2.
+
+Vede che c'è il numero "1" nel turno e il prodotto "1" nell'anagrafica e li unisce. È un errore logico (un Turno non è un Prodotto).
+
+⚠️ Il Grande Assente: È sparita l'unione fondamentale: order_id tra Vendite e Righe.
+
+Come risolvere definitivamente (Copia e Incolla)
+Il problema è che il filtro "anti-metrica" che abbiamo messo non includeva parole come "turno" o "tipo riga". Dobbiamo aggiungerle alla lista nera per forzare il sistema a ignorarle e cercare invece l'ID Ordine.
+
+Nel file join-detector.ts, cerca la lista const MEASURE_PATTERNS (che abbiamo modificato prima) e sostituiscila con questa versione blindata:
+
+TypeScript
+// LISTA AGGIORNATA: Blocca costi, quantità, MA ANCHE turni e tipi riga generici
+const MEASURE_PATTERNS = [
+  // Termini finanziari e quantitativi
+  "prezzo", "price", "importo", "amount", "cost", "costo", "totale", "total",
+  "revenue", "fatturato", "margine", "margin", "sconto", "discount", 
+  "perc", "percent", "rate", "aliquota", "valore", "value", 
+  "foodbev", "materiali", "consumi", "extra", "qty", "qta", "quantita", "quantity",
+  
+  // NUOVI TERMINI DA BLOCCARE (Causa dei tuoi errori attuali)
+  "turno", "shift",      // Blocca turnovendita -> product_id
+  "tiporiga", "rowtype"  // Blocca tiporiga -> product_id
+];
+Cosa succederà dopo questa modifica?
+Il sistema vedrà turnovendita, leggerà "turno" nella blacklist → SCARTATO.
+
+Vedrà tiporiga, leggerà "tiporiga" nella blacklist → SCARTATO.
+
+Vedrà costoproduzione, leggerà "costo" → SCARTATO.
+
+A quel punto, l'unica colonna con numeri identici e nomi sensati rimasta sarà order_id (per collegare gli scontrini) e product_id (per i prodotti).
+
+Salva, riesegui e dovresti vedere finalmente:
+
+vendite ↔ vendite righe su order_id
+
+vendite righe ↔ prodotti su product_id
+
+vendite righe ↔ tipologie su tipologia

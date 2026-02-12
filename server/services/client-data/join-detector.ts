@@ -417,37 +417,52 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
         const fkValues = fkFile.sampleValues[fkCol] || [];
         if (fkValues.length === 0) continue;
 
+        const normFK = normalizeColumnName(fkCol);
+        const normPK = normalizeColumnName(pk.column);
+        const isSameName = normFK === normPK;
+
         const typeFK = detectColumnType(fkValues);
         const typePK = detectColumnType(pkValues);
         if (!areTypesCompatible(typeFK, typePK)) {
+          if (isSameName) {
+            console.log(`[JOIN-DEBUG]   SKIPPED SAME-NAME: ${fkFile.filename}.${fkCol}(${typeFK}) → ${pk.filename}.${pk.column}(${typePK}): type mismatch, fk samples: ${fkValues.slice(0,3).map((v: any) => `${v}(${typeof v})`).join(',')}, pk samples: ${pkValues.slice(0,3).map((v: any) => `${v}(${typeof v})`).join(',')}`);
+          }
           continue;
         }
 
         const fkSet = new Set(fkValues.map(String));
+
+        const MIN_FK_CARDINALITY = 5;
+        if (fkSet.size < MIN_FK_CARDINALITY && !isSameName) {
+          continue;
+        }
+
         let includedCount = 0;
         fkSet.forEach(v => { if (pkSet.has(v)) includedCount++; });
 
         const coverageRate = fkSet.size > 0 ? includedCount / fkSet.size : 0;
 
-        if (coverageRate >= 0.10) {
-          console.log(`[JOIN-DEBUG]   ${fkFile.filename}.${fkCol} → ${pk.filename}.${pk.column}: coverage=${(coverageRate*100).toFixed(1)}%, included=${includedCount}/${fkSet.size}, types=${typeFK}/${typePK}`);
+        if (isSameName || coverageRate >= 0.10) {
+          console.log(`[JOIN-DEBUG]   ${fkFile.filename}.${fkCol} → ${pk.filename}.${pk.column}: coverage=${(coverageRate*100).toFixed(1)}%, included=${includedCount}/${fkSet.size}, types=${typeFK}/${typePK}${isSameName ? ' [SAME NAME]' : ''}`);
         }
 
-        if (coverageRate < 0.50) continue;
+        if (coverageRate < 0.50 && !isSameName) continue;
+        if (isSameName && coverageRate < 0.01) continue;
 
         const intersectionSize = includedCount;
         const overlapPct = fkSet.size > 0 ? intersectionSize / Math.min(fkSet.size, pkSet.size) : 0;
 
         let score = Math.round(coverageRate * 100);
 
-        const normFK = normalizeColumnName(fkCol);
-        const normPK = normalizeColumnName(pk.column);
-        const isExactName = normFK === normPK;
+        const isExactName = isSameName;
         const localBlacklist = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice"];
         const isBlacklisted = localBlacklist.includes(normFK);
 
         if (isExactName && !isBlacklisted) {
           score += 30;
+          if (coverageRate < 0.50) {
+            score = Math.max(score, 80);
+          }
         }
 
         const localIdRoots = ["id", "cod", "key", "num"];

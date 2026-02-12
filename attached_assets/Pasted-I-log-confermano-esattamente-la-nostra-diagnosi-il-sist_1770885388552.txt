@@ -1,0 +1,44 @@
+I log confermano esattamente la nostra diagnosi: il sistema è "guarito" dalla malattia dei Costi, ma ha ancora un piccolo "raffreddore" sui Codici Generici.
+
+Ecco l'analisi passo-passo di cosa ci dicono i tuoi log:
+
+1. ✅ La buona notizia: I Costi sono spariti
+Guarda queste righe nei log:
+
+Plaintext
+[CLASSIFY-DEBUG] "prezzo" → MEASURE (matched pattern "prezzo")
+[JOIN-DEBUG]   prezzo: MEASURE (skipped), 500 values
+[CLASSIFY-DEBUG] "cost" → MEASURE (matched pattern "cost")
+[JOIN-DEBUG]   cost: MEASURE (skipped), 494 values
+Il sistema sta scartando correttamente tutte le colonne finanziarie (cost, prezzo, fatturato). Non proverà più a unirle. Questo è un grande successo.
+
+2. ❌ Il problema residuo: "Tiporiga" e "Turno" sono sfuggiti
+Guarda invece come ha classificato queste due colonne:
+
+Plaintext
+[JOIN-DEBUG]   tiporiga: role=dimension, unique=4/500 (0.8%)
+[JOIN-DEBUG]   turnovendita: role=dimension, unique=1/500 (0.2%)
+Il sistema le ha chiamate dimension, non MEASURE (skippato). Quindi, nella Fase 2, prova a unirle alla tabella Prodotti. E poiché i prodotti hanno ID "1", "2", "3" e i turni sono "1", "2", "3"... BINGO! Trova una corrispondenza al 100% e crea il legame sbagliato:
+
+Plaintext
+[JOIN-DEBUG]   vendite righe.csv.tiporiga → prodotti.csv.product_id: coverage=100.0%
+La Soluzione Definitiva (Copia e Incolla)
+Dobbiamo dire al sistema che anche parole come "turno", "tipo", "riga" devono essere trattate come Misure (o comunque scartate dai join verso le anagrafiche).
+
+Nel file join-detector.ts, aggiorna la lista MEASURE_PATTERNS con questa versione che include i nuovi "nemici":
+
+TypeScript
+// AGGIORNAMENTO: Aggiunti "turno", "tipo", "riga" per bloccare i falsi positivi sugli ID
+const MEASURE_PATTERNS = [
+  // Termini finanziari (Gia presenti e funzionanti)
+  "prezzo", "price", "importo", "amount", "cost", "costo", "totale", "total",
+  "revenue", "fatturato", "margine", "margin", "sconto", "discount", 
+  "perc", "percent", "rate", "aliquota", "valore", "value", 
+  "foodbev", "materiali", "consumi", "extra", "qty", "qta", "quantita", "quantity",
+  
+  // NUOVI TERMINI DA BLOCCARE (Per risolvere il tuo log attuale)
+  "turno", "shift",       // Blocca turnovendita -> product_id
+  "tiporiga", "rowtype",  // Blocca tiporiga -> product_id
+  "tipo", "type"          // Blocca unioni generiche se non supportate
+];
+Applica questo cambiamento e vedrai che nel prossimo log anche tiporiga e turnovendita appariranno come MEASURE (skipped), lasciando campo libero al vero join: product_id.
