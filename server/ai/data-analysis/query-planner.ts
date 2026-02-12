@@ -1147,6 +1147,26 @@ ATTENZIONE CRITICA - CONFUSIONE REVENUE/MARGINE:
 - Se dici "margine lordo di X €" il valore X DEVE venire da gross_margin, MAI da revenue
 - Errore tipico: dire "margine lordo 21.956€" quando 21.956€ è il revenue. Il margine è ~14.267€
 
+REGOLA CRITICA - TIPO DOCUMENTO (document_type):
+Il dataset può contenere una colonna document_type (o mappata semanticamente come tale) con valori come:
+- 'sale' = vendita normale
+- 'refund' = reso / rimborso / storno
+- 'void' = annullamento
+- 'staff_meal' = pasto dipendenti
+
+COME USARLA:
+- "fatturato totale", "revenue totale" → execute_metric(revenue) SENZA filtri (include TUTTO: vendite + resi + storni). Il fatturato totale è la somma algebrica di tutti i documenti.
+- "fatturato vendite", "vendite lorde", "solo vendite" → execute_metric(revenue, filters: {document_type: {operator: '=', value: 'sale'}})
+- "quanti resi", "resi nel periodo", "rimborsi" → aggregate_group o filter_data con filtro document_type = 'refund'
+  Esempio: aggregate_group(groupBy: [document_type], metricName: revenue) per vedere il breakdown per tipo
+  Esempio: execute_metric(revenue, filters: {document_type: {operator: '=', value: 'refund'}}) per il totale resi
+  Esempio: execute_metric(order_count, filters: {document_type: {operator: '=', value: 'refund'}}) per il NUMERO di resi
+- "storni", "annullamenti" → filtro document_type = 'void'
+- "pasti dipendenti", "staff meal" → filtro document_type = 'staff_meal'
+
+REGOLA FONDAMENTALE: Se il dataset ha document_type, HAI i dati per rispondere a domande su resi/storni.
+NON dire MAI "non ho i dati sui resi" se document_type è presente nel mapping semantico!
+Usa il nome fisico della colonna come appare nel mapping semantico del dataset.
 
 ========================
 STRUTTURA OUTPUT (3 LAYER)
