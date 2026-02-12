@@ -130,7 +130,7 @@ router.get(
       
       if (userRole === "consultant") {
         const result = await pool.query(
-          `SELECT d.*, u.name as client_name, u.email as client_email
+          `SELECT d.*, CONCAT(u.first_name, ' ', u.last_name) as client_name, u.email as client_email
            FROM client_data_datasets d
            LEFT JOIN users u ON d.client_id = u.id
            WHERE d.consultant_id = $1
