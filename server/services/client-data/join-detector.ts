@@ -251,8 +251,17 @@ const STRONG_ID_ROOTS = ["id", "cod", "key", "num"];
 type ColumnRole = "key" | "dimension" | "measure";
 
 function classifyColumnRole(columnName: string, values: any[], totalRows: number): ColumnRole {
-  const norm = normalizeColumnName(columnName);
   const lower = columnName.toLowerCase();
+
+  const KEY_SUFFIXES = ["_id", "id", "_key", "_code", "_cod", "_pk", "_fk", "_ref", "_num", "_nr"];
+  if (KEY_SUFFIXES.some(s => lower.endsWith(s)) || lower === "id") {
+    return "key";
+  }
+
+  const KEY_EXACT_NAMES = ["tipologia", "tiporiga", "tipo_riga", "category", "categoria", "codice", "code"];
+  if (KEY_EXACT_NAMES.includes(lower)) {
+    return "dimension";
+  }
 
   const METRIC_PATTERNS = [
     "costo", "cost", "prezzo", "price", "importo", "amount",
@@ -271,7 +280,9 @@ function classifyColumnRole(columnName: string, values: any[], totalRows: number
     "costoproduzione", "foodbev", "prime_cost"
   ];
 
-  if (METRIC_PATTERNS.some(p => lower.includes(p))) {
+  const matchedPattern = METRIC_PATTERNS.find(p => lower.includes(p));
+  if (matchedPattern) {
+    console.log(`[CLASSIFY-DEBUG] "${columnName}" → MEASURE (matched pattern "${matchedPattern}")`);
     return "measure";
   }
 
@@ -282,6 +293,7 @@ function classifyColumnRole(columnName: string, values: any[], totalRows: number
   }).length;
 
   if (values.length > 0 && floatCount / values.length > 0.1) {
+    console.log(`[CLASSIFY-DEBUG] "${columnName}" → MEASURE (floats: ${floatCount}/${values.length})`);
     return "measure";
   }
 
@@ -295,14 +307,10 @@ function classifyColumnRole(columnName: string, values: any[], totalRows: number
       const variance = numericValues.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / numericValues.length;
       const cv = Math.sqrt(variance) / Math.abs(mean);
       if (cv > 0.8) {
+        console.log(`[CLASSIFY-DEBUG] "${columnName}" → MEASURE (CV=${cv.toFixed(2)}, mean=${mean.toFixed(1)}, sd=${Math.sqrt(variance).toFixed(1)})`);
         return "measure";
       }
     }
-  }
-
-  const KEY_SUFFIXES = ["_id", "id", "_key", "_code", "_cod", "_pk", "_fk", "_ref", "_num", "_nr"];
-  if (KEY_SUFFIXES.some(s => lower.endsWith(s)) || lower === "id") {
-    return "key";
   }
 
   if (numericValues.length > 0 && values.length > 0) {
