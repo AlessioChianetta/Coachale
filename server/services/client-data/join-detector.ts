@@ -185,34 +185,49 @@ function normalizeColumnName(name: string): string {
 function detectColumnType(values: any[]): "integer" | "float" | "numeric" | "string" | "date" {
   if (values.length === 0) return "string";
 
-  let hasInt = false;
-  let hasFloat = false;
-  let hasString = false;
-  let hasDate = false;
+  let intCount = 0;
+  let floatCount = 0;
+  let stringCount = 0;
+  let dateCount = 0;
 
   for (const v of values) {
     const s = String(v).trim();
+    if (s === "" || s === "null" || s === "undefined" || s === "NULL" || s === "N/A" || s === "n/a" || s === "N/D" || s === "n/d" || s === "-") {
+      continue;
+    }
     if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(s) || /^\d{1,2}[-/]\d{1,2}[-/]\d{4}/.test(s)) {
-      hasDate = true;
+      dateCount++;
     } else if (typeof v === "number" && Number.isInteger(v)) {
-      hasInt = true;
+      intCount++;
     } else if (typeof v === "number") {
-      hasFloat = true;
+      floatCount++;
     } else if (/^-?\d+$/.test(s)) {
-      hasInt = true;
+      intCount++;
     } else if (/^-?\d+[.,]\d+$/.test(s)) {
-      hasFloat = true;
+      floatCount++;
     } else {
-      hasString = true;
+      stringCount++;
     }
   }
 
-  if (hasString) return "string";
-  if (hasDate && !hasInt && !hasFloat) return "date";
-  if (hasInt && hasFloat) return "numeric";
-  if (hasFloat) return "float";
-  if (hasInt) return "integer";
-  if (hasDate) return "date";
+  const totalClassified = intCount + floatCount + stringCount + dateCount;
+  if (totalClassified === 0) return "string";
+
+  const stringRatio = stringCount / totalClassified;
+  const numericCount = intCount + floatCount;
+  const numericRatio = numericCount / totalClassified;
+
+  if (stringRatio > 0.5) return "string";
+
+  if (numericRatio >= 0.5) {
+    if (dateCount > numericCount && dateCount > stringCount) return "date";
+    if (floatCount > 0 && intCount > 0) return "numeric";
+    if (floatCount > 0) return "float";
+    return "integer";
+  }
+
+  if (dateCount > 0 && dateCount >= numericCount && dateCount >= stringCount) return "date";
+
   return "string";
 }
 
