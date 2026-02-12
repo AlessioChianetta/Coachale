@@ -6,7 +6,8 @@ import { upload } from "../middleware/upload";
 import { processExcelFile } from "../services/client-data/upload-processor";
 import { analyzeFile, detectJoins, buildJoinSQL, FileSchema } from "../services/client-data/join-detector";
 import { discoverColumns, saveColumnMapping } from "../services/client-data/column-discovery";
-import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName, importDataFromFileWithOptions } from "../services/client-data/table-generator";
+import { generateTableName, createDynamicTable, insertParsedRowsToTable, sanitizeColumnName, importDataFromFileWithOptions, importDataToTable } from "../services/client-data/table-generator";
+import { getDistributedSample } from "../services/client-data/column-profiler";
 import { detectAndSaveSemanticMappings } from "../services/client-data/semantic-mapping-service";
 import { LOGICAL_COLUMNS, COLUMN_AUTO_DETECT_PATTERNS } from "../ai/data-analysis/logical-columns";
 import { nanoid } from "nanoid";
@@ -321,15 +322,7 @@ router.post(
       const headers = sheet.columns.map(c => c.name);
       const totalRows = sheet.rowCount;
 
-      // Trasforma i dati nel formato DistributedSample richiesto da discoverColumns
-      const sample = {
-        columns: headers,
-        rows: sheet.sampleRows,
-        totalRowCount: sheet.rowCount,
-        sampledFromStart: sheet.sampleRows.length,
-        sampledFromMiddle: 0,
-        sampledFromEnd: 0
-      };
+      const sample = await getDistributedSample(newPath, originalname, 300);
       const discoveryResult = await discoverColumns(sample, originalname, sourceData.consultant_id);
 
       // Una colonna è considerata "mappata" se ha un patternMatched o confidence >= 0.8
@@ -438,12 +431,11 @@ router.post(
         needsTableCreation = true;
       }
 
-      // Crea definizioni colonne - usa la struttura corretta per createDynamicTable
       const columnDefinitions = discoveryResult.columns.map(col => ({
         originalName: col.originalName || col.physicalColumn || 'column',
-        suggestedName: col.physicalColumn || col.originalName || 'column',
+        suggestedName: col.suggestedName || col.physicalColumn || col.originalName || 'column',
         displayName: col.displayName || col.originalName || 'Column',
-        dataType: (col.detectedType || col.dataType || 'TEXT') as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
+        dataType: (col.dataType || 'TEXT') as "TEXT" | "NUMERIC" | "INTEGER" | "DATE" | "BOOLEAN",
         confidence: col.confidence || 0.5,
         sampleValues: col.sampleValues || [],
       }));
@@ -453,38 +445,72 @@ router.post(
         await createDynamicTable(tableName, columnDefinitions, sourceData.consultant_id, datasetClientId);
       }
 
-      // Importa TUTTI i dati dal file (non solo i sample rows)
-      // Usa la nuova funzione che legge il file completo e supporta tutte le modalità
-      const importResult = await importDataFromFileWithOptions(
-        newPath,
-        tableName,
-        columnDefinitions,
-        sourceData.consultant_id,
-        datasetClientId,
-        undefined, // sheetName - usa primo foglio
-        {
-          replaceMode: sourceData.replace_mode || 'full',
-          upsertKeyColumns: sourceData.upsert_key_columns || []
-        }
-      );
-
-      if (!importResult.success) {
-        const durationMs = Date.now() - startTime;
-        await db.execute(sql`
-          UPDATE dataset_sync_history 
-          SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
-              error_code = 'IMPORT_ERROR', error_message = ${importResult.error || 'Errore durante importazione dati'}
-          WHERE sync_id = ${syncId}
-        `);
-        return res.status(500).json({
-          success: false,
-          error: "IMPORT_ERROR",
-          message: importResult.error || "Errore durante importazione dati",
-        });
-      }
-
-      const { rowCount: rowsImported, rowsInserted, rowsUpdated } = importResult;
+      const replaceMode = sourceData.replace_mode || 'full';
+      let rowsImported = 0;
+      let rowsInserted = 0;
+      let rowsUpdated = 0;
       const rowsSkipped = 0;
+
+      if (replaceMode === 'full') {
+        const importResult = await importDataToTable(
+          newPath,
+          tableName,
+          columnDefinitions,
+          sourceData.consultant_id,
+          datasetClientId,
+          undefined
+        );
+
+        if (!importResult.success) {
+          const durationMs = Date.now() - startTime;
+          await db.execute(sql`
+            UPDATE dataset_sync_history 
+            SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+                error_code = 'IMPORT_ERROR', error_message = ${importResult.error || 'Errore durante importazione dati'}
+            WHERE sync_id = ${syncId}
+          `);
+          return res.status(500).json({
+            success: false,
+            error: "IMPORT_ERROR",
+            message: importResult.error || "Errore durante importazione dati",
+          });
+        }
+
+        rowsImported = importResult.rowCount;
+        rowsInserted = importResult.rowCount;
+      } else {
+        const importResult = await importDataFromFileWithOptions(
+          newPath,
+          tableName,
+          columnDefinitions,
+          sourceData.consultant_id,
+          datasetClientId,
+          undefined,
+          {
+            replaceMode: replaceMode,
+            upsertKeyColumns: sourceData.upsert_key_columns || []
+          }
+        );
+
+        if (!importResult.success) {
+          const durationMs = Date.now() - startTime;
+          await db.execute(sql`
+            UPDATE dataset_sync_history 
+            SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+                error_code = 'IMPORT_ERROR', error_message = ${importResult.error || 'Errore durante importazione dati'}
+            WHERE sync_id = ${syncId}
+          `);
+          return res.status(500).json({
+            success: false,
+            error: "IMPORT_ERROR",
+            message: importResult.error || "Errore durante importazione dati",
+          });
+        }
+
+        rowsImported = importResult.rowCount;
+        rowsInserted = importResult.rowsInserted;
+        rowsUpdated = importResult.rowsUpdated;
+      }
 
       if (!targetDatasetId) {
         // Build column_mapping object (same structure as client-data-router)
@@ -516,7 +542,7 @@ router.post(
               sourceData.consultant_id,
               col.originalName,
               col.suggestedName || col.physicalColumn || col.originalName,
-              col.dataType || col.detectedType || 'TEXT'
+              col.dataType || 'TEXT'
             );
           }
         }
@@ -1732,7 +1758,7 @@ router.post(
                 sourceData.consultant_id,
                 col.originalName,
                 col.suggestedName || col.physicalColumn || col.originalName,
-                col.dataType || col.detectedType || 'TEXT'
+                col.dataType || 'TEXT'
               );
             }
           }
