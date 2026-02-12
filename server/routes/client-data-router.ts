@@ -129,35 +129,63 @@ router.get(
       let datasets;
       
       if (userRole === "consultant") {
-        const rows = await db
-          .select()
-          .from(clientDataDatasets)
-          .where(eq(clientDataDatasets.consultantId, userId))
-          .orderBy(desc(clientDataDatasets.createdAt));
-
-        const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))];
-        const clientMap = new Map<string, { name: string; email: string }>();
-        if (clientIds.length > 0) {
-          const clients = await db
-            .select({ id: users.id, name: users.name, email: users.email })
-            .from(users)
-            .where(inArray(users.id, clientIds as string[]));
-          for (const c of clients) {
-            clientMap.set(c.id, { name: c.name, email: c.email });
-          }
-        }
-        datasets = rows.map(r => ({
-          ...r,
-          clientName: r.clientId ? clientMap.get(r.clientId)?.name || null : null,
-          clientEmail: r.clientId ? clientMap.get(r.clientId)?.email || null : null,
+        const result = await pool.query(
+          `SELECT d.*, u.name as client_name, u.email as client_email
+           FROM client_data_datasets d
+           LEFT JOIN users u ON d.client_id = u.id
+           WHERE d.consultant_id = $1
+           ORDER BY d.created_at DESC`,
+          [userId]
+        );
+        datasets = result.rows.map((r: any) => ({
+          id: r.id,
+          consultantId: r.consultant_id,
+          clientId: r.client_id,
+          name: r.name,
+          originalFilename: r.original_filename,
+          sheetName: r.sheet_name,
+          tableName: r.table_name,
+          columnMapping: r.column_mapping,
+          originalColumns: r.original_columns,
+          detectedTypes: r.detected_types,
+          rowCount: r.row_count,
+          fileSizeBytes: r.file_size_bytes,
+          status: r.status,
+          errorMessage: r.error_message,
+          analyticsEnabled: r.analytics_enabled,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          lastQueriedAt: r.last_queried_at,
+          clientName: r.client_name || null,
+          clientEmail: r.client_email || null,
         }));
       } else {
-        const rows = await db
-          .select()
-          .from(clientDataDatasets)
-          .where(eq(clientDataDatasets.clientId, userId))
-          .orderBy(desc(clientDataDatasets.createdAt));
-        datasets = rows;
+        const result = await pool.query(
+          `SELECT * FROM client_data_datasets
+           WHERE client_id = $1
+           ORDER BY created_at DESC`,
+          [userId]
+        );
+        datasets = result.rows.map((r: any) => ({
+          id: r.id,
+          consultantId: r.consultant_id,
+          clientId: r.client_id,
+          name: r.name,
+          originalFilename: r.original_filename,
+          sheetName: r.sheet_name,
+          tableName: r.table_name,
+          columnMapping: r.column_mapping,
+          originalColumns: r.original_columns,
+          detectedTypes: r.detected_types,
+          rowCount: r.row_count,
+          fileSizeBytes: r.file_size_bytes,
+          status: r.status,
+          errorMessage: r.error_message,
+          analyticsEnabled: r.analytics_enabled,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          lastQueriedAt: r.last_queried_at,
+        }));
       }
 
       res.json({
