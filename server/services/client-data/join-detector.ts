@@ -24,6 +24,7 @@ export interface JoinCandidate {
   joinType: "LEFT" | "INNER";
   explanation: string;
   rawScore: number;
+  warning?: string;
 }
 
 export interface JoinDetectionResult {
@@ -417,6 +418,26 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
   const allCandidates: ScoredCandidate[] = [];
   const semanticRoots = ["prod", "art", "item", "cli", "cust", "forn", "supp", "vend", "sale", "ord", "doc", "riga", "line", "cat", "tipo"];
 
+  const CATEGORY_COLUMN_NAMES = new Set([
+    "tipologia", "categoria", "category", "tipo", "type", "gruppo", "group",
+    "classe", "class", "famiglia", "family", "sottogruppo", "subgroup",
+    "segmento", "segment", "settore", "sector", "reparto", "department",
+    "linea", "line", "area", "zona", "zone", "canale", "channel",
+    "stato", "status", "flag", "mode", "modalita",
+  ]);
+
+  const TECHNICAL_ID_SUFFIXES = ["_id", "_pk", "_fk", "_ref", "_nr", "_num", "_key", "_code", "_cod"];
+
+  function isCategoryColumn(colName: string): boolean {
+    const lower = colName.toLowerCase();
+    return CATEGORY_COLUMN_NAMES.has(lower);
+  }
+
+  function isTechnicalIdColumn(colName: string): boolean {
+    const lower = colName.toLowerCase();
+    return TECHNICAL_ID_SUFFIXES.some(s => lower.endsWith(s)) || lower === "id";
+  }
+
   for (const pk of pkCandidates) {
     const pkFile = files.find(f => f.filename === pk.filename)!;
     const pkValues = pkFile.sampleValues[pk.column] || [];
@@ -437,6 +458,26 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
         const normPK = normalizeColumnName(pk.column);
         const isSameName = normFK === normPK;
 
+        // BI SAFE GUARD 1: Block category columns joining technical IDs
+        // e.g. vendite_righe.tipologia → tipologie.line_id is WRONG
+        // tipologia is a business category, line_id is a technical row key
+        if (!isSameName && isCategoryColumn(fkCol) && isTechnicalIdColumn(pk.column)) {
+          console.log(`[BI-SAFE] BLOCKED: ${fkFile.filename}.${fkCol} (category) → ${pk.filename}.${pk.column} (technical ID) - semantic role mismatch`);
+          continue;
+        }
+        if (!isSameName && isTechnicalIdColumn(fkCol) && isCategoryColumn(pk.column)) {
+          console.log(`[BI-SAFE] BLOCKED: ${fkFile.filename}.${fkCol} (technical ID) → ${pk.filename}.${pk.column} (category) - semantic role mismatch`);
+          continue;
+        }
+
+        // BI SAFE GUARD 2: Fact table dimension column protection
+        // The fact table should only use "key" role columns as FK, not "dimension" columns
+        const isFactTableSource = fkFile.filename === factTable.filename;
+        if (isFactTableSource && fkRole === "dimension" && !isSameName) {
+          console.log(`[BI-SAFE] BLOCKED: Fact table ${fkFile.filename}.${fkCol} is dimension role, not a valid FK (only key columns allowed from fact table)`);
+          continue;
+        }
+
         const typeFK = detectColumnType(fkValues);
         const typePK = detectColumnType(pkValues);
         if (!areTypesCompatible(typeFK, typePK)) {
@@ -453,13 +494,22 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           continue;
         }
 
+        // BI SAFE GUARD 3: Cardinality ratio guard
+        // If FK has very low cardinality relative to rows (categorical pattern)
+        // and PK is a high-uniqueness technical ID, this is likely a spurious match
+        const fkCardinalityRatio = fkValues.length > 0 ? fkSet.size / fkValues.length : 0;
+        if (!isSameName && fkCardinalityRatio < 0.05 && pk.uniquenessRatio >= 0.95) {
+          console.log(`[BI-SAFE] BLOCKED: ${fkFile.filename}.${fkCol} has categorical cardinality (${fkSet.size}/${fkValues.length}=${(fkCardinalityRatio*100).toFixed(1)}%) joining high-uniqueness PK ${pk.filename}.${pk.column} (${(pk.uniquenessRatio*100).toFixed(1)}%) - likely spurious numeric overlap`);
+          continue;
+        }
+
         let includedCount = 0;
         fkSet.forEach(v => { if (pkSet.has(v)) includedCount++; });
 
         const coverageRate = fkSet.size > 0 ? includedCount / fkSet.size : 0;
 
         if (isSameName || coverageRate >= 0.10) {
-          console.log(`[JOIN-DEBUG]   ${fkFile.filename}.${fkCol} → ${pk.filename}.${pk.column}: coverage=${(coverageRate*100).toFixed(1)}%, included=${includedCount}/${fkSet.size}, types=${typeFK}/${typePK}${isSameName ? ' [SAME NAME]' : ''}`);
+          console.log(`[JOIN-DEBUG]   ${fkFile.filename}.${fkCol} → ${pk.filename}.${pk.column}: coverage=${(coverageRate*100).toFixed(1)}%, included=${includedCount}/${fkSet.size}, types=${typeFK}/${typePK}${isSameName ? ' [SAME NAME]' : ''}, fkRole=${fkRole}, fkCardinality=${(fkCardinalityRatio*100).toFixed(1)}%`);
         }
 
         if (coverageRate < 0.50 && !isSameName) continue;
@@ -497,6 +547,15 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           score += 10;
         }
 
+        // BI SAFE GUARD 4: Cross-role penalty
+        // If FK is dimension and PK is key (or vice-versa) with different names → penalty
+        const pkRole = columnRoles.get(pk.filename)?.get(pk.column) || "key";
+        if (!isExactName && fkRole === "dimension" && pkRole === "key") {
+          const penalty = 40;
+          console.log(`[BI-SAFE] PENALTY: ${fkFile.filename}.${fkCol}(dimension) → ${pk.filename}.${pk.column}(key) - cross-role penalty -${penalty}`);
+          score -= penalty;
+        }
+
         const maxScore = 145;
         const confidence = Math.min(score / maxScore, 1.0);
 
@@ -522,6 +581,11 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           explanation = `"${fkCol}" → "${pk.column}" copertura ${Math.round(coverageRate * 100)}% dei valori FK presenti nella PK`;
         }
 
+        let warning: string | undefined;
+        if (matchType === "overlap_only" && confidence < 0.55) {
+          warning = `Attenzione: collegamento basato solo su sovrapposizione valori, rischio di join spurio`;
+        }
+
         allCandidates.push({
           sourceFile: fkFile.filename,
           sourceColumn: fkCol,
@@ -533,6 +597,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           joinType: "LEFT",
           explanation,
           rawScore: score,
+          warning,
         });
       }
     }
@@ -607,6 +672,20 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           const valuesConnected = connectedFile.sampleValues[colConnected] || [];
           if (valuesOrphan.length === 0 || valuesConnected.length === 0) continue;
 
+          const normO = normalizeColumnName(colOrphan);
+          const normC = normalizeColumnName(colConnected);
+          const isExactName = normO === normC;
+
+          // BI SAFE GUARD: Apply same category↔technical ID block in fallback
+          if (!isExactName && isCategoryColumn(colOrphan) && isTechnicalIdColumn(colConnected)) {
+            console.log(`[BI-SAFE] BLOCKED fallback: ${orphanFilename}.${colOrphan} (category) → ${connectedFilename}.${colConnected} (technical ID)`);
+            continue;
+          }
+          if (!isExactName && isTechnicalIdColumn(colOrphan) && isCategoryColumn(colConnected)) {
+            console.log(`[BI-SAFE] BLOCKED fallback: ${orphanFilename}.${colOrphan} (technical ID) → ${connectedFilename}.${colConnected} (category)`);
+            continue;
+          }
+
           const typeO = detectColumnType(valuesOrphan);
           const typeC = detectColumnType(valuesConnected);
           if (!areTypesCompatible(typeO, typeC)) continue;
@@ -614,10 +693,6 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           const { overlapPct } = computeValueOverlap(valuesOrphan, valuesConnected);
           if (overlapPct < 0.5) continue;
 
-          const normO = normalizeColumnName(colOrphan);
-          const normC = normalizeColumnName(colConnected);
-
-          const isExactName = normO === normC;
           const hasSharedRoot = semanticRoots.find(r => normO.includes(r) && normC.includes(r));
           if (!isExactName && !hasSharedRoot) continue;
 

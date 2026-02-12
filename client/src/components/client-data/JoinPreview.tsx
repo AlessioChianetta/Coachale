@@ -249,6 +249,12 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
                         <p className="text-xs text-slate-500 dark:text-slate-400 italic">
                           {join.explanation}
                         </p>
+                        {(join as any).warning && (
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded px-2 py-1">
+                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>{(join as any).warning}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
