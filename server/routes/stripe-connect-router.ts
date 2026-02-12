@@ -2258,13 +2258,22 @@ export async function sendPartnerWebhook(
       return { success: false, error: "Silver notifications disabled" };
     }
     
-    // Cerca la sorgente dataset sync del consulente per includere le info di routing
+    // Cerca la sorgente dataset sync collegata (o la prima attiva) per includere le info di routing
     let datasetSyncInfo: any = null;
     try {
-      const syncSourceResult = await db.execute<any>(
-        sql`SELECT api_key, name FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
-      );
-      const syncRows = syncSourceResult.rows || [];
+      const linkedSourceId = config.linkedSyncSourceId;
+      let syncSourceResult;
+      if (linkedSourceId) {
+        syncSourceResult = await db.execute<any>(
+          sql`SELECT id, api_key, name FROM dataset_sync_sources WHERE id = ${linkedSourceId} AND consultant_id = ${consultantId} AND is_active = true LIMIT 1`
+        );
+      }
+      if (!linkedSourceId || !(syncSourceResult?.rows?.length)) {
+        syncSourceResult = await db.execute<any>(
+          sql`SELECT id, api_key, name FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
+        );
+      }
+      const syncRows = syncSourceResult?.rows || [];
       if (syncRows.length > 0) {
         const baseUrl = process.env.REPLIT_DEV_DOMAIN 
           ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -2386,6 +2395,7 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
         secretKey: null,
         notifyOnGold: true,
         notifyOnSilver: false,
+        linkedSyncSourceId: null,
       });
     }
     
@@ -2396,6 +2406,7 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
       secretKey: config.secretKey,
       notifyOnGold: config.notifyOnGold,
       notifyOnSilver: config.notifyOnSilver,
+      linkedSyncSourceId: config.linkedSyncSourceId,
     });
   } catch (error: any) {
     console.error("[Partner Webhook Config GET] Error:", error);
@@ -2406,7 +2417,7 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
 router.post("/partner-webhook/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, regenerateSecret } = req.body;
+    const { webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, regenerateSecret, linkedSyncSourceId } = req.body;
     
     const [existingConfig] = await db.select()
       .from(partnerWebhookConfigs)
@@ -2420,6 +2431,12 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
         notifyOnSilver: notifyOnSilver ?? existingConfig.notifyOnSilver,
         updatedAt: new Date(),
       };
+      
+      if (linkedSyncSourceId !== undefined && linkedSyncSourceId !== null) {
+        updateData.linkedSyncSourceId = linkedSyncSourceId;
+      } else if (linkedSyncSourceId === null) {
+        updateData.linkedSyncSourceId = null;
+      }
       
       if (regenerateSecret) {
         updateData.secretKey = generateSecretKey();
@@ -2438,6 +2455,7 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
           secretKey: updated.secretKey,
           notifyOnGold: updated.notifyOnGold,
           notifyOnSilver: updated.notifyOnSilver,
+          linkedSyncSourceId: updated.linkedSyncSourceId,
         }
       });
     } else {
@@ -2448,6 +2466,7 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
         isEnabled: isEnabled ?? false,
         notifyOnGold: notifyOnGold ?? true,
         notifyOnSilver: notifyOnSilver ?? false,
+        linkedSyncSourceId: linkedSyncSourceId || null,
       }).returning();
       
       res.json({
@@ -2458,6 +2477,7 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
           secretKey: created.secretKey,
           notifyOnGold: created.notifyOnGold,
           notifyOnSilver: created.notifyOnSilver,
+          linkedSyncSourceId: created.linkedSyncSourceId,
         }
       });
     }

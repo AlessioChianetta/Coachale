@@ -296,6 +296,16 @@ function PartnerWebhookCard() {
   const [notifyOnSilver, setNotifyOnSilver] = useState(false);
   const [secretKey, setSecretKey] = useState("");
   const [isConfigured, setIsConfigured] = useState(false);
+  const [linkedSyncSourceId, setLinkedSyncSourceId] = useState<string | undefined>(undefined);
+
+  const syncSourcesQuery = useQuery({
+    queryKey: ["/api/dataset-sync/sources"],
+    queryFn: async () => {
+      const res = await fetch("/api/dataset-sync/sources", { headers: getAuthHeaders() });
+      if (!res.ok) return { sources: [] };
+      return res.json();
+    },
+  });
   
   const configQuery = useQuery({
     queryKey: ["/api/partner-webhook/config"],
@@ -323,6 +333,7 @@ function PartnerWebhookCard() {
       setNotifyOnSilver(configQuery.data.notifyOnSilver ?? false);
       setSecretKey(configQuery.data.secretKey || "");
       setIsConfigured(configQuery.data.configured || false);
+      setLinkedSyncSourceId(configQuery.data.linkedSyncSourceId ? String(configQuery.data.linkedSyncSourceId) : undefined);
     }
   }, [configQuery.data]);
   
@@ -405,6 +416,57 @@ function PartnerWebhookCard() {
           </div>
           
           <div className="space-y-2">
+            <Label className="font-medium">Sorgente Dati Collegata</Label>
+            {syncSourcesQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Caricamento sorgenti...
+              </div>
+            ) : (syncSourcesQuery.data?.sources || []).length === 0 ? (
+              <Alert className="bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-700">
+                <AlertTriangle className="h-4 w-4 text-slate-500" />
+                <AlertDescription className="text-slate-600 dark:text-slate-400 text-sm">
+                  Nessuna sorgente di sincronizzazione trovata. Creane una nella sezione "Sincronizzazione Dati" per collegare gli acquisti Stripe alla Partner Dashboard.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <Select value={linkedSyncSourceId} onValueChange={setLinkedSyncSourceId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona una sorgente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(syncSourcesQuery.data?.sources || []).map((source: any) => (
+                      <SelectItem key={source.id} value={String(source.id)}>
+                        {source.name} {source.is_active ? "" : "(in pausa)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Quando un cliente acquista tramite Stripe, verrà aggiunto alla coda di questa sorgente nella Partner Dashboard
+                </p>
+                {linkedSyncSourceId && (() => {
+                  const selectedSource = (syncSourcesQuery.data?.sources || []).find((s: any) => String(s.id) === linkedSyncSourceId);
+                  if (!selectedSource) return null;
+                  return (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`/partner/dashboard/${selectedSource.api_key}`, '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Apri Dashboard Partner
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="webhookUrl">URL Webhook Partner</Label>
             <Input
               id="webhookUrl"
@@ -456,7 +518,7 @@ function PartnerWebhookCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => saveMutation.mutate({ regenerateSecret: true, webhookUrl, isEnabled, notifyOnGold, notifyOnSilver })}
+                  onClick={() => saveMutation.mutate({ regenerateSecret: true, webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
                   disabled={saveMutation.isPending}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -468,7 +530,7 @@ function PartnerWebhookCard() {
           
           <div className="flex gap-2 pt-2">
             <Button
-              onClick={() => saveMutation.mutate({ webhookUrl, isEnabled, notifyOnGold, notifyOnSilver })}
+              onClick={() => saveMutation.mutate({ webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
               disabled={saveMutation.isPending}
               className="bg-orange-500 hover:bg-orange-600"
             >

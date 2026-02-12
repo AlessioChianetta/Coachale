@@ -603,6 +603,12 @@ export function SyncSourcesManager() {
                           Modifica Impostazioni
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          onClick={() => window.open(`/partner/dashboard/${source.api_key}`, '_blank')}
+                        >
+                          <Users className="h-4 w-4 mr-2" />
+                          Dashboard Partner
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => setGuideSource(source)}
                         >
                           <FileText className="h-4 w-4 mr-2" />
