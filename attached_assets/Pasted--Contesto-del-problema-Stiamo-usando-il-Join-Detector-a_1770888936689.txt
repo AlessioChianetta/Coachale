@@ -1,0 +1,109 @@
+🧠 Contesto del problema
+
+Stiamo usando il Join Detector automatico su un modello con fact table + dimensioni (schema a stella).
+Il detector propone relazioni statisticamente corrette, ma semanticamente errate, che portano a duplicazione delle righe e fatturato gonfiato.
+
+❌ Errore specifico individuato
+
+Il Join Detector ha suggerito (ed applicato) questa relazione:
+
+vendite_righe.tipologia = tipologie.line_id
+
+
+Questa relazione è concettualmente sbagliata, perché:
+
+vendite_righe è una fact table
+
+line_id è una chiave tecnica di riga
+
+tipologia è una categoria di business
+
+👉 Il detector ha interpretato una coincidenza numerica come PK/FK, senza considerare il ruolo delle tabelle.
+
+💥 Effetto pratico
+
+Il join crea un many-to-many implicito
+
+Le righe della fact table vengono replicate
+
+SUM(prezzofinale) viene calcolato più volte
+
+Il fatturato passa da ~330k € a ~3.9M €
+
+👉 Il dato è matematicamente corretto per il modello sbagliato, ma business-wise falso.
+
+✅ Modello corretto atteso
+
+Lo schema corretto è:
+
+vendite_righe (FACT)
+   ↓ product_id
+prodotti (DIM)
+   ↓ tipologia_id
+tipologie (DIM)
+
+
+Mai:
+
+vendite_righe → tipologie
+
+
+Le dimensioni non devono collegarsi direttamente alla fact, se non tramite la chiave corretta.
+
+🔍 Root cause (perché il detector sbaglia)
+
+Il Join Detector:
+
+valuta overlap, unicità e tipo dati
+
+non distingue:
+
+fact table vs dimension table
+
+chiavi tecniche vs attributi di business
+
+non blocca join che aumentano la cardinalità della fact
+
+🛠️ Cosa chiedere a Cloud Opus (proposte concrete)
+1️⃣ Regola di protezione sulle fact table
+
+Il Join Detector non deve mai proporre PK/FK automatici partendo da una fact table, se non su chiavi esplicite (es. order_id, product_id).
+
+2️⃣ Controllo di cardinalità
+
+Se un join aumenta il numero di righe della fact table, deve essere bloccato o segnalato come “dangerous join”.
+
+3️⃣ Blocco join semantici incoerenti
+
+Vietare join tra:
+
+attributi di categoria
+
+chiavi tecniche non correlate
+anche se l’overlap numerico è alto.
+
+4️⃣ Modalità “Star Schema / BI Safe”
+
+Introdurre una modalità in cui:
+
+una sola fact table
+
+dimensioni collegate solo in one-to-many
+
+nessun many-to-many implicito
+
+🧪 Evidenza oggettiva (killer argument)
+
+Lo stesso dataset, con:
+
+join automatico → fatturato 3.961.336 €
+
+join corretto → fatturato ~332.000 €
+
+👉 La differenza non è nei dati, ma nel join detector.
+
+🎯 Frase finale da usare (molto forte)
+
+“Il Join Detector oggi è molto bravo a trovare coincidenze numeriche,
+ma in contesti BI rischia di produrre dati finanziari formalmente corretti ma business-wise falsi.
+Serve una protezione semantica sulle fact table.”
