@@ -350,23 +350,35 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
   for (const file of files) {
     const roles = new Map<string, ColumnRole>();
+    console.log(`[JOIN-DEBUG] File: ${file.filename}, columns: ${file.columns.length}, sampleValues keys: ${Object.keys(file.sampleValues || {}).length}`);
     for (const col of file.columns) {
       const values = file.sampleValues[col] || [];
       const role = classifyColumnRole(col, values, file.rowCount);
       roles.set(col, role);
 
-      if (role === "measure") continue;
+      if (role === "measure") {
+        console.log(`[JOIN-DEBUG]   ${col}: MEASURE (skipped), ${values.length} values`);
+        continue;
+      }
 
-      if (values.length === 0) continue;
+      if (values.length === 0) {
+        console.log(`[JOIN-DEBUG]   ${col}: no values (skipped)`);
+        continue;
+      }
 
       const hasFloats = values.some(v => {
         if (typeof v === "number") return !Number.isInteger(v);
         return /^-?\d+[.,]\d+$/.test(String(v).trim());
       });
-      if (hasFloats) continue;
+      if (hasFloats) {
+        console.log(`[JOIN-DEBUG]   ${col}: has floats (skipped), role=${role}, ${values.length} values`);
+        continue;
+      }
 
       const uniqueValues = new Set(values.map(String));
       const uniquenessRatio = uniqueValues.size / values.length;
+
+      console.log(`[JOIN-DEBUG]   ${col}: role=${role}, unique=${uniqueValues.size}/${values.length} (${(uniquenessRatio*100).toFixed(1)}%)${uniquenessRatio >= 0.95 ? ' → PK CANDIDATE' : ''}`);
 
       if (uniquenessRatio >= 0.95) {
         pkCandidates.push({ filename: file.filename, column: col, uniquenessRatio });
@@ -374,6 +386,8 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
     }
     columnRoles.set(file.filename, roles);
   }
+
+  console.log(`[JOIN-DEBUG] Phase 1 complete: ${pkCandidates.length} PK candidates found:`, pkCandidates.map(p => `${p.filename}.${p.column} (${(p.uniquenessRatio*100).toFixed(1)}%)`));
 
   // ====== PHASE 2: Find FK→PK joins (Inclusion Dependency detection) ======
   const allCandidates: ScoredCandidate[] = [];
@@ -383,6 +397,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
     const pkFile = files.find(f => f.filename === pk.filename)!;
     const pkValues = pkFile.sampleValues[pk.column] || [];
     const pkSet = new Set(pkValues.map(String));
+    console.log(`[JOIN-DEBUG] Phase 2: Checking FK→PK for ${pk.filename}.${pk.column} (PK set size: ${pkSet.size}, sample values: ${pkValues.slice(0,5).join(',')})`);
 
     for (const fkFile of files) {
       if (fkFile.filename === pk.filename) continue;
@@ -396,13 +411,19 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
         const typeFK = detectColumnType(fkValues);
         const typePK = detectColumnType(pkValues);
-        if (!areTypesCompatible(typeFK, typePK)) continue;
+        if (!areTypesCompatible(typeFK, typePK)) {
+          continue;
+        }
 
         const fkSet = new Set(fkValues.map(String));
         let includedCount = 0;
         fkSet.forEach(v => { if (pkSet.has(v)) includedCount++; });
 
         const coverageRate = fkSet.size > 0 ? includedCount / fkSet.size : 0;
+
+        if (coverageRate >= 0.10) {
+          console.log(`[JOIN-DEBUG]   ${fkFile.filename}.${fkCol} → ${pk.filename}.${pk.column}: coverage=${(coverageRate*100).toFixed(1)}%, included=${includedCount}/${fkSet.size}, types=${typeFK}/${typePK}`);
+        }
 
         if (coverageRate < 0.50) continue;
 
