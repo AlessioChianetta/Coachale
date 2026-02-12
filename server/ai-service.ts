@@ -1192,8 +1192,11 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
 
     // Inject system prompt documents for client AI assistant
+    // Use user.consultantId from DB (the actual consultant who owns this client)
+    // This is critical for mixed-role users who are both consultants AND clients of another consultant
+    const systemDocsConsultantId = (effectiveRole === 'client' && user.consultantId) ? user.consultantId : consultantId;
     try {
-      const systemDocs = await fetchSystemDocumentsForClientAssistant(consultantId);
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId);
       if (systemDocs) {
         systemPrompt = systemPrompt + '\n\n' + systemDocs;
       }
@@ -2120,8 +2123,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
 
     // Inject system prompt documents for client AI assistant
+    // Use user.consultantId from DB (the actual consultant who owns this client)
+    // This is critical for mixed-role users who are both consultants AND clients of another consultant
+    const systemDocsConsultantId = (effectiveRole === 'client' && user.consultantId) ? user.consultantId : consultantId;
     try {
-      const systemDocs = await fetchSystemDocumentsForClientAssistant(consultantId);
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId);
       if (systemDocs) {
         systemPrompt = systemPrompt + '\n\n' + systemDocs;
       }
