@@ -1,10 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Cloud,
   CloudOff,
@@ -38,6 +53,12 @@ import {
   Monitor,
   AlertTriangle,
   Database,
+  Sparkles,
+  MessageCircle,
+  Bot,
+  Building2,
+  StickyNote,
+  FileDown,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +66,32 @@ import { useToast } from "@/hooks/use-toast";
 interface GoogleDriveBrowserProps {
   apiPrefix: '/api/consultant' | '/api/client';
   onImportSuccess?: (importedCount: number) => void;
+  onSystemDocImportSuccess?: (importedCount: number) => void;
 }
+
+type TargetClientMode = 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+
+interface SystemDocImportForm {
+  target_client_assistant: boolean;
+  target_client_mode: TargetClientMode;
+  target_client_ids: string[];
+  target_department_ids: string[];
+  target_autonomous_agents: Record<string, boolean>;
+  target_whatsapp_agents: Record<string, boolean>;
+  injection_mode: 'system_prompt' | 'file_search';
+  priority: number;
+}
+
+const AUTONOMOUS_AGENTS_LIST = [
+  { id: "proactive_setter", name: "Marco (Setter)" },
+  { id: "reactive_lead", name: "Receptionist" },
+  { id: "follow_up_specialist", name: "Millie (Follow-up)" },
+  { id: "engagement_reactivator", name: "Echo (Riattivazione)" },
+  { id: "retention_specialist", name: "Nova (Retention)" },
+  { id: "review_collector", name: "Stella (Recensioni)" },
+  { id: "informative_advisor", name: "Iris (Informativa)" },
+  { id: "custom_agent", name: "Personalizza" },
+];
 
 interface DriveFolder {
   id: string;
@@ -119,7 +165,7 @@ const getOwnerColor = (email?: string) => {
   return colors[index];
 };
 
-export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: GoogleDriveBrowserProps) {
+export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess, onSystemDocImportSuccess }: GoogleDriveBrowserProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [currentSection, setCurrentSection] = useState<DriveSection>('home');
@@ -131,6 +177,111 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [showSystemDocModal, setShowSystemDocModal] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
+
+  const isConsultant = apiPrefix === '/api/consultant';
+
+  const defaultSystemDocForm = (): SystemDocImportForm => ({
+    target_client_assistant: false,
+    target_client_mode: 'all',
+    target_client_ids: [],
+    target_department_ids: [],
+    target_autonomous_agents: Object.fromEntries(AUTONOMOUS_AGENTS_LIST.map(a => [a.id, false])),
+    target_whatsapp_agents: {},
+    injection_mode: 'system_prompt',
+    priority: 5,
+  });
+
+  const [sysDocForm, setSysDocForm] = useState<SystemDocImportForm>(defaultSystemDocForm());
+
+  const { data: whatsappConfigData } = useQuery({
+    queryKey: ["/api/consultant/whatsapp/agents-list"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/whatsapp/config", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.configs || data.data || [];
+    },
+    enabled: isConsultant,
+  });
+
+  const { data: clientsData } = useQuery({
+    queryKey: ["/api/consultant/clients-for-targeting"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/clients", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.data || []);
+    },
+    enabled: isConsultant && showSystemDocModal,
+  });
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ["/api/departments-for-drive"],
+    queryFn: async () => {
+      const res = await fetch("/api/departments", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.data || data || [];
+    },
+    enabled: isConsultant && showSystemDocModal,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const whatsappAgents: any[] = whatsappConfigData || [];
+  const allClients: any[] = clientsData || [];
+  const departments: any[] = departmentsData || [];
+  const nonEmployeeClients = useMemo(() => allClients.filter((c: any) => !c.isEmployee), [allClients]);
+  const employeeClients = useMemo(() => allClients.filter((c: any) => c.isEmployee), [allClients]);
+
+  const systemDocImportMutation = useMutation({
+    mutationFn: async (payload: { fileIds: string[] } & SystemDocImportForm) => {
+      const response = await fetch(`/api/consultant/google-drive/import-system-docs`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore importazione");
+      }
+      return { ...await response.json(), importedFileIds: Array.from(selectedFiles) };
+    },
+    onSuccess: (data) => {
+      const importedCount = data.imported || 0;
+      setImportedFileIds(prev => {
+        const newSet = new Set(prev);
+        data.importedFileIds?.forEach((id: string) => newSet.add(id));
+        return newSet;
+      });
+      setSelectedFiles(new Set());
+      setShowSystemDocModal(false);
+      setSysDocForm(defaultSystemDocForm());
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+      toast({
+        title: "Importazione completata",
+        description: `${importedCount} file importati come Documenti di Sistema`,
+      });
+      onSystemDocImportSuccess?.(importedCount);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore importazione",
+        description: error.message || "Impossibile importare come documenti di sistema",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSystemDocImport = () => {
+    systemDocImportMutation.mutate({
+      fileIds: Array.from(selectedFiles),
+      ...sysDocForm,
+    });
+  };
 
   const handleSectionChange = (section: DriveSection) => {
     setCurrentSection(section);
@@ -887,28 +1038,302 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
                 </span>
               </div>
 
-              <Button
-                onClick={handleImport}
-                disabled={selectedFiles.size === 0 || importMutation.isPending}
-                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-2.5 rounded-full text-base font-medium shadow-md"
-                size="lg"
-              >
-                {importMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Importazione...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5 mr-2" />
-                    Importa nella Knowledge Base ({selectedFiles.size})
-                  </>
+              <div className="flex items-center gap-3">
+                {isConsultant && (
+                  <Button
+                    onClick={() => setShowSystemDocModal(true)}
+                    disabled={selectedFiles.size === 0 || systemDocImportMutation.isPending}
+                    variant="outline"
+                    className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 px-5 py-2.5 rounded-full text-sm font-medium"
+                    size="lg"
+                  >
+                    <StickyNote className="w-4 h-4 mr-2" />
+                    Documenti di Sistema ({selectedFiles.size})
+                  </Button>
                 )}
-              </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={selectedFiles.size === 0 || importMutation.isPending}
+                  className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-2.5 rounded-full text-base font-medium shadow-md"
+                  size="lg"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Importazione...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 mr-2" />
+                      Knowledge Base ({selectedFiles.size})
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* System Document Import Modal */}
+      <Dialog open={showSystemDocModal} onOpenChange={setShowSystemDocModal}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-5 w-5 text-indigo-600" />
+              Importa come Documento di Sistema
+            </DialogTitle>
+            <DialogDescription>
+              {selectedFiles.size} file verranno importati come Documenti di Sistema. Scegli i destinatari e la modalità di iniezione.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {!sysDocForm.target_client_assistant && Object.values(sysDocForm.target_whatsapp_agents).every(v => !v) && Object.values(sysDocForm.target_autonomous_agents).every(v => !v) && (
+              <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-3 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                <p className="text-xs text-amber-700 font-medium">Nessun destinatario — il documento non sarà visibile finché non attivi almeno un canale</p>
+              </div>
+            )}
+
+            <div className={`rounded-xl border-2 overflow-hidden transition-colors ${sysDocForm.target_client_assistant ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200'}`}>
+              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-100 rounded-lg">
+                    <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">AI Assistant Clienti</p>
+                    <p className="text-xs text-muted-foreground">Visibile nel chatbot AI</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={sysDocForm.target_client_assistant}
+                  onCheckedChange={v => setSysDocForm(f => ({ ...f, target_client_assistant: v }))}
+                />
+              </div>
+
+              {sysDocForm.target_client_assistant && (
+                <div className="p-3 space-y-2 border-t border-blue-200 bg-white/50">
+                  <Label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">A chi mostrare?</Label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { value: 'all', label: 'Tutti', icon: '👥' },
+                      { value: 'clients_only', label: 'Solo Clienti', icon: '🧑' },
+                      { value: 'employees_only', label: 'Solo Dipendenti', icon: '👷' },
+                      { value: 'specific_clients', label: 'Clienti Specifici', icon: '🎯' },
+                      { value: 'specific_departments', label: 'Per Reparto', icon: '🏢' },
+                      { value: 'specific_employees', label: 'Dip. Specifici', icon: '📋' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: opt.value as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium border transition-all ${
+                          sysDocForm.target_client_mode === opt.value
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                        }`}
+                      >
+                        <span>{opt.icon}</span>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {sysDocForm.target_client_mode === 'specific_departments' && (
+                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
+                      {departments.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato</p>
+                      ) : departments.map((dept: any) => (
+                        <label key={dept.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
+                          <Checkbox
+                            checked={sysDocForm.target_department_ids.includes(dept.id)}
+                            onCheckedChange={(checked) =>
+                              setSysDocForm(f => ({
+                                ...f,
+                                target_department_ids: checked
+                                  ? [...f.target_department_ids, dept.id]
+                                  : f.target_department_ids.filter((id: string) => id !== dept.id),
+                              }))
+                            }
+                          />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
+                            <span className="text-xs truncate">{dept.name}</span>
+                            <Badge variant="outline" className="text-[10px] shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {sysDocForm.target_client_mode === 'specific_clients' && (
+                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
+                      {nonEmployeeClients.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
+                      ) : nonEmployeeClients.map((client: any) => (
+                        <label key={client.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
+                          <Checkbox
+                            checked={sysDocForm.target_client_ids.includes(client.id)}
+                            onCheckedChange={(checked) =>
+                              setSysDocForm(f => ({
+                                ...f,
+                                target_client_ids: checked
+                                  ? [...f.target_client_ids, client.id]
+                                  : f.target_client_ids.filter((id: string) => id !== client.id),
+                              }))
+                            }
+                          />
+                          <span className="text-xs truncate">{client.firstName} {client.lastName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {sysDocForm.target_client_mode === 'specific_employees' && (
+                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
+                      {employeeClients.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
+                      ) : employeeClients.map((emp: any) => (
+                        <label key={emp.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
+                          <Checkbox
+                            checked={sysDocForm.target_client_ids.includes(emp.id)}
+                            onCheckedChange={(checked) =>
+                              setSysDocForm(f => ({
+                                ...f,
+                                target_client_ids: checked
+                                  ? [...f.target_client_ids, emp.id]
+                                  : f.target_client_ids.filter((id: string) => id !== emp.id),
+                              }))
+                            }
+                          />
+                          <span className="text-xs truncate">{emp.firstName} {emp.lastName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {whatsappAgents.length > 0 && (
+              <div className={`rounded-xl border-2 overflow-hidden transition-colors ${Object.values(sysDocForm.target_whatsapp_agents).some(Boolean) ? 'border-green-400 bg-green-50/30' : 'border-slate-200'}`}>
+                <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 bg-green-100 rounded-lg">
+                      <MessageCircle className="h-3.5 w-3.5 text-green-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800">WhatsApp</p>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {Object.values(sysDocForm.target_whatsapp_agents).filter(Boolean).length}/{whatsappAgents.length}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {whatsappAgents.map((agent: any) => (
+                      <label key={agent.id} className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition-colors ${!!sysDocForm.target_whatsapp_agents[agent.id] ? 'bg-green-50 border-green-300' : 'bg-white hover:bg-green-50/50'}`}>
+                        <Checkbox
+                          checked={!!sysDocForm.target_whatsapp_agents[agent.id]}
+                          onCheckedChange={(checked) =>
+                            setSysDocForm(f => ({ ...f, target_whatsapp_agents: { ...f.target_whatsapp_agents, [agent.id]: !!checked } }))
+                          }
+                        />
+                        <span className="text-xs font-medium truncate">{agent.agent_name || "Agente"}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0 ml-auto">{agent.agent_type || "general"}</Badge>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Collapsible open={agentsOpen} onOpenChange={setAgentsOpen}>
+              <CollapsibleTrigger asChild>
+                <div className={`flex items-center justify-between rounded-xl border-2 p-3 cursor-pointer transition-colors ${Object.values(sysDocForm.target_autonomous_agents).some(Boolean) ? 'border-purple-400 bg-purple-50/30' : 'border-slate-200 hover:bg-accent/50'}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-purple-100 rounded-lg">
+                      <Bot className="h-3.5 w-3.5 text-purple-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800">Agenti Autonomi</p>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {Object.values(sysDocForm.target_autonomous_agents).filter(Boolean).length}/{AUTONOMOUS_AGENTS_LIST.length}
+                    </span>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${agentsOpen ? "rotate-180" : ""}`} />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-2 gap-1.5 mt-2">
+                  {AUTONOMOUS_AGENTS_LIST.map(agent => (
+                    <label key={agent.id} className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition-colors ${!!sysDocForm.target_autonomous_agents[agent.id] ? 'bg-purple-50 border-purple-300' : 'hover:bg-purple-50/50'}`}>
+                      <Checkbox
+                        checked={!!sysDocForm.target_autonomous_agents[agent.id]}
+                        onCheckedChange={(checked) =>
+                          setSysDocForm(f => ({ ...f, target_autonomous_agents: { ...f.target_autonomous_agents, [agent.id]: !!checked } }))
+                        }
+                      />
+                      <span className="text-xs font-medium">{agent.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className="rounded-xl border-2 border-slate-200 p-3 space-y-2">
+              <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Modalità iniezione</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSysDocForm(f => ({ ...f, injection_mode: 'system_prompt' }))}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                    sysDocForm.injection_mode === 'system_prompt'
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                  }`}
+                >
+                  <StickyNote className="h-3.5 w-3.5" />
+                  System Prompt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSysDocForm(f => ({ ...f, injection_mode: 'file_search' }))}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                    sysDocForm.injection_mode === 'file_search'
+                      ? 'bg-slate-800 text-white border-slate-800'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                  }`}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  File Search
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowSystemDocModal(false)} disabled={systemDocImportMutation.isPending}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleSystemDocImport}
+              disabled={systemDocImportMutation.isPending}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {systemDocImportMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Importazione...
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Importa come Documento di Sistema ({selectedFiles.size})
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

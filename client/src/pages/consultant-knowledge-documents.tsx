@@ -1509,6 +1509,9 @@ export default function ConsultantKnowledgeDocuments() {
                       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/stats"] });
                       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/folders"] });
                     }}
+                    onSystemDocImportSuccess={(count) => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+                    }}
                   />
                 </CardContent>
               </CollapsibleContent>

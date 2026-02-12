@@ -2,8 +2,9 @@ import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
 import { consultantAvailabilitySettings, consultantKnowledgeDocuments, vertexAiSettings } from "../../shared/schema";
-import { eq, inArray, and, isNotNull } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, sql } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -603,6 +604,153 @@ router.post(
         success: false,
         error: error.message || "Failed to import files from Google Drive"
       });
+    }
+  }
+);
+
+router.post(
+  "/consultant/google-drive/import-system-docs",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const {
+        fileIds,
+        target_client_assistant,
+        target_client_mode,
+        target_client_ids,
+        target_department_ids,
+        target_autonomous_agents,
+        target_whatsapp_agents,
+        injection_mode,
+        priority,
+      } = req.body;
+
+      if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+        return res.status(400).json({ success: false, error: "At least one file ID is required" });
+      }
+
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({ success: false, error: "Google Drive not connected" });
+      }
+
+      console.log(`📥 [GOOGLE DRIVE → SYSTEM DOCS] Importing ${fileIds.length} file(s) for consultant ${consultantId}`);
+
+      const ALLOWED_TEXT_TYPES: Record<string, string> = {
+        "application/pdf": "pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/msword": "docx",
+        "text/plain": "txt",
+        "text/markdown": "md",
+        "text/x-markdown": "md",
+        "text/rtf": "rtf",
+        "application/rtf": "rtf",
+        "application/vnd.oasis.opendocument.text": "odt",
+        "text/csv": "csv",
+        "application/csv": "csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+        "application/vnd.ms-powerpoint": "ppt",
+      };
+
+      const results: { imported: number; failed: number; errors: string[]; documentIds: string[] } = {
+        imported: 0, failed: 0, errors: [], documentIds: [],
+      };
+
+      for (const currentFileId of fileIds) {
+        let tempFilePath: string | null = null;
+        try {
+          const { filePath, fileName, mimeType } = await downloadDriveFile(consultantId, currentFileId);
+          tempFilePath = filePath;
+
+          if (!ALLOWED_TEXT_TYPES[mimeType]) {
+            await fs.unlink(tempFilePath).catch(() => {});
+            results.failed++;
+            results.errors.push(`${fileName}: Tipo di file non supportato per documenti di sistema (${mimeType})`);
+            continue;
+          }
+
+          console.log(`🔄 [GOOGLE DRIVE → SYSTEM DOCS] Extracting text from: ${fileName}`);
+
+          let vertexCredentials: VertexAICredentials | undefined;
+          const extractedContent = await extractTextFromFile(tempFilePath, mimeType, vertexCredentials);
+
+          await fs.unlink(tempFilePath).catch(() => {});
+          tempFilePath = null;
+
+          if (!extractedContent || extractedContent.trim().length === 0) {
+            results.failed++;
+            results.errors.push(`${fileName}: Nessun contenuto testuale estratto`);
+            continue;
+          }
+
+          const docId = crypto.randomUUID();
+          const now = new Date();
+          const docTitle = fileName.replace(/\.[^/.]+$/, '');
+
+          await db.execute(sql`
+            INSERT INTO system_prompt_documents (id, consultant_id, title, content, description, is_active,
+              target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode,
+              target_client_mode, target_client_ids, target_department_ids, google_drive_file_id, created_at, updated_at)
+            VALUES (${docId}, ${consultantId}, ${docTitle}, ${extractedContent}, ${'Importato da Google Drive: ' + fileName}, true,
+              ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})}::jsonb,
+              ${JSON.stringify(target_whatsapp_agents || {})}::jsonb, ${priority ?? 5}, ${injection_mode || 'system_prompt'},
+              ${target_client_mode || 'all'}, ${JSON.stringify(target_client_ids || [])}::jsonb, ${JSON.stringify(target_department_ids || [])}::jsonb,
+              ${currentFileId}, ${now}, ${now})
+          `);
+
+          console.log(`✅ [GOOGLE DRIVE → SYSTEM DOCS] Created system doc: "${docTitle}"`);
+
+          if ((injection_mode || 'system_prompt') === 'file_search') {
+            setImmediate(async () => {
+              try {
+                if (target_client_assistant) {
+                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'client_assistant', consultantId, 'consultant');
+                }
+                const waAgents = target_whatsapp_agents || {};
+                for (const [agentId, enabled] of Object.entries(waAgents)) {
+                  if (enabled) {
+                    await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+                  }
+                }
+              } catch (err: any) {
+                console.error('❌ [GOOGLE DRIVE → SYSTEM DOCS] File search sync failed:', err.message);
+              }
+            });
+          }
+
+          registerDriveWatch(consultantId, docId, currentFileId)
+            .then((result) => {
+              if (result) console.log(`🔔 [GOOGLE DRIVE → SYSTEM DOCS] Watch registered for "${docTitle}"`);
+            })
+            .catch((watchError) => {
+              console.warn(`⚠️ [GOOGLE DRIVE → SYSTEM DOCS] Watch not registered:`, watchError.message);
+            });
+
+          results.imported++;
+          results.documentIds.push(docId);
+        } catch (fileError: any) {
+          console.error(`❌ [GOOGLE DRIVE → SYSTEM DOCS] Error importing file ${currentFileId}:`, fileError);
+          results.failed++;
+          results.errors.push(fileError.message || `Failed to import file ${currentFileId}`);
+          if (tempFilePath) await fs.unlink(tempFilePath).catch(() => {});
+        }
+      }
+
+      res.json({
+        success: results.imported > 0,
+        imported: results.imported,
+        failed: results.failed,
+        errors: results.errors.length > 0 ? results.errors : undefined,
+        documentIds: results.documentIds,
+        message: `${results.imported} file importati come Documenti di Sistema${results.failed > 0 ? `, ${results.failed} falliti` : ''}.`
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE → SYSTEM DOCS] Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Errore importazione come documenti di sistema" });
     }
   }
 );
