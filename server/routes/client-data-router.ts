@@ -2981,24 +2981,41 @@ router.post(
 
       const joinResult = buildJoinSQL(files, joins, primaryTable, joinOrder, stagingTables);
 
+      console.log(`[CLIENT-DATA] Generated JOIN SQL:\n${joinResult.sql}`);
+
       await client.query(`CREATE TABLE "${finalTableName}" AS ${joinResult.sql}`);
 
       const rowCountResult = await client.query(`SELECT COUNT(*) as count FROM "${finalTableName}"`);
       const rowCount = parseInt(rowCountResult.rows[0].count, 10);
 
-      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN id SERIAL`);
-      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN riga_originale INTEGER DEFAULT 0`);
-      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN consultant_id VARCHAR(255)`);
-      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN client_id VARCHAR(255)`);
-      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN created_at TIMESTAMP DEFAULT NOW()`);
+      const existingCols = await client.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
+        [finalTableName]
+      );
+      const existingColNames = new Set(existingCols.rows.map((r: any) => r.column_name));
+
+      const sysIdCol = existingColNames.has("id") ? "sys_id" : "id";
+      await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN "${sysIdCol}" SERIAL`);
+      if (!existingColNames.has("riga_originale")) {
+        await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN riga_originale INTEGER DEFAULT 0`);
+      }
+      if (!existingColNames.has("consultant_id")) {
+        await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN consultant_id VARCHAR(255)`);
+      }
+      if (!existingColNames.has("client_id")) {
+        await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN client_id VARCHAR(255)`);
+      }
+      if (!existingColNames.has("created_at")) {
+        await client.query(`ALTER TABLE "${finalTableName}" ADD COLUMN created_at TIMESTAMP DEFAULT NOW()`);
+      }
       await client.query(`UPDATE "${finalTableName}" SET consultant_id = $1`, [consultantId]);
       if (clientId) {
         await client.query(`UPDATE "${finalTableName}" SET client_id = $1`, [clientId]);
       }
 
-      await client.query(`UPDATE "${finalTableName}" SET riga_originale = id`);
+      await client.query(`UPDATE "${finalTableName}" SET riga_originale = "${sysIdCol}"`);
 
-      await client.query(`ALTER TABLE "${finalTableName}" ADD PRIMARY KEY (id)`);
+      await client.query(`ALTER TABLE "${finalTableName}" ADD PRIMARY KEY ("${sysIdCol}")`);
       await client.query(`CREATE INDEX ON "${finalTableName}" (consultant_id)`);
       await client.query(`CREATE INDEX ON "${finalTableName}" (riga_originale)`);
 

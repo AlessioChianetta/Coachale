@@ -1,5 +1,6 @@
 import fs from "fs";
 import * as chardet from "chardet";
+import { sanitizeColumnName } from "./table-generator";
 
 export interface FileSchema {
   filename: string;
@@ -716,7 +717,7 @@ export function buildJoinSQL(
   const usedNames = new Set<string>();
 
   for (const col of primaryFile.columns) {
-    const sanitized = sanitizeForSQL(col);
+    const sanitized = sanitizeColumnName(col);
     let uniqueName = sanitized;
     if (usedNames.has(uniqueName)) {
       uniqueName = `${primaryAlias}_${sanitized}`;
@@ -748,7 +749,7 @@ export function buildJoinSQL(
     const alias = file.tableName + (i > 1 ? `_${i}` : "");
 
     for (const col of file.columns) {
-      const sanitized = sanitizeForSQL(col);
+      const sanitized = sanitizeColumnName(col);
       let uniqueName = sanitized;
       if (usedNames.has(uniqueName)) {
         uniqueName = `${alias}_${sanitized}`;
@@ -767,15 +768,15 @@ export function buildJoinSQL(
       const leftIdx = joinOrder.indexOf(relevantJoin.sourceFile);
       leftAlias = leftFile.tableName + (leftIdx > 1 ? `_${leftIdx}` : leftIdx === 0 ? "" : "");
       if (leftIdx === 0) leftAlias = leftFile.tableName;
-      leftCol = sanitizeForSQL(relevantJoin.sourceColumn);
-      rightCol = sanitizeForSQL(relevantJoin.targetColumn);
+      leftCol = sanitizeColumnName(relevantJoin.sourceColumn);
+      rightCol = sanitizeColumnName(relevantJoin.targetColumn);
     } else {
       const leftFile = fileByName.get(relevantJoin.targetFile)!;
       const leftIdx = joinOrder.indexOf(relevantJoin.targetFile);
       leftAlias = leftFile.tableName + (leftIdx > 1 ? `_${leftIdx}` : leftIdx === 0 ? "" : "");
       if (leftIdx === 0) leftAlias = leftFile.tableName;
-      leftCol = sanitizeForSQL(relevantJoin.targetColumn);
-      rightCol = sanitizeForSQL(relevantJoin.sourceColumn);
+      leftCol = sanitizeColumnName(relevantJoin.targetColumn);
+      rightCol = sanitizeColumnName(relevantJoin.sourceColumn);
     }
 
     joinClauses.push(

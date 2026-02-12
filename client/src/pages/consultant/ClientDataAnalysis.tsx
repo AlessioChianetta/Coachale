@@ -203,7 +203,8 @@ export default function ClientDataAnalysis() {
     name: string,
     selectedJoins: JoinCandidate[],
     primaryTable: string,
-    joinOrder: string[]
+    joinOrder: string[],
+    clientId?: string
   ) => {
     setIsCreatingJoined(true);
 
@@ -214,6 +215,7 @@ export default function ClientDataAnalysis() {
         joins: selectedJoins,
         primaryTable,
         joinOrder,
+        clientId,
       });
 
       if (response.success) {

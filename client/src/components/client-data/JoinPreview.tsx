@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Link,
   ArrowRight,
@@ -14,7 +17,15 @@ import {
   Loader2,
   FileSpreadsheet,
   Unlink,
+  Users,
 } from "lucide-react";
+
+interface Client {
+  id: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 interface FileSchema {
   filename: string;
@@ -51,7 +62,7 @@ interface JoinDetectionResult {
 interface JoinPreviewProps {
   files: FileSchema[];
   joinResult: JoinDetectionResult;
-  onConfirm: (name: string, selectedJoins: JoinCandidate[], primaryTable: string, joinOrder: string[]) => void;
+  onConfirm: (name: string, selectedJoins: JoinCandidate[], primaryTable: string, joinOrder: string[], clientId?: string) => void;
   onCancel: () => void;
   isCreating?: boolean;
 }
@@ -88,9 +99,16 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
     []
   );
   const [datasetName, setDatasetName] = useState(defaultName);
+  const [selectedClientId, setSelectedClientId] = useState("");
+
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    queryFn: () => apiRequest("/api/clients"),
+  });
 
   const handleConfirm = () => {
-    onConfirm(datasetName, joinResult.suggestedJoins, joinResult.primaryTable, joinResult.joinOrder);
+    const clientId = selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined;
+    onConfirm(datasetName, joinResult.suggestedJoins, joinResult.primaryTable, joinResult.joinOrder, clientId);
   };
 
   const noJoins = joinResult.suggestedJoins.length === 0 || joinResult.overallConfidence === 0;
@@ -286,6 +304,29 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div>
+        <Label htmlFor="client-select" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Associa a un cliente (opzionale)
+        </Label>
+        <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+          <SelectTrigger id="client-select" className="mt-2">
+            <SelectValue placeholder="Seleziona un cliente (opzionale)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Nessun cliente specifico</SelectItem>
+            {clients.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.firstName && c.lastName ? `${c.firstName} ${c.lastName}` : c.username}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-slate-500 mt-1">
+          Se associ il dataset a un cliente, anche lui potra vederlo e interrogarlo.
+        </p>
       </div>
 
       <div>
