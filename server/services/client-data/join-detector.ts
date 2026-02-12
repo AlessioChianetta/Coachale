@@ -123,15 +123,31 @@ export async function analyzeFile(filePath: string, filename: string): Promise<F
   const sampleValues: Record<string, any[]> = {};
   headers.forEach((h) => (sampleValues[h] = []));
 
-  const sampleSize = Math.min(lines.length - 1, 500);
-  for (let i = 1; i <= sampleSize; i++) {
-    const values = parseCsvLine(lines[i], delimiter);
-    headers.forEach((h, idx) => {
-      const val = parseValue(values[idx]);
-      if (val !== null && val !== undefined) {
-        sampleValues[h].push(val);
-      }
-    });
+  const totalDataRows = lines.length - 1;
+  const sampleSize = Math.min(totalDataRows, 500);
+
+  if (sampleSize === totalDataRows) {
+    for (let i = 1; i <= totalDataRows; i++) {
+      const values = parseCsvLine(lines[i], delimiter);
+      headers.forEach((h, idx) => {
+        const val = parseValue(values[idx]);
+        if (val !== null && val !== undefined) {
+          sampleValues[h].push(val);
+        }
+      });
+    }
+  } else {
+    const step = totalDataRows / sampleSize;
+    for (let s = 0; s < sampleSize; s++) {
+      const lineIdx = Math.min(Math.floor(1 + s * step), lines.length - 1);
+      const values = parseCsvLine(lines[lineIdx], delimiter);
+      headers.forEach((h, idx) => {
+        const val = parseValue(values[idx]);
+        if (val !== null && val !== undefined) {
+          sampleValues[h].push(val);
+        }
+      });
+    }
   }
 
   const baseName = filename
@@ -322,149 +338,147 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
     return { files, suggestedJoins: [], primaryTable: files[0].filename, joinOrder: [files[0].filename], overallConfidence: 0, orphanTables: [] };
   }
 
-  const allCandidates: ScoredCandidate[] = [];
+  // ====== PHASE 1: Discover PK candidates per file ======
+  interface PKCandidate {
+    filename: string;
+    column: string;
+    uniquenessRatio: number;
+  }
 
+  const pkCandidates: PKCandidate[] = [];
   const columnRoles = new Map<string, Map<string, ColumnRole>>();
+
   for (const file of files) {
     const roles = new Map<string, ColumnRole>();
     for (const col of file.columns) {
       const values = file.sampleValues[col] || [];
-      roles.set(col, classifyColumnRole(col, values, file.rowCount));
+      const role = classifyColumnRole(col, values, file.rowCount);
+      roles.set(col, role);
+
+      if (role === "measure") continue;
+
+      if (values.length === 0) continue;
+
+      const hasFloats = values.some(v => {
+        if (typeof v === "number") return !Number.isInteger(v);
+        return /^-?\d+[.,]\d+$/.test(String(v).trim());
+      });
+      if (hasFloats) continue;
+
+      const uniqueValues = new Set(values.map(String));
+      const uniquenessRatio = uniqueValues.size / values.length;
+
+      if (uniquenessRatio >= 0.95) {
+        pkCandidates.push({ filename: file.filename, column: col, uniquenessRatio });
+      }
     }
     columnRoles.set(file.filename, roles);
   }
 
-  for (let i = 0; i < files.length; i++) {
-    for (let j = i + 1; j < files.length; j++) {
-      const fileA = files[i];
-      const fileB = files[j];
+  // ====== PHASE 2: Find FK→PK joins (Inclusion Dependency detection) ======
+  const allCandidates: ScoredCandidate[] = [];
+  const semanticRoots = ["prod", "art", "item", "cli", "cust", "forn", "supp", "vend", "sale", "ord", "doc", "riga", "line", "cat", "tipo"];
 
-      for (const colA of fileA.columns) {
-        for (const colB of fileB.columns) {
-          const valuesA = fileA.sampleValues[colA] || [];
-          const valuesB = fileB.sampleValues[colB] || [];
+  for (const pk of pkCandidates) {
+    const pkFile = files.find(f => f.filename === pk.filename)!;
+    const pkValues = pkFile.sampleValues[pk.column] || [];
+    const pkSet = new Set(pkValues.map(String));
 
-          if (valuesA.length === 0 || valuesB.length === 0) continue;
+    for (const fkFile of files) {
+      if (fkFile.filename === pk.filename) continue;
 
-          const roleA = columnRoles.get(fileA.filename)?.get(colA) || "key";
-          const roleB = columnRoles.get(fileB.filename)?.get(colB) || "key";
-          if (roleA === "measure" || roleB === "measure") continue;
+      for (const fkCol of fkFile.columns) {
+        const fkRole = columnRoles.get(fkFile.filename)?.get(fkCol) || "key";
+        if (fkRole === "measure") continue;
 
-          const typeA = detectColumnType(valuesA);
-          const typeB = detectColumnType(valuesB);
-          if (!areTypesCompatible(typeA, typeB)) continue;
+        const fkValues = fkFile.sampleValues[fkCol] || [];
+        if (fkValues.length === 0) continue;
 
-          const { overlapPct, intersectionSize } = computeValueOverlap(valuesA, valuesB);
-          // Allow slightly lower overlap if names match strongly, otherwise require 1%
-          if (intersectionSize === 0 || overlapPct < 0.01) continue;
+        const typeFK = detectColumnType(fkValues);
+        const typePK = detectColumnType(pkValues);
+        if (!areTypesCompatible(typeFK, typePK)) continue;
 
-          const normA = normalizeColumnName(colA);
-          const normB = normalizeColumnName(colB);
+        const fkSet = new Set(fkValues.map(String));
+        let includedCount = 0;
+        fkSet.forEach(v => { if (pkSet.has(v)) includedCount++; });
 
-          let score = 0;
+        const coverageRate = fkSet.size > 0 ? includedCount / fkSet.size : 0;
 
-          // 1. Base Score: Overlap Percentage (0-100)
-          score += Math.round(overlapPct * 100);
+        if (coverageRate < 0.50) continue;
 
-          const isExactName = normA === normB;
-          const isBlacklisted = NAME_BLACKLIST.includes(normA);
+        const intersectionSize = includedCount;
+        const overlapPct = fkSet.size > 0 ? intersectionSize / Math.min(fkSet.size, pkSet.size) : 0;
 
-          // 2. Exact Name Match Bonus
-          if (isExactName && !isBlacklisted) {
-            score += 25; // Increased slightly
-          }
+        let score = Math.round(coverageRate * 100);
 
-          // 3. ID/Code Partial Match Bonus (e.g. "order_id" vs "id")
-          // If both contain "id", "cod", etc. -> Likely keys
-          const isIdLikeA = STRONG_ID_ROOTS.some(r => normA.includes(r));
-          const isIdLikeB = STRONG_ID_ROOTS.some(r => normB.includes(r));
+        const normFK = normalizeColumnName(fkCol);
+        const normPK = normalizeColumnName(pk.column);
+        const isExactName = normFK === normPK;
+        const localBlacklist = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice"];
+        const isBlacklisted = localBlacklist.includes(normFK);
 
-          if (!isExactName && isIdLikeA && isIdLikeB) {
-              score += 15;
-          }
-
-          // 4. Semantic Match Bonus (e.g. "codiceprod" vs "productid")
-          // Check for shared meaningful roots (prod, cli, supp, ord)
-          const semanticRoots = ["prod", "art", "item", "cli", "cust", "forn", "supp", "vend", "sale", "ord", "doc"];
-          const sharedRoot = semanticRoots.find(root => normA.includes(root) && normB.includes(root));
-          if (sharedRoot && !isExactName) {
-              score += 20;
-          }
-
-          // 5. PENALTY: Generic Type/Status columns joining non-Type tables
-          // Prevents "tiporiga" -> "prodotti"
-          const isGenericA = GENERIC_TERMS.some(t => normA.includes(t));
-          const isGenericB = GENERIC_TERMS.some(t => normB.includes(t));
-
-          // If A is generic but B is NOT (and they aren't exact match), check if target table supports generic
-          if (isGenericA && !isGenericB && !isExactName) {
-               const targetTableNorm = normalizeColumnName(fileB.tableName);
-               const tableMatchesGeneric = GENERIC_TERMS.some(t => targetTableNorm.includes(t));
-               if (!tableMatchesGeneric) {
-                   score -= 60; // Massive penalty
-               }
-          }
-          if (isGenericB && !isGenericA && !isExactName) {
-               const sourceTableNorm = normalizeColumnName(fileA.tableName);
-               const tableMatchesGeneric = GENERIC_TERMS.some(t => sourceTableNorm.includes(t));
-               if (!tableMatchesGeneric) {
-                   score -= 60; // Massive penalty
-               }
-          }
-
-          // 6. PK/FK Check
-          const uniqueRatioA = new Set(valuesA.map(String)).size / valuesA.length;
-          const uniqueRatioB = new Set(valuesB.map(String)).size / valuesB.length;
-          const hasPk = uniqueRatioA >= 0.95 || uniqueRatioB >= 0.95; // Lowered threshold slightly to 95%
-
-          if (hasPk) {
-            score += 15;
-          }
-
-          if (score <= 0) continue;
-
-          const confidence = Math.min(score / 140, 1.0);
-
-          let matchType: JoinCandidate["matchType"];
-          if (isExactName && !isBlacklisted) {
-            matchType = "exact_name";
-          } else if (hasPk) {
-            matchType = "pk_fk_pattern";
-          } else if (sharedRoot) {
-            matchType = "semantic_match";
-          } else {
-            matchType = "overlap_only";
-          }
-
-          let explanation: string;
-          if (matchType === "exact_name") {
-            explanation = `Colonna "${colA}" ha lo stesso nome in entrambi i file con ${Math.round(overlapPct * 100)}% di sovrapposizione dati`;
-          } else if (matchType === "pk_fk_pattern") {
-            const pkFile = uniqueRatioB >= 0.95 ? fileB.filename : fileA.filename;
-            explanation = `"${colA}" → "${colB}" relazione chiave primaria/esterna (${pkFile} contiene valori unici)`;
-          } else if (matchType === "semantic_match") {
-            explanation = `"${colA}" e "${colB}" sembrano semanticamente correlati (radice comune)`;
-          } else {
-            explanation = `"${colA}" e "${colB}" condividono ${Math.round(overlapPct * 100)}% dei valori`;
-          }
-
-          allCandidates.push({
-            sourceFile: fileA.filename,
-            sourceColumn: colA,
-            targetFile: fileB.filename,
-            targetColumn: colB,
-            confidence,
-            matchType,
-            valueOverlapPercent: Math.round(overlapPct * 100),
-            joinType: "LEFT",
-            explanation,
-            rawScore: score,
-          });
+        if (isExactName && !isBlacklisted) {
+          score += 30;
         }
+
+        const localIdRoots = ["id", "cod", "key", "num"];
+        const isIdLikeFK = localIdRoots.some(r => normFK.includes(r));
+        const isIdLikePK = localIdRoots.some(r => normPK.includes(r));
+        if (!isExactName && isIdLikeFK && isIdLikePK) {
+          score += 15;
+        }
+
+        const sharedRoot = semanticRoots.find(root => normFK.includes(root) && normPK.includes(root));
+        if (sharedRoot && !isExactName) {
+          score += 20;
+        }
+
+        if (pk.uniquenessRatio >= 0.99) {
+          score += 10;
+        }
+
+        const maxScore = 145;
+        const confidence = Math.min(score / maxScore, 1.0);
+
+        let matchType: JoinCandidate["matchType"];
+        if (isExactName && !isBlacklisted) {
+          matchType = "exact_name";
+        } else if (isIdLikeFK || isIdLikePK) {
+          matchType = "pk_fk_pattern";
+        } else if (sharedRoot) {
+          matchType = "semantic_match";
+        } else {
+          matchType = "overlap_only";
+        }
+
+        let explanation: string;
+        if (matchType === "exact_name") {
+          explanation = `Colonna "${fkCol}" ha lo stesso nome in entrambi i file con ${Math.round(coverageRate * 100)}% di copertura FK→PK`;
+        } else if (matchType === "pk_fk_pattern") {
+          explanation = `"${fkCol}" → "${pk.column}" relazione chiave primaria/esterna (${pk.filename} contiene valori unici), copertura ${Math.round(coverageRate * 100)}%`;
+        } else if (matchType === "semantic_match") {
+          explanation = `"${fkCol}" → "${pk.column}" collegamento semantico (radice "${sharedRoot}"), copertura ${Math.round(coverageRate * 100)}%`;
+        } else {
+          explanation = `"${fkCol}" → "${pk.column}" copertura ${Math.round(coverageRate * 100)}% dei valori FK presenti nella PK`;
+        }
+
+        allCandidates.push({
+          sourceFile: fkFile.filename,
+          sourceColumn: fkCol,
+          targetFile: pk.filename,
+          targetColumn: pk.column,
+          confidence,
+          matchType,
+          valueOverlapPercent: Math.round(overlapPct * 100),
+          joinType: "LEFT",
+          explanation,
+          rawScore: score,
+        });
       }
     }
   }
 
+  // ====== PHASE 3: Star Schema Selection ======
   const deduped = deduplicateJoins(allCandidates);
 
   const factTable = files.reduce((max, f) => (f.rowCount > max.rowCount ? f : max), files[0]);
@@ -475,8 +489,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
   const connectedDimensions = new Set<string>();
   const orphanTables: string[] = [];
 
-  // Threshold lowered slightly to catch valid but messy joins
-  const SCORE_THRESHOLD = 60; 
+  const SCORE_THRESHOLD = 60;
 
   for (const dim of dimensionFiles) {
     const candidatesForDim = deduped.filter(
@@ -512,9 +525,75 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
     }
   }
 
+  // ====== PHASE 4: Fallback for orphan tables ======
+  for (const orphanFilename of [...orphanTables]) {
+    const orphanFile = files.find(f => f.filename === orphanFilename)!;
+
+    const connectedFiles = [factFilename, ...Array.from(connectedDimensions)];
+    let bestFallback: ScoredCandidate | null = null;
+
+    for (const connectedFilename of connectedFiles) {
+      const connectedFile = files.find(f => f.filename === connectedFilename)!;
+
+      for (const colOrphan of orphanFile.columns) {
+        const roleOrphan = columnRoles.get(orphanFilename)?.get(colOrphan) || "key";
+        if (roleOrphan === "measure") continue;
+
+        for (const colConnected of connectedFile.columns) {
+          const roleConnected = columnRoles.get(connectedFilename)?.get(colConnected) || "key";
+          if (roleConnected === "measure") continue;
+
+          const valuesOrphan = orphanFile.sampleValues[colOrphan] || [];
+          const valuesConnected = connectedFile.sampleValues[colConnected] || [];
+          if (valuesOrphan.length === 0 || valuesConnected.length === 0) continue;
+
+          const typeO = detectColumnType(valuesOrphan);
+          const typeC = detectColumnType(valuesConnected);
+          if (!areTypesCompatible(typeO, typeC)) continue;
+
+          const { overlapPct } = computeValueOverlap(valuesOrphan, valuesConnected);
+          if (overlapPct < 0.5) continue;
+
+          const normO = normalizeColumnName(colOrphan);
+          const normC = normalizeColumnName(colConnected);
+
+          const isExactName = normO === normC;
+          const hasSharedRoot = semanticRoots.find(r => normO.includes(r) && normC.includes(r));
+          if (!isExactName && !hasSharedRoot) continue;
+
+          let fallbackScore = Math.round(overlapPct * 100) - 20;
+          if (isExactName) fallbackScore += 15;
+          if (hasSharedRoot) fallbackScore += 10;
+
+          if (fallbackScore > (bestFallback?.rawScore || 0)) {
+            bestFallback = {
+              sourceFile: orphanFilename,
+              sourceColumn: colOrphan,
+              targetFile: connectedFilename,
+              targetColumn: colConnected,
+              confidence: Math.min(fallbackScore / 145, 1.0),
+              matchType: isExactName ? "exact_name" : "semantic_match",
+              valueOverlapPercent: Math.round(overlapPct * 100),
+              joinType: "LEFT" as const,
+              explanation: `Fallback: "${colOrphan}" ↔ "${colConnected}" sovrapposizione ${Math.round(overlapPct * 100)}%`,
+              rawScore: fallbackScore,
+            };
+          }
+        }
+      }
+    }
+
+    if (bestFallback && bestFallback.rawScore > 60) {
+      selectedJoins.push(bestFallback);
+      connectedDimensions.add(orphanFilename);
+      const idx = orphanTables.indexOf(orphanFilename);
+      if (idx !== -1) orphanTables.splice(idx, 1);
+    }
+  }
+
+  // ====== Build final result ======
   const finalJoins: JoinCandidate[] = selectedJoins
-    .sort((a, b) => b.rawScore - a.rawScore)
-    .map(({ rawScore, ...rest }) => rest);
+    .sort((a, b) => b.rawScore - a.rawScore);
 
   const overallConfidence =
     finalJoins.length > 0
