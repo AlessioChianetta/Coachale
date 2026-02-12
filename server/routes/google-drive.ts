@@ -722,7 +722,7 @@ router.post(
             });
           }
 
-          registerDriveWatch(consultantId, docId, currentFileId)
+          registerDriveWatch(consultantId, docId, currentFileId, 'system_prompt')
             .then((result) => {
               if (result) console.log(`🔔 [GOOGLE DRIVE → SYSTEM DOCS] Watch registered for "${docTitle}"`);
             })

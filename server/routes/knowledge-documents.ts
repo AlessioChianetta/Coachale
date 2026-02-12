@@ -1781,7 +1781,9 @@ router.get(
         SELECT id, consultant_id, title, content, description, is_active,
                target_client_assistant, target_autonomous_agents, target_whatsapp_agents,
                target_client_mode, target_client_ids, target_department_ids,
-               priority, injection_mode, created_at, updated_at
+               priority, injection_mode, google_drive_file_id,
+               last_drive_sync_at, sync_count, pending_sync_at,
+               created_at, updated_at
         FROM system_prompt_documents
         WHERE consultant_id = ${consultantId}
         ORDER BY priority ASC, created_at DESC
@@ -2024,6 +2026,75 @@ router.patch(
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error toggling:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to toggle system prompt document" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/system-documents/:id/sync",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const docResult = await db.execute(sql`
+        SELECT id, google_drive_file_id FROM system_prompt_documents
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        LIMIT 1
+      `);
+
+      if (!docResult.rows?.length) {
+        return res.status(404).json({ success: false, error: "Document not found" });
+      }
+
+      const doc = docResult.rows[0] as any;
+      if (!doc.google_drive_file_id) {
+        return res.status(400).json({ success: false, error: "Document is not linked to Google Drive" });
+      }
+
+      const { syncSystemDocFromDrive } = await import('../services/google-drive-sync-service');
+      const success = await syncSystemDocFromDrive(id, 'manual', consultantId);
+
+      if (success) {
+        const updatedResult = await db.execute(sql`
+          SELECT sync_count, last_drive_sync_at FROM system_prompt_documents WHERE id = ${id}
+        `);
+        res.json({ success: true, data: updatedResult.rows?.[0] || {} });
+      } else {
+        res.status(500).json({ success: false, error: "Sync failed" });
+      }
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error syncing:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to sync" });
+    }
+  }
+);
+
+router.get(
+  "/consultant/knowledge/system-documents/:id/sync-history",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const result = await db.execute(sql`
+        SELECT id, sync_type, status, previous_version, new_version,
+               characters_extracted, estimated_tokens, error_message,
+               duration_ms, started_at, completed_at
+        FROM document_sync_history
+        WHERE document_id = ${id} AND consultant_id = ${consultantId}
+        ORDER BY started_at DESC
+        LIMIT 20
+      `);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error fetching sync history:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to fetch sync history" });
     }
   }
 );

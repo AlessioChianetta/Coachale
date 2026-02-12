@@ -47,6 +47,9 @@ import {
   StickyNote,
   Building2,
   X,
+  Cloud,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +86,10 @@ interface SystemDocument {
   target_whatsapp_agents: Record<string, boolean>;
   injection_mode: "system_prompt" | "file_search";
   priority: number;
+  google_drive_file_id: string | null;
+  last_drive_sync_at: string | null;
+  sync_count: number | null;
+  pending_sync_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -280,6 +287,39 @@ export default function SystemDocumentsSection() {
     },
   });
 
+  const [syncingDocId, setSyncingDocId] = useState<string | null>(null);
+
+  const manualSyncMutation = useMutation({
+    mutationFn: async (id: string) => {
+      setSyncingDocId(id);
+      const res = await fetch(`/api/consultant/knowledge/system-documents/${id}/sync`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Sync fallita");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+      toast({ title: "Sincronizzato", description: "Documento aggiornato da Google Drive" });
+      setSyncingDocId(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Errore sync", description: err.message, variant: "destructive" });
+      setSyncingDocId(null);
+    },
+  });
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch { return dateStr; }
+  };
+
   const closeForm = () => {
     setShowForm(false);
     setEditingDoc(null);
@@ -413,6 +453,7 @@ export default function SystemDocumentsSection() {
             <div className="space-y-3">
               {sortedDocuments.map(doc => {
                 const badges = getTargetBadges(doc);
+                const isGoogleDriveDoc = !!doc.google_drive_file_id;
                 return (
                   <div
                     key={doc.id}
@@ -432,10 +473,50 @@ export default function SystemDocumentsSection() {
                           <Badge variant="outline" className="text-xs shrink-0">
                             Priorità {doc.priority}
                           </Badge>
+                          {isGoogleDriveDoc && (
+                            <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">
+                              <Cloud className="w-3 h-3" />
+                              Google Drive
+                            </span>
+                          )}
                         </div>
                         {doc.description && (
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{doc.description}</p>
                         )}
+
+                        {isGoogleDriveDoc && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {doc.sync_count != null && doc.sync_count > 0 && (
+                              <span className="flex items-center gap-1 text-xs text-blue-600">
+                                <RefreshCw className="w-3 h-3" />
+                                {doc.sync_count} sincronizzazioni
+                              </span>
+                            )}
+                            {doc.last_drive_sync_at && (
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <Clock className="w-3 h-3" />
+                                Ultimo sync: {formatDate(doc.last_drive_sync_at)}
+                              </span>
+                            )}
+                            {doc.pending_sync_at && (
+                              <span className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                                <Clock className="w-3 h-3" />
+                                Sync programmato: {formatDate(doc.pending_sync_at)}
+                              </span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              onClick={() => manualSyncMutation.mutate(doc.id)}
+                              disabled={syncingDocId === doc.id}
+                            >
+                              <RefreshCw className={`w-3 h-3 mr-1 ${syncingDocId === doc.id ? 'animate-spin' : ''}`} />
+                              {syncingDocId === doc.id ? 'Sincronizzando...' : 'Sincronizza ora'}
+                            </Button>
+                          </div>
+                        )}
+
                         {badges.length > 0 && (
                           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

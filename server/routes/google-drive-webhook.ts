@@ -3,7 +3,6 @@ import { findChannelByResourceId, scheduleDebouncedSync } from '../services/goog
 
 const router = Router();
 
-// Debounce duration in minutes (wait before syncing after file change)
 const SYNC_DEBOUNCE_MINUTES = 30;
 
 router.post('/google-drive/webhook', async (req: Request, res: Response) => {
@@ -42,13 +41,14 @@ router.post('/google-drive/webhook', async (req: Request, res: Response) => {
       return;
     }
     
+    const docType = channel.documentType || 'knowledge';
+    
     if (resourceState === 'update' || resourceState === 'change') {
-      // Schedule debounced sync instead of immediate sync
       const scheduledTime = new Date(Date.now() + SYNC_DEBOUNCE_MINUTES * 60 * 1000);
-      await scheduleDebouncedSync(channel.documentId, scheduledTime);
-      console.log(`⏰ [DRIVE WEBHOOK] Sync scheduled for ${scheduledTime.toISOString()} (${SYNC_DEBOUNCE_MINUTES} min debounce)`);
+      await scheduleDebouncedSync(channel.documentId, scheduledTime, docType as 'knowledge' | 'system_prompt');
+      console.log(`⏰ [DRIVE WEBHOOK] Sync scheduled for ${docType} doc ${channel.documentId} at ${scheduledTime.toISOString()} (${SYNC_DEBOUNCE_MINUTES} min debounce)`);
     } else if (resourceState === 'trash' || resourceState === 'delete') {
-      console.log(`🗑️ [DRIVE WEBHOOK] File trashed/deleted: ${channel.documentId}`);
+      console.log(`🗑️ [DRIVE WEBHOOK] File trashed/deleted: ${channel.documentId} (${docType})`);
     } else {
       console.log(`ℹ️ [DRIVE WEBHOOK] Unhandled state: ${resourceState}`);
     }

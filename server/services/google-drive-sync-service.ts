@@ -9,7 +9,7 @@ import {
   systemSettings,
   documentSyncHistory
 } from '../../shared/schema';
-import { eq, and, lt, lte, isNotNull } from 'drizzle-orm';
+import { eq, and, lt, lte, isNotNull, sql } from 'drizzle-orm';
 import { extractTextFromFile, type VertexAICredentials } from './document-processor';
 import { downloadDriveFile, refreshDriveTokenIfNeeded } from './google-drive-service';
 import fs from 'fs/promises';
@@ -121,16 +121,18 @@ function getWebhookUrl(): string {
 export async function registerDriveWatch(
   consultantId: string,
   documentId: string,
-  googleDriveFileId: string
+  googleDriveFileId: string,
+  documentType: 'knowledge' | 'system_prompt' = 'knowledge'
 ): Promise<{ channelId: string; resourceId: string; expiration: Date } | null> {
   try {
     const drive = await getDriveClientForConsultant(consultantId);
     
-    const channelId = `kb-${documentId}-${Date.now()}`;
+    const prefix = documentType === 'system_prompt' ? 'sd' : 'kb';
+    const channelId = `${prefix}-${documentId}-${Date.now()}`;
     const webhookUrl = getWebhookUrl();
     const expirationMs = Date.now() + 24 * 60 * 60 * 1000;
     
-    console.log(`🔔 [DRIVE SYNC] Registering watch for file ${googleDriveFileId}`);
+    console.log(`🔔 [DRIVE SYNC] Registering watch for file ${googleDriveFileId} (type: ${documentType})`);
     console.log(`   Webhook URL: ${webhookUrl}`);
     console.log(`   Channel ID: ${channelId}`);
     
@@ -155,6 +157,7 @@ export async function registerDriveWatch(
       id: crypto.randomUUID(),
       consultantId,
       documentId,
+      documentType,
       googleDriveFileId,
       channelId,
       resourceId,
@@ -218,7 +221,8 @@ export async function renewDriveChannel(syncChannelId: string): Promise<boolean>
     const result = await registerDriveWatch(
       channel.consultantId,
       channel.documentId,
-      channel.googleDriveFileId
+      channel.googleDriveFileId,
+      (channel.documentType as 'knowledge' | 'system_prompt') || 'knowledge'
     );
     
     if (result) {
@@ -258,16 +262,28 @@ export async function renewDriveChannel(syncChannelId: string): Promise<boolean>
  * Schedule a debounced sync for a document
  * If a sync is already scheduled, it updates the scheduled time (resets debounce timer)
  */
-export async function scheduleDebouncedSync(documentId: string, scheduledTime: Date): Promise<void> {
-  await db
-    .update(consultantKnowledgeDocuments)
-    .set({ 
-      pendingSyncAt: scheduledTime,
-      updatedAt: new Date()
-    })
-    .where(eq(consultantKnowledgeDocuments.id, documentId));
+export async function scheduleDebouncedSync(
+  documentId: string, 
+  scheduledTime: Date,
+  documentType: 'knowledge' | 'system_prompt' = 'knowledge'
+): Promise<void> {
+  if (documentType === 'system_prompt') {
+    await db.execute(sql`
+      UPDATE system_prompt_documents 
+      SET pending_sync_at = ${scheduledTime.toISOString()}, updated_at = NOW()
+      WHERE id = ${documentId}
+    `);
+  } else {
+    await db
+      .update(consultantKnowledgeDocuments)
+      .set({ 
+        pendingSyncAt: scheduledTime,
+        updatedAt: new Date()
+      })
+      .where(eq(consultantKnowledgeDocuments.id, documentId));
+  }
   
-  console.log(`⏰ [DRIVE SYNC] Debounced sync scheduled for document ${documentId} at ${scheduledTime.toISOString()}`);
+  console.log(`⏰ [DRIVE SYNC] Debounced sync scheduled for ${documentType} document ${documentId} at ${scheduledTime.toISOString()}`);
 }
 
 /**
@@ -276,7 +292,6 @@ export async function scheduleDebouncedSync(documentId: string, scheduledTime: D
 export async function processPendingSyncs(): Promise<number> {
   const now = new Date();
   
-  // Find documents with pendingSyncAt <= now
   const pendingDocs = await db
     .select()
     .from(consultantKnowledgeDocuments)
@@ -287,15 +302,26 @@ export async function processPendingSyncs(): Promise<number> {
       )
     );
   
-  if (pendingDocs.length === 0) {
+  const pendingSysDocs = await db.execute(sql`
+    SELECT id, consultant_id FROM system_prompt_documents
+    WHERE pending_sync_at IS NOT NULL AND pending_sync_at <= NOW()
+  `);
+  
+  const totalPending = pendingDocs.length + (pendingSysDocs.rows?.length || 0);
+  if (totalPending === 0) {
     return 0;
   }
   
-  console.log(`🔄 [DRIVE SYNC] Processing ${pendingDocs.length} pending sync(s)...`);
+  console.log(`🔄 [DRIVE SYNC] Processing ${totalPending} pending sync(s) (${pendingDocs.length} KB + ${pendingSysDocs.rows?.length || 0} system docs)...`);
   
   let successCount = 0;
   for (const doc of pendingDocs) {
     const success = await syncDocumentFromDrive(doc.id, 'webhook');
+    if (success) successCount++;
+  }
+  
+  for (const row of (pendingSysDocs.rows || []) as Array<{ id: string; consultant_id: string }>) {
+    const success = await syncSystemDocFromDrive(row.id, 'webhook', row.consultant_id);
     if (success) successCount++;
   }
   
@@ -461,6 +487,163 @@ export async function syncDocumentFromDrive(
       })
       .where(eq(consultantKnowledgeDocuments.id, documentId));
     
+    return false;
+  }
+}
+
+export async function syncSystemDocFromDrive(
+  documentId: string,
+  syncType: 'webhook' | 'manual' | 'scheduled' | 'initial' = 'manual',
+  expectedConsultantId?: string
+): Promise<boolean> {
+  console.log(`🔄 [DRIVE SYNC] Starting system doc sync for ${documentId} (type: ${syncType})`);
+  const startTime = Date.now();
+  const historyId = crypto.randomUUID();
+
+  try {
+    const result = await db.execute(sql`
+      SELECT id, consultant_id, title, content, google_drive_file_id, sync_count, injection_mode,
+             target_client_assistant, target_whatsapp_agents, target_autonomous_agents
+      FROM system_prompt_documents
+      WHERE id = ${documentId}
+      LIMIT 1
+    `);
+
+    const document = result.rows?.[0] as any;
+    if (!document) {
+      console.error(`❌ [DRIVE SYNC] System document not found: ${documentId}`);
+      return false;
+    }
+
+    if (expectedConsultantId && document.consultant_id !== expectedConsultantId) {
+      console.error(`❌ [DRIVE SYNC] System document ${documentId} does not belong to consultant ${expectedConsultantId}`);
+      return false;
+    }
+
+    if (!document.google_drive_file_id) {
+      console.error(`❌ [DRIVE SYNC] System document has no Google Drive file ID`);
+      return false;
+    }
+
+    const consultantId = document.consultant_id;
+    const previousSyncCount = document.sync_count || 0;
+
+    await db.insert(documentSyncHistory).values({
+      id: historyId,
+      documentId,
+      consultantId,
+      documentType: 'system_prompt',
+      syncType,
+      status: 'pending',
+      previousVersion: previousSyncCount,
+      startedAt: new Date()
+    });
+
+    console.log(`📥 [DRIVE SYNC] Downloading file from Drive for system doc...`);
+    const { filePath: tempFilePath, fileName, mimeType } = await downloadDriveFile(
+      consultantId,
+      document.google_drive_file_id
+    );
+
+    let vertexCredentials: VertexAICredentials | undefined;
+    if (mimeType.startsWith('audio/')) {
+      const [aiSettings] = await db
+        .select()
+        .from(vertexAiSettings)
+        .where(eq(vertexAiSettings.userId, consultantId))
+        .limit(1);
+
+      if (aiSettings?.serviceAccountJson) {
+        const serviceAccount = JSON.parse(aiSettings.serviceAccountJson);
+        vertexCredentials = {
+          projectId: serviceAccount.project_id,
+          location: 'us-central1',
+          credentials: serviceAccount
+        };
+      }
+    }
+
+    const extractedContent = await extractTextFromFile(tempFilePath, mimeType, vertexCredentials);
+    const charactersExtracted = extractedContent?.length || 0;
+    const estimatedTokens = Math.round(charactersExtracted / 4);
+
+    await fs.unlink(tempFilePath).catch(() => {});
+
+    const newSyncCount = previousSyncCount + 1;
+
+    await db.execute(sql`
+      UPDATE system_prompt_documents
+      SET content = ${extractedContent || ''},
+          sync_count = ${newSyncCount},
+          last_drive_sync_at = NOW(),
+          pending_sync_at = NULL,
+          updated_at = NOW()
+      WHERE id = ${documentId} AND consultant_id = ${consultantId}
+    `);
+
+    await db
+      .update(driveSyncChannels)
+      .set({
+        lastSyncedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(driveSyncChannels.documentId, documentId));
+
+    const durationMs = Date.now() - startTime;
+    await db
+      .update(documentSyncHistory)
+      .set({
+        status: 'success',
+        newVersion: newSyncCount,
+        charactersExtracted,
+        estimatedTokens,
+        completedAt: new Date(),
+        durationMs
+      })
+      .where(eq(documentSyncHistory.id, historyId));
+
+    if ((document.injection_mode || 'system_prompt') === 'file_search') {
+      try {
+        const { FileSearchSyncService } = await import('./file-search-sync-service');
+        const fileSearchSyncService = new FileSearchSyncService();
+
+        if (document.target_client_assistant) {
+          await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'client_assistant', consultantId, 'consultant');
+        }
+        const waAgents = document.target_whatsapp_agents || {};
+        for (const [agentId, active] of Object.entries(waAgents)) {
+          if (active) {
+            await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+          }
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [DRIVE SYNC] File search sync failed for system doc:`, err.message);
+      }
+    }
+
+    console.log(`✅ [DRIVE SYNC] System document synced: "${document.title}" (${charactersExtracted} chars, ~${estimatedTokens} tokens, sync #${newSyncCount})`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ [DRIVE SYNC] System doc sync failed:`, error.message);
+
+    const durationMs = Date.now() - startTime;
+    await db
+      .update(documentSyncHistory)
+      .set({
+        status: 'failed',
+        errorMessage: error.message,
+        completedAt: new Date(),
+        durationMs
+      })
+      .where(eq(documentSyncHistory.id, historyId))
+      .catch(() => {});
+
+    await db.execute(sql`
+      UPDATE system_prompt_documents
+      SET pending_sync_at = NULL, updated_at = NOW()
+      WHERE id = ${documentId}
+    `);
+
     return false;
   }
 }

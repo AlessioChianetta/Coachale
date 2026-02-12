@@ -5891,7 +5891,8 @@ export const knowledgeDocumentFolders = pgTable("knowledge_document_folders", {
 export const driveSyncChannels = pgTable("drive_sync_channels", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  documentId: varchar("document_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "cascade" }).notNull(),
+  documentId: varchar("document_id").notNull(),
+  documentType: varchar("document_type", { length: 20 }).default("knowledge").$type<"knowledge" | "system_prompt">(),
   googleDriveFileId: text("google_drive_file_id").notNull(),
   channelId: text("channel_id").notNull(),
   resourceId: text("resource_id").notNull(),
@@ -5909,12 +5910,12 @@ export const driveSyncChannels = pgTable("drive_sync_channels", {
 // Document Sync History - Tracks all Google Drive synchronization events
 export const documentSyncHistory = pgTable("document_sync_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  documentId: varchar("document_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "cascade" }).notNull(),
+  documentId: varchar("document_id").notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  documentType: varchar("document_type", { length: 20 }).$type<"knowledge" | "system_prompt">().default("knowledge"),
   
-  // Sync details
   syncType: varchar("sync_type", { length: 20 }).$type<"webhook" | "manual" | "scheduled" | "initial">().notNull(),
-  status: varchar("status", { length: 20 }).$type<"success" | "failed" | "skipped">().default("success").notNull(),
+  status: varchar("status", { length: 20 }).$type<"success" | "failed" | "pending" | "skipped">().default("success").notNull(),
   
   // Content tracking
   previousVersion: integer("previous_version"), // Document version before sync
