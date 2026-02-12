@@ -92,7 +92,8 @@ export default function ConsultantClientsPage() {
     phoneNumber: '',
     username: '',
     geminiApiKeys: [] as string[],
-    monthlyConsultationLimit: null as number | null
+    monthlyConsultationLimit: null as number | null,
+    departmentId: '' as string,
   });
   
   // Pagination state
@@ -413,7 +414,8 @@ export default function ConsultantClientsPage() {
       phoneNumber: client.phoneNumber || '',
       username: client.username || '',
       geminiApiKeys: client.geminiApiKeys || [],
-      monthlyConsultationLimit: client.monthlyConsultationLimit ?? null
+      monthlyConsultationLimit: client.monthlyConsultationLimit ?? null,
+      departmentId: client.departmentId || '',
     });
   };
 
@@ -448,8 +450,9 @@ export default function ConsultantClientsPage() {
     const validApiKeys = editForm.geminiApiKeys.filter(key => key.trim() !== '');
 
     try {
+      const { departmentId: editDeptId, ...restEditForm } = editForm;
       const updateData = {
-        ...editForm,
+        ...restEditForm,
         phone_number: editForm.phoneNumber,
         gemini_api_keys: validApiKeys
       };
@@ -469,12 +472,25 @@ export default function ConsultantClientsPage() {
 
       const updatedClient = await response.json();
 
+      if (editingClient.isEmployee && editDeptId !== (editingClient.departmentId || '')) {
+        try {
+          await fetch(`/api/clients/${editingClient.id}/department`, {
+            method: 'PATCH',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ departmentId: editDeptId || null })
+          });
+        } catch (deptErr) {
+          console.error('Error updating department:', deptErr);
+        }
+      }
+
       toast({
         title: "Successo",
         description: "Dati cliente aggiornati con successo",
       });
 
       await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       await queryClient.refetchQueries({ queryKey: ["/api/clients"] });
       
       setEditingClient(null);
@@ -982,21 +998,31 @@ export default function ConsultantClientsPage() {
           )}
 
           {activeTab === 'clienti' && departments.length === 0 && (
-            <div className="mb-4 flex justify-end">
-              <Button
-                onClick={() => {
-                  setEditingDepartment(null);
-                  setDepartmentForm({ name: '', color: '#6366f1', description: '' });
-                  setIsDepartmentDialogOpen(true);
-                }}
-                variant="outline"
-                size="sm"
-                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
-              >
-                <Building2 className="w-4 h-4 mr-1" />
-                Crea Primo Reparto
-              </Button>
-            </div>
+            <Card className="border border-dashed border-indigo-200 bg-indigo-50/30 mb-4">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 rounded-xl">
+                    <Building2 className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Organizza il tuo team con i Reparti</p>
+                    <p className="text-xs text-slate-500">Crea reparti per raggruppare i dipendenti e gestire i documenti AI in modo mirato</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    setEditingDepartment(null);
+                    setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+                    setIsDepartmentDialogOpen(true);
+                  }}
+                  size="sm"
+                  className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white shrink-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" />
+                  Crea Primo Reparto
+                </Button>
+              </CardContent>
+            </Card>
           )}
 
           {activeTab === 'monitoraggio' ? (
@@ -2249,6 +2275,28 @@ export default function ConsultantClientsPage() {
               </div>
             </div>
             
+            {editingClient?.isEmployee && departments.length > 0 && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right text-sm font-medium">
+                  <div className="flex flex-col items-end">
+                    <span>Reparto</span>
+                  </div>
+                </Label>
+                <div className="col-span-3">
+                  <select
+                    value={editForm.departmentId}
+                    onChange={(e) => setEditForm(prev => ({...prev, departmentId: e.target.value}))}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  >
+                    <option value="">Nessun reparto</option>
+                    {departments.map((dept: any) => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 col-span-full">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium flex items-center gap-2">
