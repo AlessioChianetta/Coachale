@@ -302,7 +302,7 @@ function PartnerWebhookCard() {
     queryKey: ["/api/dataset-sync/sources"],
     queryFn: async () => {
       const res = await fetch("/api/dataset-sync/sources", { headers: getAuthHeaders() });
-      if (!res.ok) return { sources: [] };
+      if (!res.ok) return { success: false, data: [] };
       return res.json();
     },
   });
@@ -422,7 +422,7 @@ function PartnerWebhookCard() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Caricamento sorgenti...
               </div>
-            ) : (syncSourcesQuery.data?.sources || []).length === 0 ? (
+            ) : (syncSourcesQuery.data?.data || []).length === 0 ? (
               <Alert className="bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-700">
                 <AlertTriangle className="h-4 w-4 text-slate-500" />
                 <AlertDescription className="text-slate-600 dark:text-slate-400 text-sm">
@@ -436,7 +436,7 @@ function PartnerWebhookCard() {
                     <SelectValue placeholder="Seleziona una sorgente..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {(syncSourcesQuery.data?.sources || []).map((source: any) => (
+                    {(syncSourcesQuery.data?.data || []).map((source: any) => (
                       <SelectItem key={source.id} value={String(source.id)}>
                         {source.name} {source.is_active ? "" : "(in pausa)"}
                       </SelectItem>
@@ -447,7 +447,7 @@ function PartnerWebhookCard() {
                   Quando un cliente acquista tramite Stripe, verrà aggiunto alla coda di questa sorgente nella Partner Dashboard
                 </p>
                 {linkedSyncSourceId && (() => {
-                  const selectedSource = (syncSourcesQuery.data?.sources || []).find((s: any) => String(s.id) === linkedSyncSourceId);
+                  const selectedSource = (syncSourcesQuery.data?.data || []).find((s: any) => String(s.id) === linkedSyncSourceId);
                   if (!selectedSource) return null;
                   return (
                     <div className="flex items-center gap-2 mt-1">
