@@ -75,6 +75,7 @@ import {
   Users,
   Settings,
   FileText,
+  Download,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -154,6 +155,198 @@ export function SyncSourcesManager() {
         description: "Impossibile copiare negli appunti",
         variant: "destructive",
       });
+    }
+  };
+
+  const downloadGuidePDF = async (source: SyncSource) => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
+      let pageNum = 1;
+
+      const checkPageBreak = (neededHeight: number) => {
+        if (y + neededHeight > pageHeight - 25) {
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(`Pagina ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+          doc.addPage();
+          pageNum++;
+          y = margin;
+        }
+      };
+
+      const addText = (text: string, fontSize: number, opts?: { bold?: boolean; color?: [number, number, number]; maxWidth?: number; lineHeight?: number; x?: number }) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal');
+        if (opts?.color) doc.setTextColor(...opts.color);
+        else doc.setTextColor(40, 40, 40);
+        const w = opts?.maxWidth || contentWidth;
+        const xPos = opts?.x || margin;
+        const lines = doc.splitTextToSize(text, w);
+        const lh = opts?.lineHeight || fontSize * 0.5;
+        for (const line of lines) {
+          checkPageBreak(lh);
+          doc.text(line, xPos, y);
+          y += lh;
+        }
+      };
+
+      doc.setFillColor(20, 30, 50);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('Guida Integrazione per Partner', margin, 22);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(200, 200, 220);
+      doc.text(`Sorgente: ${source.name}  |  ${new Date().toLocaleDateString('it-IT')}`, margin, 33);
+      y = 50;
+
+      addText('1. Cosa facciamo noi', 13, { bold: true, color: [16, 120, 80] });
+      y += 2;
+      const nostre = [
+        'Riceviamo i dati - Endpoint webhook sicuro pronto a ricevere file',
+        'Mappiamo automaticamente le colonne - Riconosciamo campi come prezzo, quantita, data ordine',
+        'Gestiamo gli aggiornamenti - Full replace, append o upsert in base alla configurazione',
+        'Monitoriamo lo stato - Dashboard con errori, metriche e cronologia sync',
+      ];
+      for (const item of nostre) {
+        checkPageBreak(6);
+        addText(`  \u2022  ${item}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        y += 1;
+      }
+      y += 4;
+
+      addText('2. Cosa ci aspettiamo dal partner', 13, { bold: true, color: [30, 80, 180] });
+      y += 2;
+      const partner = [
+        'Esportare i dati in CSV o Excel - Formato tabellare con intestazioni nella prima riga',
+        'Inviare il file via HTTP POST - All\'endpoint webhook fornito sotto',
+        'Firmare la richiesta con HMAC - Per garantire autenticita e sicurezza',
+        'Specificare le colonne chiave - Solo al primo invio, per identificare record unici',
+      ];
+      for (let i = 0; i < partner.length; i++) {
+        checkPageBreak(6);
+        addText(`  ${i + 1}. ${partner[i]}`, 10, { color: [60, 60, 60], lineHeight: 4.5 });
+        y += 1;
+      }
+      y += 4;
+
+      addText('3. Credenziali di Accesso', 13, { bold: true, color: [30, 30, 30] });
+      y += 3;
+      const endpoint = `POST ${window.location.origin}/api/dataset-sync/webhook/${source.api_key}`;
+      addText('Endpoint Webhook:', 10, { bold: true, color: [80, 80, 80] });
+      y += 1;
+      addText(endpoint, 9, { color: [16, 120, 80], lineHeight: 4 });
+      y += 3;
+      addText('API Key:', 10, { bold: true, color: [80, 80, 80] });
+      y += 1;
+      addText(source.api_key, 9, { color: [16, 120, 80] });
+      y += 3;
+      addText('Secret Key:', 10, { bold: true, color: [80, 80, 80] });
+      y += 1;
+      addText('Fornita al momento della creazione della sorgente', 9, { color: [180, 120, 20] });
+      y += 6;
+
+      addText('4. Headers HTTP Richiesti', 13, { bold: true, color: [30, 30, 30] });
+      y += 3;
+      const headers = [
+        ['Content-Type', 'multipart/form-data', 'Per upload file'],
+        ['X-Dataset-Timestamp', 'Unix timestamp (es: 1737745200)', 'Secondi da epoch'],
+        ['X-Dataset-Signature', 'sha256=...', 'HMAC-SHA256 del file con Secret Key'],
+        ['X-Idempotency-Key', '(opzionale)', 'ID univoco per evitare duplicazioni'],
+      ];
+      for (const [name, value, desc] of headers) {
+        checkPageBreak(10);
+        addText(`${name}: ${value}`, 9, { bold: true, color: [60, 60, 60], lineHeight: 4 });
+        addText(`    ${desc}`, 9, { color: [120, 120, 120], lineHeight: 4 });
+        y += 2;
+      }
+      y += 4;
+
+      addText('5. Campi del Form (multipart/form-data)', 13, { bold: true, color: [30, 30, 30] });
+      y += 3;
+      const campi = [
+        ['file (obbligatorio)', 'File dati in formato CSV, XLSX o XLS'],
+        ['replace_mode (opzionale)', 'full | append | upsert'],
+        ['upsert_key_columns (obbligatorio se upsert)', 'Colonne chiave separate da virgola (es: order_id,line_id)'],
+      ];
+      for (const [name, desc] of campi) {
+        checkPageBreak(8);
+        addText(`${name}`, 9, { bold: true, color: [60, 60, 60], lineHeight: 4 });
+        addText(`    ${desc}`, 9, { color: [120, 120, 120], lineHeight: 4 });
+        y += 2;
+      }
+      y += 4;
+
+      addText('6. Modalita di Aggiornamento', 13, { bold: true, color: [30, 30, 30] });
+      y += 3;
+      const modes = [
+        ['full (default)', 'Cancella tutti i dati esistenti e inserisce quelli nuovi. Ideale per export giornalieri completi.'],
+        ['append', 'Inserisce nuovi record senza toccare quelli esistenti. Utile per log incrementali.'],
+        ['upsert (consigliato)', 'Aggiorna record esistenti (stessa chiave) e inserisce quelli nuovi. Ideale per sync incrementali.'],
+      ];
+      for (const [name, desc] of modes) {
+        checkPageBreak(10);
+        addText(name, 10, { bold: true, color: [60, 60, 60], lineHeight: 4.5 });
+        addText(desc, 9, { color: [100, 100, 100], lineHeight: 4 });
+        y += 3;
+      }
+      y += 4;
+
+      checkPageBreak(50);
+      addText('7. Esempio Implementazione (cURL)', 13, { bold: true, color: [30, 30, 30] });
+      y += 3;
+      doc.setFillColor(240, 240, 245);
+      const codeBlockY = y;
+      const curlExample = [
+        '#!/bin/bash',
+        '# Configurazione',
+        `API_KEY="${source.api_key}"`,
+        'SECRET_KEY="<la_tua_secret_key>"',
+        'FILE_PATH="ordini.xlsx"',
+        `ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"`,
+        '',
+        '# Genera timestamp e firma HMAC',
+        'TIMESTAMP=$(date +%s)',
+        'SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 \\',
+        '  -hmac "$SECRET_KEY" | cut -d\' \' -f2)',
+        '',
+        '# Invio dati (prima volta con upsert)',
+        'curl -X POST "$ENDPOINT" \\',
+        '  -H "X-Dataset-Timestamp: $TIMESTAMP" \\',
+        '  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\',
+        '  -F "file=@$FILE_PATH" \\',
+        '  -F "replace_mode=upsert" \\',
+        '  -F "upsert_key_columns=order_id,line_id"',
+      ];
+      const codeLineHeight = 4;
+      const codeBlockHeight = curlExample.length * codeLineHeight + 6;
+      doc.roundedRect(margin, codeBlockY - 3, contentWidth, codeBlockHeight, 2, 2, 'F');
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(50, 50, 50);
+      for (const line of curlExample) {
+        doc.text(line, margin + 4, y);
+        y += codeLineHeight;
+      }
+      y += 6;
+
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Pagina ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+      doc.save(`guida-integrazione-${source.name.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+      toast({ title: "PDF scaricato!", description: "La guida e stata scaricata correttamente" });
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      toast({ title: "Errore", description: "Impossibile generare il PDF", variant: "destructive" });
     }
   };
 
@@ -1044,7 +1237,11 @@ curl -X POST "$ENDPOINT" \\
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => guideSource && downloadGuidePDF(guideSource)}>
+              <Download className="h-4 w-4" />
+              Scarica PDF
+            </Button>
             <Button onClick={() => setGuideSource(null)}>
               Chiudi
             </Button>
