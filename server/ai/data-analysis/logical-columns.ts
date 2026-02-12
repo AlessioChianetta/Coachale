@@ -322,9 +322,10 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   ],
   quantity: [
     /^quantity$/i,
+    /^quantita$/i,
     /^quantita/i,
-    /^qty/i,
-    /^qta/i,
+    /^qty$/i,
+    /^qta$/i,
     /^numero_?pezzi/i,
     /^pieces/i,
     /^units/i,
@@ -445,6 +446,11 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   ],
   time_slot: [
     /^time_?slot$/i,
+    /^fascia_?oraria$/i,
+    /^fasciaoraria$/i,
+    /^timeslot$/i,
+    /^turnovendita$/i,
+    /^turno_?vendita$/i,
     /^fascia_?oraria/i,
     /^fasciaoraria/i,
     /^timeslot/i,
@@ -483,6 +489,8 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   // === PRODUCTION COST BREAKDOWN ===
   cost_foodbev: [
     /^cost_?foodbev$/i,
+    /^costoproduzione_?foodbev$/i,
+    /^costo_?foodbev$/i,
     /^costoproduzione_?foodbev/i,
     /^costo_?foodbev/i,
     /^costo_?food/i,
@@ -490,18 +498,24 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   ],
   cost_materials: [
     /^cost_?materials$/i,
+    /^costoproduzione_?materiali$/i,
+    /^costo_?materiali$/i,
     /^costoproduzione_?materiali/i,
     /^costo_?materiali/i,
     /^material_?cost/i,
   ],
   cost_extra: [
     /^cost_?extra$/i,
+    /^costoproduzione_?extra$/i,
+    /^costo_?extra$/i,
     /^costoproduzione_?extra/i,
     /^costo_?extra/i,
     /^extra_?cost/i,
   ],
   cost_staff: [
     /^cost_?staff$/i,
+    /^costoproduzione_?personale$/i,
+    /^costo_?personale$/i,
     /^costoproduzione_?personale/i,
     /^costo_?personale/i,
     /^labor_?cost/i,
@@ -510,6 +524,8 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   ],
   cost_structure: [
     /^cost_?structure$/i,
+    /^costoproduzione_?struttura$/i,
+    /^costo_?struttura$/i,
     /^costoproduzione_?struttura/i,
     /^costo_?struttura/i,
     /^structure_?cost/i,
@@ -517,6 +533,8 @@ export const COLUMN_AUTO_DETECT_PATTERNS: Record<string, RegExp[]> = {
   ],
   cost_utilities: [
     /^cost_?utilities$/i,
+    /^costoproduzione_?consumi$/i,
+    /^costo_?consumi$/i,
     /^costoproduzione_?consumi/i,
     /^costo_?consumi/i,
     /^utilities_?cost/i,

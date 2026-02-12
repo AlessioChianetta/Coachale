@@ -106,8 +106,6 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
     queryFn: () => apiRequest("GET", "/api/clients"),
   });
 
-  console.log("[JoinPreview] clients query:", { clients, isLoadingClients, clientsError, count: clients.length });
-
   const isClientSelected = selectedClientId && selectedClientId !== "__none__";
 
   const handleConfirm = () => {
