@@ -341,9 +341,19 @@ export async function executeMetricSQL(
 
   // Build query with optional WHERE and ORDER BY clauses
   let sql = `SELECT ${sqlExpression} AS result FROM "${datasetInfo.tableName}"`;
+  console.log(`[EXECUTE-METRIC-SQL] ===== METRIC EXECUTION TRACE =====`);
+  console.log(`[EXECUTE-METRIC-SQL] datasetId: ${datasetId}`);
+  console.log(`[EXECUTE-METRIC-SQL] metricName: ${metricName}`);
+  console.log(`[EXECUTE-METRIC-SQL] tableName: ${datasetInfo.tableName}`);
+  console.log(`[EXECUTE-METRIC-SQL] sqlExpression: ${sqlExpression}`);
+  console.log(`[EXECUTE-METRIC-SQL] columns available: ${datasetInfo.columns.join(", ")}`);
   if (enhancements?.whereClause) {
     sql += ` WHERE ${enhancements.whereClause}`;
+    console.log(`[EXECUTE-METRIC-SQL] WHERE clause applied: ${enhancements.whereClause}`);
+  } else {
+    console.log(`[EXECUTE-METRIC-SQL] No WHERE clause (full table scan)`);
   }
+  console.log(`[EXECUTE-METRIC-SQL] FINAL SQL: ${sql}`);
   // Note: ORDER BY doesn't make sense for single aggregate result, skip it for metrics
   
   const queryHash = computeQueryHash(sql, []);
@@ -351,6 +361,7 @@ export async function executeMetricSQL(
   if (options.useCache !== false) {
     const cached = await getCachedResult(queryHash, datasetId);
     if (cached && cached.status === "ready") {
+      console.log(`[EXECUTE-METRIC-SQL] CACHE HIT - returning cached result: ${JSON.stringify(cached.resultJson?.data)}`);
       return {
         success: true,
         data: cached.resultJson?.data,
@@ -366,6 +377,7 @@ export async function executeMetricSQL(
     ...options, 
     timeoutMs: options.timeoutMs || AI_QUERY_TIMEOUT_MS 
   });
+  console.log(`[EXECUTE-METRIC-SQL] RAW DB RESULT: ${JSON.stringify(result.data)}, success=${result.success}, error=${result.error || 'none'}`);
 
   await logQuery(
     datasetId,

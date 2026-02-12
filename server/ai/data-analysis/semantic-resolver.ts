@@ -136,7 +136,17 @@ export async function resolveMetricSQL(
   datasetId: number
 ): Promise<ResolveResult> {
   const mappings = await getColumnMappingsForDataset(datasetId);
-  return resolvePlaceholdersWithAliases(sqlTemplate, mappings);
+  console.log(`[SEMANTIC-RESOLVER] ===== RESOLVE TRACE =====`);
+  console.log(`[SEMANTIC-RESOLVER] datasetId: ${datasetId}`);
+  console.log(`[SEMANTIC-RESOLVER] sqlTemplate (before): ${sqlTemplate}`);
+  console.log(`[SEMANTIC-RESOLVER] column mappings: ${JSON.stringify(mappings)}`);
+  const result = resolvePlaceholdersWithAliases(sqlTemplate, mappings);
+  console.log(`[SEMANTIC-RESOLVER] resolved SQL (after): ${result.sql}`);
+  console.log(`[SEMANTIC-RESOLVER] valid: ${result.valid}, error: ${result.error || 'none'}`);
+  if (result.missingColumns && result.missingColumns.length > 0) {
+    console.log(`[SEMANTIC-RESOLVER] missing columns: ${JSON.stringify(result.missingColumns)}`);
+  }
+  return result;
 }
 
 export async function checkMetricAvailabilityWithAliases(

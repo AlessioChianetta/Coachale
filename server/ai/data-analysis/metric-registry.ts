@@ -79,6 +79,13 @@ export async function resolveMetricSQLForDataset(
     return { sql: "", valid: false, error: `Metrica "${metricName}" non trovata` };
   }
   
+  console.log(`[METRIC-REGISTRY] ===== TEMPLATE SELECTION =====`);
+  console.log(`[METRIC-REGISTRY] metricName: ${metricName}`);
+  console.log(`[METRIC-REGISTRY] template.displayName: ${template.displayName}`);
+  console.log(`[METRIC-REGISTRY] template.description: ${template.description}`);
+  console.log(`[METRIC-REGISTRY] template.sqlTemplate: ${template.sqlTemplate}`);
+  console.log(`[METRIC-REGISTRY] requiredLogicalColumns: ${template.requiredLogicalColumns.join(", ")}`);
+  
   const result = await resolveMetricSQL(template.sqlTemplate, numericDatasetId);
   return result;
 }
