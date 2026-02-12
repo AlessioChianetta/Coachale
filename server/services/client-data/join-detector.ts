@@ -226,13 +226,89 @@ function computeValueOverlap(valuesA: any[], valuesB: any[]): { overlapPct: numb
   return { overlapPct, intersectionSize };
 }
 
-// Added extra terms to blacklist to avoid joining on prices or quantities
-// Added "cost", "costo", "revenue" to prevent financial joins
-const NAME_BLACKLIST = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice", "quantita", "quantity", "prezzo", "price", "importo", "amount", "cost", "costo", "revenue"];
+const NAME_BLACKLIST = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice"];
 
 // Helper to check for generic terms
 const GENERIC_TERMS = ["tipo", "type", "status", "stato", "cat", "mode", "flag", "state"];
 const STRONG_ID_ROOTS = ["id", "cod", "key", "num"];
+
+type ColumnRole = "key" | "dimension" | "measure";
+
+function classifyColumnRole(columnName: string, values: any[], totalRows: number): ColumnRole {
+  const norm = normalizeColumnName(columnName);
+  const lower = columnName.toLowerCase();
+
+  const METRIC_PATTERNS = [
+    "costo", "cost", "prezzo", "price", "importo", "amount",
+    "totale", "total", "quantita", "quantity", "qty",
+    "sconto", "discount", "margine", "margin",
+    "fatturato", "ricavo", "revenue", "incasso",
+    "percentuale", "percent", "perc",
+    "iva", "tax", "netto", "net", "lordo", "gross",
+    "spesa", "utile", "profit", "perdita", "loss",
+    "debito", "credito", "saldo", "balance",
+    "peso", "weight", "altezza", "height", "larghezza", "width",
+    "budget", "fee", "rata", "pagamento", "payment",
+    "commissione", "commission", "tariffa", "rate",
+    "valore_", "val_",
+    "imp_", "tot_",
+    "costoproduzione", "foodbev", "prime_cost"
+  ];
+
+  if (METRIC_PATTERNS.some(p => lower.includes(p))) {
+    return "measure";
+  }
+
+  const floatCount = values.filter(v => {
+    if (typeof v === "number") return !Number.isInteger(v);
+    const s = String(v).trim();
+    return /^-?\d+[.,]\d+$/.test(s);
+  }).length;
+
+  if (values.length > 0 && floatCount / values.length > 0.1) {
+    return "measure";
+  }
+
+  const numericValues = values
+    .map(v => typeof v === "number" ? v : parseFloat(String(v)))
+    .filter(v => !isNaN(v) && isFinite(v));
+
+  if (numericValues.length > 10) {
+    const mean = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+    if (mean !== 0) {
+      const variance = numericValues.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / numericValues.length;
+      const cv = Math.sqrt(variance) / Math.abs(mean);
+      if (cv > 0.8) {
+        return "measure";
+      }
+    }
+  }
+
+  const KEY_SUFFIXES = ["_id", "id", "_key", "_code", "_cod", "_pk", "_fk", "_ref", "_num", "_nr"];
+  if (KEY_SUFFIXES.some(s => lower.endsWith(s)) || lower === "id") {
+    return "key";
+  }
+
+  if (numericValues.length > 0 && values.length > 0) {
+    const uniqueRatio = new Set(values.map(String)).size / values.length;
+    const allIntegers = floatCount === 0;
+    if (uniqueRatio >= 0.9 && allIntegers) {
+      return "key";
+    }
+  }
+
+  const uniqueRatio = new Set(values.map(String)).size / values.length;
+  if (uniqueRatio < 0.1) {
+    return "dimension";
+  }
+
+  const stringCount = values.filter(v => typeof v === "string" && !/^\d+$/.test(v)).length;
+  if (values.length > 0 && stringCount / values.length > 0.5) {
+    return "dimension";
+  }
+
+  return "key";
+}
 
 interface ScoredCandidate extends JoinCandidate {
   rawScore: number;
@@ -248,6 +324,16 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
   const allCandidates: ScoredCandidate[] = [];
 
+  const columnRoles = new Map<string, Map<string, ColumnRole>>();
+  for (const file of files) {
+    const roles = new Map<string, ColumnRole>();
+    for (const col of file.columns) {
+      const values = file.sampleValues[col] || [];
+      roles.set(col, classifyColumnRole(col, values, file.rowCount));
+    }
+    columnRoles.set(file.filename, roles);
+  }
+
   for (let i = 0; i < files.length; i++) {
     for (let j = i + 1; j < files.length; j++) {
       const fileA = files[i];
@@ -259,6 +345,10 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           const valuesB = fileB.sampleValues[colB] || [];
 
           if (valuesA.length === 0 || valuesB.length === 0) continue;
+
+          const roleA = columnRoles.get(fileA.filename)?.get(colA) || "key";
+          const roleB = columnRoles.get(fileB.filename)?.get(colB) || "key";
+          if (roleA === "measure" || roleB === "measure") continue;
 
           const typeA = detectColumnType(valuesA);
           const typeB = detectColumnType(valuesB);

@@ -33,7 +33,7 @@ interface JoinCandidate {
   targetFile: string;
   targetColumn: string;
   confidence: number;
-  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern";
+  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern" | "semantic_match";
   valueOverlapPercent: number;
   joinType: "LEFT" | "INNER";
   explanation: string;
@@ -68,6 +68,7 @@ function getMatchTypeLabel(matchType: JoinCandidate["matchType"]) {
     case "exact_name": return "Nome Esatto";
     case "overlap_only": return "Valori Comuni";
     case "pk_fk_pattern": return "PK/FK";
+    case "semantic_match": return "Semantico";
   }
 }
 
