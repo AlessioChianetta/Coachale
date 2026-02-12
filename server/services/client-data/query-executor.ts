@@ -340,7 +340,8 @@ export async function executeMetricSQL(
   }
 
   // Build query with optional WHERE and ORDER BY clauses
-  let sql = `SELECT ${sqlExpression} AS result FROM "${datasetInfo.tableName}"`;
+  const safeSqlExpression = sanitizeNumericCasts(sqlExpression);
+  let sql = `SELECT ${safeSqlExpression} AS result FROM "${datasetInfo.tableName}"`;
   console.log(`[EXECUTE-METRIC-SQL] ===== METRIC EXECUTION TRACE =====`);
   console.log(`[EXECUTE-METRIC-SQL] datasetId: ${datasetId}`);
   console.log(`[EXECUTE-METRIC-SQL] metricName: ${metricName}`);
@@ -348,7 +349,7 @@ export async function executeMetricSQL(
   console.log(`[EXECUTE-METRIC-SQL] sqlExpression: ${sqlExpression}`);
   console.log(`[EXECUTE-METRIC-SQL] columns available: ${datasetInfo.columns.join(", ")}`);
   if (enhancements?.whereClause) {
-    sql += ` WHERE ${enhancements.whereClause}`;
+    sql += ` WHERE ${sanitizeNumericCasts(enhancements.whereClause)}`;
     console.log(`[EXECUTE-METRIC-SQL] WHERE clause applied: ${enhancements.whereClause}`);
   } else {
     console.log(`[EXECUTE-METRIC-SQL] No WHERE clause (full table scan)`);
@@ -797,7 +798,7 @@ export async function aggregateGroup(
         const isNumericType = colMapping && /^(number|numeric|integer|decimal)$/i.test(colMapping.dataType);
         const needsCast = isNumericType && ["SUM", "AVG", "MIN", "MAX"].includes(func);
         col = needsCast 
-          ? `CAST("${agg.column}" AS NUMERIC)` 
+          ? `CAST(NULLIF(REPLACE(NULLIF("${agg.column}", ''), ',', '.'), '') AS NUMERIC)` 
           : `"${agg.column}"`;
       }
       const alias = agg.alias || `${func.toLowerCase()}_${agg.column}`;
@@ -856,7 +857,7 @@ export async function aggregateGroup(
     
     // Add revenue > 0 filter if column is valid (CAST to NUMERIC for text columns)
     if (revenueColumn && datasetInfo.columns.includes(revenueColumn)) {
-      whereClauses.push(`CAST("${revenueColumn}" AS NUMERIC) > 0`);
+      whereClauses.push(`CAST(NULLIF(REPLACE(NULLIF("${revenueColumn}", ''), ',', '.'), '') AS NUMERIC) > 0`);
     }
     
     console.log(`[AGGREGATE-GROUP] is_sellable filter applied: productCol=${productNameColumn}, revenueCol=${revenueColumn || 'none'}`);

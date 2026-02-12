@@ -324,6 +324,9 @@ function convertValueForInsert(value: any, dataType: string): any {
   }
 
   const strValue = String(value).trim();
+  if (strValue === "") {
+    return null;
+  }
 
   switch (dataType.toUpperCase()) {
     case "DATE":
