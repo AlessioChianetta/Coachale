@@ -75,6 +75,7 @@ export default function ConsultantClientsPage() {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [typeFilter, setTypeFilter] = useState<"all" | "clients" | "employees">("all");
   const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
   const [newClientForm, setNewClientForm] = useState({
     firstName: '',
@@ -512,15 +513,19 @@ export default function ConsultantClientsPage() {
       client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.username?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Use isActive field from user (the toggle switch), default to true if not set
     const clientIsActive = client.isActive !== false;
     
     const matchesStatus = 
       statusFilter === "all" ? true :
       statusFilter === "active" ? clientIsActive :
       !clientIsActive;
+
+    const matchesType =
+      typeFilter === "all" ? true :
+      typeFilter === "employees" ? !!client.isEmployee :
+      !client.isEmployee;
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   // Sort and paginate clients
@@ -1600,15 +1605,38 @@ export default function ConsultantClientsPage() {
                       className="pl-9 bg-white/80 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                      {([
+                        { value: 'all', label: 'Tutti', count: clients.length },
+                        { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee).length },
+                        { value: 'employees', label: 'Dipendenti', count: clients.filter((c: any) => c.isEmployee).length },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setTypeFilter(opt.value); setCurrentPage(1); }}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                            typeFilter === opt.value
+                              ? opt.value === 'employees'
+                                ? 'bg-violet-600 text-white shadow-sm'
+                                : opt.value === 'clients'
+                                  ? 'bg-cyan-600 text-white shadow-sm'
+                                  : 'bg-slate-800 text-white shadow-sm'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {opt.label} ({opt.count})
+                        </button>
+                      ))}
+                    </div>
                     <select
                       value={statusFilter}
                       onChange={(e) => handleStatusFilterChange(e.target.value as any)}
                       className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
-                      <option value="all">Tutti i clienti</option>
-                      <option value="active">Solo attivi</option>
-                      <option value="inactive">Solo inattivi</option>
+                      <option value="all">Tutti</option>
+                      <option value="active">Attivi</option>
+                      <option value="inactive">Inattivi</option>
                     </select>
                     <Button 
                       onClick={() => setIsNewClientDialogOpen(true)}
@@ -1616,7 +1644,7 @@ export default function ConsultantClientsPage() {
                       size="sm"
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
-                      Nuovo Cliente
+                      Nuovo
                     </Button>
                     <Button variant="outline" size="sm" className="border-slate-200 hover:bg-slate-50">
                       <Download className="w-4 h-4 mr-2" />
@@ -1732,7 +1760,7 @@ export default function ConsultantClientsPage() {
                         {sortedAndPaginatedClients.map((client: any) => (
                           <tr 
                             key={client.id}
-                            className="hover:bg-cyan-50/50 transition-colors group"
+                            className={`transition-colors group ${client.isEmployee ? 'hover:bg-violet-50/50 border-l-2 border-l-violet-300' : 'hover:bg-cyan-50/50 border-l-2 border-l-cyan-300'}`}
                           >
                             <td className="px-3 py-2.5">
                               <Checkbox 
@@ -1749,7 +1777,7 @@ export default function ConsultantClientsPage() {
                               <div className="flex items-center gap-2">
                                 <Avatar className="w-7 h-7 flex-shrink-0">
                                   <AvatarImage src={client.avatar} />
-                                  <AvatarFallback className="bg-gradient-to-br from-cyan-400 to-teal-500 text-white font-medium text-[10px]">
+                                  <AvatarFallback className={`${client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
                                     {client.firstName?.[0]}{client.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
@@ -1758,10 +1786,14 @@ export default function ConsultantClientsPage() {
                                     <span className="font-medium text-sm text-slate-800 truncate">
                                       {client.firstName} {client.lastName}
                                     </span>
-                                    {client.role === 'consultant' && (
-                                      <Badge className="text-[9px] px-1 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
-                                        <UserCog className="w-2 h-2 mr-0.5" />
-                                        C
+                                    {client.isEmployee ? (
+                                      <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
+                                        <UserCog className="w-2.5 h-2.5 mr-0.5" />
+                                        Dipendente
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="text-[9px] px-1.5 py-0 bg-cyan-50 text-cyan-700 border-cyan-200 flex-shrink-0">
+                                        Cliente
                                       </Badge>
                                     )}
                                   </div>
