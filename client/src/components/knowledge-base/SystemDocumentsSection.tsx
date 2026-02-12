@@ -28,6 +28,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -50,6 +56,10 @@ import {
   Cloud,
   RefreshCw,
   Clock,
+  History,
+  CheckCircle2,
+  XCircle,
+  Timer,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -313,11 +323,34 @@ export default function SystemDocumentsSection() {
     },
   });
 
+  const [historyDocId, setHistoryDocId] = useState<string | null>(null);
+  const [historyDocTitle, setHistoryDocTitle] = useState("");
+
+  const { data: syncHistoryResponse, isLoading: isLoadingHistory } = useQuery({
+    queryKey: ["/api/consultant/knowledge/system-documents/sync-history", historyDocId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/knowledge/system-documents/${historyDocId}/sync-history`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch sync history");
+      return res.json();
+    },
+    enabled: !!historyDocId,
+  });
+
+  const syncHistory: any[] = syncHistoryResponse?.data || [];
+
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
       return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
     } catch { return dateStr; }
+  };
+
+  const formatDuration = (ms: number | null) => {
+    if (!ms) return "-";
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
   };
 
   const closeForm = () => {
@@ -513,6 +546,15 @@ export default function SystemDocumentsSection() {
                             >
                               <RefreshCw className={`w-3 h-3 mr-1 ${syncingDocId === doc.id ? 'animate-spin' : ''}`} />
                               {syncingDocId === doc.id ? 'Sincronizzando...' : 'Sincronizza ora'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                              onClick={() => { setHistoryDocId(doc.id); setHistoryDocTitle(doc.title); }}
+                            >
+                              <History className="w-3 h-3 mr-1" />
+                              Cronologia
                             </Button>
                           </div>
                         )}
@@ -961,6 +1003,73 @@ export default function SystemDocumentsSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!historyDocId} onOpenChange={(open) => { if (!open) setHistoryDocId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4 text-blue-500" />
+              Cronologia Sync
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground truncate">{historyDocTitle}</p>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto">
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : syncHistory.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                Nessuna sincronizzazione registrata
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {syncHistory.map((entry: any, i: number) => (
+                  <div key={entry.id || i} className={`rounded-lg border p-3 text-sm ${
+                    entry.status === 'failed' ? 'border-red-200 bg-red-50/50' :
+                    entry.status === 'pending' ? 'border-orange-200 bg-orange-50/50' :
+                    'border-green-200 bg-green-50/50'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {entry.status === 'success' && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
+                        {entry.status === 'failed' && <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
+                        {entry.status === 'pending' && <Timer className="h-4 w-4 text-orange-600 shrink-0" />}
+                        <span className="font-medium capitalize">
+                          {entry.sync_type === 'manual' ? 'Manuale' :
+                           entry.sync_type === 'webhook' ? 'Automatica' :
+                           entry.sync_type === 'scheduled' ? 'Programmata' :
+                           entry.sync_type === 'initial' ? 'Iniziale' : entry.sync_type}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {entry.started_at ? formatDate(entry.started_at) : '-'}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {entry.characters_extracted != null && (
+                        <span>{entry.characters_extracted.toLocaleString()} caratteri</span>
+                      )}
+                      {entry.estimated_tokens != null && (
+                        <span>~{entry.estimated_tokens.toLocaleString()} token</span>
+                      )}
+                      {entry.duration_ms != null && (
+                        <span>Durata: {formatDuration(entry.duration_ms)}</span>
+                      )}
+                      {entry.new_version != null && (
+                        <span>Versione #{entry.new_version}</span>
+                      )}
+                    </div>
+                    {entry.status === 'failed' && entry.error_message && (
+                      <p className="mt-1.5 text-xs text-red-600 line-clamp-2">{entry.error_message}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
