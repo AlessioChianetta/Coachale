@@ -261,12 +261,32 @@ export function SyncSourcesManager() {
         ['X-Dataset-Timestamp', 'Unix timestamp (es: 1737745200)', 'Secondi da epoch'],
         ['X-Dataset-Signature', 'sha256=...', 'HMAC-SHA256 del file con Secret Key'],
         ['X-Idempotency-Key', '(opzionale)', 'ID univoco per evitare duplicazioni'],
+        ['X-Client-Email', 'email cliente', 'Email del cliente destinatario (routing multi-cliente)'],
       ];
       for (const [name, value, desc] of headers) {
         checkPageBreak(10);
         addText(`${name}: ${value}`, 9, { bold: true, color: [60, 60, 60], lineHeight: 4 });
         addText(`    ${desc}`, 9, { color: [120, 120, 120], lineHeight: 4 });
         y += 2;
+      }
+      y += 4;
+
+      checkPageBreak(30);
+      addText('4b. Routing Multi-Cliente', 13, { bold: true, color: [63, 81, 181] });
+      y += 3;
+      addText('Con una sola sorgente e API key, puoi inviare dati a clienti diversi.', 9, { color: [63, 81, 181] });
+      y += 1;
+      addText('Aggiungi l\'header X-Client-Email con l\'email del cliente destinatario.', 9, { color: [63, 81, 181] });
+      y += 2;
+      const routingPoints = [
+        'Il sistema cerca il cliente per email e associa i dati al suo account',
+        'Ogni cliente ha il suo dataset separato, anche dalla stessa sorgente',
+        'Quando un nuovo cliente acquista, riceverai una notifica con la sua email',
+        'Se l\'email non corrisponde a nessun cliente attivo: errore CLIENT_NOT_FOUND',
+      ];
+      for (const point of routingPoints) {
+        checkPageBreak(6);
+        addText(`• ${point}`, 9, { color: [80, 80, 120], lineHeight: 4.5 });
       }
       y += 4;
 
@@ -311,6 +331,7 @@ export function SyncSourcesManager() {
         `API_KEY="${source.api_key}"`,
         'SECRET_KEY="<la_tua_secret_key>"',
         'FILE_PATH="ordini.xlsx"',
+        'CLIENT_EMAIL="cliente@example.com"',
         `ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"`,
         '',
         '# Genera timestamp e firma HMAC',
@@ -318,10 +339,11 @@ export function SyncSourcesManager() {
         'SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 \\',
         '  -hmac "$SECRET_KEY" | cut -d\' \' -f2)',
         '',
-        '# Invio dati (prima volta con upsert)',
+        '# Invio dati per un cliente specifico (con routing)',
         'curl -X POST "$ENDPOINT" \\',
         '  -H "X-Dataset-Timestamp: $TIMESTAMP" \\',
         '  -H "X-Dataset-Signature: sha256=$SIGNATURE" \\',
+        '  -H "X-Client-Email: $CLIENT_EMAIL" \\',
         '  -F "file=@$FILE_PATH" \\',
         '  -F "replace_mode=upsert" \\',
         '  -F "upsert_key_columns=order_id,line_id"',
@@ -1116,8 +1138,39 @@ export function SyncSourcesManager() {
                         <td className="p-2 font-mono text-blue-600">opzionale</td>
                         <td className="p-2">ID univoco per evitare duplicazioni</td>
                       </tr>
+                      <tr className="border-t bg-indigo-50/50 dark:bg-indigo-900/10">
+                        <td className="p-2 font-mono font-bold">X-Client-Email</td>
+                        <td className="p-2 font-mono text-indigo-600">email cliente</td>
+                        <td className="p-2">Email del cliente destinatario dei dati (routing multi-cliente)</td>
+                      </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Sezione 4b: Routing Multi-Cliente */}
+              <div className="border-l-4 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 mb-3">Routing Multi-Cliente (Una Sorgente, Molti Clienti)</h4>
+                <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-3">
+                  Con una sola sorgente e API key, puoi inviare dati a clienti diversi. Basta aggiungere l'header <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded font-mono">X-Client-Email</code> con l'email del cliente destinatario.
+                </p>
+                <div className="space-y-2 text-xs text-indigo-700 dark:text-indigo-300">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-500" />
+                    <span>Il sistema cerca il cliente per email e associa automaticamente i dati al suo account</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-500" />
+                    <span>Ogni cliente ha il suo dataset separato, anche se i dati arrivano dalla stessa sorgente</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-500" />
+                    <span>Quando un nuovo cliente acquista, riceverai una notifica webhook con la sua email da usare qui</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
+                    <span>Se l'email non corrisponde a nessun cliente attivo, la richiesta viene rifiutata con errore <code className="bg-indigo-100 dark:bg-indigo-800 px-1 rounded font-mono">CLIENT_NOT_FOUND</code></span>
+                  </div>
                 </div>
               </div>
 
@@ -1201,24 +1254,27 @@ export function SyncSourcesManager() {
 API_KEY="${guideSource.api_key}"
 SECRET_KEY="<la_tua_secret_key>"
 FILE_PATH="ordini.xlsx"
+CLIENT_EMAIL="cliente@example.com"
 ENDPOINT="${window.location.origin}/api/dataset-sync/webhook/$API_KEY"
 
 # Genera timestamp e firma HMAC
 TIMESTAMP=$(date +%s)
 SIGNATURE=$(cat "$FILE_PATH" | openssl dgst -sha256 -hmac "$SECRET_KEY" | cut -d' ' -f2)
 
-# Invio dati (prima volta con configurazione upsert)
+# Invio dati per un cliente specifico (con routing)
 curl -X POST "$ENDPOINT" \\
   -H "X-Dataset-Timestamp: $TIMESTAMP" \\
   -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
+  -H "X-Client-Email: $CLIENT_EMAIL" \\
   -F "file=@$FILE_PATH" \\
   -F "replace_mode=upsert" \\
   -F "upsert_key_columns=order_id,line_id"
 
-# Invii successivi (configurazione gia salvata)
+# Invii successivi per lo stesso cliente
 curl -X POST "$ENDPOINT" \\
   -H "X-Dataset-Timestamp: $TIMESTAMP" \\
   -H "X-Dataset-Signature: sha256=$SIGNATURE" \\
+  -H "X-Client-Email: $CLIENT_EMAIL" \\
   -F "file=@$FILE_PATH"`}</pre>
                 </div>
               </div>

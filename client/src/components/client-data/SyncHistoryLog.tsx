@@ -243,6 +243,7 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                   <TableRow>
                     <TableHead>Data/Ora</TableHead>
                     <TableHead>Sorgente</TableHead>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Stato</TableHead>
                     <TableHead className="text-right">Righe Importate</TableHead>
                     <TableHead className="text-right">Inserite</TableHead>
@@ -263,6 +264,17 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                         {formatRelativeTime(record.started_at)}
                       </TableCell>
                       <TableCell>{sourceMap[record.source_id]?.name || `ID: ${record.source_id}`}</TableCell>
+                      <TableCell>
+                        {record.resolved_client_email ? (
+                          <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400" title={record.resolved_client_email}>
+                            {record.resolved_client_email.length > 20 
+                              ? record.resolved_client_email.substring(0, 20) + "..." 
+                              : record.resolved_client_email}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <StatusBadge status={record.status} />
                       </TableCell>
@@ -391,6 +403,13 @@ export function SyncHistoryLog({ sourceId }: SyncHistoryLogProps) {
                     <p className="capitalize">{selectedRecord.triggered_by}</p>
                   </div>
                 </div>
+
+                {selectedRecord.resolved_client_email && (
+                  <div className="border-l-4 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-r-lg">
+                    <label className="text-sm font-medium text-indigo-800 dark:text-indigo-200">Cliente Destinatario (Routing)</label>
+                    <p className="font-mono text-sm text-indigo-700 dark:text-indigo-300 mt-1">{selectedRecord.resolved_client_email}</p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>

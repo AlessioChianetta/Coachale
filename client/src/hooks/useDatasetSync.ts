@@ -97,6 +97,8 @@ export interface SyncHistoryRecord {
   error_message?: string;
   idempotency_key?: string;
   request_ip?: string;
+  resolved_client_id?: string;
+  resolved_client_email?: string;
 }
 
 export interface SyncHistoryFilters {

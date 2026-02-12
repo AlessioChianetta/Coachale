@@ -2258,6 +2258,27 @@ export async function sendPartnerWebhook(
       return { success: false, error: "Silver notifications disabled" };
     }
     
+    // Cerca la sorgente dataset sync del consulente per includere le info di routing
+    let datasetSyncInfo: any = null;
+    try {
+      const syncSourceResult = await db.execute<any>(
+        sql`SELECT api_key, name FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
+      );
+      const syncRows = syncSourceResult.rows || [];
+      if (syncRows.length > 0) {
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : "http://localhost:5000";
+        datasetSyncInfo = {
+          webhook_url: `${baseUrl}/api/dataset-sync/webhook/${syncRows[0].api_key}`,
+          source_name: syncRows[0].name,
+          instructions: "Per inviare i dati di questo cliente, usa l'header X-Client-Email con l'email del cliente nella richiesta webhook. Esempio: -H 'X-Client-Email: email_cliente@example.com'"
+        };
+      }
+    } catch (e) {
+      console.warn(`[Partner Webhook] Could not fetch dataset sync source:`, (e as any)?.message);
+    }
+
     const timestamp = new Date().toISOString();
     const payload = {
       event: eventType,
@@ -2272,7 +2293,8 @@ export async function sendPartnerWebhook(
         status: subscriptionData.status,
         start_date: subscriptionData.startDate?.toISOString() || null,
         stripe_subscription_id: subscriptionData.stripeSubscriptionId || null
-      }
+      },
+      ...(datasetSyncInfo ? { dataset_sync: datasetSyncInfo } : {})
     };
     
     const payloadString = JSON.stringify(payload);

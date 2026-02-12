@@ -146,6 +146,7 @@ router.post(
       const signature = req.headers['x-dataset-signature'] as string;
       const timestamp = req.headers['x-dataset-timestamp'] as string;
       const idempotencyKey = req.headers['x-idempotency-key'] as string;
+      const clientEmailHeader = (req.headers['x-client-email'] as string)?.trim()?.toLowerCase();
 
       if (!apiKey || !apiKey.startsWith('dsync_')) {
         return res.status(401).json({
@@ -291,8 +292,8 @@ router.post(
       }
 
       await db.execute(sql`
-        INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, file_size_bytes, idempotency_key, request_ip)
-        VALUES (${sourceId}, ${syncId}, 'processing', 'webhook', ${originalname}, ${size}, ${idempotencyKey || null}, ${req.ip || null})
+        INSERT INTO dataset_sync_history (source_id, sync_id, status, triggered_by, file_name, file_size_bytes, idempotency_key, request_ip, resolved_client_email)
+        VALUES (${sourceId}, ${syncId}, 'processing', 'webhook', ${originalname}, ${size}, ${idempotencyKey || null}, ${req.ip || null}, ${clientEmailHeader || null})
       `);
 
       const newPath = path.join(UPLOAD_DIR, `${syncId}_${originalname}`);
@@ -339,8 +340,71 @@ router.post(
       let tableName: string;
       let needsTableCreation = false;
 
-      // Client ID per il dataset
-      const datasetClientId = sourceData.client_id || sourceData.consultant_id;
+      // Client ID per il dataset - supporta routing per cliente via X-Client-Email
+      let datasetClientId = sourceData.client_id || sourceData.consultant_id;
+      let resolvedClientEmail: string | null = null;
+
+      if (clientEmailHeader) {
+        // Il partner ha specificato un cliente via header - cerchiamo nel DB
+        const clientResult = await db.execute<any>(sql`
+          SELECT u.id, u.email FROM users u
+          JOIN client_level_subscriptions cls ON cls.client_email = ${clientEmailHeader} AND cls.consultant_id = ${sourceData.consultant_id} AND cls.status = 'active'
+          WHERE LOWER(u.email) = ${clientEmailHeader}
+          LIMIT 1
+        `);
+        const clientRows = clientResult.rows || [];
+        
+        if (clientRows.length === 0) {
+          // Prova anche nelle bronze_users
+          const bronzeResult = await db.execute<any>(sql`
+            SELECT id, email FROM bronze_users
+            WHERE LOWER(email) = ${clientEmailHeader} AND consultant_id = ${sourceData.consultant_id}
+            LIMIT 1
+          `);
+          const bronzeRows = bronzeResult.rows || [];
+          
+          if (bronzeRows.length === 0) {
+            const durationMs = Date.now() - startTime;
+            await db.execute(sql`
+              UPDATE dataset_sync_history 
+              SET status = 'failed', completed_at = now(), duration_ms = ${durationMs}, 
+                  error_code = 'CLIENT_NOT_FOUND', 
+                  error_message = ${'Nessun cliente trovato con email "' + clientEmailHeader + '" per questo consulente'},
+                  resolved_client_email = ${clientEmailHeader}
+              WHERE sync_id = ${syncId}
+            `);
+            return res.status(404).json({
+              success: false,
+              error: "CLIENT_NOT_FOUND",
+              message: `Nessun cliente trovato con email "${clientEmailHeader}" per questo consulente. Verifica che il cliente abbia un account attivo.`,
+            });
+          }
+          datasetClientId = bronzeRows[0].id;
+          resolvedClientEmail = bronzeRows[0].email;
+        } else {
+          datasetClientId = clientRows[0].id;
+          resolvedClientEmail = clientRows[0].email;
+        }
+        
+        console.log(`[DATASET-SYNC] Client routing: email=${clientEmailHeader} → clientId=${datasetClientId}`);
+        
+        // Quando si usa X-Client-Email, NON usare target_dataset_id della sorgente
+        // perché ogni cliente ha il suo dataset separato
+        // Cerca dataset esistente per questo cliente specifico e questa sorgente
+        const existingClientDataset = await db.execute<any>(sql`
+          SELECT id, table_name FROM client_data_datasets 
+          WHERE consultant_id = ${sourceData.consultant_id} 
+            AND client_id = ${datasetClientId}
+            AND name = ${`Sync: ${sourceData.name}`}
+          ORDER BY created_at DESC LIMIT 1
+        `);
+        const clientDatasetRows = existingClientDataset.rows || [];
+        if (clientDatasetRows.length > 0) {
+          targetDatasetId = clientDatasetRows[0].id;
+        } else {
+          targetDatasetId = null; // Crea nuovo dataset per questo cliente
+        }
+      }
 
       if (targetDatasetId) {
         const existingDatasetResult = await db.execute<any>(
@@ -463,7 +527,9 @@ router.post(
             rows_inserted = ${rowsInserted}, rows_updated = ${rowsUpdated},
             columns_detected = ${headers.length}, 
             columns_mapped = ${JSON.stringify(mappedColumns.map(c => c.suggestedName))}::jsonb,
-            columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb
+            columns_unmapped = ${JSON.stringify(unmappedColumns.map(c => c.physicalColumn || c.originalName))}::jsonb,
+            resolved_client_id = ${clientEmailHeader ? datasetClientId : null},
+            resolved_client_email = ${resolvedClientEmail || null}
         WHERE sync_id = ${syncId}
       `);
 
@@ -480,6 +546,7 @@ router.post(
           mapped: mappedColumns.map(c => c.suggestedName),
           unmapped: unmappedColumns.map(c => c.physicalColumn || c.originalName),
         },
+        ...(resolvedClientEmail ? { clientRouting: { email: resolvedClientEmail, clientId: datasetClientId } } : {}),
         durationMs,
       });
 
