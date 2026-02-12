@@ -2499,7 +2499,8 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
 
     // Salva mapping semantico
     try {
-      await detectAndSaveSemanticMappings(targetDatasetId, tableName, source.consultant_id, discoveryResult);
+      const physicalColumns = discoveryResult.columns.map((c: any) => sanitizeColumnName(c.suggestedName || c.originalName));
+      await detectAndSaveSemanticMappings(targetDatasetId, physicalColumns);
     } catch (semErr: any) {
       console.warn(`[PARTNER UPLOAD] Semantic mapping warning:`, semErr?.message);
     }

@@ -43,6 +43,8 @@ interface Dataset {
   lastQueriedAt?: string;
   errorMessage?: string;
   analyticsEnabled?: boolean;
+  clientName?: string | null;
+  clientEmail?: string | null;
 }
 
 interface DatasetListProps {
@@ -203,6 +205,7 @@ export function DatasetList({
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Cliente</TableHead>
                   <TableHead>Stato</TableHead>
                   <TableHead>Righe</TableHead>
                   <TableHead>Colonne</TableHead>
@@ -224,6 +227,16 @@ export function DatasetList({
                         <p className="font-medium">{dataset.name}</p>
                         <p className="text-xs text-slate-500">{dataset.originalFilename}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {dataset.clientName ? (
+                        <div>
+                          <p className="text-sm font-medium">{dataset.clientName}</p>
+                          <p className="text-xs text-slate-500">{dataset.clientEmail}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">

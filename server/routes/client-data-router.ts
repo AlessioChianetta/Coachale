@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { pool, db } from "../db";
 import { clientDataDatasets, users, consultantColumnMappings, clientDataMetrics, clientDataConversations, clientDataMessages, clientDataAiPreferences, customMappingRules } from "../../shared/schema";
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, inArray } from "drizzle-orm";
 import { AuthRequest, authenticateToken, requireRole, requireAnyRole } from "../middleware/auth";
 import { upload } from "../middleware/upload";
 import { processExcelFile, type ProcessedFile } from "../services/client-data/upload-processor";
@@ -129,17 +129,35 @@ router.get(
       let datasets;
       
       if (userRole === "consultant") {
-        datasets = await db
+        const rows = await db
           .select()
           .from(clientDataDatasets)
           .where(eq(clientDataDatasets.consultantId, userId))
           .orderBy(desc(clientDataDatasets.createdAt));
+
+        const clientIds = [...new Set(rows.map(r => r.clientId).filter(Boolean))];
+        const clientMap = new Map<string, { name: string; email: string }>();
+        if (clientIds.length > 0) {
+          const clients = await db
+            .select({ id: users.id, name: users.name, email: users.email })
+            .from(users)
+            .where(inArray(users.id, clientIds as string[]));
+          for (const c of clients) {
+            clientMap.set(c.id, { name: c.name, email: c.email });
+          }
+        }
+        datasets = rows.map(r => ({
+          ...r,
+          clientName: r.clientId ? clientMap.get(r.clientId)?.name || null : null,
+          clientEmail: r.clientId ? clientMap.get(r.clientId)?.email || null : null,
+        }));
       } else {
-        datasets = await db
+        const rows = await db
           .select()
           .from(clientDataDatasets)
           .where(eq(clientDataDatasets.clientId, userId))
           .orderBy(desc(clientDataDatasets.createdAt));
+        datasets = rows;
       }
 
       res.json({
