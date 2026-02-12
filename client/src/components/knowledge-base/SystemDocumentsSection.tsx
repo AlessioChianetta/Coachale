@@ -123,7 +123,7 @@ const emptyForm = (): DocumentForm => ({
   title: "",
   content: "",
   description: "",
-  target_client_assistant: true,
+  target_client_assistant: false,
   target_client_mode: 'all',
   target_client_ids: [],
   target_department_ids: [],
@@ -181,6 +181,8 @@ export default function SystemDocumentsSection() {
       if (!res.ok) throw new Error("Failed to fetch departments");
       return res.json();
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const documents: SystemDocument[] = response?.data || [];
@@ -567,15 +569,28 @@ export default function SystemDocumentsSection() {
               <Separator />
 
               <div className="space-y-4">
-                <Label className="text-base font-medium">Destinatari</Label>
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600" />
+                  <Label className="text-base font-semibold text-slate-800">Chi riceve questo documento?</Label>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-2">Seleziona almeno un destinatario tra AI Assistant, WhatsApp o Agenti Autonomi</p>
 
-                <div className="rounded-lg border border-blue-200 overflow-hidden">
-                  <div className="flex items-center justify-between p-3 bg-blue-50/50">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-blue-500" />
+                {!form.target_client_assistant && Object.values(form.target_whatsapp_agents).every(v => !v) && Object.values(form.target_autonomous_agents).every(v => !v) && (
+                  <div className="rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/50 p-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    <p className="text-xs text-amber-700 font-medium">Nessun destinatario selezionato — il documento non sarà visibile a nessuno finché non attivi almeno un canale</p>
+                  </div>
+                )}
+
+                <div className={`rounded-xl border-2 overflow-hidden transition-colors ${form.target_client_assistant ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200'}`}>
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50/50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Sparkles className="h-4 w-4 text-blue-600" />
+                      </div>
                       <div>
-                        <p className="text-sm font-medium">AI Assistant Clienti</p>
-                        <p className="text-xs text-muted-foreground">Visibile nell'assistente AI dei clienti</p>
+                        <p className="text-sm font-semibold text-slate-800">AI Assistant Clienti</p>
+                        <p className="text-xs text-muted-foreground">Inietta nel chatbot AI visibile ai clienti/dipendenti</p>
                       </div>
                     </div>
                     <Switch
@@ -585,37 +600,45 @@ export default function SystemDocumentsSection() {
                   </div>
 
                   {form.target_client_assistant && (
-                    <div className="p-3 space-y-3 border-t border-blue-100">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-blue-700 font-medium">Destinatari AI Assistant</Label>
-                        <Select
-                          value={form.target_client_mode}
-                          onValueChange={(v: TargetClientMode) => setForm(f => ({ ...f, target_client_mode: v, target_client_ids: [], target_department_ids: [] }))}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Tutti</SelectItem>
-                            <SelectItem value="clients_only">Solo Clienti</SelectItem>
-                            <SelectItem value="employees_only">Solo Dipendenti</SelectItem>
-                            <SelectItem value="specific_clients">Clienti Specifici</SelectItem>
-                            <SelectItem value="specific_departments">Reparto Specifico</SelectItem>
-                            <SelectItem value="specific_employees">Dipendenti Specifici</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="p-4 space-y-3 border-t border-blue-200 bg-white/50">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">A chi mostrare?</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {([
+                            { value: 'all', label: 'Tutti', icon: '👥' },
+                            { value: 'clients_only', label: 'Solo Clienti', icon: '🧑' },
+                            { value: 'employees_only', label: 'Solo Dipendenti', icon: '👷' },
+                            { value: 'specific_clients', label: 'Clienti Specifici', icon: '🎯' },
+                            { value: 'specific_departments', label: 'Per Reparto', icon: '🏢' },
+                            { value: 'specific_employees', label: 'Dipendenti Specifici', icon: '📋' },
+                          ] as const).map(opt => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setForm(f => ({ ...f, target_client_mode: opt.value as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium border transition-all ${
+                                form.target_client_mode === opt.value
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                              }`}
+                            >
+                              <span>{opt.icon}</span>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       {form.target_client_mode === 'specific_clients' && (
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">
+                          <Label className="text-xs font-medium text-slate-600">
                             {form.target_client_ids.length} clienti selezionati
                           </Label>
-                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
                             {nonEmployeeClients.length === 0 ? (
                               <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
                             ) : nonEmployeeClients.map(client => (
-                              <label key={client.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                              <label key={client.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
                                 <Checkbox
                                   checked={form.target_client_ids.includes(client.id)}
                                   onCheckedChange={(checked) =>
@@ -639,14 +662,14 @@ export default function SystemDocumentsSection() {
 
                       {form.target_client_mode === 'specific_departments' && (
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">
+                          <Label className="text-xs font-medium text-slate-600">
                             {form.target_department_ids.length} reparti selezionati
                           </Label>
-                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
                             {departments.length === 0 ? (
-                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato</p>
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato — crea i reparti dalla pagina Gestione Clienti</p>
                             ) : departments.map(dept => (
-                              <label key={dept.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                              <label key={dept.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
                                 <Checkbox
                                   checked={form.target_department_ids.includes(dept.id)}
                                   onCheckedChange={(checked) =>
@@ -672,10 +695,10 @@ export default function SystemDocumentsSection() {
 
                       {form.target_client_mode === 'specific_employees' && (
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">
+                          <Label className="text-xs font-medium text-slate-600">
                             {form.target_client_ids.length} dipendenti selezionati
                           </Label>
-                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
                             {employeeClients.length === 0 ? (
                               <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
                             ) : (() => {
@@ -690,13 +713,13 @@ export default function SystemDocumentsSection() {
                                 return (
                                   <div key={deptId}>
                                     {grouped.size > 1 && (
-                                      <div className="flex items-center gap-1.5 px-1 py-1">
+                                      <div className="flex items-center gap-1.5 px-1 py-1.5 border-b border-slate-100">
                                         {dept && <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dept.color || '#6b7280' }} />}
-                                        <span className="text-xs font-medium text-muted-foreground">{dept?.name || 'Senza reparto'}</span>
+                                        <span className="text-xs font-semibold text-slate-500">{dept?.name || 'Senza reparto'}</span>
                                       </div>
                                     )}
                                     {emps.map(emp => (
-                                      <label key={emp.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                                      <label key={emp.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
                                         <Checkbox
                                           checked={form.target_client_ids.includes(emp.id)}
                                           onCheckedChange={(checked) =>
@@ -726,21 +749,25 @@ export default function SystemDocumentsSection() {
                 </div>
 
                 {whatsappAgents.length > 0 && (
-                  <div className="rounded-lg border p-3 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4 text-green-500" />
-                      <div>
-                        <p className="text-sm font-medium">Dipendenti WhatsApp</p>
-                        <p className="text-xs text-muted-foreground">
-                          {Object.values(form.target_whatsapp_agents).filter(Boolean).length} di {whatsappAgents.length} selezionati
-                        </p>
+                  <div className={`rounded-xl border-2 overflow-hidden transition-colors ${Object.values(form.target_whatsapp_agents).some(Boolean) ? 'border-green-400 bg-green-50/30' : 'border-slate-200'}`}>
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50/50">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <MessageCircle className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">Dipendenti WhatsApp</p>
+                          <p className="text-xs text-muted-foreground">
+                            {Object.values(form.target_whatsapp_agents).filter(Boolean).length} di {whatsappAgents.length} selezionati
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="p-3 border-t border-green-100 bg-white/50 grid grid-cols-1 gap-2">
                       {whatsappAgents.map(agent => (
                         <label
                           key={agent.id}
-                          className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+                          className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${!!form.target_whatsapp_agents[agent.id] ? 'bg-green-50 border-green-300' : 'hover:bg-green-50/50'}`}
                         >
                           <Checkbox
                             checked={!!form.target_whatsapp_agents[agent.id]}
@@ -756,7 +783,7 @@ export default function SystemDocumentsSection() {
                           />
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <MessageCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                            <span className="text-sm truncate">{agent.agent_name || "Agente senza nome"}</span>
+                            <span className="text-sm font-medium truncate">{agent.agent_name || "Agente senza nome"}</span>
                             <Badge variant="outline" className="text-xs shrink-0 ml-auto">
                               {agent.agent_type || "general"}
                             </Badge>
@@ -774,11 +801,13 @@ export default function SystemDocumentsSection() {
 
                 <Collapsible open={agentsOpen} onOpenChange={setAgentsOpen}>
                   <CollapsibleTrigger asChild>
-                    <div className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <Bot className="h-4 w-4 text-purple-500" />
+                    <div className={`flex items-center justify-between rounded-xl border-2 p-4 cursor-pointer transition-colors ${Object.values(form.target_autonomous_agents).some(Boolean) ? 'border-purple-400 bg-purple-50/30' : 'border-slate-200 hover:bg-accent/50'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <Bot className="h-4 w-4 text-purple-600" />
+                        </div>
                         <div>
-                          <p className="text-sm font-medium">Agenti Autonomi</p>
+                          <p className="text-sm font-semibold text-slate-800">Agenti Autonomi</p>
                           <p className="text-xs text-muted-foreground">
                             {Object.values(form.target_autonomous_agents).filter(Boolean).length} di {AUTONOMOUS_AGENTS.length} selezionati
                           </p>
@@ -788,11 +817,11 @@ export default function SystemDocumentsSection() {
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="grid grid-cols-2 gap-2 mt-2 pl-2">
+                    <div className="grid grid-cols-2 gap-2 mt-2 px-1">
                       {AUTONOMOUS_AGENTS.map(agent => (
                         <label
                           key={agent.id}
-                          className="flex items-center gap-2 rounded-md border p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+                          className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${!!form.target_autonomous_agents[agent.id] ? 'bg-purple-50 border-purple-300' : 'hover:bg-purple-50/50'}`}
                         >
                           <Checkbox
                             checked={!!form.target_autonomous_agents[agent.id]}
@@ -806,7 +835,7 @@ export default function SystemDocumentsSection() {
                               }))
                             }
                           />
-                          <span className="text-sm">{agent.name}</span>
+                          <span className="text-sm font-medium">{agent.name}</span>
                         </label>
                       ))}
                     </div>
