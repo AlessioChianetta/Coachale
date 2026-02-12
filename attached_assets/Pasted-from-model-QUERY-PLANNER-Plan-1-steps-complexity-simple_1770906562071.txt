@@ -1,0 +1,55 @@
+from model.
+[QUERY-PLANNER] Plan: 1 steps, complexity: simple
+[POLICY-ENGINE] Enforcing policy for intent: analytics, tool calls: 1
+[POLICY-ENGINE] ALLOWED: execute_metric
+[POLICY-ENGINE] Result: allowed=1, blocked=0, violations=0
+[POLICY-ENGINE] Tool analysis: hasComputeTool=true, hasOnlyMetadata=false
+[POLICY-ENGINE] VALIDATION OK: compute tool present
+[EXECUTE-METRIC] Called with metricName: "revenue", datasetId: 24
+[REVENUE-TRACKING] Dataset 24 - Using revenue_amount: "revenue_amount" for revenue
+[METRIC-REGISTRY] ===== TEMPLATE SELECTION =====
+[METRIC-REGISTRY] metricName: revenue
+[METRIC-REGISTRY] template.displayName: Fatturato
+[METRIC-REGISTRY] template.description: Fatturato reale (somma degli importi riga già calcolati, post-sconti). Usa revenue_amount, NON price*quantity.
+[METRIC-REGISTRY] template.sqlTemplate: SUM(CAST({revenue_amount} AS NUMERIC))
+[METRIC-REGISTRY] requiredLogicalColumns: revenue_amount
+[SEMANTIC-RESOLVER] ===== RESOLVE TRACE =====
+[SEMANTIC-RESOLVER] datasetId: 24
+[SEMANTIC-RESOLVER] sqlTemplate (before): SUM(CAST({revenue_amount} AS NUMERIC))
+[SEMANTIC-RESOLVER] column mappings: {"price":"price","cost":"cost","quantity":"quantity","order_date":"order_date","document_id":"order_id","product_name":"product_name","product_id":"product_id","category":"category","customer_id":"customer_id","discount_percent":"discount_percent","total_net":"total_net","tax_rate":"tax_rate","payment_method":"payment_method","staff":"staff","line_id":"line_id","is_sellable":"is_sellable","revenue_amount":"revenue_amount","document_type":"document_type","time_slot":"time_slot","sales_channel":"sales_channel"}
+[SEMANTIC-RESOLVER] resolved SQL (after): SUM(CAST("revenue_amount" AS NUMERIC))
+[SEMANTIC-RESOLVER] valid: true, error: none
+[EXECUTE-METRIC] Resolved SQL: SUM(CAST("revenue_amount" AS NUMERIC))
+[QUERY-RULES] Rule 2: SKIPPED - document_type filter NOT auto-injected for metric "revenue". Revenue includes all document types (sales, refunds, voids).
+[QUERY-RULES] Detected ORDER BY keyword: "fatturato" → revenue DESC
+[QUERY-RULES] Rule 6: Applying ORDER BY revenue_amount DESC
+[QUERY-RULES] Rule 3: No sales_channel filter specified, including all channels
+[EXECUTE-METRIC] Query rules applied: RULE_6_ORDER_BY_SEMANTIC, RULE_3_SALES_CHANNEL_ALL
+[EXECUTE-METRIC] Enhancements: WHERE=none, ORDER BY="revenue_amount" DESC
+[EXECUTE-METRIC-SQL] ===== METRIC EXECUTION TRACE =====
+[EXECUTE-METRIC-SQL] datasetId: 24
+[EXECUTE-METRIC-SQL] metricName: revenue
+[EXECUTE-METRIC-SQL] tableName: cdd_3bd72965_ristorante_simulato_200k_fulls_2fb7a669
+[EXECUTE-METRIC-SQL] sqlExpression: SUM(CAST("revenue_amount" AS NUMERIC))
+[EXECUTE-METRIC-SQL] columns available: cost, price, staff, line_id, category, order_id, quantity, tax_rate, time_slot, total_net, order_date, product_id, customer_id, is_sellable, product_name, document_type, sales_channel, payment_method, revenue_amount, discount_percent
+[EXECUTE-METRIC-SQL] No WHERE clause (full table scan)
+[EXECUTE-METRIC-SQL] FINAL SQL: SELECT SUM(CAST("revenue_amount" AS NUMERIC)) AS result FROM "cdd_3bd72965_ristorante_simulato_200k_fulls_2fb7a669"
+[QUERY-EXECUTOR] Query execution error: invalid input syntax for type numeric: ""
+[EXECUTE-METRIC-SQL] RAW DB RESULT: undefined, success=false, error=invalid input syntax for type numeric: ""
+[EXECUTE-METRIC] Result: success=false, error=invalid input syntax for type numeric: ""
+[QUERY-PLANNER] Tool execute_metric failed: invalid input syntax for type numeric: ""
+[QUERY-PLANNER] Execution complete in 1267ms, success: false
+🔍 Finding AI provider for client 19ed2469-e094-4033-9198-156fc5dbfd3f (consultant: 19ed2469-e094-4033-9198-156fc5dbfd3f)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+[RESULT-EXPLAINER] ALL TOOLS FAILED - generating contextual response. Errors: execute_metric: invalid input syntax for type numeric: ""
+🔒 [Semaphore] Acquired slot (1/3 in use)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔓 [Semaphore] Released slot (0/3 in use)
+[CLIENT-DATA] Assistant message saved: ad7a2033-9250-4f37-9736-7184c4acc76d
+2:28:41 PM [express] POST /api/client-data/conversations/c146a998-2194-4baa-941f-5be398d360a2/messag…
+[AUTH] Gold token detected for subscription: 0e04b8b2-99d7-48b0-82c0-4b0704b3ef7c, userId: 3bd72965-8ee1-47aa-8e74-7fdfaecdcc62
+2:28:43 PM [express] POST /api/activity/session/heartbeat 200 in 109ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
