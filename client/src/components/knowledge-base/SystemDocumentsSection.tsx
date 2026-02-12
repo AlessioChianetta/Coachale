@@ -16,13 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +46,7 @@ import {
   Search,
   StickyNote,
   Building2,
+  X,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -139,7 +134,7 @@ const emptyForm = (): DocumentForm => ({
 });
 
 export default function SystemDocumentsSection() {
-  const [showDialog, setShowDialog] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingDoc, setEditingDoc] = useState<SystemDocument | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState<DocumentForm>(emptyForm());
@@ -210,7 +205,7 @@ export default function SystemDocumentsSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
-      closeDialog();
+      closeForm();
       toast({ title: "Documento creato", description: "Il documento di sistema è stato creato con successo" });
     },
     onError: (err: any) => {
@@ -233,7 +228,7 @@ export default function SystemDocumentsSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
-      closeDialog();
+      closeForm();
       toast({ title: "Documento aggiornato", description: "Le modifiche sono state salvate" });
     },
     onError: (err: any) => {
@@ -283,8 +278,8 @@ export default function SystemDocumentsSection() {
     },
   });
 
-  const closeDialog = () => {
-    setShowDialog(false);
+  const closeForm = () => {
+    setShowForm(false);
     setEditingDoc(null);
     setForm(emptyForm());
     setAgentsOpen(false);
@@ -297,7 +292,7 @@ export default function SystemDocumentsSection() {
       newForm.target_whatsapp_agents = Object.fromEntries(whatsappAgents.map(a => [a.id, false]));
     }
     setForm(newForm);
-    setShowDialog(true);
+    setShowForm(true);
   };
 
   const openEdit = (doc: SystemDocument) => {
@@ -318,7 +313,7 @@ export default function SystemDocumentsSection() {
       injection_mode: doc.injection_mode || "system_prompt",
       priority: doc.priority,
     });
-    setShowDialog(true);
+    setShowForm(true);
   };
 
   const handleSubmit = () => {
@@ -473,23 +468,38 @@ export default function SystemDocumentsSection() {
         </CardContent>
       </Card>
 
-      <Dialog open={showDialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>
+      {showForm && (
+        <Card className="border-indigo-200 shadow-md">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="h-4 w-4 text-indigo-500" />
               {editingDoc ? "Modifica Documento di Sistema" : "Nuovo Documento di Sistema"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 10rem)' }}>
-            <div className="space-y-5 pb-2">
-              <div className="space-y-2">
-                <Label htmlFor="sys-doc-title">Titolo *</Label>
-                <Input
-                  id="sys-doc-title"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Es: Istruzioni generali per l'AI"
-                />
+            </CardTitle>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={closeForm} disabled={isSaving}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sys-doc-title">Titolo *</Label>
+                  <Input
+                    id="sys-doc-title"
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Es: Istruzioni generali per l'AI"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sys-doc-desc">Descrizione (nota interna)</Label>
+                  <Input
+                    id="sys-doc-desc"
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Nota interna per identificare questo documento"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -502,71 +512,59 @@ export default function SystemDocumentsSection() {
                   value={form.content}
                   onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                   placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
-                  rows={10}
-                  className="resize-y min-h-[200px] font-mono text-sm"
+                  rows={8}
+                  className="resize-y min-h-[150px] font-mono text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sys-doc-desc">Descrizione (nota interna)</Label>
-                <Input
-                  id="sys-doc-desc"
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Nota interna per identificare questo documento"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Priorità: {form.priority}</Label>
+                  <Slider
+                    value={[form.priority]}
+                    onValueChange={([v]) => setForm(f => ({ ...f, priority: v }))}
+                    min={1}
+                    max={10}
+                    step={1}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    1 = bassa, 10 = alta
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <Label>Priorità: {form.priority}</Label>
-                <Slider
-                  value={[form.priority]}
-                  onValueChange={([v]) => setForm(f => ({ ...f, priority: v }))}
-                  min={1}
-                  max={10}
-                  step={1}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Priorità più alta = iniettato prima nel prompt (1 = bassa, 10 = alta)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Modalità di Iniezione</Label>
-                <Select
-                  value={form.injection_mode}
-                  onValueChange={(v: "system_prompt" | "file_search") => setForm(f => ({ ...f, injection_mode: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="system_prompt">
-                      <div className="flex items-center gap-2">
-                        <StickyNote className="h-4 w-4 text-slate-500" />
-                        <div>
+                <div className="space-y-2">
+                  <Label>Modalità di Iniezione</Label>
+                  <Select
+                    value={form.injection_mode}
+                    onValueChange={(v: "system_prompt" | "file_search") => setForm(f => ({ ...f, injection_mode: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system_prompt">
+                        <div className="flex items-center gap-2">
+                          <StickyNote className="h-4 w-4 text-slate-500" />
                           <span className="font-medium">System Prompt</span>
-                          <span className="text-xs text-muted-foreground ml-2">— sempre in memoria</span>
                         </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="file_search">
-                      <div className="flex items-center gap-2">
-                        <Search className="h-4 w-4 text-amber-500" />
-                        <div>
+                      </SelectItem>
+                      <SelectItem value="file_search">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4 text-amber-500" />
                           <span className="font-medium">File Search</span>
-                          <span className="text-xs text-muted-foreground ml-2">— cercato quando serve</span>
                         </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {form.injection_mode === "system_prompt"
-                    ? "Il documento sarà sempre presente in memoria durante ogni conversazione AI"
-                    : "Il documento sarà indicizzato e cercato automaticamente solo quando rilevante"}
-                </p>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {form.injection_mode === "system_prompt"
+                      ? "Sempre in memoria"
+                      : "Cercato solo quando rilevante"}
+                  </p>
+                </div>
               </div>
+
+              <Separator />
 
               <div className="space-y-4">
                 <Label className="text-base font-medium">Destinatari</Label>
@@ -815,19 +813,22 @@ export default function SystemDocumentsSection() {
                   </CollapsibleContent>
                 </Collapsible>
               </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-end gap-3">
+                <Button variant="outline" onClick={closeForm} disabled={isSaving}>
+                  Annulla
+                </Button>
+                <Button onClick={handleSubmit} disabled={isSaving}>
+                  {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  {editingDoc ? "Salva Modifiche" : "Crea Documento"}
+                </Button>
+              </div>
             </div>
-          </div>
-          <DialogFooter className="pt-4 border-t">
-            <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
-              Annulla
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {editingDoc ? "Salva Modifiche" : "Crea Documento"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+      )}
 
       <AlertDialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null); }}>
         <AlertDialogContent>
