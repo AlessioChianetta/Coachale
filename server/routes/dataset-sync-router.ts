@@ -2464,15 +2464,10 @@ router.post("/partner/:apiKey/upload", upload.single("file"), async (req: Reques
     // Importa i dati
     const replaceMode = req.body.replace_mode || 'full';
     const upsertKeyColumns = req.body.upsert_key_columns?.split(',').map((c: string) => c.trim()) || [];
-    
-    const importColumnMapping = discoveryResult.columns.map((col: any) => ({
-      originalName: col.originalName,
-      mappedName: sanitizeColumnName(col.suggestedName || col.originalName),
-      physicalColumn: col.physicalColumn || col.originalName,
-    }));
 
     const importResult = await importDataFromFileWithOptions(
-      newPath, originalname, tableName, importColumnMapping, replaceMode, upsertKeyColumns
+      newPath, tableName, discoveryResult.columns, source.consultant_id, String(datasetClientId), undefined,
+      { replaceMode: replaceMode as 'full' | 'append' | 'upsert', upsertKeyColumns }
     );
 
     // Aggiorna row count e column_mapping del dataset
