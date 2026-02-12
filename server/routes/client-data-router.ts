@@ -302,6 +302,27 @@ router.delete(
 
       await db.delete(clientDataDatasets).where(eq(clientDataDatasets.id, id));
 
+      if (dataset.clientId && dataset.consultantId) {
+        try {
+          const clientResult = await pool.query(
+            `SELECT email FROM users WHERE id = $1 LIMIT 1`,
+            [dataset.clientId]
+          );
+          if (clientResult.rows.length > 0) {
+            const clientEmail = clientResult.rows[0].email;
+            await pool.query(
+              `UPDATE partner_client_queue 
+               SET file_status = 'pending', file_uploaded_at = NULL, file_name = NULL, rows_imported = NULL, sync_id = NULL
+               WHERE consultant_id = $1 AND client_email = $2 AND file_status = 'uploaded'`,
+              [dataset.consultantId, clientEmail]
+            );
+            console.log(`[CLIENT-DATA] Reset partner queue for ${clientEmail} to pending`);
+          }
+        } catch (queueError) {
+          console.warn(`[CLIENT-DATA] Could not reset partner queue:`, queueError);
+        }
+      }
+
       console.log(`[CLIENT-DATA] Dataset deleted: ${id}`);
 
       res.json({

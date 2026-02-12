@@ -2309,10 +2309,39 @@ router.get("/partner/:apiKey/clients", async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `);
 
+    const clients = clientsResult.rows || [];
+
+    // Cross-check: reset stale "uploaded" entries where the dataset was deleted
+    for (const client of clients) {
+      if (client.file_status === "uploaded") {
+        const datasetCheck = await pool.query(
+          `SELECT d.id FROM client_data_datasets d
+           JOIN users u ON d.client_id = u.id
+           WHERE d.consultant_id = $1 AND u.email = $2
+           LIMIT 1`,
+          [source.consultant_id, client.client_email]
+        );
+        if (datasetCheck.rows.length === 0) {
+          await pool.query(
+            `UPDATE partner_client_queue 
+             SET file_status = 'pending', file_uploaded_at = NULL, file_name = NULL, rows_imported = NULL, sync_id = NULL
+             WHERE id = $1`,
+            [client.id]
+          );
+          client.file_status = "pending";
+          client.file_uploaded_at = null;
+          client.file_name = null;
+          client.rows_imported = null;
+          client.sync_id = null;
+          console.log(`[PARTNER] Reset stale upload status for ${client.client_email} (dataset no longer exists)`);
+        }
+      }
+    }
+
     res.json({
       success: true,
       source_name: source.name,
-      clients: clientsResult.rows || [],
+      clients,
     });
   } catch (error: any) {
     console.error("[PARTNER] Error fetching clients:", error);
