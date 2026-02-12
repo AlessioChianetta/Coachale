@@ -544,21 +544,28 @@ export function SyncSourcesManager() {
   const handleRegenerateKey = async (id: number) => {
     try {
       const result = await regenerateMutation.mutateAsync(id);
-      const data = result as any;
-      if (data?.data) {
+      const response = result as any;
+      console.log("[REGENERATE] Server response:", JSON.stringify(response));
+      if (response?.success && response?.data) {
         setCreatedSource({
-          id: data.data.id,
-          name: data.data.name,
-          api_key: data.data.api_key,
-          secret_key: data.data.secret_key,
+          id: response.data.id,
+          name: response.data.name,
+          api_key: response.data.api_key,
+          secret_key: response.data.secret_key,
         });
         setShowCreatedDialog(true);
+        toast({
+          title: "Chiavi rigenerate",
+          description: "Le nuove chiavi API sono state generate. Salva la Secret Key!",
+        });
+      } else {
+        toast({
+          title: "Chiavi rigenerate",
+          description: "Le nuove chiavi API sono state generate",
+        });
       }
-      toast({
-        title: "Chiavi rigenerate",
-        description: "Le nuove chiavi API sono state generate",
-      });
     } catch (error: any) {
+      console.error("[REGENERATE] Error:", error);
       toast({
         title: "Errore",
         description: error.message || "Impossibile rigenerare le chiavi",
@@ -985,16 +992,18 @@ export function SyncSourcesManager() {
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               Rigenera Chiavi API
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Stai per rigenerare le chiavi API per questa sorgente. Questo invaliderà
-                immediatamente le chiavi esistenti.
-              </p>
-              <p className="font-medium text-amber-600">
-                Tutte le integrazioni esistenti che utilizzano le vecchie chiavi
-                smetteranno di funzionare fino a quando non saranno aggiornate con le
-                nuove credenziali.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Stai per rigenerare le chiavi API per questa sorgente. Questo invaliderà
+                  immediatamente le chiavi esistenti.
+                </p>
+                <p className="font-medium text-amber-600">
+                  Tutte le integrazioni esistenti che utilizzano le vecchie chiavi
+                  smetteranno di funzionare fino a quando non saranno aggiornate con le
+                  nuove credenziali.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

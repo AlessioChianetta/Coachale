@@ -1411,6 +1411,11 @@ router.post(
       const newApiKey = generateApiKey(consultantId);
       const newSecretKey = generateSecretKey();
 
+      const nameResult = await db.execute<any>(sql`
+        SELECT name FROM dataset_sync_sources WHERE id = ${sourceId} AND consultant_id = ${consultantId}
+      `);
+      const sourceName = nameResult.rows?.[0]?.name || "";
+
       await db.execute(sql`
         UPDATE dataset_sync_sources 
         SET api_key = ${newApiKey}, secret_key = ${newSecretKey}, updated_at = now()
@@ -1420,8 +1425,10 @@ router.post(
       res.json({
         success: true,
         data: {
-          apiKey: newApiKey,
-          secretKey: newSecretKey,
+          id: sourceId,
+          name: sourceName,
+          api_key: newApiKey,
+          secret_key: newSecretKey,
         },
         message: "Chiavi rigenerate. Conserva la secret_key in modo sicuro - non sarà più visibile.",
       });
