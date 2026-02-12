@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
 import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences, fileSearchDocuments } from "../shared/schema";
 import { decrypt } from "./encryption";
+import { fetchSystemDocumentsForClientAssistant } from "./services/system-prompt-documents-service";
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { buildUserContext, UserContext } from "./ai-context-builder";
 import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
@@ -1188,7 +1189,17 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     }
     
     // Build system prompt (with hasFileSearch flag to omit KB content when using RAG)
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
+    let systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: hasFileSearch, indexedKnowledgeDocIds });
+
+    // Inject system prompt documents for client AI assistant
+    try {
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(consultantId);
+      if (systemDocs) {
+        systemPrompt = systemPrompt + '\n\n' + systemDocs;
+      }
+    } catch (sysDocErr) {
+      console.error(`⚠️ [AI-SERVICE] Error fetching system docs:`, sysDocErr);
+    }
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -2106,6 +2117,16 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Append conversation memory context if available
     if (conversationMemoryContext) {
       systemPrompt = systemPrompt + '\n\n' + conversationMemoryContext;
+    }
+
+    // Inject system prompt documents for client AI assistant
+    try {
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(consultantId);
+      if (systemDocs) {
+        systemPrompt = systemPrompt + '\n\n' + systemDocs;
+      }
+    } catch (sysDocErr) {
+      console.error(`⚠️ [AI-SERVICE] Error fetching system docs (streaming):`, sysDocErr);
     }
 
     // Calculate detailed token breakdown by section

@@ -26,6 +26,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys, getAIProvider } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
+import { fetchSystemDocumentsForWhatsApp } from "../services/system-prompt-documents-service";
 import { handleIncomingMedia } from "./media-handler";
 // OBJECTION DETECTOR DISABLED - Aligned with public share (Dec 2025)
 // import { detectObjection, trackObjection, getConversationObjections } from "../objection-detector";
@@ -1144,6 +1145,20 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       const promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
       console.log(`✅ System prompt ready`);
       console.log(`⏱️  [TIMING] Prompt building: ${promptBuildTime}ms`);
+
+      // Inject system prompt documents for WhatsApp
+      const whatsappConsultantId = consultantConfig?.consultantId || consultantId;
+      if (whatsappConsultantId) {
+        try {
+          const whatsappSystemDocs = await fetchSystemDocumentsForWhatsApp(whatsappConsultantId);
+          if (whatsappSystemDocs) {
+            systemPrompt += '\n\n' + whatsappSystemDocs;
+            console.log(`📌 [WHATSAPP] Injected system docs into prompt`);
+          }
+        } catch (sysDocErr: any) {
+          console.warn(`⚠️ [WHATSAPP] Error fetching system docs: ${sysDocErr.message}`);
+        }
+      }
 
       // WhatsApp Concise Mode: Add Customer Support style instructions for clients
       if (consultantConfig?.whatsappConciseMode) {

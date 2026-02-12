@@ -17,6 +17,7 @@ import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
 import { FileSearchService } from '../ai/file-search-service';
+import { fetchSystemDocumentsForAgent } from '../services/system-prompt-documents-service';
 
 const CRON_JOB_NAME = 'ai-task-scheduler';
 const LOCK_DURATION_MS = 2 * 60 * 1000; // 2 minutes
@@ -1473,7 +1474,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data...`);
       const roleData = await role.fetchRoleData(consultantId, clientIds);
 
-      const prompt = role.buildPrompt({
+      let prompt = role.buildPrompt({
         clientsList,
         roleData,
         settings,
@@ -1482,6 +1483,17 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         recentAllTasks: recentAllTasksSummary,
         permanentBlocks,
       });
+
+      // Inject system prompt documents and KB assignments for this agent
+      try {
+        const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, role.id);
+        if (agentSystemDocs) {
+          prompt = prompt + '\n\n' + agentSystemDocs;
+          console.log(`📌 [AUTONOMOUS-GEN] [${role.name}] Injected system docs into prompt`);
+        }
+      } catch (sysDocErr: any) {
+        console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error fetching system docs: ${sysDocErr.message}`);
+      }
 
       let marcoFileSearchTool: any = null;
       if (role.id === 'marco' && roleData.fileSearchStoreNames?.length > 0) {

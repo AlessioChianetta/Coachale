@@ -1742,4 +1742,397 @@ router.delete(
   }
 );
 
+// ==================== SYSTEM PROMPT DOCUMENTS ====================
+
+router.get(
+  "/consultant/knowledge/system-documents",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+
+      const result = await db.execute(sql`
+        SELECT id, consultant_id, title, content, description, is_active,
+               target_client_assistant, target_autonomous_agents, target_whatsapp_agents,
+               priority, created_at, updated_at
+        FROM system_prompt_documents
+        WHERE consultant_id = ${consultantId}
+        ORDER BY priority ASC, created_at DESC
+      `);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error listing:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to list system prompt documents" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/system-documents",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ success: false, error: "Title and content are required" });
+      }
+
+      const id = crypto.randomUUID();
+      const now = new Date();
+
+      const result = await db.execute(sql`
+        INSERT INTO system_prompt_documents (id, consultant_id, title, content, description, is_active,
+          target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, created_at, updated_at)
+        VALUES (${id}, ${consultantId}, ${title}, ${content}, ${description || null}, true,
+          ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})},
+          ${target_whatsapp_agents ?? false}, ${priority ?? 5}, ${now}, ${now})
+        RETURNING *
+      `);
+
+      res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error creating:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to create system prompt document" });
+    }
+  }
+);
+
+router.put(
+  "/consultant/knowledge/system-documents/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, is_active } = req.body;
+
+      const existing = await db.execute(sql`
+        SELECT id FROM system_prompt_documents WHERE id = ${id} AND consultant_id = ${consultantId}
+      `);
+
+      if (existing.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "System prompt document not found" });
+      }
+
+      const result = await db.execute(sql`
+        UPDATE system_prompt_documents
+        SET title = COALESCE(${title ?? null}, title),
+            content = COALESCE(${content ?? null}, content),
+            description = COALESCE(${description ?? null}, description),
+            target_client_assistant = COALESCE(${target_client_assistant ?? null}, target_client_assistant),
+            target_autonomous_agents = COALESCE(${target_autonomous_agents ? JSON.stringify(target_autonomous_agents) : null}::jsonb, target_autonomous_agents),
+            target_whatsapp_agents = COALESCE(${target_whatsapp_agents ?? null}, target_whatsapp_agents),
+            priority = COALESCE(${priority ?? null}, priority),
+            is_active = COALESCE(${is_active ?? null}, is_active),
+            updated_at = ${new Date()}
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        RETURNING *
+      `);
+
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error updating:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to update system prompt document" });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/knowledge/system-documents/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const result = await db.execute(sql`
+        DELETE FROM system_prompt_documents
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        RETURNING id
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "System prompt document not found" });
+      }
+
+      res.json({ success: true, data: { id } });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error deleting:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to delete system prompt document" });
+    }
+  }
+);
+
+router.patch(
+  "/consultant/knowledge/system-documents/:id/toggle",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const result = await db.execute(sql`
+        UPDATE system_prompt_documents
+        SET is_active = NOT is_active, updated_at = ${new Date()}
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        RETURNING *
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "System prompt document not found" });
+      }
+
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      console.error("❌ [SYSTEM PROMPT DOCS] Error toggling:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to toggle system prompt document" });
+    }
+  }
+);
+
+// ==================== AGENT KNOWLEDGE ASSIGNMENTS ====================
+
+router.get(
+  "/consultant/knowledge/agent-assignments",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { agentId } = req.query;
+
+      let result;
+      if (agentId && typeof agentId === "string") {
+        result = await db.execute(sql`
+          SELECT id, consultant_id, agent_id, document_id, created_at
+          FROM agent_knowledge_assignments
+          WHERE consultant_id = ${consultantId} AND agent_id = ${agentId}
+          ORDER BY created_at DESC
+        `);
+      } else {
+        result = await db.execute(sql`
+          SELECT id, consultant_id, agent_id, document_id, created_at
+          FROM agent_knowledge_assignments
+          WHERE consultant_id = ${consultantId}
+          ORDER BY created_at DESC
+        `);
+      }
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error listing:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to list agent assignments" });
+    }
+  }
+);
+
+router.get(
+  "/consultant/knowledge/agent-assignments/summary",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+
+      const result = await db.execute(sql`
+        SELECT agent_id, COUNT(*)::int as count
+        FROM agent_knowledge_assignments
+        WHERE consultant_id = ${consultantId}
+        GROUP BY agent_id
+        ORDER BY agent_id
+      `);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error getting summary:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to get assignment summary" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/agent-assignments",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { agent_id, document_id } = req.body;
+
+      if (!agent_id || !document_id) {
+        return res.status(400).json({ success: false, error: "agent_id and document_id are required" });
+      }
+
+      // Validate document ownership
+      const docCheck = await db.execute(sql`
+        SELECT id FROM consultant_knowledge_documents
+        WHERE id = ${document_id} AND consultant_id = ${consultantId}
+      `);
+      if (docCheck.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Document not found" });
+      }
+
+      const id = crypto.randomUUID();
+      const now = new Date();
+
+      const result = await db.execute(sql`
+        INSERT INTO agent_knowledge_assignments (id, consultant_id, agent_id, document_id, created_at)
+        VALUES (${id}, ${consultantId}, ${agent_id}, ${document_id}, ${now})
+        ON CONFLICT (consultant_id, agent_id, document_id) DO NOTHING
+        RETURNING *
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(409).json({ success: false, error: "Assignment already exists" });
+      }
+
+      res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error creating:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to create agent assignment" });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/knowledge/agent-assignments/:id",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { id } = req.params;
+
+      const result = await db.execute(sql`
+        DELETE FROM agent_knowledge_assignments
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        RETURNING id
+      `);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: "Assignment not found" });
+      }
+
+      res.json({ success: true, data: { id } });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error deleting:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to delete agent assignment" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/agent-assignments/bulk",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { agent_id, document_ids } = req.body;
+
+      if (!agent_id || !Array.isArray(document_ids) || document_ids.length === 0) {
+        return res.status(400).json({ success: false, error: "agent_id and document_ids[] are required" });
+      }
+
+      // Validate document ownership for all documents
+      const docCheckResult = await db.execute(sql`
+        SELECT id FROM consultant_knowledge_documents
+        WHERE id = ANY(${document_ids}) AND consultant_id = ${consultantId}
+      `);
+      const validDocIds = new Set((docCheckResult.rows as any[]).map(r => r.id));
+      const filteredDocIds = document_ids.filter((id: string) => validDocIds.has(id));
+
+      if (filteredDocIds.length === 0) {
+        return res.status(404).json({ success: false, error: "No valid documents found" });
+      }
+
+      const inserted: any[] = [];
+      for (const docId of filteredDocIds) {
+        const id = crypto.randomUUID();
+        const now = new Date();
+        const result = await db.execute(sql`
+          INSERT INTO agent_knowledge_assignments (id, consultant_id, agent_id, document_id, created_at)
+          VALUES (${id}, ${consultantId}, ${agent_id}, ${docId}, ${now})
+          ON CONFLICT (consultant_id, agent_id, document_id) DO NOTHING
+          RETURNING *
+        `);
+        if (result.rows.length > 0) {
+          inserted.push(result.rows[0]);
+        }
+      }
+
+      res.status(201).json({ success: true, data: inserted, insertedCount: inserted.length });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error bulk creating:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to bulk create agent assignments" });
+    }
+  }
+);
+
+router.delete(
+  "/consultant/knowledge/agent-assignments/bulk",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { agent_id, document_ids } = req.body;
+
+      if (!agent_id || !Array.isArray(document_ids) || document_ids.length === 0) {
+        return res.status(400).json({ success: false, error: "agent_id and document_ids[] are required" });
+      }
+
+      let deletedCount = 0;
+      for (const docId of document_ids) {
+        const result = await db.execute(sql`
+          DELETE FROM agent_knowledge_assignments
+          WHERE consultant_id = ${consultantId} AND agent_id = ${agent_id} AND document_id = ${docId}
+          RETURNING id
+        `);
+        deletedCount += result.rows.length;
+      }
+
+      res.json({ success: true, data: { deletedCount } });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error bulk deleting:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to bulk delete agent assignments" });
+    }
+  }
+);
+
+router.get(
+  "/consultant/knowledge/agent-assignments/:agentId/documents",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+      const { agentId } = req.params;
+
+      const result = await db.execute(sql`
+        SELECT a.id as assignment_id, a.agent_id, a.document_id, a.created_at as assigned_at,
+               d.title, d.description, d.category, d.file_name, d.file_type, d.file_size,
+               d.status, d.priority, d.created_at as document_created_at, d.updated_at as document_updated_at
+        FROM agent_knowledge_assignments a
+        JOIN consultant_knowledge_documents d ON d.id = a.document_id
+        WHERE a.consultant_id = ${consultantId} AND a.agent_id = ${agentId}
+        ORDER BY d.title ASC
+      `);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error getting agent documents:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to get agent documents" });
+    }
+  }
+);
+
 export default router;

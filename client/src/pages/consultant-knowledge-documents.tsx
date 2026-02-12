@@ -96,6 +96,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
 import { cn } from "@/lib/utils";
+import AgentKnowledgeSection from "@/components/knowledge-base/AgentKnowledgeSection";
+import SystemDocumentsSection from "@/components/knowledge-base/SystemDocumentsSection";
 
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
@@ -1512,6 +1514,10 @@ export default function ConsultantKnowledgeDocuments() {
               </CollapsibleContent>
             </Collapsible>
           </Card>
+
+          <SystemDocumentsSection />
+
+          <AgentKnowledgeSection />
 
           <div className="flex gap-4">
             {!isMobile && (
