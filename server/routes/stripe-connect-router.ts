@@ -2315,9 +2315,17 @@ export async function sendPartnerWebhook(
       .from(partnerWebhookConfigs)
       .where(eq(partnerWebhookConfigs.consultantId, consultantId));
     
-    if (!config || !config.isEnabled || !config.webhookUrl) {
+    if (!config || !config.isEnabled) {
       console.log(`[Partner Webhook] Skipping - not configured or disabled for consultant ${consultantId}`);
       return { success: false, error: "Webhook not configured or disabled" };
+    }
+    
+    const shouldSendWebhook = config.notifyViaWebhook && !!config.webhookUrl;
+    const shouldAddToQueue = config.notifyViaQueue;
+    
+    if (!shouldSendWebhook && !shouldAddToQueue) {
+      console.log(`[Partner Webhook] Skipping - no notification channels enabled for consultant ${consultantId}`);
+      return { success: false, error: "No notification channels enabled" };
     }
     
     if (eventType === "gold_purchase" && !config.notifyOnGold) {
@@ -2382,37 +2390,41 @@ export async function sendPartnerWebhook(
     const payloadString = JSON.stringify(payload);
     const signature = signWebhookPayload(payloadString, config.secretKey);
     
-    console.log(`[Partner Webhook] Sending ${eventType} to ${config.webhookUrl} for consultant ${consultantId}`);
-    
     let responseStatus: number | undefined;
     let responseBody: string | undefined;
-    let success = false;
+    let success = true;
     let errorMessage: string | undefined;
     
-    try {
-      const response = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Partner-Signature': `sha256=${signature}`,
-          'X-Partner-Timestamp': timestamp,
-        },
-        body: payloadString,
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      });
-      
-      responseStatus = response.status;
-      responseBody = await response.text().catch(() => "");
-      success = response.ok;
-      
-      if (!success) {
-        errorMessage = `HTTP ${responseStatus}: ${responseBody?.substring(0, 200) || "Unknown error"}`;
+    if (shouldSendWebhook) {
+      console.log(`[Partner Webhook] Sending ${eventType} to ${config.webhookUrl} for consultant ${consultantId}`);
+      try {
+        const response = await fetch(config.webhookUrl!, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Partner-Signature': `sha256=${signature}`,
+            'X-Partner-Timestamp': timestamp,
+          },
+          body: payloadString,
+          signal: AbortSignal.timeout(10000),
+        });
+        
+        responseStatus = response.status;
+        responseBody = await response.text().catch(() => "");
+        success = response.ok;
+        
+        if (!success) {
+          errorMessage = `HTTP ${responseStatus}: ${responseBody?.substring(0, 200) || "Unknown error"}`;
+        }
+        
+        console.log(`[Partner Webhook] Response: ${responseStatus} - success: ${success}`);
+      } catch (fetchError: any) {
+        errorMessage = fetchError?.message || "Network error";
+        success = false;
+        console.error(`[Partner Webhook] Fetch error:`, errorMessage);
       }
-      
-      console.log(`[Partner Webhook] Response: ${responseStatus} - success: ${success}`);
-    } catch (fetchError: any) {
-      errorMessage = fetchError?.message || "Network error";
-      console.error(`[Partner Webhook] Fetch error:`, errorMessage);
+    } else {
+      console.log(`[Partner Webhook] External webhook skipped (channel disabled or no URL) for consultant ${consultantId}`);
     }
     
     await db.insert(partnerWebhookLogs).values({
@@ -2422,15 +2434,24 @@ export async function sendPartnerWebhook(
       responseStatus,
       responseBody: responseBody?.substring(0, 5000),
       success,
-      errorMessage,
+      errorMessage: errorMessage || (!shouldSendWebhook ? "Webhook esterno disabilitato, solo coda" : undefined),
     });
 
-    if (eventType !== "test") {
+    if (shouldAddToQueue && eventType !== "test") {
       try {
-        const syncSourceResult = await db.execute<any>(
-          sql`SELECT id FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
-        );
-        const syncSourceRows = syncSourceResult.rows || [];
+        const linkedSourceId = config.linkedSyncSourceId;
+        let syncSourceResult;
+        if (linkedSourceId) {
+          syncSourceResult = await db.execute<any>(
+            sql`SELECT id FROM dataset_sync_sources WHERE id = ${linkedSourceId} AND consultant_id = ${consultantId} AND is_active = true LIMIT 1`
+          );
+        }
+        if (!linkedSourceId || !(syncSourceResult?.rows?.length)) {
+          syncSourceResult = await db.execute<any>(
+            sql`SELECT id FROM dataset_sync_sources WHERE consultant_id = ${consultantId} AND is_active = true ORDER BY created_at DESC LIMIT 1`
+          );
+        }
+        const syncSourceRows = syncSourceResult?.rows || [];
         const sourceId = syncSourceRows.length > 0 ? syncSourceRows[0].id : null;
 
         await db.execute(sql`
@@ -2442,6 +2463,8 @@ export async function sendPartnerWebhook(
       } catch (queueErr: any) {
         console.warn(`[Partner Webhook] Could not add to partner queue:`, queueErr?.message);
       }
+    } else if (!shouldAddToQueue) {
+      console.log(`[Partner Webhook] Queue skipped (channel disabled) for consultant ${consultantId}`);
     }
     
     return { success, error: errorMessage };
@@ -2468,6 +2491,8 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
         notifyOnGold: true,
         notifyOnSilver: false,
         linkedSyncSourceId: null,
+        notifyViaQueue: true,
+        notifyViaWebhook: true,
       });
     }
     
@@ -2479,6 +2504,8 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
       notifyOnGold: config.notifyOnGold,
       notifyOnSilver: config.notifyOnSilver,
       linkedSyncSourceId: config.linkedSyncSourceId,
+      notifyViaQueue: config.notifyViaQueue,
+      notifyViaWebhook: config.notifyViaWebhook,
     });
   } catch (error: any) {
     console.error("[Partner Webhook Config GET] Error:", error);
@@ -2489,7 +2516,7 @@ router.get("/partner-webhook/config", authenticateToken, requireRole("consultant
 router.post("/partner-webhook/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, regenerateSecret, linkedSyncSourceId } = req.body;
+    const { webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, regenerateSecret, linkedSyncSourceId, notifyViaQueue, notifyViaWebhook } = req.body;
     
     const [existingConfig] = await db.select()
       .from(partnerWebhookConfigs)
@@ -2501,6 +2528,8 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
         isEnabled: isEnabled ?? existingConfig.isEnabled,
         notifyOnGold: notifyOnGold ?? existingConfig.notifyOnGold,
         notifyOnSilver: notifyOnSilver ?? existingConfig.notifyOnSilver,
+        notifyViaQueue: notifyViaQueue ?? existingConfig.notifyViaQueue,
+        notifyViaWebhook: notifyViaWebhook ?? existingConfig.notifyViaWebhook,
         updatedAt: new Date(),
       };
       
@@ -2528,6 +2557,8 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
           notifyOnGold: updated.notifyOnGold,
           notifyOnSilver: updated.notifyOnSilver,
           linkedSyncSourceId: updated.linkedSyncSourceId,
+          notifyViaQueue: updated.notifyViaQueue,
+          notifyViaWebhook: updated.notifyViaWebhook,
         }
       });
     } else {
@@ -2539,6 +2570,8 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
         notifyOnGold: notifyOnGold ?? true,
         notifyOnSilver: notifyOnSilver ?? false,
         linkedSyncSourceId: linkedSyncSourceId || null,
+        notifyViaQueue: notifyViaQueue ?? true,
+        notifyViaWebhook: notifyViaWebhook ?? true,
       }).returning();
       
       res.json({
@@ -2550,6 +2583,8 @@ router.post("/partner-webhook/config", authenticateToken, requireRole("consultan
           notifyOnGold: created.notifyOnGold,
           notifyOnSilver: created.notifyOnSilver,
           linkedSyncSourceId: created.linkedSyncSourceId,
+          notifyViaQueue: created.notifyViaQueue,
+          notifyViaWebhook: created.notifyViaWebhook,
         }
       });
     }

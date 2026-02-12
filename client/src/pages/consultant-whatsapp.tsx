@@ -297,6 +297,8 @@ function PartnerWebhookCard() {
   const [secretKey, setSecretKey] = useState("");
   const [isConfigured, setIsConfigured] = useState(false);
   const [linkedSyncSourceId, setLinkedSyncSourceId] = useState<string | undefined>(undefined);
+  const [notifyViaQueue, setNotifyViaQueue] = useState(true);
+  const [notifyViaWebhook, setNotifyViaWebhook] = useState(true);
 
   const syncSourcesQuery = useQuery({
     queryKey: ["/api/dataset-sync/sources"],
@@ -334,6 +336,8 @@ function PartnerWebhookCard() {
       setSecretKey(configQuery.data.secretKey || "");
       setIsConfigured(configQuery.data.configured || false);
       setLinkedSyncSourceId(configQuery.data.linkedSyncSourceId ? String(configQuery.data.linkedSyncSourceId) : undefined);
+      setNotifyViaQueue(configQuery.data.notifyViaQueue ?? true);
+      setNotifyViaWebhook(configQuery.data.notifyViaWebhook ?? true);
     }
   }, [configQuery.data]);
   
@@ -399,14 +403,14 @@ function PartnerWebhookCard() {
         <Alert className="bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-800">
           <Info className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-800 dark:text-orange-200 text-sm">
-            Quando un cliente acquista tramite Stripe, il sistema invierà un webhook al tuo partner con i dettagli dell'acquisto (email, nome, telefono, tier, data).
+            Quando un cliente acquista tramite Stripe, il sistema notificherà il tuo partner con i dettagli dell'acquisto (email, nome, telefono, tier, data). Scegli come notificare: coda interna, webhook esterno, o entrambi.
           </AlertDescription>
         </Alert>
         
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-medium">Abilita Notifiche Webhook</Label>
+              <Label className="font-medium">Abilita Notifiche Partner</Label>
               <p className="text-xs text-muted-foreground">Attiva l'invio automatico di notifiche al partner</p>
             </div>
             <Switch
@@ -414,7 +418,55 @@ function PartnerWebhookCard() {
               onCheckedChange={(checked) => setIsEnabled(checked)}
             />
           </div>
+
+          <div className="space-y-3">
+            <Label className="font-medium">Canali di notifica:</Label>
+            <p className="text-xs text-muted-foreground">Scegli uno o entrambi i canali per notificare il partner</p>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-900/50">
+                <Checkbox
+                  id="notifyViaQueue"
+                  checked={notifyViaQueue}
+                  onCheckedChange={(checked) => setNotifyViaQueue(checked as boolean)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="notifyViaQueue" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                    <Database className="h-4 w-4 text-blue-500" />
+                    Coda Partner Dashboard (interna)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Aggiunge il cliente alla coda nella Partner Dashboard. Il partner potrà caricare i file direttamente dal browser.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-900/50">
+                <Checkbox
+                  id="notifyViaWebhook"
+                  checked={notifyViaWebhook}
+                  onCheckedChange={(checked) => setNotifyViaWebhook(checked as boolean)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="notifyViaWebhook" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                    <Webhook className="h-4 w-4 text-orange-500" />
+                    Webhook Esterno (URL)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Invia una richiesta POST all'URL configurato sotto. Ideale per integrazioni con sistemi esterni del partner.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {!notifyViaQueue && !notifyViaWebhook && isEnabled && (
+              <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                  Seleziona almeno un canale di notifica, altrimenti nessuna notifica verrà inviata.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
           
+          {notifyViaQueue && (
           <div className="space-y-2">
             <Label className="font-medium">Sorgente Dati Collegata</Label>
             {syncSourcesQuery.isLoading ? (
@@ -465,7 +517,9 @@ function PartnerWebhookCard() {
               </>
             )}
           </div>
+          )}
 
+          {notifyViaWebhook && (
           <div className="space-y-2">
             <Label htmlFor="webhookUrl">URL Webhook Partner</Label>
             <Input
@@ -476,6 +530,7 @@ function PartnerWebhookCard() {
             />
             <p className="text-xs text-muted-foreground">L'URL dove verranno inviate le notifiche POST</p>
           </div>
+          )}
           
           <div className="space-y-3">
             <Label className="font-medium">Notifica per:</Label>
@@ -518,7 +573,7 @@ function PartnerWebhookCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => saveMutation.mutate({ regenerateSecret: true, webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
+                  onClick={() => saveMutation.mutate({ regenerateSecret: true, webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, notifyViaQueue, notifyViaWebhook, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
                   disabled={saveMutation.isPending}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -530,14 +585,14 @@ function PartnerWebhookCard() {
           
           <div className="flex gap-2 pt-2">
             <Button
-              onClick={() => saveMutation.mutate({ webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
+              onClick={() => saveMutation.mutate({ webhookUrl, isEnabled, notifyOnGold, notifyOnSilver, notifyViaQueue, notifyViaWebhook, linkedSyncSourceId: linkedSyncSourceId ? parseInt(linkedSyncSourceId) : undefined })}
               disabled={saveMutation.isPending}
               className="bg-orange-500 hover:bg-orange-600"
             >
               {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Salva Configurazione
             </Button>
-            {isConfigured && webhookUrl && (
+            {isConfigured && (notifyViaWebhook && webhookUrl || notifyViaQueue) && (
               <Button
                 variant="outline"
                 onClick={() => testMutation.mutate()}

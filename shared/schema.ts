@@ -865,6 +865,8 @@ export const partnerWebhookConfigs = pgTable("partner_webhook_configs", {
   notifyOnGold: boolean("notify_on_gold").default(true).notNull(),
   notifyOnSilver: boolean("notify_on_silver").default(false).notNull(),
   linkedSyncSourceId: integer("linked_sync_source_id"),
+  notifyViaQueue: boolean("notify_via_queue").default(true).notNull(),
+  notifyViaWebhook: boolean("notify_via_webhook").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
