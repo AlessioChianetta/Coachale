@@ -91,6 +91,8 @@ interface FormData {
   level2ShortDescription: string;
   level2MonthlyPriceEuros: string;
   level2YearlyPriceEuros: string;
+  level2AnnualOneTimePriceEuros: string;
+  level2OneTimePriceEuros: string;
   level2Features: string[];
   level2Badge: string;
   level2CtaText: string;
@@ -99,6 +101,8 @@ interface FormData {
   level3ShortDescription: string;
   level3MonthlyPriceEuros: string;
   level3YearlyPriceEuros: string;
+  level3AnnualOneTimePriceEuros: string;
+  level3OneTimePriceEuros: string;
   level3Features: string[];
   level3Badge: string;
   level3CtaText: string;
@@ -140,6 +144,8 @@ const defaultFormData: FormData = {
   level2ShortDescription: "Accesso illimitato e personalizzato",
   level2MonthlyPriceEuros: "49.00",
   level2YearlyPriceEuros: "490.00",
+  level2AnnualOneTimePriceEuros: "",
+  level2OneTimePriceEuros: "",
   level2Features: [
     "Messaggi illimitati",
     "Tutto del piano Bronze",
@@ -154,6 +160,8 @@ const defaultFormData: FormData = {
   level3ShortDescription: "Piattaforma completa con dashboard",
   level3MonthlyPriceEuros: "99.00",
   level3YearlyPriceEuros: "990.00",
+  level3AnnualOneTimePriceEuros: "",
+  level3OneTimePriceEuros: "",
   level3Features: [
     "Accesso completo al software",
     "Tutto del piano Argento",
@@ -275,6 +283,8 @@ export default function ConsultantPricingSettingsPage() {
         level2ShortDescription: config.level2ShortDescription || defaultFormData.level2ShortDescription,
         level2MonthlyPriceEuros: centsToEuros(config.level2MonthlyPriceCents || config.level2PriceCents) || defaultFormData.level2MonthlyPriceEuros,
         level2YearlyPriceEuros: centsToEuros(config.level2YearlyPriceCents) || defaultFormData.level2YearlyPriceEuros,
+        level2AnnualOneTimePriceEuros: config.level2AnnualOneTimePriceCents ? centsToEuros(config.level2AnnualOneTimePriceCents) : "",
+        level2OneTimePriceEuros: config.level2OneTimePriceCents ? centsToEuros(config.level2OneTimePriceCents) : "",
         level2Features: config.level2Features?.length > 0 ? config.level2Features : defaultFormData.level2Features,
         level2Badge: config.level2Badge || defaultFormData.level2Badge,
         level2CtaText: config.level2CtaText || defaultFormData.level2CtaText,
@@ -283,6 +293,8 @@ export default function ConsultantPricingSettingsPage() {
         level3ShortDescription: config.level3ShortDescription || defaultFormData.level3ShortDescription,
         level3MonthlyPriceEuros: centsToEuros(config.level3MonthlyPriceCents || config.level3PriceCents) || defaultFormData.level3MonthlyPriceEuros,
         level3YearlyPriceEuros: centsToEuros(config.level3YearlyPriceCents) || defaultFormData.level3YearlyPriceEuros,
+        level3AnnualOneTimePriceEuros: config.level3AnnualOneTimePriceCents ? centsToEuros(config.level3AnnualOneTimePriceCents) : "",
+        level3OneTimePriceEuros: config.level3OneTimePriceCents ? centsToEuros(config.level3OneTimePriceCents) : "",
         level3Features: config.level3Features?.length > 0 ? config.level3Features : defaultFormData.level3Features,
         level3Badge: config.level3Badge || defaultFormData.level3Badge,
         level3CtaText: config.level3CtaText || defaultFormData.level3CtaText,
@@ -356,6 +368,8 @@ export default function ConsultantPricingSettingsPage() {
           level2ShortDescription: data.level2ShortDescription,
           level2MonthlyPriceCents: eurosToCents(data.level2MonthlyPriceEuros),
           level2YearlyPriceCents: eurosToCents(data.level2YearlyPriceEuros),
+          ...(data.level2AnnualOneTimePriceEuros ? { level2AnnualOneTimePriceCents: eurosToCents(data.level2AnnualOneTimePriceEuros) } : {}),
+          ...(data.level2OneTimePriceEuros ? { level2OneTimePriceCents: eurosToCents(data.level2OneTimePriceEuros) } : {}),
           level2Features: data.level2Features,
           level2Badge: data.level2Badge,
           level2CtaText: data.level2CtaText,
@@ -364,6 +378,8 @@ export default function ConsultantPricingSettingsPage() {
           level3ShortDescription: data.level3ShortDescription,
           level3MonthlyPriceCents: eurosToCents(data.level3MonthlyPriceEuros),
           level3YearlyPriceCents: eurosToCents(data.level3YearlyPriceEuros),
+          ...(data.level3AnnualOneTimePriceEuros ? { level3AnnualOneTimePriceCents: eurosToCents(data.level3AnnualOneTimePriceEuros) } : {}),
+          ...(data.level3OneTimePriceEuros ? { level3OneTimePriceCents: eurosToCents(data.level3OneTimePriceEuros) } : {}),
           level3Features: data.level3Features,
           level3Badge: data.level3Badge,
           level3CtaText: data.level3CtaText,
@@ -939,6 +955,86 @@ export default function ConsultantPricingSettingsPage() {
                             placeholder="990.00"
                             value={formData.level3YearlyPriceEuros}
                             onChange={(e) => updateField("level3YearlyPriceEuros", e.target.value)}
+                            className="pl-6 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-start">
+                        <div>
+                          <Label className="text-xs font-medium">Annuale Una Tantum</Label>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">(paga 1 volta, vale 1 anno)</p>
+                        </div>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-green-600 font-medium">Gratis</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <div className="relative">
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                          <Input
+                            id="level2AnnualOneTimePriceEuros"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Opzionale"
+                            value={formData.level2AnnualOneTimePriceEuros}
+                            onChange={(e) => updateField("level2AnnualOneTimePriceEuros", e.target.value)}
+                            className="pl-6 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 border-t">
+                        <div className="relative">
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                          <Input
+                            id="level3AnnualOneTimePriceEuros"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Opzionale"
+                            value={formData.level3AnnualOneTimePriceEuros}
+                            onChange={(e) => updateField("level3AnnualOneTimePriceEuros", e.target.value)}
+                            className="pl-6 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-3 text-sm border-t lg:border-r flex items-start">
+                        <div>
+                          <Label className="text-xs font-medium">Una Tantum</Label>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">(per sempre)</p>
+                        </div>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <span className="text-xs text-green-600 font-medium">Gratis</span>
+                      </div>
+                      <div className="p-2 border-t lg:border-r">
+                        <div className="relative">
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                          <Input
+                            id="level2OneTimePriceEuros"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Opzionale"
+                            value={formData.level2OneTimePriceEuros}
+                            onChange={(e) => updateField("level2OneTimePriceEuros", e.target.value)}
+                            className="pl-6 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-2 border-t">
+                        <div className="relative">
+                          <Euro className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                          <Input
+                            id="level3OneTimePriceEuros"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Opzionale"
+                            value={formData.level3OneTimePriceEuros}
+                            onChange={(e) => updateField("level3OneTimePriceEuros", e.target.value)}
                             className="pl-6 h-8 text-sm"
                           />
                         </div>

@@ -233,7 +233,9 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid level. Must be '2' or '3'" });
     }
     
-    const validBillingPeriod = billingPeriod === 'yearly' ? 'yearly' : 'monthly';
+    const validBillingPeriods = ['monthly', 'yearly', 'annual_onetime', 'onetime'];
+    const validBillingPeriod = validBillingPeriods.includes(billingPeriod) ? billingPeriod : 'monthly';
+    const isOneTimePayment = validBillingPeriod === 'annual_onetime' || validBillingPeriod === 'onetime';
     
     const [consultant] = await db.select().from(users)
       .where(eq(users.pricingPageSlug, consultantSlug));
@@ -260,19 +262,31 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       level3MonthlyPriceCents?: number;
       level2YearlyPriceCents?: number;
       level3YearlyPriceCents?: number;
+      level2AnnualOneTimePriceCents?: number;
+      level2OneTimePriceCents?: number;
+      level3AnnualOneTimePriceCents?: number;
+      level3OneTimePriceCents?: number;
       level2Name?: string;
       level3Name?: string;
     } | null;
     
     let price: number;
     if (level === "2") {
-      if (validBillingPeriod === 'yearly') {
+      if (validBillingPeriod === 'annual_onetime') {
+        price = pricingConfig?.level2AnnualOneTimePriceCents || (pricingConfig?.level2YearlyPriceCents || 49000);
+      } else if (validBillingPeriod === 'onetime') {
+        price = pricingConfig?.level2OneTimePriceCents || (pricingConfig?.level2YearlyPriceCents ? pricingConfig.level2YearlyPriceCents * 2 : 98000);
+      } else if (validBillingPeriod === 'yearly') {
         price = pricingConfig?.level2YearlyPriceCents || (pricingConfig?.level2PriceCents ? pricingConfig.level2PriceCents * 12 : 29900);
       } else {
         price = pricingConfig?.level2MonthlyPriceCents || pricingConfig?.level2PriceCents || 2900;
       }
     } else {
-      if (validBillingPeriod === 'yearly') {
+      if (validBillingPeriod === 'annual_onetime') {
+        price = pricingConfig?.level3AnnualOneTimePriceCents || (pricingConfig?.level3YearlyPriceCents || 99000);
+      } else if (validBillingPeriod === 'onetime') {
+        price = pricingConfig?.level3OneTimePriceCents || (pricingConfig?.level3YearlyPriceCents ? pricingConfig.level3YearlyPriceCents * 2 : 198000);
+      } else if (validBillingPeriod === 'yearly') {
         price = pricingConfig?.level3YearlyPriceCents || (pricingConfig?.level3PriceCents ? pricingConfig.level3PriceCents * 12 : 59900);
       } else {
         price = pricingConfig?.level3MonthlyPriceCents || pricingConfig?.level3PriceCents || 5900;
@@ -292,66 +306,98 @@ router.post("/stripe/create-checkout", async (req: Request, res: Response) => {
       ? (pricingConfig?.level2Name || "Licenza Argento")
       : (pricingConfig?.level3Name || "Licenza Deluxe");
     
-    const intervalLabel = validBillingPeriod === 'yearly' ? 'anno' : 'mese';
+    const billingLabels: Record<string, string> = {
+      'monthly': 'mese',
+      'yearly': 'anno',
+      'annual_onetime': 'pagamento unico annuale',
+      'onetime': 'pagamento unico a vita',
+    };
+    const intervalLabel = billingLabels[validBillingPeriod] || 'mese';
     
     // Hash password before storing in metadata (for security)
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [{
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: productName,
-            description: `Abbonamento ${level === "2" ? "Argento" : "Deluxe"} ai servizi AI (${intervalLabel})`,
-          },
-          unit_amount: price,
-          recurring: {
-            interval: validBillingPeriod === 'yearly' ? 'year' : 'month',
-          },
-        },
-        quantity: 1,
-      }],
-      subscription_data: {
-        application_fee_percent: applicationFeePercent,
-        transfer_data: {
-          destination: license.stripeConnectAccountId,
-        },
-        metadata: {
-          consultantId: consultant.id,
-          consultantSlug,
-          clientEmail,
-          clientName: clientName || "",
-          level,
-          agentId: agentId || "",
-          billingPeriod: validBillingPeriod,
-          firstName,
-          lastName,
-          hashedPassword,
-          phone: phone || "",
-        },
-      },
-      customer_email: clientEmail || undefined,
-      metadata: {
-        consultantId: consultant.id,
-        consultantSlug,
-        clientEmail,
-        clientName: clientName || "",
-        level,
-        agentId: agentId || "",
-        billingPeriod: validBillingPeriod,
-        firstName,
-        lastName,
-        hashedPassword,
-        phone: phone || "",
-      },
-      success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
-    });
+    const commonMetadata = {
+      consultantId: consultant.id,
+      consultantSlug,
+      clientEmail,
+      clientName: clientName || "",
+      level,
+      agentId: agentId || "",
+      billingPeriod: validBillingPeriod,
+      firstName,
+      lastName,
+      hashedPassword,
+      phone: phone || "",
+    };
     
-    console.log(`[Stripe Checkout] Subscription session created for ${clientEmail} (Level ${level}, ${validBillingPeriod}) - Consultant: ${consultant.id}`);
+    let session;
+    
+    if (isOneTimePayment) {
+      const applicationFeeAmount = Math.round(price * applicationFeePercent / 100);
+      const description = validBillingPeriod === 'annual_onetime'
+        ? `Pagamento unico - valido 1 anno`
+        : `Pagamento unico - accesso a vita`;
+      
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: productName,
+              description: `${description} - ${level === "2" ? "Argento" : "Deluxe"} AI`,
+            },
+            unit_amount: price,
+          },
+          quantity: 1,
+        }],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: {
+            destination: license.stripeConnectAccountId,
+          },
+          metadata: commonMetadata,
+        },
+        customer_email: clientEmail || undefined,
+        metadata: commonMetadata,
+        success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
+      });
+    } else {
+      session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: productName,
+              description: `Abbonamento ${level === "2" ? "Argento" : "Deluxe"} ai servizi AI (${intervalLabel})`,
+            },
+            unit_amount: price,
+            recurring: {
+              interval: validBillingPeriod === 'yearly' ? 'year' : 'month',
+            },
+          },
+          quantity: 1,
+        }],
+        subscription_data: {
+          application_fee_percent: applicationFeePercent,
+          transfer_data: {
+            destination: license.stripeConnectAccountId,
+          },
+          metadata: commonMetadata,
+        },
+        customer_email: clientEmail || undefined,
+        metadata: commonMetadata,
+        success_url: `${baseUrl}/c/${consultantSlug}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/c/${consultantSlug}/pricing?canceled=true`,
+      });
+    }
+    
+    console.log(`[Stripe Checkout] ${isOneTimePayment ? 'Payment' : 'Subscription'} session created for ${clientEmail} (Level ${level}, ${validBillingPeriod}) - Consultant: ${consultant.id}`);
     
     res.json({ checkoutUrl: session.url });
   } catch (error) {
@@ -948,9 +994,12 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           break;
         }
         
-        // Idempotency check: skip if subscription already exists for this Stripe subscription ID
-        // This is the primary idempotency mechanism - Stripe subscription IDs are unique
+        // Idempotency check: skip if subscription already exists for this Stripe subscription ID or payment intent
+        // This is the primary idempotency mechanism - Stripe IDs are unique
         const stripeSubscriptionId = session.subscription || null;
+        const stripePaymentIntentId = session.payment_intent || null;
+        const isOneTimePurchase = billingPeriod === 'annual_onetime' || billingPeriod === 'onetime';
+        
         if (stripeSubscriptionId) {
           const [existingSubscription] = await db.select()
             .from(clientLevelSubscriptions)
@@ -959,6 +1008,23 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           
           if (existingSubscription) {
             console.log(`[Stripe Webhook] Subscription already processed: ${stripeSubscriptionId}. Acknowledging to prevent retry.`);
+            break;
+          }
+        }
+        
+        if (isOneTimePurchase && stripePaymentIntentId) {
+          const [existingPayment] = await db.select()
+            .from(clientLevelSubscriptions)
+            .where(and(
+              eq(clientLevelSubscriptions.clientEmail, clientEmail),
+              eq(clientLevelSubscriptions.consultantId, consultantId),
+              eq(clientLevelSubscriptions.status, "active"),
+              sql`${clientLevelSubscriptions.stripeSubscriptionId} = ${stripePaymentIntentId}`
+            ))
+            .limit(1);
+          
+          if (existingPayment) {
+            console.log(`[Stripe Webhook] One-time payment already processed: ${stripePaymentIntentId}. Acknowledging.`);
             break;
           }
         }
@@ -1013,6 +1079,13 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           console.log(`[Stripe Webhook] Bronze->Silver/Gold UPGRADE for ${clientEmail}: using existing password, migrating preferences`);
         }
         
+        let endDate: Date | null = null;
+        if (billingPeriod === 'annual_onetime') {
+          endDate = new Date();
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+        // 'onetime' = lifetime, no endDate needed
+        
         const [subscription] = await db.insert(clientLevelSubscriptions).values({
           consultantId,
           clientEmail,
@@ -1021,15 +1094,13 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           level: level as "2" | "3",
           status: "active",
           startDate: new Date(),
+          endDate: endDate || undefined,
           stripeCustomerId: session.customer || null,
-          stripeSubscriptionId: session.subscription || null,
-          tempPassword: null, // NEVER store or send plain text passwords
+          stripeSubscriptionId: isOneTimePurchase ? (stripePaymentIntentId || null) : (session.subscription || null),
+          tempPassword: null,
           passwordHash: hashedPassword,
-          paymentSource: "stripe_connect", // Track origin for revenue sharing vs 100% commission
-          // If upgrading from Bronze or user provided password, they don't need to change
-          // Otherwise they need to change the auto-generated password
+          paymentSource: "stripe_connect",
           mustChangePassword: !isUpgrade && !userProvidedPassword,
-          // Migrate onboarding state from Bronze or initialize fresh
           ...migratedPreferences,
         }).returning();
         
@@ -1230,7 +1301,8 @@ router.post("/stripe/webhook", async (req: Request, res: Response) => {
           console.error(`[Stripe Webhook] Account creation/email failed:`, accountError.message);
         }
         
-        console.log(`[Stripe Webhook] Subscription created for ${clientEmail} (Level ${level}, ${billingPeriod || 'monthly'}) - Consultant: ${consultantId}`);
+        const purchaseType = isOneTimePurchase ? 'one-time payment' : 'subscription';
+        console.log(`[Stripe Webhook] ${purchaseType} created for ${clientEmail} (Level ${level}, ${billingPeriod || 'monthly'}${endDate ? ', expires: ' + endDate.toISOString() : ''}) - Consultant: ${consultantId}`);
         
         // Send webhook notification to partner if configured
         if (level === "3") {

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +109,8 @@ interface PricingData {
     level2ShortDescription: string | null;
     level2MonthlyPrice: number;
     level2YearlyPrice: number;
+    level2AnnualOneTimePrice: number | null;
+    level2OneTimePrice: number | null;
     level2Features: string[];
     level2Badge: string;
     level2CtaText: string;
@@ -119,6 +120,8 @@ interface PricingData {
     level3ShortDescription: string | null;
     level3MonthlyPrice: number;
     level3YearlyPrice: number;
+    level3AnnualOneTimePrice: number | null;
+    level3OneTimePrice: number | null;
     level3Features: string[];
     level3Badge: string;
     level3CtaText: string;
@@ -311,7 +314,8 @@ export default function PublicPricing() {
   const { slug } = useParams<{ slug: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [isAnnual, setIsAnnual] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly' | 'annual_onetime' | 'onetime'>('monthly');
+  const isAnnual = billingPeriod === 'yearly';
   
   const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<"2" | "3" | null>(null);
@@ -348,9 +352,9 @@ export default function PublicPricing() {
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
 
   const checkoutMutation = useMutation({
-    mutationFn: async ({ level, isAnnual: annual, formData }: { 
+    mutationFn: async ({ level, billingPeriod: bp, formData }: { 
       level: "2" | "3"; 
-      isAnnual: boolean;
+      billingPeriod: 'monthly' | 'yearly' | 'annual_onetime' | 'onetime';
       formData: RegistrationForm;
     }) => {
       const agentId = level === "2" 
@@ -364,7 +368,7 @@ export default function PublicPricing() {
           consultantSlug: slug,
           agentId,
           level,
-          billingPeriod: annual ? "yearly" : "monthly",
+          billingPeriod: bp,
           clientEmail: formData.email,
           clientName: `${formData.firstName} ${formData.lastName}`.trim(),
           firstName: formData.firstName,
@@ -455,7 +459,7 @@ export default function PublicPricing() {
     setRegistrationDialogOpen(false);
     checkoutMutation.mutate({ 
       level: selectedLevel, 
-      isAnnual,
+      billingPeriod,
       formData: registrationForm 
     });
   };
@@ -470,17 +474,54 @@ export default function PublicPricing() {
     return Math.round(discounted / 12);
   };
 
-  const getDisplayPrice = (monthlyPrice: number, yearlyPrice?: number) => {
-    if (isAnnual) {
+  const getDisplayPrice = (level: "2" | "3", monthlyPrice: number, yearlyPrice?: number) => {
+    const pricing = data?.pricing;
+    if (billingPeriod === 'annual_onetime') {
+      const price = level === "2" ? pricing?.level2AnnualOneTimePrice : pricing?.level3AnnualOneTimePrice;
+      return price || 0;
+    }
+    if (billingPeriod === 'onetime') {
+      const price = level === "2" ? pricing?.level2OneTimePrice : pricing?.level3OneTimePrice;
+      return price || 0;
+    }
+    if (billingPeriod === 'yearly') {
       return yearlyPrice ? Math.round(yearlyPrice / 12) : calculateAnnualPrice(monthlyPrice);
     }
     return monthlyPrice;
+  };
+
+  const getPriceSuffix = () => {
+    if (billingPeriod === 'annual_onetime') return "";
+    if (billingPeriod === 'onetime') return "";
+    return "/mese";
+  };
+
+  const getPriceNote = () => {
+    if (billingPeriod === 'annual_onetime') return "pagamento unico, vale 1 anno";
+    if (billingPeriod === 'onetime') return "pagamento unico, per sempre";
+    if (billingPeriod === 'yearly') return null;
+    return null;
   };
 
   const getSavings = (monthlyPrice: number) => {
     const annualMonthly = calculateAnnualPrice(monthlyPrice);
     const savings = (monthlyPrice - annualMonthly) * 12;
     return savings;
+  };
+
+  const availableBillingPeriods = () => {
+    const periods: { key: 'monthly' | 'yearly' | 'annual_onetime' | 'onetime'; label: string }[] = [
+      { key: 'monthly', label: 'Mensile' },
+      { key: 'yearly', label: 'Annuale' },
+    ];
+    const p = data?.pricing;
+    if (p?.level2AnnualOneTimePrice || p?.level3AnnualOneTimePrice) {
+      periods.push({ key: 'annual_onetime', label: 'Annuale Una Tantum' });
+    }
+    if (p?.level2OneTimePrice || p?.level3OneTimePrice) {
+      periods.push({ key: 'onetime', label: 'Una Tantum' });
+    }
+    return periods;
   };
 
   if (error) {
@@ -753,28 +794,28 @@ export default function PublicPricing() {
         )}
 
         {/* Billing Toggle */}
-        <div id="pricing-section" className="flex items-center justify-center gap-4 mb-12 pt-8">
-          <span className={cn(
-            "text-sm font-medium transition-colors",
-            !isAnnual ? "text-slate-900" : "text-slate-500"
-          )}>
-            Mensile
-          </span>
-          <Switch
-            checked={isAnnual}
-            onCheckedChange={setIsAnnual}
-            className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-violet-600 data-[state=checked]:to-indigo-600"
-            style={accentColor && isAnnual ? { backgroundColor: accentColor } : undefined}
-          />
-          <span className={cn(
-            "text-sm font-medium transition-colors",
-            isAnnual ? "text-slate-900" : "text-slate-500"
-          )}>
-            Annuale
-          </span>
-          {isAnnual && (
+        <div id="pricing-section" className="flex flex-wrap items-center justify-center gap-2 mb-12 pt-8">
+          {availableBillingPeriods().map(option => (
+            <button
+              key={option.key}
+              onClick={() => setBillingPeriod(option.key)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium rounded-full transition-all border",
+                billingPeriod === option.key
+                  ? "text-white shadow-md border-transparent"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"
+              )}
+              style={billingPeriod === option.key 
+                ? { background: accentColor || "linear-gradient(to right, rgb(124 58 237), rgb(79 70 229))" }
+                : undefined
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+          {billingPeriod === 'yearly' && (
             <Badge 
-              className="ml-2"
+              className="ml-1"
               style={accentColor ? {
                 backgroundColor: `${accentColor}20`,
                 color: accentColor,
@@ -922,14 +963,17 @@ export default function PublicPricing() {
                       </h3>
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-5xl font-bold text-slate-900">
-                          €{getDisplayPrice(data?.pricing.level2MonthlyPrice || 29, data?.pricing.level2YearlyPrice)}
+                          €{getDisplayPrice("2", data?.pricing.level2MonthlyPrice || 29, data?.pricing.level2YearlyPrice)}
                         </span>
-                        <span className="text-slate-500">/mese</span>
+                        {getPriceSuffix() && <span className="text-slate-500">{getPriceSuffix()}</span>}
                       </div>
                       {isAnnual && (
                         <p className="text-xs text-emerald-600 font-medium">
                           Risparmi €{getSavings(data?.pricing.level2MonthlyPrice || 29)}/anno
                         </p>
+                      )}
+                      {getPriceNote() && (
+                        <p className="text-xs text-slate-500 font-medium">{getPriceNote()}</p>
                       )}
                       <p className="text-sm text-slate-500 min-h-[40px]">
                         {data?.pricing.level2ShortDescription || data?.pricing.level2Description}
@@ -997,14 +1041,17 @@ export default function PublicPricing() {
                       </h3>
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-5xl font-bold text-slate-900">
-                          €{getDisplayPrice(data?.pricing.level3MonthlyPrice || 59, data?.pricing.level3YearlyPrice)}
+                          €{getDisplayPrice("3", data?.pricing.level3MonthlyPrice || 59, data?.pricing.level3YearlyPrice)}
                         </span>
-                        <span className="text-slate-500">/mese</span>
+                        {getPriceSuffix() && <span className="text-slate-500">{getPriceSuffix()}</span>}
                       </div>
                       {isAnnual && (
                         <p className="text-xs text-emerald-600 font-medium">
                           Risparmi €{getSavings(data?.pricing.level3MonthlyPrice || 59)}/anno
                         </p>
+                      )}
+                      {getPriceNote() && (
+                        <p className="text-xs text-slate-500 font-medium">{getPriceNote()}</p>
                       )}
                       <p className="text-sm text-slate-500 min-h-[40px]">
                         {data?.pricing.level3ShortDescription || data?.pricing.level3Description}
@@ -1101,7 +1148,7 @@ export default function PublicPricing() {
                             {tierNames.silver}
                           </Badge>
                           <span className="text-xs md:text-sm font-normal text-slate-500">
-                            €{getDisplayPrice(data?.pricing.level2MonthlyPrice || 29)}/mese
+                            €{getDisplayPrice("2", data?.pricing.level2MonthlyPrice || 29, data?.pricing.level2YearlyPrice)}{getPriceSuffix()}
                           </span>
                         </div>
                       </th>
@@ -1109,7 +1156,7 @@ export default function PublicPricing() {
                         <div className="flex flex-col items-center gap-1">
                           <Badge className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200 text-xs md:text-sm">{tierNames.gold}</Badge>
                           <span className="text-xs md:text-sm font-normal text-slate-500">
-                            €{getDisplayPrice(data?.pricing.level3MonthlyPrice || 59)}/mese
+                            €{getDisplayPrice("3", data?.pricing.level3MonthlyPrice || 59, data?.pricing.level3YearlyPrice)}{getPriceSuffix()}
                           </span>
                         </div>
                       </th>
@@ -1507,15 +1554,17 @@ export default function PublicPricing() {
             
             <div className="pt-2 space-y-3">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-sm font-medium">Abbonamento:</span>
+                <span className="text-sm font-medium">
+                  {billingPeriod === 'onetime' || billingPeriod === 'annual_onetime' ? 'Pagamento:' : 'Abbonamento:'}
+                </span>
                 <span className="text-sm">
-                  {isAnnual ? "Annuale" : "Mensile"} - {" "}
+                  {billingPeriod === 'monthly' ? 'Mensile' : billingPeriod === 'yearly' ? 'Annuale' : billingPeriod === 'annual_onetime' ? 'Annuale Una Tantum' : 'Una Tantum'} - {" "}
                   <strong>
-                    {selectedLevel === "2" 
-                      ? `€${((isAnnual ? data?.pricing.level2YearlyPrice : data?.pricing.level2MonthlyPrice) || 0) / 100}`
-                      : `€${((isAnnual ? data?.pricing.level3YearlyPrice : data?.pricing.level3MonthlyPrice) || 0) / 100}`
-                    }
-                    {isAnnual ? "/anno" : "/mese"}
+                    €{selectedLevel ? getDisplayPrice(selectedLevel as "2" | "3", 
+                      selectedLevel === "2" ? (data?.pricing.level2MonthlyPrice || 29) : (data?.pricing.level3MonthlyPrice || 59),
+                      selectedLevel === "2" ? data?.pricing.level2YearlyPrice : data?.pricing.level3YearlyPrice
+                    ) : 0}
+                    {billingPeriod === 'monthly' ? '/mese' : billingPeriod === 'yearly' ? '/anno' : ''}
                   </strong>
                 </span>
               </div>

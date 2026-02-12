@@ -81,6 +81,8 @@ export const users = pgTable("users", {
     level2ShortDescription?: string;
     level2MonthlyPriceCents?: number;
     level2YearlyPriceCents?: number;
+    level2AnnualOneTimePriceCents?: number;
+    level2OneTimePriceCents?: number;
     level2Features?: string[];
     level2Badge?: string;
     level2CtaText?: string;
@@ -91,6 +93,8 @@ export const users = pgTable("users", {
     level3ShortDescription?: string;
     level3MonthlyPriceCents?: number;
     level3YearlyPriceCents?: number;
+    level3AnnualOneTimePriceCents?: number;
+    level3OneTimePriceCents?: number;
     level3Features?: string[];
     level3Badge?: string;
     level3CtaText?: string;

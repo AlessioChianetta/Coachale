@@ -117,6 +117,22 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       ? centsToEuros(config.level3YearlyPriceCents) 
       : Number((level3MonthlyPrice * 10).toFixed(2));
 
+    const level2AnnualOneTimePrice = config.level2AnnualOneTimePriceCents 
+      ? centsToEuros(config.level2AnnualOneTimePriceCents) 
+      : null;
+    
+    const level2OneTimePrice = config.level2OneTimePriceCents 
+      ? centsToEuros(config.level2OneTimePriceCents) 
+      : null;
+    
+    const level3AnnualOneTimePrice = config.level3AnnualOneTimePriceCents 
+      ? centsToEuros(config.level3AnnualOneTimePriceCents) 
+      : null;
+    
+    const level3OneTimePrice = config.level3OneTimePriceCents 
+      ? centsToEuros(config.level3OneTimePriceCents) 
+      : null;
+
     // Build comprehensive pricing response
     const pricing = {
       // Hero Section
@@ -141,6 +157,8 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       level2ShortDescription: config.level2ShortDescription || null,
       level2MonthlyPrice,
       level2YearlyPrice,
+      level2AnnualOneTimePrice,
+      level2OneTimePrice,
       level2Features: config.level2Features || [
         "Messaggi illimitati",
         "Tutto del piano Bronze",
@@ -157,6 +175,8 @@ router.get("/:slug/pricing", async (req: Request, res: Response) => {
       level3ShortDescription: config.level3ShortDescription || null,
       level3MonthlyPrice,
       level3YearlyPrice,
+      level3AnnualOneTimePrice,
+      level3OneTimePrice,
       level3Features: config.level3Features || [
         "Accesso completo al software",
         "Tutto del piano Argento",
