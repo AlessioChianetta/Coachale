@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -117,7 +116,6 @@ export default function SystemDocumentsSection() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState<DocumentForm>(emptyForm());
   const [agentsOpen, setAgentsOpen] = useState(false);
-  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -240,7 +238,6 @@ export default function SystemDocumentsSection() {
     setEditingDoc(null);
     setForm(emptyForm());
     setAgentsOpen(false);
-    setWhatsappOpen(false);
   };
 
   const openCreate = () => {
@@ -423,7 +420,7 @@ export default function SystemDocumentsSection() {
               {editingDoc ? "Modifica Documento di Sistema" : "Nuovo Documento di Sistema"}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 10rem)' }}>
             <div className="space-y-5 pb-2">
               <div className="space-y-2">
                 <Label htmlFor="sys-doc-title">Titolo *</Label>
@@ -529,57 +526,50 @@ export default function SystemDocumentsSection() {
                 </div>
 
                 {whatsappAgents.length > 0 && (
-                  <Collapsible open={whatsappOpen} onOpenChange={setWhatsappOpen}>
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <MessageCircle className="h-4 w-4 text-green-500" />
-                          <div>
-                            <p className="text-sm font-medium">Dipendenti WhatsApp</p>
-                            <p className="text-xs text-muted-foreground">
-                              {Object.values(form.target_whatsapp_agents).filter(Boolean).length} di {whatsappAgents.length} selezionati
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${whatsappOpen ? "rotate-180" : ""}`} />
+                  <div className="rounded-lg border p-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-green-500" />
+                      <div>
+                        <p className="text-sm font-medium">Dipendenti WhatsApp</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Object.values(form.target_whatsapp_agents).filter(Boolean).length} di {whatsappAgents.length} selezionati
+                        </p>
                       </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="grid grid-cols-1 gap-2 mt-2 pl-2">
-                        {whatsappAgents.map(agent => (
-                          <label
-                            key={agent.id}
-                            className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
-                          >
-                            <Checkbox
-                              checked={!!form.target_whatsapp_agents[agent.id]}
-                              onCheckedChange={(checked) =>
-                                setForm(f => ({
-                                  ...f,
-                                  target_whatsapp_agents: {
-                                    ...f.target_whatsapp_agents,
-                                    [agent.id]: !!checked,
-                                  },
-                                }))
-                              }
-                            />
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <MessageCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                              <span className="text-sm truncate">{agent.agent_name || "Agente senza nome"}</span>
-                              <Badge variant="outline" className="text-xs shrink-0 ml-auto">
-                                {agent.agent_type || "general"}
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {whatsappAgents.map(agent => (
+                        <label
+                          key={agent.id}
+                          className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={!!form.target_whatsapp_agents[agent.id]}
+                            onCheckedChange={(checked) =>
+                              setForm(f => ({
+                                ...f,
+                                target_whatsapp_agents: {
+                                  ...f.target_whatsapp_agents,
+                                  [agent.id]: !!checked,
+                                },
+                              }))
+                            }
+                          />
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <MessageCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                            <span className="text-sm truncate">{agent.agent_name || "Agente senza nome"}</span>
+                            <Badge variant="outline" className="text-xs shrink-0 ml-auto">
+                              {agent.agent_type || "general"}
+                            </Badge>
+                            {!agent.is_active && (
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                Inattivo
                               </Badge>
-                              {!agent.is_active && (
-                                <Badge variant="secondary" className="text-xs shrink-0">
-                                  Inattivo
-                                </Badge>
-                              )}
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 <Collapsible open={agentsOpen} onOpenChange={setAgentsOpen}>
@@ -624,7 +614,7 @@ export default function SystemDocumentsSection() {
                 </Collapsible>
               </div>
             </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="pt-4 border-t">
             <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
               Annulla
