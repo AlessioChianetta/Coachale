@@ -101,13 +101,17 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
   const [datasetName, setDatasetName] = useState(defaultName);
   const [selectedClientId, setSelectedClientId] = useState("");
 
-  const { data: clients = [] } = useQuery<Client[]>({
+  const { data: clients = [], isLoading: isLoadingClients, error: clientsError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
-    queryFn: () => apiRequest("/api/clients"),
+    queryFn: () => apiRequest("GET", "/api/clients"),
   });
 
+  console.log("[JoinPreview] clients query:", { clients, isLoadingClients, clientsError, count: clients.length });
+
+  const isClientSelected = selectedClientId && selectedClientId !== "__none__";
+
   const handleConfirm = () => {
-    const clientId = selectedClientId && selectedClientId !== "__none__" ? selectedClientId : undefined;
+    const clientId = isClientSelected ? selectedClientId : undefined;
     onConfirm(datasetName, joinResult.suggestedJoins, joinResult.primaryTable, joinResult.joinOrder, clientId);
   };
 
@@ -309,24 +313,31 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
       <div>
         <Label htmlFor="client-select" className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
           <Users className="h-4 w-4" />
-          Associa a un cliente (opzionale)
+          Associa a un cliente <span className="text-red-500">*</span>
         </Label>
-        <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+        <Select value={selectedClientId} onValueChange={setSelectedClientId} disabled={isCreating}>
           <SelectTrigger id="client-select" className="mt-2">
-            <SelectValue placeholder="Seleziona un cliente (opzionale)" />
+            <SelectValue placeholder="Seleziona il cliente..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Nessun cliente specifico</SelectItem>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.firstName && c.lastName ? `${c.firstName} ${c.lastName}` : c.username}
-              </SelectItem>
-            ))}
+            {isLoadingClients ? (
+              <SelectItem value="__loading__" disabled>Caricamento clienti...</SelectItem>
+            ) : clients.length === 0 ? (
+              <SelectItem value="__empty__" disabled>Nessun cliente trovato</SelectItem>
+            ) : (
+              clients.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.firstName && c.lastName ? `${c.firstName} ${c.lastName}` : c.username}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
-        <p className="text-xs text-slate-500 mt-1">
-          Se associ il dataset a un cliente, anche lui potra vederlo e interrogarlo.
-        </p>
+        {!isClientSelected && (
+          <p className="text-xs text-red-500 mt-1">
+            Seleziona un cliente per associare il dataset.
+          </p>
+        )}
       </div>
 
       <div>
@@ -349,7 +360,7 @@ export function JoinPreview({ files, joinResult, onConfirm, onCancel, isCreating
         </Button>
         <Button
           onClick={handleConfirm}
-          disabled={isCreating || !datasetName.trim()}
+          disabled={isCreating || !datasetName.trim() || !isClientSelected}
           className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           {isCreating ? (
