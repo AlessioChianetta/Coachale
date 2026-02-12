@@ -18,10 +18,11 @@ export interface JoinCandidate {
   targetFile: string;
   targetColumn: string;
   confidence: number;
-  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern";
+  matchType: "exact_name" | "overlap_only" | "pk_fk_pattern" | "semantic_match";
   valueOverlapPercent: number;
   joinType: "LEFT" | "INNER";
   explanation: string;
+  rawScore: number;
 }
 
 export interface JoinDetectionResult {
@@ -225,7 +226,13 @@ function computeValueOverlap(valuesA: any[], valuesB: any[]): { overlapPct: numb
   return { overlapPct, intersectionSize };
 }
 
-const NAME_BLACKLIST = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice"];
+// Added extra terms to blacklist to avoid joining on prices or quantities
+// Added "cost", "costo", "revenue" to prevent financial joins
+const NAME_BLACKLIST = ["id", "name", "date", "description", "note", "tipo", "type", "value", "valore", "status", "code", "codice", "quantita", "quantity", "prezzo", "price", "importo", "amount", "cost", "costo", "revenue"];
+
+// Helper to check for generic terms
+const GENERIC_TERMS = ["tipo", "type", "status", "stato", "cat", "mode", "flag", "state"];
+const STRONG_ID_ROOTS = ["id", "cod", "key", "num"];
 
 interface ScoredCandidate extends JoinCandidate {
   rawScore: number;
@@ -258,6 +265,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           if (!areTypesCompatible(typeA, typeB)) continue;
 
           const { overlapPct, intersectionSize } = computeValueOverlap(valuesA, valuesB);
+          // Allow slightly lower overlap if names match strongly, otherwise require 1%
           if (intersectionSize === 0 || overlapPct < 0.01) continue;
 
           const normA = normalizeColumnName(colA);
@@ -265,37 +273,75 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
 
           let score = 0;
 
+          // 1. Base Score: Overlap Percentage (0-100)
           score += Math.round(overlapPct * 100);
 
           const isExactName = normA === normB;
           const isBlacklisted = NAME_BLACKLIST.includes(normA);
 
+          // 2. Exact Name Match Bonus
           if (isExactName && !isBlacklisted) {
-            score += 20;
+            score += 25; // Increased slightly
           }
 
-          if (!isExactName && (normA.includes(normB) || normB.includes(normA))) {
-            score = 0;
-            continue;
+          // 3. ID/Code Partial Match Bonus (e.g. "order_id" vs "id")
+          // If both contain "id", "cod", etc. -> Likely keys
+          const isIdLikeA = STRONG_ID_ROOTS.some(r => normA.includes(r));
+          const isIdLikeB = STRONG_ID_ROOTS.some(r => normB.includes(r));
+
+          if (!isExactName && isIdLikeA && isIdLikeB) {
+              score += 15;
           }
 
+          // 4. Semantic Match Bonus (e.g. "codiceprod" vs "productid")
+          // Check for shared meaningful roots (prod, cli, supp, ord)
+          const semanticRoots = ["prod", "art", "item", "cli", "cust", "forn", "supp", "vend", "sale", "ord", "doc"];
+          const sharedRoot = semanticRoots.find(root => normA.includes(root) && normB.includes(root));
+          if (sharedRoot && !isExactName) {
+              score += 20;
+          }
+
+          // 5. PENALTY: Generic Type/Status columns joining non-Type tables
+          // Prevents "tiporiga" -> "prodotti"
+          const isGenericA = GENERIC_TERMS.some(t => normA.includes(t));
+          const isGenericB = GENERIC_TERMS.some(t => normB.includes(t));
+
+          // If A is generic but B is NOT (and they aren't exact match), check if target table supports generic
+          if (isGenericA && !isGenericB && !isExactName) {
+               const targetTableNorm = normalizeColumnName(fileB.tableName);
+               const tableMatchesGeneric = GENERIC_TERMS.some(t => targetTableNorm.includes(t));
+               if (!tableMatchesGeneric) {
+                   score -= 60; // Massive penalty
+               }
+          }
+          if (isGenericB && !isGenericA && !isExactName) {
+               const sourceTableNorm = normalizeColumnName(fileA.tableName);
+               const tableMatchesGeneric = GENERIC_TERMS.some(t => sourceTableNorm.includes(t));
+               if (!tableMatchesGeneric) {
+                   score -= 60; // Massive penalty
+               }
+          }
+
+          // 6. PK/FK Check
           const uniqueRatioA = new Set(valuesA.map(String)).size / valuesA.length;
           const uniqueRatioB = new Set(valuesB.map(String)).size / valuesB.length;
-          const hasPk = uniqueRatioA >= 0.99 || uniqueRatioB >= 0.99;
+          const hasPk = uniqueRatioA >= 0.95 || uniqueRatioB >= 0.95; // Lowered threshold slightly to 95%
 
           if (hasPk) {
-            score += 10;
+            score += 15;
           }
 
-          if (score === 0) continue;
+          if (score <= 0) continue;
 
-          const confidence = Math.min(score / 130, 1.0);
+          const confidence = Math.min(score / 140, 1.0);
 
           let matchType: JoinCandidate["matchType"];
           if (isExactName && !isBlacklisted) {
             matchType = "exact_name";
           } else if (hasPk) {
             matchType = "pk_fk_pattern";
+          } else if (sharedRoot) {
+            matchType = "semantic_match";
           } else {
             matchType = "overlap_only";
           }
@@ -304,10 +350,12 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
           if (matchType === "exact_name") {
             explanation = `Colonna "${colA}" ha lo stesso nome in entrambi i file con ${Math.round(overlapPct * 100)}% di sovrapposizione dati`;
           } else if (matchType === "pk_fk_pattern") {
-            const pkFile = uniqueRatioB >= 0.99 ? fileB.filename : fileA.filename;
-            explanation = `"${colA}" → "${colB}" relazione chiave primaria/esterna (${pkFile} contiene valori unici), sovrapposizione ${Math.round(overlapPct * 100)}%`;
+            const pkFile = uniqueRatioB >= 0.95 ? fileB.filename : fileA.filename;
+            explanation = `"${colA}" → "${colB}" relazione chiave primaria/esterna (${pkFile} contiene valori unici)`;
+          } else if (matchType === "semantic_match") {
+            explanation = `"${colA}" e "${colB}" sembrano semanticamente correlati (radice comune)`;
           } else {
-            explanation = `"${colA}" e "${colB}" condividono ${Math.round(overlapPct * 100)}% dei valori (${intersectionSize} valori in comune)`;
+            explanation = `"${colA}" e "${colB}" condividono ${Math.round(overlapPct * 100)}% dei valori`;
           }
 
           allCandidates.push({
@@ -337,6 +385,9 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
   const connectedDimensions = new Set<string>();
   const orphanTables: string[] = [];
 
+  // Threshold lowered slightly to catch valid but messy joins
+  const SCORE_THRESHOLD = 60; 
+
   for (const dim of dimensionFiles) {
     const candidatesForDim = deduped.filter(
       (c) =>
@@ -344,7 +395,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
         (c.targetFile === dim.filename && c.sourceFile === factFilename)
     );
 
-    const validCandidates = candidatesForDim.filter((c) => c.rawScore > 70);
+    const validCandidates = candidatesForDim.filter((c) => c.rawScore > SCORE_THRESHOLD);
     if (validCandidates.length > 0) {
       validCandidates.sort((a, b) => b.rawScore - a.rawScore);
       selectedJoins.push(validCandidates[0]);
@@ -361,7 +412,7 @@ export async function detectJoins(files: FileSchema[]): Promise<JoinDetectionRes
          (c.targetFile === dim.filename && connectedDimensions.has(c.sourceFile)))
     );
 
-    const validCandidates = candidatesForDim.filter((c) => c.rawScore > 70);
+    const validCandidates = candidatesForDim.filter((c) => c.rawScore > SCORE_THRESHOLD);
     if (validCandidates.length > 0) {
       validCandidates.sort((a, b) => b.rawScore - a.rawScore);
       selectedJoins.push(validCandidates[0]);
