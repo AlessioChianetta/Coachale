@@ -511,38 +511,11 @@ export function DataAnalysisChat({
                     </div>
                   </div>
 
-                  <div className="mb-6 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Database className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                      <span className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide">
-                        Dataset attivo
-                      </span>
-                    </div>
-                    <p className="font-medium text-gray-900 dark:text-white text-sm">
-                      {datasetName}
-                    </p>
+                  <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800 w-fit">
+                    <Database className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">{datasetName}</span>
+                    <span className="text-xs text-violet-400 dark:text-violet-500">({getColumns().length} colonne)</span>
                   </div>
-
-                  {getColumns().length > 0 && (
-                    <div className="mb-6 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                        <Table className="h-4 w-4 text-violet-500" />
-                        Colonne disponibili
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {getColumns().map((col) => (
-                          <Badge 
-                            key={col.name} 
-                            variant="secondary"
-                            className="bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800"
-                          >
-                            {col.displayName}
-                            <span className="ml-1 text-xs text-violet-400">({col.type})</span>
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between mb-3">
