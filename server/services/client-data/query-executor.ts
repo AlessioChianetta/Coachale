@@ -29,7 +29,7 @@ const AI_QUERY_TIMEOUT_MS = 3000; // Hard limit for AI-triggered queries
 function sanitizeNumericCasts(sql: string): string {
   return sql.replace(
     /CAST\("([^"]+)"\s+AS\s+NUMERIC\)/gi,
-    (_, col) => `CAST(REPLACE("${col}", ',', '.') AS NUMERIC)`
+    (_, col) => `CAST(NULLIF(REPLACE(NULLIF("${col}", ''), ',', '.'), '') AS NUMERIC)`
   );
 }
 const DEFAULT_CACHE_TTL_AGGREGATION = 3600;
