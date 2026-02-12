@@ -3,7 +3,7 @@
  * Implements the 7 semantic rules for automatic query enhancement
  * 
  * RULE 1: Revenue Priority (already implemented in semantic-resolver)
- * RULE 2: Document Type Filter - auto-inject WHERE document_type='sale' for revenue metrics
+ * RULE 2: Document Type Filter - DISABLED (was: auto-inject WHERE document_type='sale'). Revenue must include all document types.
  * RULE 3: Sales Channel Default - default to ALL channels if not specified
  * RULE 4: Time Slot Resolver - calculate from order_date hour if time_slot not present
  * RULE 5: Category Semantic (already implemented)
@@ -138,11 +138,12 @@ export async function applyQueryEnhancements(
     f.column === "document_type" || f.column === mappings["document_type"]
   );
 
-  if (isRevenueMetric(metricName) && hasDocumentTypeColumn && !hasDocumentTypeFilter) {
-    const physicalColumn = mappings["document_type"];
-    additionalConditions.push(`"${physicalColumn}" = 'sale'`);
-    appliedRules.push("RULE_2_DOCUMENT_TYPE_FILTER");
-    console.log(`[QUERY-RULES] Rule 2: Injecting document_type='sale' filter for metric "${metricName}"`);
+  // RULE 2 DISABLED: No longer auto-inject document_type='sale' for revenue metrics.
+  // Rationale: "fatturato totale" must include ALL document types (sales, refunds, voids).
+  // Filtering by document_type='sale' excludes refunds and produces an inflated revenue figure.
+  // The AI or user must explicitly request a filter if they want sales-only revenue.
+  if (hasDocumentTypeColumn && !hasDocumentTypeFilter) {
+    console.log(`[QUERY-RULES] Rule 2: SKIPPED - document_type filter NOT auto-injected for metric "${metricName}". Revenue includes all document types (sales, refunds, voids).`);
   }
 
   const hasTimeSlotColumn = !!mappings["time_slot"];

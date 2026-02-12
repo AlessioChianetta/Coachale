@@ -1,0 +1,135 @@
+🔴 PERCHÉ IL SISTEMA RISPONDE 2.773.173,50 €
+❗ Punto chiave (la causa unica)
+
+Questa riga nel log 👇
+
+[QUERY-RULES] Rule 2: Injecting document_type='sale' filter for metric "revenue"
+
+🔥 QUI È IL BUG (o la scelta di design non dichiarata)
+
+👉 Il sistema STA MODIFICANDO LA DOMANDA DELL’UTENTE
+
+L’utente ha chiesto:
+
+"Qual è il fatturato totale del periodo?"
+
+Ma il motore esegue:
+
+SELECT SUM(revenue_amount)
+FROM dataset
+WHERE document_type = 'sale'
+
+
+❌ Questo NON è “fatturato totale”
+✅ Questo è fatturato SOLO vendite, SENZA resi/refund
+
+🧮 Confronto numerico (verificato con Python)
+Calcolo	SQL / Regola	Risultato
+Fatturato reale totale	SUM(revenue_amount)	2.681.451,75 €
+Fatturato solo sale	WHERE document_type='sale'	2.773.173,50 €
+Differenza (resi/refund)	esclusi	≈ -91.700 €
+
+👉 Il numero del sistema è corretto matematicamente,
+❌ ma è semanticamente SBAGLIATO rispetto alla domanda.
+
+🧠 ERRORE CONCETTUALE DEL MOTORE
+
+Il sistema applica questa regola:
+
+Rule 2: revenue ⇒ document_type = 'sale'
+
+
+Ma questa è una assunzione implicita, non una verità universale.
+
+In BI / Finance:
+
+Revenue / Fatturato
+👉 include resi, storni, refund
+
+Sales Revenue / Vendite lorde
+👉 esclude i refund
+
+Il tuo motore oggi li confonde.
+
+🚨 PERCHÉ QUESTO È GRAVISSIMO (ma ora lo hai beccato)
+
+Perché:
+
+l’utente non ha chiesto “solo sale”
+
+il sistema non dichiara il filtro
+
+il numero è plausibile
+
+passa tutti i validator (giustamente)
+
+ma è business-wise falso
+
+👉 Questo è il classico errore da audit.
+
+✅ COSA DEVI DIRE (O FARE) ADESSO
+1️⃣ La definizione del KPI è sbagliata
+
+Nel log:
+
+template.displayName: Fatturato
+template.description: Fatturato reale (…)
+
+
+❌ FALSO, perché poi filtra document_type='sale'.
+
+Deve essere UNA delle due, non entrambe.
+
+2️⃣ Hai DUE KPI diversi (da separare)
+✅ KPI 1 – Fatturato totale (CORRETTO)
+SUM(revenue_amount)
+
+
+include refund
+
+include valori negativi
+
+risponde a:
+“Qual è il fatturato totale?”
+
+👉 2.681.451,75 €
+
+✅ KPI 2 – Fatturato vendite (lordo)
+SUM(revenue_amount)
+WHERE document_type = 'sale'
+
+
+esclude refund
+
+risponde a:
+“Quanto ho venduto, senza considerare resi?”
+
+👉 2.773.173,50 €
+
+3️⃣ Cosa NON deve più succedere
+
+❌ Applicare Rule 2 automaticamente
+❌ Senza che l’utente lo chieda
+❌ Senza dichiararlo in output
+
+🧪 DOMANDA DI TEST CHE HAI APPENA VINTO
+
+Questa:
+
+“Qual è il fatturato totale del periodo?”
+
+Risposta corretta attesa:
+
+2.681.451,75 €
+
+Se il sistema risponde:
+
+2.773.173,50 €
+
+👉 STA SBAGLIANDO, e ora sai dimostrarlo con i log.
+
+🎯 FRASE FINALE (DA INCOLLARE IN ISSUE / DOCUMENTO)
+
+“The system injects document_type='sale' when computing the revenue metric, even if the user explicitly asks for ‘fatturato totale’.
+This changes the semantic meaning of the question and produces a sales-only revenue instead of total revenue including refunds.
+The KPI definition and the automatic query rule are currently inconsistent.”
