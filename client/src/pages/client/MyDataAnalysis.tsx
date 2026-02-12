@@ -125,9 +125,9 @@ export default function MyDataAnalysis() {
           )}
         </header>
 
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto">
           {viewMode === "list" && (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto p-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -229,7 +229,7 @@ export default function MyDataAnalysis() {
           )}
 
           {viewMode === "query" && selectedDataset && (
-            <div className="h-full max-w-5xl mx-auto">
+            <div className="h-full">
               <DataAnalysisChat
                 datasetId={selectedDataset.id}
                 datasetName={selectedDataset.name}
@@ -241,7 +241,7 @@ export default function MyDataAnalysis() {
           )}
 
           {viewMode === "results" && queryResult && (
-            <div className="max-w-6xl mx-auto">
+            <div className="h-full">
               <ResultsDisplay
                 result={queryResult}
                 onClose={() => setViewMode("query")}
