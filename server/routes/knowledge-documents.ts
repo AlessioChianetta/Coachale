@@ -1780,6 +1780,7 @@ router.get(
       const result = await db.execute(sql`
         SELECT id, consultant_id, title, content, description, is_active,
                target_client_assistant, target_autonomous_agents, target_whatsapp_agents,
+               target_client_mode, target_client_ids, target_department_ids,
                priority, injection_mode, created_at, updated_at
         FROM system_prompt_documents
         WHERE consultant_id = ${consultantId}
@@ -1801,7 +1802,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const consultantId = (req as AuthRequest).user!.id;
-      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode } = req.body;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode, target_client_mode, target_client_ids, target_department_ids } = req.body;
 
       if (!title || !content) {
         return res.status(400).json({ success: false, error: "Title and content are required" });
@@ -1812,10 +1813,13 @@ router.post(
 
       const result = await db.execute(sql`
         INSERT INTO system_prompt_documents (id, consultant_id, title, content, description, is_active,
-          target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode, created_at, updated_at)
+          target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode,
+          target_client_mode, target_client_ids, target_department_ids, created_at, updated_at)
         VALUES (${id}, ${consultantId}, ${title}, ${content}, ${description || null}, true,
           ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})}::jsonb,
-          ${JSON.stringify(target_whatsapp_agents || {})}::jsonb, ${priority ?? 5}, ${injection_mode || 'system_prompt'}, ${now}, ${now})
+          ${JSON.stringify(target_whatsapp_agents || {})}::jsonb, ${priority ?? 5}, ${injection_mode || 'system_prompt'},
+          ${target_client_mode || 'all'}, ${JSON.stringify(target_client_ids || [])}::jsonb, ${JSON.stringify(target_department_ids || [])}::jsonb,
+          ${now}, ${now})
         RETURNING *
       `);
 
@@ -1853,7 +1857,7 @@ router.put(
     try {
       const consultantId = (req as AuthRequest).user!.id;
       const { id } = req.params;
-      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, is_active, injection_mode } = req.body;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, is_active, injection_mode, target_client_mode, target_client_ids, target_department_ids } = req.body;
 
       const existing = await db.execute(sql`
         SELECT id FROM system_prompt_documents WHERE id = ${id} AND consultant_id = ${consultantId}
@@ -1874,6 +1878,9 @@ router.put(
             priority = COALESCE(${priority ?? null}, priority),
             is_active = COALESCE(${is_active ?? null}, is_active),
             injection_mode = COALESCE(${injection_mode ?? null}, injection_mode),
+            target_client_mode = COALESCE(${target_client_mode ?? null}, target_client_mode),
+            target_client_ids = COALESCE(${target_client_ids ? JSON.stringify(target_client_ids) : null}::jsonb, target_client_ids),
+            target_department_ids = COALESCE(${target_department_ids ? JSON.stringify(target_department_ids) : null}::jsonb, target_department_ids),
             updated_at = ${new Date()}
         WHERE id = ${id} AND consultant_id = ${consultantId}
         RETURNING *

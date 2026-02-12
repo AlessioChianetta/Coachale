@@ -155,6 +155,7 @@ export const users = pgTable("users", {
   revenueSharePercentage: integer("revenue_share_percentage").default(50), // Percentage that goes to consultant (default 50%)
 
   isEmployee: boolean("is_employee").default(false), // true = dipendente/collaboratore del consulente
+  departmentId: varchar("department_id", { length: 255 }), // Reference to departments table for employees
 
   memoryGenerationHour: integer("memory_generation_hour").default(3), // Hour (0-23) for automatic memory generation, defaults to 3 AM
 
@@ -165,6 +166,17 @@ export const users = pgTable("users", {
   monthlyConsultationLimit: integer("monthly_consultation_limit"), // null = unlimited, number = max consultations per month
 
   createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const departments = pgTable("departments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  color: varchar("color", { length: 50 }).default("#6366f1"),
+  description: text("description"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
 export const exercises = pgTable("exercises", {

@@ -51,6 +51,7 @@ import {
   Loader2,
   Search,
   StickyNote,
+  Building2,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -80,6 +81,9 @@ interface SystemDocument {
   description: string | null;
   is_active: boolean;
   target_client_assistant: boolean;
+  target_client_mode: 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+  target_client_ids: string[];
+  target_department_ids: string[];
   target_autonomous_agents: Record<string, boolean>;
   target_whatsapp_agents: Record<string, boolean>;
   injection_mode: "system_prompt" | "file_search";
@@ -88,11 +92,32 @@ interface SystemDocument {
   updated_at: string;
 }
 
+interface ClientUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isEmployee: boolean;
+  departmentId: string | null;
+}
+
+interface Department {
+  id: string;
+  name: string;
+  color: string;
+  employee_count: number;
+}
+
+type TargetClientMode = 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+
 interface DocumentForm {
   title: string;
   content: string;
   description: string;
   target_client_assistant: boolean;
+  target_client_mode: TargetClientMode;
+  target_client_ids: string[];
+  target_department_ids: string[];
   target_autonomous_agents: Record<string, boolean>;
   target_whatsapp_agents: Record<string, boolean>;
   injection_mode: "system_prompt" | "file_search";
@@ -104,6 +129,9 @@ const emptyForm = (): DocumentForm => ({
   content: "",
   description: "",
   target_client_assistant: true,
+  target_client_mode: 'all',
+  target_client_ids: [],
+  target_department_ids: [],
   target_autonomous_agents: Object.fromEntries(AUTONOMOUS_AGENTS.map(a => [a.id, false])),
   target_whatsapp_agents: {},
   injection_mode: "system_prompt",
@@ -142,8 +170,30 @@ export default function SystemDocumentsSection() {
     },
   });
 
+  const { data: clientsResponse } = useQuery({
+    queryKey: ["/api/clients"],
+    queryFn: async () => {
+      const res = await fetch("/api/clients", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      return res.json();
+    },
+  });
+
+  const { data: departmentsResponse } = useQuery({
+    queryKey: ["/api/departments"],
+    queryFn: async () => {
+      const res = await fetch("/api/departments", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch departments");
+      return res.json();
+    },
+  });
+
   const documents: SystemDocument[] = response?.data || [];
   const whatsappAgents: WhatsAppAgent[] = whatsappResponse?.data || [];
+  const allClients: ClientUser[] = Array.isArray(clientsResponse) ? clientsResponse : (clientsResponse?.data || []);
+  const departments: Department[] = departmentsResponse?.data || [];
+  const nonEmployeeClients = allClients.filter(c => !c.isEmployee);
+  const employeeClients = allClients.filter(c => c.isEmployee);
 
   const createMutation = useMutation({
     mutationFn: async (data: DocumentForm) => {
@@ -260,6 +310,9 @@ export default function SystemDocumentsSection() {
       content: doc.content,
       description: doc.description || "",
       target_client_assistant: doc.target_client_assistant,
+      target_client_mode: doc.target_client_mode || 'all',
+      target_client_ids: doc.target_client_ids || [],
+      target_department_ids: doc.target_department_ids || [],
       target_autonomous_agents: { ...Object.fromEntries(AUTONOMOUS_AGENTS.map(a => [a.id, false])), ...doc.target_autonomous_agents },
       target_whatsapp_agents: waAgents,
       injection_mode: doc.injection_mode || "system_prompt",
@@ -292,7 +345,14 @@ export default function SystemDocumentsSection() {
     });
 
     if (doc.target_client_assistant) {
-      badges.push({ label: "AI Assistant", icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
+      const mode = doc.target_client_mode || 'all';
+      let aiLabel = "AI Assistant - Tutti";
+      if (mode === 'clients_only') aiLabel = "AI Assistant - Solo Clienti";
+      else if (mode === 'employees_only') aiLabel = "AI Assistant - Solo Dipendenti";
+      else if (mode === 'specific_clients') aiLabel = `AI Assistant - ${(doc.target_client_ids || []).length} clienti`;
+      else if (mode === 'specific_departments') aiLabel = `AI Assistant - ${(doc.target_department_ids || []).length} reparti`;
+      else if (mode === 'specific_employees') aiLabel = `AI Assistant - ${(doc.target_client_ids || []).length} dipendenti`;
+      badges.push({ label: aiLabel, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
     }
 
     const activeWhatsapp = Object.entries(doc.target_whatsapp_agents || {})
@@ -511,18 +571,160 @@ export default function SystemDocumentsSection() {
               <div className="space-y-4">
                 <Label className="text-base font-medium">Destinatari</Label>
 
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-blue-500" />
-                    <div>
-                      <p className="text-sm font-medium">AI Assistant Clienti</p>
-                      <p className="text-xs text-muted-foreground">Visibile nell'assistente AI dei clienti</p>
+                <div className="rounded-lg border border-blue-200 overflow-hidden">
+                  <div className="flex items-center justify-between p-3 bg-blue-50/50">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <p className="text-sm font-medium">AI Assistant Clienti</p>
+                        <p className="text-xs text-muted-foreground">Visibile nell'assistente AI dei clienti</p>
+                      </div>
                     </div>
+                    <Switch
+                      checked={form.target_client_assistant}
+                      onCheckedChange={v => setForm(f => ({ ...f, target_client_assistant: v }))}
+                    />
                   </div>
-                  <Switch
-                    checked={form.target_client_assistant}
-                    onCheckedChange={v => setForm(f => ({ ...f, target_client_assistant: v }))}
-                  />
+
+                  {form.target_client_assistant && (
+                    <div className="p-3 space-y-3 border-t border-blue-100">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-blue-700 font-medium">Destinatari AI Assistant</Label>
+                        <Select
+                          value={form.target_client_mode}
+                          onValueChange={(v: TargetClientMode) => setForm(f => ({ ...f, target_client_mode: v, target_client_ids: [], target_department_ids: [] }))}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutti</SelectItem>
+                            <SelectItem value="clients_only">Solo Clienti</SelectItem>
+                            <SelectItem value="employees_only">Solo Dipendenti</SelectItem>
+                            <SelectItem value="specific_clients">Clienti Specifici</SelectItem>
+                            <SelectItem value="specific_departments">Reparto Specifico</SelectItem>
+                            <SelectItem value="specific_employees">Dipendenti Specifici</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {form.target_client_mode === 'specific_clients' && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            {form.target_client_ids.length} clienti selezionati
+                          </Label>
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                            {nonEmployeeClients.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
+                            ) : nonEmployeeClients.map(client => (
+                              <label key={client.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                                <Checkbox
+                                  checked={form.target_client_ids.includes(client.id)}
+                                  onCheckedChange={(checked) =>
+                                    setForm(f => ({
+                                      ...f,
+                                      target_client_ids: checked
+                                        ? [...f.target_client_ids, client.id]
+                                        : f.target_client_ids.filter(id => id !== client.id),
+                                    }))
+                                  }
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm truncate">{client.firstName} {client.lastName}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{client.email}</p>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {form.target_client_mode === 'specific_departments' && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            {form.target_department_ids.length} reparti selezionati
+                          </Label>
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                            {departments.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato</p>
+                            ) : departments.map(dept => (
+                              <label key={dept.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                                <Checkbox
+                                  checked={form.target_department_ids.includes(dept.id)}
+                                  onCheckedChange={(checked) =>
+                                    setForm(f => ({
+                                      ...f,
+                                      target_department_ids: checked
+                                        ? [...f.target_department_ids, dept.id]
+                                        : f.target_department_ids.filter(id => id !== dept.id),
+                                    }))
+                                  }
+                                />
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
+                                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="text-sm truncate">{dept.name}</span>
+                                  <Badge variant="outline" className="text-xs shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {form.target_client_mode === 'specific_employees' && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            {form.target_client_ids.length} dipendenti selezionati
+                          </Label>
+                          <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
+                            {employeeClients.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
+                            ) : (() => {
+                              const grouped = new Map<string, ClientUser[]>();
+                              employeeClients.forEach(emp => {
+                                const deptId = emp.departmentId || '_none';
+                                if (!grouped.has(deptId)) grouped.set(deptId, []);
+                                grouped.get(deptId)!.push(emp);
+                              });
+                              return Array.from(grouped.entries()).map(([deptId, emps]) => {
+                                const dept = departments.find(d => d.id === deptId);
+                                return (
+                                  <div key={deptId}>
+                                    {grouped.size > 1 && (
+                                      <div className="flex items-center gap-1.5 px-1 py-1">
+                                        {dept && <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dept.color || '#6b7280' }} />}
+                                        <span className="text-xs font-medium text-muted-foreground">{dept?.name || 'Senza reparto'}</span>
+                                      </div>
+                                    )}
+                                    {emps.map(emp => (
+                                      <label key={emp.id} className="flex items-center gap-2 rounded p-1.5 cursor-pointer hover:bg-accent/50 transition-colors">
+                                        <Checkbox
+                                          checked={form.target_client_ids.includes(emp.id)}
+                                          onCheckedChange={(checked) =>
+                                            setForm(f => ({
+                                              ...f,
+                                              target_client_ids: checked
+                                                ? [...f.target_client_ids, emp.id]
+                                                : f.target_client_ids.filter(id => id !== emp.id),
+                                            }))
+                                          }
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm truncate">{emp.firstName} {emp.lastName}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {whatsappAgents.length > 0 && (

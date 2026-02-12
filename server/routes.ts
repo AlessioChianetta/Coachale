@@ -3292,6 +3292,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== DEPARTMENTS (REPARTI) ====================
+
+  app.get("/api/departments", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const result = await db.execute(sql`
+        SELECT d.*, 
+          (SELECT COUNT(*)::int FROM users u WHERE u.department_id = d.id AND u.is_active = true) as employee_count
+        FROM departments d
+        WHERE d.consultant_id = ${consultantId}
+        ORDER BY d.sort_order ASC, d.name ASC
+      `);
+      res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/departments", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { name, color, description } = req.body;
+      if (!name) return res.status(400).json({ success: false, error: "Nome reparto obbligatorio" });
+
+      const result = await db.execute(sql`
+        INSERT INTO departments (consultant_id, name, color, description)
+        VALUES (${consultantId}, ${name}, ${color || '#6366f1'}, ${description || null})
+        RETURNING *
+      `);
+      res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.put("/api/departments/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { id } = req.params;
+      const { name, color, description } = req.body;
+
+      const result = await db.execute(sql`
+        UPDATE departments SET
+          name = COALESCE(${name || null}, name),
+          color = COALESCE(${color || null}, color),
+          description = COALESCE(${description ?? null}, description),
+          updated_at = NOW()
+        WHERE id = ${id} AND consultant_id = ${consultantId}
+        RETURNING *
+      `);
+      if (result.rows.length === 0) return res.status(404).json({ success: false, error: "Reparto non trovato" });
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.delete("/api/departments/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { id } = req.params;
+
+      await db.execute(sql`
+        UPDATE users SET department_id = NULL WHERE department_id = ${id}
+      `);
+      const result = await db.execute(sql`
+        DELETE FROM departments WHERE id = ${id} AND consultant_id = ${consultantId} RETURNING id
+      `);
+      if (result.rows.length === 0) return res.status(404).json({ success: false, error: "Reparto non trovato" });
+      res.json({ success: true, data: { id } });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.patch("/api/clients/:clientId/department", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { clientId } = req.params;
+      const { departmentId } = req.body;
+
+      const result = await db.execute(sql`
+        UPDATE users SET department_id = ${departmentId || null}
+        WHERE id = ${clientId} AND consultant_id = ${consultantId}
+        RETURNING id, department_id
+      `);
+      if (result.rows.length === 0) return res.status(404).json({ success: false, error: "Cliente non trovato" });
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Client routes
   app.get("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -3440,6 +3533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "client",
         consultantId: consultantId,
         isEmployee: isEmployee,
+        departmentId: isEmployee ? (req.body.departmentId || null) : null,
       });
 
       // Update license used count

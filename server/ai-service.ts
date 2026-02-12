@@ -1196,7 +1196,12 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     // This is critical for mixed-role users who are both consultants AND clients of another consultant
     const systemDocsConsultantId = (effectiveRole === 'client' && user.consultantId) ? user.consultantId : consultantId;
     try {
-      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId);
+      const clientInfoForDocs = effectiveRole === 'client' ? {
+        clientId: clientId,
+        isEmployee: !!(user as any).isEmployee,
+        departmentId: (user as any).departmentId || null,
+      } : undefined;
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId, clientInfoForDocs);
       if (systemDocs) {
         systemPrompt = systemPrompt + '\n\n' + systemDocs;
       }
@@ -2127,7 +2132,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // This is critical for mixed-role users who are both consultants AND clients of another consultant
     const systemDocsConsultantId = (effectiveRole === 'client' && user.consultantId) ? user.consultantId : consultantId;
     try {
-      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId);
+      const clientInfoForDocs = effectiveRole === 'client' ? {
+        clientId: clientId,
+        isEmployee: !!(user as any).isEmployee,
+        departmentId: (user as any).departmentId || null,
+      } : undefined;
+      const systemDocs = await fetchSystemDocumentsForClientAssistant(systemDocsConsultantId, clientInfoForDocs);
       if (systemDocs) {
         systemPrompt = systemPrompt + '\n\n' + systemDocs;
       }

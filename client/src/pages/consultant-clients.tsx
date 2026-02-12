@@ -43,7 +43,11 @@ import {
   CalendarPlus,
   CalendarDays,
   X,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  Building2,
+  FolderTree,
+  Palette,
+  Trash2 as TrashIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,7 +81,8 @@ export default function ConsultantClientsPage() {
     lastName: '',
     email: '',
     password: '',
-    isEmployee: false
+    isEmployee: false,
+    departmentId: ''
   });
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -116,6 +121,11 @@ export default function ConsultantClientsPage() {
   const [schedulingTimePreference, setSchedulingTimePreference] = useState<'auto' | 'morning' | 'afternoon'>('auto');
   const [detectedPattern, setDetectedPattern] = useState<any>(null);
   
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [editingDepartment, setEditingDepartment] = useState<any>(null);
+  const [departmentForm, setDepartmentForm] = useState({ name: '', color: '#6366f1', description: '' });
+  const DEPARTMENT_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6'];
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -131,6 +141,117 @@ export default function ConsultantClientsPage() {
   });
 
   const licenseData = licensesQuery.data?.data || { employeeTotal: 5, employeeUsed: 0 };
+
+  const departmentsQuery = useQuery({
+    queryKey: ["/api/departments"],
+    queryFn: async () => {
+      const res = await fetch("/api/departments", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch departments");
+      const data = await res.json();
+      return data.data || [];
+    },
+  });
+  const departments: any[] = departmentsQuery.data || [];
+
+  const createDepartmentMutation = useMutation({
+    mutationFn: async (data: { name: string; color: string; description: string }) => {
+      const res = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Errore nella creazione del reparto');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reparto creato", description: "Il nuovo reparto è stato creato con successo" });
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      setIsDepartmentDialogOpen(false);
+      setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const updateDepartmentMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; color: string; description: string } }) => {
+      const res = await fetch(`/api/departments/${id}`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Errore nell\'aggiornamento del reparto');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reparto aggiornato", description: "Il reparto è stato aggiornato con successo" });
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      setIsDepartmentDialogOpen(false);
+      setEditingDepartment(null);
+      setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/departments/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Errore nell\'eliminazione del reparto');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reparto eliminato", description: "Il reparto è stato eliminato" });
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const assignDepartmentMutation = useMutation({
+    mutationFn: async ({ clientId, departmentId }: { clientId: string; departmentId: string | null }) => {
+      const res = await fetch(`/api/clients/${clientId}/department`, {
+        method: 'PATCH',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departmentId })
+      });
+      if (!res.ok) throw new Error('Errore nell\'assegnazione del reparto');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Reparto assegnato", description: "Il dipendente è stato assegnato al reparto" });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleSaveDepartment = () => {
+    if (!departmentForm.name.trim()) {
+      toast({ title: "Nome obbligatorio", description: "Inserisci il nome del reparto", variant: "destructive" });
+      return;
+    }
+    if (editingDepartment) {
+      updateDepartmentMutation.mutate({ id: editingDepartment.id, data: departmentForm });
+    } else {
+      createDepartmentMutation.mutate(departmentForm);
+    }
+  };
+
+  const handleEditDepartment = (dept: any) => {
+    setEditingDepartment(dept);
+    setDepartmentForm({ name: dept.name, color: dept.color, description: dept.description || '' });
+    setIsDepartmentDialogOpen(true);
+  };
 
   const createClientMutation = useMutation({
     mutationFn: async (data: typeof newClientForm) => {
@@ -155,7 +276,7 @@ export default function ConsultantClientsPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsNewClientDialogOpen(false);
-      setNewClientForm({ firstName: '', lastName: '', email: '', password: '', isEmployee: false });
+      setNewClientForm({ firstName: '', lastName: '', email: '', password: '', isEmployee: false, departmentId: '' });
     },
     onError: (error: Error) => {
       toast({
@@ -732,6 +853,151 @@ export default function ConsultantClientsPage() {
               Monitoraggio Consulenze
             </button>
           </div>
+
+          {activeTab === 'clienti' && departments.length > 0 && (
+            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mb-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-xl">
+                      <Building2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-bold text-slate-800">Struttura Aziendale</CardTitle>
+                      <p className="text-xs text-slate-500">Organizza i dipendenti per reparto</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setEditingDepartment(null);
+                      setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+                      setIsDepartmentDialogOpen(true);
+                    }}
+                    size="sm"
+                    className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-1" />
+                    Nuovo Reparto
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {departments.map((dept: any) => {
+                    const deptEmployees = clients.filter((c: any) => c.isEmployee && c.departmentId === dept.id);
+                    return (
+                      <div
+                        key={dept.id}
+                        className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+                        style={{ borderLeftWidth: '4px', borderLeftColor: dept.color }}
+                      >
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: dept.color }}
+                              />
+                              <span className="font-semibold text-sm text-slate-800">{dept.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                {dept.employee_count || deptEmployees.length} dipendenti
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditDepartment(dept)}
+                                className="h-6 w-6 p-0 hover:bg-slate-100"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Eliminare questo reparto?')) {
+                                    deleteDepartmentMutation.mutate(dept.id);
+                                  }
+                                }}
+                                className="h-6 w-6 p-0 hover:bg-red-50 text-red-400 hover:text-red-600"
+                              >
+                                <TrashIcon className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          {dept.description && (
+                            <p className="text-[11px] text-slate-500 mb-2">{dept.description}</p>
+                          )}
+                          {deptEmployees.length > 0 && (
+                            <div className="space-y-1">
+                              {deptEmployees.slice(0, 5).map((emp: any) => (
+                                <div key={emp.id} className="flex items-center gap-1.5 text-xs text-slate-600">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                  {emp.firstName} {emp.lastName}
+                                </div>
+                              ))}
+                              {deptEmployees.length > 5 && (
+                                <span className="text-[10px] text-slate-400">+{deptEmployees.length - 5} altri</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(() => {
+                    const unassigned = clients.filter((c: any) => c.isEmployee && !c.departmentId);
+                    if (unassigned.length === 0) return null;
+                    return (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: '#94a3b8' }}>
+                        <div className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full flex-shrink-0 bg-slate-400" />
+                              <span className="font-semibold text-sm text-slate-600">Non assegnati</span>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              {unassigned.length} dipendenti
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                            {unassigned.slice(0, 5).map((emp: any) => (
+                              <div key={emp.id} className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                {emp.firstName} {emp.lastName}
+                              </div>
+                            ))}
+                            {unassigned.length > 5 && (
+                              <span className="text-[10px] text-slate-400">+{unassigned.length - 5} altri</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'clienti' && departments.length === 0 && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                onClick={() => {
+                  setEditingDepartment(null);
+                  setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+                  setIsDepartmentDialogOpen(true);
+                }}
+                variant="outline"
+                size="sm"
+                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              >
+                <Building2 className="w-4 h-4 mr-1" />
+                Crea Primo Reparto
+              </Button>
+            </div>
+          )}
 
           {activeTab === 'monitoraggio' ? (
             /* Monitoring Content */
@@ -1425,6 +1691,9 @@ export default function ConsultantClientsPage() {
                               <SortIcon column="progress" />
                             </div>
                           </th>
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                            Reparto
+                          </th>
                           <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
                             Limite/mese
                           </th>
@@ -1499,6 +1768,19 @@ export default function ConsultantClientsPage() {
                                 </div>
                                 <span className="text-xs font-semibold text-slate-700 w-8 text-right">{client._completionRate}%</span>
                               </div>
+                            </td>
+                            <td className="px-3 py-2.5 hidden lg:table-cell">
+                              {(() => {
+                                if (!client.isEmployee) return <span className="text-xs text-slate-400">—</span>;
+                                const dept = departments.find((d: any) => d.id === client.departmentId);
+                                if (!dept) return <span className="text-[10px] text-slate-400 italic">Non assegnato</span>;
+                                return (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dept.color }} />
+                                    <span className="text-xs font-medium text-slate-700">{dept.name}</span>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-3 py-2.5 text-center hidden lg:table-cell">
                               <span className={`text-xs font-medium ${client.monthlyConsultationLimit ? 'text-amber-600' : 'text-slate-400'}`}>
@@ -1810,6 +2092,24 @@ export default function ConsultantClientsPage() {
                 </label>
               </div>
             </div>
+
+            {newClientForm.isEmployee && departments.length > 0 && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right text-sm font-medium">
+                  Reparto
+                </Label>
+                <select
+                  value={newClientForm.departmentId}
+                  onChange={(e) => setNewClientForm(prev => ({...prev, departmentId: e.target.value}))}
+                  className="col-span-3 px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                  <option value="">Nessun reparto</option>
+                  {departments.map((dept: any) => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           
           <DialogFooter className="gap-3">
@@ -2019,6 +2319,86 @@ export default function ConsultantClientsPage() {
               className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
             >
               Salva Modifiche
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDepartmentDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsDepartmentDialogOpen(false);
+          setEditingDepartment(null);
+          setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Building2 className="h-5 w-5 text-indigo-600" />
+              </div>
+              {editingDepartment ? 'Modifica Reparto' : 'Nuovo Reparto'}
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              {editingDepartment ? 'Modifica le informazioni del reparto' : 'Crea un nuovo reparto per organizzare i tuoi dipendenti'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-sm font-medium">Nome *</Label>
+              <Input
+                value={departmentForm.name}
+                onChange={(e) => setDepartmentForm(prev => ({...prev, name: e.target.value}))}
+                className="col-span-3 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                placeholder="Es. Vendite, Marketing, Supporto..."
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-sm font-medium">Colore</Label>
+              <div className="col-span-3 flex flex-wrap gap-2">
+                {DEPARTMENT_COLORS.map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setDepartmentForm(prev => ({...prev, color}))}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${departmentForm.color === color ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right text-sm font-medium mt-2">Descrizione</Label>
+              <textarea
+                value={departmentForm.description}
+                onChange={(e) => setDepartmentForm(prev => ({...prev, description: e.target.value}))}
+                className="col-span-3 px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                rows={2}
+                placeholder="Descrizione opzionale del reparto..."
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDepartmentDialogOpen(false);
+                setEditingDepartment(null);
+                setDepartmentForm({ name: '', color: '#6366f1', description: '' });
+              }}
+              className="border-slate-200 hover:bg-slate-50"
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={handleSaveDepartment}
+              disabled={createDepartmentMutation.isPending || updateDepartmentMutation.isPending}
+              className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600"
+            >
+              {(createDepartmentMutation.isPending || updateDepartmentMutation.isPending) ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+              ) : (
+                <>{editingDepartment ? 'Salva Modifiche' : 'Crea Reparto'}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

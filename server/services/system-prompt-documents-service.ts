@@ -27,10 +27,13 @@ function formatKnowledgeDocsSection(docs: Array<{ title: string; content: string
   return result;
 }
 
-export async function fetchSystemDocumentsForClientAssistant(consultantId: string): Promise<string> {
+export async function fetchSystemDocumentsForClientAssistant(
+  consultantId: string,
+  clientInfo?: { clientId: string; isEmployee: boolean; departmentId: string | null }
+): Promise<string> {
   try {
     const result = await db.execute(sql`
-      SELECT title, content
+      SELECT title, content, target_client_mode, target_client_ids, target_department_ids
       FROM system_prompt_documents
       WHERE consultant_id = ${consultantId}
         AND is_active = true
@@ -39,8 +42,37 @@ export async function fetchSystemDocumentsForClientAssistant(consultantId: strin
       ORDER BY priority DESC, created_at ASC
     `);
 
-    const rows = result.rows as Array<{ title: string; content: string }>;
-    console.log(`📌 [SYSTEM-DOCS] Fetched ${rows.length} system docs for client assistant of consultant ${consultantId}`);
+    const allRows = result.rows as Array<{
+      title: string;
+      content: string;
+      target_client_mode: string | null;
+      target_client_ids: string[] | null;
+      target_department_ids: string[] | null;
+    }>;
+
+    const rows = clientInfo
+      ? allRows.filter(doc => {
+          const mode = doc.target_client_mode || 'all';
+          if (mode === 'all') return true;
+          if (mode === 'clients_only') return !clientInfo.isEmployee;
+          if (mode === 'employees_only') return clientInfo.isEmployee;
+          if (mode === 'specific_clients') {
+            const ids = doc.target_client_ids || [];
+            return ids.includes(clientInfo.clientId);
+          }
+          if (mode === 'specific_departments') {
+            const deptIds = doc.target_department_ids || [];
+            return clientInfo.departmentId ? deptIds.includes(clientInfo.departmentId) : false;
+          }
+          if (mode === 'specific_employees') {
+            const ids = doc.target_client_ids || [];
+            return clientInfo.isEmployee && ids.includes(clientInfo.clientId);
+          }
+          return true;
+        })
+      : allRows;
+
+    console.log(`📌 [SYSTEM-DOCS] Fetched ${rows.length}/${allRows.length} system docs for client assistant of consultant ${consultantId}${clientInfo ? ` (client: ${clientInfo.clientId}, employee: ${clientInfo.isEmployee}, dept: ${clientInfo.departmentId})` : ''}`);
 
     if (rows.length === 0) return "";
 
