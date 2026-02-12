@@ -611,21 +611,21 @@ export function DataAnalysisChat({
                         >
                           <MessageComponent message={message} onActionClick={handleActionClick} />
                         </motion.div>
-                        {message.role === "assistant" && message.chartData && message.chartData.length > 0 && (
+                        {message.role === "assistant" && message.chartData && message.chartData.filter(c => c.type !== 'kpi').length > 0 && (
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.02 + 0.15, duration: 0.3 }}
                             className="mt-3 space-y-3"
                           >
-                            {message.chartData.map((chart) => (
+                            {message.chartData.filter(c => c.type !== 'kpi').map((chart) => (
                               <ChartBlock key={chart.id} chart={chart} compact />
                             ))}
                           </motion.div>
                         )}
                       </div>
                     ))}
-                    {isTyping && (
+                    {isTyping && !messages.some(m => m.isThinking) && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <MessageComponent
                           message={{ id: "typing", role: "assistant", content: "", isThinking: true, modelName: selectedModel.includes("pro") ? "Pro 3" : "Flash 3" }}
