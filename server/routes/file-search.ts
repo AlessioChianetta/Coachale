@@ -848,7 +848,9 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncEmailJourney,
       autoSyncAssignedExercises,
       autoSyncAssignedLibrary,
-      autoSyncAssignedUniversity
+      autoSyncAssignedUniversity,
+      autoSyncEmailAccounts,
+      autoSyncSystemPromptDocs
     } = req.body;
     
     const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
@@ -883,6 +885,8 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncAssignedExercises === 'boolean') updateData.autoSyncAssignedExercises = autoSyncAssignedExercises;
     if (typeof autoSyncAssignedLibrary === 'boolean') updateData.autoSyncAssignedLibrary = autoSyncAssignedLibrary;
     if (typeof autoSyncAssignedUniversity === 'boolean') updateData.autoSyncAssignedUniversity = autoSyncAssignedUniversity;
+    if (typeof autoSyncEmailAccounts === 'boolean') updateData.autoSyncEmailAccounts = autoSyncEmailAccounts;
+    if (typeof autoSyncSystemPromptDocs === 'boolean') updateData.autoSyncSystemPromptDocs = autoSyncSystemPromptDocs;
     
     const [updated] = await db
       .update(fileSearchSettings)
