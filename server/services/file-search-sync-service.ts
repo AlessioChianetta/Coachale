@@ -1627,6 +1627,52 @@ export class FileSearchSyncService {
       totalFailed += result.failed;
     }
 
+    // 9c. System Prompt Documents (Istruzioni AI) - file_search injection mode
+    if (settings.autoSyncSystemPromptDocs) {
+      console.log(`📜 [Scheduled] Syncing System Prompt Documents (file_search mode)...`);
+      let synced = 0, skipped = 0, failed = 0;
+      try {
+        const spDocsResult = await db.execute(
+          sql`SELECT id, title, target_client_assistant, target_whatsapp_agents
+              FROM system_prompt_documents
+              WHERE consultant_id = ${consultantId}
+                AND is_active = true
+                AND injection_mode = 'file_search'`
+        );
+        const spDocs = spDocsResult.rows as any[];
+        for (const doc of spDocs) {
+          try {
+            if (doc.target_client_assistant) {
+              const result = await this.syncSystemPromptDocumentToFileSearch(
+                doc.id, consultantId, 'client_assistant', consultantId, 'consultant'
+              );
+              if (result.success) synced++; else failed++;
+            }
+            const whatsappTargets = typeof doc.target_whatsapp_agents === 'string'
+              ? JSON.parse(doc.target_whatsapp_agents)
+              : (doc.target_whatsapp_agents || {});
+            if (typeof whatsappTargets === 'object' && !Array.isArray(whatsappTargets)) {
+              for (const [agentId, enabled] of Object.entries(whatsappTargets)) {
+                if (enabled === true) {
+                  try {
+                    const result = await this.syncSystemPromptDocumentToFileSearch(
+                      doc.id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent'
+                    );
+                    if (result.success) synced++; else failed++;
+                  } catch { failed++; }
+                }
+              }
+            }
+          } catch { failed++; }
+        }
+      } catch (e: any) {
+        console.error(`❌ [Scheduled] System Prompt Docs sync error:`, e.message);
+        failed++;
+      }
+      details.systemPromptDocs = { synced, skipped, failed };
+      totalSynced += synced; totalSkipped += skipped; totalFailed += failed;
+    }
+
     // Get all clients for client-specific syncs
     const needsClientSync = settings.autoSyncFinancial || settings.autoSyncGoals || 
       settings.autoSyncTasks || settings.autoSyncDailyReflections || 

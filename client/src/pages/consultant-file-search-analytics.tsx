@@ -3911,6 +3911,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           />
                         </div>
 
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ScrollText className="h-4 w-4 text-indigo-600" />
+                            <div>
+                              <Label>Istruzioni AI (System Prompt)</Label>
+                              <p className="text-sm text-gray-500">Sincronizza automaticamente le istruzioni AI in modalità File Search (clienti, reparti, dipendenti, agenti autonomi)</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncSystemPromptDocs ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncSystemPromptDocs', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
                         <div className="border-t pt-4 mt-4">
                           <h6 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
                             <Target className="h-4 w-4" />
