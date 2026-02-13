@@ -162,13 +162,18 @@ function DashboardTab({
         headers: getAuthHeaders(),
       });
       if (res.ok) {
-        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && key.includes("/api/ai-autonomy/");
+          },
+        });
         toast({ title: "Task eliminato", description: "Il task è stato eliminato definitivamente" });
         if (selectedTaskId === taskId) setSelectedTaskId(null);
-      } else throw new Error();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: errData.error || "Impossibile eliminare il task", variant: "destructive" });
+      }
     } catch {
       toast({ title: "Errore", description: "Impossibile eliminare il task", variant: "destructive" });
     }
@@ -185,10 +190,12 @@ function DashboardTab({
       if (res.ok) {
         const data = await res.json();
         setBlocksData([]);
-        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && key.includes("/api/ai-autonomy/");
+          },
+        });
         toast({
           title: "Reset completato",
           description: `Eliminati: ${data.deleted.tasks} task, ${data.deleted.blocks} blocchi, ${data.deleted.activityLogs} log attività`,
@@ -1816,15 +1823,12 @@ function DashboardTab({
                   <p className="text-sm">Nessun task nello storico</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                   {tasksData.tasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
+                    <div key={task.id} className="flex gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm truncate max-w-[300px]">{task.ai_instruction}</span>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {getTaskStatusBadge(task.status)}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {task.contact_name && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <User className="h-3 w-3" />
@@ -1837,17 +1841,18 @@ function DashboardTab({
                             </Badge>
                           )}
                           {task.task_category && getCategoryBadge(task.task_category)}
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[10px] text-muted-foreground ml-auto">
                             {task.created_at ? new Date(task.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
                           </span>
                         </div>
+                        <p className="text-sm text-foreground/80 line-clamp-2 leading-relaxed">{task.ai_instruction}</p>
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => handleDeleteTask(task.id)}
                         disabled={deletingTaskId === task.id}
-                        className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        className="shrink-0 h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 self-center"
                       >
                         {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                       </Button>
