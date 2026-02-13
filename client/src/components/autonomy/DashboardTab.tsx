@@ -103,6 +103,9 @@ function DashboardTab({
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [resettingAll, setResettingAll] = React.useState(false);
   const [gestioneTab, setGestioneTab] = React.useState("blocks");
+  const [actionDialogTask, setActionDialogTask] = React.useState<AITask | null>(null);
+  const [restoringTaskId, setRestoringTaskId] = React.useState<string | null>(null);
+  const [expandedHistoryIds, setExpandedHistoryIds] = React.useState<Set<string>>(new Set());
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -178,6 +181,41 @@ function DashboardTab({
       toast({ title: "Errore", description: "Impossibile eliminare il task", variant: "destructive" });
     }
     setDeletingTaskId(null);
+  };
+
+  const handleRestoreTask = async (taskId: string) => {
+    setRestoringTaskId(taskId);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/restore`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return typeof key === "string" && key.includes("/api/ai-autonomy/");
+          },
+        });
+        toast({ title: "Task ripristinato", description: "Il task è tornato in coda per l'approvazione" });
+        setActionDialogTask(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({ title: "Errore", description: errData.error || "Impossibile ripristinare il task", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile ripristinare il task", variant: "destructive" });
+    }
+    setRestoringTaskId(null);
+  };
+
+  const toggleHistoryExpand = (taskId: string) => {
+    setExpandedHistoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
   };
 
   const handleResetAll = async () => {
@@ -1824,46 +1862,125 @@ function DashboardTab({
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-                  {tasksData.tasks.map((task) => (
-                    <div key={task.id} className="flex gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          {getTaskStatusBadge(task.status)}
-                          {task.contact_name && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {task.contact_name}
-                            </span>
-                          )}
-                          {task.ai_role && (
-                            <Badge variant="outline" className={cn("text-[10px]", getRoleBadge(task.ai_role))}>
-                              {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
-                            </Badge>
-                          )}
-                          {task.task_category && getCategoryBadge(task.task_category)}
-                          <span className="text-[10px] text-muted-foreground ml-auto">
-                            {task.created_at ? new Date(task.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
-                          </span>
+                  {tasksData.tasks.map((task) => {
+                    const isExpanded = expandedHistoryIds.has(task.id);
+                    return (
+                      <div key={task.id} className="rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors overflow-hidden">
+                        <div
+                          className="flex gap-3 p-3 cursor-pointer"
+                          onClick={() => toggleHistoryExpand(task.id)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              {getTaskStatusBadge(task.status)}
+                              {task.contact_name && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {task.contact_name}
+                                </span>
+                              )}
+                              {task.ai_role && (
+                                <Badge variant="outline" className={cn("text-[10px]", getRoleBadge(task.ai_role))}>
+                                  {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                                </Badge>
+                              )}
+                              {task.task_category && getCategoryBadge(task.task_category)}
+                              <span className="text-[10px] text-muted-foreground ml-auto">
+                                {task.created_at ? new Date(task.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+                              </span>
+                            </div>
+                            <p className={cn("text-sm text-foreground/80 leading-relaxed", !isExpanded && "line-clamp-2")}>
+                              {task.ai_instruction}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 self-start mt-1">
+                            <ChevronUp className={cn("h-4 w-4 text-muted-foreground transition-transform", !isExpanded && "rotate-180")} />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => { e.stopPropagation(); setActionDialogTask(task); }}
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            >
+                              <Cog className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-sm text-foreground/80 line-clamp-2 leading-relaxed">{task.ai_instruction}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteTask(task.id)}
-                        disabled={deletingTaskId === task.id}
-                        className="shrink-0 h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 self-center"
-                      >
-                        {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={!!actionDialogTask} onOpenChange={(open) => { if (!open) setActionDialogTask(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Gestisci Task</DialogTitle>
+            <DialogDescription>
+              Scegli cosa fare con questo task: ripristinarlo in coda o eliminarlo definitivamente dal database.
+            </DialogDescription>
+          </DialogHeader>
+          {actionDialogTask && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border p-4 space-y-3 max-h-[300px] overflow-y-auto">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {getTaskStatusBadge(actionDialogTask.status)}
+                  {actionDialogTask.contact_name && (
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <User className="h-3.5 w-3.5" />
+                      {actionDialogTask.contact_name}
+                    </span>
+                  )}
+                  {actionDialogTask.ai_role && (
+                    <Badge variant="outline" className={cn("text-xs", getRoleBadge(actionDialogTask.ai_role))}>
+                      {actionDialogTask.ai_role.charAt(0).toUpperCase() + actionDialogTask.ai_role.slice(1)}
+                    </Badge>
+                  )}
+                  {actionDialogTask.task_category && getCategoryBadge(actionDialogTask.task_category)}
+                </div>
+                <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                  {actionDialogTask.ai_instruction}
+                </p>
+                {actionDialogTask.created_at && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Creato: {new Date(actionDialogTask.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => handleRestoreTask(actionDialogTask.id)}
+                  disabled={restoringTaskId === actionDialogTask.id || deletingTaskId === actionDialogTask.id}
+                >
+                  {restoringTaskId === actionDialogTask.id
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <RotateCcw className="h-4 w-4" />}
+                  Ripristina in Coda
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="w-full gap-2"
+                  onClick={async () => {
+                    await handleDeleteTask(actionDialogTask.id);
+                    setActionDialogTask(null);
+                  }}
+                  disabled={deletingTaskId === actionDialogTask.id || restoringTaskId === actionDialogTask.id}
+                >
+                  {deletingTaskId === actionDialogTask.id
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Trash2 className="h-4 w-4" />}
+                  Elimina Definitivamente
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!cancelDialogTask} onOpenChange={(open) => { if (!open) { setCancelDialogTask(null); setIsBlockCancel(false); } }}>
         <DialogContent className="max-w-md">
