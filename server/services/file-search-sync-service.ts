@@ -5004,7 +5004,7 @@ export class FileSearchSyncService {
     console.log(`📊 [Audit] Phase 4: Bulk loading client data...`);
     
     // Get all active clients AND sub-consultants (consultants who report to this consultant)
-    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: users.role })
+    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: users.role, departmentId: users.departmentId })
       .from(users).where(and(
         eq(users.consultantId, consultantId),
         eq(users.isActive, true),
@@ -5261,6 +5261,32 @@ export class FileSearchSyncService {
       }
     }
     
+    const allSystemPromptDocsResult = await db.execute(sql`
+      SELECT id, title, target_client_mode, target_client_ids, target_department_ids,
+             target_autonomous_agents, injection_mode, is_active
+      FROM system_prompt_documents
+      WHERE consultant_id = ${consultantId} AND is_active = true
+    `);
+    const systemPromptDocRows = allSystemPromptDocsResult.rows as any[];
+
+    const consultantStoreForAudit = await db.query.fileSearchStores.findFirst({
+      where: and(eq(fileSearchStores.ownerId, consultantId), eq(fileSearchStores.ownerType, 'consultant')),
+      columns: { id: true },
+    });
+    const indexedSystemPromptIds = new Set<string>();
+    if (consultantStoreForAudit) {
+      const indexedSysDocs = await db.select({ sourceId: fileSearchDocuments.sourceId })
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.storeId, consultantStoreForAudit.id),
+          eq(fileSearchDocuments.sourceType, 'system_prompt'),
+          eq(fileSearchDocuments.status, 'indexed')
+        ));
+      for (const d of indexedSysDocs) {
+        if (d.sourceId) indexedSystemPromptIds.add(d.sourceId);
+      }
+    }
+
     console.log(`📊 [Audit] Phase 4 complete in ${Date.now() - phase4Start}ms`);
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -5397,17 +5423,35 @@ export class FileSearchSyncService {
           sentAt: e.sentAt
         }));
 
+      const clientSystemPromptDocs = systemPromptDocRows.filter(d => {
+        if (d.target_client_mode === 'specific_clients') {
+          const ids = typeof d.target_client_ids === 'string' ? JSON.parse(d.target_client_ids) : (d.target_client_ids || []);
+          return ids.includes(client.id);
+        }
+        if (d.target_client_mode === 'specific_departments' && client.departmentId) {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(client.departmentId);
+        }
+        return false;
+      });
+      const systemPromptDocsMissing = clientSystemPromptDocs.filter(d => {
+        if (d.injection_mode !== 'file_search') return false;
+        return !indexedSystemPromptIds.has(d.id);
+      }).map(d => ({ id: d.id, title: d.title }));
+
       const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length +
                             assignedExercisesMissing.length + assignedLibraryMissing.length + assignedUniversityMissing.length +
                             externalDocsMissing.length + goalsMissing.length + tasksMissing.length + reflectionsMissing.length + 
-                            progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length;
+                            progressHistoryMissing.length + libraryProgressMissing.length + emailJourneyMissing.length +
+                            systemPromptDocsMissing.length;
       
       const hasFinancialDataIndexed = clientIndexed.some(d => d.sourceType === 'financial_data');
 
       const hasAnyData = clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0 || 
                          hasFinancialDataIndexed || assignedExercisesList.length > 0 || assignedLibraryDocs.length > 0 || 
                          assignedLessons.length > 0 || clientGoals.length > 0 || clientTasks.length > 0 ||
-                         clientReflections.length > 0 || clientProgressHist.length > 0 || clientLibProgress.length > 0 || clientEmailProgress.length > 0;
+                         clientReflections.length > 0 || clientProgressHist.length > 0 || clientLibProgress.length > 0 || clientEmailProgress.length > 0 ||
+                         clientSystemPromptDocs.length > 0;
 
       if (hasAnyData) {
         clientsAudit.push({
@@ -5428,6 +5472,7 @@ export class FileSearchSyncService {
           clientProgressHistory: { total: clientProgressHist.length, indexed: clientProgressHist.length - progressHistoryMissing.length, missing: progressHistoryMissing },
           libraryProgress: { total: clientLibProgress.length, indexed: clientLibProgress.length - libraryProgressMissing.length, missing: libraryProgressMissing },
           emailJourneyProgress: { total: clientEmailProgress.length, indexed: clientEmailProgress.length - emailJourneyMissing.length, missing: emailJourneyMissing },
+          systemPromptDocs: { total: clientSystemPromptDocs.length, indexed: clientSystemPromptDocs.length - systemPromptDocsMissing.length, missing: systemPromptDocsMissing },
         });
         totalClientsMissing += clientMissing;
       }

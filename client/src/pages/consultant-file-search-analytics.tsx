@@ -54,7 +54,8 @@ import {
   BookMarked,
   Eye,
   Crown,
-  Info
+  Info,
+  ScrollText
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -196,6 +197,7 @@ interface HierarchicalData {
       assignedLibrary: SyncedDocument[];
       assignedUniversity: SyncedDocument[];
       externalDocs: SyncedDocument[];
+      systemPromptDocs: SyncedDocument[];
     };
     totals: {
       exerciseResponses: number;
@@ -211,6 +213,7 @@ interface HierarchicalData {
       assignedLibrary: number;
       assignedUniversity: number;
       externalDocs: number;
+      systemPromptDocs: number;
       total: number;
     };
     potentialContent: {
@@ -3170,11 +3173,32 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   </CollapsibleContent>
                                                 </Collapsible>
                                               )}
+                                              {(client.totals?.systemPromptDocs || 0) > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-sysprompt`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-sysprompt`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-sysprompt`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <ScrollText className="h-4 w-4 text-indigo-600" />
+                                                    <span className="text-sm text-gray-700">Istruzioni AI</span>
+                                                    {getSyncStatusBadge(client.documents?.systemPromptDocs || [])}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {(client.documents?.systemPromptDocs || []).map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <ScrollText className="h-3 w-3 text-indigo-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
                                               {client.totals.exerciseResponses === 0 && client.totals.consultationNotes === 0 && client.totals.knowledgeBase === 0 && 
                                                (client.totals?.goals || 0) === 0 && (client.totals?.tasks || 0) === 0 && (client.totals?.dailyReflections || 0) === 0 &&
                                                (client.totals?.clientProgressHistory || 0) === 0 && (client.totals?.libraryProgress || 0) === 0 && (client.totals?.emailJourneyProgress || 0) === 0 &&
                                                (client.totals?.assignedExercises || 0) === 0 && (client.totals?.assignedLibrary || 0) === 0 && (client.totals?.assignedUniversity || 0) === 0 && 
-                                               (client.totals?.externalDocs || 0) === 0 && (
+                                               (client.totals?.externalDocs || 0) === 0 && (client.totals?.systemPromptDocs || 0) === 0 && (
                                                 <p className="text-gray-500 text-sm text-center py-2">Nessun documento categorizzato</p>
                                               )}
                                             </div>
@@ -3195,6 +3219,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <Badge variant="outline" className="text-xs"><Mail className="h-3 w-3 mr-1" />Email Journey</Badge>
                                                 <Badge variant="outline" className="text-xs"><GraduationCap className="h-3 w-3 mr-1" />University</Badge>
                                                 <Badge variant="outline" className="text-xs"><Link className="h-3 w-3 mr-1" />Doc Esterni</Badge>
+                                                <Badge variant="outline" className="text-xs"><ScrollText className="h-3 w-3 mr-1" />Istruzioni AI</Badge>
                                               </div>
                                               <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
                                             </div>
@@ -5007,7 +5032,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                               (client.dailyReflections?.missing?.length || 0) +
                                               (client.clientProgressHistory?.missing?.length || 0) +
                                               (client.libraryProgress?.missing?.length || 0) +
-                                              (client.emailJourneyProgress?.missing?.length || 0);
+                                              (client.emailJourneyProgress?.missing?.length || 0) +
+                                              (client.systemPromptDocs?.missing?.length || 0);
                         return (
                           <Collapsible key={client.clientId} open={openAuditClients[client.clientId]} onOpenChange={() => toggleAuditClient(client.clientId)}>
                             <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
@@ -5451,6 +5477,30 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             </>
                                           )}
                                         </Button>
+                                      </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
+                              {client.systemPromptDocs?.missing?.length > 0 && (
+                                <Collapsible 
+                                  open={openClientAuditCategories[`${client.clientId}-systemPromptDocs`] ?? false} 
+                                  onOpenChange={() => toggleClientAuditCategory(client.clientId, 'systemPromptDocs')}
+                                >
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors">
+                                    {(openClientAuditCategories[`${client.clientId}-systemPromptDocs`] ?? false) ? <ChevronDown className="h-3 w-3 text-indigo-600" /> : <ChevronRight className="h-3 w-3 text-indigo-600" />}
+                                    <ScrollText className="h-3 w-3 text-indigo-600" />
+                                    <span className="text-sm font-medium text-indigo-700">Istruzioni AI</span>
+                                    <Badge className="ml-auto bg-indigo-200 text-indigo-800">{client.systemPromptDocs.missing.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1 space-y-1">
+                                    {client.systemPromptDocs.missing.map((item: any) => (
+                                      <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50 rounded border border-indigo-200 ml-4">
+                                        <div className="flex items-center gap-2">
+                                          <ScrollText className="h-3 w-3 text-indigo-500" />
+                                          <span className="text-sm">{item.title}</span>
+                                        </div>
                                       </div>
                                     ))}
                                   </CollapsibleContent>

@@ -1013,7 +1013,8 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         id: users.id, 
         firstName: users.firstName, 
         lastName: users.lastName, 
-        email: users.email 
+        email: users.email,
+        departmentId: users.departmentId
       })
       .from(users)
       .where(eq(users.consultantId, consultantId));
@@ -1121,12 +1122,41 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       },
     };
     
+    const allSystemPromptDocsResult = await db.execute(sql`
+      SELECT id, title, target_client_mode, target_client_ids, target_department_ids,
+             target_autonomous_agents, target_whatsapp_agents, injection_mode, is_active
+      FROM system_prompt_documents
+      WHERE consultant_id = ${consultantId} AND is_active = true
+    `);
+    const allSystemPromptDocs = allSystemPromptDocsResult.rows as any[];
+
     // Build client stores data - include ALL clients, even those without documents
     // Client docs are in stores where storeOwnerId = client.id (private stores)
     const clientStoresData = allClients.map(client => {
       const clientDocuments = clientDocs.filter(d => d.storeOwnerId === client.id);
       const clientStore = stores.find(s => s.ownerId === client.id);
       
+      const clientSystemPromptDocs = allSystemPromptDocs.filter(d => {
+        if (d.target_client_mode === 'specific_clients') {
+          const ids = typeof d.target_client_ids === 'string' ? JSON.parse(d.target_client_ids) : (d.target_client_ids || []);
+          return ids.includes(client.id);
+        }
+        if (d.target_client_mode === 'specific_departments' && client.departmentId) {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(client.departmentId);
+        }
+        return false;
+      }).map(d => ({
+        id: d.id,
+        displayName: d.title,
+        status: d.injection_mode === 'file_search' ? 'indexed' as const : 'pending' as const,
+        sourceType: 'system_prompt' as const,
+        sourceId: d.id,
+        injectionMode: d.injection_mode,
+      }));
+
+      const totalWithSystemPrompt = clientDocuments.length + clientSystemPromptDocs.length;
+
       return {
         clientId: client.id,
         clientName: `${client.firstName} ${client.lastName}`,
@@ -1134,7 +1164,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         storeId: clientStore?.id || null,
         storeName: clientStore?.displayName || null,
         hasStore: !!clientStore,
-        hasDocuments: clientDocuments.length > 0,
+        hasDocuments: totalWithSystemPrompt > 0,
         documents: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise'),
           consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation'),
@@ -1149,6 +1179,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           assignedLibrary: clientDocuments.filter(d => d.sourceType === 'library'),
           assignedUniversity: clientDocuments.filter(d => d.sourceType === 'university_lesson'),
           externalDocs: clientDocuments.filter(d => d.sourceType === 'exercise_external_doc'),
+          systemPromptDocs: clientSystemPromptDocs,
         },
         totals: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise').length,
@@ -1164,7 +1195,8 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           assignedLibrary: clientDocuments.filter(d => d.sourceType === 'library').length,
           assignedUniversity: clientDocuments.filter(d => d.sourceType === 'university_lesson').length,
           externalDocs: clientDocuments.filter(d => d.sourceType === 'exercise_external_doc').length,
-          total: clientDocuments.length,
+          systemPromptDocs: clientSystemPromptDocs.length,
+          total: totalWithSystemPrompt,
         },
         potentialContent: {
           exerciseResponses: true,
@@ -1245,11 +1277,21 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
 
     const autonomousAgentStoresData = AUTONOMOUS_AGENTS.map(agent => {
       const agentDocs = agentAssignments.filter(a => a.agent_id === agent.id);
+      const agentSystemPromptDocs = allSystemPromptDocs.filter(d => {
+        const agents = typeof d.target_autonomous_agents === 'string' ? JSON.parse(d.target_autonomous_agents) : (d.target_autonomous_agents || {});
+        return agents[agent.id] === true;
+      }).map(d => ({
+        id: d.id,
+        title: d.title,
+        status: d.injection_mode === 'file_search' ? 'indexed' : 'system_prompt',
+        injectionMode: d.injection_mode,
+      }));
+      const totalDocs = agentDocs.length + agentSystemPromptDocs.length;
       return {
         agentId: agent.id,
         agentName: agent.name,
         agentDisplayName: agent.displayName,
-        hasDocuments: agentDocs.length > 0,
+        hasDocuments: totalDocs > 0,
         documents: agentDocs.map(d => ({
           documentId: d.document_id,
           title: d.title,
@@ -1257,9 +1299,10 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           fileType: d.file_type,
           fileName: d.file_name,
         })),
+        systemPromptDocs: agentSystemPromptDocs,
         totals: {
-          total: agentDocs.length,
-          indexed: agentDocs.filter(d => d.status === 'indexed').length,
+          total: totalDocs,
+          indexed: agentDocs.filter(d => d.status === 'indexed').length + agentSystemPromptDocs.filter(d => d.status === 'indexed').length,
         },
       };
     });
