@@ -26,6 +26,8 @@ import {
   consultantLicenses,
   leadNurturingTemplates,
   emailAccounts,
+  voiceCalls,
+  aiScheduledTasks,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { ensureGeminiFileValid } from '../services/gemini-file-manager';
@@ -222,6 +224,26 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const hasEmailJourneyConfigured = smtpSettings?.automationEnabled === true || 
       (smtpSettings?.emailFrequencyDays !== null && smtpSettings?.emailFrequencyDays !== undefined);
     
+    // Count completed voice calls
+    const completedVoiceCallsResult = await db.select({ count: count() })
+      .from(voiceCalls)
+      .where(and(
+        eq(voiceCalls.consultantId, consultantId),
+        eq(voiceCalls.status, 'completed')
+      ));
+    const completedVoiceCallsCount = Number(completedVoiceCallsResult[0]?.count || 0);
+    const hasCompletedVoiceCall = completedVoiceCallsCount > 0;
+    
+    // Count completed AI autonomous tasks
+    const completedAiTasksResult = await db.select({ count: count() })
+      .from(aiScheduledTasks)
+      .where(and(
+        eq(aiScheduledTasks.consultantId, sql`${consultantId}::uuid`),
+        eq(aiScheduledTasks.status, 'completed')
+      ));
+    const completedAiTasksCount = Number(completedAiTasksResult[0]?.count || 0);
+    const hasCompletedAiTask = completedAiTasksCount > 0;
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -277,6 +299,10 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       hasStripeAccount,
       stripeAccountStatus,
       hasEmailJourneyConfigured,
+      hasCompletedVoiceCall,
+      completedVoiceCallsCount,
+      hasCompletedAiTask,
+      completedAiTasksCount,
     };
     
     res.json({

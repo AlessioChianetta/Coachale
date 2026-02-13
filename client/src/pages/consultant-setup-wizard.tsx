@@ -789,6 +789,28 @@ export default function ConsultantSetupWizard() {
           count: status?.emailHubAccountsCount,
           countLabel: "account",
         },
+        {
+          id: "voice_calls",
+          stepNumber: 12,
+          title: "Chiamate Voice (Alessia AI)",
+          description: "Completa almeno una chiamata vocale con esito positivo tramite il sistema Alessia AI Phone",
+          icon: <Phone className="h-4 w-4" />,
+          status: status?.hasCompletedVoiceCall ? "verified" : "pending",
+          configLink: "/consultant/voice-calls",
+          count: status?.completedVoiceCallsCount,
+          countLabel: "chiamate completate",
+        },
+        {
+          id: "ai_autonomo",
+          stepNumber: 13,
+          title: "AI Autonomo",
+          description: "Attiva il sistema AI autonomo e completa almeno un task automatico generato dall'AI",
+          icon: <Bot className="h-4 w-4" />,
+          status: status?.hasCompletedAiTask ? "verified" : "pending",
+          configLink: "/consultant/ai-autonomy",
+          count: status?.completedAiTasksCount,
+          countLabel: "task completati",
+        },
       ],
     },
     {
@@ -797,7 +819,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "inbound_agent",
-          stepNumber: 12,
+          stepNumber: 14,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -806,7 +828,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 13,
+          stepNumber: 15,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -815,7 +837,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 14,
+          stepNumber: 16,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -824,7 +846,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 15,
+          stepNumber: 17,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -835,7 +857,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 16,
+          stepNumber: 18,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -846,7 +868,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 17,
+          stepNumber: 19,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -863,7 +885,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 18,
+          stepNumber: 20,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -874,7 +896,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 19,
+          stepNumber: 21,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -885,7 +907,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 20,
+          stepNumber: 22,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -903,7 +925,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 21,
+          stepNumber: 23,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -914,7 +936,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 22,
+          stepNumber: 24,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -926,7 +948,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 23,
+          stepNumber: 25,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -1301,6 +1323,8 @@ export default function ConsultantSetupWizard() {
                                 email_journey: "Come configuro l'automazione email journey per i miei clienti? Quali sono i template disponibili?",
                                 nurturing_emails: "Come funziona Email Nurturing 365? Come genero le 365 email automatiche per nutrire i lead?",
                                 email_hub: "Come configuro l'Email Hub per gestire inbox, invii automatici e risposte AI?",
+                                voice_calls: "Come funzionano le chiamate vocali con Alessia AI Phone? Come faccio a completare la prima chiamata?",
+                                ai_autonomo: "Come funziona il sistema AI Autonomo? Come attivo i dipendenti AI e completo il primo task automatico?",
                                 whatsapp_ai: "Spiegami come configurare credenziali AI separate per gli agenti WhatsApp.",
                                 inbound_agent: "Come creo un agente Inbound efficace per gestire le richieste dei clienti?",
                                 outbound_agent: "Come configuro un agente Outbound per le campagne proattive?",
@@ -1623,6 +1647,67 @@ export default function ConsultantSetupWizard() {
                               <p><strong>Gmail:</strong> imap.gmail.com, porta 993</p>
                               <p><strong>Outlook:</strong> outlook.office365.com, porta 993</p>
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "voice_calls" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-emerald-600" />
+                            Chiamate Voice con Alessia AI
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">📞 Cos'è Alessia AI Phone?</p>
+                            <p>È il sistema di telefonia vocale AI che gestisce chiamate in entrata e in uscita con intelligenza artificiale in tempo reale.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">✅ Come completare questo step:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>Chiamate Voice</strong> nel menu</li>
+                              <li>Configura i template vocali per inbound/outbound</li>
+                              <li>Ricevi o effettua almeno <strong>una chiamata</strong></li>
+                              <li>La chiamata deve avere esito <strong>"completata"</strong></li>
+                            </ol>
+                            
+                            <p className="text-xs mt-3 italic bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded">
+                              💡 <strong>Nota:</strong> Alessia AI riconosce automaticamente i chiamanti, gestisce la conversazione e genera un transcript completo.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "ai_autonomo" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-purple-600" />
+                            AI Autonomo: I Tuoi Dipendenti AI
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-3">
+                            <p className="font-medium text-foreground">🤖 Cos'è l'AI Autonomo?</p>
+                            <p>È un sistema con 8 dipendenti AI specializzati (Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza) che analizzano i tuoi clienti e creano task automaticamente.</p>
+                            
+                            <p className="font-medium text-foreground mt-4">✅ Come completare questo step:</p>
+                            <ol className="list-decimal list-inside ml-2 space-y-2">
+                              <li>Vai su <strong>AI Autonomo</strong> nel menu</li>
+                              <li>Attiva il sistema dalla <strong>tab Impostazioni</strong></li>
+                              <li>Abilita almeno un dipendente AI</li>
+                              <li>Attendi che venga generato e <strong>completato almeno un task</strong></li>
+                            </ol>
+                            
+                            <p className="font-medium text-foreground mt-4">👥 I dipendenti AI:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li><strong>Alessia:</strong> Primo contatto e outreach</li>
+                              <li><strong>Millie:</strong> Follow-up e relazioni</li>
+                              <li><strong>Echo:</strong> Analisi dati e performance</li>
+                              <li><strong>Nova:</strong> Report settimanali</li>
+                              <li><strong>Stella:</strong> Check-in periodici</li>
+                              <li><strong>Iris:</strong> Email intelligenti</li>
+                              <li><strong>Marco:</strong> Coach strategico del consulente</li>
+                            </ul>
+                            
+                            <p className="text-xs mt-3 italic bg-purple-50 dark:bg-purple-900/20 p-2 rounded">
+                              🚀 <strong>Suggerimento:</strong> Inizia con il livello di autonomia 1 (supervisione totale) e aumenta gradualmente man mano che ti fidi del sistema.
+                            </p>
                           </div>
                         </div>
                       )}
