@@ -1914,6 +1914,40 @@ router.post(
         });
       }
 
+      if ((target_client_mode || 'all') === 'consultant_only') {
+        setImmediate(async () => {
+          try {
+            const knowledgeDocId = crypto.randomUUID();
+            const contentBytes = Buffer.byteLength(content, 'utf8');
+            const sanitizedFileName = `${title.trim().replace(/[^a-zA-Z0-9À-ÿ _-]/g, '_')}.txt`;
+            const relPath = `${KNOWLEDGE_UPLOAD_DIR}/${knowledgeDocId}_${sanitizedFileName}`;
+            const absPath = path.join(process.cwd(), relPath);
+            await fs.mkdir(path.dirname(absPath), { recursive: true });
+            await fs.writeFile(absPath, content, 'utf8');
+            await db
+              .insert(consultantKnowledgeDocuments)
+              .values({
+                id: knowledgeDocId,
+                consultantId,
+                title: title.trim(),
+                description: description?.trim() || `Documento di sistema: ${title.trim()}`,
+                category: 'other',
+                fileName: sanitizedFileName,
+                fileType: 'txt',
+                fileSize: contentBytes,
+                filePath: relPath,
+                extractedContent: content,
+                priority: priority ?? 5,
+                status: 'indexed',
+                googleDriveFileId: google_drive_file_id || null,
+              });
+            console.log(`📋 [SYSTEM PROMPT DOCS] Also created knowledge document "${title}" for consultant-only visibility in Documenti tab (id: ${knowledgeDocId})`);
+          } catch (err: any) {
+            console.error('⚠️ [SYSTEM PROMPT DOCS] Failed to create companion knowledge document:', err.message);
+          }
+        });
+      }
+
       res.status(201).json({ success: true, data: result.rows[0] });
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error creating:", error);

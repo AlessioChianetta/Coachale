@@ -605,15 +605,14 @@ export async function syncSystemDocFromDrive(
     if ((document.injection_mode || 'system_prompt') === 'file_search') {
       try {
         const { FileSearchSyncService } = await import('./file-search-sync-service');
-        const fileSearchSyncService = new FileSearchSyncService();
 
         if (document.target_client_assistant) {
-          await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'client_assistant', consultantId, 'consultant');
+          await FileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'client_assistant', consultantId, 'consultant');
         }
         const waAgents = document.target_whatsapp_agents || {};
         for (const [agentId, active] of Object.entries(waAgents)) {
           if (active) {
-            await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
+            await FileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
           }
         }
       } catch (err: any) {
