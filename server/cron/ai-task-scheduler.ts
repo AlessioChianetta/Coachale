@@ -1421,7 +1421,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   for (const role of activeRoles) {
     try {
-      if (role.id !== 'nova' && eligibleClients.length === 0) {
+      if (role.id !== 'nova' && role.id !== 'marco' && eligibleClients.length === 0) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No eligible clients, skipping`);
         if (dryRun) {
           simulationRoles.push({
@@ -1469,7 +1469,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       }
 
       const configuredFrequencyMinutes = parseInt(roleFrequencies[role.id] || '30', 10);
-      if (!dryRun) {
+      if (!dryRun && role.id !== 'marco') {
         const lastRunResult = await db.execute(sql`
           SELECT created_at FROM ai_activity_log
           WHERE consultant_id::text = ${cId}
