@@ -1714,6 +1714,56 @@ function SettingsTab({
               ) : (
                 <>
                   <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="h-4 w-4 text-indigo-500" />
+                      <Label className="text-sm font-semibold">I tuoi contatti (per farti raggiungere da Marco)</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      Marco potra' chiamarti, scriverti su WhatsApp o inviarti email quando serve comunicarti qualcosa di importante.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Phone className="h-3 w-3" />
+                          Telefono
+                        </Label>
+                        <Input
+                          value={marcoContext.consultantPhone || ""}
+                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantPhone: e.target.value }))}
+                          placeholder="+39 351 927 2875"
+                          className="rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <MessageSquare className="h-3 w-3" />
+                          WhatsApp
+                        </Label>
+                        <Input
+                          value={marcoContext.consultantWhatsapp || ""}
+                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantWhatsapp: e.target.value }))}
+                          placeholder="+39 351 927 2875"
+                          className="rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Mail className="h-3 w-3" />
+                          Email
+                        </Label>
+                        <Input
+                          value={marcoContext.consultantEmail || ""}
+                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantEmail: e.target.value }))}
+                          placeholder="tu@tuoemail.it"
+                          className="rounded-xl text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-semibold flex items-center gap-2">
                         <Flag className="h-4 w-4 text-indigo-500" />

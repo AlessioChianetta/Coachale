@@ -61,6 +61,9 @@ export interface MarcoContext {
   linkedKbDocumentIds: string[];
   reportStyle: 'sintetico' | 'dettagliato' | 'bilanciato';
   reportFocus: string;
+  consultantPhone: string;
+  consultantEmail: string;
+  consultantWhatsapp: string;
 }
 
 export interface KbDocument {

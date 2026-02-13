@@ -188,6 +188,9 @@ router.get("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
       linkedKbDocumentIds: [],
       reportStyle: "bilanciato",
       reportFocus: "",
+      consultantPhone: "",
+      consultantEmail: "",
+      consultantWhatsapp: "",
     };
 
     return res.json(context);
