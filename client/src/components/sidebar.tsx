@@ -166,11 +166,11 @@ const consultantCategories: SidebarCategoryExtended[] = [
     ]
   },
   {
-    name: "BASE DI CONOSCENZA",
+    name: "CERVELLO AI",
     icon: Database,
     defaultExpanded: false,
     items: [
-      { name: "Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "text-amber-500" },
+      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "text-amber-500" },
       { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug, color: "text-cyan-500" },
     ]
   },
@@ -644,7 +644,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     "COMUNICAZIONE": { iconColor: "text-cyan-500", textColor: "text-slate-800 dark:text-slate-200" },
                     "CONTENT STUDIO": { iconColor: "text-purple-500", textColor: "text-slate-800 dark:text-slate-200" },
                     "FORMAZIONE": { iconColor: "text-amber-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "BASE DI CONOSCENZA": { iconColor: "text-blue-500", textColor: "text-slate-800 dark:text-slate-200" },
+                    "CERVELLO AI": { iconColor: "text-blue-500", textColor: "text-slate-800 dark:text-slate-200" },
                     "IMPOSTAZIONI": { iconColor: "text-slate-500", textColor: "text-slate-800 dark:text-slate-200" },
                     "GUIDE": { iconColor: "text-rose-500", textColor: "text-slate-800 dark:text-slate-200" },
                     "AI AVANZATO": { iconColor: "text-emerald-500", textColor: "text-slate-800 dark:text-slate-200" },
