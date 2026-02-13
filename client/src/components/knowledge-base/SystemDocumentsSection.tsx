@@ -77,6 +77,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
+interface KbDocSummary {
+  id: string;
+  title: string;
+  status: string;
+  fileType?: string;
+  source: 'kb';
+  agentIds: string[];
+  googleDriveFileId?: string;
+  fileSize?: number;
+  createdAt?: string;
+}
+
 const AUTONOMOUS_AGENTS = [
   { id: "alessia", name: "Alessia" },
   { id: "millie", name: "Millie" },
@@ -720,12 +732,55 @@ export default function SystemDocumentsSection() {
     refetchOnMount: 'always',
   });
 
+  const { data: kbDocumentsResponse } = useQuery({
+    queryKey: ["/api/consultant/knowledge/documents-for-system-view"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/knowledge/documents?limit=200", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  const { data: agentAssignmentsResponse } = useQuery({
+    queryKey: ["/api/consultant/knowledge/agent-assignments/by-document"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/knowledge/agent-assignments/by-document", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return { data: {} };
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
   const documents: SystemDocument[] = response?.data || [];
   const whatsappAgents: WhatsAppAgent[] = whatsappResponse?.data || [];
   const allClients: ClientUser[] = Array.isArray(clientsResponse) ? clientsResponse : (clientsResponse?.data || []);
   const departments: Department[] = departmentsResponse?.data || [];
   const nonEmployeeClients = allClients.filter(c => !c.isEmployee);
   const employeeClients = allClients.filter(c => c.isEmployee);
+
+  const kbDocuments: any[] = kbDocumentsResponse?.data || [];
+  const agentAssignmentsByDoc: Record<string, string[]> = agentAssignmentsResponse?.data || {};
+
+  const kbDocsForGroups = useMemo(() => {
+    return kbDocuments
+      .filter((doc: any) => doc.status === 'indexed')
+      .map((doc: any): KbDocSummary => ({
+        id: doc.id,
+        title: doc.title,
+        status: doc.status,
+        fileType: doc.fileType,
+        source: 'kb' as const,
+        agentIds: agentAssignmentsByDoc[doc.id] || [],
+        googleDriveFileId: doc.googleDriveFileId,
+        fileSize: doc.fileSize,
+        createdAt: doc.createdAt,
+      }));
+  }, [kbDocuments, agentAssignmentsByDoc]);
 
   const createMutation = useMutation({
     mutationFn: async (data: DocumentForm) => {
@@ -1059,6 +1114,9 @@ export default function SystemDocumentsSection() {
   const autonomousDocs = sortedDocuments.filter(d => hasAutonomousTargets(d));
   const unassignedDocs = sortedDocuments.filter(d => isUnassigned(d));
 
+  const kbDocsConsultant = kbDocsForGroups;
+  const kbDocsAutonomous = kbDocsForGroups.filter(d => d.agentIds.length > 0);
+
   const getDepartmentNames = (deptIds: string[]) => {
     return deptIds.map(id => {
       const dept = departments.find(d => d.id === id);
@@ -1225,6 +1283,61 @@ export default function SystemDocumentsSection() {
     );
   };
 
+  const renderKbDocumentCard = (kbDoc: KbDocSummary, currentGroup?: string) => {
+    const agentNames = kbDoc.agentIds.map(id => {
+      const agent = AUTONOMOUS_AGENTS.find(a => a.id === id);
+      return agent?.name || id;
+    });
+    const isGoogleDriveDoc = !!kbDoc.googleDriveFileId;
+    const otherGroups: string[] = [];
+    if (currentGroup === 'ai_consultant' && kbDoc.agentIds.length > 0) otherGroups.push('autonomous');
+    if (currentGroup === 'autonomous') otherGroups.push('ai_consultant');
+
+    return (
+      <div
+        key={`kb-${kbDoc.id}-${currentGroup || 'flat'}`}
+        className="border rounded-lg p-4 transition-colors bg-amber-50/30 hover:bg-amber-50/50 border-amber-200"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-medium truncate">{kbDoc.title}</h4>
+              <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-300 shrink-0">
+                Knowledge Base
+              </Badge>
+              {kbDoc.fileType && (
+                <span className="text-[10px] text-slate-500 uppercase">{kbDoc.fileType}</span>
+              )}
+              {isGoogleDriveDoc && (
+                <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">
+                  <Cloud className="w-3 h-3" />
+                  Google Drive
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <span className="flex items-center gap-1 text-[10px] text-cyan-600 bg-cyan-50 px-1.5 py-0.5 rounded-full">
+                <Sparkles className="w-3 h-3" />
+                AI Consulente
+              </span>
+              {agentNames.map(name => (
+                <span key={name} className="flex items-center gap-1 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                  <Bot className="w-3 h-3" />
+                  {name}
+                </span>
+              ))}
+            </div>
+            {otherGroups.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1.5 italic">
+                Appare anche in: {otherGroups.map(g => groupLabelMap[g]).join(', ')}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const emptyGroupHints: Record<string, string> = {
     ai_consultant: 'Aggiungi istruzioni generali per guidare il comportamento del tuo AI Assistant',
     ai_clients: 'Crea documenti personalizzati visibili solo ai tuoi clienti nell\'AI Assistant',
@@ -1241,8 +1354,10 @@ export default function SystemDocumentsSection() {
     docs: SystemDocument[],
     colorClasses: { border: string; bg: string; headerBg: string; badge: string; iconBg: string; text: string },
     subInfoFn?: (doc: SystemDocument) => string | null,
+    kbDocs?: KbDocSummary[],
   ) => {
-    const isEmpty = docs.length === 0;
+    const totalCount = docs.length + (kbDocs?.length || 0);
+    const isEmpty = totalCount === 0;
     const isOpen = openGroups[groupKey] ?? !isEmpty;
 
     return (
@@ -1266,7 +1381,7 @@ export default function SystemDocumentsSection() {
                 <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">—</span>
               ) : (
                 <Badge variant="outline" className={`text-xs ${colorClasses.badge}`}>
-                  {docs.length}
+                  {totalCount}
                 </Badge>
               )}
             </div>
@@ -1307,6 +1422,22 @@ export default function SystemDocumentsSection() {
                   </div>
                 );
               })}
+              {kbDocs && kbDocs.length > 0 && (
+                <>
+                  {docs.length > 0 && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-px flex-1 bg-amber-200" />
+                      <span className="text-[10px] text-amber-500 font-medium whitespace-nowrap">Dalla Knowledge Base</span>
+                      <div className="h-px flex-1 bg-amber-200" />
+                    </div>
+                  )}
+                  {kbDocs.map(kbDoc => (
+                    <div key={`kb-${kbDoc.id}`}>
+                      {renderKbDocumentCard(kbDoc, groupKey)}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </CollapsibleContent>
@@ -1343,7 +1474,7 @@ export default function SystemDocumentsSection() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : sortedDocuments.length === 0 ? (
+          ) : sortedDocuments.length === 0 && kbDocsForGroups.length === 0 ? (
             <div className="text-center py-16 px-6">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
                 <FileText className="h-8 w-8 text-indigo-400" />
@@ -1405,11 +1536,11 @@ export default function SystemDocumentsSection() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 flex-wrap px-1 pb-1">
                     {[
-                      { count: aiDocsConsultant.length, label: 'Consulente', color: 'bg-indigo-100 text-indigo-700' },
+                      { count: aiDocsConsultant.length + kbDocsConsultant.length, label: 'Consulente', color: 'bg-indigo-100 text-indigo-700' },
                       { count: aiDocsClients.length, label: 'Clienti', color: 'bg-blue-100 text-blue-700' },
                       { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-cyan-100 text-cyan-700' },
                       { count: whatsappDocs.length, label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
-                      { count: autonomousDocs.length, label: 'Agenti', color: 'bg-purple-100 text-purple-700' },
+                      { count: autonomousDocs.length + kbDocsAutonomous.length, label: 'Agenti', color: 'bg-purple-100 text-purple-700' },
                     ].filter(s => s.count > 0).map(s => (
                       <span key={s.label} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${s.color}`}>
                         {s.count} {s.label}
@@ -1421,7 +1552,7 @@ export default function SystemDocumentsSection() {
                       </span>
                     )}
                     <span className="text-[10px] text-slate-400 ml-auto">
-                      {sortedDocuments.length} totali
+                      {sortedDocuments.length + kbDocsForGroups.length} totali
                     </span>
                   </div>
                   {renderGroupSection(
@@ -1430,6 +1561,8 @@ export default function SystemDocumentsSection() {
                     <Sparkles className="h-4 w-4 text-indigo-600" />,
                     aiDocsConsultant,
                     { border: 'border-indigo-300', bg: 'bg-indigo-50/30', headerBg: 'bg-indigo-50/50', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', iconBg: 'bg-indigo-100', text: 'text-indigo-800' },
+                    undefined,
+                    kbDocsConsultant,
                   )}
                   {renderGroupSection(
                     'ai_clients',
@@ -1474,6 +1607,7 @@ export default function SystemDocumentsSection() {
                       const names = getAutonomousAgentNames(doc);
                       return names.length > 0 ? `Agenti: ${names.join(', ')}` : null;
                     },
+                    kbDocsAutonomous,
                   )}
                   {renderGroupSection(
                     'unassigned',
