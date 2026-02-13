@@ -1222,7 +1222,7 @@ export default function SystemDocumentsSection() {
   const autonomousDocs = sortedDocuments.filter(d => hasAutonomousTargets(d));
   const unassignedDocs = sortedDocuments.filter(d => isUnassigned(d));
 
-  const kbDocsConsultant = kbDocsForGroups;
+  const kbDocsConsultantOnly = kbDocsForGroups;
   const kbDocsAutonomous = kbDocsForGroups.filter(d => d.agentIds.length > 0);
 
   const getDepartmentNames = (deptIds: string[]) => {
@@ -1399,8 +1399,8 @@ export default function SystemDocumentsSection() {
     });
     const isGoogleDriveDoc = !!kbDoc.googleDriveFileId;
     const otherGroups: string[] = [];
-    if (currentGroup === 'ai_consultant' && kbDoc.agentIds.length > 0) otherGroups.push('autonomous');
-    if (currentGroup === 'autonomous') otherGroups.push('ai_consultant');
+    if (currentGroup === 'ai_consultant_only' && kbDoc.agentIds.length > 0) otherGroups.push('autonomous');
+    if (currentGroup === 'autonomous') otherGroups.push('ai_consultant_only');
 
     return (
       <div
@@ -1645,8 +1645,8 @@ export default function SystemDocumentsSection() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 flex-wrap px-1 pb-1">
                     {[
-                      { count: aiDocsConsultantOnly.length, label: 'Solo per me', color: 'bg-amber-100 text-amber-700' },
-                      { count: aiDocsConsultant.length + kbDocsConsultant.length, label: 'Tutti', color: 'bg-indigo-100 text-indigo-700' },
+                      { count: aiDocsConsultantOnly.length + kbDocsConsultantOnly.length, label: 'Solo per me', color: 'bg-amber-100 text-amber-700' },
+                      { count: aiDocsConsultant.length, label: 'Tutti', color: 'bg-indigo-100 text-indigo-700' },
                       { count: aiDocsClients.length, label: 'Clienti', color: 'bg-blue-100 text-blue-700' },
                       { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-emerald-100 text-emerald-700' },
                       { count: whatsappDocs.length, label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
@@ -1671,6 +1671,8 @@ export default function SystemDocumentsSection() {
                     <Lock className="h-4 w-4 text-amber-600" />,
                     aiDocsConsultantOnly,
                     { border: 'border-amber-300', bg: 'bg-amber-50/30', headerBg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700 border-amber-200', iconBg: 'bg-amber-100', text: 'text-amber-800' },
+                    undefined,
+                    kbDocsConsultantOnly,
                   )}
                   {renderGroupSection(
                     'ai_consultant',
@@ -1678,8 +1680,6 @@ export default function SystemDocumentsSection() {
                     <Globe className="h-4 w-4 text-indigo-600" />,
                     aiDocsConsultant,
                     { border: 'border-indigo-300', bg: 'bg-indigo-50/30', headerBg: 'bg-indigo-50/50', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', iconBg: 'bg-indigo-100', text: 'text-indigo-800' },
-                    undefined,
-                    kbDocsConsultant,
                   )}
                   {renderGroupSection(
                     'ai_clients',
