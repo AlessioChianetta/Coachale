@@ -200,7 +200,7 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
     // Get service token
     const tokenResult = await db.execute(sql`
       SELECT token FROM voice_service_tokens 
-      WHERE consultant_id = ${task.consultant_id} AND revoked_at IS NULL
+      WHERE consultant_id = ${task.consultant_id}::text AND revoked_at IS NULL
       ORDER BY created_at DESC LIMIT 1
     `);
     
@@ -1177,7 +1177,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       u.phone_number,
       (
         SELECT MAX(c.created_at) FROM consultations c 
-        WHERE c.client_id = u.id::text AND c.consultant_id = ${consultantId}
+        WHERE c.client_id = u.id::text AND c.consultant_id = ${consultantId}::text
       ) AS last_consultation_date,
       (
         SELECT MAX(t.scheduled_at) FROM ai_scheduled_tasks t 
@@ -1185,7 +1185,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       ) AS last_task_date
     FROM users u
     JOIN user_role_profiles urp ON u.id = urp.user_id
-    WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client'
+    WHERE urp.consultant_id = ${consultantId}::text AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY u.first_name ASC
     LIMIT 50

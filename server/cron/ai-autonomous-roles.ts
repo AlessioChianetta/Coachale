@@ -116,7 +116,7 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
-    WHERE c.consultant_id = ${consultantId}
+    WHERE c.consultant_id = ${consultantId}::text
       AND c.status IN ('completed', 'scheduled')
     ORDER BY c.scheduled_at DESC
     LIMIT 50
@@ -126,7 +126,7 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
     SELECT svc.target_phone, svc.scheduled_at, svc.status, svc.duration_seconds,
            svc.call_instruction, svc.hangup_cause, svc.source_task_id
     FROM scheduled_voice_calls svc
-    WHERE svc.consultant_id = ${consultantId}
+    WHERE svc.consultant_id = ${consultantId}::text
       AND svc.status IN ('completed', 'failed', 'scheduled')
     ORDER BY svc.scheduled_at DESC
     LIMIT 30
@@ -149,7 +149,7 @@ async function fetchMillieData(consultantId: string, clientIds: string[]): Promi
            u.first_name || ' ' || u.last_name as client_name
     FROM client_email_journey_progress jp
     JOIN users u ON u.id::text = jp.client_id
-    WHERE jp.consultant_id = ${consultantId}
+    WHERE jp.consultant_id = ${consultantId}::text
     ORDER BY jp.last_email_sent_at DESC NULLS LAST
     LIMIT 50
   `);
@@ -157,7 +157,7 @@ async function fetchMillieData(consultantId: string, clientIds: string[]): Promi
   const emailLogsResult = await db.execute(sql`
     SELECT ael.client_id, ael.sent_at, ael.subject, ael.email_type, ael.opened_at
     FROM automated_emails_log ael
-    JOIN client_email_journey_progress jp ON jp.client_id = ael.client_id AND jp.consultant_id = ${consultantId}
+    JOIN client_email_journey_progress jp ON jp.client_id = ael.client_id AND jp.consultant_id = ${consultantId}::text
     WHERE ael.sent_at > NOW() - INTERVAL '14 days'
     ORDER BY ael.sent_at DESC
     LIMIT 50
@@ -181,7 +181,7 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
-    WHERE c.consultant_id = ${consultantId}
+    WHERE c.consultant_id = ${consultantId}::text
       AND c.status = 'completed'
       AND (c.summary_email IS NULL OR c.summary_email = '')
       AND c.scheduled_at > NOW() - INTERVAL '30 days'
@@ -196,7 +196,7 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
-    WHERE c.consultant_id = ${consultantId}
+    WHERE c.consultant_id = ${consultantId}::text
       AND c.summary_email IS NOT NULL
       AND c.summary_email != ''
       AND c.scheduled_at > NOW() - INTERVAL '30 days'
@@ -214,7 +214,7 @@ async function fetchEchoData(consultantId: string, clientIds: string[]): Promise
       COUNT(*) FILTER (WHERE status = 'completed' AND summary_email_status = 'draft' AND (summary_email IS NULL OR summary_email = '')) AS email_draft,
       COUNT(*) FILTER (WHERE status = 'completed' AND (summary_email_status IN ('sent', 'approved', 'saved_for_ai') OR (summary_email IS NOT NULL AND summary_email != ''))) AS email_sent
     FROM consultations
-    WHERE consultant_id = ${consultantId}
+    WHERE consultant_id = ${consultantId}::text
       AND scheduled_at > NOW() - INTERVAL '60 days'
   `);
 
@@ -326,7 +326,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
-    WHERE c.consultant_id = ${consultantId}
+    WHERE c.consultant_id = ${consultantId}::text
       AND c.status = 'scheduled'
       AND c.scheduled_at > NOW()
       AND c.scheduled_at < NOW() + INTERVAL '7 days'
@@ -396,7 +396,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   const clientCountResult = await db.execute(sql`
     SELECT COUNT(*) as total_clients
     FROM users u
-    WHERE u.consultant_id = ${consultantId}
+    WHERE u.consultant_id = ${consultantId}::text
       AND u.is_active = true
   `);
 
@@ -420,14 +420,14 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     LEFT JOIN (
       SELECT client_id, COUNT(*)::int as consultation_count
       FROM consultations
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${consultantId}::text
         AND client_id IS NOT NULL
         AND status IN ('completed', 'scheduled')
         AND scheduled_at >= date_trunc('month', NOW())
         AND scheduled_at < date_trunc('month', NOW()) + INTERVAL '1 month'
       GROUP BY client_id
     ) c_direct ON c_direct.client_id = u.id::text
-    WHERE u.consultant_id = ${consultantId}
+    WHERE u.consultant_id = ${consultantId}::text
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
     ORDER BY (u.monthly_consultation_limit - COALESCE(c_direct.consultation_count, 0)) ASC
@@ -456,12 +456,12 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     LEFT JOIN (
       SELECT client_id, date_trunc('month', scheduled_at) as month, COUNT(*)::int as cnt
       FROM consultations
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${consultantId}::text
         AND client_id IS NOT NULL
         AND status IN ('scheduled', 'completed')
       GROUP BY client_id, date_trunc('month', scheduled_at)
     ) c_direct ON c_direct.client_id = u.id::text AND c_direct.month = m.month_start
-    WHERE u.consultant_id = ${consultantId}
+    WHERE u.consultant_id = ${consultantId}::text
       AND u.is_active = true
       AND u.monthly_consultation_limit IS NOT NULL
     ORDER BY u.first_name, m.month_start
@@ -574,7 +574,7 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
            u.first_name || ' ' || u.last_name as client_name
     FROM consultations c
     JOIN users u ON u.id::text = c.client_id
-    WHERE c.consultant_id = ${consultantId}
+    WHERE c.consultant_id = ${consultantId}::text
       AND c.scheduled_at > NOW() - INTERVAL '30 days'
     ORDER BY c.scheduled_at DESC
     LIMIT 30
