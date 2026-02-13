@@ -175,6 +175,15 @@ const emptyForm = (): DocumentForm => ({
   priority: 5,
 });
 
+interface ContentEntry {
+  id: string;
+  title: string;
+  content: string;
+  description: string;
+  sourceType: 'manual' | 'drive' | 'upload';
+  sourceFileName?: string;
+}
+
 type PickerDriveSection = 'home' | 'my-drive' | 'shared-with-me' | 'recent' | 'starred';
 
 const PICKER_DRIVE_SECTIONS: { id: PickerDriveSection; label: string; icon: React.ReactNode }[] = [
@@ -185,8 +194,9 @@ const PICKER_DRIVE_SECTIONS: { id: PickerDriveSection; label: string; icon: Reac
   { id: 'starred', label: 'Speciali', icon: <Star className="w-4 h-4" /> },
 ];
 
-function DriveFilePicker({ onTextExtracted, existingDocuments }: { 
+function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocuments }: { 
   onTextExtracted: (text: string, fileName: string) => void;
+  onMultipleExtracted?: (files: Array<{text: string; fileName: string}>) => void;
   existingDocuments?: SystemDocument[];
 }) {
   const [currentSection, setCurrentSection] = useState<PickerDriveSection>('home');
@@ -424,9 +434,21 @@ function DriveFilePicker({ onTextExtracted, existingDocuments }: {
     setImportProgress({ current: 0, total: 0 });
 
     if (extractedTexts.length > 0) {
-      const concatenated = extractedTexts.join('\n\n---\n\n');
-      const fileName = filesList.length === 1 ? filesList[0].name : `${filesList.length} file importati`;
-      onTextExtracted(concatenated, fileName);
+      if (onMultipleExtracted && filesList.length > 0) {
+        const filesResult: Array<{text: string; fileName: string}> = [];
+        let textIdx = 0;
+        for (let i = 0; i < filesList.length; i++) {
+          if (textIdx < extractedTexts.length) {
+            filesResult.push({ text: extractedTexts[textIdx], fileName: filesList[i].name });
+            textIdx++;
+          }
+        }
+        onMultipleExtracted(filesResult);
+      } else {
+        const concatenated = extractedTexts.join('\n\n---\n\n');
+        const fileName = filesList.length === 1 ? filesList[0].name : `${filesList.length} file importati`;
+        onTextExtracted(concatenated, fileName);
+      }
       setSelectedFiles(new Map());
     } else if (errorCount > 0) {
       toast({ title: "Importazione fallita", description: "Nessun testo estratto dai file selezionati", variant: "destructive" });
@@ -686,6 +708,11 @@ export default function SystemDocumentsSection() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFileName, setExtractedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [contentEntries, setContentEntries] = useState<ContentEntry[]>([]);
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualContent, setManualContent] = useState('');
+  const [manualDescription, setManualDescription] = useState('');
+  const [batchSaving, setBatchSaving] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -934,6 +961,10 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
     setContentSource('manual');
     setExtractedFileName(null);
+    setContentEntries([]);
+    setManualTitle('');
+    setManualContent('');
+    setManualDescription('');
   };
 
   const openCreate = () => {
@@ -947,6 +978,10 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
     setContentSource('manual');
     setExtractedFileName(null);
+    setContentEntries([]);
+    setManualTitle('');
+    setManualContent('');
+    setManualDescription('');
   };
 
   const openEdit = (doc: SystemDocument) => {
@@ -971,15 +1006,64 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
   };
 
-  const handleSubmit = () => {
-    if (!form.title.trim() || !form.content.trim()) {
-      toast({ title: "Campi obbligatori", description: "Titolo e contenuto sono obbligatori", variant: "destructive" });
-      return;
-    }
+  const addContentEntry = (content: string, title: string, sourceType: 'manual' | 'drive' | 'upload', sourceFileName?: string) => {
+    const cleanTitle = title.replace(/\.[^/.]+$/, '');
+    setContentEntries(prev => [...prev, {
+      id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: cleanTitle,
+      content,
+      description: '',
+      sourceType,
+      sourceFileName,
+    }]);
+  };
+
+  const handleSubmit = async () => {
     if (editingDoc) {
+      if (!form.title.trim() || !form.content.trim()) {
+        toast({ title: "Campi obbligatori", description: "Titolo e contenuto sono obbligatori", variant: "destructive" });
+        return;
+      }
       updateMutation.mutate({ id: editingDoc.id, data: form });
     } else {
-      createMutation.mutate(form);
+      if (contentEntries.length === 0) {
+        toast({ title: "Nessun contenuto", description: "Aggiungi almeno un documento", variant: "destructive" });
+        return;
+      }
+      setBatchSaving(true);
+      let successCount = 0;
+      let errorCount = 0;
+      for (const entry of contentEntries) {
+        try {
+          const docData: DocumentForm = {
+            ...form,
+            title: entry.title || 'Documento senza titolo',
+            content: entry.content,
+            description: entry.description,
+          };
+          const res = await fetch("/api/consultant/knowledge/system-documents", {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify(docData),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Errore nella creazione");
+          }
+          successCount++;
+        } catch (err: any) {
+          errorCount++;
+          console.error(`Error creating doc "${entry.title}":`, err);
+        }
+      }
+      setBatchSaving(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+      closeForm();
+      if (errorCount === 0) {
+        toast({ title: "Documenti creati", description: `${successCount} documento${successCount !== 1 ? 'i' : ''} creato${successCount !== 1 ? 'i' : ''} con successo` });
+      } else {
+        toast({ title: "Creazione parziale", description: `${successCount} creati, ${errorCount} errori`, variant: "destructive" });
+      }
     }
   };
 
@@ -998,9 +1082,13 @@ export default function SystemDocumentsSection() {
         throw new Error(err.error || 'Errore nell\'estrazione');
       }
       const result = await res.json();
-      setForm(f => ({ ...f, content: result.data.text, title: f.title || file.name.replace(/\.[^/.]+$/, '') }));
-      setExtractedFileName(file.name);
-      setContentSource('manual');
+      if (editingDoc) {
+        setForm(f => ({ ...f, content: result.data.text, title: f.title || file.name.replace(/\.[^/.]+$/, '') }));
+        setExtractedFileName(file.name);
+        setContentSource('manual');
+      } else {
+        addContentEntry(result.data.text, file.name, 'upload', file.name);
+      }
       toast({ title: "Contenuto importato", description: `${result.data.characters.toLocaleString()} caratteri estratti da "${file.name}"` });
     } catch (err: any) {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
@@ -1009,7 +1097,7 @@ export default function SystemDocumentsSection() {
     }
   };
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = createMutation.isPending || updateMutation.isPending || batchSaving;
 
   const getTargetBadges = (doc: SystemDocument) => {
     const badges: { label: string; icon: React.ReactNode; colorClass: string }[] = [];
@@ -1671,134 +1759,335 @@ export default function SystemDocumentsSection() {
 
             {wizardStep === 1 && (
               <div className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sys-doc-title">Titolo *</Label>
-                    <Input
-                      id="sys-doc-title"
-                      value={form.title}
-                      onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                      placeholder="Es: Istruzioni generali per l'AI"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sys-doc-desc">Descrizione (nota interna)</Label>
-                    <Input
-                      id="sys-doc-desc"
-                      value={form.description}
-                      onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Nota interna per identificare questo documento"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="sys-doc-content">Contenuto *</Label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">{form.content.length} caratteri</span>
-                      <span className="text-xs text-muted-foreground">~{Math.round(form.content.length / 4).toLocaleString()} token</span>
+                {editingDoc ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="sys-doc-title">Titolo *</Label>
+                        <Input
+                          id="sys-doc-title"
+                          value={form.title}
+                          onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                          placeholder="Es: Istruzioni generali per l'AI"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sys-doc-desc">Descrizione (nota interna)</Label>
+                        <Input
+                          id="sys-doc-desc"
+                          value={form.description}
+                          onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                          placeholder="Nota interna per identificare questo documento"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 mb-3">
-                    {([
-                      { id: 'manual' as const, label: 'Scrivi', icon: <PenLine className="h-3.5 w-3.5" /> },
-                      { id: 'drive' as const, label: 'Google Drive', icon: <Cloud className="h-3.5 w-3.5" /> },
-                      { id: 'upload' as const, label: 'Carica File', icon: <Upload className="h-3.5 w-3.5" /> },
-                    ]).map(tab => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setContentSource(tab.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                          contentSource === tab.id
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
-                        }`}
-                      >
-                        {tab.icon}
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="sys-doc-content">Contenuto *</Label>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">{form.content.length} caratteri</span>
+                          <span className="text-xs text-muted-foreground">~{Math.round(form.content.length / 4).toLocaleString()} token</span>
+                        </div>
+                      </div>
 
-                  {contentSource === 'manual' && (
-                    <>
-                      {extractedFileName && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-700">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                          <span>Contenuto importato da: <strong>{extractedFileName}</strong></span>
-                          <button type="button" onClick={() => setExtractedFileName(null)} className="ml-auto text-indigo-400 hover:text-indigo-600">
-                            <X className="h-3 w-3" />
+                      <div className="flex items-center gap-2 mb-3">
+                        {([
+                          { id: 'manual' as const, label: 'Scrivi', icon: <PenLine className="h-3.5 w-3.5" /> },
+                          { id: 'drive' as const, label: 'Google Drive', icon: <Cloud className="h-3.5 w-3.5" /> },
+                          { id: 'upload' as const, label: 'Carica File', icon: <Upload className="h-3.5 w-3.5" /> },
+                        ]).map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setContentSource(tab.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                              contentSource === tab.id
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
+                            }`}
+                          >
+                            {tab.icon}
+                            {tab.label}
                           </button>
+                        ))}
+                      </div>
+
+                      {contentSource === 'manual' && (
+                        <>
+                          {extractedFileName && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-700">
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                              <span>Contenuto importato da: <strong>{extractedFileName}</strong></span>
+                              <button type="button" onClick={() => setExtractedFileName(null)} className="ml-auto text-indigo-400 hover:text-indigo-600">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                          <Textarea
+                            id="sys-doc-content"
+                            value={form.content}
+                            onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                            placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
+                            rows={8}
+                            className="resize-y min-h-[150px] font-mono text-sm"
+                          />
+                        </>
+                      )}
+
+                      {contentSource === 'drive' && (
+                        <DriveFilePicker
+                          existingDocuments={documents}
+                          onTextExtracted={(text, fileName) => {
+                            setForm(f => ({ ...f, content: text, title: f.title || fileName.replace(/\.[^/.]+$/, '') }));
+                            setExtractedFileName(fileName);
+                            setContentSource('manual');
+                            toast({ title: "Contenuto importato", description: `${text.length.toLocaleString()} caratteri estratti da "${fileName}"` });
+                          }}
+                        />
+                      )}
+
+                      {contentSource === 'upload' && (
+                        <div className="space-y-3">
+                          <div
+                            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                              isExtracting ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                            }`}
+                            onClick={() => !isExtracting && fileInputRef.current?.click()}
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const file = e.dataTransfer.files[0];
+                              if (file) handleFileUpload(file);
+                            }}
+                          >
+                            {isExtracting ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                <p className="text-sm font-medium text-indigo-700">Estrazione testo in corso...</p>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <FileUp className="h-8 w-8 text-slate-400" />
+                                <p className="text-sm font-medium text-slate-600">Trascina un file qui o clicca per selezionare</p>
+                                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD, RTF, ODT, CSV, XLSX, PPTX</p>
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.docx,.doc,.txt,.md,.rtf,.odt,.csv,.xlsx,.xls,.pptx,.ppt"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file);
+                              e.target.value = '';
+                            }}
+                          />
                         </div>
                       )}
-                      <Textarea
-                        id="sys-doc-content"
-                        value={form.content}
-                        onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                        placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
-                        rows={8}
-                        className="resize-y min-h-[150px] font-mono text-sm"
-                      />
-                    </>
-                  )}
-
-                  {contentSource === 'drive' && (
-                    <DriveFilePicker
-                      existingDocuments={documents}
-                      onTextExtracted={(text, fileName) => {
-                        setForm(f => ({ ...f, content: text, title: f.title || fileName.replace(/\.[^/.]+$/, '') }));
-                        setExtractedFileName(fileName);
-                        setContentSource('manual');
-                        toast({ title: "Contenuto importato", description: `${text.length.toLocaleString()} caratteri estratti da "${fileName}"` });
-                      }}
-                    />
-                  )}
-
-                  {contentSource === 'upload' && (
-                    <div className="space-y-3">
-                      <div
-                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-                          isExtracting ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
-                        }`}
-                        onClick={() => !isExtracting && fileInputRef.current?.click()}
-                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const file = e.dataTransfer.files[0];
-                          if (file) handleFileUpload(file);
-                        }}
-                      >
-                        {isExtracting ? (
-                          <div className="flex flex-col items-center gap-2">
-                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-                            <p className="text-sm font-medium text-indigo-700">Estrazione testo in corso...</p>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center gap-2">
-                            <FileUp className="h-8 w-8 text-slate-400" />
-                            <p className="text-sm font-medium text-slate-600">Trascina un file qui o clicca per selezionare</p>
-                            <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD, RTF, ODT, CSV, XLSX, PPTX</p>
-                          </div>
-                        )}
-                      </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.docx,.doc,.txt,.md,.rtf,.odt,.csv,.xlsx,.xls,.pptx,.ppt"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileUpload(file);
-                          e.target.value = '';
-                        }}
-                      />
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-3">
+                        {([
+                          { id: 'manual' as const, label: 'Scrivi', icon: <PenLine className="h-3.5 w-3.5" /> },
+                          { id: 'drive' as const, label: 'Google Drive', icon: <Cloud className="h-3.5 w-3.5" /> },
+                          { id: 'upload' as const, label: 'Carica File', icon: <Upload className="h-3.5 w-3.5" /> },
+                        ]).map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setContentSource(tab.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                              contentSource === tab.id
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
+                            }`}
+                          >
+                            {tab.icon}
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {contentSource === 'manual' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="manual-entry-title" className="text-xs">Titolo *</Label>
+                              <Input
+                                id="manual-entry-title"
+                                value={manualTitle}
+                                onChange={e => setManualTitle(e.target.value)}
+                                placeholder="Es: Istruzioni generali per l'AI"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="manual-entry-desc" className="text-xs">Descrizione (opzionale)</Label>
+                              <Input
+                                id="manual-entry-desc"
+                                value={manualDescription}
+                                onChange={e => setManualDescription(e.target.value)}
+                                placeholder="Nota interna"
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="manual-entry-content" className="text-xs">Contenuto *</Label>
+                              {manualContent.length > 0 && (
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs text-muted-foreground">{manualContent.length} caratteri</span>
+                                  <span className="text-xs text-muted-foreground">~{Math.round(manualContent.length / 4).toLocaleString()} token</span>
+                                </div>
+                              )}
+                            </div>
+                            <Textarea
+                              id="manual-entry-content"
+                              value={manualContent}
+                              onChange={e => setManualContent(e.target.value)}
+                              placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
+                              rows={6}
+                              className="resize-y min-h-[120px] font-mono text-sm"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!manualTitle.trim() || !manualContent.trim()}
+                            onClick={() => {
+                              addContentEntry(manualContent, manualTitle, 'manual');
+                              setManualTitle('');
+                              setManualContent('');
+                              setManualDescription('');
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                            Aggiungi
+                          </Button>
+                        </div>
+                      )}
+
+                      {contentSource === 'drive' && (
+                        <DriveFilePicker
+                          existingDocuments={documents}
+                          onTextExtracted={(text, fileName) => {
+                            addContentEntry(text, fileName, 'drive', fileName);
+                          }}
+                          onMultipleExtracted={(files) => {
+                            files.forEach(f => {
+                              addContentEntry(f.text, f.fileName, 'drive', f.fileName);
+                            });
+                            setContentSource('manual');
+                            toast({ title: "File importati", description: `${files.length} documenti aggiunti alla lista` });
+                          }}
+                        />
+                      )}
+
+                      {contentSource === 'upload' && (
+                        <div className="space-y-3">
+                          <div
+                            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                              isExtracting ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                            }`}
+                            onClick={() => !isExtracting && fileInputRef.current?.click()}
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const droppedFiles = Array.from(e.dataTransfer.files);
+                              droppedFiles.forEach(file => handleFileUpload(file));
+                            }}
+                          >
+                            {isExtracting ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                <p className="text-sm font-medium text-indigo-700">Estrazione testo in corso...</p>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <FileUp className="h-8 w-8 text-slate-400" />
+                                <p className="text-sm font-medium text-slate-600">Trascina file qui o clicca per selezionare</p>
+                                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD, RTF, ODT, CSV, XLSX, PPTX — selezione multipla supportata</p>
+                              </div>
+                            )}
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            multiple
+                            accept=".pdf,.docx,.doc,.txt,.md,.rtf,.odt,.csv,.xlsx,.xls,.pptx,.ppt"
+                            onChange={(e) => {
+                              const files = e.target.files;
+                              if (files) {
+                                Array.from(files).forEach(file => handleFileUpload(file));
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {contentEntries.length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-indigo-600" />
+                            {contentEntries.length} documento{contentEntries.length !== 1 ? 'i' : ''} da creare
+                          </Label>
+                          {contentEntries.length > 1 && (
+                            <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-700 h-7"
+                              onClick={() => setContentEntries([])}>
+                              Rimuovi tutti
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                          {contentEntries.map((entry, idx) => (
+                            <div key={entry.id} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 group hover:border-indigo-300 transition-colors">
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold shrink-0">
+                                {idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <input
+                                  type="text"
+                                  value={entry.title}
+                                  onChange={(e) => setContentEntries(prev => prev.map(en => en.id === entry.id ? { ...en, title: e.target.value } : en))}
+                                  className="text-sm font-medium w-full bg-transparent border-none outline-none focus:ring-0 p-0"
+                                  placeholder="Titolo documento"
+                                />
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{entry.content.length.toLocaleString()} caratteri</span>
+                                  <span>~{Math.round(entry.content.length / 4).toLocaleString()} token</span>
+                                  {entry.sourceFileName && (
+                                    <span className="flex items-center gap-1">
+                                      {entry.sourceType === 'drive' ? <Cloud className="h-3 w-3" /> : entry.sourceType === 'upload' ? <Upload className="h-3 w-3" /> : <PenLine className="h-3 w-3" />}
+                                      {entry.sourceFileName}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 shrink-0"
+                                onClick={() => setContentEntries(prev => prev.filter(en => en.id !== entry.id))}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <Separator />
 
@@ -1808,7 +2097,7 @@ export default function SystemDocumentsSection() {
                   </Button>
                   <Button
                     onClick={() => setWizardStep(2)}
-                    disabled={!form.title.trim() || !form.content.trim()}
+                    disabled={editingDoc ? (!form.title.trim() || !form.content.trim()) : contentEntries.length === 0}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white"
                   >
                     Avanti
@@ -1819,6 +2108,12 @@ export default function SystemDocumentsSection() {
 
             {wizardStep === 2 && (
               <div className="space-y-5">
+                {!editingDoc && contentEntries.length > 0 && (
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 px-4 py-2.5 text-sm text-indigo-700 flex items-center gap-2">
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Le seguenti impostazioni verranno applicate a tutti i {contentEntries.length} documenti
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Priorità: {form.priority}</Label>
@@ -1913,6 +2208,12 @@ export default function SystemDocumentsSection() {
 
             {wizardStep === 3 && (
               <div className="space-y-5">
+                {!editingDoc && contentEntries.length > 0 && (
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 px-4 py-2.5 text-sm text-indigo-700 flex items-center gap-2">
+                    <FileText className="h-4 w-4 shrink-0" />
+                    I destinatari selezionati verranno applicati a tutti i {contentEntries.length} documenti
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-indigo-600" />
@@ -2196,7 +2497,7 @@ export default function SystemDocumentsSection() {
                   </Button>
                   <Button onClick={handleSubmit} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                     {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    {editingDoc ? "Salva Modifiche" : "Crea Documento"}
+                    {editingDoc ? "Salva Modifiche" : contentEntries.length > 1 ? `Crea ${contentEntries.length} Documenti` : "Crea Documento"}
                   </Button>
                 </div>
               </div>
