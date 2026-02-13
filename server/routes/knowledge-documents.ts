@@ -188,12 +188,68 @@ router.get(
         nextCursor = `${lastDoc.createdAt!.toISOString()}_${lastDoc.id}`;
       }
 
+      let systemDocs: any[] = [];
+      const isRootView = !folderId || folderId === '' || folderId === 'null' || folderId === 'root';
+      if (!cursor && isRootView && !category && !status) {
+        const sysResult = await db.execute(sql`
+          SELECT id, title, content, description, priority, 
+                 google_drive_file_id, created_at, updated_at
+          FROM system_prompt_documents
+          WHERE consultant_id = ${consultantId}
+            AND target_client_mode = 'consultant_only'
+            AND is_active = true
+        `);
+        systemDocs = (sysResult.rows || []).map((row: any) => ({
+          id: `sysdoc_${row.id}`,
+          consultantId,
+          title: row.title,
+          description: row.description || `Documento di sistema: ${row.title}`,
+          category: 'other',
+          fileName: `${(row.title || '').replace(/[^a-zA-Z0-9À-ÿ _-]/g, '_')}.txt`,
+          fileType: 'txt',
+          fileSize: Buffer.byteLength(row.content || '', 'utf8'),
+          filePath: null,
+          folderId: null,
+          extractedContent: row.content || '',
+          contentSummary: null,
+          summaryEnabled: false,
+          keywords: null,
+          tags: null,
+          version: 1,
+          priority: row.priority ?? 5,
+          status: 'indexed',
+          errorMessage: null,
+          usageCount: 0,
+          lastUsedAt: null,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          fileSearchSyncedAt: null,
+          syncProgress: null,
+          syncCurrentChunk: null,
+          syncTotalChunks: null,
+          syncMessage: null,
+          googleDriveFileId: row.google_drive_file_id || null,
+          syncCount: null,
+          lastDriveSyncAt: null,
+          pendingSyncAt: null,
+          isSystemDoc: true,
+          systemDocId: row.id,
+        }));
+        if (search && typeof search === 'string' && search.trim()) {
+          const searchLower = search.trim().toLowerCase();
+          systemDocs = systemDocs.filter(d => 
+            d.title.toLowerCase().includes(searchLower) || 
+            (d.description || '').toLowerCase().includes(searchLower)
+          );
+        }
+      }
+
       res.json({
         success: true,
-        data,
+        data: [...systemDocs, ...data],
         nextCursor,
         hasMore,
-        totalCount,
+        totalCount: totalCount + systemDocs.length,
       });
     } catch (error: any) {
       console.error("❌ [KNOWLEDGE DOCUMENTS] Error listing documents:", error);
@@ -1910,40 +1966,6 @@ router.post(
             }
           } catch (err: any) {
             console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync failed:', err.message);
-          }
-        });
-      }
-
-      if ((target_client_mode || 'all') === 'consultant_only') {
-        setImmediate(async () => {
-          try {
-            const knowledgeDocId = crypto.randomUUID();
-            const contentBytes = Buffer.byteLength(content, 'utf8');
-            const sanitizedFileName = `${title.trim().replace(/[^a-zA-Z0-9À-ÿ _-]/g, '_')}.txt`;
-            const relPath = `${KNOWLEDGE_UPLOAD_DIR}/${knowledgeDocId}_${sanitizedFileName}`;
-            const absPath = path.join(process.cwd(), relPath);
-            await fs.mkdir(path.dirname(absPath), { recursive: true });
-            await fs.writeFile(absPath, content, 'utf8');
-            await db
-              .insert(consultantKnowledgeDocuments)
-              .values({
-                id: knowledgeDocId,
-                consultantId,
-                title: title.trim(),
-                description: description?.trim() || `Documento di sistema: ${title.trim()}`,
-                category: 'other',
-                fileName: sanitizedFileName,
-                fileType: 'txt',
-                fileSize: contentBytes,
-                filePath: relPath,
-                extractedContent: content,
-                priority: priority ?? 5,
-                status: 'indexed',
-                googleDriveFileId: google_drive_file_id || null,
-              });
-            console.log(`📋 [SYSTEM PROMPT DOCS] Also created knowledge document "${title}" for consultant-only visibility in Documenti tab (id: ${knowledgeDocId})`);
-          } catch (err: any) {
-            console.error('⚠️ [SYSTEM PROMPT DOCS] Failed to create companion knowledge document:', err.message);
           }
         });
       }

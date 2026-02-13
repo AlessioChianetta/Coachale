@@ -87,6 +87,7 @@ import {
   Zap,
   Target,
   Users,
+  BookOpen,
 } from "lucide-react";
 import {
   Collapsible,
@@ -160,6 +161,8 @@ interface KnowledgeDocument {
   syncCount?: number | null;
   lastDriveSyncAt?: string | null;
   pendingSyncAt?: string | null;
+  isSystemDoc?: boolean;
+  systemDocId?: string;
 }
 
 interface SyncHistoryEntry {
@@ -360,6 +363,7 @@ export default function ConsultantKnowledgeDocuments() {
   const [showSyncHistoryDialog, setShowSyncHistoryDialog] = useState(false);
   const [syncHistoryDocumentId, setSyncHistoryDocumentId] = useState<string | null>(null);
   const [isDriveSectionOpen, setIsDriveSectionOpen] = useState(true);
+  const [isSystemSectionOpen, setIsSystemSectionOpen] = useState(true);
   const [isUploadedSectionOpen, setIsUploadedSectionOpen] = useState(true);
   const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [pasteTitle, setPasteTitle] = useState('');
@@ -450,13 +454,18 @@ export default function ConsultantKnowledgeDocuments() {
 
   const syncHistory: SyncHistoryEntry[] = syncHistoryResponse?.data || [];
 
+  const systemDocuments = useMemo(() =>
+    documents.filter(doc => doc.isSystemDoc),
+    [documents]
+  );
+
   const googleDriveDocuments = useMemo(() => 
-    documents.filter(doc => !!doc.googleDriveFileId), 
+    documents.filter(doc => !doc.isSystemDoc && !!doc.googleDriveFileId), 
     [documents]
   );
 
   const uploadedDocuments = useMemo(() => 
-    documents.filter(doc => !doc.googleDriveFileId), 
+    documents.filter(doc => !doc.isSystemDoc && !doc.googleDriveFileId), 
     [documents]
   );
 
@@ -1263,16 +1272,19 @@ export default function ConsultantKnowledgeDocuments() {
     const fileTypeConfig = FILE_TYPE_ICONS[doc.fileType];
     const progress = documentProgressMap[doc.id];
     const isGoogleDriveDoc = !!doc.googleDriveFileId;
+    const isSysDoc = !!doc.isSystemDoc;
 
     if (viewMode === "grid") {
       return (
-        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow h-full">
+        <div className={cn("p-3 rounded-xl border hover:shadow-md transition-shadow h-full", isSysDoc ? "bg-violet-50/50 dark:bg-violet-900/10 border-violet-200 dark:border-violet-800" : "bg-white dark:bg-slate-800 border-gray-100 dark:border-gray-700")}>
           <div className="flex items-start gap-2 mb-2">
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={() => toggleSelection(doc.id)}
-              className="mt-1"
-            />
+            {!isSysDoc && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => toggleSelection(doc.id)}
+                className="mt-1"
+              />
+            )}
             <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}>
               <FileType className="w-4 h-4" />
             </div>
@@ -1296,6 +1308,11 @@ export default function ConsultantKnowledgeDocuments() {
                 <Cloud className="w-3 h-3" />
               </span>
             )}
+            {isSysDoc && (
+              <Badge variant="outline" className="text-[10px] py-0 border-violet-300 text-violet-600 dark:border-violet-600 dark:text-violet-400">
+                Doc. Sistema
+              </Badge>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1 mb-2">
@@ -1303,7 +1320,7 @@ export default function ConsultantKnowledgeDocuments() {
             <span className="text-[10px] text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20 dark:text-cyan-400 px-1.5 py-0 rounded-full">
               AI Consulente
             </span>
-            {(agentAssignmentsByDoc[doc.id] || []).map(agentId => {
+            {!isSysDoc && (agentAssignmentsByDoc[doc.id] || []).map(agentId => {
               const agent = AGENT_NAMES[agentId];
               if (!agent) return null;
               return (
@@ -1318,24 +1335,30 @@ export default function ConsultantKnowledgeDocuments() {
             <Button variant="ghost" size="icon" onClick={() => handlePreview(doc)} className="h-7 w-7">
               <Eye className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => handleEdit(doc)} className="h-7 w-7">
-              <Edit3 className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setDeletingDocumentId(doc.id)} className="h-7 w-7 text-red-500">
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+            {!isSysDoc && (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(doc)} className="h-7 w-7">
+                  <Edit3 className="w-3.5 h-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setDeletingDocumentId(doc.id)} className="h-7 w-7 text-red-500">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       );
     }
 
     return (
-      <div className="flex items-start gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={() => toggleSelection(doc.id)}
-          className="mt-1"
-        />
+      <div className={cn("flex items-start gap-3 p-4 rounded-xl border hover:shadow-md transition-shadow", isSysDoc ? "bg-violet-50/50 dark:bg-violet-900/10 border-violet-200 dark:border-violet-800" : "bg-white dark:bg-slate-800 border-gray-100 dark:border-gray-700")}>
+        {!isSysDoc && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => toggleSelection(doc.id)}
+            className="mt-1"
+          />
+        )}
         <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}>
           <FileType className="w-5 h-5" />
         </div>
@@ -1353,6 +1376,11 @@ export default function ConsultantKnowledgeDocuments() {
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              {isSysDoc && (
+                <Badge variant="outline" className="text-xs border-violet-300 text-violet-600 dark:border-violet-600 dark:text-violet-400 mr-1">
+                  Doc. Sistema
+                </Badge>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -1362,24 +1390,28 @@ export default function ConsultantKnowledgeDocuments() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleEdit(doc)}
-                className="h-8 w-8"
-                title="Modifica"
-              >
-                <Edit3 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDeletingDocumentId(doc.id)}
-                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                title="Elimina"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {!isSysDoc && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(doc)}
+                    className="h-8 w-8"
+                    title="Modifica"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeletingDocumentId(doc.id)}
+                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Elimina"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1930,6 +1962,50 @@ export default function ConsultantKnowledgeDocuments() {
                           ref={parentRef}
                           className="h-[calc(100vh-450px)] min-h-[400px] overflow-auto"
                         >
+                          {systemDocuments.length > 0 && (
+                            <Collapsible open={isSystemSectionOpen} onOpenChange={setIsSystemSectionOpen} className="mb-4">
+                              <CollapsibleTrigger asChild>
+                                <div className="flex items-center justify-between p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                                    <span className="font-medium text-violet-800 dark:text-violet-200">Documenti di Sistema (Solo per me)</span>
+                                    <Badge variant="secondary" className="bg-violet-100 dark:bg-violet-800 text-violet-700 dark:text-violet-200">
+                                      {systemDocuments.length}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-500 dark:border-violet-600 dark:text-violet-400">
+                                      Sola lettura
+                                    </Badge>
+                                  </div>
+                                  <ChevronDown className={`w-5 h-5 text-violet-600 transition-transform duration-200 ${isSystemSectionOpen ? "rotate-180" : ""}`} />
+                                </div>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="mt-3 space-y-3">
+                                  {viewMode === "grid" ? (
+                                    <div
+                                      className="grid gap-3"
+                                      style={{
+                                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                                      }}
+                                    >
+                                      {systemDocuments.map((doc) => (
+                                        <div key={doc.id}>
+                                          {renderDocumentCard(doc, false)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    systemDocuments.map((doc) => (
+                                      <div key={doc.id}>
+                                        {renderDocumentCard(doc, false)}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
                           {googleDriveDocuments.length > 0 && (
                             <Collapsible open={isDriveSectionOpen} onOpenChange={setIsDriveSectionOpen} className="mb-4">
                               <CollapsibleTrigger asChild>
