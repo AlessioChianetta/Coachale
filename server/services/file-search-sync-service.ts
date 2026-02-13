@@ -2680,10 +2680,44 @@ export class FileSearchSyncService {
         ),
       });
 
-      // Filter to only those with content to index AND a valid clientId
-      const consultationsWithContent = allConsultations.filter(
-        c => (c.transcript || c.notes) && c.clientId
+      // Filter to only those with content to index
+      const consultationsWithContentRaw = allConsultations.filter(
+        c => c.transcript || c.notes
       );
+
+      // Try to resolve clientId for consultations that have client_email but no clientId
+      const consultationsWithContent: typeof consultationsWithContentRaw = [];
+      let resolvedCount = 0;
+      let skippedNoClient = 0;
+      
+      for (const c of consultationsWithContentRaw) {
+        if (c.clientId) {
+          consultationsWithContent.push(c);
+          continue;
+        }
+        
+        // Try to resolve via client_email
+        const consultationDate = new Date(c.scheduledAt).toLocaleDateString('it-IT');
+        if (c.clientEmail) {
+          const matchedUser = await db.query.users.findFirst({
+            where: eq(users.email, c.clientEmail),
+            columns: { id: true, firstName: true, lastName: true },
+          });
+          
+          if (matchedUser) {
+            console.log(`🔗 [FileSync] Resolved consultation ${consultationDate} to client "${matchedUser.firstName} ${matchedUser.lastName}" via email ${c.clientEmail}`);
+            (c as any).clientId = matchedUser.id;
+            consultationsWithContent.push(c);
+            resolvedCount++;
+            continue;
+          } else {
+            console.warn(`⚠️ [FileSync] Consultation ${consultationDate} has email "${c.clientEmail}" but no matching user found - skipping`);
+          }
+        } else {
+          console.warn(`⚠️ [FileSync] Consultation ${consultationDate} (ID: ${c.id.substring(0, 8)}) has no clientId and no client_email - skipping`);
+        }
+        skippedNoClient++;
+      }
 
       let synced = 0;
       let failed = 0;
@@ -2693,6 +2727,8 @@ export class FileSearchSyncService {
 
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`📞 [FileSync] Syncing ${consultationsWithContent.length} consultations to CLIENT PRIVATE stores (PARALLEL)`);
+      if (resolvedCount > 0) console.log(`🔗 [FileSync] Resolved ${resolvedCount} consultations via client_email`);
+      if (skippedNoClient > 0) console.log(`⚠️ [FileSync] Skipped ${skippedNoClient} consultations without client association`);
       console.log(`🔐 [FileSync] Privacy mode: each consultation goes to the client's private store`);
       console.log(`${'═'.repeat(60)}\n`);
       syncProgressEmitter.emitStart(consultantId, 'consultations', consultationsWithContent.length);

@@ -664,19 +664,56 @@ export class FileSearchService {
 
       const chunkConfig = params.chunkingConfig || DEFAULT_CHUNKING_CONFIG;
 
-      let operation = await client.fileSearchStores.uploadToFileSearchStore({
-        file: params.filePath,
-        fileSearchStoreName: store.googleStoreName,
-        config: {
-          displayName: params.displayName,
-          chunkingConfig: {
-            whiteSpaceConfig: {
-              maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
-              maxOverlapTokens: chunkConfig.maxOverlapTokens,
+      const MAX_UPLOAD_RETRIES = 3;
+      let operation: any;
+      let uploadSuccess = false;
+      
+      for (let retry = 0; retry < MAX_UPLOAD_RETRIES; retry++) {
+        try {
+          if (retry > 0) {
+            const delayMs = Math.pow(2, retry) * 1000;
+            console.log(`🔄 [FileSearch] Retry ${retry}/${MAX_UPLOAD_RETRIES - 1} for "${params.displayName}" after ${delayMs}ms delay...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+          
+          operation = await client.fileSearchStores.uploadToFileSearchStore({
+            file: params.filePath,
+            fileSearchStoreName: store.googleStoreName,
+            config: {
+              displayName: params.displayName,
+              chunkingConfig: {
+                whiteSpaceConfig: {
+                  maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+                  maxOverlapTokens: chunkConfig.maxOverlapTokens,
+                }
+              }
             }
+          });
+          uploadSuccess = true;
+          if (retry > 0) {
+            console.log(`✅ [FileSearch] Retry ${retry} succeeded for "${params.displayName}"`);
+          }
+          break;
+        } catch (uploadError: any) {
+          const isRetryable = uploadError?.message?.includes('500') || 
+                              uploadError?.message?.includes('INTERNAL') ||
+                              uploadError?.message?.includes('503') ||
+                              uploadError?.message?.includes('UNAVAILABLE') ||
+                              uploadError?.message?.includes('429') ||
+                              uploadError?.message?.includes('RESOURCE_EXHAUSTED');
+          
+          console.error(`❌ [FileSearch] Upload attempt ${retry + 1}/${MAX_UPLOAD_RETRIES} failed for "${params.displayName}": ${uploadError.message}`);
+          
+          if (!isRetryable || retry === MAX_UPLOAD_RETRIES - 1) {
+            console.error(`❌ [FileSearch] All ${MAX_UPLOAD_RETRIES} upload attempts failed for "${params.displayName}" - giving up`);
+            return { success: false, error: `Upload failed after ${MAX_UPLOAD_RETRIES} attempts: ${uploadError.message}` };
           }
         }
-      });
+      }
+      
+      if (!uploadSuccess || !operation) {
+        return { success: false, error: `Upload failed for "${params.displayName}"` };
+      }
 
       let attempts = 0;
       const maxAttempts = 240; // 8 minutes timeout (240 * 2s = 480s)
