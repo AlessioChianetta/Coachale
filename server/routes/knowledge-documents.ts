@@ -15,7 +15,7 @@ import { eq, and, desc, lt, gt, or, ilike, sql, count, isNull, inArray, asc } fr
 import { z } from "zod";
 import { extractTextFromFile, extractTextFromPDFWithFallback, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
-import { fileSearchSyncService, syncProgressEmitter, type DocumentProgressEvent } from "../services/file-search-sync-service";
+import { fileSearchSyncService, FileSearchSyncService, syncProgressEmitter, type DocumentProgressEvent } from "../services/file-search-sync-service";
 import { FileSearchService } from "../ai/file-search-service";
 import { ensureGeminiFileValid } from "../services/gemini-file-manager";
 import fs from "fs/promises";
@@ -1956,8 +1956,10 @@ router.post(
                 googleDriveFileId: google_drive_file_id || null,
               });
             console.log(`📋 [SYSTEM PROMPT DOCS] Created KB companion doc "${title}" (id: ${knowledgeDocId}, sysDocId: ${id})`);
+            await FileSearchSyncService.onKnowledgeDocumentIndexed(knowledgeDocId, consultantId);
+            console.log(`✅ [SYSTEM PROMPT DOCS] KB companion doc synced to File Search as knowledge_base source`);
           } catch (err: any) {
-            console.error('⚠️ [SYSTEM PROMPT DOCS] Failed to create companion knowledge document:', err.message);
+            console.error('⚠️ [SYSTEM PROMPT DOCS] Failed to create/sync companion knowledge document:', err.message);
           }
         });
       }
@@ -2085,6 +2087,43 @@ router.delete(
           }
         });
       }
+
+      setImmediate(async () => {
+        try {
+          const companionDocs = await db
+            .select({ id: consultantKnowledgeDocuments.id, filePath: consultantKnowledgeDocuments.filePath })
+            .from(consultantKnowledgeDocuments)
+            .where(and(
+              eq(consultantKnowledgeDocuments.consultantId, consultantId),
+              ilike(consultantKnowledgeDocuments.description, `[SYSTEM_DOC:${id}]%`)
+            ));
+          for (const companion of companionDocs) {
+            try {
+              const [consultantStore] = await db
+                .select({ id: fileSearchStores.id })
+                .from(fileSearchStores)
+                .where(and(
+                  eq(fileSearchStores.ownerId, consultantId),
+                  eq(fileSearchStores.ownerType, 'consultant')
+                ))
+                .limit(1);
+              if (consultantStore) {
+                const fileSearchService = new FileSearchService(consultantId);
+                await fileSearchService.deleteDocumentBySource('knowledge_base', companion.id, consultantStore.id, consultantId);
+              }
+            } catch (fsErr: any) {
+              console.warn(`⚠️ [SYSTEM PROMPT DOCS] Could not delete companion from FileSearch:`, fsErr.message);
+            }
+            if (companion.filePath) {
+              try { await fs.unlink(path.join(process.cwd(), companion.filePath)); } catch {}
+            }
+            await db.delete(consultantKnowledgeDocuments).where(eq(consultantKnowledgeDocuments.id, companion.id));
+            console.log(`🗑️ [SYSTEM PROMPT DOCS] Deleted KB companion doc ${companion.id} for system doc ${id}`);
+          }
+        } catch (err: any) {
+          console.error('⚠️ [SYSTEM PROMPT DOCS] Failed to clean up companion KB docs:', err.message);
+        }
+      });
 
       res.json({ success: true, data: { id } });
     } catch (error: any) {
