@@ -1518,11 +1518,11 @@ export default function ConsultantKnowledgeDocuments() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    <p>La <strong>memoria principale</strong> dell'AI. Qui carichi tutti i documenti che l'intelligenza artificiale usa per rispondere ai clienti.</p>
+                    <p>La <strong>memoria centrale</strong> del tuo Cervello AI. Questi documenti alimentano l'AI Assistant (tuo e dei clienti), i dipendenti autonomi e WhatsApp.</p>
                     <ul className="space-y-1.5 ml-1">
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />PDF, DOCX, CSV, Excel, audio e testo</li>
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Organizzabili in cartelle</li>
-                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Visibili solo a te e all'AI, mai ai clienti</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Usati da tutta la piattaforma AI: consulente, clienti, agenti</li>
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />L'AI li cerca automaticamente quando servono (File Search)</li>
                     </ul>
                     <p className="text-xs text-muted-foreground/70 pt-1 italic">Esempio: listini prezzi, procedure interne, FAQ, manuali prodotto</p>
@@ -1599,7 +1599,7 @@ export default function ConsultantKnowledgeDocuments() {
                     <Brain className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
                     <div className="text-sm text-muted-foreground">
                       <p className="font-medium text-foreground mb-1">Come funziona il Cervello AI?</p>
-                      <p>I <strong>Documenti</strong> sono la base di conoscenza — l'AI li cerca quando un cliente fa una domanda. Le <strong>Istruzioni AI</strong> sono regole che l'AI segue sempre. Gli <strong>Agenti AI</strong> ricevono documenti specifici per il loro ruolo. <strong>Google Drive</strong> ti permette di tenere tutto sincronizzato con i tuoi file esistenti.</p>
+                      <p>I <strong>Documenti</strong> sono la memoria condivisa — l'AI li usa quando tu o un cliente fate una domanda. Le <strong>Istruzioni AI</strong> sono regole che l'AI segue sempre. Gli <strong>Agenti AI</strong> ricevono documenti specifici per il loro ruolo. <strong>Google Drive</strong> ti permette di tenere tutto sincronizzato con i tuoi file esistenti.</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1609,7 +1609,7 @@ export default function ConsultantKnowledgeDocuments() {
             <TabsContent value="documenti">
               <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Documenti della Knowledge Base — visibili solo al consulente e all'AI
+                Documenti della Knowledge Base — usati dall'AI Assistant, dai dipendenti autonomi e da WhatsApp
               </p>
               <div className="flex gap-4">
                 {!isMobile && (
