@@ -27,6 +27,54 @@ const audioOutputQueues = new Map<string, Buffer[]>();
 const AUDIO_QUEUE_MAX = 2500;
 const CHUNK_SIZE = 320;
 
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const blockedIps = new Map<string, number>();
+const BLOCK_DURATION_MS = 10 * 60 * 1000;
+
+function isAllowedIp(ip: string): boolean {
+  return config.security.allowedIpPrefixes.some(prefix => ip.startsWith(prefix));
+}
+
+function normalizeIp(ip: string): string {
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+
+  const blockedUntil = blockedIps.get(ip);
+  if (blockedUntil && now < blockedUntil) {
+    return false;
+  } else if (blockedUntil) {
+    blockedIps.delete(ip);
+  }
+
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + config.security.rateLimitWindowMs });
+    return true;
+  }
+
+  entry.count++;
+  if (entry.count > config.security.rateLimitMaxRequests) {
+    blockedIps.set(ip, now + BLOCK_DURATION_MS);
+    log.warn(`🚫 [SECURITY] IP ${ip} blocked for ${BLOCK_DURATION_MS / 1000}s — exceeded ${config.security.rateLimitMaxRequests} requests in ${config.security.rateLimitWindowMs / 1000}s`);
+    return false;
+  }
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip);
+  }
+  for (const [ip, until] of blockedIps) {
+    if (now > until) blockedIps.delete(ip);
+  }
+}, 60000);
+
 loadBackgroundAudio();
 
 const pendingCalls = new Map<string, { callId: string; timer: NodeJS.Timeout }>();
@@ -96,12 +144,22 @@ export function startVoiceBridgeServer(): void {
   const app = express();
   app.use(express.json());
 
+  app.use((req, res, next) => {
+    const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
+    if (!checkRateLimit(ip)) {
+      log.warn(`🚫 [SECURITY] Rate limited HTTP request from ${ip}: ${req.method} ${req.path}`);
+      return res.status(429).json({ error: 'Too many requests' });
+    }
+    next();
+  });
+
   app.post('/outbound/call', async (req, res) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
 
     if (!validateServiceToken(token)) {
-      log.warn('Unauthorized outbound request');
+      const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
+      log.warn(`🚫 [SECURITY] Unauthorized outbound request from ${ip}`);
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
@@ -124,7 +182,8 @@ export function startVoiceBridgeServer(): void {
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
-      pendingCalls: pendingCalls.size 
+      pendingCalls: pendingCalls.size,
+      blockedIps: blockedIps.size,
     });
   });
 
@@ -133,7 +192,15 @@ export function startVoiceBridgeServer(): void {
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    const clientIp = req.socket.remoteAddress || 'unknown';
+    const rawIp = req.socket.remoteAddress || 'unknown';
+    const clientIp = normalizeIp(rawIp);
+
+    if (!isAllowedIp(rawIp) && !isAllowedIp(clientIp)) {
+      log.warn(`🚫 [SECURITY] Rejected WebSocket from unauthorized IP: ${clientIp}`);
+      ws.close(1008, 'Unauthorized IP');
+      return;
+    }
+
     log.info(`New WebSocket connection`, { clientIp });
 
     let currentSessionId: string | null = null;

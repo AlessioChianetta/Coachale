@@ -27,6 +27,12 @@ export interface BridgeConfig {
     timeoutMs: number;
     maxConcurrent: number;
   };
+  security: {
+    allowedIpPrefixes: string[];
+    rateLimitWindowMs: number;
+    rateLimitMaxRequests: number;
+  };
+  serviceToken: string | null;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
@@ -73,6 +79,12 @@ export function loadConfig(): BridgeConfig {
       timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),
       maxConcurrent: parseInt(getEnv('MAX_CONCURRENT_CALLS', '10'), 10),
     },
+    security: {
+      allowedIpPrefixes: getEnv('ALLOWED_IP_PREFIXES', '127.0.0.1,::1,::ffff:127.0.0.1,172.17.,172.18.,172.19.,10.').split(',').map(s => s.trim()),
+      rateLimitWindowMs: parseInt(getEnv('RATE_LIMIT_WINDOW_MS', '60000'), 10),
+      rateLimitMaxRequests: parseInt(getEnv('RATE_LIMIT_MAX_REQUESTS', '30'), 10),
+    },
+    serviceToken: getEnvOptional('REPLIT_SERVICE_TOKEN'),
     logLevel: (getEnv('LOG_LEVEL', 'info') as BridgeConfig['logLevel']),
   };
 }
