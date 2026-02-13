@@ -3085,8 +3085,7 @@ export default function SystemDocumentsSection() {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 max-h-[45vh]">
-            <div className="rounded-lg border bg-slate-50/70 p-4">
+          <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border bg-slate-50/70 p-4" style={{ maxHeight: '50vh' }}>
               {previewDoc?.type === 'system' ? (
                 <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono leading-relaxed break-words">
                   {previewDoc.doc.content}
@@ -3101,8 +3100,7 @@ export default function SystemDocumentsSection() {
                   {previewDoc.content || 'Nessun contenuto disponibile'}
                 </pre>
               ) : null}
-            </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </>
