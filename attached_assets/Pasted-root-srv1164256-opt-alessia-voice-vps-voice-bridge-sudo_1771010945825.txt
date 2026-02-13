@@ -1,0 +1,152 @@
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# sudo bash security/ufw-setup.sh
+╔═══════════════════════════════════════════════════╗
+║  UFW Firewall Setup - Alessia Voice Bridge VPS    ║
+╚═══════════════════════════════════════════════════╝
+
+🔄 Resetting UFW rules...
+Backing up 'user.rules' to '/etc/ufw/user.rules.20260213_192807'
+Backing up 'before.rules' to '/etc/ufw/before.rules.20260213_192807'
+Backing up 'after.rules' to '/etc/ufw/after.rules.20260213_192807'
+Backing up 'user6.rules' to '/etc/ufw/user6.rules.20260213_192807'
+Backing up 'before6.rules' to '/etc/ufw/before6.rules.20260213_192807'
+Backing up 'after6.rules' to '/etc/ufw/after6.rules.20260213_192807'
+
+🛡️  Setting default policies...
+Default incoming policy changed to 'deny'
+(be sure to update your rules accordingly)
+Default outgoing policy changed to 'allow'
+(be sure to update your rules accordingly)
+🔑 Allowing SSH (port 22)...
+Rules updated
+Rules updated (v6)
+📞 Allowing SIP (port 5060 UDP)...
+Rules updated
+Rules updated (v6)
+🔒 Allowing SIP TLS (port 5061 TCP)...
+Rules updated
+Rules updated (v6)
+🎵 Allowing RTP media (16384-32768 UDP)...
+Rules updated
+Rules updated (v6)
+
+⚠️  NOTA: Porta 9090 (Voice Bridge) NON aperta dall'esterno
+   FreeSWITCH si connette localmente via 127.0.0.1
+
+🚀 Enabling UFW...
+Firewall is active and enabled on system startup
+
+✅ UFW configurato! Status attuale:
+═══════════════════════════════════
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                   # SSH
+5060/udp                   ALLOW IN    Anywhere                   # SIP - Zoiper and trunk
+5061/tcp                   ALLOW IN    Anywhere                   # SIP TLS
+16384:32768/udp            ALLOW IN    Anywhere                   # RTP media
+22/tcp (v6)                ALLOW IN    Anywhere (v6)              # SSH
+5060/udp (v6)              ALLOW IN    Anywhere (v6)              # SIP - Zoiper and trunk
+5061/tcp (v6)              ALLOW IN    Anywhere (v6)              # SIP TLS
+16384:32768/udp (v6)       ALLOW IN    Anywhere (v6)              # RTP media
+
+
+╔═══════════════════════════════════════════════════╗
+║  ✅ Firewall attivo!                              ║
+║                                                   ║
+║  Porte aperte:                                    ║
+║  - 22/tcp    SSH                                  ║
+║  - 5060/udp  SIP (Zoiper + trunk)                 ║
+║  - 5061/tcp  SIP TLS                              ║
+║  - 16384-32768/udp  RTP (audio)                   ║
+║                                                   ║
+║  Porte CHIUSE dall'esterno:                       ║
+║  - 9090  Voice Bridge (solo localhost)             ║
+║                                                   ║
+║  Protezione SIP: fail2ban (vedi setup separato)   ║
+╚═══════════════════════════════════════════════════╝
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# sudo bash security/fail2ban-setup.sh
+╔═══════════════════════════════════════════════════╗
+║  Fail2ban Setup - FreeSWITCH SIP Protection       ║
+╚═══════════════════════════════════════════════════╝
+
+📦 Installing fail2ban...
+Selecting previously unselected package python3-pyasyncore.
+(Reading database ... 138836 files and directories currently installed.)
+Preparing to unpack .../python3-pyasyncore_1.0.2-2_all.deb ...
+Unpacking python3-pyasyncore (1.0.2-2) ...
+Selecting previously unselected package fail2ban.
+Preparing to unpack .../fail2ban_1.0.2-3ubuntu0.1_all.deb ...
+Unpacking fail2ban (1.0.2-3ubuntu0.1) ...
+Selecting previously unselected package python3-pyinotify.
+Preparing to unpack .../python3-pyinotify_0.9.6-2ubuntu1_all.deb ...
+Unpacking python3-pyinotify (0.9.6-2ubuntu1) ...
+Setting up python3-pyasyncore (1.0.2-2) ...
+Setting up fail2ban (1.0.2-3ubuntu0.1) ...
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:224: SyntaxWarning: invalid escape sequence '\s'
+  "1490349000 test failed.dns.ch", "^\s*test <F-ID>\S+</F-ID>"
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:435: SyntaxWarning: invalid escape sequence '\S'
+  '^'+prefix+'<F-ID>User <F-USER>\S+</F-USER></F-ID> not allowed\n'
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:443: SyntaxWarning: invalid escape sequence '\S'
+  '^'+prefix+'User <F-USER>\S+</F-USER> not allowed\n'
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:444: SyntaxWarning: invalid escape sequence '\d'
+  '^'+prefix+'Received disconnect from <F-ID><ADDR> port \d+</F-ID>'
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:451: SyntaxWarning: invalid escape sequence '\s'
+  _test_variants('common', prefix="\s*\S+ sshd\[<F-MLFID>\d+</F-MLFID>\]:\s+")
+/usr/lib/python3/dist-packages/fail2ban/tests/fail2banregextestcase.py:537: SyntaxWarning: invalid escape sequence '\['
+  'common[prefregex="^svc\[<F-MLFID>\d+</F-MLFID>\] connect <F-CONTENT>.+</F-CONTENT>$"'
+/usr/lib/python3/dist-packages/fail2ban/tests/servertestcase.py:1375: SyntaxWarning: invalid escape sequence '\s'
+  "`{ nft -a list chain inet f2b-table f2b-chain | grep -oP '@addr-set-j-w-nft-mp\s+.*\s+\Khandle\s+(\d+)$'; } | while read -r hdl; do`",
+/usr/lib/python3/dist-packages/fail2ban/tests/servertestcase.py:1378: SyntaxWarning: invalid escape sequence '\s'
+  "`{ nft -a list chain inet f2b-table f2b-chain | grep -oP '@addr6-set-j-w-nft-mp\s+.*\s+\Khandle\s+(\d+)$'; } | while read -r hdl; do`",
+/usr/lib/python3/dist-packages/fail2ban/tests/servertestcase.py:1421: SyntaxWarning: invalid escape sequence '\s'
+  "`{ nft -a list chain inet f2b-table f2b-chain | grep -oP '@addr-set-j-w-nft-ap\s+.*\s+\Khandle\s+(\d+)$'; } | while read -r hdl; do`",
+/usr/lib/python3/dist-packages/fail2ban/tests/servertestcase.py:1424: SyntaxWarning: invalid escape sequence '\s'
+  "`{ nft -a list chain inet f2b-table f2b-chain | grep -oP '@addr6-set-j-w-nft-ap\s+.*\s+\Khandle\s+(\d+)$'; } | while read -r hdl; do`",
+Created symlink /etc/systemd/system/multi-user.target.wants/fail2ban.service → /usr/lib/systemd/system/fail2ban.service.
+Setting up python3-pyinotify (0.9.6-2ubuntu1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Scanning processes...                                                                                                                                                                        
+Scanning candidates...                                                                                                                                                                       
+Scanning linux images...                                                                                                                                                                     
+
+Pending kernel upgrade!
+Running kernel version:
+  6.8.0-90-generic
+Diagnostics:
+  The currently running kernel version is not the expected kernel version 6.8.0-100-generic.
+
+Restarting the system to load the new kernel will not be handled automatically, so you should consider rebooting.
+
+Restarting services...
+
+Service restarts being deferred:
+ /etc/needrestart/restart.d/dbus.service
+ systemctl restart getty@tty1.service
+ systemctl restart serial-getty@ttyS0.service
+ systemctl restart systemd-logind.service
+ systemctl restart unattended-upgrades.service
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+🐳 FreeSWITCH running in Docker, checking log location...
+⚠️  Trovato FreeSWITCH Docker ma log non mappato.
+   Assicurati di mappare /var/log/freeswitch nel docker-compose.
+   Esempio: volumes: - ./freeswitch-logs:/var/log/freeswitch
+   Usando path di default: /var/log/freeswitch/freeswitch.log
+📝 Installing fail2ban filter...
+🔧 Installing fail2ban jail...
+🔄 Restarting fail2ban...
+Synchronizing state of fail2ban.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install enable fail2ban
+
+✅ Fail2ban status:
+═══════════════════════════════════
+2026-02-13 19:28:51,587 fail2ban                [1160033]: ERROR   Failed to access socket path: /var/run/fail2ban/fail2ban.sock. Is fail2ban running?
+root@srv1164256:/opt/alessia-voice/vps-voice-bridge# 
