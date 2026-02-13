@@ -313,6 +313,70 @@ router.get(
 );
 
 router.post(
+  "/consultant/knowledge/documents/:id/drive-sync",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [document] = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({ success: false, error: "Document not found" });
+      }
+
+      if (!document.googleDriveFileId) {
+        return res.status(400).json({ success: false, error: "Document is not linked to Google Drive" });
+      }
+
+      const { syncDocumentFromDrive, registerDriveWatch } = await import('../services/google-drive-sync-service');
+      
+      res.json({ success: true, message: "Sync started" });
+
+      setImmediate(async () => {
+        try {
+          const success = await syncDocumentFromDrive(id, 'manual');
+          if (success) {
+            console.log(`✅ [KNOWLEDGE DOCUMENTS] Manual drive sync completed for document ${id}`);
+          }
+          
+          const { driveSyncChannels } = await import('../../shared/schema');
+          const existingActiveChannels = await db
+            .select()
+            .from(driveSyncChannels)
+            .where(and(
+              eq(driveSyncChannels.documentId, id),
+              eq(driveSyncChannels.syncStatus, 'active')
+            ))
+            .limit(1);
+          
+          if (existingActiveChannels.length === 0) {
+            console.log(`🔔 [KNOWLEDGE DOCUMENTS] Re-registering watch channel for document ${id}`);
+            await registerDriveWatch(consultantId, id, document.googleDriveFileId!, 'knowledge');
+          }
+        } catch (err: any) {
+          console.error(`❌ [KNOWLEDGE DOCUMENTS] Manual drive sync failed for ${id}:`, err.message);
+        }
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error triggering drive sync:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to sync" });
+    }
+  }
+);
+
+router.post(
   "/consultant/knowledge/documents",
   authenticateToken,
   requireRole("consultant"),

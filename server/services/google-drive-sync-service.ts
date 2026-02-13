@@ -691,6 +691,7 @@ export async function cleanupExpiredChannels(): Promise<number> {
     .where(lt(driveSyncChannels.expiration, now));
   
   let cleanedCount = 0;
+  let reregisteredCount = 0;
   
   for (const channel of expiredChannels) {
     try {
@@ -703,13 +704,123 @@ export async function cleanupExpiredChannels(): Promise<number> {
       .where(eq(driveSyncChannels.id, channel.id));
     
     cleanedCount++;
+    
+    try {
+      const docType = (channel.documentType as 'knowledge' | 'system_prompt') || 'knowledge';
+      console.log(`🔄 [DRIVE SYNC] Re-registering expired channel for ${docType} document ${channel.documentId}...`);
+      const result = await registerDriveWatch(
+        channel.consultantId,
+        channel.documentId,
+        channel.googleDriveFileId,
+        docType
+      );
+      if (result) {
+        reregisteredCount++;
+        console.log(`✅ [DRIVE SYNC] Re-registered watch for document ${channel.documentId}`);
+      } else {
+        console.warn(`⚠️ [DRIVE SYNC] Failed to re-register watch for document ${channel.documentId}`);
+      }
+    } catch (err: any) {
+      console.error(`❌ [DRIVE SYNC] Error re-registering watch for document ${channel.documentId}:`, err.message);
+    }
   }
   
   if (cleanedCount > 0) {
-    console.log(`🧹 [DRIVE SYNC] Cleaned up ${cleanedCount} expired channels`);
+    console.log(`🧹 [DRIVE SYNC] Cleaned up ${cleanedCount} expired channels, re-registered ${reregisteredCount}`);
   }
   
   return cleanedCount;
+}
+
+export async function ensureWatchChannelsForAllDriveDocuments(): Promise<number> {
+  let registeredCount = 0;
+  
+  const driveKBDocs = await db
+    .select({
+      id: consultantKnowledgeDocuments.id,
+      consultantId: consultantKnowledgeDocuments.consultantId,
+      googleDriveFileId: consultantKnowledgeDocuments.googleDriveFileId,
+      title: consultantKnowledgeDocuments.title
+    })
+    .from(consultantKnowledgeDocuments)
+    .where(isNotNull(consultantKnowledgeDocuments.googleDriveFileId));
+  
+  const driveSysDocs = await db.execute(sql`
+    SELECT id, consultant_id, google_drive_file_id, title
+    FROM system_prompt_documents
+    WHERE google_drive_file_id IS NOT NULL
+  `);
+  
+  const allActiveChannels = await db
+    .select({ 
+      documentId: driveSyncChannels.documentId,
+      documentType: driveSyncChannels.documentType
+    })
+    .from(driveSyncChannels)
+    .where(eq(driveSyncChannels.syncStatus, 'active'));
+  
+  const activeChannelKeys = new Set(
+    allActiveChannels.map(c => `${c.documentType || 'knowledge'}:${c.documentId}`)
+  );
+  
+  const staleChannels = await db
+    .select()
+    .from(driveSyncChannels)
+    .where(
+      and(
+        sql`${driveSyncChannels.syncStatus} != 'active'`
+      )
+    );
+  
+  for (const stale of staleChannels) {
+    try {
+      await stopDriveWatch(stale.consultantId, stale.channelId, stale.resourceId);
+    } catch {}
+    await db.delete(driveSyncChannels).where(eq(driveSyncChannels.id, stale.id));
+  }
+  if (staleChannels.length > 0) {
+    console.log(`🧹 [DRIVE SYNC] Cleaned ${staleChannels.length} stale (non-active) channels`);
+  }
+  
+  for (const doc of driveKBDocs) {
+    if (!doc.googleDriveFileId) continue;
+    const key = `knowledge:${doc.id}`;
+    if (activeChannelKeys.has(key)) continue;
+    
+    try {
+      console.log(`🔔 [DRIVE SYNC] Registering missing watch for KB doc "${doc.title}" (${doc.id})`);
+      const result = await registerDriveWatch(doc.consultantId, doc.id, doc.googleDriveFileId, 'knowledge');
+      if (result) {
+        registeredCount++;
+      }
+    } catch (err: any) {
+      console.error(`❌ [DRIVE SYNC] Failed to register watch for KB doc ${doc.id}:`, err.message);
+    }
+  }
+  
+  for (const row of (driveSysDocs.rows || []) as Array<{ id: string; consultant_id: string; google_drive_file_id: string; title: string }>) {
+    if (!row.google_drive_file_id) continue;
+    const key = `system_prompt:${row.id}`;
+    if (activeChannelKeys.has(key)) continue;
+    
+    try {
+      console.log(`🔔 [DRIVE SYNC] Registering missing watch for system doc "${row.title}" (${row.id})`);
+      const result = await registerDriveWatch(row.consultant_id, row.id, row.google_drive_file_id, 'system_prompt');
+      if (result) {
+        registeredCount++;
+      }
+    } catch (err: any) {
+      console.error(`❌ [DRIVE SYNC] Failed to register watch for system doc ${row.id}:`, err.message);
+    }
+  }
+  
+  if (registeredCount > 0) {
+    console.log(`✅ [DRIVE SYNC] Registered ${registeredCount} missing watch channel(s)`);
+  } else {
+    console.log(`✅ [DRIVE SYNC] All Google Drive documents have active watch channels`);
+  }
+  
+  return registeredCount;
 }
 
 export async function removeSyncChannelForDocument(documentId: string): Promise<void> {

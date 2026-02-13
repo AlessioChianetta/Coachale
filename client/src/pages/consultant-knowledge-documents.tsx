@@ -349,6 +349,7 @@ export default function ConsultantKnowledgeDocuments() {
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
   const [documentProgressMap, setDocumentProgressMap] = useState<Record<string, DocumentProgress>>({});
   const [retryingDocId, setRetryingDocId] = useState<string | null>(null);
+  const [syncingDriveDocId, setSyncingDriveDocId] = useState<string | null>(null);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [editingFolder, setEditingFolder] = useState<KnowledgeFolder | null>(null);
   const [folderForm, setFolderForm] = useState({ name: "", color: "#6366f1" });
@@ -1002,6 +1003,41 @@ export default function ConsultantKnowledgeDocuments() {
     retryMutation.mutate(documentId);
   };
 
+  const handleManualDriveSync = async (documentId: string) => {
+    setSyncingDriveDocId(documentId);
+    try {
+      const response = await fetch(`/api/consultant/knowledge/documents/${documentId}/drive-sync`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        toast({
+          title: "Sincronizzazione avviata",
+          description: "Il documento verrà aggiornato da Google Drive a breve",
+        });
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+          setSyncingDriveDocId(null);
+        }, 5000);
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Errore",
+          description: data.error || "Errore durante la sincronizzazione",
+          variant: "destructive",
+        });
+        setSyncingDriveDocId(null);
+      }
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile avviare la sincronizzazione",
+        variant: "destructive",
+      });
+      setSyncingDriveDocId(null);
+    }
+  };
+
   const handlePreview = async (doc: KnowledgeDocument) => {
     setTablePreviewPage(0);
     setTablePreviewSheet(0);
@@ -1433,6 +1469,28 @@ export default function ConsultantKnowledgeDocuments() {
                   Sync programmato: {formatDate(doc.pendingSyncAt)}
                 </span>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManualDriveSync(doc.id);
+                }}
+                disabled={syncingDriveDocId === doc.id}
+              >
+                {syncingDriveDocId === doc.id ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Sincronizzando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Sync Ora
+                  </>
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

@@ -1,7 +1,8 @@
 import { 
   getExpiringChannels, 
   renewDriveChannel, 
-  cleanupExpiredChannels 
+  cleanupExpiredChannels,
+  ensureWatchChannelsForAllDriveDocuments
 } from '../services/google-drive-sync-service';
 
 let renewalInterval: NodeJS.Timeout | null = null;
@@ -42,6 +43,11 @@ export async function runChannelRenewal(): Promise<void> {
     }
     
     console.log(`✅ [DRIVE RENEWAL] Renewal complete: ${renewedCount} renewed, ${failedCount} failed`);
+    
+    const reregistered = await ensureWatchChannelsForAllDriveDocuments();
+    if (reregistered > 0) {
+      console.log(`🔔 [DRIVE RENEWAL] Re-registered ${reregistered} missing watch channel(s)`);
+    }
   } catch (error: any) {
     console.error(`❌ [DRIVE RENEWAL] Error during renewal:`, error.message);
   }

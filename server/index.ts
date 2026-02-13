@@ -524,6 +524,18 @@ app.use((req, res, next) => {
     log("🔄 Google Drive pending sync processor enabled - starting scheduler (every 5 minutes)...");
     startDrivePendingSyncScheduler();
     log("✅ Google Drive pending sync processor started");
+    
+    setTimeout(async () => {
+      try {
+        const { ensureWatchChannelsForAllDriveDocuments } = await import('./services/google-drive-sync-service');
+        const registered = await ensureWatchChannelsForAllDriveDocuments();
+        if (registered > 0) {
+          log(`🔔 [STARTUP] Re-registered ${registered} missing Google Drive watch channel(s)`);
+        }
+      } catch (err: any) {
+        log(`⚠️ [STARTUP] Failed to check Drive watch channels: ${err.message}`);
+      }
+    }, 30000);
   } else {
     log("🔄 Google Drive channel renewal scheduler is disabled (set DRIVE_RENEWAL_ENABLED=true to enable)");
   }
