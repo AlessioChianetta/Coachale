@@ -76,6 +76,12 @@ import {
   Globe,
   UserRound,
   HardHat,
+  Eye,
+  Copy,
+  Check,
+  CalendarDays,
+  Hash,
+  Zap,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
@@ -715,6 +721,8 @@ export default function SystemDocumentsSection() {
   const [batchSaving, setBatchSaving] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ type: 'system'; doc: SystemDocument } | { type: 'kb'; doc: KbDocSummary; content?: string; loading?: boolean } | null>(null);
+  const [copiedContent, setCopiedContent] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1279,6 +1287,33 @@ export default function SystemDocumentsSection() {
       });
   };
 
+  const openPreviewSysDoc = (doc: SystemDocument) => {
+    setPreviewDoc({ type: 'system', doc });
+    setCopiedContent(false);
+  };
+
+  const openPreviewKbDoc = async (kbDoc: KbDocSummary) => {
+    setPreviewDoc({ type: 'kb', doc: kbDoc, loading: true });
+    setCopiedContent(false);
+    try {
+      const res = await fetch(`/api/consultant/knowledge/documents/${kbDoc.id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const result = await res.json();
+      const content = result.data?.content || result.content || '';
+      setPreviewDoc({ type: 'kb', doc: kbDoc, content, loading: false });
+    } catch {
+      setPreviewDoc({ type: 'kb', doc: kbDoc, content: 'Impossibile caricare il contenuto del documento.', loading: false });
+    }
+  };
+
+  const handleCopyContent = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedContent(true);
+    setTimeout(() => setCopiedContent(false), 2000);
+  };
+
   const renderDocumentCard = (doc: SystemDocument, currentGroup?: string) => {
     const badges = getTargetBadges(doc);
     const isGoogleDriveDoc = !!doc.google_drive_file_id;
@@ -1376,6 +1411,9 @@ export default function SystemDocumentsSection() {
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => openPreviewSysDoc(doc)} title="Visualizza">
+              <Eye className="h-4 w-4" />
+            </Button>
             <Switch
               checked={doc.is_active}
               onCheckedChange={() => toggleMutation.mutate(doc.id)}
@@ -1442,6 +1480,11 @@ export default function SystemDocumentsSection() {
                 Appare anche in: {otherGroups.map(g => groupLabelMap[g]).join(', ')}
               </p>
             )}
+          </div>
+          <div className="shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => openPreviewKbDoc(kbDoc)} title="Visualizza">
+              <Eye className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -2891,6 +2934,175 @@ export default function SystemDocumentsSection() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pb-0">
+            <div className="flex items-start gap-3">
+              <div className={`p-2.5 rounded-xl shrink-0 ${previewDoc?.type === 'kb' ? 'bg-amber-100' : 'bg-indigo-100'}`}>
+                <FileText className={`h-5 w-5 ${previewDoc?.type === 'kb' ? 'text-amber-600' : 'text-indigo-600'}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-lg font-semibold leading-tight">
+                  {previewDoc?.type === 'system' ? previewDoc.doc.title : previewDoc?.type === 'kb' ? previewDoc.doc.title : ''}
+                </DialogTitle>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {previewDoc?.type === 'system' && (
+                    <>
+                      <Badge variant={previewDoc.doc.is_active ? "default" : "secondary"} className="text-[10px] h-5">
+                        {previewDoc.doc.is_active ? "Attivo" : "Inattivo"}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] h-5">
+                        <Zap className="h-3 w-3 mr-0.5" />
+                        Priorità {previewDoc.doc.priority}
+                      </Badge>
+                      <Badge variant="outline" className={`text-[10px] h-5 ${previewDoc.doc.injection_mode === 'system_prompt' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {previewDoc.doc.injection_mode === 'system_prompt' ? 'System Prompt' : 'File Search'}
+                      </Badge>
+                      {previewDoc.doc.google_drive_file_id && (
+                        <span className="flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                          <Cloud className="w-3 h-3" />
+                          Google Drive
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {previewDoc?.type === 'kb' && (
+                    <>
+                      <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-300">
+                        Knowledge Base
+                      </Badge>
+                      {previewDoc.doc.fileType && (
+                        <span className="text-[10px] text-slate-500 uppercase font-medium">{previewDoc.doc.fileType}</span>
+                      )}
+                      {previewDoc.doc.googleDriveFileId && (
+                        <span className="flex items-center gap-1 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                          <Cloud className="w-3 h-3" />
+                          Google Drive
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <Separator className="my-3" />
+
+          {previewDoc?.type === 'system' && (
+            <div className="space-y-3 mb-3">
+              {previewDoc.doc.description && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                  <StickyNote className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-slate-600">{previewDoc.doc.description}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Hash className="h-3 w-3" />
+                  {previewDoc.doc.content.length.toLocaleString()} caratteri
+                </span>
+                <span className="flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  ~{Math.round(previewDoc.doc.content.length / 4).toLocaleString()} token
+                </span>
+                <span className="flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" />
+                  {formatDate(previewDoc.doc.created_at)}
+                </span>
+              </div>
+              {(() => {
+                const badges = getTargetBadges(previewDoc.doc);
+                return badges.length > 0 ? (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {badges.map((b, i) => (
+                      <Badge key={i} variant="outline" className={`text-[10px] gap-1 py-0.5 ${b.colorClass}`}>
+                        {b.icon}
+                        {b.label}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {previewDoc?.type === 'kb' && (
+            <div className="space-y-3 mb-3">
+              <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                {previewDoc.doc.fileSize && (
+                  <span className="flex items-center gap-1">
+                    <Hash className="h-3 w-3" />
+                    {(previewDoc.doc.fileSize / 1024).toFixed(1)} KB
+                  </span>
+                )}
+                {previewDoc.doc.createdAt && (
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    {formatDate(previewDoc.doc.createdAt)}
+                  </span>
+                )}
+              </div>
+              {previewDoc.doc.agentIds.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Bot className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                  {previewDoc.doc.agentIds.map(id => {
+                    const agent = AUTONOMOUS_AGENTS.find(a => a.id === id);
+                    return (
+                      <Badge key={id} variant="outline" className="text-[10px] gap-1 py-0.5 bg-purple-50 text-purple-700 border-purple-200">
+                        <Bot className="h-3 w-3" />
+                        {agent?.name || id}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contenuto</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1.5 text-slate-500 hover:text-slate-700"
+              onClick={() => {
+                const content = previewDoc?.type === 'system'
+                  ? previewDoc.doc.content
+                  : previewDoc?.type === 'kb'
+                  ? previewDoc.content || ''
+                  : '';
+                handleCopyContent(content);
+              }}
+              disabled={previewDoc?.type === 'kb' && previewDoc.loading}
+            >
+              {copiedContent ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copiedContent ? 'Copiato!' : 'Copia'}
+            </Button>
+          </div>
+
+          <ScrollArea className="flex-1 min-h-0 max-h-[45vh]">
+            <div className="rounded-lg border bg-slate-50/70 p-4">
+              {previewDoc?.type === 'system' ? (
+                <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono leading-relaxed break-words">
+                  {previewDoc.doc.content}
+                </pre>
+              ) : previewDoc?.type === 'kb' && previewDoc.loading ? (
+                <div className="flex items-center justify-center py-8 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                  <span className="text-sm text-slate-500">Caricamento contenuto...</span>
+                </div>
+              ) : previewDoc?.type === 'kb' ? (
+                <pre className="whitespace-pre-wrap text-sm text-slate-700 font-mono leading-relaxed break-words">
+                  {previewDoc.content || 'Nessun contenuto disponibile'}
+                </pre>
+              ) : null}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
