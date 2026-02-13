@@ -331,14 +331,18 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
       { icon: "📈", text: "Genera report settimanali sulle tue attività" },
       { icon: "🧠", text: "Suggerisce come organizzare meglio la giornata" },
       { icon: "📅", text: "Monitora consulenze future e ti chiama se dimentichi di programmarle" },
+      { icon: "🎯", text: "Segue i tuoi obiettivi strategici e monitora i progressi" },
+      { icon: "🗺️", text: "Si allinea alla tua roadmap e note strategiche" },
+      { icon: "📚", text: "Consulta i documenti dalla Knowledge Base per contestualizzare le analisi" },
+      { icon: "📞", text: "Può chiamarti, scriverti su WhatsApp o inviarti email direttamente" },
     ],
     cantDo: [
       { icon: "📞", text: "Non contatta clienti direttamente" },
       { icon: "📧", text: "Non invia email ai clienti" },
-      { icon: "💬", text: "Non manda messaggi WhatsApp" },
+      { icon: "💬", text: "Non manda messaggi WhatsApp ai clienti" },
       { icon: "👥", text: "Non gestisce relazioni con i clienti" },
     ],
-    workflow: "Ogni 30 minuti → Analizza agenda, task, carico di lavoro e schedulazione consulenze → Identifica preparazioni necessarie e gap di programmazione → Crea task organizzativi e promemoria vocali",
+    workflow: "Ogni 30 minuti → Analizza agenda, obiettivi, roadmap, documenti KB e carico di lavoro → Identifica preparazioni necessarie, gap e progressi verso gli obiettivi → Crea task organizzativi, promemoria e report strategici",
   },
   personalizza: {
     canDo: [
