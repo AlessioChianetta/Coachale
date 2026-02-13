@@ -796,7 +796,7 @@ export default function SystemDocumentsSection() {
 
   const kbDocsForGroups = useMemo(() => {
     return kbDocuments
-      .filter((doc: any) => doc.status === 'indexed')
+      .filter((doc: any) => doc.status === 'indexed' && !doc.description?.startsWith('[SYSTEM_DOC:'))
       .map((doc: any): KbDocSummary => ({
         id: doc.id,
         title: doc.title,
@@ -1173,7 +1173,9 @@ export default function SystemDocumentsSection() {
     const groups: string[] = [];
     if (doc.target_client_assistant) {
       const mode = doc.target_client_mode || 'all';
-      if (mode === 'all') {
+      if (mode === 'consultant_only') {
+        groups.push('ai_consultant_only');
+      } else if (mode === 'all') {
         groups.push('ai_consultant');
       } else if (mode === 'clients_only' || mode === 'specific_clients') {
         groups.push('ai_clients');
