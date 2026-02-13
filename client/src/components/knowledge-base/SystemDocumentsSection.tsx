@@ -694,13 +694,8 @@ export default function SystemDocumentsSection() {
     });
 
     if (doc.target_client_assistant) {
-      const mode = doc.target_client_mode || 'all';
-      let aiLabel = "AI Assistant - Tutti";
-      if (mode === 'clients_only') aiLabel = "AI Assistant - Solo Clienti";
-      else if (mode === 'employees_only') aiLabel = "AI Assistant - Solo Dipendenti";
-      else if (mode === 'specific_clients') aiLabel = `AI Assistant - ${(doc.target_client_ids || []).length} clienti`;
-      else if (mode === 'specific_departments') aiLabel = `AI Assistant - ${(doc.target_department_ids || []).length} reparti`;
-      else if (mode === 'specific_employees') aiLabel = `AI Assistant - ${(doc.target_client_ids || []).length} dipendenti`;
+      const modeLabel = getTargetModeLabel(doc);
+      const aiLabel = `AI Assistant - ${modeLabel}`;
       badges.push({ label: aiLabel, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
     }
 
@@ -760,14 +755,37 @@ export default function SystemDocumentsSection() {
   const autonomousDocs = sortedDocuments.filter(d => hasAutonomousTargets(d));
   const unassignedDocs = sortedDocuments.filter(d => isUnassigned(d));
 
+  const getDepartmentNames = (deptIds: string[]) => {
+    return deptIds.map(id => {
+      const dept = departments.find(d => d.id === id);
+      return dept?.name || id.slice(0, 8);
+    });
+  };
+
+  const getClientNames = (clientIds: string[], fromList: ClientUser[]) => {
+    return clientIds.map(id => {
+      const client = fromList.find(c => c.id === id);
+      return client ? `${client.firstName} ${client.lastName}` : id.slice(0, 8);
+    });
+  };
+
   const getTargetModeLabel = (doc: SystemDocument) => {
     const mode = doc.target_client_mode || 'all';
     if (mode === 'all') return 'Tutti';
     if (mode === 'clients_only') return 'Solo Clienti';
     if (mode === 'employees_only') return 'Solo Dipendenti';
-    if (mode === 'specific_clients') return `${(doc.target_client_ids || []).length} clienti specifici`;
-    if (mode === 'specific_departments') return `${(doc.target_department_ids || []).length} reparti`;
-    if (mode === 'specific_employees') return `${(doc.target_client_ids || []).length} dipendenti specifici`;
+    if (mode === 'specific_clients') {
+      const names = getClientNames(doc.target_client_ids || [], nonEmployeeClients);
+      return names.length > 0 ? names.join(', ') : 'Clienti specifici';
+    }
+    if (mode === 'specific_departments') {
+      const names = getDepartmentNames(doc.target_department_ids || []);
+      return names.length > 0 ? names.join(', ') : 'Reparti';
+    }
+    if (mode === 'specific_employees') {
+      const names = getClientNames(doc.target_client_ids || [], employeeClients);
+      return names.length > 0 ? names.join(', ') : 'Dipendenti specifici';
+    }
     return mode;
   };
 
@@ -1039,7 +1057,10 @@ export default function SystemDocumentsSection() {
                     <Sparkles className="h-4 w-4 text-blue-600" />,
                     aiDocs,
                     { border: 'border-blue-300', bg: 'bg-blue-50/30', headerBg: 'bg-blue-50/50', badge: 'bg-blue-100 text-blue-700 border-blue-200', iconBg: 'bg-blue-100', text: 'text-blue-800' },
-                    (doc) => `Modalità: ${getTargetModeLabel(doc)}`,
+                    (doc) => {
+                      const label = getTargetModeLabel(doc);
+                      return label ? `Destinatari: ${label}` : null;
+                    },
                   )}
                   {renderGroupSection(
                     'whatsapp',
