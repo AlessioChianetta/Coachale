@@ -19,6 +19,11 @@ export interface BridgeConfig {
     port: number;
     password: string;
   };
+  sip: {
+    gateway: string;
+    callerId: string;
+  };
+  serviceToken: string;
   audio: {
     sampleRateIn: number;
     sampleRateOut: number;
@@ -27,16 +32,11 @@ export interface BridgeConfig {
     timeoutMs: number;
     maxConcurrent: number;
   };
-  sip: {
-    callerId: string;
-    gateway: string;
-  };
   security: {
     allowedIpPrefixes: string[];
     rateLimitWindowMs: number;
     rateLimitMaxRequests: number;
   };
-  serviceToken: string | null;
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
@@ -75,6 +75,11 @@ export function loadConfig(): BridgeConfig {
       port: parseInt(getEnv('ESL_PORT', '8021'), 10),
       password: getEnv('ESL_PASSWORD', ''),
     },
+    sip: {
+      gateway: getEnv('SIP_GATEWAY', 'voip_trunk'),
+      callerId: getEnv('SIP_CALLER_ID', '+390000000000'),
+    },
+    serviceToken: getEnv('REPLIT_SERVICE_TOKEN', ''),
     audio: {
       sampleRateIn: parseInt(getEnv('AUDIO_SAMPLE_RATE_IN', '8000'), 10),
       sampleRateOut: parseInt(getEnv('AUDIO_SAMPLE_RATE_OUT', '8000'), 10),
@@ -83,16 +88,11 @@ export function loadConfig(): BridgeConfig {
       timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),
       maxConcurrent: parseInt(getEnv('MAX_CONCURRENT_CALLS', '10'), 10),
     },
-    sip: {
-      callerId: getEnv('SIP_CALLER_ID', '+390000000000'),
-      gateway: getEnv('SIP_GATEWAY', 'voip_trunk'),
-    },
     security: {
       allowedIpPrefixes: getEnv('ALLOWED_IP_PREFIXES', '127.0.0.1,::1,::ffff:127.0.0.1,172.17.,172.18.,172.19.,10.').split(',').map(s => s.trim()),
       rateLimitWindowMs: parseInt(getEnv('RATE_LIMIT_WINDOW_MS', '60000'), 10),
       rateLimitMaxRequests: parseInt(getEnv('RATE_LIMIT_MAX_REQUESTS', '30'), 10),
     },
-    serviceToken: getEnvOptional('REPLIT_SERVICE_TOKEN'),
     logLevel: (getEnv('LOG_LEVEL', 'info') as BridgeConfig['logLevel']),
   };
 }
