@@ -557,7 +557,7 @@ export default function ConsultantAIAutonomyPage() {
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
         <div className="flex-1 flex min-h-0">
           <main className="flex-1 p-6 lg:px-8 overflow-auto">
-            <div className="max-w-5xl space-y-6">
+            <div className="max-w-5xl mx-auto space-y-6">
               <div>
                 <h1 className="text-2xl font-semibold flex items-center gap-3 tracking-tight">
                   <div className="p-2 rounded-xl bg-primary/10">
