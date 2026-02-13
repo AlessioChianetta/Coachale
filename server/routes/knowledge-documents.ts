@@ -2159,6 +2159,34 @@ router.get(
   }
 );
 
+router.get(
+  "/consultant/knowledge/agent-assignments/by-document",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: Request, res: Response) => {
+    try {
+      const consultantId = (req as AuthRequest).user!.id;
+
+      const result = await db.execute(sql`
+        SELECT document_id, array_agg(agent_id) as agent_ids
+        FROM agent_knowledge_assignments
+        WHERE consultant_id = ${consultantId}
+        GROUP BY document_id
+      `);
+
+      const map: Record<string, string[]> = {};
+      for (const row of result.rows as any[]) {
+        map[row.document_id] = row.agent_ids;
+      }
+
+      res.json({ success: true, data: map });
+    } catch (error: any) {
+      console.error("❌ [AGENT ASSIGNMENTS] Error getting by-document map:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to get document assignments" });
+    }
+  }
+);
+
 router.post(
   "/consultant/knowledge/agent-assignments",
   authenticateToken,

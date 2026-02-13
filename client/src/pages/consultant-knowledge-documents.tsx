@@ -86,6 +86,7 @@ import {
   Brain,
   Zap,
   Target,
+  Users,
 } from "lucide-react";
 import {
   Collapsible,
@@ -237,6 +238,17 @@ const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   research: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
   article: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
   other: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+};
+
+const AGENT_NAMES: Record<string, { name: string; color: string }> = {
+  alessia: { name: "Alessia", color: "text-pink-600 bg-pink-50 dark:bg-pink-900/20 dark:text-pink-400" },
+  millie: { name: "Millie", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400" },
+  echo: { name: "Echo", color: "text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400" },
+  nova: { name: "Nova", color: "text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400" },
+  stella: { name: "Stella", color: "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400" },
+  iris: { name: "Iris", color: "text-teal-600 bg-teal-50 dark:bg-teal-900/20 dark:text-teal-400" },
+  marco: { name: "Marco", color: "text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400" },
+  personalizza: { name: "Personalizza", color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400" },
 };
 
 const STATUS_CONFIG: Record<DocumentStatus, { icon: React.ComponentType<any>; label: string; color: string }> = {
@@ -793,6 +805,18 @@ export default function ConsultantKnowledgeDocuments() {
   });
   const stats: KnowledgeStats | null = statsResponse?.data || null;
 
+  const { data: agentAssignmentsResponse } = useQuery({
+    queryKey: ["/api/consultant/knowledge/agent-assignments/by-document"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/knowledge/agent-assignments/by-document", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch agent assignments");
+      return response.json();
+    },
+  });
+  const agentAssignmentsByDoc: Record<string, string[]> = agentAssignmentsResponse?.data || {};
+
   const toggleSummaryMutation = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
       const response = await fetch(`/api/consultant/knowledge/documents/${id}/toggle-summary`, {
@@ -1238,6 +1262,22 @@ export default function ConsultantKnowledgeDocuments() {
             )}
           </div>
 
+          <div className="flex flex-wrap items-center gap-1 mb-2">
+            <span className="text-[10px] text-gray-400">Usato da:</span>
+            <span className="text-[10px] text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20 dark:text-cyan-400 px-1.5 py-0 rounded-full">
+              AI Consulente
+            </span>
+            {(agentAssignmentsByDoc[doc.id] || []).map(agentId => {
+              const agent = AGENT_NAMES[agentId];
+              if (!agent) return null;
+              return (
+                <span key={agentId} className={`text-[10px] px-1.5 py-0 rounded-full ${agent.color}`}>
+                  {agent.name}
+                </span>
+              );
+            })}
+          </div>
+
           <div className="flex items-center justify-end gap-1">
             <Button variant="ghost" size="icon" onClick={() => handlePreview(doc)} className="h-7 w-7">
               <Eye className="w-3.5 h-3.5" />
@@ -1350,6 +1390,27 @@ export default function ConsultantKnowledgeDocuments() {
                 Google Drive
               </span>
             )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <Users className="w-3 h-3" />
+              Usato da:
+            </span>
+            <span className="flex items-center gap-1 text-xs text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20 dark:text-cyan-400 px-2 py-0.5 rounded-full">
+              <Sparkles className="w-3 h-3" />
+              AI Consulente
+            </span>
+            {(agentAssignmentsByDoc[doc.id] || []).map(agentId => {
+              const agent = AGENT_NAMES[agentId];
+              if (!agent) return null;
+              return (
+                <span key={agentId} className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${agent.color}`}>
+                  <Bot className="w-3 h-3" />
+                  {agent.name}
+                </span>
+              );
+            })}
           </div>
 
           {isGoogleDriveDoc && (
@@ -1518,12 +1579,12 @@ export default function ConsultantKnowledgeDocuments() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    <p>La <strong>memoria centrale</strong> del tuo Cervello AI. Questi documenti alimentano l'AI Assistant (tuo e dei clienti), i dipendenti autonomi e WhatsApp.</p>
+                    <p>I documenti che carichi qui vanno <strong>sempre all'AI Assistant del consulente</strong>. Per farli usare anche dai dipendenti autonomi o da WhatsApp, devi assegnarli esplicitamente nelle rispettive sezioni.</p>
                     <ul className="space-y-1.5 ml-1">
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />PDF, DOCX, CSV, Excel, audio e testo</li>
                       <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Organizzabili in cartelle</li>
-                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Usati da tutta la piattaforma AI: consulente, clienti, agenti</li>
-                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />L'AI li cerca automaticamente quando servono (File Search)</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Sempre disponibili per il tuo AI Assistant</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Assegnabili ai dipendenti autonomi tramite la tab "Agenti AI"</li>
                     </ul>
                     <p className="text-xs text-muted-foreground/70 pt-1 italic">Esempio: listini prezzi, procedure interne, FAQ, manuali prodotto</p>
                   </CardContent>
@@ -1599,7 +1660,7 @@ export default function ConsultantKnowledgeDocuments() {
                     <Brain className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
                     <div className="text-sm text-muted-foreground">
                       <p className="font-medium text-foreground mb-1">Come funziona il Cervello AI?</p>
-                      <p>I <strong>Documenti</strong> sono la memoria condivisa — l'AI li usa quando tu o un cliente fate una domanda. Le <strong>Istruzioni AI</strong> sono regole che l'AI segue sempre. Gli <strong>Agenti AI</strong> ricevono documenti specifici per il loro ruolo. <strong>Google Drive</strong> ti permette di tenere tutto sincronizzato con i tuoi file esistenti.</p>
+                      <p>I <strong>Documenti</strong> vanno sempre al tuo AI Assistant. Se vuoi che anche un dipendente autonomo li usi, vai nella tab <strong>Agenti AI</strong> e assegnali. Le <strong>Istruzioni AI</strong> sono regole che puoi indirizzare a destinatari specifici. <strong>Google Drive</strong> tiene tutto sincronizzato con i tuoi file esistenti.</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1609,7 +1670,7 @@ export default function ConsultantKnowledgeDocuments() {
             <TabsContent value="documenti">
               <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Documenti della Knowledge Base — usati dall'AI Assistant, dai dipendenti autonomi e da WhatsApp
+                Documenti della Knowledge Base — sempre disponibili per il tuo AI Assistant del consulente
               </p>
               <div className="flex gap-4">
                 {!isMobile && (
