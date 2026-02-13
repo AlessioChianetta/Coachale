@@ -35,7 +35,7 @@ export async function fetchSystemDocumentsForClientAssistant(
     const result = await db.execute(sql`
       SELECT title, content, target_client_mode, target_client_ids, target_department_ids
       FROM system_prompt_documents
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${consultantId}::text
         AND is_active = true
         AND target_client_assistant = true
         AND injection_mode = 'system_prompt'
@@ -89,7 +89,7 @@ export async function fetchSystemDocumentsForAgent(consultantId: string, agentId
     const systemDocsResult = await db.execute(sql`
       SELECT title, content
       FROM system_prompt_documents
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${consultantId}::text
         AND is_active = true
         AND target_autonomous_agents->>${agentId} = 'true'
         AND injection_mode = 'system_prompt'
@@ -103,7 +103,7 @@ export async function fetchSystemDocumentsForAgent(consultantId: string, agentId
       SELECT d.title, COALESCE(d.extracted_content, d.content_summary, '') as content
       FROM agent_knowledge_assignments a
       JOIN consultant_knowledge_documents d ON d.id = a.document_id AND d.consultant_id = a.consultant_id
-      WHERE a.consultant_id = ${consultantId}
+      WHERE a.consultant_id = ${consultantId}::text
         AND a.agent_id = ${agentId}
         AND d.status = 'indexed'
       ORDER BY d.created_at ASC
@@ -136,7 +136,7 @@ export async function fetchSystemDocumentsForWhatsApp(consultantId: string, what
       result = await db.execute(sql`
         SELECT title, content
         FROM system_prompt_documents
-        WHERE consultant_id = ${consultantId}
+        WHERE consultant_id = ${consultantId}::text
           AND is_active = true
           AND injection_mode = 'system_prompt'
           AND target_whatsapp_agents->>${whatsappAgentId} = 'true'
@@ -146,7 +146,7 @@ export async function fetchSystemDocumentsForWhatsApp(consultantId: string, what
       result = await db.execute(sql`
         SELECT title, content
         FROM system_prompt_documents
-        WHERE consultant_id = ${consultantId}
+        WHERE consultant_id = ${consultantId}::text
           AND is_active = true
           AND injection_mode = 'system_prompt'
           AND target_whatsapp_agents != '{}'::jsonb
@@ -173,7 +173,7 @@ export async function fetchFileSearchDocumentIds(consultantId: string, target: '
       result = await db.execute(sql`
         SELECT id, title, content
         FROM system_prompt_documents
-        WHERE consultant_id = ${consultantId}
+        WHERE consultant_id = ${consultantId}::text
           AND is_active = true
           AND target_client_assistant = true
           AND injection_mode = 'file_search'
@@ -184,7 +184,7 @@ export async function fetchFileSearchDocumentIds(consultantId: string, target: '
       result = await db.execute(sql`
         SELECT id, title, content
         FROM system_prompt_documents
-        WHERE consultant_id = ${consultantId}
+        WHERE consultant_id = ${consultantId}::text
           AND is_active = true
           AND target_autonomous_agents->>${agentId} = 'true'
           AND injection_mode = 'file_search'
@@ -194,7 +194,7 @@ export async function fetchFileSearchDocumentIds(consultantId: string, target: '
       result = await db.execute(sql`
         SELECT id, title, content
         FROM system_prompt_documents
-        WHERE consultant_id = ${consultantId}
+        WHERE consultant_id = ${consultantId}::text
           AND is_active = true
           AND target_whatsapp_agents->>${agentId} = 'true'
           AND injection_mode = 'file_search'

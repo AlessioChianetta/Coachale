@@ -344,7 +344,7 @@ export async function buildTaskContext(task: {
     db.execute(sql`
       SELECT id, target_phone, scheduled_at, status, custom_prompt
       FROM scheduled_voice_calls
-      WHERE consultant_id = ${task.consultant_id}
+      WHERE consultant_id = ${task.consultant_id}::text
         AND status IN ('scheduled', 'pending')
         AND scheduled_at > NOW()
       ORDER BY scheduled_at ASC

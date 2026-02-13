@@ -12,7 +12,7 @@ async function fetchAgentKbContext(consultantId: string, agentId: string): Promi
       SELECT d.title
       FROM agent_knowledge_assignments aka
       JOIN consultant_knowledge_documents d ON d.id = aka.document_id
-      WHERE aka.consultant_id = ${consultantId}
+      WHERE aka.consultant_id = ${consultantId}::text
         AND aka.agent_id = ${agentId}
         AND d.status = 'indexed'
     `);
@@ -498,7 +498,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     const dbConsultationDates = await db.execute(sql`
       SELECT client_id, scheduled_at::date as sdate
       FROM consultations
-      WHERE consultant_id = ${consultantId}
+      WHERE consultant_id = ${consultantId}::text
         AND client_id IS NOT NULL
         AND status IN ('completed', 'scheduled')
         AND scheduled_at >= date_trunc('month', NOW())

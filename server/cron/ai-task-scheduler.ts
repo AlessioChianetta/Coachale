@@ -183,7 +183,7 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         u.sip_gateway
       FROM consultant_availability_settings cas
       JOIN users u ON u.id = cas.consultant_id
-      WHERE cas.consultant_id = ${task.consultant_id}
+      WHERE cas.consultant_id = ${task.consultant_id}::text
     `);
     
     const vpsUrl = (settingsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
@@ -1139,7 +1139,9 @@ async function runAutonomousTaskGeneration(): Promise<void> {
 
 async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean }): Promise<number | SimulationResult> {
   const dryRun = options?.dryRun || false;
+  console.log(`🧠 [AUTONOMOUS-GEN] Starting generateTasksForConsultant for ${consultantId} (dryRun=${dryRun})`);
   const settings = await getAutonomySettings(consultantId);
+  console.log(`🧠 [AUTONOMOUS-GEN] Settings loaded OK for ${consultantId}`);
 
   if (!dryRun) {
     if (!settings.is_active || settings.autonomy_level < 2) {
@@ -1162,12 +1164,14 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const { getActiveRoles } = await import("./ai-autonomous-roles");
   const activeRoles = getActiveRoles(enabledRoles);
+  console.log(`🧠 [AUTONOMOUS-GEN] Active roles: ${activeRoles.map(r => r.id).join(', ')} for ${consultantId}`);
 
   if (activeRoles.length === 0) {
     console.log(`🧠 [AUTONOMOUS-GEN] No active roles for consultant ${consultantId}`);
     return 0;
   }
 
+  console.log(`🧠 [AUTONOMOUS-GEN] Fetching clients for ${consultantId}...`);
   const clientsResult = await db.execute(sql`
     SELECT 
       u.id,
@@ -1472,7 +1476,14 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       }
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data...`);
-      const roleData = await role.fetchRoleData(consultantId, clientIds);
+      let roleData: Record<string, any>;
+      try {
+        roleData = await role.fetchRoleData(consultantId, clientIds);
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Role data fetched OK (keys: ${Object.keys(roleData).join(', ')})`);
+      } catch (fetchErr: any) {
+        console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] fetchRoleData FAILED: ${fetchErr.message}`);
+        throw fetchErr;
+      }
 
       let prompt = role.buildPrompt({
         clientsList,
