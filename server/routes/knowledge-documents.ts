@@ -1874,7 +1874,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const consultantId = (req as AuthRequest).user!.id;
-      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode, target_client_mode, target_client_ids, target_department_ids } = req.body;
+      const { title, content, description, target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode, target_client_mode, target_client_ids, target_department_ids, google_drive_file_id } = req.body;
 
       if (!title || !content) {
         return res.status(400).json({ success: false, error: "Title and content are required" });
@@ -1886,11 +1886,12 @@ router.post(
       const result = await db.execute(sql`
         INSERT INTO system_prompt_documents (id, consultant_id, title, content, description, is_active,
           target_client_assistant, target_autonomous_agents, target_whatsapp_agents, priority, injection_mode,
-          target_client_mode, target_client_ids, target_department_ids, created_at, updated_at)
+          target_client_mode, target_client_ids, target_department_ids, google_drive_file_id, created_at, updated_at)
         VALUES (${id}, ${consultantId}, ${title}, ${content}, ${description || null}, true,
           ${target_client_assistant ?? false}, ${JSON.stringify(target_autonomous_agents || {})}::jsonb,
           ${JSON.stringify(target_whatsapp_agents || {})}::jsonb, ${priority ?? 5}, ${injection_mode || 'system_prompt'},
           ${target_client_mode || 'all'}, ${JSON.stringify(target_client_ids || [])}::jsonb, ${JSON.stringify(target_department_ids || [])}::jsonb,
+          ${google_drive_file_id || null},
           ${now}, ${now})
         RETURNING *
       `);

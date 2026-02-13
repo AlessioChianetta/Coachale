@@ -186,6 +186,7 @@ interface ContentEntry {
   description: string;
   sourceType: 'manual' | 'drive' | 'upload';
   sourceFileName?: string;
+  driveFileId?: string;
 }
 
 type PickerDriveSection = 'home' | 'my-drive' | 'shared-with-me' | 'recent' | 'starred';
@@ -199,8 +200,8 @@ const PICKER_DRIVE_SECTIONS: { id: PickerDriveSection; label: string; icon: Reac
 ];
 
 function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocuments }: { 
-  onTextExtracted: (text: string, fileName: string) => void;
-  onMultipleExtracted?: (files: Array<{text: string; fileName: string}>) => void;
+  onTextExtracted: (text: string, fileName: string, fileId?: string) => void;
+  onMultipleExtracted?: (files: Array<{text: string; fileName: string; fileId: string}>) => void;
   existingDocuments?: SystemDocument[];
 }) {
   const [currentSection, setCurrentSection] = useState<PickerDriveSection>('home');
@@ -392,13 +393,13 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
     }
   };
 
-  const handleReuseExisting = (fileId: string, fileName: string) => {
-    const existing = fullImportedMap.get(fileId);
+  const handleReuseExisting = (driveFileId: string, fileName: string) => {
+    const existing = fullImportedMap.get(driveFileId);
     if (existing && existing.content) {
-      onTextExtracted(existing.content, fileName);
+      onTextExtracted(existing.content, fileName, driveFileId);
       toast({ title: "Contenuto riutilizzato", description: `Contenuto di "${existing.title}" riutilizzato senza re-importazione` });
     } else {
-      handleFileCheck({ id: fileId, name: fileName }, true);
+      handleFileCheck({ id: driveFileId, name: fileName }, true);
       toast({ title: "Contenuto non disponibile", description: "Il file verrà re-importato da Google Drive", variant: "default" });
     }
   };
@@ -408,7 +409,7 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
     setIsImporting(true);
     const filesList = Array.from(selectedFiles.values());
     setImportProgress({ current: 0, total: filesList.length });
-    const filesResult: Array<{text: string; fileName: string}> = [];
+    const filesResult: Array<{text: string; fileName: string; fileId: string}> = [];
     let errorCount = 0;
 
     for (let i = 0; i < filesList.length; i++) {
@@ -426,7 +427,7 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
         }
         const result = await res.json();
         if (result.data?.text) {
-          filesResult.push({ text: result.data.text, fileName: filesList[i].name });
+          filesResult.push({ text: result.data.text, fileName: filesList[i].name, fileId: filesList[i].id });
         }
       } catch (err: any) {
         errorCount++;
@@ -443,7 +444,8 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
       } else {
         const concatenated = filesResult.map(f => f.text).join('\n\n---\n\n');
         const fileName = filesResult.length === 1 ? filesResult[0].fileName : `${filesResult.length} file importati`;
-        onTextExtracted(concatenated, fileName);
+        const fileId = filesResult.length === 1 ? filesResult[0].fileId : undefined;
+        onTextExtracted(concatenated, fileName, fileId);
       }
       setSelectedFiles(new Map());
     } else if (errorCount > 0) {
@@ -703,6 +705,7 @@ export default function SystemDocumentsSection() {
   const [contentSource, setContentSource] = useState<'manual' | 'drive' | 'upload'>('manual');
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedFileName, setExtractedFileName] = useState<string | null>(null);
+  const [extractedDriveFileId, setExtractedDriveFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contentEntries, setContentEntries] = useState<ContentEntry[]>([]);
   const [manualTitle, setManualTitle] = useState('');
@@ -959,6 +962,7 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
     setContentSource('manual');
     setExtractedFileName(null);
+    setExtractedDriveFileId(null);
     setContentEntries([]);
     setManualTitle('');
     setManualContent('');
@@ -1009,7 +1013,7 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
   };
 
-  const addContentEntry = (content: string, title: string, sourceType: 'manual' | 'drive' | 'upload', sourceFileName?: string, description?: string) => {
+  const addContentEntry = (content: string, title: string, sourceType: 'manual' | 'drive' | 'upload', sourceFileName?: string, description?: string, driveFileId?: string) => {
     const cleanTitle = title.replace(/\.[^/.]+$/, '');
     setContentEntries(prev => [...prev, {
       id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -1018,6 +1022,7 @@ export default function SystemDocumentsSection() {
       description: description || '',
       sourceType,
       sourceFileName,
+      driveFileId,
     }]);
   };
 
@@ -1038,12 +1043,15 @@ export default function SystemDocumentsSection() {
       let errorCount = 0;
       for (const entry of contentEntries) {
         try {
-          const docData: DocumentForm = {
+          const docData: DocumentForm & { google_drive_file_id?: string } = {
             ...form,
             title: entry.title || 'Documento senza titolo',
             content: entry.content,
             description: entry.description,
           };
+          if (entry.driveFileId) {
+            docData.google_drive_file_id = entry.driveFileId;
+          }
           const res = await fetch("/api/consultant/knowledge/system-documents", {
             method: "POST",
             headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -1857,9 +1865,10 @@ export default function SystemDocumentsSection() {
                       {contentSource === 'drive' && (
                         <DriveFilePicker
                           existingDocuments={documents}
-                          onTextExtracted={(text, fileName) => {
+                          onTextExtracted={(text, fileName, fileId) => {
                             setForm(f => ({ ...f, content: text, title: f.title || fileName.replace(/\.[^/.]+$/, '') }));
                             setExtractedFileName(fileName);
+                            setExtractedDriveFileId(fileId || null);
                             setContentSource('manual');
                             toast({ title: "Contenuto importato", description: `${text.length.toLocaleString()} caratteri estratti da "${fileName}"` });
                           }}
@@ -1998,12 +2007,12 @@ export default function SystemDocumentsSection() {
                       {contentSource === 'drive' && (
                         <DriveFilePicker
                           existingDocuments={documents}
-                          onTextExtracted={(text, fileName) => {
-                            addContentEntry(text, fileName, 'drive', fileName);
+                          onTextExtracted={(text, fileName, fileId) => {
+                            addContentEntry(text, fileName, 'drive', fileName, undefined, fileId);
                           }}
                           onMultipleExtracted={(files) => {
                             files.forEach(f => {
-                              addContentEntry(f.text, f.fileName, 'drive', f.fileName);
+                              addContentEntry(f.text, f.fileName, 'drive', f.fileName, undefined, f.fileId);
                             });
                             setContentSource('manual');
                             toast({ title: "File importati", description: `${files.length} documenti aggiunti alla lista` });
