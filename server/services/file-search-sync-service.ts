@@ -2680,9 +2680,9 @@ export class FileSearchSyncService {
         ),
       });
 
-      // Filter to only those with content to index
+      // Filter to only those with content to index AND a valid clientId
       const consultationsWithContent = allConsultations.filter(
-        c => c.transcript || c.notes
+        c => (c.transcript || c.notes) && c.clientId
       );
 
       let synced = 0;
