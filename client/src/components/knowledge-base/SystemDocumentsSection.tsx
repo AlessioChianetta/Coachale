@@ -1225,6 +1225,15 @@ export default function SystemDocumentsSection() {
     );
   };
 
+  const emptyGroupHints: Record<string, string> = {
+    ai_consultant: 'Aggiungi istruzioni generali per guidare il comportamento del tuo AI Assistant',
+    ai_clients: 'Crea documenti personalizzati visibili solo ai tuoi clienti nell\'AI Assistant',
+    ai_employees: 'Configura istruzioni specifiche per reparti o dipendenti',
+    whatsapp: 'Collega documenti ai tuoi dipendenti WhatsApp per risposte automatiche',
+    autonomous: 'Assegna documenti agli agenti autonomi per arricchire il loro contesto',
+    unassigned: 'I documenti senza destinatario non saranno visibili a nessun canale AI',
+  };
+
   const renderGroupSection = (
     groupKey: string,
     label: string,
@@ -1233,8 +1242,8 @@ export default function SystemDocumentsSection() {
     colorClasses: { border: string; bg: string; headerBg: string; badge: string; iconBg: string; text: string },
     subInfoFn?: (doc: SystemDocument) => string | null,
   ) => {
-    const isOpen = openGroups[groupKey] ?? true;
     const isEmpty = docs.length === 0;
+    const isOpen = openGroups[groupKey] ?? !isEmpty;
 
     return (
       <Collapsible
@@ -1243,25 +1252,45 @@ export default function SystemDocumentsSection() {
         onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, [groupKey]: open }))}
       >
         <CollapsibleTrigger asChild>
-          <div className={`flex items-center justify-between rounded-lg border-2 p-3 cursor-pointer transition-colors ${
-            isEmpty ? 'border-slate-200 bg-slate-50/50' : `${colorClasses.border} ${colorClasses.headerBg}`
+          <div className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-all ${
+            isEmpty
+              ? 'border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/60'
+              : `border-2 ${colorClasses.border} ${colorClasses.headerBg} hover:shadow-sm`
           }`}>
             <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isEmpty ? 'bg-slate-100' : colorClasses.iconBg}`}>
-                {icon}
+              <div className={`p-1.5 rounded-lg ${isEmpty ? 'bg-slate-100/80' : colorClasses.iconBg}`}>
+                {isEmpty ? <span className="opacity-40">{icon}</span> : icon}
               </div>
-              <span className={`text-sm font-semibold ${isEmpty ? 'text-slate-500' : colorClasses.text}`}>{label}</span>
-              <Badge variant={isEmpty ? "secondary" : "outline"} className={`text-xs ${isEmpty ? '' : colorClasses.badge}`}>
-                {docs.length}
-              </Badge>
+              <span className={`text-sm font-semibold ${isEmpty ? 'text-slate-400' : colorClasses.text}`}>{label}</span>
+              {isEmpty ? (
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">—</span>
+              ) : (
+                <Badge variant="outline" className={`text-xs ${colorClasses.badge}`}>
+                  {docs.length}
+                </Badge>
+              )}
             </div>
-            <ChevronDown className={`h-4 w-4 transition-transform text-muted-foreground ${isOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-4 w-4 transition-transform ${isEmpty ? 'text-slate-300' : 'text-muted-foreground'} ${isOpen ? "rotate-180" : ""}`} />
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           {isEmpty ? (
-            <div className="py-4 text-center text-xs text-muted-foreground">
-              Nessun documento in questo gruppo
+            <div className="py-5 flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                <span className="opacity-30">{icon}</span>
+              </div>
+              <p className="text-xs text-slate-400 text-center max-w-[280px]">
+                {emptyGroupHints[groupKey] || 'Nessun documento in questo gruppo'}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1"
+                onClick={openCreate}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Aggiungi documento
+              </Button>
             </div>
           ) : (
             <div className="space-y-2 mt-2">
@@ -1315,12 +1344,31 @@ export default function SystemDocumentsSection() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : sortedDocuments.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">Nessun documento di sistema creato</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                Crea il tuo primo documento per iniettare istruzioni nell'AI
+            <div className="text-center py-16 px-6">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                <FileText className="h-8 w-8 text-indigo-400" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-700 mb-1.5">Nessun documento di sistema</h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
+                I documenti di sistema iniettano istruzioni personalizzate nel tuo AI Assistant, nei dipendenti WhatsApp e negli agenti autonomi.
               </p>
+              <div className="flex flex-wrap justify-center gap-3 mb-6 max-w-lg mx-auto">
+                {[
+                  { icon: <Sparkles className="h-3.5 w-3.5 text-indigo-500" />, text: 'System Prompt', desc: 'Sempre in memoria' },
+                  { icon: <Search className="h-3.5 w-3.5 text-amber-500" />, text: 'File Search', desc: 'Solo quando rilevante' },
+                  { icon: <Cloud className="h-3.5 w-3.5 text-blue-500" />, text: 'Google Drive', desc: 'Sync automatico' },
+                ].map(f => (
+                  <div key={f.text} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[11px]">
+                    {f.icon}
+                    <span className="font-medium text-slate-600">{f.text}</span>
+                    <span className="text-slate-400">· {f.desc}</span>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={openCreate} size="sm" className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Plus className="h-4 w-4" />
+                Crea il primo documento
+              </Button>
             </div>
           ) : (
             <>
@@ -1355,6 +1403,27 @@ export default function SystemDocumentsSection() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap px-1 pb-1">
+                    {[
+                      { count: aiDocsConsultant.length, label: 'Consulente', color: 'bg-indigo-100 text-indigo-700' },
+                      { count: aiDocsClients.length, label: 'Clienti', color: 'bg-blue-100 text-blue-700' },
+                      { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-cyan-100 text-cyan-700' },
+                      { count: whatsappDocs.length, label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
+                      { count: autonomousDocs.length, label: 'Agenti', color: 'bg-purple-100 text-purple-700' },
+                    ].filter(s => s.count > 0).map(s => (
+                      <span key={s.label} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${s.color}`}>
+                        {s.count} {s.label}
+                      </span>
+                    ))}
+                    {unassignedDocs.length > 0 && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        {unassignedDocs.length} non assegnati
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-400 ml-auto">
+                      {sortedDocuments.length} totali
+                    </span>
+                  </div>
                   {renderGroupSection(
                     'ai_consultant',
                     'Istruzioni Consulente (AI)',
