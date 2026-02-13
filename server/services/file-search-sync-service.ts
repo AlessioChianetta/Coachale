@@ -5004,7 +5004,7 @@ export class FileSearchSyncService {
     console.log(`📊 [Audit] Phase 4: Bulk loading client data...`);
     
     // Get all active clients AND sub-consultants (consultants who report to this consultant)
-    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: users.role, departmentId: users.departmentId })
+    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: users.role, departmentId: users.departmentId, isEmployee: users.isEmployee })
       .from(users).where(and(
         eq(users.consultantId, consultantId),
         eq(users.isActive, true),
@@ -5612,6 +5612,82 @@ export class FileSearchSyncService {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 5.5: DEPARTMENTS, EMPLOYEES, AUTONOMOUS AGENTS AUDIT (System Prompt Docs)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const allDepartmentsResult = await db.execute(sql`
+      SELECT id, name, color FROM departments WHERE consultant_id = ${consultantId}
+    `);
+    const allDepartmentsRows = allDepartmentsResult.rows as any[];
+
+    const departmentsAudit = allDepartmentsRows.map(dept => {
+      const deptDocs = systemPromptDocRows.filter(d => {
+        if (d.target_client_mode === 'specific_departments') {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(dept.id);
+        }
+        return false;
+      });
+      const missing = deptDocs.filter(d => {
+        if (d.injection_mode !== 'file_search') return false;
+        return !indexedSystemPromptIds.has(d.id);
+      }).map(d => ({ id: d.id, title: d.title }));
+      return {
+        departmentId: dept.id,
+        departmentName: dept.name,
+        systemPromptDocs: { total: deptDocs.length, indexed: deptDocs.length - missing.length, missing },
+      };
+    }).filter(d => d.systemPromptDocs.total > 0);
+
+    const employeesAudit = clientUsers.filter(c => c.isEmployee === true).map(emp => {
+      const empDocs = systemPromptDocRows.filter(d => {
+        if (d.target_client_mode === 'specific_clients') {
+          const ids = typeof d.target_client_ids === 'string' ? JSON.parse(d.target_client_ids) : (d.target_client_ids || []);
+          return ids.includes(emp.id);
+        }
+        if (d.target_client_mode === 'specific_departments' && emp.departmentId) {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(emp.departmentId);
+        }
+        return false;
+      });
+      const missing = empDocs.filter(d => {
+        if (d.injection_mode !== 'file_search') return false;
+        return !indexedSystemPromptIds.has(d.id);
+      }).map(d => ({ id: d.id, title: d.title }));
+      return {
+        employeeId: emp.id,
+        employeeName: `${emp.firstName} ${emp.lastName}`,
+        systemPromptDocs: { total: empDocs.length, indexed: empDocs.length - missing.length, missing },
+      };
+    }).filter(e => e.systemPromptDocs.total > 0);
+
+    const AUDIT_AGENTS = [
+      { id: "alessia", name: "Alessia" }, { id: "millie", name: "Millie" },
+      { id: "echo", name: "Echo" }, { id: "nova", name: "Nova" },
+      { id: "stella", name: "Stella" }, { id: "iris", name: "Iris" },
+      { id: "marco", name: "Marco" }, { id: "personalizza", name: "Personalizza" },
+    ];
+    const autonomousAgentsAudit = AUDIT_AGENTS.map(agent => {
+      const agentDocs = systemPromptDocRows.filter(d => {
+        const agents = typeof d.target_autonomous_agents === 'string' ? JSON.parse(d.target_autonomous_agents) : (d.target_autonomous_agents || {});
+        return agents[agent.id] === true;
+      });
+      const missing = agentDocs.filter(d => {
+        if (d.injection_mode !== 'file_search') return false;
+        return !indexedSystemPromptIds.has(d.id);
+      }).map(d => ({ id: d.id, title: d.title }));
+      return {
+        agentId: agent.id,
+        agentName: agent.name,
+        systemPromptDocs: { total: agentDocs.length, indexed: agentDocs.length - missing.length, missing },
+      };
+    }).filter(a => a.systemPromptDocs.total > 0);
+
+    const totalDeptsMissing = departmentsAudit.reduce((s, d) => s + d.systemPromptDocs.missing.length, 0);
+    const totalEmpsMissing = employeesAudit.reduce((s, e) => s + e.systemPromptDocs.missing.length, 0);
+    const totalAutoAgentsMissing = autonomousAgentsAudit.reduce((s, a) => s + a.systemPromptDocs.missing.length, 0);
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // PHASE 6: WHATSAPP AGENTS AUDIT
     // ═══════════════════════════════════════════════════════════════════════════
     const phase6Start = Date.now();
@@ -5621,7 +5697,7 @@ export class FileSearchSyncService {
                               exercisesResult.missing.length + universityResult.missing.length + consultantGuideResult.missing.length + dynamicContextResult.missing.length;
     const consultantOutdated = libraryResult.outdated.length + knowledgeBaseResult.outdated.length + 
                                exercisesResult.outdated.length + universityResult.outdated.length + consultantGuideResult.outdated.length + dynamicContextResult.outdated.length;
-    const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing + totalEmailAccountsMissing;
+    const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing + totalEmailAccountsMissing + totalDeptsMissing + totalEmpsMissing + totalAutoAgentsMissing;
     const totalOutdated = consultantOutdated + totalClientsOutdated;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total + 
@@ -5683,6 +5759,15 @@ export class FileSearchSyncService {
     }
     if (totalEmailAccountsMissing > 0) {
       recommendations.push(`Sincronizza ${totalEmailAccountsMissing} documenti knowledge degli account email mancanti`);
+    }
+    if (totalDeptsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalDeptsMissing} istruzioni AI dei reparti mancanti`);
+    }
+    if (totalEmpsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalEmpsMissing} istruzioni AI dei dipendenti mancanti`);
+    }
+    if (totalAutoAgentsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalAutoAgentsMissing} istruzioni AI degli agenti autonomi mancanti`);
     }
     
     // NEW: Outdated recommendations
@@ -5774,6 +5859,9 @@ export class FileSearchSyncService {
         dynamicContext: dynamicContextResult,
       },
       clients: clientsAudit,
+      departments: departmentsAudit,
+      employees: employeesAudit,
+      autonomousAgents: autonomousAgentsAudit,
       whatsappAgents: whatsappAgentsAudit,
       emailAccounts: emailAccountsAudit,
       summary: {
@@ -5783,6 +5871,9 @@ export class FileSearchSyncService {
         consultantOutdated,
         clientsMissing: totalClientsMissing,
         clientsOutdated: totalClientsOutdated,
+        departmentsMissing: totalDeptsMissing,
+        employeesMissing: totalEmpsMissing,
+        autonomousAgentsMissing: totalAutoAgentsMissing,
         whatsappAgentsMissing: totalWhatsappAgentsMissing,
         emailAccountsMissing: totalEmailAccountsMissing,
         healthScore: clampedHealthScore,

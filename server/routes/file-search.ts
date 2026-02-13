@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
-import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports, emailAccounts, emailAccountKnowledgeItems } from '../../shared/schema';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports, emailAccounts, emailAccountKnowledgeItems, departments } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -1014,7 +1014,8 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         firstName: users.firstName, 
         lastName: users.lastName, 
         email: users.email,
-        departmentId: users.departmentId
+        departmentId: users.departmentId,
+        isEmployee: users.isEmployee
       })
       .from(users)
       .where(eq(users.consultantId, consultantId));
@@ -1255,6 +1256,74 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       };
     });
 
+    const allDepartments = await db.select({ id: departments.id, name: departments.name, color: departments.color })
+      .from(departments)
+      .where(eq(departments.consultantId, consultantId));
+
+    const allEmployees = allClients.filter(c => c.isEmployee === true);
+
+    const departmentStoresData = allDepartments.map(dept => {
+      const deptSystemPromptDocs = allSystemPromptDocs.filter(d => {
+        if (d.target_client_mode === 'specific_departments') {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(dept.id);
+        }
+        return false;
+      }).map(d => ({
+        id: d.id,
+        displayName: d.title,
+        status: d.injection_mode === 'file_search' ? 'indexed' as const : 'pending' as const,
+        sourceType: 'system_prompt' as const,
+        injectionMode: d.injection_mode,
+      }));
+      const deptEmployees = allClients.filter(c => c.departmentId === dept.id && c.isEmployee === true);
+      return {
+        departmentId: dept.id,
+        departmentName: dept.name,
+        departmentColor: dept.color,
+        employeeCount: deptEmployees.length,
+        hasDocuments: deptSystemPromptDocs.length > 0,
+        systemPromptDocs: deptSystemPromptDocs,
+        totals: {
+          total: deptSystemPromptDocs.length,
+        },
+      };
+    });
+
+    const employeeStoresData = allEmployees.map(emp => {
+      const empSystemPromptDocs = allSystemPromptDocs.filter(d => {
+        if (d.target_client_mode === 'specific_clients') {
+          const ids = typeof d.target_client_ids === 'string' ? JSON.parse(d.target_client_ids) : (d.target_client_ids || []);
+          return ids.includes(emp.id);
+        }
+        if (d.target_client_mode === 'specific_departments' && emp.departmentId) {
+          const ids = typeof d.target_department_ids === 'string' ? JSON.parse(d.target_department_ids) : (d.target_department_ids || []);
+          return ids.includes(emp.departmentId);
+        }
+        return false;
+      }).map(d => ({
+        id: d.id,
+        displayName: d.title,
+        status: d.injection_mode === 'file_search' ? 'indexed' as const : 'pending' as const,
+        sourceType: 'system_prompt' as const,
+        injectionMode: d.injection_mode,
+      }));
+      const empDept = allDepartments.find(dept => dept.id === emp.departmentId);
+      return {
+        employeeId: emp.id,
+        employeeName: `${emp.firstName} ${emp.lastName}`,
+        employeeEmail: emp.email,
+        departmentId: emp.departmentId,
+        departmentName: empDept?.name || null,
+        departmentColor: empDept?.color || null,
+        hasDocuments: empSystemPromptDocs.length > 0,
+        systemPromptDocs: empSystemPromptDocs,
+        totals: {
+          total: empSystemPromptDocs.length,
+        },
+      };
+    });
+
     const AUTONOMOUS_AGENTS = [
       { id: "alessia", name: "Alessia", displayName: "Alessia – Voice Consultant" },
       { id: "millie", name: "Millie", displayName: "Millie – Email Nurturing" },
@@ -1283,7 +1352,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       }).map(d => ({
         id: d.id,
         title: d.title,
-        status: d.injection_mode === 'file_search' ? 'indexed' : 'system_prompt',
+        status: d.injection_mode === 'file_search' ? 'indexed' as const : 'pending' as const,
         injectionMode: d.injection_mode,
       }));
       const totalDocs = agentDocs.length + agentSystemPromptDocs.length;
@@ -1395,6 +1464,8 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       hierarchicalData: {
         consultantStore,
         clientStores: clientStoresData,
+        departmentStores: departmentStoresData,
+        employeeStores: employeeStoresData,
         emailAccountStores: emailAccountStoresData,
         whatsappAgentStores: whatsappAgentStoresData,
         autonomousAgentStores: autonomousAgentStoresData,

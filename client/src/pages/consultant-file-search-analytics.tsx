@@ -55,7 +55,8 @@ import {
   Eye,
   Crown,
   Info,
-  ScrollText
+  ScrollText,
+  Building2
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -256,6 +257,30 @@ interface HierarchicalData {
       total: number;
     };
   }>;
+  departmentStores?: Array<{
+    departmentId: number;
+    departmentName: string;
+    departmentColor: string | null;
+    employeeCount: number;
+    hasDocuments: boolean;
+    systemPromptDocs: SyncedDocument[];
+    totals: {
+      total: number;
+    };
+  }>;
+  employeeStores?: Array<{
+    employeeId: string;
+    employeeName: string;
+    employeeEmail: string;
+    departmentId: number | null;
+    departmentName: string | null;
+    departmentColor: string | null;
+    hasDocuments: boolean;
+    systemPromptDocs: SyncedDocument[];
+    totals: {
+      total: number;
+    };
+  }>;
   autonomousAgentStores?: Array<{
     agentId: string;
     agentName: string;
@@ -268,6 +293,7 @@ interface HierarchicalData {
       fileType: string;
       fileName: string;
     }>;
+    systemPromptDocs?: SyncedDocument[];
     totals: {
       total: number;
       indexed: number;
@@ -386,6 +412,21 @@ interface AuditData {
       missing: Array<{ id: string; title: string }>;
     };
   }>;
+  departments?: Array<{
+    departmentId: number;
+    departmentName: string;
+    systemPromptDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+  }>;
+  employees?: Array<{
+    employeeId: string;
+    employeeName: string;
+    systemPromptDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+  }>;
+  autonomousAgents?: Array<{
+    agentId: string;
+    agentName: string;
+    systemPromptDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+  }>;
   whatsappAgents?: Array<{
     agentId: string;
     agentName: string;
@@ -404,6 +445,9 @@ interface AuditData {
     totalOutdated?: number;
     consultantOutdated?: number;
     clientsOutdated?: number;
+    departmentsMissing?: number;
+    employeesMissing?: number;
+    autonomousAgentsMissing?: number;
     whatsappAgentsMissing?: number;
     emailAccountsMissing?: number;
   };
@@ -573,6 +617,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [clientStoresOpen, setClientStoresOpen] = useState(true);
   const [emailAccountStoresOpen, setEmailAccountStoresOpen] = useState(true);
   const [whatsappAgentStoresOpen, setWhatsappAgentStoresOpen] = useState(true);
+  const [departmentStoresOpen, setDepartmentStoresOpen] = useState(true);
+  const [employeeStoresOpen, setEmployeeStoresOpen] = useState(true);
   const [autonomousAgentStoresOpen, setAutonomousAgentStoresOpen] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
@@ -3236,6 +3282,116 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </CollapsibleContent>
                               </Collapsible>
 
+                              {/* Department Stores Section */}
+                              {hData.departmentStores && hData.departmentStores.length > 0 && (
+                                <Collapsible open={departmentStoresOpen} onOpenChange={setDepartmentStoresOpen}>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors">
+                                    {departmentStoresOpen ? <ChevronDown className="h-5 w-5 text-amber-600" /> : <ChevronRight className="h-5 w-5 text-amber-600" />}
+                                    <Building2 className="h-5 w-5 text-amber-600" />
+                                    <span className="font-semibold text-amber-900">Reparti</span>
+                                    <Badge className="ml-auto bg-amber-200 text-amber-800">
+                                      {hData.departmentStores.filter(d => d.hasDocuments).length}/{hData.departmentStores.length} reparti
+                                    </Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                    {hData.departmentStores.map(dept => (
+                                      <Collapsible key={dept.departmentId} open={openClients[`dept-${dept.departmentId}`]} onOpenChange={() => toggleClient(`dept-${dept.departmentId}`)}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${dept.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-gray-50 border-dashed border-gray-200'}`}>
+                                          {openClients[`dept-${dept.departmentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <Building2 className={`h-4 w-4 ${dept.hasDocuments ? 'text-amber-600' : 'text-gray-400'}`} />
+                                          <span className="text-gray-800 font-medium">{dept.departmentName}</span>
+                                          <span className="text-gray-400 text-xs">{dept.employeeCount} dipendenti</span>
+                                          {dept.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto bg-indigo-50 text-indigo-700 border-indigo-200">
+                                              <ScrollText className="h-3 w-3 mr-1" />{dept.totals.total} istruzioni AI
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto text-gray-500 border-gray-200">
+                                              Nessuna istruzione
+                                            </Badge>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {dept.hasDocuments ? (
+                                            <div className="space-y-1">
+                                              {dept.systemPromptDocs.map((doc: any) => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-indigo-50 rounded text-sm border border-indigo-100">
+                                                  <ScrollText className="h-3 w-3 text-indigo-500" />
+                                                  <span className="truncate flex-1 text-indigo-800">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.injectionMode === 'file_search' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                                                    {doc.injectionMode === 'file_search' ? 'File Search' : 'System Prompt'}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-gray-400 text-sm text-center py-2 italic">
+                                              Nessuna istruzione AI assegnata a questo reparto.
+                                            </p>
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
+                              {/* Employee Stores Section */}
+                              {hData.employeeStores && hData.employeeStores.length > 0 && (
+                                <Collapsible open={employeeStoresOpen} onOpenChange={setEmployeeStoresOpen}>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200 transition-colors">
+                                    {employeeStoresOpen ? <ChevronDown className="h-5 w-5 text-teal-600" /> : <ChevronRight className="h-5 w-5 text-teal-600" />}
+                                    <Users className="h-5 w-5 text-teal-600" />
+                                    <span className="font-semibold text-teal-900">Dipendenti Piattaforma</span>
+                                    <Badge className="ml-auto bg-teal-200 text-teal-800">
+                                      {hData.employeeStores.filter(e => e.hasDocuments).length}/{hData.employeeStores.length} dipendenti
+                                    </Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                    {hData.employeeStores.map(emp => (
+                                      <Collapsible key={emp.employeeId} open={openClients[`emp-${emp.employeeId}`]} onOpenChange={() => toggleClient(`emp-${emp.employeeId}`)}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${emp.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-gray-50 border-dashed border-gray-200'}`}>
+                                          {openClients[`emp-${emp.employeeId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <User className={`h-4 w-4 ${emp.hasDocuments ? 'text-teal-600' : 'text-gray-400'}`} />
+                                          <span className="text-gray-800 font-medium">{emp.employeeName}</span>
+                                          {emp.departmentName && (
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">{emp.departmentName}</span>
+                                          )}
+                                          {emp.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto bg-indigo-50 text-indigo-700 border-indigo-200">
+                                              <ScrollText className="h-3 w-3 mr-1" />{emp.totals.total} istruzioni AI
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto text-gray-500 border-gray-200">
+                                              Nessuna istruzione
+                                            </Badge>
+                                          )}
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {emp.hasDocuments ? (
+                                            <div className="space-y-1">
+                                              {emp.systemPromptDocs.map((doc: any) => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-indigo-50 rounded text-sm border border-indigo-100">
+                                                  <ScrollText className="h-3 w-3 text-indigo-500" />
+                                                  <span className="truncate flex-1 text-indigo-800">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.injectionMode === 'file_search' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                                                    {doc.injectionMode === 'file_search' ? 'File Search' : 'System Prompt'}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <p className="text-gray-400 text-sm text-center py-2 italic">
+                                              Nessuna istruzione AI assegnata a questo dipendente.
+                                            </p>
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
                               {/* Email Account Stores Section */}
                               {hData.emailAccountStores && hData.emailAccountStores.length > 0 && (
                                 <Collapsible open={emailAccountStoresOpen} onOpenChange={setEmailAccountStoresOpen}>
@@ -3416,6 +3572,15 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   <Badge variant="outline" className="text-xs text-gray-500">{doc.fileType?.toUpperCase()}</Badge>
                                                   <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                     {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                              {agent.systemPromptDocs && agent.systemPromptDocs.map((doc: any) => (
+                                                <div key={`sp-${doc.id}`} className="flex items-center gap-2 p-2 bg-indigo-50 rounded text-sm border border-indigo-100">
+                                                  <ScrollText className="h-3 w-3 text-indigo-500" />
+                                                  <span className="truncate flex-1 text-indigo-800">{doc.title || doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.injectionMode === 'file_search' ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                                                    {doc.injectionMode === 'file_search' ? 'File Search' : 'System Prompt'}
                                                   </Badge>
                                                 </div>
                                               ))}
@@ -5687,6 +5852,111 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               )}
                             </CollapsibleContent>
                           </Collapsible>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-amber-600" />
+                      Reparti - Istruzioni AI Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Istruzioni AI dei reparti non ancora indicizzate in File Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.departments || auditData.departments.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun reparto con istruzioni AI da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.departments.map((dept: any) => {
+                        const deptMissing = dept.systemPromptDocs?.missing?.length || 0;
+                        return (
+                          <div key={dept.departmentId} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-amber-600" />
+                              <span className="font-medium text-amber-900">{dept.departmentName}</span>
+                              <Badge variant="outline" className="text-xs">{dept.systemPromptDocs.total} istruzioni AI</Badge>
+                            </div>
+                            <Badge className={`${deptMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                              {deptMissing > 0 ? `${deptMissing} mancanti` : 'Tutto indicizzato'}
+                            </Badge>
+                          </div>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-teal-600" />
+                      Dipendenti Piattaforma - Istruzioni AI Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Istruzioni AI dei dipendenti non ancora indicizzate in File Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.employees || auditData.employees.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun dipendente con istruzioni AI da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.employees.map((emp: any) => {
+                        const empMissing = emp.systemPromptDocs?.missing?.length || 0;
+                        return (
+                          <div key={emp.employeeId} className="flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-200">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-teal-600" />
+                              <span className="font-medium text-teal-900">{emp.employeeName}</span>
+                              <Badge variant="outline" className="text-xs">{emp.systemPromptDocs.total} istruzioni AI</Badge>
+                            </div>
+                            <Badge className={`${empMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                              {empMissing > 0 ? `${empMissing} mancanti` : 'Tutto indicizzato'}
+                            </Badge>
+                          </div>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-indigo-600" />
+                      Dipendenti Autonomi AI - Istruzioni AI Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Istruzioni AI degli agenti autonomi non ancora indicizzate in File Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.autonomousAgents || auditData.autonomousAgents.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun agente autonomo con istruzioni AI da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.autonomousAgents.map((agent: any) => {
+                        const agentMissing = agent.systemPromptDocs?.missing?.length || 0;
+                        return (
+                          <div key={agent.agentId} className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <div className="flex items-center gap-2">
+                              <Bot className="h-4 w-4 text-indigo-600" />
+                              <span className="font-medium text-indigo-900">{agent.agentName}</span>
+                              <Badge variant="outline" className="text-xs">{agent.systemPromptDocs.total} istruzioni AI</Badge>
+                            </div>
+                            <Badge className={`${agentMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                              {agentMissing > 0 ? `${agentMissing} mancanti` : 'Tutto indicizzato'}
+                            </Badge>
+                          </div>
                         );
                       })
                     )}
