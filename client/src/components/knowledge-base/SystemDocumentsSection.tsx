@@ -80,6 +80,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { AI_ROLE_PROFILES } from "@/components/autonomy/constants";
 
 interface KbDocSummary {
   id: string;
@@ -1456,6 +1457,160 @@ export default function SystemDocumentsSection() {
     unassigned: 'I documenti senza destinatario non saranno visibili a nessun canale AI',
   };
 
+  const renderAutonomousGroupedSection = (
+    sysDocs: SystemDocument[],
+    kbDocs: KbDocSummary[],
+  ) => {
+    const totalCount = sysDocs.length + kbDocs.length;
+    const isEmpty = totalCount === 0;
+    const isOpen = openGroups['autonomous'] ?? !isEmpty;
+    const colorClasses = { border: 'border-purple-300', bg: 'bg-purple-50/30', headerBg: 'bg-purple-50/50', badge: 'bg-purple-100 text-purple-700 border-purple-200', iconBg: 'bg-purple-100', text: 'text-purple-800' };
+
+    const agentDocMap = new Map<string, { sysDocs: SystemDocument[]; kbDocs: KbDocSummary[] }>();
+    AUTONOMOUS_AGENTS.forEach(agent => {
+      agentDocMap.set(agent.id, { sysDocs: [], kbDocs: [] });
+    });
+    sysDocs.forEach(doc => {
+      Object.entries(doc.target_autonomous_agents || {}).filter(([, v]) => v).forEach(([agentId]) => {
+        const entry = agentDocMap.get(agentId);
+        if (entry) entry.sysDocs.push(doc);
+      });
+    });
+    kbDocs.forEach(kbDoc => {
+      kbDoc.agentIds.forEach(agentId => {
+        const entry = agentDocMap.get(agentId);
+        if (entry) entry.kbDocs.push(kbDoc);
+      });
+    });
+
+    const agentsWithDocs = AUTONOMOUS_AGENTS.filter(agent => {
+      const entry = agentDocMap.get(agent.id);
+      return entry && (entry.sysDocs.length > 0 || entry.kbDocs.length > 0);
+    });
+
+    return (
+      <Collapsible
+        key="autonomous"
+        open={isOpen}
+        onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, autonomous: open }))}
+      >
+        <CollapsibleTrigger asChild>
+          <div className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-all ${
+            isEmpty
+              ? 'border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/60'
+              : `border-2 ${colorClasses.border} ${colorClasses.headerBg} hover:shadow-sm`
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-1.5 rounded-lg ${isEmpty ? 'bg-slate-100/80' : colorClasses.iconBg}`}>
+                {isEmpty ? <span className="opacity-40"><Bot className="h-4 w-4 text-purple-600" /></span> : <Bot className="h-4 w-4 text-purple-600" />}
+              </div>
+              <span className={`text-sm font-semibold ${isEmpty ? 'text-slate-400' : colorClasses.text}`}>Agenti Autonomi</span>
+              {isEmpty ? (
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">—</span>
+              ) : (
+                <Badge variant="outline" className={`text-xs ${colorClasses.badge}`}>
+                  {totalCount}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isEmpty ? 'text-slate-300' : 'text-muted-foreground'} ${isOpen ? "rotate-180" : ""}`} />
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {isEmpty ? (
+            <div className="py-5 flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                <span className="opacity-30"><Bot className="h-4 w-4 text-purple-600" /></span>
+              </div>
+              <p className="text-xs text-slate-400 text-center max-w-[280px]">
+                {emptyGroupHints['autonomous'] || 'Nessun documento in questo gruppo'}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1"
+                onClick={openCreate}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Aggiungi documento
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 mt-2">
+              {agentsWithDocs.map(agent => {
+                const profile = AI_ROLE_PROFILES[agent.id];
+                const entry = agentDocMap.get(agent.id)!;
+                const agentTotal = entry.sysDocs.length + entry.kbDocs.length;
+                const agentOpen = openGroups[`autonomous_${agent.id}`] ?? true;
+
+                return (
+                  <Collapsible
+                    key={`autonomous_${agent.id}`}
+                    open={agentOpen}
+                    onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, [`autonomous_${agent.id}`]: open }))}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-purple-200 bg-purple-50/40 hover:bg-purple-50/70 cursor-pointer transition-all">
+                        {profile?.avatar ? (
+                          <img
+                            src={profile.avatar}
+                            alt={agent.name}
+                            className="w-8 h-8 rounded-full object-cover ring-2 ring-purple-300 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-purple-200 flex items-center justify-center ring-2 ring-purple-300 shrink-0">
+                            <Bot className="h-4 w-4 text-purple-700" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-purple-900">{agent.name}</span>
+                            {profile?.role && (
+                              <span className="text-[10px] text-purple-500 font-medium">{profile.role}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-700 border-purple-200 shrink-0">
+                          {agentTotal}
+                        </Badge>
+                        <ChevronDown className={`h-3.5 w-3.5 text-purple-400 transition-transform ${agentOpen ? "rotate-180" : ""}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-2 mt-1.5 ml-5 border-l-2 border-purple-100 pl-3">
+                        {entry.sysDocs.map(doc => (
+                          <div key={doc.id}>
+                            {renderDocumentCard(doc, 'autonomous')}
+                          </div>
+                        ))}
+                        {entry.kbDocs.length > 0 && (
+                          <>
+                            {entry.sysDocs.length > 0 && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <div className="h-px flex-1 bg-amber-200" />
+                                <span className="text-[10px] text-amber-500 font-medium whitespace-nowrap">Dalla Knowledge Base</span>
+                                <div className="h-px flex-1 bg-amber-200" />
+                              </div>
+                            )}
+                            {entry.kbDocs.map(kbDoc => (
+                              <div key={`kb-${kbDoc.id}`}>
+                                {renderKbDocumentCard(kbDoc, 'autonomous')}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
   const renderGroupSection = (
     groupKey: string,
     label: string,
@@ -1714,18 +1869,7 @@ export default function SystemDocumentsSection() {
                       return names.length > 0 ? `Agenti: ${names.join(', ')}` : null;
                     },
                   )}
-                  {renderGroupSection(
-                    'autonomous',
-                    'Agenti Autonomi',
-                    <Bot className="h-4 w-4 text-purple-600" />,
-                    autonomousDocs,
-                    { border: 'border-purple-300', bg: 'bg-purple-50/30', headerBg: 'bg-purple-50/50', badge: 'bg-purple-100 text-purple-700 border-purple-200', iconBg: 'bg-purple-100', text: 'text-purple-800' },
-                    (doc) => {
-                      const names = getAutonomousAgentNames(doc);
-                      return names.length > 0 ? `Agenti: ${names.join(', ')}` : null;
-                    },
-                    kbDocsAutonomous,
-                  )}
+                  {renderAutonomousGroupedSection(autonomousDocs, kbDocsAutonomous)}
                   {renderGroupSection(
                     'unassigned',
                     'Non assegnati',
