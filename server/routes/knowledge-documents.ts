@@ -2169,6 +2169,139 @@ router.get(
   }
 );
 
+// ==================== SYSTEM DOCUMENT TEXT EXTRACTION ====================
+
+router.post(
+  "/consultant/knowledge/system-documents/extract-text",
+  authenticateToken,
+  requireRole("consultant"),
+  upload.single("file"),
+  async (req: AuthRequest, res) => {
+    let uploadedFilePath: string | null = null;
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ success: false, error: "File is required" });
+      }
+
+      uploadedFilePath = file.path;
+
+      if (file.size > MAX_FILE_SIZE) {
+        await fs.unlink(uploadedFilePath).catch(() => {});
+        return res.status(400).json({ success: false, error: `File troppo grande. Massimo ${MAX_FILE_SIZE / 1024 / 1024}MB` });
+      }
+
+      const TEXT_MIME_TYPES: Record<string, string> = {
+        "application/pdf": "pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/msword": "docx",
+        "text/plain": "txt",
+        "text/markdown": "md",
+        "text/x-markdown": "md",
+        "text/rtf": "rtf",
+        "application/rtf": "rtf",
+        "application/vnd.oasis.opendocument.text": "odt",
+        "text/csv": "csv",
+        "application/csv": "csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+        "application/vnd.ms-powerpoint": "ppt",
+      };
+
+      const mimeType = file.mimetype;
+      if (!TEXT_MIME_TYPES[mimeType]) {
+        await fs.unlink(uploadedFilePath).catch(() => {});
+        return res.status(400).json({ success: false, error: `Tipo di file non supportato: ${mimeType}` });
+      }
+
+      console.log(`📄 [SYSTEM DOC EXTRACT] Extracting text from ${file.originalname} (${mimeType})`);
+
+      let extractedText: string;
+      if (mimeType === "application/pdf") {
+        const result = await extractTextFromPDFWithFallback(uploadedFilePath, file.originalname);
+        extractedText = result.text;
+      } else {
+        extractedText = await extractTextFromFile(uploadedFilePath, mimeType);
+      }
+
+      await fs.unlink(uploadedFilePath).catch(() => {});
+      uploadedFilePath = null;
+
+      console.log(`✅ [SYSTEM DOC EXTRACT] Extracted ${extractedText.length} characters from ${file.originalname}`);
+
+      res.json({
+        success: true,
+        data: {
+          text: extractedText,
+          fileName: file.originalname,
+          characters: extractedText.length,
+          estimatedTokens: Math.round(extractedText.length / 4),
+        },
+      });
+    } catch (error: any) {
+      if (uploadedFilePath) {
+        await fs.unlink(uploadedFilePath).catch(() => {});
+      }
+      console.error("❌ [SYSTEM DOC EXTRACT] Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Errore nell'estrazione del testo" });
+    }
+  }
+);
+
+router.post(
+  "/consultant/knowledge/system-documents/import-drive-text",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    let tempFilePath: string | null = null;
+    try {
+      const consultantId = req.user!.id;
+      const { fileId, fileName: requestFileName } = req.body;
+
+      if (!fileId) {
+        return res.status(400).json({ success: false, error: "fileId is required" });
+      }
+
+      console.log(`📥 [SYSTEM DOC DRIVE] Importing text from Drive file ${fileId} for consultant ${consultantId}`);
+
+      const { downloadDriveFile } = await import('../services/google-drive-service');
+      const { filePath, fileName, mimeType } = await downloadDriveFile(consultantId, fileId);
+      tempFilePath = filePath;
+
+      let extractedText: string;
+      if (mimeType === "application/pdf") {
+        const result = await extractTextFromPDFWithFallback(filePath, fileName);
+        extractedText = result.text;
+      } else {
+        extractedText = await extractTextFromFile(filePath, mimeType);
+      }
+
+      await fs.unlink(tempFilePath).catch(() => {});
+      tempFilePath = null;
+
+      console.log(`✅ [SYSTEM DOC DRIVE] Extracted ${extractedText.length} characters from ${fileName}`);
+
+      res.json({
+        success: true,
+        data: {
+          text: extractedText,
+          fileName: requestFileName || fileName,
+          fileId,
+          characters: extractedText.length,
+          estimatedTokens: Math.round(extractedText.length / 4),
+        },
+      });
+    } catch (error: any) {
+      if (tempFilePath) {
+        await fs.unlink(tempFilePath).catch(() => {});
+      }
+      console.error("❌ [SYSTEM DOC DRIVE] Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Errore nell'importazione da Google Drive" });
+    }
+  }
+);
+
 // ==================== AGENT KNOWLEDGE ASSIGNMENTS ====================
 
 router.get(

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,10 @@ import {
   AlertTriangle,
   LayoutGrid,
   List,
+  Upload,
+  PenLine,
+  FileUp,
+  FolderOpen,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -153,6 +157,161 @@ const emptyForm = (): DocumentForm => ({
   priority: 5,
 });
 
+function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, fileName: string) => void }) {
+  const [folderId, setFolderId] = useState('root');
+  const [breadcrumbs, setBreadcrumbs] = useState<{id: string; name: string}[]>([{ id: 'root', name: 'Il mio Drive' }]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [importingFileId, setImportingFileId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const { data: filesResponse, isLoading } = useQuery({
+    queryKey: ['/api/consultant/google-drive/files', folderId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/google-drive/files?folderId=${folderId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to fetch Drive files');
+      return res.json();
+    },
+  });
+
+  const files = filesResponse?.files || [];
+  const folders = filesResponse?.folders || [];
+
+  const filteredFolders = searchQuery
+    ? folders.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : folders;
+  const filteredFiles = searchQuery
+    ? files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : files;
+
+  const navigateToFolder = (folder: { id: string; name: string }) => {
+    setFolderId(folder.id);
+    setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }]);
+    setSearchQuery('');
+  };
+
+  const navigateToBreadcrumb = (index: number) => {
+    const target = breadcrumbs[index];
+    setFolderId(target.id);
+    setBreadcrumbs(prev => prev.slice(0, index + 1));
+    setSearchQuery('');
+  };
+
+  const handleFileSelect = async (file: { id: string; name: string }) => {
+    setImportingFileId(file.id);
+    try {
+      const res = await fetch('/api/consultant/knowledge/system-documents/import-drive-text', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: file.id, fileName: file.name }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Import failed');
+      }
+      const result = await res.json();
+      onTextExtracted(result.data.text, file.name);
+    } catch (err: any) {
+      toast({ title: "Errore importazione", description: err.message, variant: "destructive" });
+    } finally {
+      setImportingFileId(null);
+    }
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.includes("folder")) return <FolderOpen className="h-4 w-4 text-gray-500" />;
+    if (mimeType.includes("pdf")) return <FileText className="h-4 w-4 text-red-500" />;
+    if (mimeType.includes("word") || mimeType.includes("document")) return <FileText className="h-4 w-4 text-blue-600" />;
+    if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileText className="h-4 w-4 text-green-600" />;
+    if (mimeType.includes("text")) return <FileText className="h-4 w-4 text-gray-500" />;
+    return <FileText className="h-4 w-4 text-gray-400" />;
+  };
+
+  return (
+    <div className="space-y-3 border rounded-xl p-3 bg-slate-50/50">
+      <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto">
+        {breadcrumbs.map((bc, idx) => (
+          <span key={bc.id} className="flex items-center gap-1 shrink-0">
+            {idx > 0 && <ChevronDown className="h-3 w-3 rotate-[-90deg]" />}
+            <button
+              type="button"
+              onClick={() => navigateToBreadcrumb(idx)}
+              className={`hover:text-indigo-600 transition-colors ${idx === breadcrumbs.length - 1 ? 'font-medium text-slate-700' : ''}`}
+            >
+              {bc.name}
+            </button>
+          </span>
+        ))}
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Cerca file..."
+          className="pl-8 h-8 text-xs"
+        />
+      </div>
+
+      <div className="max-h-[280px] overflow-y-auto space-y-0.5">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">Nessun file trovato</p>
+        ) : (
+          <>
+            {filteredFolders.map((folder: any) => (
+              <button
+                key={folder.id}
+                type="button"
+                onClick={() => navigateToFolder(folder)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left hover:bg-indigo-50 transition-colors"
+              >
+                <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="text-sm truncate">{folder.name}</span>
+              </button>
+            ))}
+            {filteredFiles.map((file: any) => (
+              <button
+                key={file.id}
+                type="button"
+                onClick={() => handleFileSelect(file)}
+                disabled={!!importingFileId}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
+                  importingFileId === file.id ? 'bg-indigo-100 border border-indigo-300' : 'hover:bg-blue-50'
+                }`}
+              >
+                {importingFileId === file.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-indigo-500 shrink-0" />
+                ) : (
+                  getFileIcon(file.mimeType)
+                )}
+                <span className="text-sm truncate flex-1">{file.name}</span>
+                {file.modifiedTime && (
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                  </span>
+                )}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+
+      {importingFileId && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-700">
+          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          <span>Estrazione testo dal file in corso...</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SystemDocumentsSection() {
   const [showForm, setShowForm] = useState(false);
   const [editingDoc, setEditingDoc] = useState<SystemDocument | null>(null);
@@ -162,6 +321,10 @@ export default function SystemDocumentsSection() {
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ ai_assistant: true, whatsapp: true, autonomous: true, unassigned: true });
   const [wizardStep, setWizardStep] = useState(1);
+  const [contentSource, setContentSource] = useState<'manual' | 'drive' | 'upload'>('manual');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractedFileName, setExtractedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -365,6 +528,8 @@ export default function SystemDocumentsSection() {
     setForm(emptyForm());
     setAgentsOpen(false);
     setWizardStep(1);
+    setContentSource('manual');
+    setExtractedFileName(null);
   };
 
   const openCreate = () => {
@@ -376,6 +541,8 @@ export default function SystemDocumentsSection() {
     setForm(newForm);
     setShowForm(true);
     setWizardStep(1);
+    setContentSource('manual');
+    setExtractedFileName(null);
   };
 
   const openEdit = (doc: SystemDocument) => {
@@ -409,6 +576,32 @@ export default function SystemDocumentsSection() {
       updateMutation.mutate({ id: editingDoc.id, data: form });
     } else {
       createMutation.mutate(form);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setIsExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/consultant/knowledge/system-documents/extract-text', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Errore nell\'estrazione');
+      }
+      const result = await res.json();
+      setForm(f => ({ ...f, content: result.data.text, title: f.title || file.name.replace(/\.[^/.]+$/, '') }));
+      setExtractedFileName(file.name);
+      setContentSource('manual');
+      toast({ title: "Contenuto importato", description: `${result.data.characters.toLocaleString()} caratteri estratti da "${file.name}"` });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -884,14 +1077,103 @@ export default function SystemDocumentsSection() {
                       <span className="text-xs text-muted-foreground">~{Math.round(form.content.length / 4).toLocaleString()} token</span>
                     </div>
                   </div>
-                  <Textarea
-                    id="sys-doc-content"
-                    value={form.content}
-                    onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                    placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
-                    rows={8}
-                    className="resize-y min-h-[150px] font-mono text-sm"
-                  />
+
+                  <div className="flex items-center gap-2 mb-3">
+                    {([
+                      { id: 'manual' as const, label: 'Scrivi', icon: <PenLine className="h-3.5 w-3.5" /> },
+                      { id: 'drive' as const, label: 'Google Drive', icon: <Cloud className="h-3.5 w-3.5" /> },
+                      { id: 'upload' as const, label: 'Carica File', icon: <Upload className="h-3.5 w-3.5" /> },
+                    ]).map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setContentSource(tab.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          contentSource === tab.id
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {contentSource === 'manual' && (
+                    <>
+                      {extractedFileName && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-700">
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                          <span>Contenuto importato da: <strong>{extractedFileName}</strong></span>
+                          <button type="button" onClick={() => setExtractedFileName(null)} className="ml-auto text-indigo-400 hover:text-indigo-600">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                      <Textarea
+                        id="sys-doc-content"
+                        value={form.content}
+                        onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+                        placeholder="Testo che verrà iniettato nel prompt di sistema dell'AI..."
+                        rows={8}
+                        className="resize-y min-h-[150px] font-mono text-sm"
+                      />
+                    </>
+                  )}
+
+                  {contentSource === 'drive' && (
+                    <DriveFilePicker
+                      onTextExtracted={(text, fileName) => {
+                        setForm(f => ({ ...f, content: text, title: f.title || fileName.replace(/\.[^/.]+$/, '') }));
+                        setExtractedFileName(fileName);
+                        setContentSource('manual');
+                        toast({ title: "Contenuto importato", description: `${text.length.toLocaleString()} caratteri estratti da "${fileName}"` });
+                      }}
+                    />
+                  )}
+
+                  {contentSource === 'upload' && (
+                    <div className="space-y-3">
+                      <div
+                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                          isExtracting ? 'border-indigo-300 bg-indigo-50/50' : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30'
+                        }`}
+                        onClick={() => !isExtracting && fileInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const file = e.dataTransfer.files[0];
+                          if (file) handleFileUpload(file);
+                        }}
+                      >
+                        {isExtracting ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                            <p className="text-sm font-medium text-indigo-700">Estrazione testo in corso...</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2">
+                            <FileUp className="h-8 w-8 text-slate-400" />
+                            <p className="text-sm font-medium text-slate-600">Trascina un file qui o clicca per selezionare</p>
+                            <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD, RTF, ODT, CSV, XLSX, PPTX</p>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.docx,.doc,.txt,.md,.rtf,.odt,.csv,.xlsx,.xls,.pptx,.ppt"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
