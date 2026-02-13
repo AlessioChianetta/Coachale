@@ -27,6 +27,10 @@ export interface BridgeConfig {
     timeoutMs: number;
     maxConcurrent: number;
   };
+  sip: {
+    callerId: string;
+    gateway: string;
+  };
   security: {
     allowedIpPrefixes: string[];
     rateLimitWindowMs: number;
@@ -78,6 +82,10 @@ export function loadConfig(): BridgeConfig {
     session: {
       timeoutMs: parseInt(getEnv('SESSION_TIMEOUT_MS', '30000'), 10),
       maxConcurrent: parseInt(getEnv('MAX_CONCURRENT_CALLS', '10'), 10),
+    },
+    sip: {
+      callerId: getEnv('SIP_CALLER_ID', '+390000000000'),
+      gateway: getEnv('SIP_GATEWAY', 'voip_trunk'),
     },
     security: {
       allowedIpPrefixes: getEnv('ALLOWED_IP_PREFIXES', '127.0.0.1,::1,::ffff:127.0.0.1,172.17.,172.18.,172.19.,10.').split(',').map(s => s.trim()),
