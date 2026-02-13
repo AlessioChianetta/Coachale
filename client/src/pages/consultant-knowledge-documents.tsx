@@ -454,19 +454,23 @@ export default function ConsultantKnowledgeDocuments() {
 
   const syncHistory: SyncHistoryEntry[] = syncHistoryResponse?.data || [];
 
+  const isSystemLinkedDoc = useCallback((doc: KnowledgeDocument) => {
+    return doc.description?.startsWith('[SYSTEM_DOC:') || false;
+  }, []);
+
   const systemDocuments = useMemo(() =>
-    documents.filter(doc => doc.isSystemDoc),
-    [documents]
+    documents.filter(doc => isSystemLinkedDoc(doc)),
+    [documents, isSystemLinkedDoc]
   );
 
   const googleDriveDocuments = useMemo(() => 
-    documents.filter(doc => !doc.isSystemDoc && !!doc.googleDriveFileId), 
-    [documents]
+    documents.filter(doc => !isSystemLinkedDoc(doc) && !!doc.googleDriveFileId), 
+    [documents, isSystemLinkedDoc]
   );
 
   const uploadedDocuments = useMemo(() => 
-    documents.filter(doc => !doc.isSystemDoc && !doc.googleDriveFileId), 
-    [documents]
+    documents.filter(doc => !isSystemLinkedDoc(doc) && !doc.googleDriveFileId), 
+    [documents, isSystemLinkedDoc]
   );
 
   const handleOpenSyncHistory = (docId: string) => {
@@ -1272,7 +1276,7 @@ export default function ConsultantKnowledgeDocuments() {
     const fileTypeConfig = FILE_TYPE_ICONS[doc.fileType];
     const progress = documentProgressMap[doc.id];
     const isGoogleDriveDoc = !!doc.googleDriveFileId;
-    const isSysDoc = !!doc.isSystemDoc;
+    const isSysDoc = isSystemLinkedDoc(doc);
 
     if (viewMode === "grid") {
       return (
@@ -1371,7 +1375,7 @@ export default function ConsultantKnowledgeDocuments() {
               </h4>
               {doc.description && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-                  {doc.description}
+                  {isSysDoc ? doc.description.replace(/^\[SYSTEM_DOC:[^\]]+\]\s*/, '') : doc.description}
                 </p>
               )}
             </div>
