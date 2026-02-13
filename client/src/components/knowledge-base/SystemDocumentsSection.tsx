@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,12 @@ import {
   FileUp,
   FolderOpen,
   ChevronRight,
+  Home,
+  HardDrive,
+  Star,
+  Share2,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -158,28 +163,45 @@ const emptyForm = (): DocumentForm => ({
   priority: 5,
 });
 
+type PickerDriveSection = 'home' | 'my-drive' | 'shared-with-me' | 'recent' | 'starred';
+
+const PICKER_DRIVE_SECTIONS: { id: PickerDriveSection; label: string; icon: React.ReactNode }[] = [
+  { id: 'home', label: 'Home page', icon: <Home className="w-4 h-4" /> },
+  { id: 'my-drive', label: 'Il mio Drive', icon: <HardDrive className="w-4 h-4" /> },
+  { id: 'shared-with-me', label: 'Condivisi con me', icon: <Share2 className="w-4 h-4" /> },
+  { id: 'recent', label: 'Recenti', icon: <Clock className="w-4 h-4" /> },
+  { id: 'starred', label: 'Speciali', icon: <Star className="w-4 h-4" /> },
+];
+
 function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, fileName: string) => void }) {
+  const [currentSection, setCurrentSection] = useState<PickerDriveSection>('home');
   const [currentFolderId, setCurrentFolderId] = useState('root');
-  const [breadcrumbs, setBreadcrumbs] = useState<{id: string; name: string}[]>([{ id: 'root', name: 'Il mio Drive' }]);
+  const [breadcrumbs, setBreadcrumbs] = useState<{id: string; name: string}[]>([{ id: 'root', name: 'Home page' }]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [importingFileId, setImportingFileId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Map<string, { id: string; name: string }>>(new Map());
+  const [isInSharedFolder, setIsInSharedFolder] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const { toast } = useToast();
 
-  const { data: driveStatus } = useQuery({
+  const { data: driveStatus, isLoading: driveStatusLoading } = useQuery({
     queryKey: ['/api/consultant/google-drive/status-picker'],
     queryFn: async () => {
-      const res = await fetch('/api/consultant/google-drive/status', {
-        headers: getAuthHeaders(),
-        credentials: 'include',
-      });
+      const res = await fetch('/api/consultant/google-drive/status', { headers: getAuthHeaders(), credentials: 'include' });
       if (!res.ok) return { connected: false };
       return res.json();
     },
   });
 
+  const isSpecialSection = ['shared-with-me', 'recent', 'starred', 'home'].includes(currentSection);
+  const isAtRootLevel = !isInSharedFolder && breadcrumbs.length === 1;
+
   const { data: foldersData, isLoading: foldersLoading } = useQuery({
-    queryKey: ['/api/consultant/google-drive/folders-picker', currentFolderId],
+    queryKey: ['/api/consultant/google-drive/folders-picker', currentFolderId, currentSection, isInSharedFolder],
     queryFn: async () => {
+      if (isSpecialSection && !isInSharedFolder) {
+        return { success: true, data: [] };
+      }
       const res = await fetch(`/api/consultant/google-drive/folders?parentId=${currentFolderId}`, {
         headers: getAuthHeaders(),
         credentials: 'include',
@@ -191,9 +213,30 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
   });
 
   const { data: filesData, isLoading: filesLoading } = useQuery({
-    queryKey: ['/api/consultant/google-drive/files-picker', currentFolderId],
+    queryKey: ['/api/consultant/google-drive/files-picker', currentFolderId, currentSection, isInSharedFolder],
     queryFn: async () => {
-      const res = await fetch(`/api/consultant/google-drive/files?parentId=${currentFolderId}`, {
+      let endpoint = `/api/consultant/google-drive/files?parentId=${currentFolderId}`;
+
+      if (isInSharedFolder) {
+        endpoint = `/api/consultant/google-drive/files?parentId=${currentFolderId}`;
+      } else {
+        switch (currentSection) {
+          case 'shared-with-me':
+            endpoint = `/api/consultant/google-drive/shared-with-me`;
+            break;
+          case 'recent':
+          case 'home':
+            endpoint = `/api/consultant/google-drive/recent`;
+            break;
+          case 'starred':
+            endpoint = `/api/consultant/google-drive/starred`;
+            break;
+          default:
+            endpoint = `/api/consultant/google-drive/files?parentId=${currentFolderId}`;
+        }
+      }
+
+      const res = await fetch(endpoint, {
         headers: getAuthHeaders(),
         credentials: 'include',
       });
@@ -203,48 +246,126 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
     enabled: driveStatus?.connected === true,
   });
 
-  const isLoading = foldersLoading || filesLoading;
   const rawFolders: any[] = foldersData?.data || [];
   const rawFiles: any[] = filesData?.data || [];
 
-  const filteredFolders = searchQuery
-    ? rawFolders.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : rawFolders;
-  const filteredFiles = searchQuery
-    ? rawFiles.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const sharedFolders = isSpecialSection && isAtRootLevel
+    ? rawFiles.filter((f: any) => f.mimeType === 'application/vnd.google-apps.folder')
+    : [];
+  const folders = isSpecialSection && isAtRootLevel ? sharedFolders : rawFolders;
+  const files = isSpecialSection && isAtRootLevel
+    ? rawFiles.filter((f: any) => f.mimeType !== 'application/vnd.google-apps.folder')
     : rawFiles;
 
+  const isLoading = foldersLoading || filesLoading;
+
+  const filteredFolders = useMemo(() =>
+    searchQuery
+      ? folders.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : folders,
+    [folders, searchQuery]
+  );
+  const filteredFiles = useMemo(() =>
+    searchQuery
+      ? files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : files,
+    [files, searchQuery]
+  );
+
+  const handleSectionChange = (section: PickerDriveSection) => {
+    setCurrentSection(section);
+    setCurrentFolderId('root');
+    const sectionLabel = PICKER_DRIVE_SECTIONS.find(s => s.id === section)?.label || 'Home page';
+    setBreadcrumbs([{ id: 'root', name: sectionLabel }]);
+    setSelectedFiles(new Map());
+    setIsInSharedFolder(false);
+    setSearchQuery('');
+  };
+
   const navigateToFolder = (folder: { id: string; name: string }) => {
+    if (isSpecialSection && !isInSharedFolder) {
+      setIsInSharedFolder(true);
+    }
     setCurrentFolderId(folder.id);
     setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }]);
+    setSelectedFiles(new Map());
     setSearchQuery('');
   };
 
   const navigateToBreadcrumb = (index: number) => {
-    const target = breadcrumbs[index];
-    setCurrentFolderId(target.id);
-    setBreadcrumbs(prev => prev.slice(0, index + 1));
+    const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
+    setBreadcrumbs(newBreadcrumbs);
+    if (index === 0 && isSpecialSection) {
+      setIsInSharedFolder(false);
+    }
+    setCurrentFolderId(newBreadcrumbs[newBreadcrumbs.length - 1].id);
+    setSelectedFiles(new Map());
     setSearchQuery('');
   };
 
-  const handleFileSelect = async (file: { id: string; name: string }) => {
-    setImportingFileId(file.id);
-    try {
-      const res = await fetch('/api/consultant/knowledge/system-documents/import-drive-text', {
-        method: 'POST',
-        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId: file.id, fileName: file.name }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Import failed');
+  const handleFileCheck = (file: { id: string; name: string }, checked: boolean) => {
+    setSelectedFiles(prev => {
+      const newMap = new Map(prev);
+      if (checked) {
+        newMap.set(file.id, { id: file.id, name: file.name });
+      } else {
+        newMap.delete(file.id);
       }
-      const result = await res.json();
-      onTextExtracted(result.data.text, file.name);
-    } catch (err: any) {
-      toast({ title: "Errore importazione", description: err.message, variant: "destructive" });
-    } finally {
-      setImportingFileId(null);
+      return newMap;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFiles.size === filteredFiles.length && filteredFiles.length > 0) {
+      setSelectedFiles(new Map());
+    } else {
+      const newMap = new Map<string, { id: string; name: string }>();
+      filteredFiles.forEach((f: any) => newMap.set(f.id, { id: f.id, name: f.name }));
+      setSelectedFiles(newMap);
+    }
+  };
+
+  const handleImport = async () => {
+    if (selectedFiles.size === 0) return;
+    setIsImporting(true);
+    const filesList = Array.from(selectedFiles.values());
+    setImportProgress({ current: 0, total: filesList.length });
+    const extractedTexts: string[] = [];
+    let errorCount = 0;
+
+    for (let i = 0; i < filesList.length; i++) {
+      setImportProgress({ current: i + 1, total: filesList.length });
+      try {
+        const res = await fetch('/api/consultant/knowledge/system-documents/import-drive-text', {
+          method: 'POST',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ fileId: filesList[i].id, fileName: filesList[i].name }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Import failed');
+        }
+        const result = await res.json();
+        if (result.data?.text) {
+          extractedTexts.push(result.data.text);
+        }
+      } catch (err: any) {
+        errorCount++;
+        toast({ title: `Errore: ${filesList[i].name}`, description: err.message, variant: "destructive" });
+      }
+    }
+
+    setIsImporting(false);
+    setImportProgress({ current: 0, total: 0 });
+
+    if (extractedTexts.length > 0) {
+      const concatenated = extractedTexts.join('\n\n---\n\n');
+      const fileName = filesList.length === 1 ? filesList[0].name : `${filesList.length} file importati`;
+      onTextExtracted(concatenated, fileName);
+      setSelectedFiles(new Map());
+    } else if (errorCount > 0) {
+      toast({ title: "Importazione fallita", description: "Nessun testo estratto dai file selezionati", variant: "destructive" });
     }
   };
 
@@ -267,6 +388,15 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  if (driveStatusLoading) {
+    return (
+      <div className="border rounded-xl p-6 bg-slate-50/50 text-center">
+        <Loader2 className="h-6 w-6 animate-spin text-blue-500 mx-auto" />
+        <p className="text-xs text-muted-foreground mt-2">Connessione a Google Drive...</p>
+      </div>
+    );
+  }
+
   if (driveStatus && !driveStatus.connected) {
     return (
       <div className="border rounded-xl p-6 bg-slate-50/50 text-center space-y-3">
@@ -285,7 +415,7 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
         <Cloud className="h-4 w-4 text-blue-500" />
         <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto flex-1">
           {breadcrumbs.map((bc, idx) => (
-            <span key={bc.id} className="flex items-center gap-1 shrink-0">
+            <span key={`${bc.id}-${idx}`} className="flex items-center gap-1 shrink-0">
               {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
               <button
                 type="button"
@@ -302,89 +432,151 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
         )}
       </div>
 
-      <div className="px-3 py-2 border-b">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Cerca in Drive..."
-            className="pl-8 h-8 text-xs"
-          />
+      <div className="flex max-h-[420px]">
+        <div className="w-48 border-r bg-slate-50/50 shrink-0">
+          <ScrollArea className="h-full">
+            <div className="py-1">
+              {PICKER_DRIVE_SECTIONS.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => handleSectionChange(section.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
+                    currentSection === section.id
+                      ? 'bg-indigo-50 text-indigo-700 font-medium border-r-2 border-indigo-500'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className={currentSection === section.id ? 'text-indigo-500' : 'text-slate-400'}>
+                    {section.icon}
+                  </span>
+                  <span className="truncate">{section.label}</span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
-      </div>
 
-      <div className="max-h-[300px] overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-            <span className="ml-2 text-xs text-muted-foreground">Caricamento file...</span>
-          </div>
-        ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <FolderOpen className="h-8 w-8 text-slate-300 mb-2" />
-            <p className="text-sm text-muted-foreground">Cartella vuota</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Nessun file o cartella in questa posizione</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredFolders.map((folder: any) => (
-              <button
-                key={folder.id}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="px-3 py-2 border-b flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cerca in Drive..."
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+            {filteredFiles.length > 0 && (
+              <Button
                 type="button"
-                onClick={() => navigateToFolder(folder)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors group"
+                variant="ghost"
+                size="sm"
+                onClick={handleSelectAll}
+                className="text-[11px] h-7 px-2 shrink-0"
               >
-                <FolderOpen className="h-5 w-5 text-amber-500 shrink-0" />
-                <span className="text-sm truncate flex-1 group-hover:text-blue-700">{folder.name}</span>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500 shrink-0" />
-              </button>
-            ))}
-            {filteredFiles.map((file: any) => (
-              <button
-                key={file.id}
-                type="button"
-                onClick={() => handleFileSelect(file)}
-                disabled={!!importingFileId}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                  importingFileId === file.id
-                    ? 'bg-indigo-50 border-l-2 border-indigo-500'
-                    : 'hover:bg-slate-50'
-                } ${importingFileId && importingFileId !== file.id ? 'opacity-50' : ''}`}
-              >
-                {importingFileId === file.id ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500 shrink-0" />
-                ) : (
-                  getFileIcon(file.mimeType)
-                )}
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm truncate block">{file.name}</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {file.modifiedTime && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    )}
-                    {file.size && (
-                      <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
+                {selectedFiles.size === filteredFiles.length && filteredFiles.length > 0 ? 'Deseleziona tutti' : 'Seleziona tutti'}
+              </Button>
+            )}
+          </div>
+
+          <ScrollArea className="flex-1">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <span className="ml-2 text-xs text-muted-foreground">Caricamento file...</span>
+              </div>
+            ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <FolderOpen className="h-8 w-8 text-slate-300 mb-2" />
+                <p className="text-sm text-muted-foreground">Cartella vuota</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Nessun file o cartella in questa posizione</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {filteredFolders.map((folder: any) => (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    onClick={() => navigateToFolder(folder)}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-blue-50 transition-colors group"
+                  >
+                    <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
+                    <span className="text-xs truncate flex-1 group-hover:text-blue-700">{folder.name}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-500 shrink-0" />
+                  </button>
+                ))}
+                {filteredFiles.map((file: any) => (
+                  <div
+                    key={file.id}
+                    className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${
+                      selectedFiles.has(file.id) ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedFiles.has(file.id)}
+                      onCheckedChange={(checked) => handleFileCheck(file, !!checked)}
+                      className="shrink-0"
+                      disabled={isImporting}
+                    />
+                    {getFileIcon(file.mimeType)}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs truncate block">{file.name}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {file.modifiedTime && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
+                        {file.size && (
+                          <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          {(selectedFiles.size > 0 || isImporting) && (
+            <div className="border-t bg-slate-50 px-3 py-2 space-y-1.5">
+              {isImporting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500 shrink-0" />
+                  <span className="text-xs text-indigo-700 font-medium">
+                    Importazione {importProgress.current}/{importProgress.total}...
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-slate-500 shrink-0">{selectedFiles.size} file selezionati:</span>
+                    {Array.from(selectedFiles.values()).slice(0, 3).map(f => (
+                      <Badge key={f.id} variant="secondary" className="text-[10px] h-5 max-w-[120px] truncate">
+                        {f.name}
+                      </Badge>
+                    ))}
+                    {selectedFiles.size > 3 && (
+                      <span className="text-[10px] text-muted-foreground">+{selectedFiles.size - 3} altri</span>
                     )}
                   </div>
-                </div>
-                {importingFileId === file.id && (
-                  <span className="text-[10px] text-indigo-600 font-medium shrink-0">Importazione...</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {importingFileId && (
-        <div className="px-3 py-2 border-t bg-indigo-50 flex items-center gap-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500 shrink-0" />
-          <span className="text-xs text-indigo-700">Estrazione testo dal file in corso...</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleImport}
+                    className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    Importa {selectedFiles.size} file
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
