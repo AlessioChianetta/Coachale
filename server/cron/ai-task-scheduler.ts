@@ -11,6 +11,11 @@
 import cron from 'node-cron';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
+
+function safeTextParam(value: string) {
+  const sanitized = value.replace(/'/g, "''");
+  return sql.raw(`'${sanitized}'`);
+}
 import { withCronLock } from './cron-lock-manager';
 import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, getAutonomySettings } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
@@ -182,8 +187,8 @@ async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: bool
         u.sip_caller_id,
         u.sip_gateway
       FROM consultant_availability_settings cas
-      JOIN users u ON u.id = cas.consultant_id
-      WHERE cas.consultant_id = ${task.consultant_id}::text
+      JOIN users u ON u.id::text = cas.consultant_id::text
+      WHERE cas.consultant_id::text = ${task.consultant_id}::text
     `);
     
     const vpsUrl = (settingsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
@@ -782,7 +787,7 @@ export async function logActivity(consultantId: string, data: {
       ) VALUES (
         ${consultantId}, ${data.event_type}, ${data.title},
         ${data.description || null}, ${data.icon || null}, ${data.severity || 'info'},
-        ${data.task_id || null}, ${data.contact_name || null}, ${data.contact_id || null},
+        ${data.task_id || null}, ${data.contact_name || null}, ${(data.contact_id && data.contact_id !== 'null') ? data.contact_id : null},
         ${JSON.stringify(data.event_data || {})}::jsonb, ${data.ai_role || null},
         ${data.cycle_id || null}
       )
@@ -1156,8 +1161,9 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const simulationRoles: SimulationRoleResult[] = [];
 
+  const cId = safeTextParam(consultantId);
   const enabledRolesResult = await db.execute(sql`
-    SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+    SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id::text = ${cId} LIMIT 1
   `);
   const enabledRoles: Record<string, boolean> = (enabledRolesResult.rows[0] as any)?.enabled_roles || 
     { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
@@ -1172,34 +1178,46 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   }
 
   console.log(`🧠 [AUTONOMOUS-GEN] Fetching clients for ${consultantId}...`);
-  const clientsResult = await db.execute(sql`
+  const clientsBaseResult = await db.execute(sql`
     SELECT 
-      u.id,
+      u.id::text as id,
       u.first_name,
       u.last_name,
       u.email,
-      u.phone_number,
-      (
-        SELECT MAX(c.created_at) FROM consultations c 
-        WHERE c.client_id = u.id::text AND c.consultant_id = ${consultantId}::text
-      ) AS last_consultation_date,
-      (
-        SELECT MAX(t.scheduled_at) FROM ai_scheduled_tasks t 
-        WHERE t.contact_id::text = u.id::text AND t.consultant_id = ${consultantId}::uuid
-      ) AS last_task_date
+      u.phone_number
     FROM users u
     JOIN user_role_profiles urp ON u.id::text = urp.user_id
-    WHERE urp.consultant_id = ${consultantId}::text AND urp.role = 'client'
+    WHERE urp.consultant_id = ${cId} AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY u.first_name ASC
     LIMIT 50
   `);
-
-  const clients = clientsResult.rows as any[];
+  const clientRows = clientsBaseResult.rows as any[];
+  console.log(`🧠 [AUTONOMOUS-GEN] Found ${clientRows.length} clients, enriching with dates...`);
+  
+  const clients: any[] = [];
+  for (const client of clientRows) {
+    try {
+      const clientIdRaw = safeTextParam(String(client.id));
+      const [lcResult, ltResult] = await Promise.all([
+        db.execute(sql`SELECT MAX(c.created_at) as d FROM consultations c WHERE c.client_id = ${clientIdRaw} AND c.consultant_id = ${cId}`),
+        db.execute(sql`SELECT MAX(t.scheduled_at) as d FROM ai_scheduled_tasks t WHERE t.contact_id::text = ${clientIdRaw} AND t.consultant_id::text = ${cId}`)
+      ]);
+      clients.push({
+        ...client,
+        last_consultation_date: (lcResult.rows[0] as any)?.d || null,
+        last_task_date: (ltResult.rows[0] as any)?.d || null,
+      });
+    } catch (enrichErr: any) {
+      console.error(`❌ [AUTONOMOUS-GEN] Enrichment failed for client ${client.id}:`, enrichErr.message);
+      clients.push({ ...client, last_consultation_date: null, last_task_date: null });
+    }
+  }
+  console.log(`🧠 [AUTONOMOUS-GEN] Enriched ${clients.length} clients, proceeding to pending tasks...`);
 
   const pendingTasksResult = await db.execute(sql`
     SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
-    WHERE consultant_id = ${consultantId}::uuid
+    WHERE consultant_id::text = ${cId}
       AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
       AND contact_id IS NOT NULL
   `);
@@ -1209,7 +1227,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const recentCompletedResult = await db.execute(sql`
     SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
-    WHERE consultant_id = ${consultantId}::uuid
+    WHERE consultant_id::text = ${cId}
       AND status = 'completed'
       AND completed_at > NOW() - INTERVAL '24 hours'
       AND contact_id IS NOT NULL
@@ -1240,7 +1258,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   const recentTasksResult = await db.execute(sql`
     SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at, t.ai_role
     FROM ai_scheduled_tasks t
-    WHERE t.consultant_id = ${consultantId}::uuid
+    WHERE t.consultant_id::text = ${cId}
       AND t.completed_at > NOW() - INTERVAL '7 days'
       AND t.status = 'completed'
     ORDER BY t.completed_at DESC
@@ -1260,7 +1278,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
            t.ai_instruction, t.status, t.ai_role, t.created_at,
            t.completed_at
     FROM ai_scheduled_tasks t
-    WHERE t.consultant_id = ${consultantId}::uuid
+    WHERE t.consultant_id::text = ${cId}
       AND t.created_at > NOW() - INTERVAL '7 days'
       AND t.status IN ('scheduled', 'waiting_approval', 'approved', 'cancelled', 'completed', 'failed')
     ORDER BY t.created_at DESC
@@ -1279,8 +1297,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     SELECT b.contact_id::text, b.task_category, b.ai_role,
            COALESCE(u.first_name || ' ' || u.last_name, b.contact_id::text) as contact_name
     FROM ai_task_blocks b
-    LEFT JOIN users u ON u.id = b.contact_id
-    WHERE b.consultant_id = ${consultantId}
+    LEFT JOIN users u ON u.id::text = b.contact_id::text
+    WHERE b.consultant_id::text = ${cId}
   `);
   const permanentBlocks = (blocksResult.rows as any[]).map(b => ({
     contactId: b.contact_id,
@@ -1454,7 +1472,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       if (!dryRun) {
         const lastRunResult = await db.execute(sql`
           SELECT created_at FROM ai_activity_log
-          WHERE consultant_id = ${consultantId}::uuid
+          WHERE consultant_id::text = ${cId}
             AND ai_role = ${role.id}
             AND event_type = 'autonomous_analysis'
             AND title NOT LIKE '%canale disabilitato%'
@@ -1735,12 +1753,12 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
                 priority, preferred_channel, tone, urgency,
                 max_attempts, recurrence_type, ai_role
               ) VALUES (
-                ${taskId}, ${consultantId}::uuid, ${suggestedTask.contact_name || null},
+                ${taskId}, ${sql.raw(`'${consultantId}'::uuid`)}, ${suggestedTask.contact_name || null},
                 ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
                 ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
                 ${taskStatus}, 'autonomous',
                 ${suggestedTask.task_category || role.categories[0] || 'followup'},
-                ${hasValidContactId ? sql`${contactIdValue}::uuid` : sql`NULL`},
+                ${hasValidContactId ? sql`${contactIdValue}::text::uuid` : sql`NULL`},
                 ${suggestedTask.reasoning || null},
                 ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)},
                 ${suggestedTask.preferred_channel || role.preferredChannels[0] || 'none'},

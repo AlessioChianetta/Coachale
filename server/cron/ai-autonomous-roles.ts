@@ -592,7 +592,7 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
 
   const configResult = await db.execute(sql`
     SELECT personalizza_config FROM ai_autonomy_settings 
-    WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    WHERE consultant_id::text = ${consultantId}::text LIMIT 1
   `);
   const personalizzaConfig = (configResult.rows[0] as any)?.personalizza_config || null;
 

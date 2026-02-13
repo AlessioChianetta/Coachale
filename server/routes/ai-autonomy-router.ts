@@ -125,7 +125,7 @@ router.get("/personalizza-config", authenticateToken, requireAnyRole(["consultan
 
     const result = await db.execute(sql`
       SELECT personalizza_config FROM ai_autonomy_settings 
-      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
     `);
 
     const config = (result.rows[0] as any)?.personalizza_config || {
@@ -162,7 +162,7 @@ router.put("/personalizza-config", authenticateToken, requireAnyRole(["consultan
       UPDATE ai_autonomy_settings 
       SET personalizza_config = ${JSON.stringify(config)}::jsonb,
           updated_at = NOW()
-      WHERE consultant_id = ${consultantId}::uuid
+      WHERE consultant_id::text = ${consultantId}::text
     `);
 
     return res.json({ success: true, message: "Configurazione salvata" });
@@ -179,7 +179,7 @@ router.get("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
 
     const result = await db.execute(sql`
       SELECT marco_context FROM ai_autonomy_settings 
-      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
     `);
 
     const context = (result.rows[0] as any)?.marco_context || {
@@ -212,7 +212,7 @@ router.put("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
       UPDATE ai_autonomy_settings 
       SET marco_context = ${JSON.stringify(context)}::jsonb,
           updated_at = NOW()
-      WHERE consultant_id = ${consultantId}::uuid
+      WHERE consultant_id::text = ${consultantId}::text
     `);
 
     if (Array.isArray(context.linkedKbDocumentIds)) {
@@ -416,7 +416,7 @@ router.post("/tasks/analyze", authenticateToken, requireAnyRole(["consultant", "
     const clientsResult = await db.execute(sql`
       SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.is_active
       FROM users u
-      JOIN user_role_profiles urp ON u.id = urp.user_id
+      JOIN user_role_profiles urp ON u.id::text = urp.user_id
       WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client'
       ORDER BY u.first_name
     `);
@@ -785,7 +785,7 @@ router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_adm
       db.execute(sql`SELECT * FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`),
       db.execute(sql`SELECT id, ai_instruction, status, task_category, scheduled_at, result_summary FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId} AND task_type = 'ai_task' ORDER BY created_at DESC LIMIT 10`),
       db.execute(sql`SELECT event_type, title, description, created_at FROM ai_activity_log WHERE consultant_id = ${consultantId} ORDER BY created_at DESC LIMIT 10`),
-      db.execute(sql`SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number FROM users u JOIN user_role_profiles urp ON u.id = urp.user_id WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client' LIMIT 20`),
+      db.execute(sql`SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number FROM users u JOIN user_role_profiles urp ON u.id::text = urp.user_id WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client' LIMIT 20`),
     ]);
 
     const settingsJson = settingsResult.rows.length > 0 ? JSON.stringify(settingsResult.rows[0]) : "Nessuna impostazione configurata";
@@ -1248,11 +1248,11 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
       `),
       db.execute(sql`
         SELECT COUNT(*)::int as count FROM users u
-        JOIN user_role_profiles urp ON u.id = urp.user_id
+        JOIN user_role_profiles urp ON u.id::text = urp.user_id
         WHERE urp.consultant_id = ${consultantId}
           AND urp.role = 'client'
           AND u.is_active = true
-          AND u.id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          AND u.id::text ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
           AND NOT EXISTS (
             SELECT 1 FROM ai_scheduled_tasks ast
             WHERE ast.consultant_id::text = ${consultantId}
@@ -1269,7 +1269,7 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
       `),
       db.execute(sql`
         SELECT COUNT(*)::int as count FROM users u
-        JOIN user_role_profiles urp ON u.id = urp.user_id
+        JOIN user_role_profiles urp ON u.id::text = urp.user_id
         WHERE urp.consultant_id = ${consultantId} AND urp.role = 'client' AND u.is_active = true
       `),
       db.execute(sql`
@@ -1337,7 +1337,7 @@ router.get("/system-status", authenticateToken, requireAnyRole(["consultant", "s
     const lastTaskByRoleResult = await db.execute(sql`
       SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
       FROM ai_scheduled_tasks
-      WHERE consultant_id = ${consultantId}::uuid
+      WHERE consultant_id::text = ${consultantId}::text
         AND ai_role IS NOT NULL
         AND created_at > NOW() - INTERVAL '30 days'
       GROUP BY ai_role
@@ -1521,7 +1521,7 @@ router.get("/roles", authenticateToken, requireAnyRole(["consultant", "super_adm
     const lastTaskByRoleResult = await db.execute(sql`
       SELECT ai_role, MAX(created_at) as last_task_at, COUNT(*)::int as total_tasks
       FROM ai_scheduled_tasks
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
+      WHERE consultant_id::text = ${consultantId}::text AND ai_role IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
       GROUP BY ai_role
     `);
     const roleStats: Record<string, any> = {};
