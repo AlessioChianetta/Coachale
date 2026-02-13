@@ -340,15 +340,20 @@ router.post(
         return res.status(400).json({ success: false, error: "Document is not linked to Google Drive" });
       }
 
+      console.log(`🔄 [KNOWLEDGE DOCUMENTS] Manual drive sync requested for document ${id} (${document.title})`);
+      
       const { syncDocumentFromDrive, registerDriveWatch } = await import('../services/google-drive-sync-service');
       
       res.json({ success: true, message: "Sync started" });
 
-      setImmediate(async () => {
+      (async () => {
         try {
+          console.log(`🔄 [KNOWLEDGE DOCUMENTS] Starting syncDocumentFromDrive for ${id}...`);
           const success = await syncDocumentFromDrive(id, 'manual');
           if (success) {
             console.log(`✅ [KNOWLEDGE DOCUMENTS] Manual drive sync completed for document ${id}`);
+          } else {
+            console.error(`❌ [KNOWLEDGE DOCUMENTS] syncDocumentFromDrive returned false for ${id}`);
           }
           
           const { driveSyncChannels } = await import('../../shared/schema');
@@ -367,8 +372,9 @@ router.post(
           }
         } catch (err: any) {
           console.error(`❌ [KNOWLEDGE DOCUMENTS] Manual drive sync failed for ${id}:`, err.message);
+          console.error(err.stack);
         }
-      });
+      })();
     } catch (error: any) {
       console.error("❌ [KNOWLEDGE DOCUMENTS] Error triggering drive sync:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to sync" });
