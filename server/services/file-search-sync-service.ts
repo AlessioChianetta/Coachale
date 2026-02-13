@@ -2697,7 +2697,7 @@ export class FileSearchSyncService {
         }
         
         // Try to resolve via client_email
-        const consultationDate = new Date(c.scheduledAt).toLocaleDateString('it-IT');
+        const consultationDate = c.scheduledAt ? new Date(c.scheduledAt).toLocaleDateString('it-IT') : `ID:${c.id.substring(0, 8)}`;
         if (c.clientEmail) {
           const matchedUser = await db.query.users.findFirst({
             where: eq(users.email, c.clientEmail),
@@ -5361,7 +5361,7 @@ export class FileSearchSyncService {
         .from(fileSearchDocuments)
         .where(and(
           eq(fileSearchDocuments.storeId, consultantStoreForAudit.id),
-          eq(fileSearchDocuments.sourceType, 'system_prompt'),
+          eq(fileSearchDocuments.sourceType, 'system_prompt_document'),
           eq(fileSearchDocuments.status, 'indexed')
         ));
       for (const d of indexedSysDocs) {
@@ -5608,7 +5608,7 @@ export class FileSearchSyncService {
         agentIndexedDocs = agentIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
       }
 
-      const indexedKnowledgeIds = new Set(agentIndexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+      const indexedKnowledgeIds = new Set(agentIndexedDocs.filter(d => d.sourceType === 'whatsapp_agent_knowledge' || d.sourceType === 'knowledge_base').map(d => d.sourceId));
       const knowledgeMissing = agentKnowledge.filter(k => !indexedKnowledgeIds.has(k.id)).map(k => ({ 
         id: k.id, 
         title: k.title, 

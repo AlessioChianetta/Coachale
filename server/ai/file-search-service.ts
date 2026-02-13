@@ -671,7 +671,7 @@ export class FileSearchService {
       for (let retry = 0; retry < MAX_UPLOAD_RETRIES; retry++) {
         try {
           if (retry > 0) {
-            const delayMs = Math.pow(2, retry) * 1000;
+            const delayMs = Math.pow(2, retry - 1) * 1000;
             console.log(`🔄 [FileSearch] Retry ${retry}/${MAX_UPLOAD_RETRIES - 1} for "${params.displayName}" after ${delayMs}ms delay...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
           }
@@ -695,12 +695,15 @@ export class FileSearchService {
           }
           break;
         } catch (uploadError: any) {
-          const isRetryable = uploadError?.message?.includes('500') || 
-                              uploadError?.message?.includes('INTERNAL') ||
-                              uploadError?.message?.includes('503') ||
-                              uploadError?.message?.includes('UNAVAILABLE') ||
-                              uploadError?.message?.includes('429') ||
-                              uploadError?.message?.includes('RESOURCE_EXHAUSTED');
+          const errorCode = uploadError?.code || uploadError?.status || uploadError?.statusCode;
+          const errorMsg = uploadError?.message || '';
+          const isRetryable = errorCode === 500 || errorCode === 503 || errorCode === 429 ||
+                              errorMsg.includes('500') || 
+                              errorMsg.includes('INTERNAL') ||
+                              errorMsg.includes('503') ||
+                              errorMsg.includes('UNAVAILABLE') ||
+                              errorMsg.includes('429') ||
+                              errorMsg.includes('RESOURCE_EXHAUSTED');
           
           console.error(`❌ [FileSearch] Upload attempt ${retry + 1}/${MAX_UPLOAD_RETRIES} failed for "${params.displayName}": ${uploadError.message}`);
           
