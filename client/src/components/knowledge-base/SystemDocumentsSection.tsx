@@ -67,6 +67,7 @@ import {
   PenLine,
   FileUp,
   FolderOpen,
+  ChevronRight,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -158,42 +159,70 @@ const emptyForm = (): DocumentForm => ({
 });
 
 function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, fileName: string) => void }) {
-  const [folderId, setFolderId] = useState('root');
+  const [currentFolderId, setCurrentFolderId] = useState('root');
   const [breadcrumbs, setBreadcrumbs] = useState<{id: string; name: string}[]>([{ id: 'root', name: 'Il mio Drive' }]);
   const [searchQuery, setSearchQuery] = useState('');
   const [importingFileId, setImportingFileId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: filesResponse, isLoading } = useQuery({
-    queryKey: ['/api/consultant/google-drive/files', folderId],
+  const { data: driveStatus } = useQuery({
+    queryKey: ['/api/consultant/google-drive/status-picker'],
     queryFn: async () => {
-      const res = await fetch(`/api/consultant/google-drive/files?folderId=${folderId}`, {
+      const res = await fetch('/api/consultant/google-drive/status', {
         headers: getAuthHeaders(),
+        credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to fetch Drive files');
+      if (!res.ok) return { connected: false };
       return res.json();
     },
   });
 
-  const files = filesResponse?.files || [];
-  const folders = filesResponse?.folders || [];
+  const { data: foldersData, isLoading: foldersLoading } = useQuery({
+    queryKey: ['/api/consultant/google-drive/folders-picker', currentFolderId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/google-drive/folders?parentId=${currentFolderId}`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch folders');
+      return res.json();
+    },
+    enabled: driveStatus?.connected === true,
+  });
+
+  const { data: filesData, isLoading: filesLoading } = useQuery({
+    queryKey: ['/api/consultant/google-drive/files-picker', currentFolderId],
+    queryFn: async () => {
+      const res = await fetch(`/api/consultant/google-drive/files?parentId=${currentFolderId}`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch files');
+      return res.json();
+    },
+    enabled: driveStatus?.connected === true,
+  });
+
+  const isLoading = foldersLoading || filesLoading;
+  const rawFolders: any[] = foldersData?.data || [];
+  const rawFiles: any[] = filesData?.data || [];
 
   const filteredFolders = searchQuery
-    ? folders.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : folders;
+    ? rawFolders.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : rawFolders;
   const filteredFiles = searchQuery
-    ? files.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : files;
+    ? rawFiles.filter((f: any) => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : rawFiles;
 
   const navigateToFolder = (folder: { id: string; name: string }) => {
-    setFolderId(folder.id);
+    setCurrentFolderId(folder.id);
     setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }]);
     setSearchQuery('');
   };
 
   const navigateToBreadcrumb = (index: number) => {
     const target = breadcrumbs[index];
-    setFolderId(target.id);
+    setCurrentFolderId(target.id);
     setBreadcrumbs(prev => prev.slice(0, index + 1));
     setSearchQuery('');
   };
@@ -220,59 +249,95 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
   };
 
   const getFileIcon = (mimeType: string) => {
-    if (mimeType.includes("folder")) return <FolderOpen className="h-4 w-4 text-gray-500" />;
+    if (mimeType.includes("folder")) return <FolderOpen className="h-4 w-4 text-amber-500" />;
     if (mimeType.includes("pdf")) return <FileText className="h-4 w-4 text-red-500" />;
     if (mimeType.includes("word") || mimeType.includes("document")) return <FileText className="h-4 w-4 text-blue-600" />;
     if (mimeType.includes("sheet") || mimeType.includes("excel") || mimeType.includes("spreadsheet")) return <FileText className="h-4 w-4 text-green-600" />;
+    if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return <FileText className="h-4 w-4 text-orange-500" />;
+    if (mimeType.includes("image")) return <FileText className="h-4 w-4 text-purple-500" />;
     if (mimeType.includes("text")) return <FileText className="h-4 w-4 text-gray-500" />;
     return <FileText className="h-4 w-4 text-gray-400" />;
   };
 
+  const formatFileSize = (size?: string) => {
+    if (!size) return '';
+    const bytes = parseInt(size, 10);
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  if (driveStatus && !driveStatus.connected) {
+    return (
+      <div className="border rounded-xl p-6 bg-slate-50/50 text-center space-y-3">
+        <Cloud className="h-8 w-8 text-slate-400 mx-auto" />
+        <div>
+          <p className="text-sm font-medium text-slate-700">Google Drive non connesso</p>
+          <p className="text-xs text-muted-foreground mt-1">Connetti Google Drive dalla sezione Knowledge Base per importare file</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3 border rounded-xl p-3 bg-slate-50/50">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto">
-        {breadcrumbs.map((bc, idx) => (
-          <span key={bc.id} className="flex items-center gap-1 shrink-0">
-            {idx > 0 && <ChevronDown className="h-3 w-3 rotate-[-90deg]" />}
-            <button
-              type="button"
-              onClick={() => navigateToBreadcrumb(idx)}
-              className={`hover:text-indigo-600 transition-colors ${idx === breadcrumbs.length - 1 ? 'font-medium text-slate-700' : ''}`}
-            >
-              {bc.name}
-            </button>
-          </span>
-        ))}
+    <div className="border rounded-xl bg-white overflow-hidden">
+      <div className="px-3 py-2 bg-slate-50 border-b flex items-center gap-2">
+        <Cloud className="h-4 w-4 text-blue-500" />
+        <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto flex-1">
+          {breadcrumbs.map((bc, idx) => (
+            <span key={bc.id} className="flex items-center gap-1 shrink-0">
+              {idx > 0 && <ChevronRight className="h-3 w-3 text-slate-400" />}
+              <button
+                type="button"
+                onClick={() => navigateToBreadcrumb(idx)}
+                className={`hover:text-indigo-600 transition-colors ${idx === breadcrumbs.length - 1 ? 'font-medium text-slate-700' : ''}`}
+              >
+                {bc.name}
+              </button>
+            </span>
+          ))}
+        </div>
+        {driveStatus?.email && (
+          <span className="text-[10px] text-muted-foreground shrink-0">{driveStatus.email}</span>
+        )}
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Cerca file..."
-          className="pl-8 h-8 text-xs"
-        />
+      <div className="px-3 py-2 border-b">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cerca in Drive..."
+            className="pl-8 h-8 text-xs"
+          />
+        </div>
       </div>
 
-      <div className="max-h-[280px] overflow-y-auto space-y-0.5">
+      <div className="max-h-[300px] overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+            <span className="ml-2 text-xs text-muted-foreground">Caricamento file...</span>
           </div>
         ) : filteredFolders.length === 0 && filteredFiles.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">Nessun file trovato</p>
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <FolderOpen className="h-8 w-8 text-slate-300 mb-2" />
+            <p className="text-sm text-muted-foreground">Cartella vuota</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Nessun file o cartella in questa posizione</p>
+          </div>
         ) : (
-          <>
+          <div className="divide-y divide-slate-100">
             {filteredFolders.map((folder: any) => (
               <button
                 key={folder.id}
                 type="button"
                 onClick={() => navigateToFolder(folder)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left hover:bg-indigo-50 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-blue-50 transition-colors group"
               >
-                <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
-                <span className="text-sm truncate">{folder.name}</span>
+                <FolderOpen className="h-5 w-5 text-amber-500 shrink-0" />
+                <span className="text-sm truncate flex-1 group-hover:text-blue-700">{folder.name}</span>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-500 shrink-0" />
               </button>
             ))}
             {filteredFiles.map((file: any) => (
@@ -281,31 +346,43 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
                 type="button"
                 onClick={() => handleFileSelect(file)}
                 disabled={!!importingFileId}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors ${
-                  importingFileId === file.id ? 'bg-indigo-100 border border-indigo-300' : 'hover:bg-blue-50'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                  importingFileId === file.id
+                    ? 'bg-indigo-50 border-l-2 border-indigo-500'
+                    : 'hover:bg-slate-50'
+                } ${importingFileId && importingFileId !== file.id ? 'opacity-50' : ''}`}
               >
                 {importingFileId === file.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-indigo-500 shrink-0" />
+                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500 shrink-0" />
                 ) : (
                   getFileIcon(file.mimeType)
                 )}
-                <span className="text-sm truncate flex-1">{file.name}</span>
-                {file.modifiedTime && (
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm truncate block">{file.name}</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {file.modifiedTime && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                    {file.size && (
+                      <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
+                    )}
+                  </div>
+                </div>
+                {importingFileId === file.id && (
+                  <span className="text-[10px] text-indigo-600 font-medium shrink-0">Importazione...</span>
                 )}
               </button>
             ))}
-          </>
+          </div>
         )}
       </div>
 
       {importingFileId && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-700">
-          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-          <span>Estrazione testo dal file in corso...</span>
+        <div className="px-3 py-2 border-t bg-indigo-50 flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500 shrink-0" />
+          <span className="text-xs text-indigo-700">Estrazione testo dal file in corso...</span>
         </div>
       )}
     </div>
