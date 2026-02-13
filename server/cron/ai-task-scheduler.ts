@@ -1188,7 +1188,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         WHERE t.contact_id::text = u.id::text AND t.consultant_id = ${consultantId}::uuid
       ) AS last_task_date
     FROM users u
-    JOIN user_role_profiles urp ON u.id = urp.user_id
+    JOIN user_role_profiles urp ON u.id::text = urp.user_id
     WHERE urp.consultant_id = ${consultantId}::text AND urp.role = 'client'
       AND u.is_active = true
     ORDER BY u.first_name ASC
