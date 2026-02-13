@@ -59,6 +59,10 @@ import {
   Building2,
   StickyNote,
   FileDown,
+  Lock,
+  Globe,
+  UserRound,
+  HardHat,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +73,7 @@ interface GoogleDriveBrowserProps {
   onSystemDocImportSuccess?: (importedCount: number) => void;
 }
 
-type TargetClientMode = 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+type TargetClientMode = 'all' | 'consultant_only' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
 
 interface SystemDocImportForm {
   target_client_assistant: boolean;
@@ -1103,8 +1107,8 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess, onSyste
                     <Sparkles className="h-3.5 w-3.5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">AI Assistant Clienti</p>
-                    <p className="text-xs text-muted-foreground">Visibile nel chatbot AI</p>
+                    <p className="text-sm font-semibold text-slate-800">AI Assistant</p>
+                    <p className="text-xs text-muted-foreground">Scegli chi potrà vederlo</p>
                   </div>
                 </div>
                 <Switch
@@ -1115,104 +1119,161 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess, onSyste
 
               {sysDocForm.target_client_assistant && (
                 <div className="p-3 space-y-2 border-t border-blue-200 bg-white/50">
-                  <Label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">A chi mostrare?</Label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {([
-                      { value: 'all', label: 'Tutti', icon: '👥' },
-                      { value: 'clients_only', label: 'Solo Clienti', icon: '🧑' },
-                      { value: 'employees_only', label: 'Solo Dipendenti', icon: '👷' },
-                      { value: 'specific_clients', label: 'Clienti Specifici', icon: '🎯' },
-                      { value: 'specific_departments', label: 'Per Reparto', icon: '🏢' },
-                      { value: 'specific_employees', label: 'Dip. Specifici', icon: '📋' },
-                    ] as const).map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: opt.value as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium border transition-all ${
-                          sysDocForm.target_client_mode === opt.value
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                      >
-                        <span>{opt.icon}</span>
-                        {opt.label}
-                      </button>
-                    ))}
+                  <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Chi deve vedere questo documento?</Label>
+
+                  <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'consultant_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                    className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border-2 text-left transition-all ${sysDocForm.target_client_mode === 'consultant_only' ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-200' : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30'}`}>
+                    <div className={`p-1.5 rounded-md shrink-0 ${sysDocForm.target_client_mode === 'consultant_only' ? 'bg-amber-200' : 'bg-slate-100'}`}>
+                      <Lock className={`h-3.5 w-3.5 ${sysDocForm.target_client_mode === 'consultant_only' ? 'text-amber-700' : 'text-slate-500'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold ${sysDocForm.target_client_mode === 'consultant_only' ? 'text-amber-800' : 'text-slate-700'}`}>Solo per me</p>
+                      <p className="text-[10px] text-muted-foreground">Solo nel tuo AI Assistant privato</p>
+                    </div>
+                    {sysDocForm.target_client_mode === 'consultant_only' && <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />}
+                  </button>
+
+                  <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'all' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                    className={`w-full flex items-center gap-2.5 p-2.5 rounded-lg border-2 text-left transition-all ${sysDocForm.target_client_mode === 'all' ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30'}`}>
+                    <div className={`p-1.5 rounded-md shrink-0 ${sysDocForm.target_client_mode === 'all' ? 'bg-indigo-200' : 'bg-slate-100'}`}>
+                      <Globe className={`h-3.5 w-3.5 ${sysDocForm.target_client_mode === 'all' ? 'text-indigo-700' : 'text-slate-500'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold ${sysDocForm.target_client_mode === 'all' ? 'text-indigo-800' : 'text-slate-700'}`}>Tutti</p>
+                      <p className="text-[10px] text-muted-foreground">Clienti e dipendenti</p>
+                    </div>
+                    {sysDocForm.target_client_mode === 'all' && <CheckCircle2 className="h-4 w-4 text-indigo-600 shrink-0" />}
+                  </button>
+
+                  <div className={`rounded-lg border-2 overflow-hidden transition-all ${['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) ? 'border-blue-400 bg-blue-50/30 ring-1 ring-blue-200' : 'border-slate-200 hover:border-blue-300'}`}>
+                    <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'clients_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                      className="w-full flex items-center gap-2.5 p-2.5 text-left">
+                      <div className={`p-1.5 rounded-md shrink-0 ${['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) ? 'bg-blue-200' : 'bg-slate-100'}`}>
+                        <UserRound className={`h-3.5 w-3.5 ${['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) ? 'text-blue-700' : 'text-slate-500'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-semibold ${['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) ? 'text-blue-800' : 'text-slate-700'}`}>Clienti</p>
+                        <p className="text-[10px] text-muted-foreground">Solo i clienti lo vedranno</p>
+                      </div>
+                      {['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) && <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />}
+                    </button>
+                    {['clients_only', 'specific_clients'].includes(sysDocForm.target_client_mode) && (
+                      <div className="px-2.5 pb-2.5 pt-1 border-t border-blue-200 space-y-2">
+                        <div className="flex gap-1.5">
+                          <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'clients_only' as TargetClientMode, target_client_ids: [] }))}
+                            className={`flex-1 py-1.5 px-2 rounded text-[10px] font-medium border ${sysDocForm.target_client_mode === 'clients_only' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                            Tutti
+                          </button>
+                          <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'specific_clients' as TargetClientMode, target_client_ids: [] }))}
+                            className={`flex-1 py-1.5 px-2 rounded text-[10px] font-medium border ${sysDocForm.target_client_mode === 'specific_clients' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                            Scegli
+                          </button>
+                        </div>
+                        {sysDocForm.target_client_mode === 'specific_clients' && (
+                          <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                            {nonEmployeeClients.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
+                            ) : nonEmployeeClients.map((client: any) => (
+                              <label key={client.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
+                                <Checkbox
+                                  checked={sysDocForm.target_client_ids.includes(client.id)}
+                                  onCheckedChange={(checked) =>
+                                    setSysDocForm(f => ({
+                                      ...f,
+                                      target_client_ids: checked
+                                        ? [...f.target_client_ids, client.id]
+                                        : f.target_client_ids.filter((id: string) => id !== client.id),
+                                    }))
+                                  }
+                                />
+                                <span className="text-xs truncate">{client.firstName} {client.lastName}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {sysDocForm.target_client_mode === 'specific_departments' && (
-                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
-                      {departments.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato</p>
-                      ) : departments.map((dept: any) => (
-                        <label key={dept.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
-                          <Checkbox
-                            checked={sysDocForm.target_department_ids.includes(dept.id)}
-                            onCheckedChange={(checked) =>
-                              setSysDocForm(f => ({
-                                ...f,
-                                target_department_ids: checked
-                                  ? [...f.target_department_ids, dept.id]
-                                  : f.target_department_ids.filter((id: string) => id !== dept.id),
-                              }))
-                            }
-                          />
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
-                            <span className="text-xs truncate">{dept.name}</span>
-                            <Badge variant="outline" className="text-[10px] shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
+                  <div className={`rounded-lg border-2 overflow-hidden transition-all ${['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) ? 'border-emerald-400 bg-emerald-50/30 ring-1 ring-emerald-200' : 'border-slate-200 hover:border-emerald-300'}`}>
+                    <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'employees_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                      className="w-full flex items-center gap-2.5 p-2.5 text-left">
+                      <div className={`p-1.5 rounded-md shrink-0 ${['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) ? 'bg-emerald-200' : 'bg-slate-100'}`}>
+                        <HardHat className={`h-3.5 w-3.5 ${['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) ? 'text-emerald-700' : 'text-slate-500'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-semibold ${['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) ? 'text-emerald-800' : 'text-slate-700'}`}>Dipendenti</p>
+                        <p className="text-[10px] text-muted-foreground">Solo i dipendenti lo vedranno</p>
+                      </div>
+                      {['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
+                    </button>
+                    {['employees_only', 'specific_departments', 'specific_employees'].includes(sysDocForm.target_client_mode) && (
+                      <div className="px-2.5 pb-2.5 pt-1 border-t border-emerald-200 space-y-2">
+                        <div className="flex gap-1.5">
+                          <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'employees_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                            className={`flex-1 py-1.5 px-2 rounded text-[10px] font-medium border ${sysDocForm.target_client_mode === 'employees_only' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                            Tutti
+                          </button>
+                          <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'specific_departments' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                            className={`flex-1 py-1.5 px-2 rounded text-[10px] font-medium border ${sysDocForm.target_client_mode === 'specific_departments' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                            Reparto
+                          </button>
+                          <button type="button" onClick={() => setSysDocForm(f => ({ ...f, target_client_mode: 'specific_employees' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                            className={`flex-1 py-1.5 px-2 rounded text-[10px] font-medium border ${sysDocForm.target_client_mode === 'specific_employees' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                            Scegli
+                          </button>
+                        </div>
+                        {sysDocForm.target_client_mode === 'specific_departments' && (
+                          <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                            {departments.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato</p>
+                            ) : departments.map((dept: any) => (
+                              <label key={dept.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-emerald-50 transition-colors">
+                                <Checkbox
+                                  checked={sysDocForm.target_department_ids.includes(dept.id)}
+                                  onCheckedChange={(checked) =>
+                                    setSysDocForm(f => ({
+                                      ...f,
+                                      target_department_ids: checked
+                                        ? [...f.target_department_ids, dept.id]
+                                        : f.target_department_ids.filter((id: string) => id !== dept.id),
+                                    }))
+                                  }
+                                />
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
+                                  <span className="text-xs truncate">{dept.name}</span>
+                                  <Badge variant="outline" className="text-[10px] shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
+                                </div>
+                              </label>
+                            ))}
                           </div>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {sysDocForm.target_client_mode === 'specific_clients' && (
-                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
-                      {nonEmployeeClients.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
-                      ) : nonEmployeeClients.map((client: any) => (
-                        <label key={client.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
-                          <Checkbox
-                            checked={sysDocForm.target_client_ids.includes(client.id)}
-                            onCheckedChange={(checked) =>
-                              setSysDocForm(f => ({
-                                ...f,
-                                target_client_ids: checked
-                                  ? [...f.target_client_ids, client.id]
-                                  : f.target_client_ids.filter((id: string) => id !== client.id),
-                              }))
-                            }
-                          />
-                          <span className="text-xs truncate">{client.firstName} {client.lastName}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-
-                  {sysDocForm.target_client_mode === 'specific_employees' && (
-                    <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2 mt-2">
-                      {employeeClients.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
-                      ) : employeeClients.map((emp: any) => (
-                        <label key={emp.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-blue-50 transition-colors">
-                          <Checkbox
-                            checked={sysDocForm.target_client_ids.includes(emp.id)}
-                            onCheckedChange={(checked) =>
-                              setSysDocForm(f => ({
-                                ...f,
-                                target_client_ids: checked
-                                  ? [...f.target_client_ids, emp.id]
-                                  : f.target_client_ids.filter((id: string) => id !== emp.id),
-                              }))
-                            }
-                          />
-                          <span className="text-xs truncate">{emp.firstName} {emp.lastName}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                        )}
+                        {sysDocForm.target_client_mode === 'specific_employees' && (
+                          <div className="max-h-32 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                            {employeeClients.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
+                            ) : employeeClients.map((emp: any) => (
+                              <label key={emp.id} className="flex items-center gap-2 rounded-md p-1.5 cursor-pointer hover:bg-emerald-50 transition-colors">
+                                <Checkbox
+                                  checked={sysDocForm.target_client_ids.includes(emp.id)}
+                                  onCheckedChange={(checked) =>
+                                    setSysDocForm(f => ({
+                                      ...f,
+                                      target_client_ids: checked
+                                        ? [...f.target_client_ids, emp.id]
+                                        : f.target_client_ids.filter((id: string) => id !== emp.id),
+                                    }))
+                                  }
+                                />
+                                <span className="text-xs truncate">{emp.firstName} {emp.lastName}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

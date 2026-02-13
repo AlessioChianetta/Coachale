@@ -53,6 +53,7 @@ export async function fetchSystemDocumentsForClientAssistant(
     const rows = clientInfo
       ? allRows.filter(doc => {
           const mode = doc.target_client_mode || 'all';
+          if (mode === 'consultant_only') return false;
           if (mode === 'all') return true;
           if (mode === 'clients_only') return !clientInfo.isEmployee;
           if (mode === 'employees_only') return clientInfo.isEmployee;
@@ -176,6 +177,7 @@ export async function fetchFileSearchDocumentIds(consultantId: string, target: '
           AND is_active = true
           AND target_client_assistant = true
           AND injection_mode = 'file_search'
+          AND COALESCE(target_client_mode, 'all') != 'consultant_only'
         ORDER BY priority DESC, created_at ASC
       `);
     } else if (target === 'autonomous_agent' && agentId) {

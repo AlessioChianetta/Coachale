@@ -72,6 +72,10 @@ import {
   HardDrive,
   Star,
   Share2,
+  Lock,
+  Globe,
+  UserRound,
+  HardHat,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
@@ -114,7 +118,7 @@ interface SystemDocument {
   description: string | null;
   is_active: boolean;
   target_client_assistant: boolean;
-  target_client_mode: 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+  target_client_mode: 'all' | 'consultant_only' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
   target_client_ids: string[];
   target_department_ids: string[];
   target_autonomous_agents: Record<string, boolean>;
@@ -145,7 +149,7 @@ interface Department {
   employee_count: number;
 }
 
-type TargetClientMode = 'all' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
+type TargetClientMode = 'all' | 'consultant_only' | 'clients_only' | 'employees_only' | 'specific_clients' | 'specific_departments' | 'specific_employees';
 
 interface DocumentForm {
   title: string;
@@ -1109,14 +1113,16 @@ export default function SystemDocumentsSection() {
 
     if (doc.target_client_assistant) {
       const mode = doc.target_client_mode || 'all';
-      if (mode === 'all') {
-        badges.push({ label: 'Istruzioni Consulente', icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-indigo-100 text-indigo-800 border-indigo-200" });
+      if (mode === 'consultant_only') {
+        badges.push({ label: 'Solo per me', icon: <Lock className="h-3 w-3" />, colorClass: "bg-amber-100 text-amber-800 border-amber-200" });
+      } else if (mode === 'all') {
+        badges.push({ label: 'Tutti', icon: <Globe className="h-3 w-3" />, colorClass: "bg-indigo-100 text-indigo-800 border-indigo-200" });
       } else if (mode === 'clients_only' || mode === 'specific_clients') {
         const modeLabel = getTargetModeLabel(doc);
-        badges.push({ label: `AI Clienti - ${modeLabel}`, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
+        badges.push({ label: `Clienti — ${modeLabel}`, icon: <UserRound className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
       } else if (mode === 'employees_only' || mode === 'specific_departments' || mode === 'specific_employees') {
         const modeLabel = getTargetModeLabel(doc);
-        badges.push({ label: `AI Dipendenti - ${modeLabel}`, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-cyan-100 text-cyan-800 border-cyan-200" });
+        badges.push({ label: `Dipendenti — ${modeLabel}`, icon: <HardHat className="h-3 w-3" />, colorClass: "bg-emerald-100 text-emerald-800 border-emerald-200" });
       }
     }
 
@@ -1176,7 +1182,8 @@ export default function SystemDocumentsSection() {
   };
 
   const groupLabelMap: Record<string, string> = {
-    ai_consultant: 'Istruzioni Consulente (AI)',
+    ai_consultant_only: 'Solo per me (privato)',
+    ai_consultant: 'AI per Tutti (Clienti + Dipendenti)',
     ai_clients: 'AI per Clienti',
     ai_employees: 'AI per Dipendenti',
     whatsapp: 'Dipendenti WhatsApp',
@@ -1185,6 +1192,10 @@ export default function SystemDocumentsSection() {
   };
 
   const aiDocs = sortedDocuments.filter(d => d.target_client_assistant);
+  const aiDocsConsultantOnly = aiDocs.filter(d => {
+    const mode = d.target_client_mode || 'all';
+    return mode === 'consultant_only';
+  });
   const aiDocsConsultant = aiDocs.filter(d => {
     const mode = d.target_client_mode || 'all';
     return mode === 'all';
@@ -1220,9 +1231,10 @@ export default function SystemDocumentsSection() {
 
   const getTargetModeLabel = (doc: SystemDocument) => {
     const mode = doc.target_client_mode || 'all';
+    if (mode === 'consultant_only') return 'Solo per me';
     if (mode === 'all') return 'Tutti';
-    if (mode === 'clients_only') return 'Solo Clienti';
-    if (mode === 'employees_only') return 'Solo Dipendenti';
+    if (mode === 'clients_only') return 'Tutti i clienti';
+    if (mode === 'employees_only') return 'Tutti i dipendenti';
     if (mode === 'specific_clients') {
       const names = getClientNames(doc.target_client_ids || [], nonEmployeeClients);
       return names.length > 0 ? names.join(', ') : 'Clienti specifici';
@@ -1623,9 +1635,10 @@ export default function SystemDocumentsSection() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 flex-wrap px-1 pb-1">
                     {[
-                      { count: aiDocsConsultant.length + kbDocsConsultant.length, label: 'Consulente', color: 'bg-indigo-100 text-indigo-700' },
+                      { count: aiDocsConsultantOnly.length, label: 'Solo per me', color: 'bg-amber-100 text-amber-700' },
+                      { count: aiDocsConsultant.length + kbDocsConsultant.length, label: 'Tutti', color: 'bg-indigo-100 text-indigo-700' },
                       { count: aiDocsClients.length, label: 'Clienti', color: 'bg-blue-100 text-blue-700' },
-                      { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-cyan-100 text-cyan-700' },
+                      { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-emerald-100 text-emerald-700' },
                       { count: whatsappDocs.length, label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
                       { count: autonomousDocs.length + kbDocsAutonomous.length, label: 'Agenti', color: 'bg-purple-100 text-purple-700' },
                     ].filter(s => s.count > 0).map(s => (
@@ -1643,9 +1656,16 @@ export default function SystemDocumentsSection() {
                     </span>
                   </div>
                   {renderGroupSection(
+                    'ai_consultant_only',
+                    'Solo per me (privato)',
+                    <Lock className="h-4 w-4 text-amber-600" />,
+                    aiDocsConsultantOnly,
+                    { border: 'border-amber-300', bg: 'bg-amber-50/30', headerBg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700 border-amber-200', iconBg: 'bg-amber-100', text: 'text-amber-800' },
+                  )}
+                  {renderGroupSection(
                     'ai_consultant',
-                    'Istruzioni Consulente (AI)',
-                    <Sparkles className="h-4 w-4 text-indigo-600" />,
+                    'AI per Tutti (Clienti + Dipendenti)',
+                    <Globe className="h-4 w-4 text-indigo-600" />,
                     aiDocsConsultant,
                     { border: 'border-indigo-300', bg: 'bg-indigo-50/30', headerBg: 'bg-indigo-50/50', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', iconBg: 'bg-indigo-100', text: 'text-indigo-800' },
                     undefined,
@@ -1654,7 +1674,7 @@ export default function SystemDocumentsSection() {
                   {renderGroupSection(
                     'ai_clients',
                     'AI per Clienti',
-                    <Sparkles className="h-4 w-4 text-blue-600" />,
+                    <UserRound className="h-4 w-4 text-blue-600" />,
                     aiDocsClients,
                     { border: 'border-blue-300', bg: 'bg-blue-50/30', headerBg: 'bg-blue-50/50', badge: 'bg-blue-100 text-blue-700 border-blue-200', iconBg: 'bg-blue-100', text: 'text-blue-800' },
                     (doc) => {
@@ -1665,9 +1685,9 @@ export default function SystemDocumentsSection() {
                   {renderGroupSection(
                     'ai_employees',
                     'AI per Dipendenti',
-                    <Sparkles className="h-4 w-4 text-cyan-600" />,
+                    <HardHat className="h-4 w-4 text-emerald-600" />,
                     aiDocsEmployees,
-                    { border: 'border-cyan-300', bg: 'bg-cyan-50/30', headerBg: 'bg-cyan-50/50', badge: 'bg-cyan-100 text-cyan-700 border-cyan-200', iconBg: 'bg-cyan-100', text: 'text-cyan-800' },
+                    { border: 'border-emerald-300', bg: 'bg-emerald-50/30', headerBg: 'bg-emerald-50/50', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', iconBg: 'bg-emerald-100', text: 'text-emerald-800' },
                     (doc) => {
                       const label = getTargetModeLabel(doc);
                       return label ? `Destinatari: ${label}` : null;
@@ -2266,8 +2286,8 @@ export default function SystemDocumentsSection() {
                           <Sparkles className="h-4 w-4 text-blue-600" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">AI Assistant Clienti</p>
-                          <p className="text-xs text-muted-foreground">Inietta nel chatbot AI visibile ai clienti/dipendenti</p>
+                          <p className="text-sm font-semibold text-slate-800">AI Assistant</p>
+                          <p className="text-xs text-muted-foreground">Inietta nel chatbot AI — scegli chi potrà vederlo</p>
                         </div>
                       </div>
                       <Switch
@@ -2278,149 +2298,242 @@ export default function SystemDocumentsSection() {
 
                     {form.target_client_assistant && (
                       <div className="p-4 space-y-3 border-t border-blue-200 bg-white/50">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-blue-800 uppercase tracking-wide">A chi mostrare?</Label>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {([
-                              { value: 'all', label: 'Tutti', icon: '👥' },
-                              { value: 'clients_only', label: 'Solo Clienti', icon: '🧑' },
-                              { value: 'employees_only', label: 'Solo Dipendenti', icon: '👷' },
-                              { value: 'specific_clients', label: 'Clienti Specifici', icon: '🎯' },
-                              { value: 'specific_departments', label: 'Per Reparto', icon: '🏢' },
-                              { value: 'specific_employees', label: 'Dipendenti Specifici', icon: '📋' },
-                            ] as const).map(opt => (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => setForm(f => ({ ...f, target_client_mode: opt.value as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
-                                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium border transition-all ${
-                                  form.target_client_mode === opt.value
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                                }`}
-                              >
-                                <span>{opt.icon}</span>
-                                {opt.label}
-                              </button>
-                            ))}
+                        <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Chi deve vedere questo documento?</Label>
+
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, target_client_mode: 'consultant_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                          className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
+                            form.target_client_mode === 'consultant_only'
+                              ? 'border-amber-400 bg-amber-50 shadow-sm ring-1 ring-amber-200'
+                              : 'border-slate-200 hover:border-amber-300 hover:bg-amber-50/30'
+                          }`}
+                        >
+                          <div className={`p-2 rounded-lg shrink-0 ${form.target_client_mode === 'consultant_only' ? 'bg-amber-200' : 'bg-slate-100'}`}>
+                            <Lock className={`h-4 w-4 ${form.target_client_mode === 'consultant_only' ? 'text-amber-700' : 'text-slate-500'}`} />
                           </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${form.target_client_mode === 'consultant_only' ? 'text-amber-800' : 'text-slate-700'}`}>Solo per me</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Visibile solo nel tuo AI Assistant personale. Nessun cliente o dipendente lo vedrà — come un documento nella tua Knowledge Base privata.</p>
+                          </div>
+                          {form.target_client_mode === 'consultant_only' && (
+                            <div className="shrink-0 mt-0.5"><CheckCircle2 className="h-5 w-5 text-amber-600" /></div>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, target_client_mode: 'all' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                          className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
+                            form.target_client_mode === 'all'
+                              ? 'border-indigo-400 bg-indigo-50 shadow-sm ring-1 ring-indigo-200'
+                              : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30'
+                          }`}
+                        >
+                          <div className={`p-2 rounded-lg shrink-0 ${form.target_client_mode === 'all' ? 'bg-indigo-200' : 'bg-slate-100'}`}>
+                            <Globe className={`h-4 w-4 ${form.target_client_mode === 'all' ? 'text-indigo-700' : 'text-slate-500'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${form.target_client_mode === 'all' ? 'text-indigo-800' : 'text-slate-700'}`}>Tutti</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Ogni persona che usa il chatbot AI vedrà questo documento — clienti e dipendenti.</p>
+                          </div>
+                          {form.target_client_mode === 'all' && (
+                            <div className="shrink-0 mt-0.5"><CheckCircle2 className="h-5 w-5 text-indigo-600" /></div>
+                          )}
+                        </button>
+
+                        <div className={`rounded-xl border-2 overflow-hidden transition-all ${
+                          ['clients_only', 'specific_clients'].includes(form.target_client_mode)
+                            ? 'border-blue-400 bg-blue-50/30 shadow-sm ring-1 ring-blue-200'
+                            : 'border-slate-200 hover:border-blue-300'
+                        }`}>
+                          <button
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, target_client_mode: 'clients_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                            className="w-full flex items-start gap-3 p-3.5 text-left"
+                          >
+                            <div className={`p-2 rounded-lg shrink-0 ${['clients_only', 'specific_clients'].includes(form.target_client_mode) ? 'bg-blue-200' : 'bg-slate-100'}`}>
+                              <UserRound className={`h-4 w-4 ${['clients_only', 'specific_clients'].includes(form.target_client_mode) ? 'text-blue-700' : 'text-slate-500'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold ${['clients_only', 'specific_clients'].includes(form.target_client_mode) ? 'text-blue-800' : 'text-slate-700'}`}>Clienti</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Solo i clienti vedranno questo documento nel chatbot AI. I dipendenti non lo vedranno.</p>
+                            </div>
+                            {['clients_only', 'specific_clients'].includes(form.target_client_mode) && (
+                              <div className="shrink-0 mt-0.5"><CheckCircle2 className="h-5 w-5 text-blue-600" /></div>
+                            )}
+                          </button>
+                          {['clients_only', 'specific_clients'].includes(form.target_client_mode) && (
+                            <div className="px-4 pb-3 pt-1 border-t border-blue-200 space-y-2.5">
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => setForm(f => ({ ...f, target_client_mode: 'clients_only' as TargetClientMode, target_client_ids: [] }))}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${form.target_client_mode === 'clients_only' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}>
+                                  Tutti i clienti
+                                </button>
+                                <button type="button" onClick={() => setForm(f => ({ ...f, target_client_mode: 'specific_clients' as TargetClientMode, target_client_ids: [] }))}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${form.target_client_mode === 'specific_clients' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}>
+                                  Scegli clienti
+                                </button>
+                              </div>
+                              {form.target_client_mode === 'specific_clients' && (
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs font-medium text-slate-600">
+                                    {form.target_client_ids.length} clienti selezionati
+                                  </Label>
+                                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                                    {nonEmployeeClients.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
+                                    ) : nonEmployeeClients.map(client => (
+                                      <label key={client.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
+                                        <Checkbox
+                                          checked={form.target_client_ids.includes(client.id)}
+                                          onCheckedChange={(checked) =>
+                                            setForm(f => ({
+                                              ...f,
+                                              target_client_ids: checked
+                                                ? [...f.target_client_ids, client.id]
+                                                : f.target_client_ids.filter(id => id !== client.id),
+                                            }))
+                                          }
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm truncate">{client.firstName} {client.lastName}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{client.email}</p>
+                                        </div>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {form.target_client_mode === 'specific_clients' && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">
-                              {form.target_client_ids.length} clienti selezionati
-                            </Label>
-                            <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
-                              {nonEmployeeClients.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-2 text-center">Nessun cliente trovato</p>
-                              ) : nonEmployeeClients.map(client => (
-                                <label key={client.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
-                                  <Checkbox
-                                    checked={form.target_client_ids.includes(client.id)}
-                                    onCheckedChange={(checked) =>
-                                      setForm(f => ({
-                                        ...f,
-                                        target_client_ids: checked
-                                          ? [...f.target_client_ids, client.id]
-                                          : f.target_client_ids.filter(id => id !== client.id),
-                                      }))
-                                    }
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm truncate">{client.firstName} {client.lastName}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{client.email}</p>
-                                  </div>
-                                </label>
-                              ))}
+                        <div className={`rounded-xl border-2 overflow-hidden transition-all ${
+                          ['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode)
+                            ? 'border-emerald-400 bg-emerald-50/30 shadow-sm ring-1 ring-emerald-200'
+                            : 'border-slate-200 hover:border-emerald-300'
+                        }`}>
+                          <button
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, target_client_mode: 'employees_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                            className="w-full flex items-start gap-3 p-3.5 text-left"
+                          >
+                            <div className={`p-2 rounded-lg shrink-0 ${['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode) ? 'bg-emerald-200' : 'bg-slate-100'}`}>
+                              <HardHat className={`h-4 w-4 ${['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode) ? 'text-emerald-700' : 'text-slate-500'}`} />
                             </div>
-                          </div>
-                        )}
-
-                        {form.target_client_mode === 'specific_departments' && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">
-                              {form.target_department_ids.length} reparti selezionati
-                            </Label>
-                            <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
-                              {departments.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato — crea i reparti dalla pagina Gestione Clienti</p>
-                              ) : departments.map(dept => (
-                                <label key={dept.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
-                                  <Checkbox
-                                    checked={form.target_department_ids.includes(dept.id)}
-                                    onCheckedChange={(checked) =>
-                                      setForm(f => ({
-                                        ...f,
-                                        target_department_ids: checked
-                                          ? [...f.target_department_ids, dept.id]
-                                          : f.target_department_ids.filter(id => id !== dept.id),
-                                      }))
-                                    }
-                                  />
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
-                                    <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-sm truncate">{dept.name}</span>
-                                    <Badge variant="outline" className="text-xs shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
-                                  </div>
-                                </label>
-                              ))}
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold ${['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode) ? 'text-emerald-800' : 'text-slate-700'}`}>Dipendenti</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Solo i dipendenti vedranno questo documento. I clienti non lo vedranno.</p>
                             </div>
-                          </div>
-                        )}
+                            {['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode) && (
+                              <div className="shrink-0 mt-0.5"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
+                            )}
+                          </button>
+                          {['employees_only', 'specific_departments', 'specific_employees'].includes(form.target_client_mode) && (
+                            <div className="px-4 pb-3 pt-1 border-t border-emerald-200 space-y-2.5">
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => setForm(f => ({ ...f, target_client_mode: 'employees_only' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${form.target_client_mode === 'employees_only' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}>
+                                  Tutti i dipendenti
+                                </button>
+                                <button type="button" onClick={() => setForm(f => ({ ...f, target_client_mode: 'specific_departments' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${form.target_client_mode === 'specific_departments' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}>
+                                  Per reparto
+                                </button>
+                                <button type="button" onClick={() => setForm(f => ({ ...f, target_client_mode: 'specific_employees' as TargetClientMode, target_client_ids: [], target_department_ids: [] }))}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${form.target_client_mode === 'specific_employees' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'}`}>
+                                  Scegli dipendenti
+                                </button>
+                              </div>
 
-                        {form.target_client_mode === 'specific_employees' && (
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">
-                              {form.target_client_ids.length} dipendenti selezionati
-                            </Label>
-                            <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
-                              {employeeClients.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
-                              ) : (() => {
-                                const grouped = new Map<string, ClientUser[]>();
-                                employeeClients.forEach(emp => {
-                                  const deptId = emp.departmentId || '_none';
-                                  if (!grouped.has(deptId)) grouped.set(deptId, []);
-                                  grouped.get(deptId)!.push(emp);
-                                });
-                                return Array.from(grouped.entries()).map(([deptId, emps]) => {
-                                  const dept = departments.find(d => d.id === deptId);
-                                  return (
-                                    <div key={deptId}>
-                                      {grouped.size > 1 && (
-                                        <div className="flex items-center gap-1.5 px-1 py-1.5 border-b border-slate-100">
-                                          {dept && <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dept.color || '#6b7280' }} />}
-                                          <span className="text-xs font-semibold text-slate-500">{dept?.name || 'Senza reparto'}</span>
+                              {form.target_client_mode === 'specific_departments' && (
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs font-medium text-slate-600">
+                                    {form.target_department_ids.length} reparti selezionati
+                                  </Label>
+                                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                                    {departments.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground py-2 text-center">Nessun reparto trovato — crea i reparti dalla pagina Gestione Clienti</p>
+                                    ) : departments.map(dept => (
+                                      <label key={dept.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-emerald-50 transition-colors">
+                                        <Checkbox
+                                          checked={form.target_department_ids.includes(dept.id)}
+                                          onCheckedChange={(checked) =>
+                                            setForm(f => ({
+                                              ...f,
+                                              target_department_ids: checked
+                                                ? [...f.target_department_ids, dept.id]
+                                                : f.target_department_ids.filter(id => id !== dept.id),
+                                            }))
+                                          }
+                                        />
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                          <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: dept.color || '#6b7280' }} />
+                                          <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                          <span className="text-sm truncate">{dept.name}</span>
+                                          <Badge variant="outline" className="text-xs shrink-0 ml-auto">{dept.employee_count} dip.</Badge>
                                         </div>
-                                      )}
-                                      {emps.map(emp => (
-                                        <label key={emp.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-blue-50 transition-colors">
-                                          <Checkbox
-                                            checked={form.target_client_ids.includes(emp.id)}
-                                            onCheckedChange={(checked) =>
-                                              setForm(f => ({
-                                                ...f,
-                                                target_client_ids: checked
-                                                  ? [...f.target_client_ids, emp.id]
-                                                  : f.target_client_ids.filter(id => id !== emp.id),
-                                              }))
-                                            }
-                                          />
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm truncate">{emp.firstName} {emp.lastName}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {form.target_client_mode === 'specific_employees' && (
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs font-medium text-slate-600">
+                                    {form.target_client_ids.length} dipendenti selezionati
+                                  </Label>
+                                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border bg-white p-2">
+                                    {employeeClients.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground py-2 text-center">Nessun dipendente trovato</p>
+                                    ) : (() => {
+                                      const grouped = new Map<string, ClientUser[]>();
+                                      employeeClients.forEach(emp => {
+                                        const deptId = emp.departmentId || '_none';
+                                        if (!grouped.has(deptId)) grouped.set(deptId, []);
+                                        grouped.get(deptId)!.push(emp);
+                                      });
+                                      return Array.from(grouped.entries()).map(([deptId, emps]) => {
+                                        const dept = departments.find(d => d.id === deptId);
+                                        return (
+                                          <div key={deptId}>
+                                            {grouped.size > 1 && (
+                                              <div className="flex items-center gap-1.5 px-1 py-1.5 border-b border-slate-100">
+                                                {dept && <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dept.color || '#6b7280' }} />}
+                                                <span className="text-xs font-semibold text-slate-500">{dept?.name || 'Senza reparto'}</span>
+                                              </div>
+                                            )}
+                                            {emps.map(emp => (
+                                              <label key={emp.id} className="flex items-center gap-2 rounded-md p-2 cursor-pointer hover:bg-emerald-50 transition-colors">
+                                                <Checkbox
+                                                  checked={form.target_client_ids.includes(emp.id)}
+                                                  onCheckedChange={(checked) =>
+                                                    setForm(f => ({
+                                                      ...f,
+                                                      target_client_ids: checked
+                                                        ? [...f.target_client_ids, emp.id]
+                                                        : f.target_client_ids.filter(id => id !== emp.id),
+                                                    }))
+                                                  }
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-sm truncate">{emp.firstName} {emp.lastName}</p>
+                                                  <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                                                </div>
+                                              </label>
+                                            ))}
                                           </div>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  );
-                                });
-                              })()}
+                                        );
+                                      });
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
