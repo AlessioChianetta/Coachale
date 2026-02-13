@@ -404,7 +404,7 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
     setIsImporting(true);
     const filesList = Array.from(selectedFiles.values());
     setImportProgress({ current: 0, total: filesList.length });
-    const extractedTexts: string[] = [];
+    const filesResult: Array<{text: string; fileName: string}> = [];
     let errorCount = 0;
 
     for (let i = 0; i < filesList.length; i++) {
@@ -422,7 +422,7 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
         }
         const result = await res.json();
         if (result.data?.text) {
-          extractedTexts.push(result.data.text);
+          filesResult.push({ text: result.data.text, fileName: filesList[i].name });
         }
       } catch (err: any) {
         errorCount++;
@@ -433,20 +433,12 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
     setIsImporting(false);
     setImportProgress({ current: 0, total: 0 });
 
-    if (extractedTexts.length > 0) {
-      if (onMultipleExtracted && filesList.length > 0) {
-        const filesResult: Array<{text: string; fileName: string}> = [];
-        let textIdx = 0;
-        for (let i = 0; i < filesList.length; i++) {
-          if (textIdx < extractedTexts.length) {
-            filesResult.push({ text: extractedTexts[textIdx], fileName: filesList[i].name });
-            textIdx++;
-          }
-        }
+    if (filesResult.length > 0) {
+      if (onMultipleExtracted) {
         onMultipleExtracted(filesResult);
       } else {
-        const concatenated = extractedTexts.join('\n\n---\n\n');
-        const fileName = filesList.length === 1 ? filesList[0].name : `${filesList.length} file importati`;
+        const concatenated = filesResult.map(f => f.text).join('\n\n---\n\n');
+        const fileName = filesResult.length === 1 ? filesResult[0].fileName : `${filesResult.length} file importati`;
         onTextExtracted(concatenated, fileName);
       }
       setSelectedFiles(new Map());
@@ -1006,13 +998,13 @@ export default function SystemDocumentsSection() {
     setWizardStep(1);
   };
 
-  const addContentEntry = (content: string, title: string, sourceType: 'manual' | 'drive' | 'upload', sourceFileName?: string) => {
+  const addContentEntry = (content: string, title: string, sourceType: 'manual' | 'drive' | 'upload', sourceFileName?: string, description?: string) => {
     const cleanTitle = title.replace(/\.[^/.]+$/, '');
     setContentEntries(prev => [...prev, {
       id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       title: cleanTitle,
       content,
-      description: '',
+      description: description || '',
       sourceType,
       sourceFileName,
     }]);
@@ -1963,7 +1955,7 @@ export default function SystemDocumentsSection() {
                             size="sm"
                             disabled={!manualTitle.trim() || !manualContent.trim()}
                             onClick={() => {
-                              addContentEntry(manualContent, manualTitle, 'manual');
+                              addContentEntry(manualContent, manualTitle, 'manual', undefined, manualDescription);
                               setManualTitle('');
                               setManualContent('');
                               setManualDescription('');
