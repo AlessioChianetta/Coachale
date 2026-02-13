@@ -82,6 +82,10 @@ import {
   Save,
   StickyNote,
   Bot,
+  HelpCircle,
+  Brain,
+  Zap,
+  Target,
 } from "lucide-react";
 import {
   Collapsible,
@@ -1479,7 +1483,11 @@ export default function ConsultantKnowledgeDocuments() {
           </div>
 
           <Tabs defaultValue="documenti" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+              <TabsTrigger value="guida" className="gap-2">
+                <HelpCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Guida</span>
+              </TabsTrigger>
               <TabsTrigger value="documenti" className="gap-2">
                 <FileText className="w-4 h-4" />
                 <span className="hidden sm:inline">Documenti</span>
@@ -1497,6 +1505,106 @@ export default function ConsultantKnowledgeDocuments() {
                 <span className="hidden sm:inline">Google Drive</span>
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="guida">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card className="border-amber-200 dark:border-amber-800/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                        <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <CardTitle className="text-base">Documenti</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>La <strong>memoria principale</strong> dell'AI. Qui carichi tutti i documenti che l'intelligenza artificiale usa per rispondere ai clienti.</p>
+                    <ul className="space-y-1.5 ml-1">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />PDF, DOCX, CSV, Excel, audio e testo</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Organizzabili in cartelle</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />Visibili solo a te e all'AI, mai ai clienti</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />L'AI li cerca automaticamente quando servono (File Search)</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/70 pt-1 italic">Esempio: listini prezzi, procedure interne, FAQ, manuali prodotto</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-violet-200 dark:border-violet-800/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                        <StickyNote className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <CardTitle className="text-base">Istruzioni AI</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>Le <strong>regole personalizzate</strong> che dici all'AI di seguire. Sono istruzioni dirette che modificano il comportamento dell'intelligenza artificiale.</p>
+                    <ul className="space-y-1.5 ml-1">
+                      <li className="flex items-start gap-2"><Zap className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" /><span><strong>System Prompt:</strong> sempre in memoria, ideale per istruzioni brevi</span></li>
+                      <li className="flex items-start gap-2"><Target className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" /><span><strong>File Search:</strong> cercate solo quando servono, per testi lunghi</span></li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Puoi scegliere a chi inviarle: AI Assistant, agenti autonomi, WhatsApp</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />Targeting granulare per reparto e cliente</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/70 pt-1 italic">Esempio: "rispondi sempre in italiano formale", "non offrire sconti oltre il 10%"</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-indigo-200 dark:border-indigo-800/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                        <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <CardTitle className="text-base">Agenti AI</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>La <strong>memoria dei dipendenti</strong> autonomi. Qui assegni documenti specifici ai tuoi 8 agenti AI, dando a ciascuno le conoscenze di cui ha bisogno.</p>
+                    <ul className="space-y-1.5 ml-1">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Ogni agente accede solo ai documenti assegnati</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Usano File Search per cercare info rilevanti durante i task</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />Seleziona i documenti dalla tua Knowledge Base esistente</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/70 pt-1 italic">Esempio: assegna il listino prezzi a Marco (vendite) e le procedure HR a Millie</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 dark:border-blue-800/50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                        <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <CardTitle className="text-base">Google Drive</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>Importa documenti <strong>direttamente da Google Drive</strong> senza doverli scaricare e ricaricare. Sincronizzazione automatica bidirezionale.</p>
+                    <ul className="space-y-1.5 ml-1">
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Sfoglia le tue cartelle Drive e seleziona i file</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Importa come Documento KB o come Istruzione AI</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Aggiornamento automatico quando modifichi il file su Drive</li>
+                      <li className="flex items-start gap-2"><CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />Google Docs, Sheets, PDF e altri formati supportati</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/70 pt-1 italic">Ideale per chi lavora gia con Google Workspace</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="mt-4 bg-gradient-to-r from-slate-50 to-blue-50/50 dark:from-slate-900/50 dark:to-blue-950/20 border-slate-200 dark:border-slate-700">
+                <CardContent className="py-4">
+                  <div className="flex items-start gap-3">
+                    <Brain className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">Come funziona il Cervello AI?</p>
+                      <p>I <strong>Documenti</strong> sono la base di conoscenza — l'AI li cerca quando un cliente fa una domanda. Le <strong>Istruzioni AI</strong> sono regole che l'AI segue sempre. Gli <strong>Agenti AI</strong> ricevono documenti specifici per il loro ruolo. <strong>Google Drive</strong> ti permette di tenere tutto sincronizzato con i tuoi file esistenti.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="documenti">
               <p className="text-sm text-muted-foreground mb-4 flex items-center gap-2">
