@@ -173,7 +173,10 @@ const PICKER_DRIVE_SECTIONS: { id: PickerDriveSection; label: string; icon: Reac
   { id: 'starred', label: 'Speciali', icon: <Star className="w-4 h-4" /> },
 ];
 
-function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, fileName: string) => void }) {
+function DriveFilePicker({ onTextExtracted, existingDocuments }: { 
+  onTextExtracted: (text: string, fileName: string) => void;
+  existingDocuments?: SystemDocument[];
+}) {
   const [currentSection, setCurrentSection] = useState<PickerDriveSection>('home');
   const [currentFolderId, setCurrentFolderId] = useState('root');
   const [breadcrumbs, setBreadcrumbs] = useState<{id: string; name: string}[]>([{ id: 'root', name: 'Home page' }]);
@@ -183,6 +186,18 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const { toast } = useToast();
+
+  const alreadyImportedMap = useMemo(() => {
+    const map = new Map<string, { source: string; title: string; content: string }>();
+    if (existingDocuments) {
+      existingDocuments.forEach(doc => {
+        if (doc.google_drive_file_id) {
+          map.set(doc.google_drive_file_id, { source: 'system', title: doc.title, content: doc.content });
+        }
+      });
+    }
+    return map;
+  }, [existingDocuments]);
 
   const { data: driveStatus, isLoading: driveStatusLoading } = useQuery({
     queryKey: ['/api/consultant/google-drive/status-picker'],
@@ -245,6 +260,31 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
     },
     enabled: driveStatus?.connected === true,
   });
+
+  const { data: kbDocsData } = useQuery({
+    queryKey: ['/api/consultant/knowledge/documents-drive-ids'],
+    queryFn: async () => {
+      const res = await fetch('/api/consultant/knowledge/documents?source=google_drive', {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: driveStatus?.connected === true,
+    staleTime: 60000,
+  });
+
+  const fullImportedMap = useMemo(() => {
+    const map = new Map(alreadyImportedMap);
+    const kbDocs: any[] = kbDocsData?.data || [];
+    kbDocs.forEach((doc: any) => {
+      if (doc.googleDriveFileId && !map.has(doc.googleDriveFileId)) {
+        map.set(doc.googleDriveFileId, { source: 'knowledge', title: doc.title, content: doc.content || '' });
+      }
+    });
+    return map;
+  }, [alreadyImportedMap, kbDocsData]);
 
   const rawFolders: any[] = foldersData?.data || [];
   const rawFiles: any[] = filesData?.data || [];
@@ -316,12 +356,24 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
   };
 
   const handleSelectAll = () => {
-    if (selectedFiles.size === filteredFiles.length && filteredFiles.length > 0) {
+    const selectableFiles = filteredFiles.filter((f: any) => !fullImportedMap.has(f.id));
+    if (selectedFiles.size === selectableFiles.length && selectableFiles.length > 0) {
       setSelectedFiles(new Map());
     } else {
       const newMap = new Map<string, { id: string; name: string }>();
-      filteredFiles.forEach((f: any) => newMap.set(f.id, { id: f.id, name: f.name }));
+      selectableFiles.forEach((f: any) => newMap.set(f.id, { id: f.id, name: f.name }));
       setSelectedFiles(newMap);
+    }
+  };
+
+  const handleReuseExisting = (fileId: string, fileName: string) => {
+    const existing = fullImportedMap.get(fileId);
+    if (existing && existing.content) {
+      onTextExtracted(existing.content, fileName);
+      toast({ title: "Contenuto riutilizzato", description: `Contenuto di "${existing.title}" riutilizzato senza re-importazione` });
+    } else {
+      handleFileCheck({ id: fileId, name: fileName }, true);
+      toast({ title: "Contenuto non disponibile", description: "Il file verrà re-importato da Google Drive", variant: "default" });
     }
   };
 
@@ -507,35 +559,63 @@ function DriveFilePicker({ onTextExtracted }: { onTextExtracted: (text: string, 
                     <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-500 shrink-0" />
                   </button>
                 ))}
-                {filteredFiles.map((file: any) => (
-                  <div
-                    key={file.id}
-                    className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${
-                      selectedFiles.has(file.id) ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={selectedFiles.has(file.id)}
-                      onCheckedChange={(checked) => handleFileCheck(file, !!checked)}
-                      className="shrink-0"
-                      disabled={isImporting}
-                    />
-                    {getFileIcon(file.mimeType)}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs truncate block">{file.name}</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {file.modifiedTime && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                        )}
-                        {file.size && (
-                          <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
-                        )}
+                {filteredFiles.map((file: any) => {
+                  const imported = fullImportedMap.get(file.id);
+                  const isImportedFile = !!imported;
+                  return (
+                    <div
+                      key={file.id}
+                      className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${
+                        isImportedFile ? 'bg-green-50/40' : selectedFiles.has(file.id) ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      {isImportedFile ? (
+                        <div className="shrink-0 w-4 h-4 flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        </div>
+                      ) : (
+                        <Checkbox
+                          checked={selectedFiles.has(file.id)}
+                          onCheckedChange={(checked) => handleFileCheck(file, !!checked)}
+                          className="shrink-0"
+                          disabled={isImporting}
+                        />
+                      )}
+                      {getFileIcon(file.mimeType)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs truncate">{file.name}</span>
+                          {isImportedFile && (
+                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 shrink-0 bg-green-50 text-green-700 border-green-300">
+                              {imported.source === 'system' ? 'Doc. Sistema' : 'Knowledge Base'}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {file.modifiedTime && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(file.modifiedTime).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                          {file.size && (
+                            <span className="text-[10px] text-muted-foreground">{formatFileSize(file.size)}</span>
+                          )}
+                        </div>
                       </div>
+                      {isImportedFile && imported.content && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReuseExisting(file.id, file.name)}
+                          className="text-[10px] h-6 px-2 text-green-700 hover:text-green-800 hover:bg-green-100 shrink-0"
+                        >
+                          Riusa
+                        </Button>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
@@ -1464,6 +1544,7 @@ export default function SystemDocumentsSection() {
 
                   {contentSource === 'drive' && (
                     <DriveFilePicker
+                      existingDocuments={documents}
                       onTextExtracted={(text, fileName) => {
                         setForm(f => ({ ...f, content: text, title: f.title || fileName.replace(/\.[^/.]+$/, '') }));
                         setExtractedFileName(fileName);
