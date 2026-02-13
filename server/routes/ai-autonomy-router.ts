@@ -1778,4 +1778,69 @@ router.delete("/blocks/:id", authenticateToken, requireAnyRole(["consultant", "s
   }
 });
 
+router.delete("/blocks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const result = await db.execute(sql`
+      DELETE FROM ai_task_blocks
+      WHERE consultant_id = ${consultantId}
+    `);
+
+    return res.json({ success: true, deleted: result.rowCount ?? 0 });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error bulk deleting blocks:", error);
+    return res.status(500).json({ error: "Failed to bulk delete blocks" });
+  }
+});
+
+router.delete("/tasks/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      DELETE FROM ai_scheduled_tasks
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: "Task non trovato" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error deleting task:", error);
+    return res.status(500).json({ error: "Failed to delete task" });
+  }
+});
+
+router.post("/reset-all", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const [tasksResult, blocksResult, activityResult] = await Promise.all([
+      db.execute(sql`DELETE FROM ai_scheduled_tasks WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'`),
+      db.execute(sql`DELETE FROM ai_task_blocks WHERE consultant_id = ${consultantId}`),
+      db.execute(sql`DELETE FROM ai_activity_log WHERE consultant_id = ${consultantId}`),
+    ]);
+
+    return res.json({
+      success: true,
+      deleted: {
+        tasks: tasksResult.rowCount ?? 0,
+        blocks: blocksResult.rowCount ?? 0,
+        activityLogs: activityResult.rowCount ?? 0,
+      },
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error resetting all data:", error);
+    return res.status(500).json({ error: "Failed to reset data" });
+  }
+});
+
 export default router;

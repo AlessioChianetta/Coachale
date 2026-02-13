@@ -18,8 +18,10 @@ import {
   Plus, ChevronUp, ChevronLeft, ChevronRight, BookOpen, Sparkles,
   Loader2, Clock, CheckCircle, XCircle, User, ListTodo, TrendingUp,
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
-  Save, RefreshCw, AlertCircle, Info
+  Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { AITask, TasksResponse, TasksStats, TaskDetailResponse, NewTaskData, ActivityItem } from "./types";
 import { TASK_LIBRARY, TASK_CATEGORIES, EMPTY_NEW_TASK, AI_ROLE_PROFILES } from "./constants";
 import {
@@ -94,6 +96,109 @@ function DashboardTab({
   const [dashboardRoleFilter, setDashboardRoleFilter] = React.useState<string>("all");
   const [cancelDialogTask, setCancelDialogTask] = React.useState<AITask | null>(null);
   const [isBlockCancel, setIsBlockCancel] = React.useState(false);
+  const [blocksData, setBlocksData] = React.useState<any[]>([]);
+  const [blocksLoading, setBlocksLoading] = React.useState(false);
+  const [deletingBlockId, setDeletingBlockId] = React.useState<string | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = React.useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
+  const [resettingAll, setResettingAll] = React.useState(false);
+  const [gestioneTab, setGestioneTab] = React.useState("blocks");
+
+  const fetchBlocks = React.useCallback(async () => {
+    setBlocksLoading(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/blocks", { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setBlocksData(data);
+      }
+    } catch {}
+    setBlocksLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    fetchBlocks();
+  }, [fetchBlocks]);
+
+  const handleDeleteBlock = async (blockId: string) => {
+    setDeletingBlockId(blockId);
+    try {
+      const res = await fetch(`/api/ai-autonomy/blocks/${blockId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setBlocksData(prev => prev.filter(b => b.id !== blockId));
+        toast({ title: "Blocco rimosso", description: "Il blocco è stato eliminato con successo" });
+      } else throw new Error();
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eliminare il blocco", variant: "destructive" });
+    }
+    setDeletingBlockId(null);
+  };
+
+  const handleBulkDeleteBlocks = async () => {
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/blocks", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setBlocksData([]);
+        toast({ title: "Tutti i blocchi rimossi", description: "Tutti i blocchi sono stati eliminati" });
+      } else throw new Error();
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eliminare i blocchi", variant: "destructive" });
+    }
+    setBulkDeleting(false);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setDeletingTaskId(taskId);
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+        toast({ title: "Task eliminato", description: "Il task è stato eliminato definitivamente" });
+        if (selectedTaskId === taskId) setSelectedTaskId(null);
+      } else throw new Error();
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eliminare il task", variant: "destructive" });
+    }
+    setDeletingTaskId(null);
+  };
+
+  const handleResetAll = async () => {
+    setResettingAll(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/reset-all", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBlocksData([]);
+        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+        toast({
+          title: "Reset completato",
+          description: `Eliminati: ${data.deleted.tasks} task, ${data.deleted.blocks} blocchi, ${data.deleted.activityLogs} log attività`,
+        });
+      } else throw new Error();
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eseguire il reset", variant: "destructive" });
+    }
+    setResettingAll(false);
+  };
 
   const handleCancelTask = async (taskId: string, block: boolean) => {
     try {
@@ -1566,6 +1671,194 @@ function DashboardTab({
           )}
         </DialogContent>
       </Dialog>
+
+      <Card className="border border-border rounded-xl shadow-sm border-l-4 border-l-red-400">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+            <Database className="h-5 w-5 text-red-500" />
+            Gestione Dati AI
+          </CardTitle>
+          <CardDescription>
+            Visualizza e gestisci i task bloccati e lo storico. Puoi eliminare singoli record o fare un reset completo per ricominciare da zero.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={gestioneTab} onValueChange={setGestioneTab}>
+            <div className="flex items-center justify-between mb-4">
+              <TabsList>
+                <TabsTrigger value="blocks" className="gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  Blocchi ({blocksData.length})
+                </TabsTrigger>
+                <TabsTrigger value="history" className="gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  Storico Task ({tasksData?.total || 0})
+                </TabsTrigger>
+              </TabsList>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-1.5" disabled={resettingAll}>
+                    {resettingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    Reset Totale
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                      <AlertCircle className="h-5 w-5" />
+                      Reset Totale — Sei sicuro?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <p>Questa azione eliminerà <strong>permanentemente</strong>:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>Tutti i task AI (attivi, completati, falliti, cancellati)</li>
+                        <li>Tutti i blocchi / task rifiutati</li>
+                        <li>Tutto il log delle attività AI</li>
+                      </ul>
+                      <p className="font-semibold text-red-600">Non è possibile annullare questa operazione.</p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleResetAll}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Sì, elimina tutto
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            <TabsContent value="blocks" className="space-y-3">
+              {blocksLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : blocksData.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Shield className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Nessun blocco attivo</p>
+                  <p className="text-xs mt-1">Quando rifiuti un task, il blocco appare qui</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">{blocksData.length} blocchi attivi</p>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700" disabled={bulkDeleting}>
+                          {bulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          Svuota tutti
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eliminare tutti i blocchi?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Verranno rimossi tutti i {blocksData.length} blocchi. L'AI potrà proporre nuovamente task per questi clienti/categorie.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleBulkDeleteBlocks} className="bg-red-600 hover:bg-red-700">
+                            Elimina tutti
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {blocksData.map((block) => (
+                      <div key={block.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{block.contact_display_name || block.contact_name || "Contatto sconosciuto"}</span>
+                            {block.ai_role && (
+                              <Badge variant="outline" className={cn("text-xs", getRoleBadge(block.ai_role))}>
+                                {block.ai_role.charAt(0).toUpperCase() + block.ai_role.slice(1)}
+                              </Badge>
+                            )}
+                            {block.task_category && getCategoryBadge(block.task_category)}
+                          </div>
+                          {block.reason && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{block.reason}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {block.blocked_at ? new Date(block.blocked_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteBlock(block.id)}
+                          disabled={deletingBlockId === block.id}
+                          className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        >
+                          {deletingBlockId === block.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-3">
+              {loadingTasks ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : !tasksData?.tasks || tasksData.tasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Nessun task nello storico</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                  {tasksData.tasks.map((task) => (
+                    <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-accent/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm truncate max-w-[300px]">{task.ai_instruction}</span>
+                          {getTaskStatusBadge(task.status)}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {task.contact_name && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {task.contact_name}
+                            </span>
+                          )}
+                          {task.ai_role && (
+                            <Badge variant="outline" className={cn("text-[10px]", getRoleBadge(task.ai_role))}>
+                              {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                            </Badge>
+                          )}
+                          {task.task_category && getCategoryBadge(task.task_category)}
+                          <span className="text-[10px] text-muted-foreground">
+                            {task.created_at ? new Date(task.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteTask(task.id)}
+                        disabled={deletingTaskId === task.id}
+                        className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                      >
+                        {deletingTaskId === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       <Dialog open={!!cancelDialogTask} onOpenChange={(open) => { if (!open) { setCancelDialogTask(null); setIsBlockCancel(false); } }}>
         <DialogContent className="max-w-md">
