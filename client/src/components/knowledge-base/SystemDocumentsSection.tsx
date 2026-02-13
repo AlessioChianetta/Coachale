@@ -82,6 +82,8 @@ import {
   CalendarDays,
   Hash,
   Zap,
+  Share,
+  ArrowRightLeft,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
@@ -707,7 +709,10 @@ export default function SystemDocumentsSection() {
   const [form, setForm] = useState<DocumentForm>(emptyForm());
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [activeTab, setActiveTab] = useState<string>('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ ai_consultant: true, ai_clients: true, ai_employees: true, whatsapp: true, autonomous: true, unassigned: true });
+  const [transferDoc, setTransferDoc] = useState<SystemDocument | null>(null);
+  const [transferTargets, setTransferTargets] = useState<Record<string, boolean>>({});
   const [wizardStep, setWizardStep] = useState(1);
   const [contentSource, setContentSource] = useState<'manual' | 'drive' | 'upload'>('manual');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -1234,6 +1239,21 @@ export default function SystemDocumentsSection() {
   const kbDocsConsultantOnly = kbDocsForGroups;
   const kbDocsAutonomous = kbDocsForGroups.filter(d => d.agentIds.length > 0);
 
+  const effectiveActiveTab = useMemo(() => {
+    if (activeTab) return activeTab;
+    const tabCounts = [
+      { key: 'ai_consultant_only', count: aiDocsConsultantOnly.length + kbDocsConsultantOnly.length },
+      { key: 'ai_consultant', count: aiDocsConsultant.length },
+      { key: 'ai_clients', count: aiDocsClients.length },
+      { key: 'ai_employees', count: aiDocsEmployees.length },
+      { key: 'whatsapp', count: whatsappDocs.length },
+      { key: 'autonomous', count: autonomousDocs.length + kbDocsAutonomous.length },
+      { key: 'unassigned', count: unassignedDocs.length },
+    ];
+    const firstNonEmpty = tabCounts.find(t => t.count > 0);
+    return firstNonEmpty?.key || 'ai_consultant_only';
+  }, [activeTab, aiDocsConsultantOnly.length, kbDocsConsultantOnly.length, aiDocsConsultant.length, aiDocsClients.length, aiDocsEmployees.length, whatsappDocs.length, autonomousDocs.length, kbDocsAutonomous.length, unassignedDocs.length]);
+
   const getDepartmentNames = (deptIds: string[]) => {
     return deptIds.map(id => {
       const dept = departments.find(d => d.id === id);
@@ -1312,6 +1332,133 @@ export default function SystemDocumentsSection() {
     navigator.clipboard.writeText(text);
     setCopiedContent(true);
     setTimeout(() => setCopiedContent(false), 2000);
+  };
+
+  const openTransferDialog = (doc: SystemDocument) => {
+    const currentGroups = getDocGroups(doc);
+    const targets: Record<string, boolean> = {};
+    ['ai_consultant_only', 'ai_consultant', 'ai_clients', 'ai_employees', 'whatsapp', 'autonomous'].forEach(g => {
+      targets[g] = currentGroups.includes(g);
+    });
+    setTransferTargets(targets);
+    setTransferDoc(doc);
+  };
+
+  const transferMutation = useMutation({
+    mutationFn: async ({ doc, targets }: { doc: SystemDocument; targets: Record<string, boolean> }) => {
+      const updatedData: any = {
+        title: doc.title,
+        content: doc.content,
+        description: doc.description || '',
+        injection_mode: doc.injection_mode || 'system_prompt',
+        priority: doc.priority || 0,
+        is_active: doc.is_active,
+        target_client_assistant: false,
+        target_client_mode: doc.target_client_mode || 'all',
+        target_client_ids: doc.target_client_ids || [],
+        target_department_ids: doc.target_department_ids || [],
+        target_whatsapp_agents: doc.target_whatsapp_agents || {},
+        target_autonomous_agents: doc.target_autonomous_agents || {},
+      };
+
+      const hasAiTarget = targets.ai_consultant_only || targets.ai_consultant || targets.ai_clients || targets.ai_employees;
+      if (hasAiTarget) {
+        updatedData.target_client_assistant = true;
+        if (targets.ai_consultant_only) {
+          updatedData.target_client_mode = 'consultant_only';
+        } else if (targets.ai_consultant) {
+          updatedData.target_client_mode = 'all';
+        } else if (targets.ai_clients) {
+          const currentMode = doc.target_client_mode;
+          updatedData.target_client_mode = currentMode === 'specific_clients' ? 'specific_clients' : 'clients_only';
+          updatedData.target_client_ids = doc.target_client_ids || [];
+        } else if (targets.ai_employees) {
+          const currentMode = doc.target_client_mode;
+          if (currentMode === 'specific_employees' || currentMode === 'specific_departments') {
+            updatedData.target_client_mode = currentMode;
+          } else {
+            updatedData.target_client_mode = 'employees_only';
+          }
+          updatedData.target_client_ids = doc.target_client_ids || [];
+          updatedData.target_department_ids = doc.target_department_ids || [];
+        }
+      } else {
+        updatedData.target_client_assistant = false;
+        updatedData.target_client_mode = 'all';
+      }
+
+      if (!targets.whatsapp) {
+        updatedData.target_whatsapp_agents = {};
+      }
+
+      if (!targets.autonomous) {
+        updatedData.target_autonomous_agents = {};
+      }
+
+      if (targets.whatsapp && !Object.values(doc.target_whatsapp_agents || {}).some(v => v)) {
+        toast({ title: "Attenzione", description: "Per aggiungere il documento a WhatsApp, prima modifica il documento e seleziona gli agenti WhatsApp specifici.", variant: "destructive" });
+        throw new Error("Seleziona prima gli agenti WhatsApp dal modulo di modifica");
+      }
+
+      if (targets.autonomous && !Object.values(doc.target_autonomous_agents || {}).some(v => v)) {
+        toast({ title: "Attenzione", description: "Per aggiungere il documento agli Agenti Autonomi, prima modifica il documento e seleziona gli agenti specifici.", variant: "destructive" });
+        throw new Error("Seleziona prima gli agenti autonomi dal modulo di modifica");
+      }
+
+      const res = await fetch(`/api/consultant/knowledge/system-documents/${doc.id}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(updatedData),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel trasferimento");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/system-documents"] });
+      setTransferDoc(null);
+      toast({ title: "Destinazioni aggiornate", description: "Il documento è stato spostato nelle sezioni selezionate." });
+    },
+    onError: (error: Error) => {
+      if (!error.message.includes('Seleziona prima')) {
+        toast({ title: "Errore", description: error.message, variant: "destructive" });
+      }
+    },
+  });
+
+  const [deletionDoc, setDeletionDoc] = useState<SystemDocument | null>(null);
+  const [deletionTargets, setDeletionTargets] = useState<Record<string, boolean>>({});
+
+  const openDeletionDialog = (doc: SystemDocument) => {
+    const currentGroups = getDocGroups(doc);
+    if (currentGroups.length <= 1) {
+      setDeletingId(doc.id);
+      return;
+    }
+    const targets: Record<string, boolean> = {};
+    currentGroups.forEach(g => { targets[g] = true; });
+    setDeletionTargets(targets);
+    setDeletionDoc(doc);
+  };
+
+  const handleSelectiveDeletion = () => {
+    if (!deletionDoc) return;
+    const currentGroups = getDocGroups(deletionDoc);
+    const groupsToKeep = Object.entries(deletionTargets).filter(([, v]) => !v).map(([k]) => k);
+    const allRemoved = groupsToKeep.length === 0;
+
+    if (allRemoved) {
+      setDeletionDoc(null);
+      setDeletingId(deletionDoc.id);
+      return;
+    }
+
+    const updatedTargets: Record<string, boolean> = {};
+    groupsToKeep.forEach(g => { updatedTargets[g] = true; });
+    transferMutation.mutate({ doc: deletionDoc, targets: updatedTargets });
+    setDeletionDoc(null);
   };
 
   const renderDocumentCard = (doc: SystemDocument, currentGroup?: string) => {
@@ -1414,6 +1561,9 @@ export default function SystemDocumentsSection() {
             <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => openPreviewSysDoc(doc)} title="Visualizza">
               <Eye className="h-4 w-4" />
             </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-teal-500 hover:text-teal-700 hover:bg-teal-50" onClick={() => openTransferDialog(doc)} title="Trasferisci/Condividi">
+              <ArrowRightLeft className="h-4 w-4" />
+            </Button>
             <Switch
               checked={doc.is_active}
               onCheckedChange={() => toggleMutation.mutate(doc.id)}
@@ -1422,7 +1572,7 @@ export default function SystemDocumentsSection() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(doc)}>
               <Edit3 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeletingId(doc.id)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => openDeletionDialog(doc)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -1532,41 +1682,14 @@ export default function SystemDocumentsSection() {
     });
 
     return (
-      <Collapsible
-        key="autonomous"
-        open={isOpen}
-        onOpenChange={(open) => setOpenGroups(prev => ({ ...prev, autonomous: open }))}
-      >
-        <CollapsibleTrigger asChild>
-          <div className={`flex items-center justify-between rounded-lg border p-3 cursor-pointer transition-all ${
-            isEmpty
-              ? 'border-dashed border-slate-200 bg-slate-50/30 hover:bg-slate-50/60'
-              : `border-2 ${colorClasses.border} ${colorClasses.headerBg} hover:shadow-sm`
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`p-1.5 rounded-lg ${isEmpty ? 'bg-slate-100/80' : colorClasses.iconBg}`}>
-                {isEmpty ? <span className="opacity-40"><Bot className="h-4 w-4 text-purple-600" /></span> : <Bot className="h-4 w-4 text-purple-600" />}
-              </div>
-              <span className={`text-sm font-semibold ${isEmpty ? 'text-slate-400' : colorClasses.text}`}>Agenti Autonomi</span>
-              {isEmpty ? (
-                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">—</span>
-              ) : (
-                <Badge variant="outline" className={`text-xs ${colorClasses.badge}`}>
-                  {totalCount}
-                </Badge>
-              )}
-            </div>
-            <ChevronDown className={`h-4 w-4 transition-transform ${isEmpty ? 'text-slate-300' : 'text-muted-foreground'} ${isOpen ? "rotate-180" : ""}`} />
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+      <div key="autonomous">
           {isEmpty ? (
-            <div className="py-5 flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                <span className="opacity-30"><Bot className="h-4 w-4 text-purple-600" /></span>
+            <div className="py-8 flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-purple-600" />
               </div>
               <p className="text-xs text-slate-400 text-center max-w-[280px]">
-                {emptyGroupHints['autonomous'] || 'Nessun documento in questo gruppo'}
+                {emptyGroupHints['autonomous'] || 'Nessun documento assegnato agli agenti autonomi'}
               </p>
               <Button
                 variant="ghost"
@@ -1579,7 +1702,7 @@ export default function SystemDocumentsSection() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-3 mt-2">
+            <div className="space-y-3">
               {agentsWithDocs.map(agent => {
                 const profile = AI_ROLE_PROFILES[agent.id];
                 const entry = agentDocMap.get(agent.id)!;
@@ -1649,8 +1772,7 @@ export default function SystemDocumentsSection() {
               })}
             </div>
           )}
-        </CollapsibleContent>
-      </Collapsible>
+      </div>
     );
   };
 
@@ -1840,86 +1962,170 @@ export default function SystemDocumentsSection() {
                   {sortedDocuments.map(doc => renderDocumentCard(doc))}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 flex-wrap px-1 pb-1">
-                    {[
-                      { count: aiDocsConsultantOnly.length + kbDocsConsultantOnly.length, label: 'Solo per me', color: 'bg-amber-100 text-amber-700' },
-                      { count: aiDocsConsultant.length, label: 'Tutti', color: 'bg-indigo-100 text-indigo-700' },
-                      { count: aiDocsClients.length, label: 'Clienti', color: 'bg-blue-100 text-blue-700' },
-                      { count: aiDocsEmployees.length, label: 'Dipendenti', color: 'bg-emerald-100 text-emerald-700' },
-                      { count: whatsappDocs.length, label: 'WhatsApp', color: 'bg-green-100 text-green-700' },
-                      { count: autonomousDocs.length + kbDocsAutonomous.length, label: 'Agenti', color: 'bg-purple-100 text-purple-700' },
-                    ].filter(s => s.count > 0).map(s => (
-                      <span key={s.label} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${s.color}`}>
-                        {s.count} {s.label}
-                      </span>
-                    ))}
-                    {unassignedDocs.length > 0 && (
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                        {unassignedDocs.length} non assegnati
-                      </span>
-                    )}
-                    <span className="text-[10px] text-slate-400 ml-auto">
-                      {sortedDocuments.length + kbDocsForGroups.length} totali
-                    </span>
-                  </div>
-                  {renderGroupSection(
-                    'ai_consultant_only',
-                    'Solo per me (privato)',
-                    <Lock className="h-4 w-4 text-amber-600" />,
-                    aiDocsConsultantOnly,
-                    { border: 'border-amber-300', bg: 'bg-amber-50/30', headerBg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700 border-amber-200', iconBg: 'bg-amber-100', text: 'text-amber-800' },
-                    undefined,
-                    kbDocsConsultantOnly,
-                  )}
-                  {renderGroupSection(
-                    'ai_consultant',
-                    'AI per Tutti (Clienti + Dipendenti)',
-                    <Globe className="h-4 w-4 text-indigo-600" />,
-                    aiDocsConsultant,
-                    { border: 'border-indigo-300', bg: 'bg-indigo-50/30', headerBg: 'bg-indigo-50/50', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', iconBg: 'bg-indigo-100', text: 'text-indigo-800' },
-                  )}
-                  {renderGroupSection(
-                    'ai_clients',
-                    'AI per Clienti',
-                    <UserRound className="h-4 w-4 text-blue-600" />,
-                    aiDocsClients,
-                    { border: 'border-blue-300', bg: 'bg-blue-50/30', headerBg: 'bg-blue-50/50', badge: 'bg-blue-100 text-blue-700 border-blue-200', iconBg: 'bg-blue-100', text: 'text-blue-800' },
-                    (doc) => {
-                      const label = getTargetModeLabel(doc);
-                      return label ? `Destinatari: ${label}` : null;
-                    },
-                  )}
-                  {renderGroupSection(
-                    'ai_employees',
-                    'AI per Dipendenti',
-                    <HardHat className="h-4 w-4 text-emerald-600" />,
-                    aiDocsEmployees,
-                    { border: 'border-emerald-300', bg: 'bg-emerald-50/30', headerBg: 'bg-emerald-50/50', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', iconBg: 'bg-emerald-100', text: 'text-emerald-800' },
-                    (doc) => {
-                      const label = getTargetModeLabel(doc);
-                      return label ? `Destinatari: ${label}` : null;
-                    },
-                  )}
-                  {renderGroupSection(
-                    'whatsapp',
-                    'Dipendenti WhatsApp',
-                    <MessageCircle className="h-4 w-4 text-green-600" />,
-                    whatsappDocs,
-                    { border: 'border-green-300', bg: 'bg-green-50/30', headerBg: 'bg-green-50/50', badge: 'bg-green-100 text-green-700 border-green-200', iconBg: 'bg-green-100', text: 'text-green-800' },
-                    (doc) => {
-                      const names = getWhatsappAgentNames(doc);
-                      return names.length > 0 ? `Agenti: ${names.join(', ')}` : null;
-                    },
-                  )}
-                  {renderAutonomousGroupedSection(autonomousDocs, kbDocsAutonomous)}
-                  {renderGroupSection(
-                    'unassigned',
-                    'Non assegnati',
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />,
-                    unassignedDocs,
-                    { border: 'border-amber-300', bg: 'bg-amber-50/30', headerBg: 'bg-amber-50/50', badge: 'bg-amber-100 text-amber-700 border-amber-200', iconBg: 'bg-amber-100', text: 'text-amber-800' },
-                  )}
+                <div>
+                  {(() => {
+                    const tabDefs = [
+                      { key: 'ai_consultant_only', label: 'Solo per me', icon: <Lock className="h-3.5 w-3.5" />, count: aiDocsConsultantOnly.length + kbDocsConsultantOnly.length, color: 'amber' },
+                      { key: 'ai_consultant', label: 'AI per Tutti', icon: <Globe className="h-3.5 w-3.5" />, count: aiDocsConsultant.length, color: 'indigo' },
+                      { key: 'ai_clients', label: 'Clienti', icon: <UserRound className="h-3.5 w-3.5" />, count: aiDocsClients.length, color: 'blue' },
+                      { key: 'ai_employees', label: 'Dipendenti', icon: <HardHat className="h-3.5 w-3.5" />, count: aiDocsEmployees.length, color: 'emerald' },
+                      { key: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="h-3.5 w-3.5" />, count: whatsappDocs.length, color: 'green' },
+                      { key: 'autonomous', label: 'Agenti', icon: <Bot className="h-3.5 w-3.5" />, count: autonomousDocs.length + kbDocsAutonomous.length, color: 'purple' },
+                      { key: 'unassigned', label: 'Non assegnati', icon: <AlertTriangle className="h-3.5 w-3.5" />, count: unassignedDocs.length, color: 'orange' },
+                    ];
+                    const colorMap: Record<string, { active: string; inactive: string; ring: string }> = {
+                      amber: { active: 'bg-amber-100 text-amber-800 border-amber-300', inactive: 'text-amber-600 hover:bg-amber-50', ring: 'ring-amber-200' },
+                      indigo: { active: 'bg-indigo-100 text-indigo-800 border-indigo-300', inactive: 'text-indigo-600 hover:bg-indigo-50', ring: 'ring-indigo-200' },
+                      blue: { active: 'bg-blue-100 text-blue-800 border-blue-300', inactive: 'text-blue-600 hover:bg-blue-50', ring: 'ring-blue-200' },
+                      emerald: { active: 'bg-emerald-100 text-emerald-800 border-emerald-300', inactive: 'text-emerald-600 hover:bg-emerald-50', ring: 'ring-emerald-200' },
+                      green: { active: 'bg-green-100 text-green-800 border-green-300', inactive: 'text-green-600 hover:bg-green-50', ring: 'ring-green-200' },
+                      purple: { active: 'bg-purple-100 text-purple-800 border-purple-300', inactive: 'text-purple-600 hover:bg-purple-50', ring: 'ring-purple-200' },
+                      orange: { active: 'bg-orange-100 text-orange-800 border-orange-300', inactive: 'text-orange-600 hover:bg-orange-50', ring: 'ring-orange-200' },
+                    };
+                    return (
+                      <>
+                        <div className="flex items-center gap-1 overflow-x-auto pb-3 mb-3 border-b border-slate-200 scrollbar-hide">
+                          {tabDefs.map(tab => {
+                            const isActive = effectiveActiveTab === tab.key;
+                            const colors = colorMap[tab.color];
+                            return (
+                              <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap shrink-0 ${
+                                  isActive
+                                    ? `${colors.active} border shadow-sm`
+                                    : `${colors.inactive} border-transparent`
+                                }`}
+                              >
+                                {tab.icon}
+                                {tab.label}
+                                {tab.count > 0 && (
+                                  <span className={`ml-0.5 text-[10px] font-bold ${isActive ? '' : 'opacity-70'}`}>
+                                    {tab.count}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                          <span className="text-[10px] text-slate-400 ml-auto shrink-0 pl-2">
+                            {sortedDocuments.length + kbDocsForGroups.length} totali
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {effectiveActiveTab === 'ai_consultant_only' && (
+                            <>
+                              {aiDocsConsultantOnly.length === 0 && kbDocsConsultantOnly.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center"><Lock className="h-4 w-4 text-amber-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Documenti visibili solo a te nel tuo AI Assistant personale</p>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1" onClick={openCreate}>
+                                    <Plus className="h-3 w-3 mr-1" />Aggiungi documento
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  {aiDocsConsultantOnly.map(doc => renderDocumentCard(doc, 'ai_consultant_only'))}
+                                  {kbDocsConsultantOnly.length > 0 && (
+                                    <>
+                                      {aiDocsConsultantOnly.length > 0 && (
+                                        <div className="flex items-center gap-2 pt-1">
+                                          <div className="h-px flex-1 bg-amber-200" />
+                                          <span className="text-[10px] text-amber-500 font-medium whitespace-nowrap">Dalla Knowledge Base</span>
+                                          <div className="h-px flex-1 bg-amber-200" />
+                                        </div>
+                                      )}
+                                      {kbDocsConsultantOnly.map(kbDoc => renderKbDocumentCard(kbDoc, 'ai_consultant_only'))}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          {effectiveActiveTab === 'ai_consultant' && (
+                            <>
+                              {aiDocsConsultant.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center"><Globe className="h-4 w-4 text-indigo-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Istruzioni generali visibili a tutti i clienti e dipendenti</p>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1" onClick={openCreate}>
+                                    <Plus className="h-3 w-3 mr-1" />Aggiungi documento
+                                  </Button>
+                                </div>
+                              ) : (
+                                aiDocsConsultant.map(doc => renderDocumentCard(doc, 'ai_consultant'))
+                              )}
+                            </>
+                          )}
+
+                          {effectiveActiveTab === 'ai_clients' && (
+                            <>
+                              {aiDocsClients.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><UserRound className="h-4 w-4 text-blue-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Documenti personalizzati visibili solo ai clienti</p>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1" onClick={openCreate}>
+                                    <Plus className="h-3 w-3 mr-1" />Aggiungi documento
+                                  </Button>
+                                </div>
+                              ) : (
+                                aiDocsClients.map(doc => renderDocumentCard(doc, 'ai_clients'))
+                              )}
+                            </>
+                          )}
+
+                          {effectiveActiveTab === 'ai_employees' && (
+                            <>
+                              {aiDocsEmployees.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center"><HardHat className="h-4 w-4 text-emerald-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Istruzioni specifiche per reparti o dipendenti</p>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1" onClick={openCreate}>
+                                    <Plus className="h-3 w-3 mr-1" />Aggiungi documento
+                                  </Button>
+                                </div>
+                              ) : (
+                                aiDocsEmployees.map(doc => renderDocumentCard(doc, 'ai_employees'))
+                              )}
+                            </>
+                          )}
+
+                          {effectiveActiveTab === 'whatsapp' && (
+                            <>
+                              {whatsappDocs.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"><MessageCircle className="h-4 w-4 text-green-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Documenti collegati ai dipendenti WhatsApp</p>
+                                  <Button variant="ghost" size="sm" className="text-xs h-7 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 mt-1" onClick={openCreate}>
+                                    <Plus className="h-3 w-3 mr-1" />Aggiungi documento
+                                  </Button>
+                                </div>
+                              ) : (
+                                whatsappDocs.map(doc => renderDocumentCard(doc, 'whatsapp'))
+                              )}
+                            </>
+                          )}
+
+                          {effectiveActiveTab === 'autonomous' && renderAutonomousGroupedSection(autonomousDocs, kbDocsAutonomous)}
+
+                          {effectiveActiveTab === 'unassigned' && (
+                            <>
+                              {unassignedDocs.length === 0 ? (
+                                <div className="py-8 flex flex-col items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><AlertTriangle className="h-4 w-4 text-orange-600" /></div>
+                                  <p className="text-xs text-slate-400 text-center max-w-[280px]">Nessun documento non assegnato</p>
+                                </div>
+                              ) : (
+                                unassignedDocs.map(doc => renderDocumentCard(doc, 'unassigned'))
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </>
@@ -2869,6 +3075,124 @@ export default function SystemDocumentsSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!transferDoc} onOpenChange={(open) => { if (!open) setTransferDoc(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <ArrowRightLeft className="h-4 w-4 text-teal-600" />
+              Trasferisci documento
+            </DialogTitle>
+          </DialogHeader>
+          {transferDoc && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3 border">
+                <p className="text-sm font-medium truncate">{transferDoc.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Seleziona le sezioni in cui vuoi che appaia questo documento</p>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { key: 'ai_consultant_only', label: 'Solo per me (privato)', icon: <Lock className="h-4 w-4 text-amber-600" />, desc: 'Visibile solo nel tuo AI Assistant', checkedClass: 'bg-amber-50/50 border-amber-200', exclusive: true },
+                  { key: 'ai_consultant', label: 'AI per Tutti', icon: <Globe className="h-4 w-4 text-indigo-600" />, desc: 'Clienti e dipendenti', checkedClass: 'bg-indigo-50/50 border-indigo-200', exclusive: true },
+                  { key: 'ai_clients', label: 'AI per Clienti', icon: <UserRound className="h-4 w-4 text-blue-600" />, desc: 'Solo clienti selezionati', checkedClass: 'bg-blue-50/50 border-blue-200', exclusive: true },
+                  { key: 'ai_employees', label: 'AI per Dipendenti', icon: <HardHat className="h-4 w-4 text-emerald-600" />, desc: 'Solo dipendenti/reparti', checkedClass: 'bg-emerald-50/50 border-emerald-200', exclusive: true },
+                  { key: 'whatsapp', label: 'Dipendenti WhatsApp', icon: <MessageCircle className="h-4 w-4 text-green-600" />, desc: 'Agenti WhatsApp', checkedClass: 'bg-green-50/50 border-green-200', exclusive: false },
+                  { key: 'autonomous', label: 'Agenti Autonomi', icon: <Bot className="h-4 w-4 text-purple-600" />, desc: 'Agenti AI autonomi', checkedClass: 'bg-purple-50/50 border-purple-200', exclusive: false },
+                ].map(item => {
+                  const isChecked = transferTargets[item.key] || false;
+                  return (
+                    <label key={item.key} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isChecked ? item.checkedClass : 'border-slate-200 hover:bg-slate-50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const newTargets = { ...transferTargets };
+                          if (item.exclusive) {
+                            ['ai_consultant_only', 'ai_consultant', 'ai_clients', 'ai_employees'].forEach(k => {
+                              newTargets[k] = false;
+                            });
+                          }
+                          newTargets[item.key] = e.target.checked;
+                          setTransferTargets(newTargets);
+                        }}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                      />
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {item.icon}
+                        <div>
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.desc}</p>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setTransferDoc(null)}>Annulla</Button>
+                <Button
+                  size="sm"
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                  disabled={transferMutation.isPending || !Object.values(transferTargets).some(v => v)}
+                  onClick={() => transferDoc && transferMutation.mutate({ doc: transferDoc, targets: transferTargets })}
+                >
+                  {transferMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                  Conferma
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deletionDoc} onOpenChange={(open) => { if (!open) setDeletionDoc(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Rimuovi da sezioni
+            </DialogTitle>
+          </DialogHeader>
+          {deletionDoc && (
+            <div className="space-y-4">
+              <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                <p className="text-sm font-medium truncate">{deletionDoc.title}</p>
+                <p className="text-xs text-red-600 mt-0.5">Questo documento appare in più sezioni. Seleziona da quali rimuoverlo.</p>
+              </div>
+              <div className="space-y-2">
+                {Object.entries(deletionTargets).map(([key, checked]) => (
+                  <label key={key} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checked ? 'bg-red-50/50 border-red-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => setDeletionTargets(prev => ({ ...prev, [key]: e.target.checked }))}
+                      className="rounded border-slate-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                    />
+                    <span className="text-sm font-medium">{groupLabelMap[key] || key}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <Button variant="ghost" size="sm" className="text-xs text-destructive hover:text-destructive" onClick={() => { setDeletionDoc(null); setDeletingId(deletionDoc.id); }}>
+                  Elimina completamente
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setDeletionDoc(null)}>Annulla</Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={transferMutation.isPending || !Object.values(deletionTargets).some(v => v)}
+                    onClick={handleSelectiveDeletion}
+                  >
+                    {transferMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                    Rimuovi selezionati
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!historyDocId} onOpenChange={(open) => { if (!open) setHistoryDocId(null); }}>
         <DialogContent className="max-w-lg">
