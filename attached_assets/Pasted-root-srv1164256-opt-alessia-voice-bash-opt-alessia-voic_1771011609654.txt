@@ -1,0 +1,108 @@
+root@srv1164256:/opt/alessia-voice# bash /opt/alessia-voice/copy-fs-logs.sh
+ls -la /opt/alessia-voice/freeswitch-logs/
+total 556
+drwxr-xr-x 2 root root   4096 Feb 13 19:37 .
+drwxr-xr-x 7 root root   4096 Feb 13 19:36 ..
+-rw-r--r-- 1 root root 557657 Feb 13 19:39 freeswitch.log
+root@srv1164256:/opt/alessia-voice# docker exec freeswitch tail -n 100 /usr/local/freeswitch/var/log/freeswitch/freeswitch.log
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:39:59.928838 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:39:59.928838 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:39:59.988849 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.010248 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.010248 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.029301 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.029301 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.089264 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.128831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.128831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.128831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.128831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.189391 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.189391 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.189391 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.228931 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.228931 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.228931 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.288904 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.288904 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.308831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.308831 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.328862 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.328862 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.389008 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.389008 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.389008 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.389008 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.428852 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.468853 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.489241 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.489241 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+2026-02-13 19:40:00.509636 91.87% [WARNING] sofia_reg.c:3210 Can't find user [2000@72.62.50.40] from 87.246.54.153
+You must define a domain called '72.62.50.40' in your directory and add a user with the id="2000" attribute
+and you must configure your device to use the proper domain in its authentication credentials.
+root@srv1164256:/opt/alessia-voice# 
