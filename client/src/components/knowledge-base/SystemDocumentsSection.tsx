@@ -705,6 +705,8 @@ export default function SystemDocumentsSection() {
   const [manualContent, setManualContent] = useState('');
   const [manualDescription, setManualDescription] = useState('');
   const [batchSaving, setBatchSaving] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -957,6 +959,7 @@ export default function SystemDocumentsSection() {
     setManualTitle('');
     setManualContent('');
     setManualDescription('');
+    setEditingEntryId(null);
   };
 
   const openCreate = () => {
@@ -974,6 +977,10 @@ export default function SystemDocumentsSection() {
     setManualTitle('');
     setManualContent('');
     setManualDescription('');
+    setEditingEntryId(null);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const openEdit = (doc: SystemDocument) => {
@@ -1704,7 +1711,7 @@ export default function SystemDocumentsSection() {
       </Card>
 
       {showForm && (
-        <Card className="border-indigo-200 shadow-md">
+        <Card ref={formRef} className="border-indigo-200 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4 text-indigo-500" />
@@ -2044,35 +2051,67 @@ export default function SystemDocumentsSection() {
                             </Button>
                           )}
                         </div>
-                        <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                        <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
                           {contentEntries.map((entry, idx) => (
-                            <div key={entry.id} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 group hover:border-indigo-300 transition-colors">
-                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold shrink-0">
-                                {idx + 1}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <input
-                                  type="text"
-                                  value={entry.title}
-                                  onChange={(e) => setContentEntries(prev => prev.map(en => en.id === entry.id ? { ...en, title: e.target.value } : en))}
-                                  className="text-sm font-medium w-full bg-transparent border-none outline-none focus:ring-0 p-0"
-                                  placeholder="Titolo documento"
-                                />
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{entry.content.length.toLocaleString()} caratteri</span>
-                                  <span>~{Math.round(entry.content.length / 4).toLocaleString()} token</span>
-                                  {entry.sourceFileName && (
-                                    <span className="flex items-center gap-1">
-                                      {entry.sourceType === 'drive' ? <Cloud className="h-3 w-3" /> : entry.sourceType === 'upload' ? <Upload className="h-3 w-3" /> : <PenLine className="h-3 w-3" />}
-                                      {entry.sourceFileName}
-                                    </span>
-                                  )}
+                            <div key={entry.id} className={`rounded-lg border bg-white transition-colors ${editingEntryId === entry.id ? 'border-indigo-400 shadow-sm' : 'hover:border-indigo-300'}`}>
+                              <div className="flex items-center gap-2 px-3 py-2 group">
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold shrink-0">
+                                  {idx + 1}
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                  <input
+                                    type="text"
+                                    value={entry.title}
+                                    onChange={(e) => setContentEntries(prev => prev.map(en => en.id === entry.id ? { ...en, title: e.target.value } : en))}
+                                    className="text-sm font-medium w-full bg-transparent border-none outline-none focus:ring-0 p-0"
+                                    placeholder="Titolo documento"
+                                  />
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{entry.content.length.toLocaleString()} caratteri</span>
+                                    <span>~{Math.round(entry.content.length / 4).toLocaleString()} token</span>
+                                    {entry.sourceFileName && (
+                                      <span className="flex items-center gap-1">
+                                        {entry.sourceType === 'drive' ? <Cloud className="h-3 w-3" /> : entry.sourceType === 'upload' ? <Upload className="h-3 w-3" /> : <PenLine className="h-3 w-3" />}
+                                        {entry.sourceFileName}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400 hover:text-indigo-600 shrink-0"
+                                  onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
+                                  title="Modifica contenuto">
+                                  <PenLine className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 shrink-0"
+                                  onClick={() => { setContentEntries(prev => prev.filter(en => en.id !== entry.id)); if (editingEntryId === entry.id) setEditingEntryId(null); }}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 shrink-0"
-                                onClick={() => setContentEntries(prev => prev.filter(en => en.id !== entry.id))}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
+                              {editingEntryId === entry.id && (
+                                <div className="px-3 pb-3 pt-1 border-t border-indigo-100 space-y-2">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-slate-500">Descrizione (opzionale)</Label>
+                                    <Input
+                                      value={entry.description}
+                                      onChange={(e) => setContentEntries(prev => prev.map(en => en.id === entry.id ? { ...en, description: e.target.value } : en))}
+                                      placeholder="Nota interna"
+                                      className="h-8 text-xs"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-slate-500">Contenuto</Label>
+                                    <Textarea
+                                      value={entry.content}
+                                      onChange={(e) => setContentEntries(prev => prev.map(en => en.id === entry.id ? { ...en, content: e.target.value } : en))}
+                                      rows={6}
+                                      className="resize-y min-h-[100px] font-mono text-xs"
+                                    />
+                                  </div>
+                                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setEditingEntryId(null)}>
+                                    Chiudi editor
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
