@@ -588,7 +588,7 @@ export default function SystemDocumentsSection() {
   const [form, setForm] = useState<DocumentForm>(emptyForm());
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ ai_assistant: true, whatsapp: true, autonomous: true, unassigned: true });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ ai_consultant: true, ai_clients: true, ai_employees: true, whatsapp: true, autonomous: true, unassigned: true });
   const [wizardStep, setWizardStep] = useState(1);
   const [contentSource, setContentSource] = useState<'manual' | 'drive' | 'upload'>('manual');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -886,9 +886,16 @@ export default function SystemDocumentsSection() {
     });
 
     if (doc.target_client_assistant) {
-      const modeLabel = getTargetModeLabel(doc);
-      const aiLabel = `AI Assistant - ${modeLabel}`;
-      badges.push({ label: aiLabel, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
+      const mode = doc.target_client_mode || 'all';
+      if (mode === 'all') {
+        badges.push({ label: 'Istruzioni Consulente', icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-indigo-100 text-indigo-800 border-indigo-200" });
+      } else if (mode === 'clients_only' || mode === 'specific_clients') {
+        const modeLabel = getTargetModeLabel(doc);
+        badges.push({ label: `AI Clienti - ${modeLabel}`, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-blue-100 text-blue-800 border-blue-200" });
+      } else if (mode === 'employees_only' || mode === 'specific_departments' || mode === 'specific_employees') {
+        const modeLabel = getTargetModeLabel(doc);
+        badges.push({ label: `AI Dipendenti - ${modeLabel}`, icon: <Sparkles className="h-3 w-3" />, colorClass: "bg-cyan-100 text-cyan-800 border-cyan-200" });
+      }
     }
 
     const activeWhatsapp = Object.entries(doc.target_whatsapp_agents || {})
@@ -928,7 +935,18 @@ export default function SystemDocumentsSection() {
 
   const getDocGroups = (doc: SystemDocument) => {
     const groups: string[] = [];
-    if (doc.target_client_assistant) groups.push('ai_assistant');
+    if (doc.target_client_assistant) {
+      const mode = doc.target_client_mode || 'all';
+      if (mode === 'all') {
+        groups.push('ai_consultant');
+      } else if (mode === 'clients_only' || mode === 'specific_clients') {
+        groups.push('ai_clients');
+      } else if (mode === 'employees_only' || mode === 'specific_departments' || mode === 'specific_employees') {
+        groups.push('ai_employees');
+      } else {
+        groups.push('ai_consultant');
+      }
+    }
     if (hasWhatsappTargets(doc)) groups.push('whatsapp');
     if (hasAutonomousTargets(doc)) groups.push('autonomous');
     if (groups.length === 0) groups.push('unassigned');
@@ -936,13 +954,27 @@ export default function SystemDocumentsSection() {
   };
 
   const groupLabelMap: Record<string, string> = {
-    ai_assistant: 'AI Assistant Clienti',
+    ai_consultant: 'Istruzioni Consulente (AI)',
+    ai_clients: 'AI per Clienti',
+    ai_employees: 'AI per Dipendenti',
     whatsapp: 'Dipendenti WhatsApp',
     autonomous: 'Agenti Autonomi',
     unassigned: 'Non assegnati',
   };
 
   const aiDocs = sortedDocuments.filter(d => d.target_client_assistant);
+  const aiDocsConsultant = aiDocs.filter(d => {
+    const mode = d.target_client_mode || 'all';
+    return mode === 'all';
+  });
+  const aiDocsClients = aiDocs.filter(d => {
+    const mode = d.target_client_mode || 'all';
+    return mode === 'clients_only' || mode === 'specific_clients';
+  });
+  const aiDocsEmployees = aiDocs.filter(d => {
+    const mode = d.target_client_mode || 'all';
+    return mode === 'employees_only' || mode === 'specific_departments' || mode === 'specific_employees';
+  });
   const whatsappDocs = sortedDocuments.filter(d => hasWhatsappTargets(d));
   const autonomousDocs = sortedDocuments.filter(d => hasAutonomousTargets(d));
   const unassignedDocs = sortedDocuments.filter(d => isUnassigned(d));
@@ -1244,11 +1276,29 @@ export default function SystemDocumentsSection() {
               ) : (
                 <div className="space-y-3">
                   {renderGroupSection(
-                    'ai_assistant',
-                    'AI Assistant Clienti',
+                    'ai_consultant',
+                    'Istruzioni Consulente (AI)',
+                    <Sparkles className="h-4 w-4 text-indigo-600" />,
+                    aiDocsConsultant,
+                    { border: 'border-indigo-300', bg: 'bg-indigo-50/30', headerBg: 'bg-indigo-50/50', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200', iconBg: 'bg-indigo-100', text: 'text-indigo-800' },
+                  )}
+                  {renderGroupSection(
+                    'ai_clients',
+                    'AI per Clienti',
                     <Sparkles className="h-4 w-4 text-blue-600" />,
-                    aiDocs,
+                    aiDocsClients,
                     { border: 'border-blue-300', bg: 'bg-blue-50/30', headerBg: 'bg-blue-50/50', badge: 'bg-blue-100 text-blue-700 border-blue-200', iconBg: 'bg-blue-100', text: 'text-blue-800' },
+                    (doc) => {
+                      const label = getTargetModeLabel(doc);
+                      return label ? `Destinatari: ${label}` : null;
+                    },
+                  )}
+                  {renderGroupSection(
+                    'ai_employees',
+                    'AI per Dipendenti',
+                    <Sparkles className="h-4 w-4 text-cyan-600" />,
+                    aiDocsEmployees,
+                    { border: 'border-cyan-300', bg: 'bg-cyan-50/30', headerBg: 'bg-cyan-50/50', badge: 'bg-cyan-100 text-cyan-700 border-cyan-200', iconBg: 'bg-cyan-100', text: 'text-cyan-800' },
                     (doc) => {
                       const label = getTargetModeLabel(doc);
                       return label ? `Destinatari: ${label}` : null;
