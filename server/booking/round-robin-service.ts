@@ -612,7 +612,7 @@ export async function getAvailableSlotsFromPool(
     .select({
       id: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
-      agentName: bookingPoolMembers.agentName,
+      agentName: bookingPoolMembers.memberName,
     })
     .from(bookingPoolMembers)
     .where(
