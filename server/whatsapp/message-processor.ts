@@ -4445,6 +4445,21 @@ ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
       })
       : '';
 
+    if (availableSlots.length > 0) {
+      const slotsByDay: Record<string, string[]> = {};
+      for (const slot of availableSlots) {
+        const d = new Date(slot.start);
+        const dk = d.toLocaleDateString('it-IT', { timeZone: timezone, weekday: 'short', day: 'numeric', month: 'short' });
+        if (!slotsByDay[dk]) slotsByDay[dk] = [];
+        const t = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: timezone, hour12: false });
+        slotsByDay[dk].push(slot.agentNames?.length ? `${t}[${slot.agentNames.join(',')}]` : t);
+      }
+      console.log(`📋 [BOOKING PROMPT] ${availableSlots.length} slot passati all'AI (${Object.keys(slotsByDay).length} giorni):`);
+      for (const [day, times] of Object.entries(slotsByDay)) {
+        console.log(`   ${day}: ${times.join(', ')}`);
+      }
+    }
+
     // Assemble final prompt in correct order:
     // 0. Current date (always included - critical for date awareness)
     // 1. Business positioning header (critical context)

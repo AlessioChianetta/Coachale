@@ -179,15 +179,32 @@ async function saveExtractionState(
   }
 }
 
+function fixDateYearIfPast(dateStr: string | null | undefined): string | null | undefined {
+  if (!dateStr) return dateStr;
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return dateStr;
+  const extractedYear = parseInt(match[1], 10);
+  const currentYear = new Date().getFullYear();
+  if (extractedYear < currentYear) {
+    const corrected = `${currentYear}-${match[2]}-${match[3]}`;
+    console.log(`   🔧 [DATE FIX] Anno corretto: ${dateStr} → ${corrected} (anno ${extractedYear} < anno corrente ${currentYear})`);
+    return corrected;
+  }
+  return dateStr;
+}
+
 function mergeExtractionData(
   existing: AccumulatedBookingData | null,
   newData: BookingExtractionResult
 ): BookingExtractionResult {
-  if (!existing) return newData;
+  if (!existing) {
+    newData.date = fixDateYearIfPast(newData.date) as string;
+    return newData;
+  }
   
   const merged: BookingExtractionResult = {
     isConfirming: newData.isConfirming,
-    date: newData.date || existing.date,
+    date: fixDateYearIfPast(newData.date || existing.date) as string,
     time: newData.time || existing.time,
     phone: newData.phone || existing.phone,
     email: newData.email || existing.email,

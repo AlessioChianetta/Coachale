@@ -111,24 +111,46 @@ Se il lead vuole:
   if (availableSlots && availableSlots.length > 0) {
     const hasAgentNames = availableSlots.some(slot => slot.agentNames && slot.agentNames.length > 0);
     
-    const formattedSlots = availableSlots.slice(0, 6).map(slot => {
+    const slotsByDay: Record<string, { times: string[]; dayLabel: string }> = {};
+    const maxDays = 14;
+    const maxSlotsPerDay = 12;
+    let daysCount = 0;
+    
+    for (const slot of availableSlots) {
       const startDate = new Date(slot.start);
-      const formatter = new Intl.DateTimeFormat('it-IT', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
+      const dateKey = startDate.toLocaleDateString('it-IT', { timeZone: timezone });
+      
+      if (!slotsByDay[dateKey]) {
+        daysCount++;
+        if (daysCount > maxDays) break;
+        const dayLabel = startDate.toLocaleDateString('it-IT', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          timeZone: timezone
+        });
+        slotsByDay[dateKey] = { times: [], dayLabel };
+      }
+      
+      if (slotsByDay[dateKey].times.length >= maxSlotsPerDay) continue;
+      
+      const time = startDate.toLocaleTimeString('it-IT', {
         hour: '2-digit',
         minute: '2-digit',
         timeZone: timezone,
         hour12: false
       });
-      let formatted = formatter.format(startDate).replace(',', ' alle');
+      
       if (hasAgentNames && slot.agentNames && slot.agentNames.length > 0) {
-        formatted += ` [disponibile con: ${slot.agentNames.join(', ')}]`;
+        slotsByDay[dateKey].times.push(`${time} [con: ${slot.agentNames.join(', ')}]`);
+      } else {
+        slotsByDay[dateKey].times.push(time);
       }
-      return formatted;
-    });
+    }
+    
+    const compactSlotList = Object.values(slotsByDay).map(day => {
+      return `📆 ${day.dayLabel}: ${day.times.join(', ')}`;
+    }).join('\n');
 
     const roundRobinBlock = hasAgentNames ? `
 🔄 ROUND-ROBIN ATTIVO - MULTI-CONSULENTE:
@@ -165,8 +187,11 @@ PROCEDURA OBBLIGATORIA:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ SLOT DISPONIBILI (TUTTI FUTURI):
-${formattedSlots.map((slot, i) => `${i + 1}. ${slot}`).join('\n')}
+✅ TUTTI GLI SLOT DISPONIBILI (${availableSlots.length} slot totali):
+${compactSlotList}
+
+🎯 REGOLA: Proponi al lead SOLO 2-3 slot alla volta per non confonderlo, ma conosci TUTTI gli orari sopra.
+Se il lead chiede un orario specifico che è nella lista, CONFERMALO. Non dire mai "non disponibile" se l'orario è nella lista sopra.
 
 ⚠️ IMPORTANTE: Segui le FASI 5-9 del prompt principale per gestire la prenotazione step-by-step.
 
