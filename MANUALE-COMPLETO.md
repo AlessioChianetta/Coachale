@@ -2,7 +2,7 @@
 
 ## Guida Operativa Completa per Consulenti e Clienti
 
-**Versione 2.0 - Dicembre 2025**
+**Versione 3.0 - Febbraio 2026**
 
 ---
 
@@ -20,7 +20,7 @@
 - Capitolo 7: Comunicazione e Lead Management
 - Capitolo 8: WhatsApp Business e Agenti AI
 - Capitolo 9: Contenuti Formativi e Università
-- Capitolo 10: Knowledge Base e Intelligenza Artificiale
+- Capitolo 10: Cervello AI – Memoria & Documenti
 - Capitolo 11: Email Marketing e Automazioni
 - Capitolo 12: Calendario e Gestione Consulenze
 - Capitolo 13: Impostazioni e Configurazioni Avanzate
@@ -31,7 +31,7 @@
 - Capitolo 16: Formazione e Università
 - Capitolo 17: Gestione del Tempo e Consulenze
 - Capitolo 18: Agenti AI e Strumenti di Vendita
-- Capitolo 19: Knowledge Base Personale
+- Capitolo 19: Cervello AI Personale (Area Cliente)
 
 ## PARTE QUARTA: APPENDICI
 - Appendice A: Glossario Completo dei Termini
@@ -75,7 +75,7 @@ L'AI non è un'aggiunta, è il cuore del sistema. Ecco cosa fa concretamente:
 |----------|--------------|-----------------|
 | **Analisi Clienti** | Legge tutti i dati del cliente e genera insights | "Mario ha completato il 70% del corso ma rallenta negli esercizi. Suggerisco una sessione di rinforzo." |
 | **Generazione Email** | Scrive email personalizzate per ogni cliente | Genera un'email di follow-up che menziona esattamente cosa ha fatto il cliente questa settimana |
-| **Risposta Domande** | Usa la tua knowledge base per rispondere | Cliente chiede "Come funziona X?" - l'AI risponde usando i tuoi documenti |
+| **Risposta Domande** | Usa il tuo Cervello AI per rispondere | Cliente chiede "Come funziona X?" - l'AI risponde usando i tuoi documenti |
 | **Gestione WhatsApp** | Conversa naturalmente con i lead | Qualifica lead, risponde a obiezioni, prenota appuntamenti |
 | **Preparazione Consulenze** | Prepara brief prima delle sessioni | "Oggi con Laura: focus su esercizio 3 non completato, obiettivo settimanale raggiunto al 80%" |
 
@@ -128,12 +128,12 @@ Come consulente, hai accesso all'area `/consultant` dove puoi:
 | Categoria | Cosa Contiene |
 |-----------|---------------|
 | 🏠 PRINCIPALE | Dashboard, AI Assistant, Setup Iniziale |
-| 📋 LAVORO QUOTIDIANO | Clienti, Calendario, Task, Email Journey |
-| 📣 COMUNICAZIONE | HUB Lead, I tuoi dipendenti (agenti WhatsApp), Email Hub |
-| 🎨 CONTENT STUDIO | Dashboard, Idee (AI), Contenuti, Campagne, Visuals (AI), Calendario, Brand Assets |
+| 📋 LAVORO QUOTIDIANO | Clienti, Calendario, Task, Email Journey, Analisi Dati |
+| 📣 COMUNICAZIONE | HUB Lead, I tuoi dipendenti, Email Hub, Chiamate Voice, AI Autonomo |
+| 🎨 CONTENT STUDIO | Dashboard, Idee (AI), Contenuti, Calendario, Brand Assets, AdVisage AI (PRO) |
 | 📚 FORMAZIONE | Università, Esercizi, Template, Corsi |
-| 📖 BASE DI CONOSCENZA | Documenti, API Esterne |
-| ⚙️ IMPOSTAZIONI | API Keys (configurazioni tecniche) |
+| 🧠 CERVELLO AI | Memoria & Documenti, API Esterne |
+| ⚙️ IMPOSTAZIONI | API Keys, Automazioni Pagamento |
 | 📘 GUIDE | Centro Guide (questo manuale) |
 | 🤖 AI AVANZATO | Consulenze AI, File Search Analytics |
 
@@ -144,7 +144,7 @@ Come cliente, accedi all'area `/client` dove trovi:
 - **La tua formazione**: Corsi, lezioni, esercizi
 - **L'AI Assistant**: Il tuo assistente personale 24/7
 - **Il tuo tempo**: Calendario, task, consulenze
-- **I tuoi documenti**: Knowledge base personale
+- **I tuoi documenti**: Cervello AI personale
 
 ### 1.4 Scenari d'Uso Tipici
 
@@ -224,6 +224,8 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 | HUB Lead | `/consultant/lead-hub` | Centro controllo acquisizione clienti |
 | I tuoi dipendenti | `/consultant/whatsapp` | Gestire agenti AI WhatsApp |
 | Email Hub | `/consultant/email-hub` | Gestire email con risposte AI |
+| Chiamate Voice | `/consultant/voice-calls` | Gestire chiamate vocali AI (Alessia) |
+| AI Autonomo | `/consultant/ai-autonomy` | Configurare dipendenti AI autonomi |
 
 **FORMAZIONE**
 | Voce | Dove Porta | Quando Usarla |
@@ -233,10 +235,10 @@ La sidebar è la barra laterale sinistra presente in ogni pagina. È il tuo menu
 | Template | `/consultant/exercise-templates` | Creare template riutilizzabili |
 | Corsi | `/consultant/library` | Libreria completa dei corsi |
 
-**BASE DI CONOSCENZA**
+**CERVELLO AI**
 | Voce | Dove Porta | Quando Usarla |
 |------|------------|---------------|
-| Documenti | `/consultant/knowledge-documents` | Caricare documenti per l'AI |
+| Memoria & Documenti | `/consultant/knowledge-documents` | Caricare documenti per l'AI |
 | API Esterne | `/consultant/knowledge-apis` | Collegare fonti dati esterne |
 
 **IMPOSTAZIONI**
@@ -321,7 +323,7 @@ Hai appena ricevuto le credenziali. Cosa fai? Segui questa checklist:
 
 - [ ] **Configura Twilio** per WhatsApp (se lo usi)
 - [ ] **Crea il primo template WhatsApp** e attendi approvazione
-- [ ] **Carica documenti** nella Knowledge Base
+- [ ] **Carica documenti** nel Cervello AI (Memoria & Documenti)
 - [ ] **Crea il primo corso** o usa l'AI Course Builder
 - [ ] **Crea il primo esercizio**
 - [ ] **Assegna corso ed esercizio** al cliente test
@@ -613,7 +615,7 @@ Un agente AI è un "dipendente virtuale" che:
 - Risponde ai messaggi WhatsApp
 - Qualifica i lead
 - Prenota appuntamenti
-- Risponde a domande usando la knowledge base
+- Risponde a domande usando il Cervello AI (documenti e memorie)
 - Gestisce obiezioni
 
 **Tipi di agenti:**
@@ -666,8 +668,8 @@ Obiettivo: Prenotare appuntamento
 Azione: Proponi slot disponibili dal calendario
 ```
 
-**Tab 4: Knowledge Base**
-Seleziona quali documenti l'agente può consultare per rispondere.
+**Tab 4: Cervello AI**
+Seleziona quali documenti dal Cervello AI l'agente può consultare per rispondere.
 
 **Tab 5: Configurazioni**
 - Orari: quando l'agente può rispondere
@@ -803,7 +805,7 @@ I pulsanti in basso ti portano direttamente alle sezioni più usate:
 | Lead Hub | Centro acquisizione | Gestire pipeline |
 | Agent Setup | Agenti WhatsApp | Configurare bot |
 | Formazione | Corsi | Creare contenuti |
-| Knowledge Base | Documenti | Caricare materiali |
+| Cervello AI | Memoria & Documenti | Caricare materiali |
 
 ### 5.5 Esempio di Routine Mattutina
 
@@ -1227,9 +1229,9 @@ Se accetta: "Perfetto! 📅 Ti mando il link per scegliere il giorno e l'ora che
 Se esita: "Capisco, nessuna pressione. Posso tenerti aggiornato con contenuti utili nel frattempo?"
 ```
 
-#### Tab: Knowledge Base
+#### Tab: Cervello AI
 
-Seleziona quali documenti l'agente può consultare:
+Seleziona quali documenti dal Cervello AI l'agente può consultare:
 
 | Tipo Documento | Quando Usarlo |
 |----------------|---------------|
@@ -1510,29 +1512,129 @@ Vista a griglia di tutti i tuoi corsi con:
 
 ---
 
-## Capitolo 10: Knowledge Base e Intelligenza Artificiale
+## Capitolo 10: Cervello AI – Memoria & Documenti
 
-### 10.1 Cos'è la Knowledge Base
+### 10.1 Cos'è il Cervello AI
 
-La Knowledge Base è l'archivio di documenti che l'AI usa per rispondere alle domande. Più documenti carichi, più intelligenti e accurate saranno le risposte.
+Il Cervello AI (precedentemente "Knowledge Base") è l'archivio centrale di documenti, memorie e istruzioni che l'AI usa per rispondere alle domande e operare autonomamente. Più documenti carichi e più istruzioni configuri, più intelligenti e accurate saranno le risposte e le azioni dell'AI.
 
-**Dove:** `Sidebar → BASE DI CONOSCENZA → Documenti`
+**Dove:** `Sidebar → CERVELLO AI → Memoria & Documenti`
+**URL:** `/consultant/knowledge-documents`
 
-### 10.2 Caricare Documenti
+La pagina è organizzata in **5 tab** principali:
 
-**Formati supportati:**
-- PDF
-- DOC, DOCX (Word)
-- TXT (testo semplice)
+| Tab | Funzione | Descrizione |
+|-----|----------|-------------|
+| **Guida** | Panoramica | Spiega come funziona ogni sezione del Cervello AI |
+| **Documenti** | Archivio file | Upload e gestione di tutti i tuoi documenti (PDF, DOCX, CSV, Excel, audio, testo) |
+| **Istruzioni AI** | Regole personalizzate | Istruzioni dirette che modificano il comportamento dell'AI |
+| **Agenti AI** | Memoria dipendenti | Assegna documenti specifici a ciascuno degli 8 agenti AI autonomi |
+| **Google Drive** | Importazione | Importa documenti da Google Drive con sincronizzazione automatica |
 
-**Procedura:**
-1. Clicca "Carica Documento"
-2. Seleziona il file
-3. Il sistema estrae automaticamente il testo
-4. Aggiungi titolo e categoria (opzionale)
-5. Il documento viene indicizzato per la ricerca
+---
 
-**Cosa caricare:**
+### 10.2 Tab Guida
+
+La tab Guida mostra 4 card informative che spiegano come funziona ogni sezione del Cervello AI:
+
+**Come funziona il flusso:**
+1. I **Documenti** che carichi vanno **sempre** al tuo AI Assistant del consulente
+2. Se vuoi che anche un dipendente autonomo li usi, vai nella tab **Agenti AI** e assegnali esplicitamente
+3. Le **Istruzioni AI** sono regole che puoi indirizzare a destinatari specifici (AI Assistant, agenti autonomi, agenti WhatsApp)
+4. **Google Drive** tiene tutto sincronizzato con i tuoi file esistenti
+
+---
+
+### 10.3 Tab Documenti
+
+Questa è la tab principale per caricare, organizzare e gestire i tuoi documenti.
+
+#### Formati supportati
+
+| Formato | Estensioni |
+|---------|-----------|
+| Documenti di testo | PDF, DOCX, TXT, MD, RTF, ODT |
+| Fogli di calcolo | CSV, XLSX, XLS |
+| Presentazioni | PPTX |
+| Audio | MP3, WAV, M4A, OGG, WEBM |
+
+**Limite:** 50 MB per file.
+
+#### Pannello Cartelle (sidebar sinistra su desktop)
+
+- **Tutti i documenti**: mostra il conteggio totale
+- **Cartelle personalizzate**: crea cartelle con nome e colore per organizzare i documenti
+- **Crea cartella**: pulsante "+" per creare una nuova cartella
+- Ogni cartella mostra il conteggio documenti contenuti
+- Clicca su una cartella per filtrare la vista
+
+#### Area Upload
+
+Ci sono 3 modi per aggiungere documenti:
+
+| Metodo | Come funziona |
+|--------|---------------|
+| **Drag & Drop** | Trascina un file nell'area di upload sulla sinistra |
+| **Click** | Clicca sull'area di upload per selezionare un file dal computer |
+| **Incolla Testo** | Pulsante "Incolla Testo" per aggiungere contenuto testuale direttamente |
+
+**Procedura upload:**
+1. Trascina o seleziona un file
+2. Si apre un dialogo con i campi:
+   - **Titolo** (obbligatorio): nome del documento
+   - **Descrizione** (opzionale): breve descrizione
+   - **Categoria**: White Paper, Case Study, Manuale, Normativa, Ricerca, Articolo, Altro
+   - **Priorità** (1-10): slider per impostare la priorità di utilizzo dall'AI
+3. Clicca "Carica" per avviare l'upload
+4. Il sistema estrae automaticamente il testo e lo indicizza
+
+#### Vista Documenti
+
+Due modalità di visualizzazione:
+- **Lista**: vista compatta con dettagli in righe
+- **Griglia**: vista card con anteprime
+
+I documenti sono raggruppati in 3 sezioni collassabili:
+
+| Sezione | Descrizione |
+|---------|-------------|
+| **Documenti di Sistema (Solo per me)** | Documenti assegnati dall'admin, in sola lettura |
+| **Documenti Google Drive** | File importati da Google Drive con sincronizzazione |
+| **Documenti Caricati** | File caricati manualmente |
+
+#### Filtri e Ricerca
+
+- **Barra di ricerca**: cerca per titolo o contenuto
+- **Filtro Categoria**: filtra per tipo (White Paper, Case Study, ecc.)
+- **Filtro Stato**: Indicizzato, In elaborazione, Errore
+
+#### Azioni sui Documenti
+
+| Azione | Descrizione |
+|--------|-------------|
+| **Anteprima** | Mostra contenuto estratto, riassunto AI, tag, metadati |
+| **Modifica** | Cambia titolo, descrizione, categoria, priorità |
+| **Elimina** | Rimuove il documento definitivamente |
+| **Chiedimi qualcosa** | Apre l'AI Assistant pre-caricato con il contesto del documento |
+| **Riassunto AI** | Toggle per attivare/disattivare il riassunto automatico |
+| **Tag personalizzati** | Aggiungi/rimuovi tag per organizzazione |
+
+#### Azioni Bulk (selezione multipla)
+
+Seleziona più documenti per:
+- **Seleziona tutti** / **Deseleziona**
+- **Sposta**: sposta i documenti in una cartella diversa
+- **Elimina**: eliminazione multipla
+
+#### Anteprima Documenti Tabulari (CSV/Excel)
+
+Per file CSV e Excel, l'anteprima mostra:
+- Griglia con intestazioni colonne
+- Conteggio righe e colonne
+- Navigazione pagine per dataset grandi
+- Tab per fogli multipli (file Excel con più sheet)
+
+#### Cosa caricare
 
 | Tipo Documento | Esempio | Utilità |
 |----------------|---------|---------|
@@ -1541,22 +1643,111 @@ La Knowledge Base è l'archivio di documenti che l'AI usa per rispondere alle do
 | Materiali Formativi | "Guida al budget.pdf" | Integra le lezioni |
 | Casi Studio | "Caso cliente Marco.pdf" | Mostra esempi reali |
 | Articoli | "I 10 errori finanziari.docx" | Contenuti di valore |
+| Listini Prezzi | "Prezzi 2025.xlsx" | L'AI risponde su costi e offerte |
+| Manuali Prodotto | "Guida prodotto.pdf" | Supporto tecnico automatico |
 
-### 10.3 Organizzare i Documenti
+---
 
-**Categorie consigliate:**
-- 📋 Procedure
-- ❓ FAQ
-- 📚 Formazione
-- 📊 Casi Studio
-- 📰 Articoli
-- ⚙️ Tecnico
+### 10.4 Tab Istruzioni AI
 
-**Tagging:**
-Aggiungi tag per trovare rapidamente i documenti:
-- `pubblico` vs `interno`
-- `cliente` vs `lead`
-- Argomenti specifici
+**Cosa sono:** Le Istruzioni AI sono regole personalizzate che dici all'AI di seguire. Sono istruzioni dirette che modificano il comportamento dell'intelligenza artificiale.
+
+#### Tipi di Iniezione
+
+| Modalità | Descrizione | Quando usarla |
+|----------|-------------|---------------|
+| **System Prompt** | Sempre in memoria, iniettata direttamente nel prompt di sistema | Istruzioni brevi e critiche che devono essere sempre rispettate |
+| **File Search** | Cercata solo quando serve, tramite ricerca semantica | Testi lunghi, procedure dettagliate, documentazione estesa |
+
+#### Destinatari (Targeting)
+
+Ogni istruzione può essere indirizzata a destinatari specifici:
+
+| Destinatario | Descrizione |
+|-------------|-------------|
+| **AI Assistant del consulente** | Il tuo chat assistant personale |
+| **Tutti** | Tutti i clienti e dipendenti |
+| **Solo consulente** | Solo per te |
+| **Solo clienti** | Solo per gli AI assistant dei clienti |
+| **Solo dipendenti** | Solo per i dipendenti AI |
+| **Clienti specifici** | Seleziona singoli clienti |
+| **Reparti specifici** | Seleziona reparti aziendali |
+| **Dipendenti specifici** | Seleziona dipendenti AI specifici |
+| **Agenti Autonomi** | Seleziona quali dei tuoi 8 agenti AI (Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza) ricevono l'istruzione |
+| **Agenti WhatsApp** | Seleziona gli agenti WhatsApp che ricevono l'istruzione |
+
+#### Creazione Istruzione AI
+
+1. Clicca "Nuova Istruzione"
+2. Compila i campi:
+   - **Titolo**: nome descrittivo
+   - **Contenuto**: il testo dell'istruzione (puoi scrivere manualmente, incollare testo, o importare da Google Drive)
+   - **Descrizione** (opzionale)
+   - **Modalità iniezione**: System Prompt o File Search
+   - **Priorità** (1-10)
+   - **Destinatari**: seleziona a chi inviare l'istruzione
+3. Attiva/disattiva l'istruzione con il toggle
+
+**Esempi di istruzioni efficaci:**
+- "Rispondi sempre in italiano formale"
+- "Non offrire sconti oltre il 10%"
+- "Quando un cliente chiede dei prezzi, indirizzalo sempre al listino aggiornato"
+- "Per le domande tecniche, suggerisci di prenotare una consulenza"
+
+---
+
+### 10.5 Tab Agenti AI
+
+La tab Agenti AI gestisce la **memoria dei dipendenti autonomi**. Qui assegni documenti specifici a ciascuno degli 8 agenti AI, dando a ognuno le conoscenze di cui ha bisogno per svolgere il proprio ruolo.
+
+#### I tuoi 8 Agenti AI
+
+| Agente | Ruolo | Specializzazione |
+|--------|-------|-----------------|
+| **Alessia** | Voice Consultant | Chiamate AI proattive e follow-up vocale |
+| **Millie** | Financial Analyst | Analisi finanziaria e report automatici |
+| **Echo** | Client Listener | Monitoraggio sentiment e ascolto attivo |
+| **Nova** | Content Creator | Creazione contenuti e marketing |
+| **Stella** | Engagement Specialist | Engagement clienti e nurturing |
+| **Iris** | Data Insights | Analisi dati e insight strategici |
+| **Marco** | Executive Assistant | Assistente esecutivo e organizzazione |
+| **Personalizza** | Custom Agent | Agente personalizzabile secondo le tue esigenze |
+
+#### Come Assegnare Documenti
+
+1. Clicca su un agente dalla griglia
+2. Si apre un dialogo con due sezioni:
+   - **Documenti Assegnati**: documenti già assegnati a quell'agente (con possibilità di rimuoverli)
+   - **Documenti Disponibili**: tutti i documenti indicizzati non ancora assegnati (con barra di ricerca)
+3. Clicca "+" per assegnare un documento
+4. Clicca "-" per rimuovere un documento
+
+**Principio chiave:** Ogni agente accede SOLO ai documenti che gli assegni. Questo permette di dare conoscenze specializzate a ciascun agente.
+
+**Esempio pratico:**
+- Assegna il **listino prezzi** a Marco (vendite)
+- Assegna le **procedure HR** a Millie (analisi)
+- Assegna i **contenuti marketing** a Nova (content)
+
+---
+
+### 10.6 Tab Google Drive
+
+Importa documenti direttamente da Google Drive senza doverli scaricare e ricaricare.
+
+#### Funzionalità
+
+| Funzione | Descrizione |
+|----------|-------------|
+| **Sfoglia cartelle** | Naviga le tue cartelle Google Drive direttamente dalla piattaforma |
+| **Importa come Documento** | Importa il file come documento nel Cervello AI |
+| **Importa come Istruzione AI** | Importa il file come istruzione AI per il system prompt |
+| **Sincronizzazione automatica** | Quando modifichi il file su Drive, il contenuto si aggiorna automaticamente nella piattaforma |
+| **Cronologia sync** | Visualizza lo storico delle sincronizzazioni con dettagli su caratteri estratti, token, durata |
+
+**Formati supportati da Drive:** Google Docs, Google Sheets, PDF, e altri formati compatibili.
+
+**Prerequisito:** Devi avere configurato le credenziali Google Drive nelle API Keys (`Sidebar → IMPOSTAZIONI → API Keys`).
 
 ### 10.4 AI Assistant per Consulenti
 
@@ -1758,7 +1949,7 @@ Per ogni bozza puoi:
 
 ## Content Studio
 
-Il Content Studio è l'area dedicata alla creazione, gestione e pubblicazione di contenuti marketing per social media. Include 8 sezioni: Dashboard, Idee (AI), Contenuti, Campagne, Visuals (AI), Calendario, Brand Assets, e AdVisage (AI). Tutte le pagine sono accessibili dalla sidebar sotto la voce **CONTENT STUDIO**.
+Il Content Studio è l'area dedicata alla creazione, gestione e pubblicazione di contenuti marketing per social media. Include 6 sezioni: Dashboard, Idee (AI), Contenuti, Calendario, Brand Assets, e AdVisage AI (PRO). Tutte le pagine sono accessibili dalla sidebar sotto la voce **CONTENT STUDIO**.
 
 ---
 
@@ -1775,8 +1966,8 @@ La dashboard centrale mostra una panoramica completa di tutto il Content Studio.
 |------|-------------|-------|
 | **Idee Generate** | Numero totale di idee create nella sezione Idee | Lampadina (ambra) |
 | **Post Pubblicati** | Numero di post con stato "pubblicato" | Documento (blu) |
-| **Campagne Attive** | Numero di campagne con stato "attiva" | Megafono (viola) |
-| **Lead Generati** | Somma dei lead di tutte le campagne | Utenti (verde) |
+| **Brand Assets** | Numero di asset del brand configurati | Palette (viola) |
+| **Post Programmati** | Numero di post programmati nel calendario | Calendario (verde) |
 
 #### Azioni Rapide
 
@@ -1786,19 +1977,18 @@ La dashboard centrale mostra una panoramica completa di tutto il Content Studio.
 |----------|-------------|
 | **Genera Nuova Idea** | Pagina Idee |
 | **Crea Post** | Pagina Contenuti |
-| **Avvia Campagna** | Pagina Campagne |
+| **AdVisage AI** | Pagina AdVisage AI |
 
 #### Attivita Recente
 
-Lista delle ultime 5 attivita combinate (3 idee + 3 post + 2 campagne piu recenti, ordinate e troncate a 5). Per ogni elemento mostra:
+Lista delle ultime 5 attività combinate (idee e post più recenti, ordinate e troncate a 5). Per ogni elemento mostra:
 - Titolo
 - Tempo relativo (es. "2 ore fa", "1 giorno fa")
 - Badge stato (Nuova, In Lavorazione, Bozza, Programmato, Pubblicato, Attiva, In Pausa)
 
-#### Performance e Campagna Top (2 card affiancate)
+#### Performance (card riepilogativa)
 
-- **Performance**: mostra conteggi totali di Idee, Post, Campagne
-- **Campagna Top**: mostra la prima campagna attiva trovata con nome, stato e numero lead
+- **Performance**: mostra conteggi totali di Idee e Post creati
 
 #### Post per Progetto
 
@@ -1853,10 +2043,10 @@ Genera idee per contenuti social con intelligenza artificiale. Il form utilizza 
 | Persuasivo (Copy) | Orientato alla vendita |
 | Personalizzato | Campo testo libero per istruzioni custom |
 
-**Sezione 5: Brand Voice & Knowledge Base (opzionale)**
+**Sezione 5: Brand Voice & Cervello AI (opzionale)**
 - Toggle **Usa Brand Voice**: carica i dati Brand (Chi Sono, Tono di Voce, Note AI, Keywords, Parole da Evitare)
 - Pulsante **Importa da Agente**: importa la Brand Voice da un agente WhatsApp configurato
-- Toggle **Usa Knowledge Base**: seleziona documenti dalla Knowledge Base per contestualizzare la generazione
+- Toggle **Usa Cervello AI**: seleziona documenti dal Cervello AI per contestualizzare la generazione
 - Upload file temporanei per contesto aggiuntivo
 - Campo **Contesto Aggiuntivo**: note libere
 
@@ -2138,101 +2328,12 @@ Per ogni post salvato e possibile rigenerare variazioni AI del contenuto mantene
 
 ---
 
-### Campagne Pubblicitarie
-
-**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Campagne`
-**URL:** `/consultant/content-studio/campaigns`
-
-Gestione campagne pubblicitarie con generazione AI dei contenuti.
-
-#### Card KPI Campagne (parte superiore)
-
-| Metrica | Calcolo |
-|---------|---------|
-| **Lead Totali** | Somma lead di tutte le campagne |
-| **Spesa Totale** | Somma spend di tutte le campagne (formato EUR) |
-| **CTR Medio** | Media del CTR di tutte le campagne |
-| **CPL Medio** | Spesa totale / Lead totali |
-
-#### Creazione Campagna - Wizard a 6 Tab
-
-| Tab | Campi |
-|-----|-------|
-| **Base** | Nome campagna, Obiettivo (Brand Awareness / Engagement / Lead Generation / Vendite), Prodotto/Servizio, Target Audience |
-| **Hook** | Hook Principale (textarea) |
-| **Target** | Demografia, Interessi (textarea) |
-| **Problema** | Descrizione del Problema (textarea) |
-| **Soluzione** | Descrizione della Soluzione (textarea) + Riprova Sociale |
-| **CTA** | Testo CTA, URL CTA |
-
-#### Generazione AI Campagna
-
-Nel tab "Base", pulsante **"Genera contenuti con AI"**:
-- Richiede: Prodotto/Servizio, Target Audience, Obiettivo
-- Gemini genera automaticamente: nome, hook, demografia, interessi, problema, soluzione, riprova sociale, testo CTA
-- I campi vengono precompilati e sono editabili
-
-#### Stati Campagna
-
-| Stato | Badge |
-|-------|-------|
-| **Bozza** | Grigio |
-| **Attiva** | Verde con icona check |
-| **In Pausa** | Ambra con icona alert |
-| **Completata** | Blu con icona check |
-
-#### Dati per Campagna
-
-Ogni campagna traccia: spend, impressions, clicks, leads, CTR, CPL.
-
----
-
-### Visuals (AI) - Generatore Visual
-
-**Dove trovarlo:** `Sidebar → CONTENT STUDIO → Visuals`
-**URL:** `/consultant/content-studio/visuals`
-**Badge:** AI
-**Motore:** Imagen 3
-
-Genera immagini con intelligenza artificiale per i contenuti social.
-
-#### Form di Generazione
-
-| Campo | Opzioni/Dettaglio |
-|-------|-------------------|
-| **Descrizione contenuto** | Testo libero per descrivere cosa si vuole in modo naturale |
-| **Piattaforma** | Instagram, Facebook, LinkedIn, Twitter |
-| **Pulsante "Ottimizza"** | AI genera un prompt ottimizzato basato sulla descrizione e piattaforma |
-| **Prompt** | Campo testo editabile (precompilato dall'ottimizzazione o scritto manualmente) |
-| **Aspetto** | 1:1 (Quadrato), 3:4 (Verticale), 4:3 (Orizzontale), 9:16 (Story/Reel), 16:9 (Landscape) |
-| **Stile** | Realistico, Illustrazione, Minimale, Bold, Professionale, Giocoso |
-| **Prompt Negativo** | Cosa NON includere nell'immagine (opzionale) |
-
-**Tempo di generazione:** 10-30 secondi per immagine.
-
-#### Galleria Immagini
-
-Griglia di card (1-3 colonne responsive) con:
-- Anteprima immagine (aspect-ratio square)
-- Badge aspect ratio in overlay
-- Prompt usato (troncato a 2 righe)
-- Badge stile e data di creazione
-
-**Azioni su hover (overlay scuro):**
-| Pulsante | Funzione |
-|----------|----------|
-| **Prompt** | Copia il prompt negli appunti |
-| **Rigenera** (icona refresh) | Riapre il dialogo con lo stesso prompt per generare una variazione |
-| **Elimina** (icona cestino) | Elimina l'immagine |
-
----
-
 ### Calendario Editoriale
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Calendario`
 **URL:** `/consultant/content-studio/calendar`
 
-Calendario visuale mensile per pianificare post e campagne.
+Calendario visuale mensile per pianificare la pubblicazione dei post.
 
 #### Vista Mensile
 
@@ -2777,11 +2878,12 @@ Monitora l'utilizzo e i costi AI.
 
 ---
 
-## Capitolo 19: Knowledge Base Personale
+## Capitolo 19: Cervello AI Personale (Area Cliente)
 
 ### 19.1 I Tuoi Documenti
 
 **Dove trovarlo:** `Sidebar → Base di Conoscenza → Documenti`
+**Nota:** Nell'area cliente questa sezione si chiama ancora "Base di Conoscenza" con la voce "Documenti".
 
 Carica documenti che solo tu e l'AI potete vedere.
 
@@ -2810,7 +2912,7 @@ Carica documenti che solo tu e l'AI potete vedere.
 | **Escalation** | Passaggio di una conversazione da AI a umano |
 | **File Search** | Tecnologia di ricerca semantica nei documenti |
 | **Inbound** | Agente che risponde a messaggi in arrivo |
-| **Knowledge Base** | Archivio documenti usato dall'AI per rispondere |
+| **Cervello AI** | Archivio documenti e memorie usato dall'AI per rispondere (precedentemente "Knowledge Base") |
 | **Lead** | Potenziale cliente da convertire |
 | **Lead Scoring** | Sistema automatico di punteggio per prioritizzare i lead |
 | **Modulo** | Raggruppamento di lezioni all'interno di un corso |
@@ -2884,13 +2986,13 @@ Carica documenti che solo tu e l'AI potete vedere.
 1. L'agente è attivo (non in pausa)?
 2. È dentro gli orari configurati?
 3. È collegato alla campagna corretta?
-4. La Knowledge Base è popolata?
+4. Il Cervello AI è popolato con documenti?
 
 **Soluzione:**
 - Attiva l'agente dalla dashboard
 - Verifica gli orari di attività
 - Collega l'agente alla campagna
-- Carica documenti nella Knowledge Base
+- Carica documenti nel Cervello AI (Memoria & Documenti)
 
 ---
 
@@ -2939,7 +3041,7 @@ Carica documenti che solo tu e l'AI potete vedere.
 
 | Cosa | Perché |
 |------|--------|
-| Popola la Knowledge Base | AI più intelligente |
+| Popola il Cervello AI | AI più intelligente |
 | Rispondi entro 24h | Engagement alto |
 | Personalizza i feedback | Clienti più motivati |
 | Usa automazioni | Risparmia tempo |
@@ -3100,7 +3202,7 @@ Ogni minuto il sistema:
    a. Seleziona il **template** appropriato (rotazione automatica)
    b. Se la personalizzazione AI è attiva:
       - Chiama la funzione `buildUserContext()` che raccoglie: esercizi completati, progressi corsi, note delle consulenze recenti, obiettivi attivi
-      - Integra con **File Search** per accedere alla knowledge base del consulente
+      - Integra con **File Search** per accedere al Cervello AI del consulente
       - L'AI genera un messaggio personalizzato basato sui dati reali
    c. **Invia il messaggio** tramite Twilio/WhatsApp API
    d. Aggiorna lo stato a "sent" con timestamp
@@ -3121,7 +3223,7 @@ Quando la personalizzazione AI è attiva, ogni messaggio viene arricchito con da
 - Note dell'ultima consulenza
 - Obiettivi attivi e scadenze
 - Storico risposte ai check-in precedenti
-- Documenti rilevanti dalla knowledge base (via File Search)
+- Documenti rilevanti dal Cervello AI (via File Search)
 
 **Esempio di messaggio senza AI:**
 > "Ciao Marco, come va questa settimana? Fammi sapere se hai bisogno di supporto."
@@ -3633,7 +3735,7 @@ Per ogni dipendente attivo:
    - Include la **memoria anti-duplicazione**: elenco di task recenti (in coda, completati, cancellati, falliti) per evitare duplicati
    - Include i **blocchi permanenti**: clienti/categorie esplicitamente vietati dal consulente
    - Inietta i **documenti di sistema** (System Prompt Documents) assegnati a quel dipendente
-   - Se disponibile, attiva il **File Search** per RAG sui documenti della knowledge base
+   - Se disponibile, attiva il **File Search** per RAG sui documenti del Cervello AI
 
 4. **Chiamata AI (Gemini):**
    - Modello: Gemini 2.5 Flash Lite (o il modello del provider configurato)
@@ -3683,7 +3785,7 @@ Quando un task viene eseguito, il **Decision Engine** (`autonomous-decision-engi
 | Azione | Descrizione |
 |---|---|
 | `fetch_client_data` | Raccoglie dati completi del cliente (consulenze, esercizi, progressi) |
-| `search_private_stores` | Cerca nella knowledge base privata del consulente (File Search/RAG) |
+| `search_private_stores` | Cerca nel Cervello AI privato del consulente (File Search/RAG) |
 | `web_search` | Effettua una ricerca web per informazioni aggiornate |
 | `analyze_patterns` | Analizza pattern nei dati raccolti per identificare trend e insights |
 | `generate_report` | Genera un report strutturato con i risultati dell'analisi |
@@ -3715,7 +3817,7 @@ Il **Task Executor** (`ai-task-executor.ts`) prende il piano dal Decision Engine
    - Se uno step fallisce, può decidere se continuare o interrompere
 
 2. **Integrazione File Search (RAG):**
-   - Quando un step richiede `search_private_stores`, il sistema usa Google File Search per cercare nei documenti della knowledge base del consulente
+   - Quando un step richiede `search_private_stores`, il sistema usa Google File Search per cercare nei documenti del Cervello AI del consulente
    - I risultati vengono iniettati nel contesto degli step successivi
 
 3. **Integrazione chiamate vocali:**
@@ -3807,17 +3909,17 @@ Il sistema implementa più livelli di protezione per evitare comportamenti indes
 
 ---
 
-### 22.9 Knowledge Base e File Search per i Dipendenti
+### 22.9 Cervello AI e File Search per i Dipendenti
 
-Ogni dipendente AI può accedere alla knowledge base del consulente in due modi:
+Ogni dipendente AI può accedere al Cervello AI del consulente in due modi:
 
-1. **System Prompt Documents**: Documenti iniettati direttamente nel prompt dell'AI (sempre in memoria)
-   - Configurabili dalla pagina Knowledge Base
+1. **System Prompt Documents (Istruzioni AI)**: Documenti iniettati direttamente nel prompt dell'AI (sempre in memoria)
+   - Configurabili dalla pagina Memoria & Documenti → tab "Istruzioni AI"
    - Si possono assegnare documenti specifici a dipendenti specifici
    - Tabella `agent_knowledge_assignments`
 
-2. **File Search (RAG)**: Ricerca semantica nei documenti della knowledge base
-   - Attivato automaticamente se il dipendente ha documenti KB assegnati
+2. **File Search (RAG)**: Ricerca semantica nei documenti del Cervello AI
+   - Attivato automaticamente se il dipendente ha documenti assegnati (tab "Agenti AI")
    - Usa Google File Search per cercare contenuti rilevanti
    - I risultati vengono iniettati nel contesto dell'analisi
 
@@ -3916,10 +4018,10 @@ I tre sistemi non operano in modo isolato ma sono interconnessi:
 
 ### 23.3 File Search Condiviso
 
-Tutti e tre i sistemi possono accedere alla stessa knowledge base del consulente via File Search:
-- **Weekly Check-in**: usa File Search per personalizzare i messaggi con contesto dalla KB
-- **Chiamate Vocali**: il prompt della chiamata può essere arricchito con info dalla KB
-- **AI Autonomy**: ogni dipendente può cercare nella KB durante l'analisi e l'esecuzione dei task
+Tutti e tre i sistemi possono accedere allo stesso Cervello AI del consulente via File Search:
+- **Weekly Check-in**: usa File Search per personalizzare i messaggi con contesto dal Cervello AI
+- **Chiamate Vocali**: il prompt della chiamata può essere arricchito con info dal Cervello AI
+- **AI Autonomy**: ogni dipendente può cercare nel Cervello AI durante l'analisi e l'esecuzione dei task
 
 Questo garantisce che ogni comunicazione – sia un messaggio WhatsApp, una chiamata o un'email – sia **contestualizzata** con le informazioni più aggiornate del consulente.
 
