@@ -429,25 +429,25 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                   Membri Pool ({members.length})
                 </span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => {
                     setShowAddForm(true);
                     setExpanded(true);
                   }}
-                  className="p-1 hover:bg-blue-100 rounded transition-colors"
-                  title="Aggiungi membro"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors shadow-sm"
                 >
-                  <UserPlus className="h-3.5 w-3.5 text-blue-500" />
+                  <UserPlus className="h-4 w-4" />
+                  <span className="text-xs font-medium">Aggiungi</span>
                 </button>
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="p-1 hover:bg-blue-100 rounded transition-colors"
+                  className="p-1.5 hover:bg-blue-100 rounded transition-colors"
                 >
                   {expanded ? (
-                    <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                    <ChevronUp className="h-4 w-4 text-slate-500" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                    <ChevronDown className="h-4 w-4 text-slate-500" />
                   )}
                 </button>
               </div>
