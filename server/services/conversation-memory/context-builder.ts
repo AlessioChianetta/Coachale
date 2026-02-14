@@ -6,6 +6,20 @@ export interface MemoryContext {
   hasHistory: boolean;
   contextText: string;
   conversationCount: number;
+  estimatedTokens?: number;
+}
+
+const GOLD_MEMORY_TOKEN_BUDGET = 8000;
+const CHARS_PER_TOKEN = 4;
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
+}
+
+function truncateToTokenBudget(text: string, maxTokens: number): string {
+  const maxChars = maxTokens * CHARS_PER_TOKEN;
+  if (text.length <= maxChars) return text;
+  return text.substring(0, maxChars) + "\n\n[... memoria troncata per limiti di contesto ...]";
 }
 
 export class ConversationContextBuilder {
@@ -222,14 +236,15 @@ export class ConversationContextBuilder {
     contextParts.push("");
 
     const contextText = contextParts.join("\n");
-    const estimatedTokens = Math.ceil(contextText.length / 4);
+    const tokens = estimateTokens(contextText);
     
-    console.log(`🧠 [ManagerMemory Context] Daily summaries: ${dailySummaries.length} days, ${contextText.length} chars, ~${estimatedTokens} tokens`);
+    console.log(`🧠 [ManagerMemory Context] Daily summaries: ${dailySummaries.length} days, ${contextText.length} chars, ~${tokens} tokens`);
 
     return {
       hasHistory: true,
       contextText,
       conversationCount: dailySummaries.reduce((sum, s) => sum + s.conversationCount, 0),
+      estimatedTokens: tokens,
     };
   }
 
@@ -286,14 +301,54 @@ export class ConversationContextBuilder {
     contextParts.push("");
 
     const contextText = contextParts.join("\n");
-    const estimatedTokens = Math.ceil(contextText.length / 4);
+    const tokens = estimateTokens(contextText);
     
-    console.log(`🧠 [ManagerMemory Context] Recent conversations: ${conversations.length}, ${contextText.length} chars, ~${estimatedTokens} tokens`);
+    console.log(`🧠 [ManagerMemory Context] Recent conversations: ${conversations.length}, ${contextText.length} chars, ~${tokens} tokens`);
 
     return {
       hasHistory: true,
       contextText,
       conversationCount: conversations.length,
+      estimatedTokens: tokens,
     };
+  }
+
+  static combineWithBudget(
+    historyContext: MemoryContext,
+    dailySummaryContext: MemoryContext,
+    totalBudget: number = GOLD_MEMORY_TOKEN_BUDGET
+  ): { combinedText: string; totalTokens: number; wasTruncated: boolean } {
+    const historyTokens = historyContext.estimatedTokens || estimateTokens(historyContext.contextText);
+    const summaryTokens = dailySummaryContext.estimatedTokens || estimateTokens(dailySummaryContext.contextText);
+    const totalTokens = historyTokens + summaryTokens;
+
+    if (totalTokens <= totalBudget) {
+      let combinedText = "";
+      if (historyContext.hasHistory) combinedText += historyContext.contextText;
+      if (dailySummaryContext.hasHistory) combinedText += (combinedText ? "\n\n" : "") + dailySummaryContext.contextText;
+      console.log(`🧠 [MemoryBudget] Combined: ${totalTokens} tokens (budget: ${totalBudget}) - OK`);
+      return { combinedText, totalTokens, wasTruncated: false };
+    }
+
+    console.log(`🧠 [MemoryBudget] Combined ${totalTokens} tokens exceeds budget ${totalBudget}, applying proportional truncation`);
+
+    const summaryBudget = Math.floor(totalBudget * 0.6);
+    const historyBudget = totalBudget - summaryBudget;
+
+    let finalSummary = dailySummaryContext.hasHistory
+      ? truncateToTokenBudget(dailySummaryContext.contextText, summaryBudget)
+      : "";
+    let finalHistory = historyContext.hasHistory
+      ? truncateToTokenBudget(historyContext.contextText, historyBudget)
+      : "";
+
+    let combinedText = "";
+    if (finalHistory) combinedText += finalHistory;
+    if (finalSummary) combinedText += (combinedText ? "\n\n" : "") + finalSummary;
+
+    const finalTokens = estimateTokens(combinedText);
+    console.log(`🧠 [MemoryBudget] After truncation: ${finalTokens} tokens (budget: ${totalBudget})`);
+
+    return { combinedText, totalTokens: finalTokens, wasTruncated: true };
   }
 }

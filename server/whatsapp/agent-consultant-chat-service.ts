@@ -370,13 +370,19 @@ export interface ManagerPreferences {
   thinkingLevel?: string;
 }
 
+export interface GoldMemoryContext {
+  subscriptionId: string;
+  agentConfigId?: string;
+}
+
 export async function* processConsultantAgentMessage(
   consultantId: string,
   conversationId: string,
   messageContent: string,
   pendingModification?: PendingModificationContext,
   bookingContext?: BookingContext,
-  managerPreferences?: ManagerPreferences
+  managerPreferences?: ManagerPreferences,
+  goldMemory?: GoldMemoryContext
 ): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -618,6 +624,41 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
       console.log(`   ✅ Preferences block added to prompt`);
     }
     
+    // GOLD EXCLUSIVE: AI Memory injection (daily summaries + recent conversations)
+    if (goldMemory) {
+      try {
+        console.log(`\n🧠 [GOLD MEMORY] Injecting memory for subscription ${goldMemory.subscriptionId.slice(0, 8)}...`);
+        const { conversationContextBuilder, ConversationContextBuilder } = await import('../services/conversation-memory');
+        
+        const historyContext = await conversationContextBuilder.buildManagerHistoryContext(
+          goldMemory.subscriptionId,
+          conversationId
+        );
+        
+        const memoryContext = await conversationContextBuilder.buildManagerDailySummaryContext(
+          goldMemory.subscriptionId,
+          7,
+          goldMemory.agentConfigId
+        );
+        
+        if (historyContext.hasHistory || memoryContext.hasHistory) {
+          const { combinedText, totalTokens, wasTruncated } = ConversationContextBuilder.combineWithBudget(
+            historyContext,
+            memoryContext
+          );
+          
+          if (combinedText) {
+            systemPrompt += `\n\n${combinedText}`;
+            console.log(`   ✅ [GOLD MEMORY] Injected: ~${totalTokens} tokens${wasTruncated ? ' (truncated to budget)' : ''}`);
+          }
+        } else {
+          console.log(`   ℹ️ [GOLD MEMORY] No memory available yet`);
+        }
+      } catch (memoryError: any) {
+        console.warn(`   ⚠️ [GOLD MEMORY] Failed to inject: ${memoryError.message}`);
+      }
+    }
+
     const promptLength = systemPrompt.length;
     console.log(`✅ System prompt built: ${promptLength} characters (~${Math.ceil(promptLength / 4)} tokens)`);
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

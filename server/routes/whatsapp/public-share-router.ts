@@ -2026,13 +2026,24 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           let chunkCount = 0;
           let fullThinking = '';
           
+          const tokenType = (req as any).tokenType as string | undefined;
+          const goldMemoryCtx = tokenType === 'gold' && managerId ? {
+            subscriptionId: managerId,
+            agentConfigId: share.agentConfigId || undefined,
+          } : undefined;
+          
+          if (goldMemoryCtx) {
+            console.log(`🧠 [GOLD] Passing memory context for subscription ${managerId?.slice(0, 8)}...`);
+          }
+          
           for await (const event of agentService.processConsultantAgentMessage(
             conversation.consultantId,
             conversation.id,
             message,
             pendingModification,
             bookingContextForAI,
-            managerPreferences
+            managerPreferences,
+            goldMemoryCtx
           )) {
             // Handle different event types from the generator
             if (event.type === 'promptBreakdown') {
