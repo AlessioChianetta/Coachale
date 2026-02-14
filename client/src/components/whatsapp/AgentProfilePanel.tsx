@@ -1272,6 +1272,28 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
             {/* Performance Tab */}
             <TabsContent value="performance" className="space-y-5 mt-5">
+              {/* CTA - Parla con il tuo dipendente */}
+              <button
+                onClick={handleAccessAsGold}
+                disabled={isLoadingGoldAccess}
+                className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 p-[1px] shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01] disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                <div className="relative flex items-center gap-3 rounded-[15px] bg-gradient-to-r from-cyan-500/90 via-blue-500/90 to-indigo-600/90 px-5 py-3.5">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm">
+                    {isLoadingGoldAccess ? (
+                      <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    ) : (
+                      <MessageSquare className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold text-white">Parla con il tuo dipendente</p>
+                    <p className="text-[11px] text-white/70">Apri la chat AI come cliente Gold</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-white/60 group-hover:text-white transition-colors" />
+                </div>
+              </button>
+
               {/* QUICK ACTIONS - Horizontal compact */}
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
@@ -1304,19 +1326,6 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   >
                     <Share2 className="h-3.5 w-3.5 text-emerald-500" />
                     Condividi
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-10 px-5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white border-0 shadow-md rounded-xl gap-2 text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
-                    onClick={handleAccessAsGold}
-                    disabled={isLoadingGoldAccess}
-                  >
-                    {isLoadingGoldAccess ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-4 w-4" />
-                    )}
-                    Parla con il tuo dipendente
                   </Button>
                 </div>
               </div>
