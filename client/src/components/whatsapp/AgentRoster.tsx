@@ -19,8 +19,7 @@ import {
   CheckCircle, 
   PauseCircle, 
   FlaskConical,
-  AlertCircle,
-  MessageCircle
+  AlertCircle
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -83,13 +82,6 @@ const statusConfig = {
   },
 };
 
-const agentTypeLabels: Record<string, string> = {
-  reactive_lead: "Lead Reattivo",
-  proactive_setter: "Setter Proattivo",
-  informative_advisor: "Advisor Informativo",
-  customer_success: "Customer Success",
-  intake_coordinator: "Coordinatore Intake",
-};
 
 function AgentCard({ 
   agent, 
@@ -133,12 +125,6 @@ function AgentCard({
               {agent.name}
             </span>
             <div className={cn("w-2 h-2 rounded-full flex-shrink-0", status.dotColor)} />
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <MessageCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {agentTypeLabels[agent.agentType] || agent.agentType}
-            </span>
           </div>
         </div>
 
