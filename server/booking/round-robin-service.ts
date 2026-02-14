@@ -498,12 +498,84 @@ export async function getPoolStats(poolId: string) {
   };
 }
 
+interface WorkingHoursDay {
+  enabled: boolean;
+  start?: string;
+  end?: string;
+  ranges?: Array<{ start: string; end: string }>;
+}
+
+interface WorkingHoursConfig {
+  monday?: WorkingHoursDay;
+  tuesday?: WorkingHoursDay;
+  wednesday?: WorkingHoursDay;
+  thursday?: WorkingHoursDay;
+  friday?: WorkingHoursDay;
+  saturday?: WorkingHoursDay;
+  sunday?: WorkingHoursDay;
+  [key: string]: WorkingHoursDay | undefined;
+}
+
+function getDayTimeRanges(
+  workingHours: WorkingHoursConfig | null | undefined,
+  dayOfWeek: number
+): Array<{ start: string; end: string }> {
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = dayNames[dayOfWeek];
+
+  if (!workingHours) {
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      return [{ start: "09:00", end: "18:00" }];
+    }
+    return [];
+  }
+
+  const dayConfig = workingHours[dayName];
+  if (!dayConfig?.enabled) return [];
+
+  if (dayConfig.ranges && Array.isArray(dayConfig.ranges)) {
+    return dayConfig.ranges.filter(r => r.start && r.end);
+  }
+
+  if (dayConfig.start && dayConfig.end) {
+    return [{ start: dayConfig.start, end: dayConfig.end }];
+  }
+
+  return [];
+}
+
+function generateTimeSlotsForRanges(
+  ranges: Array<{ start: string; end: string }>,
+  durationMinutes: number
+): string[] {
+  const slots: string[] = [];
+  for (const range of ranges) {
+    const [startH, startM] = range.start.split(':').map(Number);
+    const [endH, endM] = range.end.split(':').map(Number);
+    const rangeStartMin = startH * 60 + startM;
+    const rangeEndMin = endH * 60 + endM;
+
+    let currentMin = rangeStartMin;
+    while (currentMin + durationMinutes <= rangeEndMin) {
+      const h = Math.floor(currentMin / 60);
+      const m = currentMin % 60;
+      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      currentMin += durationMinutes;
+    }
+  }
+  return slots;
+}
+
 export async function getAvailableSlotsFromPool(
   poolId: string,
   startDate: Date,
   endDate: Date,
   durationMinutes: number = 60,
-  timezone: string = "Europe/Rome"
+  timezone: string = "Europe/Rome",
+  workingHours?: WorkingHoursConfig | null,
+  bufferBefore: number = 0,
+  bufferAfter: number = 0,
+  minHoursNotice: number = 0
 ): Promise<Array<{ date: string; time: string; availableAgents: number }>> {
   const members = await db
     .select({
@@ -520,6 +592,9 @@ export async function getAvailableSlotsFromPool(
     );
 
   if (members.length === 0) return [];
+
+  const now = new Date();
+  const minNoticeDate = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);
 
   const allSlots = new Map<string, number>();
 
@@ -550,19 +625,27 @@ export async function getAvailableSlotsFromPool(
       const current = new Date(startDate);
       while (current <= endDate) {
         const dayOfWeek = current.getDay();
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          for (let hour = 9; hour < 18; hour++) {
+        const timeRanges = getDayTimeRanges(workingHours, dayOfWeek);
+
+        if (timeRanges.length > 0) {
+          const timeSlots = generateTimeSlotsForRanges(timeRanges, durationMinutes);
+
+          for (const slotTime of timeSlots) {
             const slotDate = current.toISOString().slice(0, 10);
-            const slotTime = `${hour.toString().padStart(2, "0")}:00`;
             const slotKey = `${slotDate}|${slotTime}`;
 
             const slotStart = new Date(`${slotDate}T${slotTime}:00`);
             const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
 
+            if (slotStart < minNoticeDate) continue;
+
+            const slotStartWithBuffer = new Date(slotStart.getTime() - bufferBefore * 60000);
+            const slotEndWithBuffer = new Date(slotEnd.getTime() + bufferAfter * 60000);
+
             const isBusy = busySlots.some((busy: any) => {
               const busyStart = new Date(busy.start!);
               const busyEnd = new Date(busy.end!);
-              return slotStart < busyEnd && slotEnd > busyStart;
+              return slotStartWithBuffer < busyEnd && slotEndWithBuffer > busyStart;
             });
 
             if (!isBusy) {

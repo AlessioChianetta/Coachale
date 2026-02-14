@@ -56,12 +56,20 @@ router.get("/:slug/slots", async (req: Request, res: Response) => {
     if (poolInfo) {
       const start = startDate ? new Date(startDate as string) : new Date();
       const end = endDate ? new Date(endDate as string) : new Date(start.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+      const apptAvail = consultant.appointmentAvailability as any;
+      const workingHoursForPool = apptAvail?.workingDays || null;
+
       const poolSlots = await getAvailableSlotsFromPool(
         poolInfo.poolId,
         start,
         end,
         consultant.appointmentDuration || 60,
-        consultant.timezone || "Europe/Rome"
+        consultant.timezone || "Europe/Rome",
+        workingHoursForPool,
+        consultant.bufferBefore || 0,
+        consultant.bufferAfter || 0,
+        consultant.minHoursNotice || 0
       );
       slots = poolSlots.map(s => ({
         date: s.date,
@@ -123,12 +131,18 @@ router.post("/:slug/book", async (req: Request, res: Response) => {
 
     let isSlotAvailable = false;
     if (poolInfo) {
+      const apptAvail2 = consultant.appointmentAvailability as any;
+      const workingHoursForPool2 = apptAvail2?.workingDays || null;
       const poolSlots = await getAvailableSlotsFromPool(
         poolInfo.poolId,
         requestedDate,
         new Date(requestedDate.getTime() + 24 * 60 * 60 * 1000),
         consultant.appointmentDuration || 60,
-        consultant.timezone || "Europe/Rome"
+        consultant.timezone || "Europe/Rome",
+        workingHoursForPool2,
+        consultant.bufferBefore || 0,
+        consultant.bufferAfter || 0,
+        consultant.minHoursNotice || 0
       );
       isSlotAvailable = poolSlots.some(slot => slot.date === date && slot.time === time);
     } else {

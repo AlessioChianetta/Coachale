@@ -21246,13 +21246,6 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           return res.status(404).json({ message: "Agent configuration not found" });
         }
 
-        if (!agentConfig.googleRefreshToken) {
-          return res.status(400).json({ 
-            message: "Agent does not have a calendar connected. Please connect a Google Calendar to this agent first.",
-            code: "AGENT_NO_CALENDAR"
-          });
-        }
-
         console.log(`📅 [AVAILABLE-SLOTS] Using AGENT settings: ${agentConfig.agentName} (${agentConfigId})`);
 
         workingHours = agentConfig.availabilityWorkingHours || {
@@ -21272,6 +21265,43 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         timezone = agentConfig.availabilityTimezone || "Europe/Rome";
 
         console.log(`   ⚙️ Agent availability: duration=${appointmentDuration}min, buffer=${bufferBefore}/${bufferAfter}min, tz=${timezone}`);
+
+        const { getPoolForAgent, getAvailableSlotsFromPool: getPoolSlots } = await import("./booking/round-robin-service");
+        const poolInfo = await getPoolForAgent(agentConfigId as string);
+        if (poolInfo) {
+          console.log(`🔄 [AVAILABLE-SLOTS] Agent is in round-robin pool "${poolInfo.poolName}" - merging all member calendars`);
+          const poolSlots = await getPoolSlots(
+            poolInfo.poolId,
+            start,
+            end,
+            appointmentDuration,
+            timezone,
+            workingHours,
+            bufferBefore,
+            bufferAfter,
+            minHoursNotice
+          );
+          console.log(`✅ [AVAILABLE-SLOTS] Pool returned ${poolSlots.length} available slots from ${poolInfo.poolName}`);
+          return res.json({
+            slots: poolSlots.map(s => ({
+              start: new Date(`${s.date}T${s.time}:00`),
+              end: new Date(new Date(`${s.date}T${s.time}:00`).getTime() + appointmentDuration * 60000),
+              date: s.date,
+              time: s.time,
+              availableAgents: s.availableAgents,
+            })),
+            count: poolSlots.length,
+            settings: { appointmentDuration, bufferBefore, bufferAfter, timezone },
+            roundRobinActive: true,
+          });
+        }
+
+        if (!agentConfig.googleRefreshToken) {
+          return res.status(400).json({ 
+            message: "Agent does not have a calendar connected. Please connect a Google Calendar to this agent first.",
+            code: "AGENT_NO_CALENDAR"
+          });
+        }
       } else {
         // NO FALLBACK: Agent-independent calendar system requires agentConfigId
         console.error(`❌ [AVAILABLE-SLOTS] agentConfigId is REQUIRED. Consultant-level fallback has been removed.`);
