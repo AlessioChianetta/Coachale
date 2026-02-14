@@ -1544,7 +1544,8 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
         proactiveLeadData?.leadInfo,
         proactiveLeadData?.idealState,
         isProactiveAgent,
-        proactiveLeadData?.phoneNumber
+        proactiveLeadData?.phoneNumber,
+        phoneNumber
       );
     }
 
@@ -4346,7 +4347,8 @@ async function buildLeadSystemPrompt(
   leadInfo?: any,
   idealState?: string,
   isProactiveAgent: boolean = false,
-  proactiveLeadPhone?: string
+  proactiveLeadPhone?: string,
+  senderPhoneNumber?: string
 ): Promise<string> {
   // Extract consultant info
   const businessName = consultantConfig?.businessName || "il consulente";
@@ -4710,6 +4712,30 @@ Se il lead insiste dicendo "dovresti averla", "te l'ho già data", "controllala"
       console.log(`   - Known Contact Data: ENABLED (phone: ${formattedPhone}, email: ${knownEmail || 'NOT AVAILABLE'})`);
     }
 
+    if (senderPhoneNumber && !isProactiveLead) {
+      const formattedSenderPhone = senderPhoneNumber.startsWith('+') 
+        ? senderPhoneNumber 
+        : `+${senderPhoneNumber}`;
+      
+      const senderPhoneBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 NUMERO WHATSAPP DEL LEAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il lead ti sta scrivendo dal numero WhatsApp: ${formattedSenderPhone}
+
+📞 QUANDO SERVE IL TELEFONO PER LA PRENOTAZIONE:
+- HAI GIÀ il suo numero: ${formattedSenderPhone}
+- PROPONI CONFERMA: "Il numero ${formattedSenderPhone} va bene per l'appuntamento, o preferisci usarne un altro?"
+- Se conferma ("sì", "ok", "va bene") → USA questo numero
+- Se fornisce un numero diverso → USA quello nuovo
+- NON chiedere "qual è il tuo numero?" - ce l'hai già!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      finalPrompt += '\n\n' + senderPhoneBlock;
+      console.log(`   - Sender Phone Injected: ${formattedSenderPhone}`);
+    }
+
     // Inject disqualification block only if disqualificationEnabled
     if (consultantConfig.disqualificationEnabled !== false) {
       finalPrompt += '\n\n' + DISQUALIFICATION_BLOCK;
@@ -4721,6 +4747,7 @@ Se il lead insiste dicendo "dovresti averla", "te l'ho già data", "controllala"
     console.log(`   - Objection Handling: DISABLED (removed Dec 2025)`);
     console.log(`   - Disqualification: ${consultantConfig.disqualificationEnabled !== false ? 'ENABLED' : 'DISABLED'}`);
     console.log(`   - Upselling: ${consultantConfig.upsellingEnabled === true ? 'ENABLED' : 'DISABLED'} (no block yet)`);
+    console.log(`   - Sender Phone: ${senderPhoneNumber ? (isProactiveLead ? 'PROACTIVE (in known contact block)' : 'INJECTED') : 'NOT AVAILABLE'}`);
 
     // Add universal contact data validation block (applies to ALL conversations)
     const contactValidationBlock = `
