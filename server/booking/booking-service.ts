@@ -2044,25 +2044,89 @@ export async function createPublicBooking(params: PublicBookingParams): Promise<
 
     let googleMeetLink: string | undefined;
 
-    const [settings] = await db
-      .select({ googleRefreshToken: consultantAvailabilitySettings.googleRefreshToken })
+    const [availSettings] = await db
+      .select({
+        googleRefreshToken: consultantAvailabilitySettings.googleRefreshToken,
+        timezone: consultantAvailabilitySettings.timezone,
+        appointmentDuration: consultantAvailabilitySettings.appointmentDuration,
+      })
       .from(consultantAvailabilitySettings)
       .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
       .limit(1);
 
-    if (settings?.googleRefreshToken) {
+    const timezone = availSettings?.timezone || 'Europe/Rome';
+    const startDate = scheduledAt.toISOString().slice(0, 10);
+    const startTime = `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`;
+
+    const { getPoolForConsultant, selectRoundRobinAgent, recordRoundRobinAssignment } = await import("./round-robin-service");
+    const poolInfo = await getPoolForConsultant(consultantId);
+
+    if (poolInfo) {
+      console.log(`[PUBLIC BOOKING] 🔄 Round-Robin pool found: "${poolInfo.poolName}" (${poolInfo.strategy})`);
+
+      const rrResult = await selectRoundRobinAgent(poolInfo.poolId, startDate, startTime, duration, timezone);
+
+      if (rrResult) {
+        console.log(`[PUBLIC BOOKING] ✅ Round-Robin selected agent: ${rrResult.selectedAgentConfigId}`);
+        try {
+          const calendarResult = await createGoogleCalendarBooking(
+            consultantId,
+            { ...booking, appointmentDate: startDate, appointmentTime: startTime } as any,
+            clientEmail,
+            rrResult.selectedAgentConfigId
+          );
+          if (calendarResult.googleEventId) {
+            googleMeetLink = calendarResult.googleMeetLink || undefined;
+            await db
+              .update(appointmentBookings)
+              .set({
+                googleEventId: calendarResult.googleEventId,
+                googleMeetLink: calendarResult.googleMeetLink,
+              })
+              .where(eq(appointmentBookings.id, booking.id));
+          }
+          await recordRoundRobinAssignment(rrResult, booking.id);
+          try {
+            const formattedDate = formatAppointmentDate(startDate, startTime, timezone);
+            await sendBookingNotification(rrResult.selectedAgentConfigId, {
+              clientName,
+              date: formattedDate,
+              time: startTime,
+              meetLink: googleMeetLink || null,
+            });
+          } catch (notifError: any) {
+            console.log(`[PUBLIC BOOKING] Notification error (non-blocking): ${notifError?.message}`);
+          }
+        } catch (calendarError) {
+          console.log(`[PUBLIC BOOKING] Calendar event via round-robin failed: ${calendarError}`);
+        }
+      } else {
+        console.log(`[PUBLIC BOOKING] ⚠️ Round-Robin: no available agent, falling back to consultant calendar`);
+        if (availSettings?.googleRefreshToken) {
+          try {
+            const calendarResult = await createGoogleCalendarEvent(consultantId, {
+              summary: `Consulenza con ${clientName}`,
+              description: `Email: ${clientEmail}${clientPhone ? `\nTelefono: ${clientPhone}` : ''}${notes ? `\n\nNote: ${notes}` : ''}`,
+              startDate,
+              startTime,
+              duration,
+              timezone,
+              attendees: [clientEmail],
+            });
+            if (calendarResult?.eventId) {
+              googleMeetLink = calendarResult.meetLink;
+              await db
+                .update(appointmentBookings)
+                .set({ googleEventId: calendarResult.eventId, googleMeetLink: calendarResult.meetLink })
+                .where(eq(appointmentBookings.id, booking.id));
+            }
+          } catch (calendarError) {
+            console.log(`[PUBLIC BOOKING] Fallback calendar failed: ${calendarError}`);
+          }
+        }
+      }
+    } else if (availSettings?.googleRefreshToken) {
       try {
-        // Get timezone from settings
-        const [availSettings] = await db
-          .select({ timezone: consultantAvailabilitySettings.timezone })
-          .from(consultantAvailabilitySettings)
-          .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
-          .limit(1);
-        
-        const timezone = availSettings?.timezone || 'Europe/Rome';
-        const startDate = scheduledAt.toISOString().slice(0, 10); // YYYY-MM-DD
-        const startTime = `${scheduledAt.getHours().toString().padStart(2, '0')}:${scheduledAt.getMinutes().toString().padStart(2, '0')}`; // HH:MM
-        
         const calendarResult = await createGoogleCalendarEvent(consultantId, {
           summary: `Consulenza con ${clientName}`,
           description: `Email: ${clientEmail}${clientPhone ? `\nTelefono: ${clientPhone}` : ''}${notes ? `\n\nNote: ${notes}` : ''}`,
@@ -2072,15 +2136,11 @@ export async function createPublicBooking(params: PublicBookingParams): Promise<
           timezone,
           attendees: [clientEmail],
         });
-
         if (calendarResult?.eventId) {
           googleMeetLink = calendarResult.meetLink;
           await db
             .update(appointmentBookings)
-            .set({
-              googleEventId: calendarResult.eventId,
-              googleMeetLink: calendarResult.meetLink,
-            })
+            .set({ googleEventId: calendarResult.eventId, googleMeetLink: calendarResult.meetLink })
             .where(eq(appointmentBookings.id, booking.id));
         }
       } catch (calendarError) {

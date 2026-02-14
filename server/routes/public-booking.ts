@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { getConsultantBySlug, getPublicAvailableSlots, createPublicBooking, generateBookingSlug } from "../booking/booking-service";
+import { getPoolForConsultant, getAvailableSlotsFromPool } from "../booking/round-robin-service";
 import { db } from "../db";
 import { consultantAvailabilitySettings, users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
@@ -49,16 +50,38 @@ router.get("/:slug/slots", async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Pagina di prenotazione non attiva" });
     }
     
-    const slots = await getPublicAvailableSlots(
-      consultant.consultantId,
-      startDate ? new Date(startDate as string) : undefined,
-      endDate ? new Date(endDate as string) : undefined
-    );
+    const poolInfo = await getPoolForConsultant(consultant.consultantId);
+
+    let slots;
+    if (poolInfo) {
+      const start = startDate ? new Date(startDate as string) : new Date();
+      const end = endDate ? new Date(endDate as string) : new Date(start.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const poolSlots = await getAvailableSlotsFromPool(
+        poolInfo.poolId,
+        start,
+        end,
+        consultant.appointmentDuration || 60,
+        consultant.timezone || "Europe/Rome"
+      );
+      slots = poolSlots.map(s => ({
+        date: s.date,
+        time: s.time,
+        dayOfWeek: new Date(s.date).toLocaleDateString("it-IT", { weekday: "long" }),
+        availableAgents: s.availableAgents,
+      }));
+    } else {
+      slots = await getPublicAvailableSlots(
+        consultant.consultantId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+    }
     
     res.json({
       slots,
       appointmentDuration: consultant.appointmentDuration,
       timezone: consultant.timezone,
+      roundRobinActive: !!poolInfo,
     });
   } catch (error: any) {
     console.error("[PUBLIC BOOKING] Error fetching slots:", error);
