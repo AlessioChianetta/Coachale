@@ -1700,7 +1700,54 @@ ${triggerContext}
     
     console.log(`✅ [INSTAGRAM] AI response generated: ${responseText ? responseText.substring(0, 100) + '...' : 'null'}`);
 
-    // Clean up response (remove markdown, actions, thinking, etc.)
+    const hallucinationPatterns = [
+      /tool_code\s/i,
+      /google:file_search\s*\{/i,
+      /engine:\s*"[^"]*"\s*>/i,
+      /<ctrl\d+>/i,
+    ];
+    if (responseText && hallucinationPatterns.some(p => p.test(responseText!))) {
+      console.log(`\n⚠️ [ANTI-HALLUCINATION] Instagram: risposta contiene pattern tool_code/file_search! Retry...`);
+      console.log(`   📝 Testo originale: "${responseText.substring(0, 200)}"`);
+      try {
+        const retryContents = [
+          ...contents,
+          { role: "model", parts: [{ text: responseText }] },
+          { role: "user", parts: [{ text: `[ISTRUZIONE SISTEMA: La tua risposta precedente conteneva codice tecnico interno (tool_code/file_search) che NON deve mai essere visibile all'utente. Rispondi SOLO con testo naturale in italiano, senza alcun codice o markup tecnico. Riscrivi la tua ultima risposta in modo naturale.]` }] },
+        ];
+        const retryResponse = await aiProvider.client.generateContent({
+          model,
+          contents: retryContents,
+          generationConfig: { systemInstruction: fullSystemPrompt },
+        });
+        let retryText: string | null = null;
+        try {
+          retryText = retryResponse.response?.text?.() || null;
+        } catch {
+          if (typeof retryResponse.response?.text === 'string') retryText = retryResponse.response.text;
+          else if (retryResponse.text) retryText = retryResponse.text as string;
+        }
+        if (retryText && !hallucinationPatterns.some(p => p.test(retryText!))) {
+          responseText = retryText;
+          console.log(`   ✅ [ANTI-HALLUCINATION] Instagram retry riuscito!`);
+        } else {
+          responseText = responseText.replace(/tool_code\s*/gi, '')
+            .replace(/google:file_search\{[^}]*\}/gi, '')
+            .replace(/engine:\s*"[^"]*"\s*>\s*\}/gi, '')
+            .replace(/<ctrl\d+>/gi, '')
+            .trim();
+          console.log(`   ⚠️ [ANTI-HALLUCINATION] Instagram retry fallito, pulito manualmente`);
+        }
+      } catch (retryErr: any) {
+        responseText = responseText.replace(/tool_code\s*/gi, '')
+          .replace(/google:file_search\{[^}]*\}/gi, '')
+          .replace(/engine:\s*"[^"]*"\s*>\s*\}/gi, '')
+          .replace(/<ctrl\d+>/gi, '')
+          .trim();
+        console.log(`   ❌ [ANTI-HALLUCINATION] Instagram retry errore: ${retryErr?.message}`);
+      }
+    }
+
     if (responseText) {
       responseText = cleanAIResponse(responseText);
     }

@@ -138,7 +138,7 @@ export async function selectRoundRobinAgent(
 
   console.log(`   📋 Pool: "${pool.name}" | Strategy: ${pool.strategy}`);
 
-  const linkedMembers = await db
+  const linkedMembersRaw = await db
     .select({
       memberId: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
@@ -146,7 +146,8 @@ export async function selectRoundRobinAgent(
       maxDailyBookings: bookingPoolMembers.maxDailyBookings,
       totalBookingsCount: bookingPoolMembers.totalBookingsCount,
       lastAssignedAt: bookingPoolMembers.lastAssignedAt,
-      agentName: consultantWhatsappConfig.agentName,
+      linkedAgentName: consultantWhatsappConfig.agentName,
+      memberName: bookingPoolMembers.memberName,
       hasCalendar: sql<boolean>`${consultantWhatsappConfig.googleRefreshToken} IS NOT NULL`,
     })
     .from(bookingPoolMembers)
@@ -162,6 +163,17 @@ export async function selectRoundRobinAgent(
         isNotNull(bookingPoolMembers.agentConfigId)
       )
     );
+
+  const linkedMembers = linkedMembersRaw.map(m => ({
+    memberId: m.memberId,
+    agentConfigId: m.agentConfigId,
+    weight: m.weight,
+    maxDailyBookings: m.maxDailyBookings,
+    totalBookingsCount: m.totalBookingsCount,
+    lastAssignedAt: m.lastAssignedAt,
+    agentName: m.memberName || m.linkedAgentName || "Membro senza nome",
+    hasCalendar: m.hasCalendar,
+  }));
 
   const standaloneMembers = await db
     .select({
@@ -608,13 +620,15 @@ export async function getAvailableSlotsFromPool(
   bufferAfter: number = 0,
   minHoursNotice: number = 0
 ): Promise<Array<{ date: string; time: string; availableAgents: number; agentNames: string[] }>> {
-  const members = await db
+  const rawMembers = await db
     .select({
       id: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
-      agentName: bookingPoolMembers.memberName,
+      memberName: bookingPoolMembers.memberName,
+      linkedAgentName: consultantWhatsappConfig.agentName,
     })
     .from(bookingPoolMembers)
+    .leftJoin(consultantWhatsappConfig, eq(bookingPoolMembers.agentConfigId, consultantWhatsappConfig.id))
     .where(
       and(
         eq(bookingPoolMembers.poolId, poolId),
@@ -623,9 +637,15 @@ export async function getAvailableSlotsFromPool(
       )
     );
 
+  const members = rawMembers.map(m => ({
+    id: m.id,
+    agentConfigId: m.agentConfigId,
+    agentName: m.memberName || m.linkedAgentName || null,
+  }));
+
   if (members.length === 0) return [];
 
-  console.log(`📅 [POOL-SLOTS] Checking availability for ${members.length} pool members: ${members.map(m => m.agentName).join(', ')}`);
+  console.log(`📅 [POOL-SLOTS] Checking availability for ${members.length} pool members: ${members.map(m => m.agentName || '(senza nome)').join(', ')}`);
 
   const now = new Date();
   const minNoticeDate = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);

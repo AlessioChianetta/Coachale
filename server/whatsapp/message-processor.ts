@@ -2084,6 +2084,66 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
     console.log(``);
     console.log(`✅ [STEP 8] Gemini response received: "${aiResponse.substring(0, 100)}..."`);
 
+    const hallucinationPatterns = [
+      /tool_code\s/i,
+      /google:file_search\s*\{/i,
+      /engine:\s*"[^"]*"\s*>/i,
+      /<ctrl\d+>/i,
+    ];
+    const hasHallucination = hallucinationPatterns.some(p => p.test(aiResponse));
+    if (hasHallucination) {
+      console.log(`\n⚠️ [ANTI-HALLUCINATION] Risposta contiene pattern tool_code/file_search! Retry...`);
+      console.log(`   📝 Testo originale: "${aiResponse.substring(0, 200)}"`);
+      try {
+        const retryProvider = currentProvider;
+        let retryResponse: any;
+        const retryPrompt = `${userMessage}\n\n[ISTRUZIONE SISTEMA: La tua risposta precedente conteneva codice tecnico interno (tool_code/file_search) che NON deve mai essere visibile all'utente. Rispondi SOLO con testo naturale in italiano, senza alcun codice o markup tecnico.]`;
+        if (retryProvider.type === 'vertex') {
+          const { model: rm } = getModelWithThinking('Vertex AI');
+          const vc = createVertexGeminiClient(retryProvider.projectId, retryProvider.location, retryProvider.credentials, rm);
+          retryResponse = await vc.generateContent({
+            model: rm,
+            contents: [...geminiMessages, { role: "user", parts: [{ text: retryPrompt }] }],
+            generationConfig: { systemInstruction: systemPrompt },
+          });
+        } else {
+          const { model: rm } = getModelWithThinking('Google AI Studio');
+          const retryAi = new GoogleGenAI({ apiKey: retryProvider.apiKey });
+          retryResponse = await retryAi.models.generateContent({
+            model: rm,
+            contents: [...geminiMessages, { role: "user", parts: [{ text: retryPrompt }] }],
+            config: { systemInstruction: systemPrompt },
+          });
+        }
+        let retryText = '';
+        try {
+          if (typeof retryResponse.response?.text === 'function') retryText = retryResponse.response.text();
+          else if (typeof retryResponse.text === 'function') retryText = retryResponse.text();
+          else retryText = retryResponse.text || retryResponse.response?.text || '';
+        } catch { retryText = ''; }
+
+        const retryHasHallucination = hallucinationPatterns.some(p => p.test(retryText));
+        if (retryText && !retryHasHallucination) {
+          aiResponse = retryText;
+          console.log(`   ✅ [ANTI-HALLUCINATION] Retry riuscito! Nuova risposta: "${aiResponse.substring(0, 100)}..."`);
+        } else {
+          aiResponse = aiResponse.replace(/tool_code\s*/gi, '')
+            .replace(/google:file_search\{[^}]*\}/gi, '')
+            .replace(/engine:\s*"[^"]*"\s*>\s*\}/gi, '')
+            .replace(/<ctrl\d+>/gi, '')
+            .trim();
+          console.log(`   ⚠️ [ANTI-HALLUCINATION] Retry fallito, pulito manualmente: "${aiResponse.substring(0, 100)}..."`);
+        }
+      } catch (retryError: any) {
+        aiResponse = aiResponse.replace(/tool_code\s*/gi, '')
+          .replace(/google:file_search\{[^}]*\}/gi, '')
+          .replace(/engine:\s*"[^"]*"\s*>\s*\}/gi, '')
+          .replace(/<ctrl\d+>/gi, '')
+          .trim();
+        console.log(`   ❌ [ANTI-HALLUCINATION] Retry errore: ${retryError.message}, pulito manualmente`);
+      }
+    }
+
     console.log(`💾 [STEP 9] Saving AI response to database`);
 
     // Calculate timing metrics for this message
@@ -3397,25 +3457,70 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
                       }
                     }
 
-                    // Push to Google Calendar WITH EMAIL
-                    // FIX: Pass date/time as strings with duration and timezone to avoid UTC confusion
-                    // NEW: Pass agentConfigId to use agent's calendar if available
                     try {
-                      const googleEvent = await createGoogleCalendarEvent(
-                        conversation.consultantId,
-                        {
-                          summary: `Consulenza - ${extracted.email}`,
-                          description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
-                          startDate: extracted.date,
-                          startTime: extracted.time,
-                          duration: duration,
-                          timezone: timezone,
-                          attendees: [extracted.email], // Add client email as attendee
-                        },
-                        conversation.agentConfigId || undefined  // Use agent's calendar if available
-                      );
+                      let googleEvent: { googleEventId: string | null; googleMeetLink: string | null };
+                      let rrResult: import("../booking/round-robin-service").RoundRobinResult | null = null;
 
-                      // Update booking with Google Event ID
+                      if (conversation.agentConfigId) {
+                        const { resolveRoundRobinAgent } = await import("../booking/booking-service");
+                        const resolved = await resolveRoundRobinAgent(
+                          conversation.agentConfigId, conversation.consultantId, extracted.date, extracted.time
+                        );
+                        rrResult = resolved.roundRobinResult;
+
+                        if (rrResult?.isStandaloneMember) {
+                          const { createStandaloneCalendarBooking } = await import("../booking/booking-service");
+                          googleEvent = await createStandaloneCalendarBooking(conversation.consultantId, booking, extracted.email, rrResult.memberId);
+                        } else if (rrResult) {
+                          googleEvent = await createGoogleCalendarBooking(
+                            conversation.consultantId,
+                            booking,
+                            extracted.email,
+                            resolved.effectiveAgentConfigId
+                          );
+                        } else {
+                          googleEvent = await createGoogleCalendarEvent(
+                            conversation.consultantId,
+                            {
+                              summary: `Consulenza - ${extracted.email}`,
+                              description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
+                              startDate: extracted.date,
+                              startTime: extracted.time,
+                              duration: duration,
+                              timezone: timezone,
+                              attendees: [extracted.email],
+                            },
+                            conversation.agentConfigId
+                          );
+                        }
+                      } else {
+                        googleEvent = await createGoogleCalendarEvent(
+                          conversation.consultantId,
+                          {
+                            summary: `Consulenza - ${extracted.email}`,
+                            description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
+                            startDate: extracted.date,
+                            startTime: extracted.time,
+                            duration: duration,
+                            timezone: timezone,
+                            attendees: [extracted.email],
+                          },
+                          undefined
+                        );
+                      }
+
+                      if (rrResult) {
+                        const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
+                        await recordRoundRobinAssignment(rrResult, booking.id);
+                        await db.update(appointmentBookings)
+                          .set({ assignedAgentConfigId: rrResult.selectedAgentConfigId })
+                          .where(eq(appointmentBookings.id, booking.id));
+                        console.log(`\n🔄 [ROUND-ROBIN] Assegnato a membro: ${rrResult.selectedAgentConfigId}`);
+                        console.log(`   ├── Pool member ID: ${rrResult.memberId}`);
+                        console.log(`   ├── Motivo: ${rrResult.reason}`);
+                        console.log(`   └── Standalone: ${rrResult.isStandaloneMember ? 'SÌ' : 'NO'}`);
+                      }
+
                       await db
                         .update(appointmentBookings)
                         .set({ googleEventId: googleEvent.googleEventId })
@@ -3424,8 +3529,6 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
                       console.log(`\n💾 Database updated with Google Calendar Event ID`);
                       console.log(`   🆔 Google Event ID: ${googleEvent.googleEventId}`);
 
-                      // Send automatic confirmation message with Google Meet link
-                      // Format appointment date using correct timezone
                       const dateFormatter = new Intl.DateTimeFormat('it-IT', {
                         weekday: 'long',
                         day: 'numeric',
@@ -3433,7 +3536,6 @@ Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
                         year: 'numeric',
                         timeZone: timezone
                       });
-                      // Create a Date object for formatting (will be interpreted in the specified timezone)
                       const appointmentDateObj = new Date(`${extracted.date}T${extracted.time}:00`);
                       const formattedDate = dateFormatter.format(appointmentDateObj);
 
@@ -3481,13 +3583,16 @@ Ci vediamo online! 🚀`;
                       console.log(`   🎥 Meet Link: ${googleEvent.googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
                       console.log(`   📧 Calendar Invite: ✅ Sent to ${extracted.email}`);
                       console.log(`   📱 WhatsApp Confirmation: ✅ Sent to ${phoneNumber}`);
+                      if (rrResult) {
+                        console.log(`   🔄 Round-Robin: ✅ Assegnato a ${rrResult.selectedAgentConfigId}`);
+                      }
                       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-                      // Send booking notification to configured WhatsApp number (if enabled for this agent)
-                      if (conversation.agentConfigId) {
+                      const effectiveNotifAgentId = rrResult?.selectedAgentConfigId || conversation.agentConfigId;
+                      if (effectiveNotifAgentId) {
                         try {
                           const notifFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
-                          const notifResult = await sendBookingNotification(conversation.agentConfigId, {
+                          const notifResult = await sendBookingNotification(effectiveNotifAgentId, {
                             clientName: extracted.name || extracted.email,
                             date: notifFormattedDate,
                             time: extracted.time,
