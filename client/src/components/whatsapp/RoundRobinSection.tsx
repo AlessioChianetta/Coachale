@@ -442,12 +442,18 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                 </button>
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition-colors"
                 >
                   {expanded ? (
-                    <ChevronUp className="h-4 w-4 text-slate-500" />
+                    <>
+                      <ChevronUp className="h-4 w-4" />
+                      <span className="text-sm font-medium">Chiudi</span>
+                    </>
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                    <>
+                      <Settings2 className="h-4 w-4" />
+                      <span className="text-sm font-medium">Modifica</span>
+                    </>
                   )}
                 </button>
               </div>
