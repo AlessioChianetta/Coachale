@@ -39,6 +39,12 @@
 - Appendice C: Scorciatoie, Tips e Best Practices
 - Appendice D: FAQ - Domande Frequenti
 
+## PARTE QUINTA: FUNZIONALITÀ AVANZATE
+- Capitolo 20: Weekly Check-in – Sistema Automatico di Contatto Settimanale via WhatsApp
+- Capitolo 21: Chiamate Vocali AI – Alessia AI Phone
+- Capitolo 22: AI Autonomy – Sistema di Dipendenti AI Autonomi
+- Capitolo 23: Integrazione tra i Tre Sistemi
+
 ---
 
 # PARTE PRIMA: INTRODUZIONE
@@ -2447,10 +2453,959 @@ R: Sì, la piattaforma funziona su tutti i dispositivi.
 
 ---
 
+# PARTE QUINTA: FUNZIONALITÀ AVANZATE
+
+---
+
+## Capitolo 20: Weekly Check-in – Sistema Automatico di Contatto Settimanale via WhatsApp
+
+### 20.1 Panoramica del Sistema
+
+Il Weekly Check-in è un sistema completamente automatizzato che invia messaggi WhatsApp personalizzati ai clienti ogni settimana, senza intervento manuale del consulente. L'obiettivo è mantenere il contatto costante con ogni cliente, verificare i progressi e offrire supporto proattivo.
+
+**Come funziona in sintesi:**
+
+```
+Ogni mattina alle 08:00 → Il sistema analizza chi contattare oggi
+                ↓
+Ogni minuto     → Il sistema invia i messaggi in coda
+                ↓
+L'AI personalizza ogni messaggio in base ai dati reali del cliente
+```
+
+Il sistema è composto da:
+- **2 processi automatici (CRON)** che lavorano in tandem
+- **Un calendario deterministico a 4 settimane** che distribuisce equamente i contatti
+- **Personalizzazione AI** che rende ogni messaggio unico
+- **Rotazione template** per evitare messaggi ripetitivi
+- **3 tabelle nel database** per tracciare tutto
+
+---
+
+### 20.2 Interfaccia Utente – Le 6 Schede
+
+La pagina "Check-in Settimanale" è accessibile dalla sidebar del consulente e presenta 6 schede:
+
+#### Scheda 1: Dashboard
+Mostra una panoramica con:
+- **Statistiche globali**: totale clienti attivi, messaggi inviati questa settimana, percentuale di risposte, prossimo ciclo
+- **Grafico progressi**: andamento settimanale degli invii
+- **Stato sistema**: indica se il check-in è attivo o in pausa
+
+#### Scheda 2: Calendario
+Visualizza un **calendario a 4 settimane** che mostra esattamente quale giorno della settimana ogni cliente riceverà il proprio check-in.
+
+**Come viene assegnato il giorno:**
+Il sistema usa un algoritmo deterministico basato sull'ID del cliente (hash). Questo garantisce che:
+- Ogni cliente riceve il check-in sempre lo **stesso giorno della settimana**
+- I clienti sono distribuiti **equamente** tra lunedì e venerdì
+- Non ci sono giorni sovraccarichi
+
+Il calendario mostra:
+- Nome del cliente per ogni giorno
+- Stato: ✅ inviato, ⏳ in attesa, ❌ fallito
+- Possibilità di cliccare su un cliente per vedere il dettaglio
+
+#### Scheda 3: Cronologia
+Elenco completo di tutti i check-in inviati, con:
+- Data e ora di invio
+- Nome del cliente destinatario
+- Anteprima del messaggio inviato
+- Stato di consegna (inviato, consegnato, letto)
+- Eventuale risposta del cliente
+
+Supporta filtri per:
+- Periodo (settimana corrente, mese, tutti)
+- Stato (inviato, fallito, risposto)
+- Cliente specifico
+
+#### Scheda 4: Template
+Gestione dei modelli di messaggio. Il sistema include template predefiniti e permette di crearne di personalizzati.
+
+**Template predefiniti:**
+Ogni template è un messaggio di check-in con variabili dinamiche che vengono sostituite con i dati reali del cliente. Esempi:
+- "Ciao {nome}, come va questa settimana? Volevo fare un check-in veloce..."
+- "Buongiorno {nome}! È il tuo momento settimanale di confronto..."
+
+**Rotazione automatica:**
+Il sistema tiene traccia di quale template è stato usato per ciascun cliente e **ruota automaticamente** tra i template disponibili, rispettando un parametro `minDaysBetweenContacts` per evitare di ricontattare lo stesso cliente troppo presto.
+
+#### Scheda 5: Impostazioni
+Configurazione completa del sistema:
+
+| Impostazione | Descrizione | Default |
+|---|---|---|
+| **Attivo/Disattivo** | Accende o spegne l'intero sistema | Disattivo |
+| **Giorni attivi** | Quali giorni della settimana inviare (lun-ven) | Lun-Ven |
+| **Orario invio** | Finestra oraria per gli invii | 08:00-18:00 |
+| **Personalizzazione AI** | Abilita/disabilita la personalizzazione intelligente | Attivo |
+| **Min giorni tra contatti** | Giorni minimi tra un check-in e l'altro per lo stesso cliente | 7 |
+
+#### Scheda 6: Analitica
+Metriche dettagliate:
+- Tasso di risposta per cliente
+- Tempo medio di risposta
+- Clienti più/meno reattivi
+- Andamento nel tempo
+
+---
+
+### 20.3 Come Funziona Tecnicamente – I Due Processi Automatici
+
+#### Processo 1: Pianificazione (ogni giorno alle 08:00, fuso orario Roma)
+
+Ogni mattina alle 08:00 il sistema:
+
+1. **Cerca tutti i consulenti** che hanno il check-in attivo
+2. Per ogni consulente, **identifica i clienti** che devono ricevere il check-in oggi, basandosi su:
+   - Il giorno della settimana assegnato a quel cliente (algoritmo hash deterministico)
+   - Se il cliente non ha già ricevuto un messaggio recente (rispetta `minDaysBetweenContacts`)
+   - Se il consulente ha WhatsApp configurato e attivo
+3. Per ogni cliente identificato, **crea un record** nella tabella `weekly_checkin_queue` con stato "pending"
+4. Se la personalizzazione AI è attiva, il sistema **prepara il contesto** del cliente per l'AI
+
+**Sicurezza anti-duplicazione:**
+- Usa un sistema di **lock con mutex** nel database per evitare che il processo venga eseguito due volte contemporaneamente
+- La durata del lock è di 5 minuti
+
+#### Processo 2: Invio (ogni minuto)
+
+Ogni minuto il sistema:
+
+1. **Cerca messaggi in coda** con stato "pending" e orario di invio raggiunto
+2. Per ogni messaggio:
+   a. Seleziona il **template** appropriato (rotazione automatica)
+   b. Se la personalizzazione AI è attiva:
+      - Chiama la funzione `buildUserContext()` che raccoglie: esercizi completati, progressi corsi, note delle consulenze recenti, obiettivi attivi
+      - Integra con **File Search** per accedere alla knowledge base del consulente
+      - L'AI genera un messaggio personalizzato basato sui dati reali
+   c. **Invia il messaggio** tramite Twilio/WhatsApp API
+   d. Aggiorna lo stato a "sent" con timestamp
+3. In caso di **errore**:
+   - Il messaggio viene segnato come "failed"
+   - L'errore viene registrato nel campo `error_message`
+   - Il sistema **riprova automaticamente** al ciclo successivo (fino a 3 tentativi)
+
+---
+
+### 20.4 Personalizzazione AI dei Messaggi
+
+Quando la personalizzazione AI è attiva, ogni messaggio viene arricchito con dati reali:
+
+**Dati raccolti automaticamente per ogni cliente:**
+- Ultimi esercizi completati e punteggi
+- Progressi nei corsi (percentuale completamento)
+- Note dell'ultima consulenza
+- Obiettivi attivi e scadenze
+- Storico risposte ai check-in precedenti
+- Documenti rilevanti dalla knowledge base (via File Search)
+
+**Esempio di messaggio senza AI:**
+> "Ciao Marco, come va questa settimana? Fammi sapere se hai bisogno di supporto."
+
+**Esempio di messaggio con AI:**
+> "Ciao Marco, ho visto che hai completato l'esercizio sul budget familiare con ottimi risultati (85/100)! Questa settimana potresti concentrarti sulla sezione 'investimenti a lungo termine' del corso – sei al 60% e manca poco per finire il modulo. Come stai procedendo con l'obiettivo di risparmio mensile che avevamo fissato?"
+
+---
+
+### 20.5 Database e Tabelle
+
+Il sistema utilizza 3 tabelle dedicate:
+
+| Tabella | Scopo |
+|---|---|
+| `weekly_checkin_settings` | Configurazione per consulente (attivo, giorni, orari, template) |
+| `weekly_checkin_queue` | Coda dei messaggi da inviare (stato, template usato, tentativo) |
+| `weekly_checkin_log` | Storico completo degli invii (messaggio finale, risposta, metriche) |
+
+---
+
+### 20.6 Risoluzione Problemi
+
+| Problema | Causa Probabile | Soluzione |
+|---|---|---|
+| Nessun messaggio inviato | Sistema disattivo | Verifica che sia attivo nella scheda Impostazioni |
+| Messaggi non personalizzati | AI disabilitata o nessun dato cliente | Abilita personalizzazione AI; verifica che il cliente abbia dati (esercizi, consulenze) |
+| Stesso messaggio ripetuto | Pochi template disponibili | Aggiungi più template nella scheda Template |
+| Cliente non riceve | WhatsApp non configurato per quel cliente | Verifica numero telefono del cliente; controlla configurazione WhatsApp Business |
+| Errore "lock timeout" | Processo precedente ancora in esecuzione | Attendi 5 minuti; il lock si rilascia automaticamente |
+
+---
+
+## Capitolo 21: Chiamate Vocali AI – Alessia AI Phone
+
+### 21.1 Panoramica del Sistema
+
+Il sistema di chiamate vocali AI permette al consulente di far effettuare telefonate automatiche dalla propria assistente AI "Alessia". L'AI chiama il cliente (o qualsiasi numero), conduce una conversazione naturale in tempo reale, e poi invia un riepilogo.
+
+**Architettura del sistema:**
+
+```
+Piattaforma Web ←→ VPS con FreeSWITCH ←→ Rete Telefonica
+        ↕                    ↕
+   Google Gemini        Conversione
+   (cervello AI)     Voce ↔ Testo
+```
+
+- **FreeSWITCH**: Software open-source installato su un VPS esterno che gestisce le chiamate telefoniche reali
+- **Gemini 2.5 Flash Native Audio**: Modello AI di Google che capisce e genera voce in tempo reale
+- **VPS Bridge**: Connessione sicura tra la piattaforma e il VPS via token di servizio
+
+---
+
+### 21.2 Interfaccia Utente – Le 7 Schede
+
+#### Scheda 1: Chiamate (calls)
+Dashboard principale con:
+- **Statistiche in tempo reale**: chiamate totali, completate, fallite, durata media
+- **Stato connessione VPS**: indica se il bridge è connesso (verde/rosso)
+- **Elenco chiamate**: tutte le chiamate con stato, durata, trascrizione
+- **Filtri disponibili**: per stato (in arrivo, connessa, in corso, completata, fallita, trasferita, terminata), per tipo cliente (tutti, clienti, non-clienti), ricerca per nome/numero
+- **Polling automatico**: la lista si aggiorna ogni 10 secondi
+
+**Stati delle chiamate:**
+
+| Stato | Icona | Significato |
+|---|---|---|
+| In Arrivo | 🔔 | La chiamata sta squillando |
+| Connessa | 📞 | La linea è aperta |
+| In Corso | 🟢 | L'AI sta parlando con il destinatario |
+| Completata | ✅ | Chiamata terminata con successo |
+| Fallita | ❌ | La chiamata non è riuscita |
+| Trasferita | 🟣 | Trasferita al consulente in persona |
+| Terminata | ⬜ | Terminata normalmente |
+
+#### Scheda 2: Chiamate in Uscita (outbound)
+Permette di avviare nuove chiamate. Include un sistema wizard a 3 passi:
+
+**Passo 1 – Chi chiamare:**
+- Seleziona un cliente dalla lista (con ricerca e filtro attivi/inattivi)
+- Oppure inserisci un numero di telefono manuale
+
+**Passo 2 – Cosa dire:**
+Il consulente può dare istruzioni all'AI in due modi:
+
+1. **Libreria di template** organizzata in 7 categorie:
+   - 📅 **Appuntamenti** (4 template): Conferma appuntamento, Richiesta nuovo appuntamento, Promemoria domani, Riprogrammazione
+   - 💰 **Pagamenti** (3 template): Scadenza in arrivo, Sollecito scaduto, Conferma pagamento
+   - 📄 **Documenti** (3 template): Richiesta documenti, Documento pronto, Verifica conformità
+   - 📊 **Commerciale** (4 template): Proposta commerciale, Follow-up proposta, Upselling, Richiesta feedback
+   - 📦 **Ordini** (3 template): Conferma ordine, Verifica consegna, Richiesta feedback
+   - 🤝 **Relazione** (4 template): Check-in periodico, Riattivazione, Auguri, Ringraziamento
+   - ⚠️ **Urgenze** (3 template): Scadenza fiscale, Variazione importante, Azione immediata
+
+   Ogni template ha **campi dinamici** specifici. Esempio per "Conferma appuntamento":
+   - Campo "Data appuntamento" (tipo: data, obbligatorio)
+   - Campo "Ora" (tipo: testo)
+   - Il sistema genera automaticamente l'istruzione: "Conferma l'appuntamento del {data} alle {ora}. Chiedi se ha preparato i documenti necessari."
+
+2. **Istruzione libera**: il consulente scrive cosa deve dire/fare l'AI durante la chiamata
+
+**Passo 3 – Quando chiamare:**
+- **Ora**: la chiamata parte immediatamente
+- **Programmata**: seleziona data e ora futura
+- **Tipo di chiamata**:
+  - *Chiamata Singola*: una telefonata una tantum
+  - *Follow-up Programmato*: serie di chiamate a intervalli regolari (giornaliero, settimanale), con data di fine e possibilità di scegliere i giorni della settimana
+  - *Task AI Autonomo* (in sviluppo): l'AI esegue un compito e poi opzionalmente chiama
+
+**Miglioramento AI dell'istruzione:**
+Un pulsante "✨ Migliora con AI" invia l'istruzione scritta dal consulente a Gemini che la riformula in modo ottimale per la conduzione della chiamata telefonica.
+
+#### Scheda 3: Task AI (ai-tasks)
+Coda di tutte le attività programmate, con due visualizzazioni:
+
+1. **Vista Calendario** (default): un calendario settimanale drag-and-drop dove:
+   - Le chiamate programmate appaiono come eventi colorati
+   - I task AI appaiono con icone diverse
+   - Si può trascinare per creare nuovi task
+   - Cliccando su un evento si aprono i dettagli completi
+   - Navigazione per settimana avanti/indietro
+   - Filtro per contatto specifico
+   - Toggle per mostrare/nascondere chiamate completate
+
+2. **Vista Lista**: elenco tabulare con:
+   - Filtri per stato: In attesa, Programmato, In esecuzione, Completato, Fallito, Annullato, In approvazione, Approvato
+   - Dettagli: contatto, istruzione, data/ora, tipo, stato, tentativi
+   - Azioni: approva, rifiuta, elimina, modifica, riesegui
+
+**Stati dei task:**
+
+| Stato | Significato |
+|---|---|
+| `pending` | In attesa di esecuzione |
+| `scheduled` | Programmato (approvato automaticamente se autonomy ≥ 4) |
+| `waiting_approval` | In attesa di approvazione del consulente (autonomy < 4) |
+| `approved` | Approvato dal consulente, pronto per l'esecuzione |
+| `in_progress` | In esecuzione |
+| `completed` | Completato con successo |
+| `failed` | Fallito (con motivo) |
+| `cancelled` | Annullato dal consulente |
+| `retry_pending` | In attesa di nuovo tentativo |
+
+**Eliminazione ricorrenti:**
+Per task ricorrenti (follow-up programmati) è possibile:
+- Eliminare solo questa occorrenza
+- Eliminare tutte le occorrenze future
+- Eliminare fino a una data specifica
+
+#### Scheda 4: Non-Clienti (non-client)
+Configurazione per le chiamate ricevute da numeri non riconosciuti (non associati a nessun cliente).
+
+**Configurazione separata per direzione:**
+
+*Chiamate in entrata (inbound):*
+- **Fonte del prompt**: Template, Agente AI, o Manuale
+- **Template disponibili**: Mini Discovery, Sales Orbitale, ecc.
+- **Agente AI**: seleziona un agente WhatsApp esistente (usa il suo prompt e personalità)
+- **Prompt manuale**: scrivi istruzioni personalizzate
+- **Brand Voice**: abilita/disabilita iniezione del brand voice separatamente dalle istruzioni
+
+*Chiamate in uscita (outbound):*
+- Stessa struttura delle inbound ma con template diversi ottimizzati per chiamate proattive
+
+**Anteprima prompt:**
+Un sistema di anteprima espandibile mostra esattamente cosa verrà inviato all'AI, organizzato in sezioni: Business & Identità, Posizionamento, Target, Metodo, Credenziali, Servizi, Personalità AI.
+
+#### Scheda 5: VPS (vps)
+Configurazione tecnica della connessione al server FreeSWITCH:
+
+- **URL VPS Bridge**: inserisci l'URL del tuo server FreeSWITCH (es: `https://mio-vps.example.com`)
+- **Token di Servizio**: genera un token sicuro per autenticare la connessione
+  - Il token viene mostrato una sola volta dopo la generazione
+  - Se ne generi uno nuovo, quello vecchio viene revocato automaticamente
+  - Il token va copiato e configurato sul VPS
+- **Stato connessione**: verifica in tempo reale se il VPS è raggiungibile
+- **Connessioni Gemini attive**: monitoraggio delle connessioni WebSocket aperte con Google Gemini (sistema anti-zombie che chiude connessioni stale dopo 5 minuti)
+- **Configurazione Retry**: quanti tentativi fare se una chiamata fallisce e intervallo tra i tentativi
+
+| Impostazione | Descrizione | Default |
+|---|---|---|
+| Max tentativi | Numero massimo di tentativi per chiamata | 3 |
+| Intervallo retry | Minuti tra un tentativo e l'altro | 5 |
+
+#### Scheda 6: Guida Vocale (voice-guide)
+Guida interattiva integrata che spiega:
+- Come configurare il VPS
+- Come funziona il bridge
+- Risoluzione problemi comuni
+- Sezioni espandibili/collassabili per ogni argomento
+
+#### Scheda 7: Conversazioni (conversazioni)
+Accesso alle trascrizioni complete delle chiamate AI:
+- Trascrizioni parola per parola
+- Riepiloghi generati dall'AI
+- Possibilità di ascoltare la registrazione (se disponibile)
+- Filtri per data e contatto
+
+---
+
+### 21.3 Selezione della Voce
+
+Il sistema offre 6 voci AI tra cui scegliere:
+
+| Voce | Descrizione |
+|---|---|
+| **Achernar** | 🇮🇹 Femminile Professionale (default) |
+| **Puck** | 🇬🇧 Maschile Giovane |
+| **Charon** | 🇬🇧 Maschile Maturo |
+| **Kore** | 🇬🇧 Femminile Giovane |
+| **Fenrir** | 🇬🇧 Maschile Profondo |
+| **Aoede** | 🇬🇧 Femminile Melodiosa |
+
+La voce si configura dalla scheda VPS o dalla scheda Chiamate.
+
+---
+
+### 21.4 Sistema di Retry e Recupero Chiamate
+
+#### Retry automatico per chiamate senza risposta
+
+Quando una chiamata non riceve risposta (no_answer, busy, short_call):
+
+1. Il sistema verifica se il numero di tentativi fatti è inferiore al massimo configurato
+2. Se sì, programma un **nuovo tentativo** dopo l'intervallo configurato (default: 5 minuti)
+3. Lo stato della chiamata diventa `retry_scheduled`
+4. Il tentativo successivo crea una **nuova entry** nella tabella delle chiamate programmate, collegata alla stessa istruzione originale
+5. Se tutti i tentativi falliscono, lo stato finale diventa `failed`
+
+#### Pulizia chiamate bloccate (stuck calls)
+
+Ogni minuto il sistema controlla se ci sono chiamate rimaste in stato `calling` per più di **5 minuti** (indica un problema di comunicazione con il VPS):
+
+- Se il numero di tentativi non è esaurito → la chiamata viene **riprogrammata** con stato `retry_pending`
+- Se il numero di tentativi è esaurito → la chiamata viene segnata come `failed` con messaggio "Call stuck in calling state - no callback received"
+- Se la chiamata era collegata a un task AI, anche il task viene aggiornato di conseguenza
+
+---
+
+### 21.5 Template Vocali per Direzione (Inbound/Outbound)
+
+Il sistema di template vocali offre istruzioni separate per le chiamate in entrata e in uscita:
+
+**Template Inbound (chiamate ricevute):**
+- Mini Discovery: conversazione di scoperta breve
+- Customer Care Standard: assistenza clienti professionale
+- Receptionist: smistamento e gestione chiamate
+
+**Template Outbound (chiamate effettuate):**
+- Sales Orbitale: vendita proattiva
+- Follow-up Commerciale: ricontatto dopo proposta
+- Survey/Feedback: raccolta opinioni
+
+Ogni template include:
+- Nome e descrizione
+- Il prompt completo che verrà inviato all'AI
+- Variabili interpolabili (nome consulente, azienda, ecc.)
+
+---
+
+### 21.6 Integrazione con il Sistema AI Autonomo
+
+Le chiamate vocali sono strettamente integrate con il sistema di AI Autonomy (Capitolo 22):
+
+- Quando un **task AI autonomo** ha il campo `call_after_task = true`, al completamento del task viene **automaticamente creata una chiamata vocale** nella tabella `scheduled_voice_calls`
+- Il tipo di azione `voice_call` nel Decision Engine dell'autonomia crea direttamente entry nella tabella delle chiamate
+- Lo **stato del task AI** e della **chiamata vocale** sono sincronizzati: se la chiamata fallisce, anche il task viene aggiornato
+
+---
+
+### 21.7 Stato della Connessione e Monitoraggio
+
+Il sistema monitora in tempo reale:
+
+- **Stato VPS**: verde (connesso), rosso (disconnesso), con ultimo heartbeat
+- **Connessioni Gemini WebSocket**: numero di sessioni attive con il modello AI vocale
+- **Anti-Zombie**: sistema automatico che rileva e chiude connessioni WebSocket rimaste aperte dopo che la chiamata è terminata (timeout: 5 minuti di inattività)
+
+---
+
+### 21.8 Flusso Completo di una Chiamata
+
+```
+1. Consulente crea task (manuale o AI autonomo)
+   ↓
+2. CRON ogni minuto controlla la coda
+   ↓
+3. Trova task con orario raggiunto e stato "scheduled"
+   ↓
+4. Invia richiesta al VPS Bridge con:
+   - Numero di telefono
+   - Istruzione AI
+   - Voce selezionata
+   - Token di autenticazione
+   ↓
+5. VPS/FreeSWITCH effettua la chiamata
+   ↓
+6. Gemini 2.5 Flash gestisce la conversazione in tempo reale
+   ↓
+7. Al termine, il VPS invia callback con:
+   - Stato (completata/fallita)
+   - Durata
+   - Trascrizione
+   - Riepilogo AI
+   ↓
+8. Il sistema aggiorna lo stato e salva i risultati
+   ↓
+9. Se la chiamata ha fallito e ci sono tentativi rimasti → retry
+   ↓
+10. Se era un task ricorrente → calcola e crea prossima occorrenza
+```
+
+---
+
+### 21.9 Risoluzione Problemi Chiamate Vocali
+
+| Problema | Causa Probabile | Soluzione |
+|---|---|---|
+| "VPS disconnesso" | URL Bridge errato o server spento | Verifica l'URL nella scheda VPS; controlla che il server FreeSWITCH sia attivo |
+| "Token non valido" | Token scaduto o rigenerato | Genera un nuovo token e aggiornalo sul VPS |
+| Chiamata sempre "calling" | VPS non invia callback | Controlla i log del VPS; il sistema ripulisce automaticamente dopo 5 minuti |
+| "Nessuna risposta" ripetuto | Numero errato o orario scomodo | Verifica il numero; prova in orari diversi; aumenta i tentativi |
+| AI non parla bene | Prompt troppo generico | Usa i template o il pulsante "Migliora con AI" per ottimizzare l'istruzione |
+| Voce sbagliata | Configurazione voce diversa | Cambia la voce nella scheda VPS → sezione "Selezione Voce" |
+
+---
+
+## Capitolo 22: AI Autonomy – Sistema di Dipendenti AI Autonomi
+
+### 22.1 Panoramica del Sistema
+
+Il sistema AI Autonomy è un team di **8 dipendenti AI specializzati** che lavorano autonomamente per il consulente. Ogni dipendente ha un ruolo specifico, analizza dati reali della piattaforma, e genera task (azioni) che possono essere eseguiti automaticamente o previa approvazione del consulente.
+
+**Concetto chiave:** Non è un singolo bot generico, ma un **team coordinato** dove ogni membro ha competenze diverse e accede a dati diversi.
+
+```
+Ogni 30 minuti → Il sistema valuta ogni dipendente attivo
+                        ↓
+              Raccoglie dati specifici per ruolo
+                        ↓
+              L'AI analizza e suggerisce azioni
+                        ↓
+              I task vengono creati (auto o con approvazione)
+                        ↓
+              Il Task Executor esegue le azioni
+```
+
+---
+
+### 22.2 Gli 8 Dipendenti AI
+
+| Dipendente | Ruolo | Canale Preferito | Max Task/Ciclo | Cosa Analizza |
+|---|---|---|---|---|
+| **Alessia** | Voice Consultant | 📞 Voce | 2 | Storico consulenze e chiamate → identifica clienti che necessitano contatto vocale proattivo |
+| **Millie** | Email Writer | 📧 Email | 2 | Journey email e engagement → crea email personalizzate per nurturing relazionale |
+| **Echo** | Summarizer | 📧 Email | 2 | Consulenze completate senza riepilogo → genera e invia riepiloghi strutturati |
+| **Nova** | Social Media Manager | – Nessuno | 1 | Calendario contenuti e gap → suggerisce post e strategie social (non lavora sui clienti ma sul brand) |
+| **Stella** | WhatsApp Assistant | 💬 WhatsApp | 2 | Conversazioni WhatsApp → identifica lead da qualificare e clienti in attesa di risposta |
+| **Iris** | Email Hub Manager | 📧 Email | 2 | Email in arrivo e ticket → identifica comunicazioni che richiedono risposta o escalation |
+| **Marco** | Executive Coach | 📞/– Voce o Nessuno | 2 | Agenda e carico lavoro del consulente → coaching operativo e preparazione consulenze |
+| **Personalizza** | Assistente Custom | 📞📧💬 Tutti | 3 | Completamente configurabile dal consulente: dati, istruzioni, canali, categorie |
+
+---
+
+### 22.3 Interfaccia Utente – Le 4 Schede
+
+#### Scheda 1: Impostazioni (Settings)
+
+**Pannello principale:**
+
+- **Attiva/Disattiva** il sistema con un interruttore globale
+- **Livello di Autonomia** (scala 0-10):
+
+| Livello | Comportamento |
+|---|---|
+| 0 | Sistema completamente spento |
+| 1 | Solo analisi, nessun task creato |
+| 2-3 | I task vengono creati con stato `waiting_approval` → il consulente deve approvarli manualmente |
+| 4-7 | I task vengono creati con stato `scheduled` → esecuzione automatica |
+| 8-10 | Massima autonomia, esecuzione automatica con priorità più aggressive |
+
+- **Orari di lavoro**: fascia oraria in cui i dipendenti possono operare (default: 09:00-18:00)
+- **Giorni lavorativi**: quali giorni della settimana (default: lunedì-venerdì)
+- **Istruzioni personalizzate**: testo libero che viene iniettato nel prompt di TUTTI i dipendenti
+
+**Gestione singoli dipendenti:**
+Per ogni dipendente si può:
+- **Attivare/Disattivare** individualmente (toggle on/off)
+- **Configurare la frequenza** di analisi (ogni quanto il dipendente si attiva):
+  - Valori: 30 min, 1h, 2h, 4h, 8h, 12h, 24h
+  - Default: 30 minuti
+
+**Canali attivi:**
+Si possono abilitare/disabilitare i canali di comunicazione:
+- Voce (chiamate)
+- Email
+- WhatsApp
+- Nessuno (task interni)
+
+Se un canale è disabilitato, i dipendenti che lo richiedono vengono saltati automaticamente.
+
+**Configurazione "Personalizza":**
+Il dipendente "Personalizza" ha una sezione di configurazione dedicata dove il consulente può:
+- Scrivere istruzioni libere per definire cosa deve fare
+- Scegliere i canali attivi
+- Definire le categorie di task
+
+**Marco – Executive Coach (configurazione avanzata):**
+Marco ha una sezione speciale con:
+- **Obiettivi strategici**: lista di obiettivi che il consulente vuole raggiungere (l'AI li usa come bussola per le analisi)
+- **Roadmap/Note strategiche**: testo libero per la direzione strategica
+- **Stile report**: sintetico, bilanciato, o dettagliato
+- **Focus report**: area specifica su cui concentrare l'analisi
+- **Contatti consulente**: telefono, email, WhatsApp per permettere a Marco di contattare direttamente il consulente
+
+#### Scheda 2: Dashboard
+
+Dashboard interattiva con:
+- **Pulsante "Simula Analisi"**: esegue una simulazione dry-run di tutti i dipendenti attivi, mostrando:
+  - Quali clienti verrebbero analizzati
+  - Quali task verrebbero creati (senza crearli realmente)
+  - Il ragionamento dell'AI per ogni decisione
+  - I dati esatti inviati all'AI
+  
+- **Pulsante "Genera Task Ora"**: forza l'esecuzione immediata del ciclo di generazione task (invece di aspettare il CRON ogni 30 min)
+
+- **Statistiche**:
+  - Task creati oggi/settimana/mese
+  - Task per dipendente
+  - Task approvati vs rifiutati
+  - Tasso di successo per dipendente
+
+#### Scheda 3: Attività (Activity)
+
+Log cronologico di tutte le azioni del sistema:
+- Ogni analisi effettuata da ogni dipendente
+- Task creati con ragionamento AI
+- Task completati/falliti
+- Errori e avvisi
+
+Ogni voce del log include:
+- Timestamp
+- Dipendente che ha agito
+- Tipo di evento (analisi, task creato, task completato, errore)
+- Descrizione con dettagli
+- ID del ciclo (per raggruppare azioni dello stesso ciclo)
+
+**Filtri disponibili:**
+- Per dipendente
+- Per tipo evento
+- Per periodo
+
+#### Scheda 4: Catalogo Dati (Data Catalog)
+
+Mostra la **libreria di task predefiniti** (12 template) organizzati per categoria:
+- Ogni template mostra: nome, descrizione, categoria, canale
+- Utile per capire che tipo di azioni i dipendenti possono creare
+
+---
+
+### 22.4 Come Funziona il Ciclo Autonomo (ogni 30 minuti)
+
+#### Fase 1: Selezione Consulenti Idonei
+
+Il CRON ogni 30 minuti:
+1. Cerca tutti i consulenti con:
+   - `autonomy_level >= 2` (livello minimo per la generazione task)
+   - `is_active = true`
+2. Per ciascuno, verifica:
+   - È dentro l'orario di lavoro configurato? (confronto con fuso orario Europa/Roma)
+   - Se fuori orario → salta
+
+#### Fase 2: Raccolta Dati Clienti
+
+Per ogni consulente:
+1. Carica tutti i **clienti attivi** (max 50)
+2. Per ogni cliente, arricchisce i dati con:
+   - Data ultima consulenza
+   - Data ultimo task AI
+3. Identifica i **clienti idonei** escludendo:
+   - Clienti con task **già in coda** (scheduled, in_progress, retry_pending, waiting_approval, approved)
+   - Clienti con task **completati nelle ultime 24 ore**
+4. Raccoglie i **task recenti** (ultimi 7 giorni) per la memoria anti-duplicazione
+5. Raccoglie i **blocchi permanenti** (clienti/categorie che il consulente ha vietato)
+
+#### Fase 3: Esecuzione per Ruolo
+
+Per ogni dipendente attivo:
+
+1. **Controllo prerequisiti:**
+   - Se il dipendente richiede un canale disabilitato → salta
+   - Se non ci sono clienti idonei (eccetto Nova e Marco che non necessitano clienti) → salta
+   - Se la frequenza configurata non è stata raggiunta (es: ultima esecuzione 15 min fa, frequenza = 30 min) → salta
+
+2. **Raccolta dati specifici per ruolo:**
+   Ogni dipendente ha la sua funzione `fetchRoleData()` che raccoglie dati diversi:
+   - **Alessia**: storico consulenze + chiamate vocali
+   - **Millie**: progressi journey email + log email inviate
+   - **Echo**: consulenze senza riepilogo + pipeline riepiloghi
+   - **Nova**: post pubblicati + idee pendenti
+   - **Stella**: conversazioni WhatsApp + messaggi recenti
+   - **Iris**: email non lette + ticket aperti
+   - **Marco**: agenda prossimi 7gg + carico lavoro + monitoraggio consulenze + obiettivi strategici + eventi Google Calendar
+   - **Personalizza**: dati configurati dal consulente
+
+3. **Costruzione prompt AI:**
+   - Ogni ruolo ha un `buildPrompt()` dedicato che assembla il contesto
+   - Include la **memoria anti-duplicazione**: elenco di task recenti (in coda, completati, cancellati, falliti) per evitare duplicati
+   - Include i **blocchi permanenti**: clienti/categorie esplicitamente vietati dal consulente
+   - Inietta i **documenti di sistema** (System Prompt Documents) assegnati a quel dipendente
+   - Se disponibile, attiva il **File Search** per RAG sui documenti della knowledge base
+
+4. **Chiamata AI (Gemini):**
+   - Modello: Gemini 2.5 Flash Lite (o il modello del provider configurato)
+   - Temperatura: 0.3 (bassa per consistenza)
+   - Output: JSON strutturato con campo `overall_reasoning` obbligatorio e array `tasks`
+   - Retry: fino a 3 tentativi con backoff esponenziale per errori 503/overloaded
+
+5. **Creazione task:**
+   - Per ogni task suggerito dall'AI, verifica:
+     - L'istruzione non è vuota
+     - Il cliente non ha già task in coda
+     - Non è bloccato da un blocco permanente
+   - Crea il record in `ai_scheduled_tasks` con:
+     - Status: `scheduled` (se autonomy ≥ 4) o `waiting_approval` (se autonomy < 4)
+     - `origin_type`: `autonomous` (per distinguerlo dai task manuali)
+     - `ai_role`: ID del dipendente che l'ha generato
+     - `scheduled_at`: calcolato da `computeNextWorkingSlot()` (prossimo slot lavorativo con offset casuale)
+   - Registra l'attività nel log
+
+#### Fase 4: Anti-Duplicazione
+
+Il sistema ha un sofisticato meccanismo per prevenire task duplicati:
+
+1. **Memoria task 7 giorni**: Ogni prompt AI include l'elenco completo dei task degli ultimi 7 giorni, categorizzati per:
+   - Task già in coda (NON duplicare)
+   - Task cancellati dal consulente (NON riproporre)
+   - Task completati (evitare ripetizioni simili)
+   - Task falliti (valutare se riprovare con approccio diverso)
+   - Task di altri ruoli AI (evitare sovrapposizioni)
+
+2. **Blocchi permanenti**: Il consulente può creare blocchi per:
+   - Un cliente specifico + una categoria specifica + un ruolo specifico
+   - Es: "Non far mai chiamare Alessia a Mario per follow-up"
+
+3. **Esclusione pre-AI**: Prima ancora di chiamare l'AI, il sistema esclude:
+   - Clienti con task pendenti
+   - Clienti contattati nelle ultime 24 ore
+
+---
+
+### 22.5 Il Decision Engine (Motore Decisionale)
+
+Quando un task viene eseguito, il **Decision Engine** (`autonomous-decision-engine.ts`) genera un **piano di esecuzione multi-step**. L'AI analizza il contesto del cliente e decide quali azioni compiere.
+
+**9 tipi di azione disponibili:**
+
+| Azione | Descrizione |
+|---|---|
+| `fetch_client_data` | Raccoglie dati completi del cliente (consulenze, esercizi, progressi) |
+| `search_private_stores` | Cerca nella knowledge base privata del consulente (File Search/RAG) |
+| `web_search` | Effettua una ricerca web per informazioni aggiornate |
+| `analyze_patterns` | Analizza pattern nei dati raccolti per identificare trend e insights |
+| `generate_report` | Genera un report strutturato con i risultati dell'analisi |
+| `send_email` | Invia un'email personalizzata al cliente |
+| `send_whatsapp` | Invia un messaggio WhatsApp al cliente |
+| `voice_call` | Programma una chiamata vocale AI al cliente |
+| `prepare_call` | Prepara il contesto e il briefing per una chiamata |
+
+**Esempio di piano generato per un task "follow-up post-consulenza":**
+
+```
+Step 1: fetch_client_data     → Raccoglie storico consulenze e progressi
+Step 2: search_private_stores → Cerca documenti rilevanti nella KB
+Step 3: analyze_patterns      → Identifica punti chiave e aree di miglioramento
+Step 4: prepare_call          → Prepara il briefing per la chiamata
+Step 5: voice_call            → Effettua la chiamata al cliente
+```
+
+---
+
+### 22.6 Il Task Executor (Esecutore dei Task)
+
+Il **Task Executor** (`ai-task-executor.ts`) prende il piano dal Decision Engine e lo esegue step-by-step:
+
+1. Per ogni step del piano:
+   - Registra l'inizio dell'esecuzione con timestamp
+   - Esegue l'azione specifica (es: chiama API, genera testo, invia email)
+   - Registra il risultato (successo/errore) con log dettagliato
+   - Se uno step fallisce, può decidere se continuare o interrompere
+
+2. **Integrazione File Search (RAG):**
+   - Quando un step richiede `search_private_stores`, il sistema usa Google File Search per cercare nei documenti della knowledge base del consulente
+   - I risultati vengono iniettati nel contesto degli step successivi
+
+3. **Integrazione chiamate vocali:**
+   - Quando un step è di tipo `voice_call`, il sistema crea automaticamente una entry nella tabella `scheduled_voice_calls`
+   - La chiamata viene poi gestita dal sistema di chiamate vocali (Capitolo 21)
+   - Lo stato del task e della chiamata restano sincronizzati
+
+---
+
+### 22.7 Sistema di Guardrail (Protezioni)
+
+Il sistema implementa più livelli di protezione per evitare comportamenti indesiderati:
+
+#### Guardrail di Livello 0 (sempre attivi):
+- Il sistema deve essere `is_active = true`
+- L'autonomia deve essere `≥ 2` per la generazione
+- Nessuna operazione fuori dall'orario di lavoro configurato
+
+#### Guardrail di Livello 1 (anti-spam):
+- **Limite giornaliero**: numero massimo di task generabili per giornata (basato su autonomy level)
+- **Anti-duplicazione per cliente**: un solo task pendente per cliente alla volta
+- **Cooldown 24 ore**: nessun nuovo task per un cliente che ne ha completato uno nelle ultime 24 ore
+
+#### Guardrail di Livello 2 (anti-ripetizione):
+- **Memoria 7 giorni**: l'AI conosce tutti i task recenti ed evita ripetizioni
+- **Blocchi permanenti**: il consulente può vietare specifiche combinazioni cliente/categoria/ruolo
+- **Frequenza per ruolo**: ogni dipendente ha una frequenza configurabile (es: ogni 30 min, ogni 4 ore)
+
+#### Guardrail di Livello 3 (canali):
+- I canali (voce, email, WhatsApp) possono essere abilitati/disabilitati globalmente
+- Se un canale è disabilitato, tutti i dipendenti che lo richiedono vengono saltati
+
+#### Guardrail di Livello 4 (approvazione):
+- Con autonomia < 4: tutti i task richiedono approvazione manuale
+- Con autonomia ≥ 4: i task vengono eseguiti automaticamente
+- Il consulente può sempre annullare un task prima dell'esecuzione
+
+---
+
+### 22.8 Dettaglio per Dipendente
+
+#### Alessia – Voice Consultant 📞
+- **Analizza**: Storico consulenze (date, durata, note, trascrizioni) + chiamate vocali precedenti
+- **Cerca**: Clienti con consulenza recente ma senza follow-up; clienti non sentiti da >2 settimane; clienti con note che indicano difficoltà
+- **Crea**: Task di tipo chiamata vocale con istruzioni dettagliate (cosa è stato discusso, punti da toccare, tono, obiettivo)
+- **Regola**: Non suggerisce chiamate a clienti già chiamati negli ultimi 3 giorni
+
+#### Millie – Email Writer 📧
+- **Analizza**: Progressi email journey (giorno corrente, ultimo invio) + log email inviate (aperture, click)
+- **Cerca**: Clienti senza email da >7 giorni; journey fermi; clienti che hanno aperto email recenti
+- **Crea**: Task email con argomento specifico, tipo (check-in, educativo, motivazionale), tono e punti chiave
+
+#### Echo – Summarizer 📧
+- **Analizza**: Consulenze completate senza riepilogo + pipeline riepiloghi (quanti mancano di trascrizione, quanti pronti per email)
+- **Cerca**: Consulenze con trascrizione/note ma senza summary_email generata
+- **Crea**: Task per generare riepiloghi strutturati delle consulenze e inviarli ai clienti
+- **Dati aggiuntivi**: Pipeline statistiche (quante completate, quante mancano trascrizione, quante pronte per email)
+
+#### Nova – Social Media Manager 🎨
+- **Analizza**: Post recenti (titolo, piattaforma, stato pubblicazione) + idee pendenti nel content studio
+- **Non lavora sui clienti**: Si concentra sul brand del consulente
+- **Cerca**: Gap nel calendario editoriale (nessun post da >5 giorni); idee pendenti da sviluppare; trend rilevanti
+- **Crea**: Task per creazione contenuti (post, carosello, reel, articolo) con piattaforme target, tema, hook e CTA
+
+#### Stella – WhatsApp Assistant 💬
+- **Analizza**: Conversazioni WhatsApp attive (ultimo messaggio, mittente, è lead, conteggio messaggi, non letti) + messaggi recenti ultimi 7 giorni
+- **Cerca**: Conversazioni con messaggi non letti; lead non qualificati; clienti senza messaggi da >5 giorni
+- **Crea**: Task WhatsApp con contesto dell'ultima conversazione, tipo messaggio, punti chiave e tono
+
+#### Iris – Email Hub Manager 📨
+- **Analizza**: Email in arrivo non lette degli ultimi 7 giorni + ticket aperti/pendenti con priorità e classificazione AI
+- **Cerca**: Email urgenti non lette; ticket con alta priorità; comunicazioni che richiedono escalation
+- **Crea**: Task per rispondere a email, gestire ticket o segnalare al consulente
+
+#### Marco – Executive Coach 🎯
+- **Analizza**: Agenda prossimi 7 giorni + carico lavoro (task completati 7/30gg, pendenti) + monitoraggio limiti consulenze mensili + gap schedulazione futura + eventi Google Calendar
+- **Focus sul consulente**: Non contatta i clienti ma aiuta il consulente a organizzarsi
+- **Può contattare il consulente**: Se ha i contatti configurati, può chiamare, mandare WhatsApp o email al consulente stesso
+- **Cerca**: Consulenze imminenti senza preparazione; pacchetti consulenze esauriti; mesi senza consulenze programmate; troppi task pendenti; gap nell'agenda
+- **Crea**: Task di preparazione briefing, monitoraggio, report, scheduling
+- **Extra**: Obiettivi strategici come bussola, rispetta stile report preferito (sintetico/dettagliato/bilanciato)
+
+#### Personalizza – Assistente Custom ⚙️
+- **Completamente configurabile**: Il consulente definisce istruzioni, canali e categorie
+- **Analizza**: Consulenze recenti + task recenti + dati configurati
+- **Accede a tutti i canali**: voce, email, WhatsApp, nessuno
+- **Max 3 task per ciclo**: Il più produttivo del team
+- **Dati personalizzati**: usa la configurazione custom definita nelle impostazioni del dipendente
+
+---
+
+### 22.9 Knowledge Base e File Search per i Dipendenti
+
+Ogni dipendente AI può accedere alla knowledge base del consulente in due modi:
+
+1. **System Prompt Documents**: Documenti iniettati direttamente nel prompt dell'AI (sempre in memoria)
+   - Configurabili dalla pagina Knowledge Base
+   - Si possono assegnare documenti specifici a dipendenti specifici
+   - Tabella `agent_knowledge_assignments`
+
+2. **File Search (RAG)**: Ricerca semantica nei documenti della knowledge base
+   - Attivato automaticamente se il dipendente ha documenti KB assegnati
+   - Usa Google File Search per cercare contenuti rilevanti
+   - I risultati vengono iniettati nel contesto dell'analisi
+
+---
+
+### 22.10 Simulazione e Debug
+
+Il sistema offre strumenti avanzati per capire cosa farebbero i dipendenti senza effettivamente creare task:
+
+**Modalità Simulazione (Dry-Run):**
+Accessibile dalla Dashboard, mostra per ogni dipendente:
+- Se verrebbe saltato (e perché: nessun cliente, canale disabilitato, frequenza non raggiunta)
+- Quanti clienti verrebbero analizzati vs quanti sono idonei
+- Il prompt completo inviato all'AI
+- La risposta grezza dell'AI
+- I task che verrebbero creati (con contatto, categoria, istruzione, ragionamento)
+- Il provider e modello AI utilizzato
+
+Questo è utilissimo per:
+- Verificare che i dipendenti funzionino correttamente
+- Capire perché un dipendente non genera task
+- Ottimizzare le istruzioni personalizzate
+
+---
+
+### 22.11 Risoluzione Problemi AI Autonomy
+
+| Problema | Causa Probabile | Soluzione |
+|---|---|---|
+| Nessun task generato | Autonomia < 2 o sistema spento | Verifica livello autonomia ≥ 2 e che il sistema sia attivo |
+| Dipendente non si attiva | Canale richiesto disabilitato | Abilita il canale necessario nelle impostazioni |
+| Task sempre "in approvazione" | Autonomia < 4 | Alza il livello di autonomia a 4+ per l'esecuzione automatica |
+| Task duplicati | Raro, ma possibile con timing ravvicinato | Il sistema ha anti-duplicazione automatica; verifica la memoria 7 giorni |
+| "Nessun cliente idoneo" | Tutti i clienti hanno già task pendenti | Attendi che i task esistenti vengano completati; il sistema si sblocca automaticamente |
+| AI risponde con JSON non valido | Problema temporaneo del modello | Il sistema riprova automaticamente (3 tentativi con backoff) |
+| Dipendente sbaglia analisi | Istruzioni troppo vaghe | Aggiungi istruzioni personalizzate più dettagliate; usa documenti KB per contesto |
+| Marco non chiama il consulente | Contatti non configurati | Configura telefono/email/WhatsApp del consulente nelle impostazioni di Marco |
+| Task creato fuori orario | Fuso orario non allineato | Il sistema usa Europa/Roma; verifica le impostazioni orari di lavoro |
+
+---
+
+## Capitolo 23: Integrazione tra i Tre Sistemi
+
+### 23.1 Come Weekly Check-in, Chiamate Vocali e AI Autonomy Collaborano
+
+I tre sistemi non operano in modo isolato ma sono interconnessi:
+
+```
+                    ┌──────────────────┐
+                    │  AI AUTONOMY     │
+                    │  (8 dipendenti)  │
+                    └───────┬──────────┘
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+     ┌────────────┐  ┌───────────┐  ┌──────────┐
+     │ Chiamate   │  │  Email    │  │ WhatsApp │
+     │ Vocali     │  │  (SMTP)   │  │ (Twilio) │
+     └──────┬─────┘  └───────────┘  └─────┬────┘
+            │                              │
+            │              ┌───────────────┘
+            ▼              ▼
+     ┌─────────────────────────┐
+     │   Weekly Check-in       │
+     │   (WhatsApp automatico) │
+     └─────────────────────────┘
+```
+
+**Flusso esempio: Alessia genera una chiamata**
+
+1. Il CRON autonomo analizza i dati (ogni 30 min)
+2. Alessia identifica che Marco non è stato sentito da 2 settimane
+3. Crea un task con `preferred_channel = "voice"` e istruzione dettagliata
+4. Il Decision Engine genera un piano multi-step:
+   - Step 1: `fetch_client_data` (raccoglie dati Marco)
+   - Step 2: `search_private_stores` (cerca info nella KB)
+   - Step 3: `prepare_call` (prepara il briefing)
+   - Step 4: `voice_call` (crea entry in `scheduled_voice_calls`)
+5. Il CRON delle chiamate vocali (ogni minuto) trova la chiamata e la esegue via VPS/FreeSWITCH
+6. Gemini gestisce la conversazione in tempo reale
+7. A fine chiamata, il callback aggiorna sia `scheduled_voice_calls` che `ai_scheduled_tasks`
+
+**Integrazione Weekly Check-in ↔ AI Autonomy:**
+- Il Weekly Check-in opera in modo indipendente (CRON dedicato alle 08:00)
+- Tuttavia, l'AI Autonomy (tramite Stella) può creare task WhatsApp aggiuntivi al di fuori del ciclo settimanale
+- Il sistema anti-duplicazione dell'autonomia è consapevole dei check-in già inviati
+
+### 23.2 Tabella CRON Riepilogativa
+
+| CRON | Frequenza | Orario | Fuso | Funzione |
+|---|---|---|---|---|
+| Weekly Check-in Scheduling | Giornaliero | 08:00 | Europa/Roma | Pianifica quali clienti contattare oggi |
+| Weekly Check-in Processing | Ogni minuto | Sempre | Europa/Roma | Invia i messaggi in coda |
+| AI Task Processing | Ogni minuto | Sempre | Europa/Roma | Esegue task e chiamate in coda + cleanup stuck calls |
+| Autonomous Generation | Ogni 30 minuti | Sempre (ma verifica orario lavoro) | Europa/Roma | Genera nuovi task con gli 8 dipendenti AI |
+
+### 23.3 File Search Condiviso
+
+Tutti e tre i sistemi possono accedere alla stessa knowledge base del consulente via File Search:
+- **Weekly Check-in**: usa File Search per personalizzare i messaggi con contesto dalla KB
+- **Chiamate Vocali**: il prompt della chiamata può essere arricchito con info dalla KB
+- **AI Autonomy**: ogni dipendente può cercare nella KB durante l'analisi e l'esecuzione dei task
+
+Questo garantisce che ogni comunicazione – sia un messaggio WhatsApp, una chiamata o un'email – sia **contestualizzata** con le informazioni più aggiornate del consulente.
+
+---
+
 # FINE DEL MANUALE
 
-**Versione:** 2.0 Espansa
-**Data:** Dicembre 2025
+**Versione:** 3.0 Espansa – Funzionalità Avanzate
+**Data:** Febbraio 2026
 **Autore:** Sistema AI + Team Piattaforma
 
 ---
