@@ -85,7 +85,6 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [credentialsOpen, setCredentialsOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
-  const [fileSearchCategoriesOpen, setFileSearchCategoriesOpen] = useState(false);
   
   const [knowledgeItems, setKnowledgeItems] = useState<WhatsappAgentKnowledgeItem[]>([]);
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<KnowledgeItemDraft[]>([]);
@@ -391,6 +390,35 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         description: "Si è verificato un errore durante l'eliminazione",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUpdateInjectionMode = async (itemId: string, newMode: 'system_prompt' | 'file_search') => {
+    if (!agentId) return;
+    try {
+      const response = await fetch(`/api/whatsapp/agent-config/${agentId}/knowledge/${itemId}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ injectionMode: newMode }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setKnowledgeItems(knowledgeItems.map(item => 
+          item.id === itemId ? { ...item, injectionMode: newMode } : item
+        ));
+        toast({
+          title: newMode === 'file_search' ? "File Search attivato" : "System Prompt attivato",
+          description: newMode === 'file_search' 
+            ? "Il documento verrà cercato dall'AI solo quando rilevante"
+            : "Il documento sarà sempre presente nella memoria dell'AI",
+        });
+      } else {
+        const error = await response.json();
+        toast({ title: "Errore", description: error.error || "Impossibile aggiornare", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error updating injection mode:", error);
+      toast({ title: "Errore", description: "Si è verificato un errore", variant: "destructive" });
     }
   };
 
@@ -1300,7 +1328,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               {/* Existing Knowledge Items */}
               {knowledgeItems.length > 0 && (
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">✓ Elementi Salvati ({knowledgeItems.length})</Label>
+                  <div className="space-y-1">
+                    <Label className="text-base font-semibold">✓ Elementi Salvati ({knowledgeItems.length})</Label>
+                    <p className="text-xs text-muted-foreground">
+                      📋 <strong>System Prompt</strong> = sempre in memoria (per testi brevi e istruzioni chiave) | 🔍 <strong>File Search</strong> = cerca solo quando serve (per PDF e documenti lunghi, risparmia token)
+                    </p>
+                  </div>
                   {knowledgeItems.map((item) => {
                     const getBadgeColor = (type: string) => {
                       switch (type) {
@@ -1325,6 +1358,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                       return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
                     };
 
+                    const currentMode = (item as any).injectionMode || 'system_prompt';
                     return (
                       <Card key={item.id} className="p-4 bg-card/50 hover:bg-card/70 transition-colors">
                         <div className="flex items-start justify-between gap-3">
@@ -1354,6 +1388,32 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
                                 {item.content.substring(0, 200)}{item.content.length > 200 ? '...' : ''}
                               </p>
                             )}
+                            <div className="flex items-center gap-1 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateInjectionMode(item.id, 'system_prompt')}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-l-md text-xs font-medium border transition-colors ${
+                                  currentMode === 'system_prompt'
+                                    ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700'
+                                    : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50'
+                                }`}
+                                title="Il contenuto viene inserito direttamente nel prompt dell'AI. L'AI lo legge SEMPRE ad ogni messaggio. Ideale per documenti brevi e istruzioni importanti."
+                              >
+                                📋 System Prompt
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateInjectionMode(item.id, 'file_search')}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-r-md text-xs font-medium border transition-colors ${
+                                  currentMode === 'file_search'
+                                    ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700'
+                                    : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/50'
+                                }`}
+                                title="Il contenuto viene caricato nel database vettoriale. L'AI lo cerca SOLO quando la domanda dell'utente è pertinente. Ideale per documenti lunghi come PDF e manuali."
+                              >
+                                🔍 File Search
+                              </button>
+                            </div>
                           </div>
                           <Button
                             type="button"
@@ -1424,138 +1484,6 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         </Card>
       </Collapsible>
 
-      <Collapsible open={fileSearchCategoriesOpen} onOpenChange={setFileSearchCategoriesOpen}>
-        <Card className="border-2 border-purple-500/20 shadow-lg">
-          <CollapsibleTrigger className="w-full">
-            <CardHeader className="bg-gradient-to-r from-purple-500/5 to-purple-500/10 cursor-pointer hover:from-purple-500/10 hover:to-purple-500/15 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-purple-500" />
-                  <CardTitle>🔍 Categorie File Search</CardTitle>
-                </div>
-                {fileSearchCategoriesOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </div>
-              <CardDescription className="text-left">
-                Seleziona quali categorie di documenti l'AI può cercare
-              </CardDescription>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-6 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Seleziona quali tipi di contenuti l'agente AI può cercare e utilizzare nelle risposte.
-              </p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.courses ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        courses: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">📚 Corsi</span>
-                    <p className="text-xs text-muted-foreground">Corsi dalla libreria formativa</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.lessons ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        lessons: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">📖 Lezioni</span>
-                    <p className="text-xs text-muted-foreground">Contenuti delle lezioni</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.exercises ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        exercises: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">📝 Esercizi</span>
-                    <p className="text-xs text-muted-foreground">Esercizi e compiti</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.knowledgeBase ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        knowledgeBase: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">🧠 Knowledge Base</span>
-                    <p className="text-xs text-muted-foreground">Documenti knowledge base</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.library ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        library: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">📁 Libreria</span>
-                    <p className="text-xs text-muted-foreground">Documenti dalla libreria</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:bg-accent cursor-pointer transition-colors">
-                  <Checkbox
-                    checked={formData.fileSearchCategories?.university ?? false}
-                    onCheckedChange={(checked) => {
-                      onChange('fileSearchCategories', {
-                        ...formData.fileSearchCategories,
-                        university: !!checked
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="text-sm font-medium">🎓 University</span>
-                    <p className="text-xs text-muted-foreground">Percorsi universitari</p>
-                  </div>
-                </label>
-              </div>
-
-              {Object.values(formData.fileSearchCategories || {}).some(v => v) && (
-                <div className="flex items-center gap-2 pt-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">
-                    {Object.values(formData.fileSearchCategories || {}).filter(v => v).length} categoria/e selezionata/e
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
 
       <Dialog open={pasteDialogOpen} onOpenChange={setPasteDialogOpen}>
         <DialogContent className="max-w-2xl">

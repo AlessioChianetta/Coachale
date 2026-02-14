@@ -6435,13 +6435,16 @@ export class FileSearchSyncService {
       console.log(`📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "${agentConfig.agentName}" (${agentConfigId.substring(0, 8)})`);
       console.log(`${'═'.repeat(60)}\n`);
 
-      // Get all knowledge items for this agent
+      // Get only file_search knowledge items for this agent
       const knowledgeItems = await db.query.whatsappAgentKnowledgeItems.findMany({
-        where: eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+        where: and(
+          eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+          eq(whatsappAgentKnowledgeItems.injectionMode, 'file_search')
+        ),
       });
 
       if (knowledgeItems.length === 0) {
-        console.log(`ℹ️ [FileSync] No knowledge items found for agent ${agentConfigId.substring(0, 8)}`);
+        console.log(`ℹ️ [FileSync] No file_search knowledge items found for agent ${agentConfigId.substring(0, 8)}`);
         return { total: 0, synced: 0, failed: 0, errors: [] };
       }
 

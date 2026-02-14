@@ -2961,6 +2961,7 @@ export const whatsappAgentKnowledgeItems = pgTable("whatsapp_agent_knowledge_ite
   filePath: text("file_path"), // Path del file caricato (solo per pdf/docx/txt)
   fileName: text("file_name"), // Nome originale del file (solo per pdf/docx/txt)
   fileSize: integer("file_size"), // Dimensione in bytes (solo per pdf/docx/txt)
+  injectionMode: text("injection_mode").$type<"system_prompt" | "file_search">().default("system_prompt").notNull(),
   order: integer("order").default(0).notNull(), // Ordinamento (per drag & drop futuro)
   sourceConsultantDocId: varchar("source_consultant_doc_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "set null" }), // ID del documento KB consulente da cui è stato importato
   createdAt: timestamp("created_at").default(sql`now()`),

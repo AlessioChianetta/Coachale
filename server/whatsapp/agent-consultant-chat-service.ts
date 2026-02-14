@@ -35,7 +35,10 @@ export async function buildWhatsAppAgentPrompt(agentConfig: any): Promise<string
   const knowledgeItems = await db
     .select()
     .from(schema.whatsappAgentKnowledgeItems)
-    .where(eq(schema.whatsappAgentKnowledgeItems.agentConfigId, agentConfig.id))
+    .where(and(
+      eq(schema.whatsappAgentKnowledgeItems.agentConfigId, agentConfig.id),
+      eq(schema.whatsappAgentKnowledgeItems.injectionMode, 'system_prompt')
+    ))
     .orderBy(asc(schema.whatsappAgentKnowledgeItems.order), asc(schema.whatsappAgentKnowledgeItems.createdAt));
   
   // Build Authority & Positioning section

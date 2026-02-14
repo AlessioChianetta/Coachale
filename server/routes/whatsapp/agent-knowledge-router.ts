@@ -17,6 +17,7 @@ import { eq, and, asc, notInArray, desc, isNotNull, inArray, sql } from "drizzle
 import { extractTextFromFile, extractTextFromPDFWithFallback, getKnowledgeItemType } from "../../services/document-processor";
 import { ensureGeminiFileValid } from "../../services/gemini-file-manager";
 import { FileSearchService } from "../../ai/file-search-service";
+import { FileSearchSyncService } from "../../services/file-search-sync-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -254,7 +255,9 @@ router.post(
 
       const nextOrder = (maxOrderResult?.maxOrder || 0) + 1;
 
-      // Create knowledge item
+      // Create knowledge item with validated injection mode
+      const rawInjectionMode = req.body.injectionMode || 'system_prompt';
+      const injectionMode = ['system_prompt', 'file_search'].includes(rawInjectionMode) ? rawInjectionMode : 'system_prompt';
       const itemId = crypto.randomUUID();
       const [newItem] = await db
         .insert(whatsappAgentKnowledgeItems)
@@ -267,6 +270,7 @@ router.post(
           filePath,
           fileName,
           fileSize,
+          injectionMode: injectionMode as 'system_prompt' | 'file_search',
           order: nextOrder,
         })
         .returning();
@@ -345,8 +349,8 @@ router.put(
         });
       }
 
-      // Allow updating title for all types, content only for text type
-      const { title, content } = req.body;
+      // Allow updating title for all types, content only for text type, injectionMode for all
+      const { title, content, injectionMode } = req.body;
       const updates: any = {};
 
       if (title !== undefined) {
@@ -361,6 +365,16 @@ router.put(
           });
         }
         updates.content = content;
+      }
+
+      if (injectionMode !== undefined) {
+        if (!['system_prompt', 'file_search'].includes(injectionMode)) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid injectionMode. Must be 'system_prompt' or 'file_search'",
+          });
+        }
+        updates.injectionMode = injectionMode;
       }
 
       if (Object.keys(updates).length === 0) {
@@ -380,6 +394,28 @@ router.put(
         .returning();
 
       console.log(`✅ [KNOWLEDGE ITEMS] Updated item: "${updatedItem.title}"`);
+
+      if (injectionMode !== undefined && injectionMode !== existingItem.injectionMode) {
+        try {
+          if (injectionMode === 'file_search') {
+            await FileSearchSyncService.syncSingleWhatsappKnowledgeItem(itemId, agentConfigId);
+            console.log(`🔍 [KNOWLEDGE ITEMS] Synced item "${updatedItem.title}" to File Search`);
+          } else if (injectionMode === 'system_prompt') {
+            const indexedDoc = await db.query.fileSearchDocuments.findFirst({
+              where: and(
+                eq(fileSearchDocuments.sourceType, 'whatsapp_agent_knowledge'),
+                eq(fileSearchDocuments.sourceId, itemId),
+              ),
+            });
+            if (indexedDoc) {
+              await fileSearchService.deleteDocument(indexedDoc.id);
+              console.log(`📋 [KNOWLEDGE ITEMS] Removed item "${updatedItem.title}" from File Search`);
+            }
+          }
+        } catch (syncError: any) {
+          console.error(`⚠️ [KNOWLEDGE ITEMS] File Search sync error (non-blocking):`, syncError.message);
+        }
+      }
 
       res.json({
         success: true,
