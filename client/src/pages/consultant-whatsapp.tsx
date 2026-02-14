@@ -1816,40 +1816,71 @@ export default function ConsultantWhatsAppPage() {
       showHeader={false}
     >
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Unified Header */}
+        {/* Unified Header with KPI */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 text-white shadow-2xl">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
           <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
-                <Bot className="h-7 w-7 text-white" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
+          
+          <div className="relative z-10 space-y-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+                  <Bot className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendenti AI</h1>
+                  <p className="text-blue-200/70 text-sm mt-0.5">
+                    Il tuo team intelligente multi-canale
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendenti AI</h1>
-                <p className="text-blue-200/70 text-sm mt-0.5">
-                  Configura e monitora il tuo team intelligente multi-canale
-                </p>
+              
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs text-green-300 font-medium">Operativi 24/7</span>
+                </div>
+                <Button 
+                  variant="secondary"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                  onClick={() => window.location.href = '/consultant/whatsapp-agents-chat'}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Chat Agenti
+                </Button>
+                <Button 
+                  onClick={handleAddNew}
+                  className="bg-white text-slate-900 hover:bg-blue-50 shadow-md font-semibold"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuovo Agente
+                </Button>
               </div>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              <Button 
-                variant="secondary"
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
-                onClick={() => window.location.href = '/consultant/whatsapp-agents-chat'}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Chat Agenti
-              </Button>
-              <Button 
-                onClick={handleAddNew}
-                className="bg-white text-slate-900 hover:bg-blue-50 shadow-md font-semibold"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nuovo Agente
-              </Button>
+
+            {/* Channel badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/15 border border-green-500/20">
+                <MessageCircle className="h-3.5 w-3.5 text-green-400" />
+                <span className="text-xs font-medium text-green-300">WhatsApp</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
+                <Instagram className="h-3.5 w-3.5 text-purple-400" />
+                <span className="text-xs font-medium text-purple-300">Instagram</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/20">
+                <ExternalLink className="h-3.5 w-3.5 text-blue-400" />
+                <span className="text-xs font-medium text-blue-300">Sito Web</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/20">
+                <Bot className="h-3.5 w-3.5 text-amber-400" />
+                <span className="text-xs font-medium text-amber-300">Chat AI</span>
+              </div>
             </div>
+
+            {/* KPI Metrics */}
+            <AgentDashboardHeader variant="mission-control" />
           </div>
         </div>
 
@@ -1950,34 +1981,7 @@ export default function ConsultantWhatsAppPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* KPI Metrics Bar */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm">
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-xs font-medium text-green-700 dark:text-green-300">Operativi 24/7</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                      <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                      <span className="text-xs font-medium text-green-700 dark:text-green-300">WhatsApp</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                      <Instagram className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Instagram</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                      <ExternalLink className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Sito Web</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                      <Bot className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Chat AI</span>
-                    </div>
-                  </div>
-                  <AgentDashboardHeader variant="mission-control" />
-                </div>
-
-                {/* Channel Summary Cards - Split Dashboard Style */}
+                {/* Channel Summary Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
