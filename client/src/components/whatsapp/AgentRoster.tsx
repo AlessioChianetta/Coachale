@@ -25,6 +25,26 @@ import {
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
+import avatarPool1 from "@assets/generated_images/agent_avatar_pool_1.png";
+import avatarPool2 from "@assets/generated_images/agent_avatar_pool_2.png";
+import avatarPool3 from "@assets/generated_images/agent_avatar_pool_3.png";
+import avatarPool4 from "@assets/generated_images/agent_avatar_pool_4.png";
+import avatarPool5 from "@assets/generated_images/agent_avatar_pool_5.png";
+import avatarPool6 from "@assets/generated_images/agent_avatar_pool_6.png";
+import avatarPool7 from "@assets/generated_images/agent_avatar_pool_7.png";
+import avatarPool8 from "@assets/generated_images/agent_avatar_pool_8.png";
+
+const avatarPool = [avatarPool1, avatarPool2, avatarPool3, avatarPool4, avatarPool5, avatarPool6, avatarPool7, avatarPool8];
+
+function getAgentAvatar(agentId: string): string {
+  let hash = 0;
+  for (let i = 0; i < agentId.length; i++) {
+    hash = ((hash << 5) - hash) + agentId.charCodeAt(i);
+    hash |= 0;
+  }
+  return avatarPool[Math.abs(hash) % avatarPool.length];
+}
+
 interface Agent {
   id: string;
   name: string;
@@ -94,10 +114,14 @@ function AgentCard({
     >
       <div className="flex items-center gap-3">
         <div className={cn(
-          "w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0",
-          isSelected ? "bg-gradient-to-br from-blue-500 to-indigo-600" : "bg-gradient-to-br from-gray-400 to-gray-500"
+          "w-9 h-9 rounded-full flex-shrink-0 overflow-hidden",
+          isSelected ? "ring-2 ring-blue-400" : "ring-1 ring-gray-200 dark:ring-gray-700"
         )}>
-          {agent.name.charAt(0).toUpperCase()}
+          <img 
+            src={getAgentAvatar(agent.id)} 
+            alt={agent.name} 
+            className="w-full h-full object-cover"
+          />
         </div>
         
         <div className="flex-1 min-w-0">
