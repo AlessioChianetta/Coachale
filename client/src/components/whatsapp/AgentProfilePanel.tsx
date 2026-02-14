@@ -1166,7 +1166,12 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
         <CardContent className="p-5 space-y-5">
           {/* Header - Always visible */}
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-sm">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-sm",
+              selectedAgent.name === "Assistenza Clienti"
+                ? "bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500"
+                : "bg-gradient-to-br from-blue-500 to-indigo-600"
+            )}>
               {selectedAgent.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -1207,6 +1212,49 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {/* Configuration Warnings */}
+          {agentData && (() => {
+            const warnings: Array<{ icon: "alert" | "warning"; text: string; color: "red" | "amber" }> = [];
+            if (!agentData.phone) {
+              warnings.push({ icon: "alert", text: "Nessun numero WhatsApp configurato", color: "red" });
+            }
+            if (agentData.isDryRun) {
+              warnings.push({ icon: "warning", text: "Modalità Test attiva — i messaggi non vengono inviati", color: "amber" });
+            }
+            if (!agentData.businessDescription && !agentData.whatWeDo) {
+              warnings.push({ icon: "warning", text: "Manca la descrizione del servizio", color: "amber" });
+            }
+            if (!features?.hasKnowledgeBase) {
+              warnings.push({ icon: "warning", text: "Nessun documento nella Knowledge Base", color: "amber" });
+            }
+            if (!features?.hasCalendar && features?.bookingEnabled) {
+              warnings.push({ icon: "alert", text: "Prenotazioni attive ma nessun calendario collegato", color: "red" });
+            }
+            if (warnings.length === 0) return null;
+            return (
+              <div className="space-y-1.5">
+                {warnings.map((w, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium",
+                      w.color === "red"
+                        ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 ring-1 ring-red-200/60 dark:ring-red-800/40"
+                        : "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 ring-1 ring-amber-200/60 dark:ring-amber-800/40"
+                    )}
+                  >
+                    {w.color === "red" ? (
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                    )}
+                    {w.text}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Features badges - pastel colors */}
           {features && (
