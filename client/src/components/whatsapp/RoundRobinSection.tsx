@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { getAuthHeaders } from "@/lib/auth";
 
 interface RoundRobinSectionProps {
   agentConfigId: string;
@@ -101,7 +102,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const { data: poolsData } = useQuery({
     queryKey: ["round-robin-pools", consultantId],
     queryFn: async () => {
-      const res = await fetch("/api/round-robin/pools");
+      const res = await fetch("/api/round-robin/pools", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json() as Promise<{ pools: Pool[] }>;
     },
@@ -113,7 +114,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const { data: membersData, isLoading: isLoadingMembers } = useQuery({
     queryKey: ["round-robin-members", activePoolId],
     queryFn: async () => {
-      const res = await fetch(`/api/round-robin/pools/${activePoolId}/members`);
+      const res = await fetch(`/api/round-robin/pools/${activePoolId}/members`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json() as Promise<{ members: PoolMember[] }>;
     },
@@ -123,7 +124,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const { data: statsData } = useQuery({
     queryKey: ["round-robin-stats", activePoolId],
     queryFn: async () => {
-      const res = await fetch(`/api/round-robin/pools/${activePoolId}/stats`);
+      const res = await fetch(`/api/round-robin/pools/${activePoolId}/stats`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json() as Promise<PoolStats>;
     },
@@ -133,7 +134,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const { data: availableAgents } = useQuery({
     queryKey: ["round-robin-agents-available"],
     queryFn: async () => {
-      const res = await fetch("/api/round-robin/agents-available");
+      const res = await fetch("/api/round-robin/agents-available", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json() as Promise<{ agents: AvailableAgent[] }>;
     },
@@ -147,7 +148,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
       if (enabled && !poolId) {
         const createRes = await fetch("/api/round-robin/pools", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
           body: JSON.stringify({ name: "Pool Commerciali" }),
         });
         if (!createRes.ok) throw new Error("Failed to create pool");
@@ -157,7 +158,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
 
       const res = await fetch(`/api/round-robin/agent/${agentConfigId}/round-robin`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ enabled, poolId }),
       });
       if (!res.ok) throw new Error("Failed to toggle");
@@ -183,7 +184,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     mutationFn: async ({ poolId, data }: { poolId: string; data: any }) => {
       const res = await fetch(`/api/round-robin/pools/${poolId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -199,7 +200,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     mutationFn: async (memberAgentConfigId: string) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ agentConfigId: memberAgentConfigId }),
       });
       if (!res.ok) {
@@ -222,7 +223,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     mutationFn: async ({ memberId, data }: { memberId: string; data: any }) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/${memberId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -238,6 +239,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     mutationFn: async (memberId: string) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/${memberId}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to remove");
       return res.json();
@@ -253,6 +255,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     mutationFn: async (memberId: string) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/${memberId}/reset`, {
         method: "POST",
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error("Failed to reset");
       return res.json();
