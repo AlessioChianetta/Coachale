@@ -1889,6 +1889,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           console.log(`\n📅 [PUBLIC-SLOTS] Fetching available slots for AI context...`);
           
           let availableSlots: any[] = [];
+          let slotsAlreadyShownToAI = false;
           
           // Step 1: Check for saved slots in database
           const [savedSlots] = await db
@@ -1905,8 +1906,20 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             .limit(1);
           
           if (savedSlots && savedSlots.slots) {
-            availableSlots = savedSlots.slots as any[];
-            console.log(`   💾 [PUBLIC-SLOTS] Retrieved ${availableSlots.length} saved slots from database`);
+            // Check if lead is asking for fresh/different slots
+            const refreshKeywords = ['altri orari', 'altre date', 'altri giorni', 'altri slot', 'nuovi orari', 'diversi orari', 'cambiare orario', 'non mi vanno', 'non va bene nessuno', 'nessuno di questi', 'altri disponibili', 'settimana prossima', 'la prossima settimana'];
+            const isAskingRefresh = refreshKeywords.some(kw => (message || '').toLowerCase().includes(kw));
+            
+            if (isAskingRefresh) {
+              console.log(`   🔄 [PUBLIC-SLOTS] Lead asking for fresh slots - forcing calendar refresh`);
+              availableSlots = [];
+              await db.delete(schema.proposedAppointmentSlots).where(eq(schema.proposedAppointmentSlots.id, savedSlots.id));
+            } else {
+              availableSlots = savedSlots.slots as any[];
+              slotsAlreadyShownToAI = true;
+              console.log(`   💾 [PUBLIC-SLOTS] Retrieved ${availableSlots.length} saved slots from database`);
+              console.log(`   🔋 [PUBLIC-SLOTS TOKEN OPT] Slots already shown to AI - will NOT re-inject in prompt`);
+            }
           } else {
             // Step 2: Fetch fresh slots from calendar API
             console.log(`   🌐 [PUBLIC-SLOTS] No saved slots found - fetching from calendar API...`);
@@ -1990,13 +2003,15 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           
           const timezone = consultantSettings?.timezone || 'Europe/Rome';
           
-          // Build booking context for AI
-          if (availableSlots.length > 0) {
+          // Build booking context for AI - only inject slots on first time
+          if (availableSlots.length > 0 && !slotsAlreadyShownToAI) {
             bookingContextForAI = {
               availableSlots,
               timezone
             };
-            console.log(`   ✅ [PUBLIC-SLOTS] Booking context prepared with ${availableSlots.length} slots for AI`);
+            console.log(`   ✅ [PUBLIC-SLOTS] Booking context prepared with ${availableSlots.length} slots for AI (first injection)`);
+          } else if (slotsAlreadyShownToAI) {
+            console.log(`   🔋 [PUBLIC-SLOTS] Skipping ${availableSlots.length} slots in prompt (already in conversation history)`);
           }
           
         } catch (slotError: any) {

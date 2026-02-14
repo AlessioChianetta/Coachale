@@ -1445,34 +1445,57 @@ ${triggerContext}
         
         // Get available slots from calendar API (same endpoint as WhatsApp)
         let availableSlots: any[] = [];
-        try {
-          // Calculate date range using agent's maxDaysAhead configuration (default 30 days)
-          const maxDaysAhead = linkedAgent?.availabilityMaxDaysAhead || 30;
-          const startDate = new Date();
-          const endDate = new Date();
-          endDate.setDate(endDate.getDate() + maxDaysAhead);
-          
-          const slotsResponse = await fetch(
-            `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
-            `consultantId=${config.consultantId}&` +
-            `startDate=${startDate.toISOString()}&` +
-            `endDate=${endDate.toISOString()}` +
-            `&agentConfigId=${linkedAgent.id}`,
-            {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+        let slotsAlreadyShownToAI = false;
+        
+        // Check if lead is asking for fresh/different slots
+        const refreshKeywords = ['altri orari', 'altre date', 'altri giorni', 'altri slot', 'nuovi orari', 'diversi orari', 'cambiare orario', 'non mi vanno', 'non va bene nessuno', 'nessuno di questi', 'altri disponibili', 'settimana prossima', 'la prossima settimana'];
+        const isAskingRefresh = refreshKeywords.some(kw => userMessage.toLowerCase().includes(kw));
+        
+        // Check if slots were already shown in conversation history (AI already proposed times)
+        const slotsInHistory = !isAskingRefresh && messageHistory.some(m => 
+          m.role === 'assistant' && (
+            m.content.includes('disponibil') && (m.content.includes('ore') || m.content.includes(':00') || m.content.includes(':30'))
+          )
+        );
+        
+        if (slotsInHistory && !isAskingRefresh) {
+          slotsAlreadyShownToAI = true;
+          console.log(`🔋 [INSTAGRAM TOKEN OPT] Slots already proposed in conversation history - skipping re-injection`);
+        }
+        
+        if (!slotsAlreadyShownToAI) {
+          try {
+            const maxDaysAhead = linkedAgent?.availabilityMaxDaysAhead || 30;
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + maxDaysAhead);
+            
+            const slotsResponse = await fetch(
+              `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
+              `consultantId=${config.consultantId}&` +
+              `startDate=${startDate.toISOString()}&` +
+              `endDate=${endDate.toISOString()}` +
+              `&agentConfigId=${linkedAgent.id}`,
+              {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+              }
+            );
+            
+            if (slotsResponse.ok) {
+              const slotsData = await slotsResponse.json();
+              availableSlots = slotsData.slots || [];
+              console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots from calendar API`);
+            } else {
+              console.log(`⚠️ [INSTAGRAM] Calendar slots API returned ${slotsResponse.status}`);
             }
-          );
-          
-          if (slotsResponse.ok) {
-            const slotsData = await slotsResponse.json();
-            availableSlots = slotsData.slots || [];
-            console.log(`📅 [INSTAGRAM] Found ${availableSlots.length} available slots from calendar API`);
-          } else {
-            console.log(`⚠️ [INSTAGRAM] Calendar slots API returned ${slotsResponse.status}`);
+          } catch (e: any) {
+            console.log(`⚠️ [INSTAGRAM] Could not load calendar slots: ${e.message || e}`);
           }
-        } catch (e: any) {
-          console.log(`⚠️ [INSTAGRAM] Could not load calendar slots: ${e.message || e}`);
+        }
+        
+        if (isAskingRefresh) {
+          console.log(`🔄 [INSTAGRAM] Lead asking for fresh slots - forced calendar refresh`);
         }
         
         // Format today's date
