@@ -798,8 +798,13 @@ router.get(
         return res.status(403).json({ message: "Memory summaries are only available for Gold tier users" });
       }
 
+      const isConsultantPreview = req.silverGoldUser.subscriptionId?.startsWith("consultant-gold-");
+      const effectiveSubscriptionId = isConsultantPreview 
+        ? req.silverGoldUser.consultantId 
+        : req.silverGoldUser.subscriptionId;
+
       const summaries = await conversationMemoryService.getManagerDailySummaries(
-        req.silverGoldUser.subscriptionId,
+        effectiveSubscriptionId,
         30
       );
 
@@ -832,16 +837,21 @@ router.post(
       const apiKey = superAdminKeys.keys[0];
       const memoryService = new ConversationMemoryService();
       
+      const isConsultantPreview = req.silverGoldUser.subscriptionId?.startsWith("consultant-gold-");
+      const effectiveSubscriptionId = isConsultantPreview 
+        ? req.silverGoldUser.consultantId 
+        : req.silverGoldUser.subscriptionId;
+      
       // If force=true, delete existing summaries first to allow regeneration
       const force = req.body?.force === true;
       if (force) {
-        await memoryService.deleteManagerSummaries(req.silverGoldUser.subscriptionId);
-        console.log(`[MANAGER MEMORY] Force regenerate - deleted existing summaries for subscription ${req.silverGoldUser.subscriptionId.slice(0, 8)}...`);
+        await memoryService.deleteManagerSummaries(effectiveSubscriptionId);
+        console.log(`[MANAGER MEMORY] Force regenerate - deleted existing summaries for subscription ${effectiveSubscriptionId.slice(0, 8)}...`);
       }
       
       const startTime = Date.now();
       const result = await memoryService.generateManagerMissingDailySummariesWithProgress(
-        req.silverGoldUser.subscriptionId,
+        effectiveSubscriptionId,
         req.silverGoldUser.consultantId,
         apiKey,
         () => {}
