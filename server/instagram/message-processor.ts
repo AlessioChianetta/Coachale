@@ -922,12 +922,18 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                         const { effectiveAgentConfigId: rrAgentId, roundRobinResult: rrResult } = await resolveRoundRobinAgent(
                           linkedAgent.id, config.consultantId, newExtracted.date, newExtracted.time
                         );
-                        const calendarResult = await createGoogleCalendarBooking(
-                          config.consultantId,
-                          newBooking,
-                          newExtracted.email,
-                          rrAgentId
-                        );
+                        let calendarResult: { googleEventId: string | null; googleMeetLink: string | null };
+                        if (rrResult?.isStandaloneMember) {
+                          const { createStandaloneCalendarBooking: createStandaloneCal } = await import("../booking/booking-service");
+                          calendarResult = await createStandaloneCal(config.consultantId, newBooking, newExtracted.email, rrResult.memberId);
+                        } else {
+                          calendarResult = await createGoogleCalendarBooking(
+                            config.consultantId,
+                            newBooking,
+                            newExtracted.email,
+                            rrAgentId
+                          );
+                        }
                         if (rrResult) {
                           const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
                           await recordRoundRobinAssignment(rrResult, newBooking.id);
@@ -1078,12 +1084,18 @@ Ti ho inviato un invito calendario! 📬`;
                   const { effectiveAgentConfigId: rrAgentId2, roundRobinResult: rrResult2 } = await resolveRoundRobinAgent(
                     linkedAgent.id, config.consultantId, extracted.date, extracted.time
                   );
-                  const calendarResult = await createGoogleCalendarBooking(
-                    config.consultantId,
-                    newBooking,
-                    extracted.email,
-                    rrAgentId2
-                  );
+                  let calendarResult: { googleEventId: string | null; googleMeetLink: string | null };
+                  if (rrResult2?.isStandaloneMember) {
+                    const { createStandaloneCalendarBooking: createStandaloneCal2 } = await import("../booking/booking-service");
+                    calendarResult = await createStandaloneCal2(config.consultantId, newBooking, extracted.email, rrResult2.memberId);
+                  } else {
+                    calendarResult = await createGoogleCalendarBooking(
+                      config.consultantId,
+                      newBooking,
+                      extracted.email,
+                      rrAgentId2
+                    );
+                  }
                   if (rrResult2) {
                     const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
                     await recordRoundRobinAssignment(rrResult2, newBooking.id);

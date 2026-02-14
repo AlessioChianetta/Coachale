@@ -13729,6 +13729,29 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // AI Autonomy settings and activity log routes
   app.use("/api/ai-autonomy", aiAutonomyRouter);
 
+  // Round-Robin OAuth callback (unauthenticated - Google redirect)
+  app.get("/api/round-robin/members/calendar/oauth/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      if (!code || !state) {
+        return res.redirect("/consultant/whatsapp?calendar_error=missing_params");
+      }
+      const memberId = state as string;
+      const { exchangeStandaloneMemberCodeForTokens, buildBaseUrlFromRequest } = await import("./google-calendar-service");
+      const redirectBaseUrl = buildBaseUrlFromRequest(req);
+      const result = await exchangeStandaloneMemberCodeForTokens(code as string, memberId, redirectBaseUrl);
+      if (result.success) {
+        console.log(`✅ Standalone member ${memberId} calendar connected, email: ${result.email}`);
+        res.redirect(`/consultant/whatsapp?member=${memberId}&calendar_connected=true&email=${encodeURIComponent(result.email || '')}`);
+      } else {
+        res.redirect(`/consultant/whatsapp?member=${memberId}&calendar_error=${encodeURIComponent(result.error || 'unknown')}`);
+      }
+    } catch (error: any) {
+      console.error("❌ Error in standalone member calendar OAuth callback:", error);
+      res.redirect(`/consultant/whatsapp?calendar_error=${encodeURIComponent(error.message)}`);
+    }
+  });
+
   // Round-Robin booking pool routes
   app.use("/api/round-robin", authenticateToken, roundRobinRouter);
 

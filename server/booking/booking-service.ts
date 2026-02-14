@@ -1071,6 +1071,85 @@ export async function createGoogleCalendarBooking(
   }
 }
 
+export async function createStandaloneCalendarBooking(
+  consultantId: string,
+  booking: typeof appointmentBookings.$inferSelect,
+  clientEmail: string,
+  standaloneMemberId: string
+): Promise<GoogleCalendarResult> {
+  console.log(`\n📅 [BOOKING SERVICE] Creating Google Calendar event for STANDALONE member ${standaloneMemberId}`);
+
+  try {
+    const { getStandaloneMemberCalendarClient, getStandaloneMemberCalendarId } = await import("../google-calendar-service");
+    const calendar = await getStandaloneMemberCalendarClient(standaloneMemberId);
+    if (!calendar) {
+      console.error(`❌ [BOOKING SERVICE] Standalone member ${standaloneMemberId} has no calendar connected`);
+      return { googleEventId: null, googleMeetLink: null };
+    }
+
+    const calendarId = await getStandaloneMemberCalendarId(standaloneMemberId) || "primary";
+
+    const [settings] = await db
+      .select()
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .limit(1);
+
+    const duration = settings?.appointmentDuration || 60;
+    const timezone = settings?.timezone || "Europe/Rome";
+
+    const [startHours, startMinutes] = booking.appointmentTime!.split(':').map(Number);
+    const startDateTime = `${booking.appointmentDate}T${booking.appointmentTime}:00`;
+    const totalMinutes = startHours * 60 + startMinutes + duration;
+    const endHour = Math.floor(totalMinutes / 60) % 24;
+    const endMinute = totalMinutes % 60;
+    const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+    const endDateTime = `${booking.appointmentDate}T${endTime}:00`;
+
+    const event: any = {
+      summary: `Consulenza - ${clientEmail}`,
+      description: `Telefono: ${booking.clientPhone}\nEmail: ${clientEmail}\n\nBooking ID: ${booking.id}`,
+      start: { dateTime: startDateTime, timeZone: timezone },
+      end: { dateTime: endDateTime, timeZone: timezone },
+      conferenceData: {
+        createRequest: {
+          requestId: `booking-${booking.id}-${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
+    };
+
+    if (clientEmail) {
+      event.attendees = [{ email: clientEmail }];
+    }
+
+    const { data } = await calendar.events.insert({
+      calendarId,
+      requestBody: event,
+      conferenceDataVersion: 1,
+      sendUpdates: 'all',
+    });
+
+    const googleEventId = data.id || null;
+    const googleMeetLink = data.hangoutLink || null;
+
+    if (googleEventId) {
+      await db
+        .update(appointmentBookings)
+        .set({ googleEventId })
+        .where(eq(appointmentBookings.id, booking.id));
+    }
+
+    console.log(`   ✅ Standalone calendar event created: ${googleEventId}`);
+    console.log(`   🎥 Meet link: ${googleMeetLink || 'N/A'}`);
+
+    return { googleEventId, googleMeetLink };
+  } catch (error: any) {
+    console.error(`❌ [BOOKING SERVICE] Failed to create standalone calendar event: ${error.message}`);
+    return { googleEventId: null, googleMeetLink: null };
+  }
+}
+
 export async function processFullBooking(
   consultantId: string,
   conversationId: string | null,
@@ -1104,7 +1183,12 @@ export async function processFullBooking(
     };
   }
 
-  const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, effectiveAgentConfigId);
+  let calendarResult: GoogleCalendarResult;
+  if (roundRobinResult?.isStandaloneMember) {
+    calendarResult = await createStandaloneCalendarBooking(consultantId, booking, data.email, roundRobinResult.memberId);
+  } else {
+    calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, effectiveAgentConfigId);
+  }
 
   if (roundRobinResult) {
     const { recordRoundRobinAssignment } = await import("./round-robin-service");
@@ -1115,7 +1199,7 @@ export async function processFullBooking(
       .where(eq(appointmentBookings.id, booking.id));
   }
 
-  if (effectiveAgentConfigId) {
+  if (effectiveAgentConfigId && !roundRobinResult?.isStandaloneMember) {
     const formattedDate = formatAppointmentDate(data.date, data.time);
     await sendBookingNotification(effectiveAgentConfigId, {
       clientName: data.name || data.clientName || data.email,

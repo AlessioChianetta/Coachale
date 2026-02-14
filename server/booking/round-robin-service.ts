@@ -6,8 +6,13 @@ import {
   consultantWhatsappConfig,
   appointmentBookings,
 } from "../../shared/schema";
-import { eq, and, sql, desc, asc, gte } from "drizzle-orm";
-import { getAgentCalendarClient, getAgentCalendarId } from "../google-calendar-service";
+import { eq, and, sql, desc, asc, gte, isNotNull } from "drizzle-orm";
+import {
+  getAgentCalendarClient,
+  getAgentCalendarId,
+  getStandaloneMemberCalendarClient,
+  getStandaloneMemberCalendarId,
+} from "../google-calendar-service";
 
 export interface RoundRobinResult {
   selectedAgentConfigId: string;
@@ -15,11 +20,12 @@ export interface RoundRobinResult {
   poolId: string;
   reason: string;
   score: number;
+  isStandaloneMember: boolean;
 }
 
 export interface PoolMemberInfo {
   memberId: string;
-  agentConfigId: string;
+  agentConfigId: string | null;
   agentName: string;
   weight: number;
   maxDailyBookings: number;
@@ -30,9 +36,10 @@ export interface PoolMemberInfo {
   todayBookingsCount: number;
   hasCalendar: boolean;
   googleCalendarEmail: string | null;
+  isStandalone: boolean;
 }
 
-async function getTodayBookingsCount(agentConfigId: string): Promise<number> {
+async function getTodayBookingsCount(memberId: string): Promise<number> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().slice(0, 10);
@@ -42,7 +49,7 @@ async function getTodayBookingsCount(agentConfigId: string): Promise<number> {
     .from(bookingPoolAssignments)
     .where(
       and(
-        eq(bookingPoolAssignments.assignedAgentConfigId, agentConfigId),
+        eq(bookingPoolAssignments.memberId, memberId),
         gte(bookingPoolAssignments.assignedAt, new Date(todayStr))
       )
     );
@@ -50,21 +57,35 @@ async function getTodayBookingsCount(agentConfigId: string): Promise<number> {
   return result?.count || 0;
 }
 
-async function checkAgentSlotAvailability(
-  agentConfigId: string,
+async function getMemberCalendarClient(member: { agentConfigId: string | null; memberId: string }) {
+  if (member.agentConfigId) {
+    return getAgentCalendarClient(member.agentConfigId);
+  }
+  return getStandaloneMemberCalendarClient(member.memberId);
+}
+
+async function getMemberCalendarId(member: { agentConfigId: string | null; memberId: string }): Promise<string | null> {
+  if (member.agentConfigId) {
+    return getAgentCalendarId(member.agentConfigId);
+  }
+  return getStandaloneMemberCalendarId(member.memberId);
+}
+
+async function checkMemberSlotAvailability(
+  member: { agentConfigId: string | null; memberId: string; agentName: string },
   date: string,
   time: string,
   durationMinutes: number = 60,
   timezone: string = "Europe/Rome"
 ): Promise<boolean> {
   try {
-    const calendar = await getAgentCalendarClient(agentConfigId);
+    const calendar = await getMemberCalendarClient(member);
     if (!calendar) {
-      console.log(`   ⚠️ [ROUND-ROBIN] Agent ${agentConfigId} has no calendar connected`);
+      console.log(`   ⚠️ [ROUND-ROBIN] Member ${member.agentName} (${member.memberId}) has no calendar connected`);
       return false;
     }
 
-    const calendarId = await getAgentCalendarId(agentConfigId) || "primary";
+    const calendarId = await getMemberCalendarId(member) || "primary";
 
     const startDateTime = `${date}T${time}:00`;
     const [startHours, startMinutes] = time.split(":").map(Number);
@@ -86,10 +107,10 @@ async function checkAgentSlotAvailability(
     const busySlots = data.calendars?.[calendarId]?.busy || [];
     const isFree = busySlots.length === 0;
 
-    console.log(`   📅 [ROUND-ROBIN] Agent ${agentConfigId} calendar ${isFree ? "FREE" : "BUSY"} for ${date} ${time}`);
+    console.log(`   📅 [ROUND-ROBIN] ${member.agentName} calendar ${isFree ? "FREE" : "BUSY"} for ${date} ${time}`);
     return isFree;
   } catch (error: any) {
-    console.error(`   ❌ [ROUND-ROBIN] Calendar check failed for ${agentConfigId}: ${error.message}`);
+    console.error(`   ❌ [ROUND-ROBIN] Calendar check failed for ${member.agentName}: ${error.message}`);
     return false;
   }
 }
@@ -117,7 +138,7 @@ export async function selectRoundRobinAgent(
 
   console.log(`   📋 Pool: "${pool.name}" | Strategy: ${pool.strategy}`);
 
-  const members = await db
+  const linkedMembers = await db
     .select({
       memberId: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
@@ -137,25 +158,57 @@ export async function selectRoundRobinAgent(
       and(
         eq(bookingPoolMembers.poolId, poolId),
         eq(bookingPoolMembers.isActive, true),
-        eq(bookingPoolMembers.isPaused, false)
+        eq(bookingPoolMembers.isPaused, false),
+        isNotNull(bookingPoolMembers.agentConfigId)
       )
-    )
-    .orderBy(asc(bookingPoolMembers.totalBookingsCount), asc(bookingPoolMembers.lastAssignedAt));
+    );
 
-  if (members.length === 0) {
+  const standaloneMembers = await db
+    .select({
+      memberId: bookingPoolMembers.id,
+      agentConfigId: bookingPoolMembers.agentConfigId,
+      weight: bookingPoolMembers.weight,
+      maxDailyBookings: bookingPoolMembers.maxDailyBookings,
+      totalBookingsCount: bookingPoolMembers.totalBookingsCount,
+      lastAssignedAt: bookingPoolMembers.lastAssignedAt,
+      memberName: bookingPoolMembers.memberName,
+      hasCalendar: sql<boolean>`${bookingPoolMembers.googleRefreshToken} IS NOT NULL`,
+    })
+    .from(bookingPoolMembers)
+    .where(
+      and(
+        eq(bookingPoolMembers.poolId, poolId),
+        eq(bookingPoolMembers.isActive, true),
+        eq(bookingPoolMembers.isPaused, false),
+        sql`${bookingPoolMembers.agentConfigId} IS NULL`
+      )
+    );
+
+  const allMembers = [
+    ...linkedMembers.map((m) => ({
+      ...m,
+      agentName: m.agentName,
+    })),
+    ...standaloneMembers.map((m) => ({
+      ...m,
+      agentName: m.memberName || "Membro standalone",
+    })),
+  ];
+
+  if (allMembers.length === 0) {
     console.log(`   ❌ [ROUND-ROBIN] No active members in pool`);
     return null;
   }
 
-  console.log(`   👥 Active members: ${members.length}`);
-  for (const m of members) {
+  console.log(`   👥 Active members: ${allMembers.length} (${linkedMembers.length} linked, ${standaloneMembers.length} standalone)`);
+  for (const m of allMembers) {
     console.log(`      - ${m.agentName} (weight: ${m.weight}, total: ${m.totalBookingsCount}, calendar: ${m.hasCalendar})`);
   }
 
   const membersWithDailyCount = await Promise.all(
-    members.map(async (m) => ({
+    allMembers.map(async (m) => ({
       ...m,
-      todayBookingsCount: await getTodayBookingsCount(m.agentConfigId),
+      todayBookingsCount: await getTodayBookingsCount(m.memberId),
     }))
   );
 
@@ -227,8 +280,8 @@ export async function selectRoundRobinAgent(
 
   for (const member of ranked) {
     console.log(`   🔍 Checking calendar availability for ${member.agentName}...`);
-    const isAvailable = await checkAgentSlotAvailability(
-      member.agentConfigId,
+    const isAvailable = await checkMemberSlotAvailability(
+      { agentConfigId: member.agentConfigId, memberId: member.memberId, agentName: member.agentName },
       date,
       time,
       durationMinutes,
@@ -240,11 +293,12 @@ export async function selectRoundRobinAgent(
       console.log(`   ✅ [ROUND-ROBIN] Selected: ${member.agentName} (score: ${score.toFixed(2)})`);
 
       return {
-        selectedAgentConfigId: member.agentConfigId,
+        selectedAgentConfigId: member.agentConfigId || member.memberId,
         memberId: member.memberId,
         poolId: pool.id,
         reason: `${pool.strategy}: ${member.agentName} selected (weight=${member.weight}, total=${member.totalBookingsCount}, today=${member.todayBookingsCount})`,
         score,
+        isStandaloneMember: !member.agentConfigId,
       };
     } else {
       console.log(`   ⏭️ ${member.agentName} busy at ${date} ${time}, trying next...`);
@@ -336,7 +390,7 @@ export async function getPoolForConsultant(consultantId: string): Promise<{
 }
 
 export async function getPoolMembers(poolId: string): Promise<PoolMemberInfo[]> {
-  const members = await db
+  const linkedMembers = await db
     .select({
       memberId: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
@@ -355,18 +409,62 @@ export async function getPoolMembers(poolId: string): Promise<PoolMemberInfo[]> 
       consultantWhatsappConfig,
       eq(bookingPoolMembers.agentConfigId, consultantWhatsappConfig.id)
     )
-    .where(eq(bookingPoolMembers.poolId, poolId))
+    .where(
+      and(
+        eq(bookingPoolMembers.poolId, poolId),
+        isNotNull(bookingPoolMembers.agentConfigId)
+      )
+    )
     .orderBy(desc(bookingPoolMembers.weight));
 
-  const membersWithDaily = await Promise.all(
-    members.map(async (m) => ({
-      ...m,
+  const standaloneMembers = await db
+    .select()
+    .from(bookingPoolMembers)
+    .where(
+      and(
+        eq(bookingPoolMembers.poolId, poolId),
+        sql`${bookingPoolMembers.agentConfigId} IS NULL`
+      )
+    )
+    .orderBy(desc(bookingPoolMembers.weight));
+
+  const allLinked: PoolMemberInfo[] = await Promise.all(
+    linkedMembers.map(async (m) => ({
+      memberId: m.memberId,
+      agentConfigId: m.agentConfigId,
+      agentName: m.agentName,
+      weight: m.weight,
       maxDailyBookings: m.maxDailyBookings ?? 10,
-      todayBookingsCount: await getTodayBookingsCount(m.agentConfigId),
+      isActive: m.isActive,
+      isPaused: m.isPaused,
+      totalBookingsCount: m.totalBookingsCount,
+      lastAssignedAt: m.lastAssignedAt,
+      todayBookingsCount: await getTodayBookingsCount(m.memberId),
+      hasCalendar: m.hasCalendar,
+      googleCalendarEmail: m.googleCalendarEmail,
+      isStandalone: false,
     }))
   );
 
-  return membersWithDaily;
+  const allStandalone: PoolMemberInfo[] = await Promise.all(
+    standaloneMembers.map(async (m) => ({
+      memberId: m.id,
+      agentConfigId: null,
+      agentName: m.memberName || "Membro standalone",
+      weight: m.weight,
+      maxDailyBookings: m.maxDailyBookings ?? 10,
+      isActive: m.isActive,
+      isPaused: m.isPaused,
+      totalBookingsCount: m.totalBookingsCount,
+      lastAssignedAt: m.lastAssignedAt,
+      todayBookingsCount: await getTodayBookingsCount(m.id),
+      hasCalendar: !!m.googleRefreshToken,
+      googleCalendarEmail: m.googleCalendarEmail,
+      isStandalone: true,
+    }))
+  );
+
+  return [...allLinked, ...allStandalone];
 }
 
 export async function getPoolStats(poolId: string) {
@@ -379,7 +477,7 @@ export async function getPoolStats(poolId: string) {
 
   const distribution = members.map((m) => ({
     agentName: m.agentName,
-    agentConfigId: m.agentConfigId,
+    agentConfigId: m.agentConfigId || m.memberId,
     weight: m.weight,
     totalBookings: m.totalBookingsCount,
     todayBookings: m.todayBookingsCount,
@@ -409,6 +507,7 @@ export async function getAvailableSlotsFromPool(
 ): Promise<Array<{ date: string; time: string; availableAgents: number }>> {
   const members = await db
     .select({
+      id: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
     })
     .from(bookingPoolMembers)
@@ -426,10 +525,16 @@ export async function getAvailableSlotsFromPool(
 
   for (const member of members) {
     try {
-      const calendar = await getAgentCalendarClient(member.agentConfigId);
+      const calendar = await getMemberCalendarClient({
+        agentConfigId: member.agentConfigId,
+        memberId: member.id,
+      });
       if (!calendar) continue;
 
-      const calendarId = await getAgentCalendarId(member.agentConfigId) || "primary";
+      const calendarId = await getMemberCalendarId({
+        agentConfigId: member.agentConfigId,
+        memberId: member.id,
+      }) || "primary";
 
       const { data } = await calendar.freebusy.query({
         requestBody: {
@@ -468,7 +573,7 @@ export async function getAvailableSlotsFromPool(
         current.setDate(current.getDate() + 1);
       }
     } catch (error) {
-      console.log(`   ⚠️ [ROUND-ROBIN] Could not check calendar for member ${member.agentConfigId}`);
+      console.log(`   ⚠️ [ROUND-ROBIN] Could not check calendar for member ${member.id}`);
     }
   }
 

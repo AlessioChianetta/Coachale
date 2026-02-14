@@ -5,7 +5,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './db';
-import { consultantAvailabilitySettings, consultantCalendarSync, systemSettings, consultantWhatsappConfig } from '../shared/schema';
+import { consultantAvailabilitySettings, consultantCalendarSync, systemSettings, consultantWhatsappConfig, bookingPoolMembers } from '../shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { Request } from 'express';
 
@@ -637,6 +637,192 @@ export async function getAgentCalendarId(agentConfigId: string): Promise<string 
   } catch (error: any) {
     console.error('❌ [AGENT CALENDAR] Error getting calendar ID:', error);
     return null;
+  }
+}
+
+/**
+ * Get valid access token for a standalone pool member
+ */
+export async function getStandaloneMemberValidAccessToken(memberId: string): Promise<string | null> {
+  const [member] = await db
+    .select()
+    .from(bookingPoolMembers)
+    .where(eq(bookingPoolMembers.id, memberId))
+    .limit(1);
+
+  if (!member || !member.googleRefreshToken) {
+    console.log(`⏭️ [STANDALONE MEMBER] Member ${memberId} has no calendar configured`);
+    return null;
+  }
+
+  const now = new Date();
+  if (member.googleAccessToken && member.googleTokenExpiry && member.googleTokenExpiry > now) {
+    return member.googleAccessToken;
+  }
+
+  try {
+    console.log(`🔄 [STANDALONE MEMBER] Refreshing token for member ${memberId}`);
+    const globalCredentials = await getGlobalOAuthCredentials();
+    if (!globalCredentials) return null;
+
+    const oauth2Client = new google.auth.OAuth2(
+      globalCredentials.clientId,
+      globalCredentials.clientSecret
+    );
+    oauth2Client.setCredentials({ refresh_token: member.googleRefreshToken });
+
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    const newAccessToken = credentials.access_token!;
+    const newExpiry = credentials.expiry_date
+      ? new Date(credentials.expiry_date)
+      : new Date(Date.now() + 3600000);
+
+    await db
+      .update(bookingPoolMembers)
+      .set({
+        googleAccessToken: newAccessToken,
+        googleTokenExpiry: newExpiry,
+        updatedAt: new Date(),
+      })
+      .where(eq(bookingPoolMembers.id, memberId));
+
+    return newAccessToken;
+  } catch (error: any) {
+    console.error(`❌ [STANDALONE MEMBER] Failed to refresh token for member ${memberId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get calendar client for a standalone pool member
+ */
+export async function getStandaloneMemberCalendarClient(memberId: string) {
+  const accessToken = await getStandaloneMemberValidAccessToken(memberId);
+  if (!accessToken) return null;
+
+  const globalCredentials = await getGlobalOAuthCredentials();
+  if (!globalCredentials) throw new Error('Credenziali OAuth globali non configurate');
+
+  const oauth2Client = new google.auth.OAuth2(
+    globalCredentials.clientId,
+    globalCredentials.clientSecret
+  );
+  oauth2Client.setCredentials({ access_token: accessToken });
+
+  return google.calendar({ version: 'v3', auth: oauth2Client });
+}
+
+/**
+ * Get standalone member's calendar ID
+ */
+export async function getStandaloneMemberCalendarId(memberId: string): Promise<string | null> {
+  try {
+    const [member] = await db
+      .select()
+      .from(bookingPoolMembers)
+      .where(eq(bookingPoolMembers.id, memberId))
+      .limit(1);
+
+    if (!member?.googleRefreshToken) return null;
+
+    if (member.googleCalendarId) return member.googleCalendarId;
+
+    const calendar = await getStandaloneMemberCalendarClient(memberId);
+    if (!calendar) return null;
+
+    const { data } = await calendar.calendarList.list();
+    const primaryCalendar = data.items?.find(cal => cal.primary);
+    return primaryCalendar?.id || 'primary';
+  } catch (error: any) {
+    console.error('❌ [STANDALONE MEMBER] Error getting calendar ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate OAuth URL for standalone pool member
+ */
+export async function getStandaloneMemberAuthorizationUrl(memberId: string, redirectBaseUrl?: string): Promise<string | null> {
+  const globalCredentials = await getGlobalOAuthCredentials();
+  if (!globalCredentials) return null;
+
+  let baseUrl = 'http://localhost:5000';
+  if (process.env.REPLIT_DOMAINS) {
+    const domains = process.env.REPLIT_DOMAINS.split(',');
+    baseUrl = `https://${domains[0]}`;
+  }
+  if (redirectBaseUrl) baseUrl = redirectBaseUrl;
+
+  const redirectUri = `${baseUrl}/api/round-robin/members/calendar/oauth/callback`;
+
+  const oauth2Client = new google.auth.OAuth2(
+    globalCredentials.clientId,
+    globalCredentials.clientSecret,
+    redirectUri
+  );
+
+  return oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+    prompt: 'consent',
+    state: memberId,
+  });
+}
+
+/**
+ * Exchange OAuth code for standalone pool member
+ */
+export async function exchangeStandaloneMemberCodeForTokens(
+  code: string,
+  memberId: string,
+  redirectBaseUrl?: string
+): Promise<{ success: boolean; email?: string; error?: string }> {
+  try {
+    const globalCredentials = await getGlobalOAuthCredentials();
+    if (!globalCredentials) return { success: false, error: 'Credenziali OAuth globali non configurate' };
+
+    let baseUrl = 'http://localhost:5000';
+    if (process.env.REPLIT_DOMAINS) {
+      const domains = process.env.REPLIT_DOMAINS.split(',');
+      baseUrl = `https://${domains[0]}`;
+    }
+    if (redirectBaseUrl) baseUrl = redirectBaseUrl;
+
+    const redirectUri = `${baseUrl}/api/round-robin/members/calendar/oauth/callback`;
+
+    const oauth2Client = new google.auth.OAuth2(
+      globalCredentials.clientId,
+      globalCredentials.clientSecret,
+      redirectUri
+    );
+
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.access_token) {
+      return { success: false, error: 'Nessun access token ricevuto da Google' };
+    }
+
+    oauth2Client.setCredentials(tokens);
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
+    const email = userInfo.data.email || 'unknown';
+
+    await db
+      .update(bookingPoolMembers)
+      .set({
+        googleAccessToken: tokens.access_token,
+        googleRefreshToken: tokens.refresh_token,
+        googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600000),
+        googleCalendarEmail: email,
+        googleCalendarId: 'primary',
+        updatedAt: new Date(),
+      })
+      .where(eq(bookingPoolMembers.id, memberId));
+
+    return { success: true, email };
+  } catch (error: any) {
+    console.error(`❌ [STANDALONE MEMBER] OAuth exchange failed for member ${memberId}:`, error);
+    return { success: false, error: error.message };
   }
 }
 

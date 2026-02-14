@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Link,
   Calendar,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -47,7 +48,7 @@ interface Pool {
 
 interface PoolMember {
   memberId: string;
-  agentConfigId: string;
+  agentConfigId: string | null;
   agentName: string;
   weight: number;
   maxDailyBookings: number;
@@ -57,6 +58,7 @@ interface PoolMember {
   todayBookingsCount: number;
   hasCalendar: boolean;
   googleCalendarEmail: string | null;
+  isStandalone: boolean;
 }
 
 interface AvailableAgent {
@@ -92,6 +94,9 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const [expanded, setExpanded] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [connectingAgentId, setConnectingAgentId] = useState<string | null>(null);
+  const [connectingMemberId, setConnectingMemberId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
 
   const { data: rrStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ["round-robin-status", agentConfigId],
@@ -222,6 +227,31 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     },
   });
 
+  const addStandaloneMember = useMutation({
+    mutationFn: async (memberName: string) => {
+      const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/standalone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ memberName }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["round-robin-members"] });
+      queryClient.invalidateQueries({ queryKey: ["round-robin-stats"] });
+      setNewMemberName("");
+      setShowAddForm(false);
+      toast({ title: "Membro aggiunto al pool", description: "Collega ora il Google Calendar" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateMember = useMutation({
     mutationFn: async ({ memberId, data }: { memberId: string; data: any }) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/${memberId}`, {
@@ -293,12 +323,35 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     }
   };
 
+  const handleConnectStandaloneMemberCalendar = async (memberId: string) => {
+    setConnectingMemberId(memberId);
+    try {
+      const response = await fetch(`/api/round-robin/members/${memberId}/calendar/oauth/start`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore durante la connessione');
+      }
+      const { authUrl } = await response.json();
+      window.location.href = authUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile avviare la connessione al calendario"
+      });
+      setConnectingMemberId(null);
+    }
+  };
+
   const isEnabled = rrStatus?.roundRobinEnabled ?? false;
   const pools = poolsData?.pools || [];
   const activePool = pools.find((p) => p.id === activePoolId);
   const members = membersData?.members || [];
   const agents = availableAgents?.agents || [];
-  const memberAgentIds = new Set(members.map((m) => m.agentConfigId));
+  const memberAgentIds = new Set(members.filter(m => m.agentConfigId).map((m) => m.agentConfigId));
   const nonMemberAgents = agents.filter((a) => !memberAgentIds.has(a.id));
   const addableAgents = nonMemberAgents.filter((a) => a.hasCalendar);
   const agentsWithoutCalendar = nonMemberAgents.filter((a) => !a.hasCalendar);
@@ -373,19 +426,31 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
               <div className="flex items-center gap-2">
                 <Users className="h-3.5 w-3.5 text-blue-500" />
                 <span className="text-xs font-medium text-slate-700">
-                  Commerciali ({members.length})
+                  Membri Pool ({members.length})
                 </span>
               </div>
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="p-1 hover:bg-blue-100 rounded transition-colors"
-              >
-                {expanded ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
-                )}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setShowAddForm(true);
+                    setExpanded(true);
+                  }}
+                  className="p-1 hover:bg-blue-100 rounded transition-colors"
+                  title="Aggiungi membro"
+                >
+                  <UserPlus className="h-3.5 w-3.5 text-blue-500" />
+                </button>
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className="p-1 hover:bg-blue-100 rounded transition-colors"
+                >
+                  {expanded ? (
+                    <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {isLoadingMembers ? (
@@ -395,8 +460,8 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
             ) : members.length === 0 ? (
               <div className="p-3 bg-amber-50/60 rounded border border-amber-200 text-center">
                 <AlertCircle className="h-4 w-4 text-amber-500 mx-auto mb-1" />
-                <p className="text-xs text-amber-700">Nessun commerciale nel pool</p>
-                <p className="text-[10px] text-amber-600">Usa i pulsanti qui sotto per aggiungere i dipendenti</p>
+                <p className="text-xs text-amber-700">Nessun membro nel pool</p>
+                <p className="text-[10px] text-amber-600">Usa il pulsante + per aggiungere membri</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -409,15 +474,76 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                     onUpdate={(data) => updateMember.mutate({ memberId: member.memberId, data })}
                     onRemove={() => removeMember.mutate(member.memberId)}
                     onReset={() => resetMember.mutate(member.memberId)}
+                    onConnectCalendar={() => {
+                      if (member.isStandalone) {
+                        handleConnectStandaloneMemberCalendar(member.memberId);
+                      } else if (member.agentConfigId) {
+                        handleConnectCalendar(member.agentConfigId);
+                      }
+                    }}
                     isUpdating={updateMember.isPending}
+                    isConnecting={
+                      (member.isStandalone && connectingMemberId === member.memberId) ||
+                      (!member.isStandalone && connectingAgentId === member.agentConfigId)
+                    }
                   />
                 ))}
               </div>
             )}
 
+            {showAddForm && (
+              <div className="p-2.5 rounded border border-blue-300 bg-white space-y-2">
+                <p className="text-[10px] font-medium text-slate-600">Aggiungi nuovo membro:</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Nome commerciale..."
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    className="h-8 text-xs flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newMemberName.trim()) {
+                        addStandaloneMember.mutate(newMemberName.trim());
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (newMemberName.trim()) {
+                        addStandaloneMember.mutate(newMemberName.trim());
+                      }
+                    }}
+                    disabled={!newMemberName.trim() || addStandaloneMember.isPending}
+                    className="h-8 px-3 text-xs"
+                  >
+                    {addStandaloneMember.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Plus className="h-3 w-3" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewMemberName("");
+                    }}
+                    className="h-8 px-2 text-xs text-slate-500"
+                  >
+                    ✕
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Dopo l'aggiunta, potrai collegare il Google Calendar del membro
+                </p>
+              </div>
+            )}
+
             {nonMemberAgents.length > 0 && (
               <div className="pt-2 border-t border-blue-200/50 space-y-2">
-                <p className="text-[10px] font-medium text-slate-600">Dipendenti disponibili:</p>
+                <p className="text-[10px] font-medium text-slate-600">Dipendenti WhatsApp disponibili:</p>
 
                 {addableAgents.map((agent) => (
                   <div
@@ -469,12 +595,6 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                   </div>
                 ))}
               </div>
-            )}
-
-            {nonMemberAgents.length === 0 && members.length > 0 && (
-              <p className="text-[10px] text-green-600 bg-green-50 p-2 rounded border border-green-200 text-center">
-                Tutti i dipendenti sono nel pool
-              </p>
             )}
           </div>
 
@@ -537,7 +657,9 @@ function MemberCard({
   onUpdate,
   onRemove,
   onReset,
+  onConnectCalendar,
   isUpdating,
+  isConnecting,
 }: {
   member: PoolMember;
   strategy: string;
@@ -545,7 +667,9 @@ function MemberCard({
   onUpdate: (data: any) => void;
   onRemove: () => void;
   onReset: () => void;
+  onConnectCalendar: () => void;
   isUpdating: boolean;
+  isConnecting: boolean;
 }) {
   const [editWeight, setEditWeight] = useState(member.weight);
   const [editMaxDaily, setEditMaxDaily] = useState(member.maxDailyBookings);
@@ -565,21 +689,49 @@ function MemberCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-slate-700 truncate">{member.agentName}</span>
+            {member.isStandalone && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Esterno</span>
+            )}
             {member.isPaused && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">In pausa</span>
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-slate-500">
-              {member.totalBookingsCount} totali | {member.todayBookingsCount}/{member.maxDailyBookings} oggi
-            </span>
+            {member.hasCalendar ? (
+              <span className="text-[10px] text-slate-500">
+                {member.totalBookingsCount} totali | {member.todayBookingsCount}/{member.maxDailyBookings} oggi
+              </span>
+            ) : (
+              <span className="text-[10px] text-amber-600">Calendario non collegato</span>
+            )}
             {strategy === "weighted" && (
               <span className="text-[10px] text-blue-500 font-medium">peso: {member.weight}</span>
             )}
           </div>
+          {member.hasCalendar && member.googleCalendarEmail && (
+            <p className="text-[10px] text-green-600 truncate">{member.googleCalendarEmail}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
+          {!member.hasCalendar && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onConnectCalendar}
+              disabled={isConnecting}
+              className="h-6 px-2 text-[10px] text-green-600 border-green-300 hover:bg-green-50"
+            >
+              {isConnecting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <>
+                  <Link className="h-2.5 w-2.5 mr-1" />
+                  Collega
+                </>
+              )}
+            </Button>
+          )}
           <button
             onClick={() => onUpdate({ isPaused: !member.isPaused })}
             className="p-1 hover:bg-slate-100 rounded transition-colors"

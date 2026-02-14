@@ -140,6 +140,62 @@ router.post("/pools/:poolId/members", async (req: Request, res: Response) => {
   }
 });
 
+router.post("/pools/:poolId/members/standalone", async (req: Request, res: Response) => {
+  try {
+    const { poolId } = req.params;
+    const { memberName, weight, maxDailyBookings } = req.body;
+
+    if (!memberName || !memberName.trim()) {
+      return res.status(400).json({ error: "Il nome è obbligatorio" });
+    }
+
+    const [member] = await db
+      .insert(bookingPoolMembers)
+      .values({
+        poolId,
+        agentConfigId: null,
+        memberName: memberName.trim(),
+        weight: weight || 50,
+        maxDailyBookings: maxDailyBookings || 10,
+      })
+      .returning();
+
+    res.json({ member });
+  } catch (error: any) {
+    console.error("[ROUND-ROBIN] Error adding standalone member:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/members/:memberId/calendar/oauth/start", async (req: Request, res: Response) => {
+  try {
+    const { memberId } = req.params;
+
+    const [member] = await db
+      .select()
+      .from(bookingPoolMembers)
+      .where(eq(bookingPoolMembers.id, memberId))
+      .limit(1);
+
+    if (!member) {
+      return res.status(404).json({ error: "Membro non trovato" });
+    }
+
+    const { getStandaloneMemberAuthorizationUrl, buildBaseUrlFromRequest } = await import("../google-calendar-service");
+    const redirectBaseUrl = buildBaseUrlFromRequest(req);
+    const authUrl = await getStandaloneMemberAuthorizationUrl(memberId, redirectBaseUrl);
+
+    if (!authUrl) {
+      return res.status(500).json({ error: "Credenziali OAuth globali non configurate" });
+    }
+
+    res.json({ authUrl });
+  } catch (error: any) {
+    console.error("[ROUND-ROBIN] Error starting member OAuth:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.put("/pools/:poolId/members/:memberId", async (req: Request, res: Response) => {
   try {
     const { memberId } = req.params;
