@@ -15518,8 +15518,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
         .orderBy(schema.consultantWhatsappConfig.createdAt);
 
-      // Auto-create default "Assistenza Clienti" dipendente if consultant has no agents
-      if (configs.length === 0) {
+      const hasAssistenzaClienti = configs.some((c: any) => c.agentName === "Assistenza Clienti");
+      if (!hasAssistenzaClienti) {
         try {
           const [defaultAgent] = await db
             .insert(schema.consultantWhatsappConfig)
@@ -15548,13 +15548,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             .returning();
           
           console.log(`🆕 [DEFAULT AGENT] Auto-created "Assistenza Clienti" agent for consultant ${consultantId}: ${defaultAgent.id}`);
-          configs = [defaultAgent];
+          configs.push(defaultAgent);
         } catch (createErr: any) {
           console.warn(`⚠️ [DEFAULT AGENT] Error auto-creating default agent: ${createErr.message}`);
-          return res.json({
-            configured: false,
-            configs: [],
-          });
         }
       }
 
