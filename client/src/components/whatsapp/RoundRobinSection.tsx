@@ -93,7 +93,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const { data: rrStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ["round-robin-status", agentConfigId],
     queryFn: async () => {
-      const res = await fetch(`/api/round-robin/agent/${agentConfigId}/round-robin`);
+      const res = await fetch(`/api/round-robin/agent/${agentConfigId}/round-robin`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json() as Promise<{ roundRobinEnabled: boolean; bookingPoolId: string | null }>;
     },
