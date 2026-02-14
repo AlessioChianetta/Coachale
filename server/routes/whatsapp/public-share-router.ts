@@ -1889,7 +1889,6 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           console.log(`\n📅 [PUBLIC-SLOTS] Fetching available slots for AI context...`);
           
           let availableSlots: any[] = [];
-          let slotsAlreadyShownToAI = false;
           
           // Step 1: Check for saved slots in database
           const [savedSlots] = await db
@@ -1916,9 +1915,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               await db.delete(schema.proposedAppointmentSlots).where(eq(schema.proposedAppointmentSlots.id, savedSlots.id));
             } else {
               availableSlots = savedSlots.slots as any[];
-              slotsAlreadyShownToAI = true;
-              console.log(`   💾 [PUBLIC-SLOTS] Retrieved ${availableSlots.length} saved slots from database`);
-              console.log(`   🔋 [PUBLIC-SLOTS TOKEN OPT] Slots already shown to AI - will NOT re-inject in prompt`);
+              console.log(`   💾 [PUBLIC-SLOTS] Retrieved ${availableSlots.length} saved slots from DB cache (no calendar API call needed)`);
             }
           } else {
             // Step 2: Fetch fresh slots from calendar API
@@ -2003,15 +2000,12 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           
           const timezone = consultantSettings?.timezone || 'Europe/Rome';
           
-          // Build booking context for AI - only inject slots on first time
-          if (availableSlots.length > 0 && !slotsAlreadyShownToAI) {
+          if (availableSlots.length > 0) {
             bookingContextForAI = {
               availableSlots,
               timezone
             };
-            console.log(`   ✅ [PUBLIC-SLOTS] Booking context prepared with ${availableSlots.length} slots for AI (first injection)`);
-          } else if (slotsAlreadyShownToAI) {
-            console.log(`   🔋 [PUBLIC-SLOTS] Skipping ${availableSlots.length} slots in prompt (already in conversation history)`);
+            console.log(`   ✅ [PUBLIC-SLOTS] Booking context prepared with ${availableSlots.length} slots for AI`);
           }
           
         } catch (slotError: any) {

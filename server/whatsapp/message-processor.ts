@@ -1247,7 +1247,6 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
 
       // Initialize availableSlots and existingAppointmentInfo OUTSIDE guard so they're always defined
       let availableSlots: any[] = [];
-      let slotsAlreadyShownToAI = false; // Track if slots were already injected in a previous prompt
       let existingAppointmentInfo: any = undefined;
 
       // APPOINTMENT CONTEXT MANAGEMENT - Maintain context across messages
@@ -1277,15 +1276,11 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
             
             if (isAskingRefresh) {
               console.log(`🔄 [APPOINTMENT CONTEXT] Lead asking for fresh slots - forcing calendar refresh`);
-              // Clear saved slots so they get re-fetched below
               availableSlots = [];
-              slotsAlreadyShownToAI = false;
               await db.delete(proposedAppointmentSlots).where(eq(proposedAppointmentSlots.id, savedSlots.id));
             } else {
               availableSlots = savedSlots.slots as any[];
-              slotsAlreadyShownToAI = true;
-              console.log(`💾 [APPOINTMENT CONTEXT] Retrieved ${availableSlots.length} saved slots from database`);
-              console.log(`📅 [APPOINTMENT CONTEXT] Slots already shown to AI - will NOT re-inject in prompt (saves tokens)`);
+              console.log(`💾 [APPOINTMENT CONTEXT] Retrieved ${availableSlots.length} saved slots from DB cache (no calendar API call needed)`);
             }
           } else {
             console.log('📅 [APPOINTMENT CONTEXT] No saved slots found - will fetch from calendar...');
@@ -1529,14 +1524,6 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
         console.log(`📝 [PROMPT DEBUG] Building prompt with isProactiveAgent=${isProactiveAgent}, isProactiveLead=${isProactiveLead}`);
       }
 
-      // Build prompt with objection context, available slots, and existing appointment
-      // OPTIMIZATION: Only inject slots in prompt on FIRST time (fresh fetch from calendar).
-      // On subsequent messages, AI already has slots in conversation history - no need to repeat.
-      // Slots are still available in `availableSlots` for booking extraction logic.
-      const slotsForPrompt = slotsAlreadyShownToAI ? [] : availableSlots;
-      if (slotsAlreadyShownToAI && availableSlots.length > 0) {
-        console.log(`🔋 [TOKEN OPTIMIZATION] Skipping ${availableSlots.length} slots in prompt (already in conversation history)`);
-      }
       systemPrompt = await buildLeadSystemPrompt(
         consultantConfig,
         clientProfile ? {
@@ -1550,7 +1537,7 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
           objectionText: obj.objectionText,
           wasResolved: obj.wasResolved,
         })),
-        slotsForPrompt,
+        availableSlots,
         consultantTimezone,
         existingAppointmentInfo,
         isProactiveLead,
