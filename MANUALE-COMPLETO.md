@@ -1758,18 +1758,57 @@ Per ogni bozza puoi:
 
 ## Content Studio
 
-Il Content Studio è l'area dedicata alla creazione e gestione dei contenuti marketing.
+Il Content Studio è l'area dedicata alla creazione, gestione e pubblicazione di contenuti marketing per social media. Include 8 sezioni: Dashboard, Idee (AI), Contenuti, Campagne, Visuals (AI), Calendario, Brand Assets, e AdVisage (AI). Tutte le pagine sono accessibili dalla sidebar sotto la voce **CONTENT STUDIO**.
+
+---
 
 ### Dashboard Content Studio
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Dashboard`
 **URL:** `/consultant/content-studio`
 
-La dashboard centrale per la gestione dei contenuti marketing. Mostra:
-- Panoramica contenuti creati
-- Statistiche di pubblicazione
-- Prossime pubblicazioni programmate
-- Accesso rapido alle funzionalità
+La dashboard centrale mostra una panoramica completa di tutto il Content Studio.
+
+#### 4 Card KPI (riga superiore)
+
+| Card | Cosa misura | Icona |
+|------|-------------|-------|
+| **Idee Generate** | Numero totale di idee create nella sezione Idee | Lampadina (ambra) |
+| **Post Pubblicati** | Numero di post con stato "pubblicato" | Documento (blu) |
+| **Campagne Attive** | Numero di campagne con stato "attiva" | Megafono (viola) |
+| **Lead Generati** | Somma dei lead di tutte le campagne | Utenti (verde) |
+
+#### Azioni Rapide
+
+3 pulsanti gradient con navigazione diretta:
+
+| Pulsante | Destinazione |
+|----------|-------------|
+| **Genera Nuova Idea** | Pagina Idee |
+| **Crea Post** | Pagina Contenuti |
+| **Avvia Campagna** | Pagina Campagne |
+
+#### Attivita Recente
+
+Lista delle ultime 5 attivita combinate (3 idee + 3 post + 2 campagne piu recenti, ordinate e troncate a 5). Per ogni elemento mostra:
+- Titolo
+- Tempo relativo (es. "2 ore fa", "1 giorno fa")
+- Badge stato (Nuova, In Lavorazione, Bozza, Programmato, Pubblicato, Attiva, In Pausa)
+
+#### Performance e Campagna Top (2 card affiancate)
+
+- **Performance**: mostra conteggi totali di Idee, Post, Campagne
+- **Campagna Top**: mostra la prima campagna attiva trovata con nome, stato e numero lead
+
+#### Post per Progetto
+
+Lista di tutti i progetti (cartelle di tipo "project") con conteggio post associati (inclusi i post nelle sottocartelle). In fondo mostra quanti post non sono assegnati a nessun progetto.
+
+#### Guida Flussi Social
+
+Pulsante in alto a destra "Guida Flussi Social" che porta a `/consultant/guide-social-flows`.
+
+---
 
 ### Idee (AI)
 
@@ -1777,101 +1816,585 @@ La dashboard centrale per la gestione dei contenuti marketing. Mostra:
 **URL:** `/consultant/content-studio/ideas`
 **Badge:** AI
 
-Genera idee per contenuti usando l'intelligenza artificiale.
+Genera idee per contenuti social con intelligenza artificiale. Il form utilizza un sistema a sezioni espandibili (accordion).
 
-#### Come Funziona
+#### Configurazione Idea - Sezioni Accordion
 
-Il form è organizzato in 3 step:
+**Sezione 1: Brand & Target**
+| Campo | Tipo | Dettaglio |
+|-------|------|-----------|
+| **Argomento** | Testo libero | L'argomento principale del contenuto |
+| **Pubblico Target** | Testo libero | A chi e destinato il contenuto |
+| **Pulsante "Genera Nicchia"** | AI | Genera automaticamente argomento e target con Gemini |
 
-**Step 1: Brand & Target**
-- Argomento principale
-- Pubblico target
-- Livello di awareness (consapevolezza del problema)
+**Sezione 2: Piattaforma & Formato**
+| Campo | Opzioni |
+|-------|---------|
+| **Piattaforma** | Instagram, X (Twitter), LinkedIn |
+| **Categoria** | Ads, Valore, Formazione, Altri |
+| **Schema** | Variabile in base a piattaforma+categoria (vedi tabella sotto) |
+| **Tipo Media** | Foto, Video |
+| **Tipo Copy** | Corto (short), Lungo (long) |
+| **Numero Idee** | Da 1 a 10 (slider) |
 
-**Step 2: Objective & Format**
-- Obiettivo del contenuto (awareness, engagement, conversione)
-- Formato desiderato (post, video, carousel, articolo)
-- Piattaforma di destinazione
+**Sezione 3: Livelli di Mercato**
+| Campo | Livelli |
+|-------|---------|
+| **Awareness** | Unaware, Problem Aware, Solution Aware, Product Aware, Most Aware |
+| **Sofisticazione** | Livello 1 (Mercato Vergine), Livello 2 (Primi Competitor), Livello 3 (Mercato Saturo), Livello 4 (Mercato Scettico), Livello 5 (Mercato Esausto) |
+| **Pulsante "Suggerisci Livelli"** | AI analizza argomento e target per suggerire i livelli ottimali con motivazione |
 
-**Step 3: Brand Voice**
-- Integrazione con la tua brand identity (opzionale)
-- Tono di voce preferito
-- Linee guida stilistiche
+**Sezione 4: Stile di Scrittura**
+| Stile | Descrizione |
+|-------|-------------|
+| Default | Stile neutro e professionale |
+| Conversazionale (Nurturing) | Tono amichevole e accogliente |
+| Diretto | Dritto al punto |
+| Persuasivo (Copy) | Orientato alla vendita |
+| Personalizzato | Campo testo libero per istruzioni custom |
 
-**Pulsanti** (in basso):
-| Pulsante | Funzione |
-|----------|----------|
-| **Genera Idee** | L'AI genera suggerimenti basati sui parametri inseriti |
-| **Salva Template** | Salva la configurazione corrente per riutilizzarla |
-| **Carica Template** | Ricarica una configurazione salvata in precedenza |
+**Sezione 5: Brand Voice & Knowledge Base (opzionale)**
+- Toggle **Usa Brand Voice**: carica i dati Brand (Chi Sono, Tono di Voce, Note AI, Keywords, Parole da Evitare)
+- Pulsante **Importa da Agente**: importa la Brand Voice da un agente WhatsApp configurato
+- Toggle **Usa Knowledge Base**: seleziona documenti dalla Knowledge Base per contestualizzare la generazione
+- Upload file temporanei per contesto aggiuntivo
+- Campo **Contesto Aggiuntivo**: note libere
 
-### Contenuti
+#### Schema dei Post (POST_SCHEMAS)
+
+Gli schemi variano per piattaforma e categoria. Ogni schema definisce una struttura specifica di sezioni che l'AI segue per generare il contenuto.
+
+**Instagram - Ads (6 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| Hook > Problema > Nuovo modo > Prova > CTA | Hook, Problema, Nuovo modo, Prova sociale, Offerta, CTA |
+| Before > After > Bridge > CTA | Prima, Dopo, Ponte (processo), CTA |
+| 3 Pain > 3 Benefit > Offer > Urgenza > CTA | Pain x3, Benefit x3, Offerta, Urgenza, CTA |
+| Obiezione > Confutazione > Demo > CTA | Obiezione forte, Confutazione, Mini-dimostrazione, CTA |
+| UGC/Founder Script (15-30s) | Chi sono, Cosa odiavo, Cosa ho cambiato, Risultato, Come farlo, CTA |
+
+**Instagram - Valore (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Carousel Errore | Errore #1, Perche succede, Cosa fare, Esempio, Checklist, CTA soft |
+| Framework in 5 Step | Hook, Contesto, Step 1-5, Caso reale, CTA |
+| Teardown / Analisi | Hook, Cosa analizziamo, 3 fatte bene, 3 da migliorare, Template, CTA |
+| Myth Busting | Mito, Perche e falso, La regola vera, Come applicarla, CTA |
+| Case Study | Risultato, Punto di partenza, Azioni, Ostacolo, Soluzione, Lezione, CTA |
+
+**Instagram - Formazione (6 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| Tutorial Step-by-Step | Hook, Obiettivo, Step 1-5, Risultato, CTA |
+| Lezione: Concetto > Applicazione | Hook, Concetto chiave, Perche importante, Esempio 1-2, Come applicarlo, Errore comune, CTA |
+| Teaser Corso/Modulo | Hook, Cosa imparerai, Modulo 1-3, Per chi e, Risultato atteso, CTA |
+| Esercizio Pratico | Hook, Obiettivo esercizio, Materiali, Istruzioni, Errori da evitare, Risultato atteso, CTA |
+| Quiz/Verifica Apprendimento | Hook, Domanda 1-3, Risposte, Spiegazione, CTA |
+
+**Instagram - Altri (3 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| POV + Domanda | Opinione forte, Motivo 1-2, Domanda |
+| Behind the Scenes | Cosa stai facendo, Perche, Cosa hai imparato, CTA |
+| Story: Fallimento > Lezione > Regola | Errore, Costo, Cosa hai cambiato, Regola |
+
+**X (Twitter) - Ads (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| One-liner Value > Proof > CTA | Promessa (1 riga), Prova (numero/risultato), CTA |
+| PAS Ultracompatto | Problema, Agitazione (1 riga), Soluzione, CTA |
+| Contrarian + Payoff | Hot take, Perche, Cosa fare invece, CTA |
+| Offer-first | Offerta, Chi e per, Cosa ottieni, Vincolo/urgenza, CTA |
+
+**X (Twitter) - Valore (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Thread Manuale Operativo | Hook tweet, Step 1-5, Esempio, Recap, CTA |
+| Checklist | Titolo, Punto 1-7, CTA |
+| Principio > Caso > Regola | Principio, Mini-storia, Regola applicabile |
+| Mini-playbook | Obiettivo, Leva 1-3, Errore 1-3, Template |
+| Swipe/Template Tweet | Copia-incolla, Template, Quando usarlo |
+
+**X (Twitter) - Formazione (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| Thread Tutorial | Hook tweet, Obiettivo, Step 1-5, Recap, CTA |
+| Lezione Rapida (280 char) | Concetto, Perche, Come applicarlo, CTA |
+| Tip Giornaliero | Tip, Esempio, Azione immediata |
+| Errore > Correzione | Errore comune, Perche sbagliato, Come farlo bene, CTA |
+
+**X (Twitter) - Altri (2 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Build in Public | Cosa hai fatto oggi, Cosa hai imparato, Prossima mossa |
+| Q&A Prompt | Rispondo a domande su X... |
+
+**LinkedIn - Ads (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| Problema di Ruolo | Se sei [ruolo]..., Problema, Costo, Soluzione, Proof, CTA |
+| Case Study Ad | Risultato, In quanto tempo, Cosa abbiamo cambiato, 1 grafico/numero, CTA |
+| Lead Magnet Ad | Titolo asset, Bullet 1-3, Per chi, CTA |
+| Obiezione > Risposta > Demo-invito | Non funziona se..., Condizione vera, Come lo rendiamo vero, CTA demo |
+
+**LinkedIn - Valore (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Story Professionale | Situazione, Tensione, Decisione, Risultato, Lezione, CTA |
+| Carosello Documento (PDF) | Titolo, Problema, Framework, Esempi, Checklist, CTA |
+| Post Insegnamento | Claim, Perche, Esempio 1-3, Azione 1-3, CTA |
+| Teardown B2B | Cosa analizziamo, 3 punti forti, 3 errori, Come rifarlo, CTA |
+| Opinion + Dati | Tesi, Dato/prova, Implicazione, Cosa fare, CTA |
+
+**LinkedIn - Formazione (5 schemi)**
+| Schema | Struttura |
+|--------|-----------|
+| Originale (Universale) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA |
+| Post Educativo Professionale | Hook, Contesto professionale, Concetto chiave, 3 Punti pratici, Esempio reale, Takeaway, CTA |
+| Carosello Formativo (PDF) | Titolo corso/modulo, Obiettivo, Lezione 1-3, Esercizio, CTA |
+| Case Study Formativo | Situazione iniziale, Sfida formativa, Metodo usato, Risultati, Lezioni apprese, CTA |
+| Framework Educativo | Hook, Nome framework, Componente 1-3, Come applicarlo, CTA |
+
+**LinkedIn - Altri**: Nessuno schema disponibile.
+
+#### Linee Guida per Sezione (SECTION_GUIDELINES_DISPLAY)
+
+Ogni sezione dello schema ha una linea guida AI che aiuta il consulente a capire cosa scrivere. Esempi:
+- **Hook**: "Cattura l'attenzione nei primi 3 secondi. Usa domanda provocatoria, statistica sorprendente, o affermazione controintuitiva."
+- **CTA**: "Invito all'azione chiaro e diretto. Di cosa fare e cosa succede dopo."
+- **Riprova Sociale**: "Inserisci prove di credibilita: numeri, risultati, testimonianze."
+
+Il sistema include oltre 60 linee guida per sezioni diverse (hook, pain, soluzione, esempio, case study, checklist, ecc.).
+
+#### Classificazione Hook
+
+Ogni idea generata riceve una classificazione automatica del tipo di hook:
+| Tipo | Criterio di Rilevamento |
+|------|------------------------|
+| How-to | Contiene "come " o "come?" |
+| Curiosita | Contiene "?" |
+| Numero | Contiene cifre |
+| Problema | Default (nessun match) |
+
+#### Punteggio Potenziale
+
+Ogni idea riceve un punteggio (score) con valutazione visuale:
+| Range | Etichetta | Colore |
+|-------|-----------|--------|
+| 85-100 | Alto | Verde |
+| 70-84 | Medio | Ambra |
+| 0-69 | Basso | Rosso |
+
+#### Filtri e Ordinamento Idee Salvate
+
+| Filtro | Opzioni |
+|--------|---------|
+| **Piattaforma** | Tutte, Instagram, X, LinkedIn |
+| **Stato** | Tutti, Nuova, In Lavorazione, Completata |
+| **Tipo Contenuto** | Tutti, Copy Corto, Copy Lungo, Video Script |
+| **Ordinamento** | Punteggio (desc/asc), Data (piu recente/vecchio) |
+
+#### Template
+
+- **Salva Template**: salva la configurazione corrente (argomento, target, piattaforma, categoria, schema, stili, livelli) per riutilizzarla
+- **Carica Template**: ricarica una configurazione precedentemente salvata
+
+#### Content Autopilot (Pilota Automatico)
+
+Sistema avanzato per generare contenuti automaticamente su piu giorni e piattaforme.
+
+**Configurazione Autopilot:**
+
+| Campo | Descrizione |
+|-------|-------------|
+| **Data Inizio / Data Fine** | Intervallo di date per la generazione |
+| **Piattaforme abilitate** | Instagram, X, LinkedIn - ognuna con toggle on/off |
+| **Per ogni piattaforma** | Categoria, Schema, Numero post/giorno (1-5), Stile di scrittura |
+| **Includi Weekend** | Toggle per includere/escludere sabato e domenica |
+| **Includi Festivita** | Toggle per includere/escludere festivita italiane (hardcoded 2024-2027) |
+| **Genera Immagini** | Genera automaticamente immagini per ogni post |
+| **Pubblica su Publer** | Pubblica automaticamente su Publer |
+| **Modalita Revisione** | Genera in bozza per approvazione manuale |
+
+**Configurazione Per-Giorno:**
+E possibile personalizzare ogni singolo giorno del periodo selezionato con configurazioni specifiche per ogni piattaforma (categoria, schema, numero post, stile diversi da quelli globali).
+
+**Sincronizzazione Brand Assets:**
+L'autopilot puo importare automaticamente il Posting Schedule dalla pagina Brand Assets, precompilando gli orari di pubblicazione e lo stile di scrittura per ogni piattaforma.
+
+**Conteggio e Anteprima:**
+Prima di avviare, il sistema mostra un conteggio dei post che verranno generati (tot per piattaforma) e verifica eventuali conflitti con post gia programmati nelle stesse date.
+
+**Progresso:**
+Durante la generazione mostra: totale post, completati, data corrente in lavorazione, piattaforma corrente, giorno corrente su totale giorni.
+
+---
+
+### Contenuti (Post)
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Contenuti`
 **URL:** `/consultant/content-studio/posts`
 
-Gestisci e crea contenuti per social media.
+Area principale per creare, organizzare e pubblicare contenuti social media.
 
-- Lista di tutti i contenuti creati
-- Stato di ogni contenuto (bozza, programmato, pubblicato)
-- Editor per creare nuovi post
-- Anteprima per diverse piattaforme
+#### Sistema Cartelle
 
-### Campagne
+Struttura gerarchica per organizzare i contenuti:
+
+| Tipo | Descrizione | Icona |
+|------|-------------|-------|
+| **Progetto** (project) | Cartella di primo livello, rappresenta un progetto/cliente | Valigetta |
+| **Cartella** (folder) | Sottocartella, puo avere un parentId (genitore) | Cartella |
+
+- I progetti appaiono sempre prima delle cartelle nella sidebar
+- Le cartelle possono essere annidate sotto un progetto
+- Ogni cartella ha un `sortOrder` per l'ordinamento
+- Il conteggio post include ricorsivamente tutte le sottocartelle
+
+**Operazioni su cartelle:**
+- Crea nuovo progetto o cartella
+- Rinomina
+- Elimina (con conferma)
+- Sposta sotto un progetto diverso
+
+#### Editor Post
+
+**4 Tipi di Copy:**
+
+| Tipo | Campi Principali |
+|------|-----------------|
+| **Copy Corto** (copy_short) | Titolo, Body (testo breve) |
+| **Copy Lungo** (copy_long) | Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA + campo Full Copy |
+| **Script Video** (video_script) | Titolo, Scena, Dialogo, Note Regia (multi-scena) |
+| **Image Copy** (image_copy) | Testo da sovrapporre all'immagine |
+
+**Limiti Caratteri per Piattaforma:**
+
+| Piattaforma | Limite |
+|-------------|--------|
+| Instagram | 2.200 caratteri |
+| X (Twitter) | 280 caratteri (4.000 con X Premium attivo) |
+| LinkedIn | 3.000 caratteri |
+| Facebook | 63.206 caratteri |
+| TikTok | 2.200 caratteri |
+
+#### Modalita Carosello
+
+- Toggle "Carosello" nell'editor
+- Massimo **10 slide** per carosello
+- Ogni slide ha: Titolo + Contenuto
+- Navigazione tra slide con indicatori numerati
+- Pulsante "Aggiungi Slide" (disabilitato a 10)
+- Pulsante "Rimuovi Slide" (minimo 1 slide)
+- **Twitter non supporta caroselli** (il toggle viene disabilitato automaticamente quando si seleziona X come piattaforma)
+- Il contenuto delle slide viene concatenato per l'anteprima social
+
+#### Anteprima Social (Social Preview)
+
+Anteprima visuale che simula come apparira il post su ogni piattaforma. Mostra:
+- Layout specifico della piattaforma (Instagram, X, LinkedIn, Facebook)
+- Hook, body e CTA formattati
+- Per copy_long: sezioni Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale
+- Contatore caratteri con avviso se si supera il limite
+
+#### Vista Post
+
+| Modalita | Descrizione |
+|----------|-------------|
+| **Lista** | Elenco verticale con dettagli completi |
+| **Griglia** | Card compatte in griglia |
+
+#### Integrazione Publer
+
+**Pubblicazione Singola:**
+- Ogni post ha il pulsante "Pubblica su Publer"
+- Apre il dialogo `PublerPublishDialog`
+- Permette di selezionare data/ora di programmazione
+- Gestione media: `publerMediaIds` array che memorizza {id, path, thumbnail}
+
+**Pubblicazione Massiva (Bulk Publish):**
+- Pulsante "Bulk Publish" nella toolbar principale
+- Apre `BulkPublishDialog`
+- Seleziona multipli post da pubblicare contemporaneamente su Publer
+- Programma tutti i post selezionati in una sola operazione
+
+#### Importazione da Idee
+
+Quando si arriva dalla pagina Idee con un'idea selezionata, il sistema:
+1. Precompila il tipo di copy (short/long) in base all'idea
+2. Popola i campi specifici: per copy_long popola Hook, Chi-Cosa-Come, Errore, Soluzione, Riprova Sociale, CTA e Full Copy
+3. Per copy_short popola titolo e body
+4. Per video_script popola le scene
+5. Imposta la piattaforma di destinazione
+
+#### Rigenerazione Variazioni
+
+Per ogni post salvato e possibile rigenerare variazioni AI del contenuto mantenendo la stessa struttura e parametri.
+
+---
+
+### Campagne Pubblicitarie
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Campagne`
 **URL:** `/consultant/content-studio/campaigns`
 
-Campaign builder per creare campagne marketing complete.
+Gestione campagne pubblicitarie con generazione AI dei contenuti.
 
-#### Wizard a 6 Step
+#### Card KPI Campagne (parte superiore)
 
-1. **Obiettivo** - Definisci l'obiettivo della campagna
-2. **Target** - Seleziona il pubblico
-3. **Contenuti** - Crea o seleziona i contenuti
-4. **Canali** - Scegli dove pubblicare
-5. **Calendario** - Pianifica le date
-6. **Revisione** - Controlla e avvia
+| Metrica | Calcolo |
+|---------|---------|
+| **Lead Totali** | Somma lead di tutte le campagne |
+| **Spesa Totale** | Somma spend di tutte le campagne (formato EUR) |
+| **CTR Medio** | Media del CTR di tutte le campagne |
+| **CPL Medio** | Spesa totale / Lead totali |
 
-### Visuals (AI)
+#### Creazione Campagna - Wizard a 6 Tab
+
+| Tab | Campi |
+|-----|-------|
+| **Base** | Nome campagna, Obiettivo (Brand Awareness / Engagement / Lead Generation / Vendite), Prodotto/Servizio, Target Audience |
+| **Hook** | Hook Principale (textarea) |
+| **Target** | Demografia, Interessi (textarea) |
+| **Problema** | Descrizione del Problema (textarea) |
+| **Soluzione** | Descrizione della Soluzione (textarea) + Riprova Sociale |
+| **CTA** | Testo CTA, URL CTA |
+
+#### Generazione AI Campagna
+
+Nel tab "Base", pulsante **"Genera contenuti con AI"**:
+- Richiede: Prodotto/Servizio, Target Audience, Obiettivo
+- Gemini genera automaticamente: nome, hook, demografia, interessi, problema, soluzione, riprova sociale, testo CTA
+- I campi vengono precompilati e sono editabili
+
+#### Stati Campagna
+
+| Stato | Badge |
+|-------|-------|
+| **Bozza** | Grigio |
+| **Attiva** | Verde con icona check |
+| **In Pausa** | Ambra con icona alert |
+| **Completata** | Blu con icona check |
+
+#### Dati per Campagna
+
+Ogni campagna traccia: spend, impressions, clicks, leads, CTR, CPL.
+
+---
+
+### Visuals (AI) - Generatore Visual
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Visuals`
 **URL:** `/consultant/content-studio/visuals`
 **Badge:** AI
+**Motore:** Imagen 3
 
-Genera immagini con intelligenza artificiale per i tuoi contenuti.
+Genera immagini con intelligenza artificiale per i contenuti social.
 
-- Descrivi l'immagine che vuoi creare
-- L'AI genera varianti
-- Scarica o usa direttamente nei contenuti
+#### Form di Generazione
+
+| Campo | Opzioni/Dettaglio |
+|-------|-------------------|
+| **Descrizione contenuto** | Testo libero per descrivere cosa si vuole in modo naturale |
+| **Piattaforma** | Instagram, Facebook, LinkedIn, Twitter |
+| **Pulsante "Ottimizza"** | AI genera un prompt ottimizzato basato sulla descrizione e piattaforma |
+| **Prompt** | Campo testo editabile (precompilato dall'ottimizzazione o scritto manualmente) |
+| **Aspetto** | 1:1 (Quadrato), 3:4 (Verticale), 4:3 (Orizzontale), 9:16 (Story/Reel), 16:9 (Landscape) |
+| **Stile** | Realistico, Illustrazione, Minimale, Bold, Professionale, Giocoso |
+| **Prompt Negativo** | Cosa NON includere nell'immagine (opzionale) |
+
+**Tempo di generazione:** 10-30 secondi per immagine.
+
+#### Galleria Immagini
+
+Griglia di card (1-3 colonne responsive) con:
+- Anteprima immagine (aspect-ratio square)
+- Badge aspect ratio in overlay
+- Prompt usato (troncato a 2 righe)
+- Badge stile e data di creazione
+
+**Azioni su hover (overlay scuro):**
+| Pulsante | Funzione |
+|----------|----------|
+| **Prompt** | Copia il prompt negli appunti |
+| **Rigenera** (icona refresh) | Riapre il dialogo con lo stesso prompt per generare una variazione |
+| **Elimina** (icona cestino) | Elimina l'immagine |
+
+---
 
 ### Calendario Editoriale
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Calendario`
 **URL:** `/consultant/content-studio/calendar`
 
-Calendario visuale per pianificare le pubblicazioni.
+Calendario visuale mensile per pianificare post e campagne.
 
-- Vista mensile/settimanale
-- Drag & drop per spostare contenuti
-- Codice colori per piattaforma
-- Stato di pubblicazione
+#### Vista Mensile
+
+- Griglia 7 colonne (Lun-Dom, settimana italiana)
+- Navigazione mese precedente/successivo con frecce
+- Titolo mese e anno corrente
+- Oggi evidenziato
+
+#### Eventi nel Calendario
+
+Ogni cella giorno mostra gli eventi programmati per quella data. Tipi di evento:
+| Tipo | Icona | Colore |
+|------|-------|--------|
+| **Post** | Documento | Blu |
+| **Campagna** | Megafono | Viola |
+
+#### Dettaglio Giorno
+
+Cliccando su un giorno si apre il pannello laterale con:
+- Lista di tutti gli eventi di quel giorno
+- Per ogni evento: titolo, orario programmato, piattaforma (se post), stato
+- Pulsante elimina per ogni evento
+- Pulsante "Aggiungi Evento" (icona +)
+
+#### Creazione Evento
+
+Dialog con campi:
+| Campo | Tipo |
+|-------|------|
+| **Titolo** | Testo (obbligatorio) |
+| **Tipo** | Post o Campagna |
+| **Data** | Date picker (precompilata dal giorno cliccato) |
+| **Orario** | Time picker |
+| **Piattaforma** | Selezione piattaforma (se tipo = post) |
+
+---
 
 ### Brand Assets
 
 **Dove trovarlo:** `Sidebar → CONTENT STUDIO → Brand Assets`
 **URL:** `/consultant/content-studio/brand`
 
-Gestisci gli asset del tuo brand:
+Configura l'identita del brand usata dall'AI per generare contenuti coerenti.
 
-| Asset | Descrizione |
+#### Sezioni della Pagina
+
+**1. Chi Sono**
+- Textarea per la descrizione personale/aziendale
+- Usato dall'AI come contesto nel prompt
+
+**2. Colori Brand**
+- 3 color picker: Primario, Secondario, Accento
+- Anteprima visuale dei 3 colori come quadrati affiancati
+
+**3. Logo**
+- Area di upload drag & drop
+- Formati accettati: PNG, SVG, JPG
+- Dimensione consigliata: 500x500px
+
+**4. Voce del Brand**
+- Textarea per descrivere il tono di voce
+- Esempio placeholder: "Professionale ma accessibile. Usiamo un tono amichevole che ispira fiducia."
+
+**5. Parole Chiave da Usare**
+- Lista di badge (tag) con parole chiave
+- Input per aggiungere nuove parole (Enter o pulsante +)
+- Pulsante X su ogni badge per rimuovere
+
+**6. Parole da Evitare**
+- Stessa meccanica delle parole chiave ma con badge rossi (destructive)
+- Queste parole vengono escluse dalla generazione AI
+
+**7. Handle Social**
+| Piattaforma | Placeholder |
+|-------------|-------------|
+| Instagram | @tuohandle |
+| Facebook | tuapagina |
+| LinkedIn | tuoprofilo |
+| Twitter/X | @tuohandle |
+| YouTube | TuoCanale |
+
+**8. Posting Schedule**
+
+Configurazione orari e stile di pubblicazione per piattaforma:
+
+| Piattaforma | Orario Post 1 (default) | Orario Post 2 (default) | Stile di Scrittura |
+|-------------|------------------------|------------------------|-------------------|
+| Instagram | 09:00 | 18:00 | Selezionabile |
+| X (Twitter) | 10:00 | 17:00 | Selezionabile |
+| LinkedIn | 08:00 | 12:00 | Selezionabile |
+
+Stili di scrittura disponibili nel Posting Schedule: Default, Conversazionale (Nurturing), Diretto, Persuasivo (Copy), Personalizzato.
+
+**Toggle X Premium / Blue:**
+Sotto la sezione X (Twitter), toggle per indicare se si ha l'abbonamento X Premium. Se attivo, sblocca post fino a 4.000 caratteri invece dei 280 standard.
+
+#### Wizard Brand Voice (AI)
+
+Pulsante **"Genera Brand Voice con AI"** apre un wizard modale a 6 step.
+
+**Funzionamento:**
+1. Indicatore di progresso visuale (6 cerchi numerati con barre di avanzamento)
+2. Ogni step mostra: titolo, descrizione, textarea per la risposta
+3. Navigazione Avanti/Indietro tra gli step
+4. All'ultimo step, pulsante "Genera con AI" che invia le 6 risposte a Gemini
+
+**Output generato (Anteprima):**
+| Campo | Descrizione |
 |-------|-------------|
-| **Loghi** | Carica versioni del logo (principale, alternativo, favicon) |
-| **Colori** | Definisci la palette colori del brand |
-| **Font** | Specifica i font da usare |
-| **Linee Guida** | Documenta le regole stilistiche |
+| **Chi Sono** | Descrizione professionale generata |
+| **Tono di Voce** | Stile comunicativo definito |
+| **Note per l'AI** | Istruzioni tecniche per l'AI (font monospace) |
+| **Parole Chiave Suggerite** | Lista di keyword generate come badge |
 
-Questi asset vengono usati dall'AI per generare contenuti coerenti con il brand.
+Dopo la preview, pulsante **"Applica"** che popola i campi della pagina Brand Assets.
+
+**Importazione da Agente WhatsApp:**
+Il wizard puo anche importare la Brand Voice da un agente WhatsApp configurato nella sezione Dipendenti, precompilando i campi.
+
+#### Salvataggio
+
+Pulsante **"Salva Tutte le Impostazioni"** in fondo alla pagina salva tutti i dati in una sola operazione.
+
+---
+
+### AdVisage (AI)
+
+**Dove trovarlo:** `Sidebar → CONTENT STUDIO → AdVisage`
+**URL:** `/consultant/content-studio/advisage`
+**Badge:** AI
+
+Sistema avanzato per analizzare annunci pubblicitari esistenti e generare varianti visive con AI.
+
+#### Funzionalita Principali
+
+**1. Analisi Batch degli Annunci**
+- Carica uno o piu annunci (immagini) per l'analisi
+- Gemini analizza ogni annuncio e produce un report
+- Concorrenza massima: 3 analisi simultanee
+- Per ogni annuncio analizzato: punti di forza, punti deboli, suggerimenti di miglioramento
+
+**2. Generazione Concept Visivi**
+Dopo l'analisi, genera varianti visive in 2 modalita:
+| Variante | Descrizione |
+|----------|-------------|
+| **Clean** | Immagine pulita senza testo sovrapposto |
+| **Text** | Immagine con testo/copy sovrapposto |
+
+**3. Collegamento ai Post**
+- `sourcePostId` mantiene il link tra un concept AdVisage e il post originale da cui e stato importato
+- Pulsante "Importa da Post" per selezionare un post esistente come base per l'analisi
+
+**4. Upload su Publer**
+- Ogni concept generato puo essere caricato direttamente come media su Publer
+- Per caroselli: le immagini vengono aggiunte (append) alle slide esistenti
+- Per post singoli: l'immagine sostituisce quella esistente
+
+**5. Modalita di Visualizzazione**
+| Modalita | Descrizione |
+|----------|-------------|
+| **Griglia** | Card in layout griglia |
+| **Lista** | Layout dettagliato verticale |
 
 ---
 
