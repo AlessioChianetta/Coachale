@@ -24,6 +24,8 @@ import {
   validateBookingData,
   createBookingRecord,
   createGoogleCalendarBooking,
+  createStandaloneCalendarBooking,
+  resolveRoundRobinAgent,
   sendBookingConfirmationEmail,
   sendBookingNotification,
   formatAppointmentDate,
@@ -2269,14 +2271,48 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                         );
                         
                         if (booking) {
-                          // Crea evento Google Calendar
-                          // Pass agentConfigId to use agent's calendar if available
-                          const calendarResult = await createGoogleCalendarBooking(
-                            agentConfig.consultantId,
-                            booking,
-                            extractionResult.email,
-                            agentConfig.id  // Use agent's calendar if available
+                          // ══════════════════════════════════════════════════════════════
+                          // ROUND-ROBIN: Determina l'agente effettivo per il booking
+                          // Stessa logica del WhatsApp message-processor
+                          // ══════════════════════════════════════════════════════════════
+                          let calendarResult: { googleEventId: string | null; googleMeetLink: string | null };
+                          let rrResult: import("../../booking/round-robin-service").RoundRobinResult | null = null;
+
+                          const resolved = await resolveRoundRobinAgent(
+                            agentConfig.id, agentConfig.consultantId, extractionResult.date, extractionResult.time
                           );
+                          rrResult = resolved.roundRobinResult;
+
+                          if (rrResult?.isStandaloneMember) {
+                            calendarResult = await createStandaloneCalendarBooking(
+                              agentConfig.consultantId, booking, extractionResult.email, rrResult.memberId
+                            );
+                          } else {
+                            calendarResult = await createGoogleCalendarBooking(
+                              agentConfig.consultantId,
+                              booking,
+                              extractionResult.email,
+                              resolved.effectiveAgentConfigId
+                            );
+                          }
+
+                          // Registra assegnazione round-robin e aggiorna booking
+                          if (rrResult) {
+                            const { recordRoundRobinAssignment } = await import("../../booking/round-robin-service");
+                            await recordRoundRobinAssignment(rrResult, booking.id);
+                            await db.update(schema.appointmentBookings)
+                              .set({ assignedAgentConfigId: rrResult.selectedAgentConfigId })
+                              .where(eq(schema.appointmentBookings.id, booking.id));
+                            console.log(`\n🔄 [PUBLIC-ROUND-ROBIN] Assegnato a membro: ${rrResult.selectedAgentConfigId}`);
+                            console.log(`   ├── Pool member ID: ${rrResult.memberId}`);
+                            console.log(`   ├── Motivo: ${rrResult.reason}`);
+                            console.log(`   └── Standalone: ${rrResult.isStandaloneMember ? 'SÌ' : 'NO'}`);
+                          }
+
+                          // Aggiorna Google Event ID nel booking
+                          await db.update(schema.appointmentBookings)
+                            .set({ googleEventId: calendarResult.googleEventId })
+                            .where(eq(schema.appointmentBookings.id, booking.id));
                           
                           console.log(`   🎉 [PUBLIC-BOOKING] Booking created successfully!`);
                           console.log(`   🆔 Booking ID: ${booking.id}`);
@@ -2288,18 +2324,22 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                           if (calendarResult.googleMeetLink) {
                             console.log(`   🎥 Meet Link: ${calendarResult.googleMeetLink}`);
                           }
+                          if (rrResult) {
+                            console.log(`   🔄 Round-Robin: ✅ Assegnato a ${rrResult.selectedAgentConfigId}`);
+                          }
                           
-                          // Send booking notification to configured WhatsApp number
+                          // Notifica: al membro assegnato (round-robin) o all'agente originale
+                          const effectiveNotifAgentId = rrResult?.selectedAgentConfigId || agentConfig.id;
                           try {
                             const notificationFormattedDate = formatAppointmentDate(extractionResult.date, extractionResult.time);
-                            const notifResult = await sendBookingNotification(agentConfig.id, {
+                            const notifResult = await sendBookingNotification(effectiveNotifAgentId, {
                               clientName: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`,
                               date: notificationFormattedDate,
                               time: extractionResult.time,
                               meetLink: calendarResult.googleMeetLink,
                             });
                             if (notifResult.success) {
-                              console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully`);
+                              console.log(`   📱 [BOOKING NOTIFICATION] ✅ Sent successfully to ${effectiveNotifAgentId}`);
                             } else {
                               console.log(`   ⚠️ [BOOKING NOTIFICATION] Not sent: ${notifResult.error || 'Unknown reason'}`);
                             }
