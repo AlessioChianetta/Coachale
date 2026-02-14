@@ -109,9 +109,7 @@ Se il lead vuole:
   
   // Blocco slot disponibili (se presente)
   if (availableSlots && availableSlots.length > 0) {
-    const hasAgentNames = availableSlots.some(slot => slot.agentNames && slot.agentNames.length > 0);
-    
-    const slotsByDay: Record<string, { times: string[]; dayLabel: string }> = {};
+    const slotsByDay: Record<string, { times: Set<string>; dayLabel: string }> = {};
     const maxDays = 14;
     const maxSlotsPerDay = 12;
     let daysCount = 0;
@@ -129,10 +127,10 @@ Se il lead vuole:
           month: 'long',
           timeZone: timezone
         });
-        slotsByDay[dateKey] = { times: [], dayLabel };
+        slotsByDay[dateKey] = { times: new Set(), dayLabel };
       }
       
-      if (slotsByDay[dateKey].times.length >= maxSlotsPerDay) continue;
+      if (slotsByDay[dateKey].times.size >= maxSlotsPerDay) continue;
       
       const time = startDate.toLocaleTimeString('it-IT', {
         hour: '2-digit',
@@ -141,26 +139,12 @@ Se il lead vuole:
         hour12: false
       });
       
-      if (hasAgentNames && slot.agentNames && slot.agentNames.length > 0) {
-        slotsByDay[dateKey].times.push(`${time} [con: ${slot.agentNames.join(', ')}]`);
-      } else {
-        slotsByDay[dateKey].times.push(time);
-      }
+      slotsByDay[dateKey].times.add(time);
     }
     
     const compactSlotList = Object.values(slotsByDay).map(day => {
-      return `📆 ${day.dayLabel}: ${day.times.join(', ')}`;
+      return `📆 ${day.dayLabel}: ${[...day.times].join(', ')}`;
     }).join('\n');
-
-    const roundRobinBlock = hasAgentNames ? `
-🔄 ROUND-ROBIN ATTIVO - MULTI-CONSULENTE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Ogni slot indica quali consulenti sono disponibili a quell'ora.
-- Se il lead chiede un orario non nella lista, controlla se è disponibile con un consulente specifico tra quelli elencati in altri slot.
-- Se l'orario richiesto NON è disponibile per nessun consulente, proponi l'orario più vicino indicando con quale consulente.
-- NON menzionare il sistema round-robin al lead. Dì semplicemente "a quell'ora ho disponibilità con [Nome]" o "per quell'orario abbiamo [Nome] disponibile".
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-` : '';
     
     block += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -168,7 +152,7 @@ Ogni slot indica quali consulenti sono disponibili a quell'ora.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🗓️ DATA CORRENTE ASSOLUTA: ${formattedToday || 'oggi'}
-${roundRobinBlock}
+
 🚨🚨🚨 REGOLA ASSOLUTA PER CONFERMA APPUNTAMENTI 🚨🚨🚨
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
