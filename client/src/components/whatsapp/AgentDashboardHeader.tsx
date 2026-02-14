@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 interface AgentStats {
   activeAgents: number;
@@ -86,7 +87,72 @@ function KPITileSkeleton() {
   );
 }
 
-export function AgentDashboardHeader() {
+interface MissionControlMetricProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
+  glowColor: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+}
+
+function MissionControlMetric({ title, value, subtitle, icon, glowColor, trend }: MissionControlMetricProps) {
+  return (
+    <div className="relative group">
+      <div className={cn("absolute inset-0 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500", glowColor)} />
+      <div className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <div className={cn("p-2.5 rounded-lg", glowColor.replace('opacity-0 group-hover:opacity-100', '').replace('blur-lg', ''), "bg-opacity-20")}>
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-blue-200/60 uppercase tracking-wider">{title}</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-2xl font-bold text-white">{value}</span>
+              {subtitle && (
+                <span className="text-xs text-blue-300/50">{subtitle}</span>
+              )}
+            </div>
+          </div>
+          {trend && (
+            <div className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold",
+              trend.isPositive 
+                ? "bg-green-500/15 text-green-400 border border-green-500/20" 
+                : "bg-red-500/15 text-red-400 border border-red-500/20"
+            )}>
+              <TrendingUp className={cn("h-3 w-3", !trend.isPositive && "rotate-180")} />
+              {trend.isPositive ? '+' : ''}{trend.value}%
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MissionControlSkeleton() {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-lg bg-white/10" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-3 w-16 bg-white/10" />
+          <Skeleton className="h-6 w-12 bg-white/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface AgentDashboardHeaderProps {
+  variant?: "default" | "mission-control";
+}
+
+export function AgentDashboardHeader({ variant = "default" }: AgentDashboardHeaderProps) {
   const { data, isLoading, isError } = useQuery<AgentStats>({
     queryKey: ["/api/whatsapp/agents/stats"],
     queryFn: async () => {
@@ -108,6 +174,75 @@ export function AgentDashboardHeader() {
     avgResponseTime: "0s",
     successRate: 0,
   };
+
+  if (variant === "mission-control") {
+    if (isError) {
+      return (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+          <div className="flex items-center gap-3 text-red-300">
+            <AlertCircle className="h-5 w-5" />
+            <span className="text-sm font-medium">Errore nel caricamento delle statistiche</span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-blue-300/50 uppercase tracking-widest">Metriche in tempo reale</p>
+          <Link href="/consultant/whatsapp-conversations">
+            <Button variant="ghost" size="sm" className="gap-2 text-blue-300/70 hover:text-white hover:bg-white/10 rounded-lg h-8 text-xs">
+              <MessageSquare className="h-3.5 w-3.5" />
+              Conversazioni
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {isLoading ? (
+            <>
+              <MissionControlSkeleton />
+              <MissionControlSkeleton />
+              <MissionControlSkeleton />
+              <MissionControlSkeleton />
+            </>
+          ) : (
+            <>
+              <MissionControlMetric
+                title="Dipendenti"
+                value={stats.activeAgents}
+                subtitle="attivi"
+                icon={<Bot className="h-5 w-5 text-blue-400" />}
+                glowColor="bg-blue-500/20"
+              />
+              <MissionControlMetric
+                title="Conversazioni"
+                value={stats.conversations24h}
+                subtitle="24h"
+                icon={<MessageSquare className="h-5 w-5 text-green-400" />}
+                glowColor="bg-green-500/20"
+                trend={{ value: 12, isPositive: true }}
+              />
+              <MissionControlMetric
+                title="Risposta"
+                value={stats.avgResponseTime}
+                icon={<Clock className="h-5 w-5 text-amber-400" />}
+                glowColor="bg-amber-500/20"
+              />
+              <MissionControlMetric
+                title="Successo"
+                value={`${stats.successRate}%`}
+                icon={<TrendingUp className="h-5 w-5 text-purple-400" />}
+                glowColor="bg-purple-500/20"
+                trend={{ value: 5, isPositive: true }}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isError) {
     return (

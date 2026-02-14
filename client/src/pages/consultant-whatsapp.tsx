@@ -1943,25 +1943,143 @@ export default function ConsultantWhatsAppPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* Hero Header - Team Style */}
-                <div className="text-center space-y-3 py-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/25">
-                    <Bot className="h-8 w-8 text-white" />
+                {/* Mission Control Banner */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 shadow-2xl">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl" />
+                  
+                  <div className="relative z-10">
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+                          <Bot className="h-7 w-7 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
+                            I Miei Dipendenti AI
+                          </h2>
+                          <p className="text-blue-200/70 text-sm mt-0.5">
+                            Il tuo team intelligente multi-canale
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                          <span className="text-xs text-green-300 font-medium">Operativi 24/7</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Channel Icons Row */}
+                    <div className="flex flex-wrap items-center gap-3 mb-6">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/15 border border-green-500/20">
+                        <MessageCircle className="h-4 w-4 text-green-400" />
+                        <span className="text-xs font-medium text-green-300">WhatsApp</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
+                        <Instagram className="h-4 w-4 text-purple-400" />
+                        <span className="text-xs font-medium text-purple-300">Instagram</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/20">
+                        <ExternalLink className="h-4 w-4 text-blue-400" />
+                        <span className="text-xs font-medium text-blue-300">Sito Web</span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/20">
+                        <Bot className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs font-medium text-amber-300">Chat AI</span>
+                      </div>
+                    </div>
+
+                    {/* KPI Metrics inside banner */}
+                    <AgentDashboardHeader variant="mission-control" />
                   </div>
-                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                    I Miei Agenti
-                  </h2>
-                  <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
-                    Gestisci e monitora le performance dei tuoi assistenti WhatsApp
-                  </p>
                 </div>
 
-                {/* Enterprise Dashboard Header con KPI */}
-                <AgentDashboardHeader />
-                
+                {/* Channel Summary Cards - Split Dashboard Style */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 rounded-xl bg-green-50 dark:bg-green-900/30">
+                        <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">WhatsApp</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {configs?.length || 0}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">dipendenti attivi</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full border-2 border-green-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500" />
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30">
+                        <Instagram className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Instagram</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">prossimamente</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                        <Sparkles className="h-5 w-5 text-purple-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500" />
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30">
+                        <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Sito Web</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">prossimamente</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                        <Sparkles className="h-5 w-5 text-blue-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30">
+                        <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Chat AI</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">assistente con memoria</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
+                        <Brain className="h-5 w-5 text-amber-500" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Layout principale: Roster + Profile */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Sidebar Roster (4 colonne) */}
                   <div className="lg:col-span-4">
                     <AgentRoster 
                       onSelectAgent={(agent) => setSelectedAgent(agent)}
@@ -1969,7 +2087,6 @@ export default function ConsultantWhatsAppPage() {
                     />
                   </div>
                   
-                  {/* Pannello Profilo Agente (8 colonne) */}
                   <div className="lg:col-span-8">
                     <AgentProfilePanel 
                       selectedAgent={selectedAgent}

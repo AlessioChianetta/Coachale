@@ -22,7 +22,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  AlertCircle
+  AlertCircle,
+  MessageCircle
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -120,7 +121,10 @@ function AgentCard({
           </div>
           
           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span>{agentTypeLabels[agent.agentType] || agent.agentType}</span>
+            <span className="flex items-center gap-1">
+              <MessageCircle className="h-3 w-3 text-green-500" />
+              {agentTypeLabels[agent.agentType] || agent.agentType}
+            </span>
             {agent.levels && agent.levels.length > 0 && <LevelBadges levels={agent.levels} />}
           </div>
           
@@ -234,13 +238,13 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col">
+    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-sm">
+            <Bot className="h-5 w-5 text-white" />
           </div>
-          Roster Agenti
+          Roster Dipendenti
         </CardTitle>
         
         <div className="space-y-2 mt-3">
