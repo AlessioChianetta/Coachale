@@ -1165,6 +1165,49 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
         }
       }
 
+      // Inject dipendente-specific knowledge items into client AI context
+      // When a recognized client writes to a specific dipendente, the dipendente's
+      // knowledge base (system_prompt items) should also be available to the AI
+      if (consultantConfig?.id) {
+        try {
+          const dipendenteKnowledgeItems = await db
+            .select()
+            .from(whatsappAgentKnowledgeItems)
+            .where(and(
+              eq(whatsappAgentKnowledgeItems.agentConfigId, consultantConfig.id),
+              eq(whatsappAgentKnowledgeItems.injectionMode, 'system_prompt')
+            ))
+            .orderBy(asc(whatsappAgentKnowledgeItems.order), asc(whatsappAgentKnowledgeItems.createdAt));
+
+          if (dipendenteKnowledgeItems.length > 0) {
+            const agentName = consultantConfig.agentName || 'Dipendente';
+            let dipendenteKB = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 KNOWLEDGE BASE DIPENDENTE: ${agentName.toUpperCase()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il cliente sta scrivendo tramite il dipendente "${agentName}".
+Usa queste informazioni specifiche del dipendente per rispondere con precisione.
+
+`;
+            dipendenteKnowledgeItems.forEach((item, index) => {
+              const typeEmoji = item.type === 'text' ? '📝' : '📄';
+              dipendenteKB += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${typeEmoji} [${item.type.toUpperCase()}] ${item.title}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${item.content || ''}
+
+`;
+            });
+
+            systemPrompt += '\n\n' + dipendenteKB;
+            console.log(`📚 [DIPENDENTE KB] Injected ${dipendenteKnowledgeItems.length} knowledge items from agent "${agentName}" into client prompt`);
+          }
+        } catch (dkbErr: any) {
+          console.warn(`⚠️ [DIPENDENTE KB] Error loading dipendente knowledge: ${dkbErr.message}`);
+        }
+      }
+
       // WhatsApp Concise Mode: Add Customer Support style instructions for clients
       if (consultantConfig?.whatsappConciseMode) {
         console.log(`💬 [WHATSAPP MODE] Modalità Customer Support attiva`);
@@ -1777,6 +1820,23 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
           storeNames = result.storeNames;
           breakdown = result.breakdown;
           totalDocsInStores = breakdown.reduce((sum, store) => sum + store.totalDocs, 0);
+        }
+
+        // Also merge the dipendente's file search store (if it has file_search knowledge items)
+        if (consultantConfig?.id) {
+          try {
+            const dipendenteStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
+            if (dipendenteStore && dipendenteStore.documentCount > 0) {
+              if (!storeNames.includes(dipendenteStore.googleStoreName)) {
+                storeNames = [...storeNames, dipendenteStore.googleStoreName];
+                totalDocsInStores += dipendenteStore.documentCount;
+                breakdown = [...breakdown, { storeDisplayName: `Dipendente: ${consultantConfig.agentName || 'Agent'}`, totalDocs: dipendenteStore.documentCount }];
+                console.log(`📚 [DIPENDENTE FILE SEARCH] Merged dipendente store "${dipendenteStore.displayName}" (${dipendenteStore.documentCount} docs) into client search`);
+              }
+            }
+          } catch (dfsErr: any) {
+            console.warn(`⚠️ [DIPENDENTE FILE SEARCH] Error merging store: ${dfsErr.message}`);
+          }
         }
         
         if (storeNames.length > 0 && totalDocsInStores > 0) {

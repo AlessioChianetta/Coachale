@@ -214,15 +214,17 @@ export function WeeklyCheckinCard() {
   });
 
   const { data: agentsData } = useQuery({
-    queryKey: ["/api/whatsapp/config/proactive"],
+    queryKey: ["/api/whatsapp/config"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/whatsapp/config/proactive");
+      const response = await apiRequest("GET", "/api/whatsapp/config");
       if (!response) return { configs: [] };
       return response;
     },
   });
   
-  const whatsappAgents = agentsData?.configs || [];
+  const whatsappAgents = (agentsData?.configs || []).filter((a: any) => 
+    a.isActive && a.twilioWhatsappNumber
+  );
 
   const categorizeTemplate = (template: WhatsAppTemplate): string => {
     const name = (template.friendlyName || "").toLowerCase();
@@ -378,6 +380,20 @@ export function WeeklyCheckinCard() {
       toast({ title: "Configurazione salvata" });
     },
   });
+
+  const autoSelectDoneRef = React.useRef(false);
+  useEffect(() => {
+    if (autoSelectDoneRef.current) return;
+    if (config && !config.agentConfigId && whatsappAgents.length > 0) {
+      const assistenzaAgent = whatsappAgents.find((a: any) => 
+        a.agentName === "Assistenza Clienti"
+      );
+      if (assistenzaAgent) {
+        autoSelectDoneRef.current = true;
+        updateConfigMutation.mutate({ agentConfigId: assistenzaAgent.id });
+      }
+    }
+  }, [config?.agentConfigId, whatsappAgents.length]);
 
   const testMutation = useMutation({
     mutationFn: (clientId: string) => apiRequest("POST", "/api/weekly-checkin/test", { clientId }),

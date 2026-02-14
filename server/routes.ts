@@ -15512,11 +15512,51 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     try {
       const consultantId = req.user!.id;
 
-      const configs = await db
+      let configs = await db
         .select()
         .from(schema.consultantWhatsappConfig)
         .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
         .orderBy(schema.consultantWhatsappConfig.createdAt);
+
+      // Auto-create default "Assistenza Clienti" dipendente if consultant has no agents
+      if (configs.length === 0) {
+        try {
+          const [defaultAgent] = await db
+            .insert(schema.consultantWhatsappConfig)
+            .values({
+              consultantId,
+              agentName: "Assistenza Clienti",
+              integrationMode: "ai_only" as const,
+              twilioAccountSid: null,
+              twilioAuthToken: null,
+              twilioWhatsappNumber: null,
+              autoResponseEnabled: true,
+              agentType: "informative_advisor" as const,
+              workingHoursEnabled: false,
+              businessName: null,
+              businessDescription: "Assistenza e supporto clienti",
+              aiPersonality: "consulente_professionale" as const,
+              whatsappConciseMode: true,
+              isDryRun: true,
+              isActive: true,
+              isProactiveAgent: false,
+              bookingEnabled: false,
+              objectionHandlingEnabled: false,
+              disqualificationEnabled: false,
+              upsellingEnabled: false,
+            })
+            .returning();
+          
+          console.log(`🆕 [DEFAULT AGENT] Auto-created "Assistenza Clienti" agent for consultant ${consultantId}: ${defaultAgent.id}`);
+          configs = [defaultAgent];
+        } catch (createErr: any) {
+          console.warn(`⚠️ [DEFAULT AGENT] Error auto-creating default agent: ${createErr.message}`);
+          return res.json({
+            configured: false,
+            configs: [],
+          });
+        }
+      }
 
       if (configs.length === 0) {
         return res.json({
