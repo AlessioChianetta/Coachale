@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -381,7 +381,7 @@ export function WeeklyCheckinCard() {
     },
   });
 
-  const autoSelectDoneRef = React.useRef(false);
+  const autoSelectDoneRef = useRef(false);
   useEffect(() => {
     if (autoSelectDoneRef.current) return;
     if (config && !config.agentConfigId && whatsappAgents.length > 0) {
