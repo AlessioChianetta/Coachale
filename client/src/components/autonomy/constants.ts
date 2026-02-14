@@ -1,4 +1,4 @@
-import alessiaAvatar from "@assets/alessia-avatar.png";
+import alessiaAvatar from "@assets/generated_images/alessia_ai_voice_consultant_avatar.png";
 import millieAvatar from "@assets/generated_images/millie_ai_email_assistant_avatar.png";
 import echoAvatar from "@assets/generated_images/echo_ai_summarizer_avatar.png";
 import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_avatar.png";

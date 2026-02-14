@@ -144,7 +144,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import archieAvatar from "@assets/generated_images/archie_ai_builder_avatar.png";
 import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
-import alessiaAvatar from "@assets/alessia-avatar.png";
+import alessiaAvatar from "@assets/generated_images/alessia_ai_voice_consultant_avatar.png";
 import ceoAvatar from "@assets/generated_images/realistic_ceo_businessman_headshot.png";
 import {
   Table,
@@ -201,6 +201,11 @@ interface WhatsAppConfig {
   agentInstructions?: string | null;
   agentInstructionsEnabled?: boolean;
   selectedTemplate?: "receptionist" | "marco_setter" | "custom";
+  instagramConfigId?: string | null;
+  ownInstagramConfigId?: string | null;
+  publicSlug?: string | null;
+  levels?: string[] | null;
+  enableInAIAssistant?: boolean;
 }
 
 interface TeamMemberCardProps {
@@ -1988,7 +1993,7 @@ export default function ConsultantWhatsAppPage() {
                       </div>
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/20">
                         <Bot className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-medium text-amber-300">Chat AI</span>
+                        <span className="text-xs font-medium text-amber-300">Parla con il tuo dipendente</span>
                       </div>
                     </div>
 
@@ -2030,11 +2035,13 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">prossimamente</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {configs.filter((c: WhatsAppConfig) => c.instagramConfigId || c.ownInstagramConfigId).length}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">integrati con DM</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
-                        <Sparkles className="h-5 w-5 text-purple-400" />
+                        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
                       </div>
                     </div>
                   </div>
@@ -2049,11 +2056,13 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">-</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">prossimamente</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {configs.filter((c: WhatsAppConfig) => c.publicSlug).length}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">condivisioni attive</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                        <Sparkles className="h-5 w-5 text-blue-400" />
+                        <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
                       </div>
                     </div>
                   </div>
@@ -2064,12 +2073,14 @@ export default function ConsultantWhatsAppPage() {
                       <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30">
                         <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Chat AI</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Parla con il tuo dipendente</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">assistente con memoria</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {configs.filter((c: WhatsAppConfig) => c.enableInAIAssistant).length || 1}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">assistenti con memoria</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
                         <Brain className="h-5 w-5 text-amber-500" />
