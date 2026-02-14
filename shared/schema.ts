@@ -3402,7 +3402,8 @@ export const appointmentBookings = pgTable("appointment_bookings", {
 // Proposed Appointment Slots - Fixes availableSlots scope bug
 export const proposedAppointmentSlots = pgTable("proposed_appointment_slots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }),
+  publicConversationId: varchar("public_conversation_id").references(() => whatsappAgentConsultantConversations.id, { onDelete: "cascade" }),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   slots: jsonb("slots").$type<Array<{
     start: Date;

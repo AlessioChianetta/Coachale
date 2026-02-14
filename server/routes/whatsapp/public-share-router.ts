@@ -1890,13 +1890,13 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           
           let availableSlots: any[] = [];
           
-          // Step 1: Check for saved slots in database
+          // Step 1: Check for saved slots in database (using publicConversationId for public share)
           const [savedSlots] = await db
             .select()
             .from(schema.proposedAppointmentSlots)
             .where(
               and(
-                eq(schema.proposedAppointmentSlots.conversationId, conversation.id),
+                eq(schema.proposedAppointmentSlots.publicConversationId, conversation.id),
                 eq(schema.proposedAppointmentSlots.usedForBooking, false),
                 sql`${schema.proposedAppointmentSlots.expiresAt} > NOW()`
               )
@@ -1946,13 +1946,13 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                   const expiresAt = new Date();
                   expiresAt.setHours(expiresAt.getHours() + 48);
                   
-                  // Check if slots already exist for this conversation
+                  // Check if slots already exist for this public conversation
                   const [existing] = await db
                     .select()
                     .from(schema.proposedAppointmentSlots)
                     .where(
                       and(
-                        eq(schema.proposedAppointmentSlots.conversationId, conversation.id),
+                        eq(schema.proposedAppointmentSlots.publicConversationId, conversation.id),
                         eq(schema.proposedAppointmentSlots.consultantId, agentConfig.consultantId)
                       )
                     )
@@ -1973,7 +1973,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                     await db
                       .insert(schema.proposedAppointmentSlots)
                       .values({
-                        conversationId: conversation.id,
+                        publicConversationId: conversation.id,
                         consultantId: agentConfig.consultantId,
                         slots: availableSlots,
                         proposedAt: new Date(),
