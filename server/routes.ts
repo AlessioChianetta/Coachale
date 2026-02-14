@@ -13730,7 +13730,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   app.use("/api/ai-autonomy", aiAutonomyRouter);
 
   // Round-Robin booking pool routes
-  app.use("/api/round-robin", roundRobinRouter);
+  app.use("/api/round-robin", authenticateToken, roundRobinRouter);
 
   // Client Sales Agent Configuration routes (requires authentication)
   app.use("/api/client/sales-agent/config", salesAgentConfigRouter);
