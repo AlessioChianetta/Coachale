@@ -20,7 +20,8 @@ import {
   PauseCircle, 
   FlaskConical,
   AlertCircle,
-  MessageCircle
+  MessageCircle,
+  Crown
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -101,13 +102,18 @@ function AgentCard({
   onClick: () => void;
 }) {
   const status = statusConfig[agent.status] || statusConfig.active;
+  const isDefault = agent.name === "Assistenza Clienti";
 
   return (
     <div
       onClick={onClick}
       className={cn(
         "px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group",
-        isSelected 
+        isDefault && !isSelected
+          ? "bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/15 ring-1 ring-amber-200/60 dark:ring-amber-700/40 hover:from-amber-100 hover:to-yellow-100 dark:hover:from-amber-900/30 dark:hover:to-yellow-900/25"
+          : isDefault && isSelected
+          ? "bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/25 shadow-sm ring-1 ring-amber-300 dark:ring-amber-600"
+          : isSelected 
           ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-200 dark:ring-blue-700" 
           : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
       )}
@@ -115,28 +121,42 @@ function AgentCard({
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-9 h-9 rounded-full flex-shrink-0 overflow-hidden",
-          isSelected ? "ring-2 ring-blue-400" : "ring-1 ring-gray-200 dark:ring-gray-700"
+          isDefault
+            ? "ring-2 ring-amber-400 dark:ring-amber-500"
+            : isSelected ? "ring-2 ring-blue-400" : "ring-1 ring-gray-200 dark:ring-gray-700"
         )}>
-          <img 
-            src={getAgentAvatar(agent.id)} 
-            alt={agent.name} 
-            className="w-full h-full object-cover"
-          />
+          {isDefault ? (
+            <div className="w-full h-full bg-gradient-to-br from-amber-400 via-yellow-400 to-amber-500 flex items-center justify-center">
+              <Crown className="h-4.5 w-4.5 text-white drop-shadow-sm" />
+            </div>
+          ) : (
+            <img 
+              src={getAgentAvatar(agent.id)} 
+              alt={agent.name} 
+              className="w-full h-full object-cover"
+            />
+          )}
         </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={cn(
               "font-medium text-sm truncate",
+              isDefault ? "text-amber-800 dark:text-amber-200" :
               isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-800 dark:text-gray-200"
             )}>
               {agent.name}
             </span>
+            {isDefault && (
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600">
+                DEFAULT
+              </Badge>
+            )}
             <div className={cn("w-2 h-2 rounded-full flex-shrink-0", status.dotColor)} />
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <MessageCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <MessageCircle className={cn("h-3 w-3 flex-shrink-0", isDefault ? "text-amber-500" : "text-green-500")} />
+            <span className={cn("text-xs truncate", isDefault ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400")}>
               {agentTypeLabels[agent.agentType] || agent.agentType}
             </span>
           </div>
@@ -212,6 +232,15 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
     });
   }, [agents, searchQuery, statusFilter]);
 
+  const sortedAgents = useMemo(() => {
+    const defaultFirst = [...filteredAgents].sort((a, b) => {
+      const aIsDefault = a.name === "Assistenza Clienti" ? 0 : 1;
+      const bIsDefault = b.name === "Assistenza Clienti" ? 0 : 1;
+      return aIsDefault - bIsDefault;
+    });
+    return defaultFirst;
+  }, [filteredAgents]);
+
   const groupedAgents = useMemo(() => {
     const groups: Record<string, Agent[]> = {
       active: [],
@@ -219,14 +248,14 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
       test: [],
     };
     
-    filteredAgents.forEach((agent) => {
+    sortedAgents.forEach((agent) => {
       if (groups[agent.status]) {
         groups[agent.status].push(agent);
       }
     });
     
     return groups;
-  }, [filteredAgents]);
+  }, [sortedAgents]);
 
   if (isError) {
     return (
