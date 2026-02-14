@@ -1816,17 +1816,19 @@ export default function ConsultantWhatsAppPage() {
       showHeader={false}
     >
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Modern Header Section */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        {/* Unified Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                <MessageSquare className="h-8 w-8 text-white" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+                <Bot className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Dipendenti AI</h1>
-                <p className="text-emerald-100 text-sm mt-1">
-                  Configura e monitora i tuoi dipendenti AI per conversazioni automatizzate
+                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendenti AI</h1>
+                <p className="text-blue-200/70 text-sm mt-0.5">
+                  Configura e monitora il tuo team intelligente multi-canale
                 </p>
               </div>
             </div>
@@ -1834,7 +1836,7 @@ export default function ConsultantWhatsAppPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Button 
                 variant="secondary"
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
                 onClick={() => window.location.href = '/consultant/whatsapp-agents-chat'}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
@@ -1842,7 +1844,7 @@ export default function ConsultantWhatsAppPage() {
               </Button>
               <Button 
                 onClick={handleAddNew}
-                className="bg-white text-emerald-700 hover:bg-emerald-50 shadow-md font-semibold"
+                className="bg-white text-slate-900 hover:bg-blue-50 shadow-md font-semibold"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nuovo Agente
@@ -1885,39 +1887,39 @@ export default function ConsultantWhatsAppPage() {
 
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
-          <div className="bg-white rounded-xl border shadow-sm p-1">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-1.5">
             <TabsList className="grid w-full grid-cols-5 gap-1 bg-transparent h-auto p-0">
               <TabsTrigger 
                 value="custom" 
-                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
               >
                 <Bot className="h-4 w-4 mr-2" />
                 Agenti Personalizzati
               </TabsTrigger>
               <TabsTrigger 
                 value="system" 
-                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
               >
                 <Users className="h-4 w-4 mr-2" />
                 Agenti di Sistema
               </TabsTrigger>
               <TabsTrigger 
                 value="ideas" 
-                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
                 Idee AI
               </TabsTrigger>
               <TabsTrigger 
                 value="employees" 
-                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
               >
                 <Crown className="h-4 w-4 mr-2" />
                 Dipendenti AI
               </TabsTrigger>
               <TabsTrigger 
                 value="licenses" 
-                className="py-3 px-4 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
               >
                 <Key className="h-4 w-4 mr-2" />
                 Licenze
@@ -1948,58 +1950,31 @@ export default function ConsultantWhatsAppPage() {
               </Card>
             ) : (
               <div className="space-y-6">
-                {/* Mission Control Banner */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 shadow-2xl">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
-                  <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl" />
-                  
-                  <div className="relative z-10">
-                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
-                          <Bot className="h-7 w-7 text-white" />
-                        </div>
-                        <div>
-                          <h2 className="text-2xl lg:text-3xl font-bold text-white tracking-tight">
-                            I Miei Dipendenti AI
-                          </h2>
-                          <p className="text-blue-200/70 text-sm mt-0.5">
-                            Il tuo team intelligente multi-canale
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
-                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                          <span className="text-xs text-green-300 font-medium">Operativi 24/7</span>
-                        </div>
-                      </div>
+                {/* KPI Metrics Bar */}
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs font-medium text-green-700 dark:text-green-300">Operativi 24/7</span>
                     </div>
-
-                    {/* Channel Icons Row */}
-                    <div className="flex flex-wrap items-center gap-3 mb-6">
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/15 border border-green-500/20">
-                        <MessageCircle className="h-4 w-4 text-green-400" />
-                        <span className="text-xs font-medium text-green-300">WhatsApp</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
-                        <Instagram className="h-4 w-4 text-purple-400" />
-                        <span className="text-xs font-medium text-purple-300">Instagram</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/20">
-                        <ExternalLink className="h-4 w-4 text-blue-400" />
-                        <span className="text-xs font-medium text-blue-300">Sito Web</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/20">
-                        <Bot className="h-4 w-4 text-amber-400" />
-                        <span className="text-xs font-medium text-amber-300">Parla con il tuo dipendente</span>
-                      </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                      <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-medium text-green-700 dark:text-green-300">WhatsApp</span>
                     </div>
-
-                    {/* KPI Metrics inside banner */}
-                    <AgentDashboardHeader variant="mission-control" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                      <Instagram className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                      <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Instagram</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <ExternalLink className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Sito Web</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                      <Bot className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Chat AI</span>
+                    </div>
                   </div>
+                  <AgentDashboardHeader variant="mission-control" />
                 </div>
 
                 {/* Channel Summary Cards - Split Dashboard Style */}
