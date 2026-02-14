@@ -136,6 +136,7 @@ import clientDataRouter from "./routes/client-data-router";
 import datasetSyncRouter from "./routes/dataset-sync-router";
 import voiceRouter from "./routes/voice-router";
 import aiAutonomyRouter from "./routes/ai-autonomy-router";
+import roundRobinRouter from "./routes/round-robin-router";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
@@ -13727,6 +13728,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // AI Autonomy settings and activity log routes
   app.use("/api/ai-autonomy", aiAutonomyRouter);
+
+  // Round-Robin booking pool routes
+  app.use("/api/round-robin", roundRobinRouter);
 
   // Client Sales Agent Configuration routes (requires authentication)
   app.use("/api/client/sales-agent/config", salesAgentConfigRouter);

@@ -64,6 +64,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import RoundRobinSection from "./RoundRobinSection";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AgentShareManager } from "./agent-share-manager";
@@ -1528,6 +1529,14 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   </Button>
                 )}
               </div>
+
+              {/* Round-Robin Booking Distribution */}
+              {selectedAgent?.id && (
+                <RoundRobinSection
+                  agentConfigId={selectedAgent.id}
+                  consultantId=""
+                />
+              )}
 
               {/* Instagram DM */}
               <div className="p-3 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg border border-pink-100">

@@ -976,6 +976,41 @@ export interface GoogleCalendarResult {
   googleMeetLink: string | null;
 }
 
+export async function resolveRoundRobinAgent(
+  agentConfigId: string,
+  consultantId: string,
+  date: string,
+  time: string
+): Promise<{ effectiveAgentConfigId: string; roundRobinResult: import("./round-robin-service").RoundRobinResult | null }> {
+  const { getPoolForAgent, selectRoundRobinAgent } = await import("./round-robin-service");
+  const poolInfo = await getPoolForAgent(agentConfigId);
+
+  if (!poolInfo) {
+    return { effectiveAgentConfigId: agentConfigId, roundRobinResult: null };
+  }
+
+  console.log(`   🔄 [ROUND-ROBIN RESOLVER] Pool "${poolInfo.poolName}" (${poolInfo.strategy})`);
+
+  const settings = await db
+    .select()
+    .from(consultantAvailabilitySettings)
+    .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+    .limit(1);
+
+  const duration = settings[0]?.appointmentDuration || 60;
+  const timezone = settings[0]?.timezone || "Europe/Rome";
+
+  const result = await selectRoundRobinAgent(poolInfo.poolId, date, time, duration, timezone);
+
+  if (result) {
+    console.log(`   ✅ [ROUND-ROBIN RESOLVER] Selected: ${result.selectedAgentConfigId}`);
+    return { effectiveAgentConfigId: result.selectedAgentConfigId, roundRobinResult: result };
+  }
+
+  console.log(`   ⚠️ [ROUND-ROBIN RESOLVER] No available agent, falling back to original`);
+  return { effectiveAgentConfigId: agentConfigId, roundRobinResult: null };
+}
+
 export async function createGoogleCalendarBooking(
   consultantId: string,
   booking: typeof appointmentBookings.$inferSelect,
@@ -1049,6 +1084,15 @@ export async function processFullBooking(
     console.log(`   Agent Config ID: ${agentConfigId}`);
   }
 
+  let effectiveAgentConfigId = agentConfigId;
+  let roundRobinResult: import("./round-robin-service").RoundRobinResult | null = null;
+
+  if (agentConfigId) {
+    const resolved = await resolveRoundRobinAgent(agentConfigId, consultantId, data.date, data.time);
+    effectiveAgentConfigId = resolved.effectiveAgentConfigId;
+    roundRobinResult = resolved.roundRobinResult;
+  }
+
   const booking = await createBookingRecord(consultantId, conversationId, data, source);
   if (!booking) {
     return {
@@ -1060,13 +1104,16 @@ export async function processFullBooking(
     };
   }
 
-  // NEW: Pass agentConfigId to use agent's calendar if available
-  const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, agentConfigId);
+  const calendarResult = await createGoogleCalendarBooking(consultantId, booking, data.email, effectiveAgentConfigId);
 
-  // Send booking notification to configured WhatsApp number (if enabled)
-  if (agentConfigId) {
+  if (roundRobinResult) {
+    const { recordRoundRobinAssignment } = await import("./round-robin-service");
+    await recordRoundRobinAssignment(roundRobinResult, booking.id);
+  }
+
+  if (effectiveAgentConfigId) {
     const formattedDate = formatAppointmentDate(data.date, data.time);
-    await sendBookingNotification(agentConfigId, {
+    await sendBookingNotification(effectiveAgentConfigId, {
       clientName: data.name || data.clientName || data.email,
       date: formattedDate,
       time: data.time,

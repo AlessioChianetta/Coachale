@@ -2854,9 +2854,62 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   bookingNotificationPhone: text("booking_notification_phone"),
   bookingNotificationTemplateId: varchar("booking_notification_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
 
+  // Round-Robin Booking Distribution
+  roundRobinEnabled: boolean("round_robin_enabled").default(false).notNull(),
+  bookingPoolId: varchar("booking_pool_id"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUND-ROBIN BOOKING POOLS
+// Distribute appointments across multiple commercials via weighted round-robin
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const bookingPools = pgTable("booking_pools", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull().default("Pool Commerciali"),
+  strategy: text("strategy").$type<"strict_round_robin" | "weighted" | "availability_first">().notNull().default("weighted"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type BookingPool = typeof bookingPools.$inferSelect;
+export type InsertBookingPool = typeof bookingPools.$inferInsert;
+
+export const bookingPoolMembers = pgTable("booking_pool_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poolId: varchar("pool_id").references(() => bookingPools.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  weight: integer("weight").notNull().default(50),
+  maxDailyBookings: integer("max_daily_bookings").default(10),
+  isActive: boolean("is_active").notNull().default(true),
+  isPaused: boolean("is_paused").notNull().default(false),
+  totalBookingsCount: integer("total_bookings_count").notNull().default(0),
+  lastAssignedAt: timestamp("last_assigned_at"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type BookingPoolMember = typeof bookingPoolMembers.$inferSelect;
+export type InsertBookingPoolMember = typeof bookingPoolMembers.$inferInsert;
+
+export const bookingPoolAssignments = pgTable("booking_pool_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  poolId: varchar("pool_id").references(() => bookingPools.id, { onDelete: "cascade" }).notNull(),
+  memberId: varchar("member_id").references(() => bookingPoolMembers.id, { onDelete: "cascade" }).notNull(),
+  bookingId: varchar("booking_id").references(() => appointmentBookings.id, { onDelete: "set null" }),
+  assignedAgentConfigId: varchar("assigned_agent_config_id").notNull(),
+  assignmentReason: text("assignment_reason"),
+  score: real("score"),
+  assignedAt: timestamp("assigned_at").notNull().default(sql`now()`),
+});
+
+export type BookingPoolAssignment = typeof bookingPoolAssignments.$inferSelect;
+export type InsertBookingPoolAssignment = typeof bookingPoolAssignments.$inferInsert;
 
 // Agent-Client Assignments - Which clients can access which agents in their AI assistant
 export const agentClientAssignments = pgTable("agent_client_assignments", {

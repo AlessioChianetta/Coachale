@@ -45,6 +45,7 @@ import {
   createGoogleCalendarBooking,
   sendBookingNotification,
   formatAppointmentDate,
+  resolveRoundRobinAgent,
   ConversationMessage,
   BookingExtractionResult,
   BookingModificationResult,
@@ -918,22 +919,28 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                       let googleEventId: string | null = null;
                       
                       try {
+                        const { effectiveAgentConfigId: rrAgentId, roundRobinResult: rrResult } = await resolveRoundRobinAgent(
+                          linkedAgent.id, config.consultantId, newExtracted.date, newExtracted.time
+                        );
                         const calendarResult = await createGoogleCalendarBooking(
                           config.consultantId,
                           newBooking,
                           newExtracted.email,
-                          linkedAgent.id
+                          rrAgentId
                         );
+                        if (rrResult) {
+                          const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
+                          await recordRoundRobinAssignment(rrResult, newBooking.id);
+                        }
                         if (calendarResult.googleEventId) {
                           googleEventId = calendarResult.googleEventId;
                           googleMeetLink = calendarResult.googleMeetLink || null;
                           console.log(`   📅 Google Calendar event: ${googleEventId}`);
                         }
                         
-                        // Send booking notification to configured WhatsApp number
                         try {
                           const formattedDate = formatAppointmentDate(newExtracted.date, newExtracted.time);
-                          const notifResult = await sendBookingNotification(linkedAgent.id, {
+                          const notifResult = await sendBookingNotification(rrAgentId, {
                             clientName: clientName,
                             date: formattedDate,
                             time: newExtracted.time,
@@ -1063,14 +1070,20 @@ Ti ho inviato un invito calendario! 📬`;
                 let googleMeetLink: string | null = null;
                 let googleEventId: string | null = null;
                 
-                // Try to create Google Calendar event if configured
                 try {
+                  const { effectiveAgentConfigId: rrAgentId2, roundRobinResult: rrResult2 } = await resolveRoundRobinAgent(
+                    linkedAgent.id, config.consultantId, extracted.date, extracted.time
+                  );
                   const calendarResult = await createGoogleCalendarBooking(
                     config.consultantId,
                     newBooking,
                     extracted.email,
-                    linkedAgent.id
+                    rrAgentId2
                   );
+                  if (rrResult2) {
+                    const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
+                    await recordRoundRobinAssignment(rrResult2, newBooking.id);
+                  }
                   if (calendarResult.googleEventId) {
                     googleEventId = calendarResult.googleEventId;
                     googleMeetLink = calendarResult.googleMeetLink || null;
@@ -1078,10 +1091,9 @@ Ti ho inviato un invito calendario! 📬`;
                     console.log(`   🎥 Meet Link: ${googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
                   }
                   
-                  // Send booking notification to configured WhatsApp number
                   try {
                     const notificationFormattedDate = formatAppointmentDate(extracted.date, extracted.time);
-                    const notifResult = await sendBookingNotification(linkedAgent.id, {
+                    const notifResult = await sendBookingNotification(rrAgentId2, {
                       clientName: clientName,
                       date: notificationFormattedDate,
                       time: extracted.time,
