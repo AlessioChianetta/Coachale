@@ -19,15 +19,11 @@ import {
   CheckCircle, 
   PauseCircle, 
   FlaskConical,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   AlertCircle,
   MessageCircle
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { LevelBadges } from "./LevelBadge";
 
 interface Agent {
   id: string;
@@ -85,67 +81,51 @@ function AgentCard({
   onClick: () => void;
 }) {
   const status = statusConfig[agent.status] || statusConfig.active;
-  const StatusIcon = status.icon;
-
-  const TrendIcon = agent.trend === "up" ? TrendingUp : agent.trend === "down" ? TrendingDown : Minus;
-  const trendColor = agent.trend === "up" ? "text-green-500" : agent.trend === "down" ? "text-red-500" : "text-slate-400";
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        "p-4 rounded-xl border cursor-pointer transition-all duration-200",
-        "hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md hover:-translate-y-0.5",
+        "px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group",
         isSelected 
-          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm" 
-          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-200 dark:ring-blue-700" 
+          : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-sm",
-          isSelected ? "bg-gradient-to-br from-blue-500 to-blue-600" : "bg-gradient-to-br from-gray-500 to-gray-600"
+          "w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0",
+          isSelected ? "bg-gradient-to-br from-blue-500 to-indigo-600" : "bg-gradient-to-br from-gray-400 to-gray-500"
         )}>
           {agent.name.charAt(0).toUpperCase()}
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <span className={cn(
               "font-medium text-sm truncate",
-              isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-gray-100"
+              isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-800 dark:text-gray-200"
             )}>
               {agent.name}
             </span>
-            <div className={cn("w-2 h-2 rounded-full ring-2 ring-white dark:ring-gray-800", status.dotColor)} />
+            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", status.dotColor)} />
           </div>
-          
-          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <MessageCircle className="h-3 w-3 text-green-500" />
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <MessageCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
               {agentTypeLabels[agent.agentType] || agent.agentType}
             </span>
-            {agent.levels && agent.levels.length > 0 && <LevelBadges levels={agent.levels} />}
           </div>
-          
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-1">
-              <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    agent.performanceScore >= 80 ? "bg-green-500" :
-                    agent.performanceScore >= 60 ? "bg-amber-500" : "bg-red-500"
-                  )}
-                  style={{ width: `${agent.performanceScore}%` }}
-                />
-              </div>
-              <span className="text-xs font-medium text-slate-600">
-                {agent.performanceScore}%
-              </span>
-            </div>
-            <TrendIcon className={cn("h-3 w-3", trendColor)} />
-          </div>
+        </div>
+
+        <div className="flex-shrink-0 text-right">
+          <span className={cn(
+            "text-sm font-bold",
+            agent.performanceScore >= 80 ? "text-green-600" :
+            agent.performanceScore >= 60 ? "text-amber-600" : "text-red-500"
+          )}>
+            {agent.performanceScore}%
+          </span>
         </div>
       </div>
     </div>
@@ -154,14 +134,14 @@ function AgentCard({
 
 function AgentCardSkeleton() {
   return (
-    <div className="p-3 rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-start gap-3">
-        <Skeleton className="w-10 h-10 rounded-full" />
-        <div className="flex-1 space-y-2">
+    <div className="px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-9 h-9 rounded-full" />
+        <div className="flex-1 space-y-1.5">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-3 w-16" />
-          <Skeleton className="h-1.5 w-full" />
         </div>
+        <Skeleton className="h-4 w-8" />
       </div>
     </div>
   );
@@ -226,7 +206,7 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
 
   if (isError) {
     return (
-      <Card className="bg-white border border-slate-200 h-full">
+      <Card className="bg-white dark:bg-gray-900 shadow-md border-0 rounded-2xl h-full">
         <CardContent className="p-6">
           <div className="flex flex-col items-center justify-center text-center py-8">
             <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
@@ -238,32 +218,33 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl h-full flex flex-col shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-sm">
-            <Bot className="h-5 w-5 text-white" />
+    <Card className="bg-white dark:bg-gray-900 shadow-md border-0 rounded-2xl h-full flex flex-col">
+      <CardHeader className="pb-3 px-4 pt-4">
+        <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2.5">
+          <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+            <Bot className="h-4 w-4 text-white" />
           </div>
           Roster Dipendenti
+          <span className="text-xs font-normal text-gray-400 ml-auto">{agents.length}</span>
         </CardTitle>
         
-        <div className="space-y-2 mt-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="flex items-center gap-2 mt-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <Input
-              placeholder="Cerca agente..."
+              placeholder="Cerca..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+              className="pl-8 h-8 text-sm bg-gray-50 dark:bg-gray-800 border-0 shadow-sm rounded-lg focus-visible:ring-1 focus-visible:ring-blue-300"
             />
           </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl">
-              <SelectValue placeholder="Filtra per stato" />
+            <SelectTrigger className="w-[100px] h-8 text-xs bg-gray-50 dark:bg-gray-800 border-0 shadow-sm rounded-lg">
+              <SelectValue placeholder="Stato" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tutti gli stati</SelectItem>
+              <SelectItem value="all">Tutti</SelectItem>
               <SelectItem value="active">Attivi</SelectItem>
               <SelectItem value="paused">In Pausa</SelectItem>
               <SelectItem value="test">Test</SelectItem>
@@ -273,35 +254,35 @@ export function AgentRoster({ onSelectAgent, selectedAgentId }: AgentRosterProps
       </CardHeader>
       
       <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full px-4 pb-4">
+        <ScrollArea className="h-full px-2 pb-3">
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {[...Array(5)].map((_, i) => (
                 <AgentCardSkeleton key={i} />
               ))}
             </div>
           ) : filteredAgents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Bot className="h-12 w-12 text-slate-300 mb-3" />
-              <p className="text-sm text-slate-500">Nessun agente trovato</p>
+              <Bot className="h-10 w-10 text-gray-300 mb-3" />
+              <p className="text-sm text-gray-400">Nessun agente trovato</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {Object.entries(groupedAgents).map(([status, statusAgents]) => {
                 if (statusAgents.length === 0) return null;
                 const config = statusConfig[status as keyof typeof statusConfig];
                 
                 return (
                   <div key={status}>
-                    <div className="flex items-center gap-2 mb-2 px-1">
-                      <Badge variant="outline" className={cn("text-xs", config.color)}>
+                    <div className="flex items-center gap-2 mb-1 px-3">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                         {config.label}
-                      </Badge>
-                      <span className="text-xs text-slate-400">
+                      </span>
+                      <span className="text-[10px] text-gray-300">
                         {statusAgents.length}
                       </span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-0.5">
                       {statusAgents.map((agent) => (
                         <AgentCard
                           key={agent.id}

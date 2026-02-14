@@ -56,11 +56,20 @@ import {
   Plus,
   FlaskConical,
   ChevronDown,
+  ChevronUp,
   HelpCircle,
   Smartphone,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  MoreVertical
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -228,13 +237,13 @@ function SkillBar({ name, level, description }: { name: string; level: number; d
 
 function PlaceholderPanel() {
   return (
-    <Card className="bg-white border border-slate-200 h-full flex items-center justify-center">
+    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full flex items-center justify-center">
       <CardContent className="text-center py-16">
-        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-          <Bot className="h-8 w-8 text-slate-400" />
+        <div className="w-16 h-16 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+          <Bot className="h-8 w-8 text-gray-300 dark:text-gray-600" />
         </div>
-        <h3 className="text-lg font-medium text-slate-700 mb-2">Seleziona un agente</h3>
-        <p className="text-sm text-slate-500 max-w-xs">
+        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Seleziona un agente</h3>
+        <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
           Clicca su un agente nella lista per visualizzare i dettagli e le statistiche
         </p>
       </CardContent>
@@ -244,21 +253,21 @@ function PlaceholderPanel() {
 
 function LoadingSkeleton() {
   return (
-    <Card className="bg-white border border-slate-200 h-full">
+    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full">
       <CardContent className="p-6 space-y-6">
         <div className="flex items-center gap-4">
-          <Skeleton className="w-16 h-16 rounded-full" />
+          <Skeleton className="w-14 h-14 rounded-2xl" />
           <div className="space-y-2">
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-4 w-24" />
           </div>
         </div>
         <Skeleton className="h-32 w-32 mx-auto rounded-full" />
-        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-48 w-full rounded-xl" />
         <div className="space-y-3">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+          <Skeleton className="h-8 w-full rounded-lg" />
+          <Skeleton className="h-8 w-full rounded-lg" />
         </div>
       </CardContent>
     </Card>
@@ -280,6 +289,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isLoadingGoldAccess, setIsLoadingGoldAccess] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [infoExpanded, setInfoExpanded] = useState(false);
 
   const [enableInAIAssistant, setEnableInAIAssistant] = useState(false);
   const [fileSearchCategories, setFileSearchCategories] = useState<FileSearchCategories>({
@@ -1028,7 +1038,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
   if (isError) {
     return (
-      <Card className="bg-white border border-slate-200 h-full">
+      <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full">
         <CardContent className="p-6">
           <div className="flex flex-col items-center justify-center text-center py-8">
             <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
@@ -1151,84 +1161,109 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const status = statusConfig[selectedAgent.status as keyof typeof statusConfig] || statusConfig.active;
 
   return (
-    <Card className="bg-white border border-slate-200 h-full flex flex-col">
+    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full flex flex-col">
       <ScrollArea className="flex-1">
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="p-5 space-y-5">
           {/* Header - Always visible */}
-          <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+          <div className="flex items-start gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-sm">
               {selectedAgent.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-semibold text-slate-900 truncate">{selectedAgent.name}</h2>
-                <Badge variant="outline" className={cn("text-xs", status.color)}>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{selectedAgent.name}</h2>
+                <Badge className={cn("text-[10px] font-medium border-0 px-2 py-0.5", 
+                  selectedAgent.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
+                  selectedAgent.status === "paused" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
+                  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                )}>
                   {status.label}
                 </Badge>
                 {agentData?.level && <LevelBadge level={agentData.level} size="sm" />}
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {agentTypeLabels[selectedAgent.agentType] || selectedAgent.agentType}
               </p>
               {agentData?.businessName && (
-                <p className="text-xs text-slate-400 truncate mt-0.5">{agentData.businessName}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5">{agentData.businessName}</p>
               )}
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-xl">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                <DropdownMenuItem onClick={() => onDuplicateAgent?.(selectedAgent.id)} className="gap-2 text-sm">
+                  <Copy className="h-3.5 w-3.5" />
+                  Duplica Agente
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onDeleteAgent?.(selectedAgent.id)} className="gap-2 text-sm text-red-600 focus:text-red-700 focus:bg-red-50">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Elimina Agente
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          {/* Features badges - compact row */}
+          {/* Features badges - pastel colors */}
           {features && (
             <div className="flex flex-wrap gap-1.5">
               {features.bookingEnabled && (
-                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-1.5 py-0.5">
-                  <CalendarCheck className="h-3 w-3 mr-0.5" />
+                <Badge className="bg-green-50 text-green-600 border-0 text-[10px] font-medium px-2 py-0.5 dark:bg-green-900/20 dark:text-green-400">
+                  <CalendarCheck className="h-3 w-3 mr-1" />
                   Prenotazioni
                 </Badge>
               )}
               {features.objectionHandlingEnabled && (
-                <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200 text-xs px-1.5 py-0.5">
-                  <ShieldCheck className="h-3 w-3 mr-0.5" />
+                <Badge className="bg-orange-50 text-orange-600 border-0 text-[10px] font-medium px-2 py-0.5 dark:bg-orange-900/20 dark:text-orange-400">
+                  <ShieldCheck className="h-3 w-3 mr-1" />
                   Obiezioni
                 </Badge>
               )}
               {features.hasCalendar && (
-                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-1.5 py-0.5">
-                  <Calendar className="h-3 w-3 mr-0.5" />
+                <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[10px] font-medium px-2 py-0.5 dark:bg-emerald-900/20 dark:text-emerald-400">
+                  <Calendar className="h-3 w-3 mr-1" />
                   Calendario
                 </Badge>
               )}
               {features.ttsEnabled && (
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs px-1.5 py-0.5">
-                  <Mic className="h-3 w-3 mr-0.5" />
+                <Badge className="bg-sky-50 text-sky-600 border-0 text-[10px] font-medium px-2 py-0.5 dark:bg-sky-900/20 dark:text-sky-400">
+                  <Mic className="h-3 w-3 mr-1" />
                   Vocali
                 </Badge>
               )}
               {agentData?.personality && (
-                <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-1.5 py-0.5">
-                  <Sparkles className="h-3 w-3 mr-0.5" />
+                <Badge className="bg-violet-50 text-violet-600 border-0 text-[10px] font-medium px-2 py-0.5 dark:bg-violet-900/20 dark:text-violet-400">
+                  <Sparkles className="h-3 w-3 mr-1" />
                   {personalityLabels[agentData.personality]?.split(' ')[0] || agentData.personality}
                 </Badge>
               )}
             </div>
           )}
 
-          {/* Tabs */}
+          {/* Tabs - with underline style */}
           <Tabs defaultValue="performance" className="w-full">
-            <TabsList className={cn("grid w-full h-9", agentData?.levels && agentData.levels.length > 0 ? "grid-cols-4" : "grid-cols-3")}>
-              <TabsTrigger value="performance" className="text-xs gap-1">
+            <TabsList className={cn(
+              "grid w-full h-10 bg-transparent p-0 border-b border-gray-200 dark:border-gray-700 rounded-none gap-0",
+              agentData?.levels && agentData.levels.length > 0 ? "grid-cols-4" : "grid-cols-3"
+            )}>
+              <TabsTrigger value="performance" className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 dark:data-[state=active]:text-blue-400">
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Performance</span>
               </TabsTrigger>
-              <TabsTrigger value="integrations" className="text-xs gap-1">
+              <TabsTrigger value="integrations" className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 dark:data-[state=active]:text-blue-400">
                 <Link className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Integrazioni</span>
               </TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs gap-1">
+              <TabsTrigger value="ai" className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 dark:data-[state=active]:text-blue-400">
                 <Bot className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">AI & Sharing</span>
               </TabsTrigger>
               {agentData?.levels && agentData.levels.length > 0 && (
-                <TabsTrigger value="utenti" className="text-xs gap-1">
+                <TabsTrigger value="utenti" className="text-xs gap-1.5 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none bg-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 dark:data-[state=active]:text-blue-400">
                   <Users className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Utenti</span>
                 </TabsTrigger>
@@ -1236,237 +1271,210 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
             </TabsList>
 
             {/* Performance Tab */}
-            <TabsContent value="performance" className="space-y-4 mt-4">
-              {/* QUICK ACTIONS - Most Prominent at Top */}
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200/60">
-                <h3 className="text-xs font-bold text-blue-900 mb-3 uppercase tracking-wide">
-                  Cosa vuoi fare?
+            <TabsContent value="performance" className="space-y-5 mt-5">
+              {/* QUICK ACTIONS - Horizontal compact */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                  Azioni Rapide
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-auto py-3 px-3 bg-white hover:bg-blue-50 border-blue-200 hover:border-blue-400 justify-start gap-3 group"
+                    className="h-9 px-3 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-0 shadow-sm rounded-xl gap-2 text-xs font-medium"
                     onClick={() => navigate(`/consultant/whatsapp/agent/${selectedAgent.id}`)}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      <Settings className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Modifica Agente</p>
-                      <p className="text-[10px] text-slate-500">Cambia istruzioni e comportamento</p>
-                    </div>
+                    <Settings className="h-3.5 w-3.5 text-blue-500" />
+                    Modifica
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-auto py-3 px-3 bg-white hover:bg-indigo-50 border-blue-200 hover:border-indigo-400 justify-start gap-3 group"
+                    className="h-9 px-3 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-0 shadow-sm rounded-xl gap-2 text-xs font-medium"
                     onClick={() => navigate(`/consultant/whatsapp-agents-chat?agentId=${selectedAgent.id}`)}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      <MessageSquare className="h-4 w-4 text-indigo-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Vedi Conversazioni</p>
-                      <p className="text-[10px] text-slate-500">Leggi le chat con i clienti</p>
-                    </div>
+                    <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+                    Conversazioni
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-auto py-3 px-3 bg-white hover:bg-emerald-50 border-blue-200 hover:border-emerald-400 justify-start gap-3 group"
+                    className="h-9 px-3 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-0 shadow-sm rounded-xl gap-2 text-xs font-medium"
                     onClick={() => setShowShareManager(true)}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      <Share2 className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Condividi Agente</p>
-                      <p className="text-[10px] text-slate-500">Dai accesso ai tuoi clienti</p>
-                    </div>
+                    <Share2 className="h-3.5 w-3.5 text-emerald-500" />
+                    Condividi
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-auto py-3 px-3 bg-white hover:bg-cyan-50 border-blue-200 hover:border-cyan-400 justify-start gap-3 group"
+                    className="h-9 px-3 bg-white dark:bg-gray-800 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 border-0 shadow-sm rounded-xl gap-2 text-xs font-medium"
                     onClick={handleAccessAsGold}
                     disabled={isLoadingGoldAccess}
                   >
-                    <div className="w-8 h-8 rounded-lg bg-cyan-100 group-hover:bg-cyan-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      {isLoadingGoldAccess ? (
-                        <Loader2 className="h-4 w-4 text-cyan-600 animate-spin" />
-                      ) : (
-                        <ExternalLink className="h-4 w-4 text-cyan-600" />
+                    {isLoadingGoldAccess ? (
+                      <Loader2 className="h-3.5 w-3.5 text-cyan-500 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-3.5 w-3.5 text-cyan-500" />
+                    )}
+                    Accedi Gold
+                  </Button>
+                </div>
+              </div>
+
+              {/* AGENT IDENTITY: Collapsible accordion */}
+              {(agentData?.businessName || agentData?.businessDescription || agentData?.whatWeDo || agentData?.whoWeHelp) && (
+                <div className="rounded-xl overflow-hidden shadow-sm">
+                  <button
+                    onClick={() => setInfoExpanded(!infoExpanded)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Info className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Dettagli Agente</span>
+                    </div>
+                    {infoExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                  
+                  {infoExpanded && (
+                    <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 p-4 space-y-3">
+                      {(agentData?.businessName || agentData?.businessDescription) && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+                            <Bot className="h-3 w-3" />
+                            Di cosa si occupa
+                          </h4>
+                          {agentData?.businessName && (
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{agentData.businessName}</p>
+                          )}
+                          {agentData?.businessDescription && (
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-[1.6]">{agentData.businessDescription}</p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Accedi come Gold</p>
-                      <p className="text-[10px] text-slate-500">Accedi come cliente Gold</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-auto py-3 px-3 bg-white hover:bg-purple-50 border-blue-200 hover:border-purple-400 justify-start gap-3 group"
-                    onClick={() => onDuplicateAgent?.(selectedAgent.id)}
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 group-hover:bg-purple-200 flex items-center justify-center flex-shrink-0 transition-colors">
-                      <Copy className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-slate-800">Duplica Agente</p>
-                      <p className="text-[10px] text-slate-500">Crea una copia modificabile</p>
-                    </div>
-                  </Button>
-                </div>
-                <div className="mt-2 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => onDeleteAgent?.(selectedAgent.id)}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Elimina agente
-                  </Button>
-                </div>
-              </div>
 
-              {/* AGENT IDENTITY: Chi è, Cosa fa, Chi aiuta */}
-              <div className="space-y-3">
-                {/* Business Info */}
-                {(agentData?.businessName || agentData?.businessDescription) && (
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                      <Bot className="h-3 w-3" />
-                      Di cosa si occupa
-                    </h4>
-                    {agentData?.businessName && (
-                      <p className="text-sm font-semibold text-slate-800">{agentData.businessName}</p>
-                    )}
-                    {agentData?.businessDescription && (
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{agentData.businessDescription}</p>
-                    )}
-                  </div>
-                )}
+                      {agentData?.whatWeDo && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+                            <Target className="h-3 w-3" />
+                            Cosa fa questo agente
+                          </h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 leading-[1.6]">{agentData.whatWeDo}</p>
+                        </div>
+                      )}
 
-                {/* What We Do */}
-                {agentData?.whatWeDo && (
-                  <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                    <h4 className="text-[10px] font-bold text-blue-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                      <Target className="h-3 w-3" />
-                      Cosa fa questo agente
-                    </h4>
-                    <p className="text-xs text-slate-700 leading-relaxed">{agentData.whatWeDo}</p>
-                  </div>
-                )}
+                      <div className="grid grid-cols-2 gap-3">
+                        {agentData?.whoWeHelp && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1.5 flex items-center gap-1.5">
+                              <CheckCircle className="h-3 w-3" />
+                              Chi aiuta
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-[1.6]">{agentData.whoWeHelp}</p>
+                          </div>
+                        )}
+                        {agentData?.whoWeDontHelp && (
+                          <div>
+                            <h4 className="text-xs font-semibold text-red-500 dark:text-red-400 mb-1.5 flex items-center gap-1.5">
+                              <UserX className="h-3 w-3" />
+                              Chi non aiuta
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-[1.6]">{agentData.whoWeDontHelp}</p>
+                          </div>
+                        )}
+                      </div>
 
-                {/* Who We Help / Don't Help */}
-                <div className="grid grid-cols-2 gap-2">
-                  {agentData?.whoWeHelp && (
-                    <div className="p-3 bg-green-50/50 rounded-lg border border-green-100">
-                      <h4 className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                        <CheckCircle className="h-3 w-3" />
-                        Chi aiuta
-                      </h4>
-                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-4">{agentData.whoWeHelp}</p>
-                    </div>
-                  )}
-                  {agentData?.whoWeDontHelp && (
-                    <div className="p-3 bg-red-50/50 rounded-lg border border-red-100">
-                      <h4 className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                        <UserX className="h-3 w-3" />
-                        Chi non aiuta
-                      </h4>
-                      <p className="text-xs text-slate-700 leading-relaxed line-clamp-4">{agentData.whoWeDontHelp}</p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <Badge className="text-[10px] font-medium bg-indigo-50 border-0 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">
+                          <Bot className="h-3 w-3 mr-1" />
+                          {agentTypeLabels[agentData?.agentType || "reactive_lead"] || "Lead Reattivo"}
+                        </Badge>
+                        <Badge className="text-[10px] font-medium bg-violet-50 border-0 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          {personalityLabels[agentData?.personality || "consulente_professionale"] || "Professionale"}
+                        </Badge>
+                      </div>
                     </div>
                   )}
                 </div>
+              )}
 
-                {/* Agent Type & Personality Badge */}
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs bg-indigo-50 border-indigo-200 text-indigo-700">
-                    <Bot className="h-3 w-3 mr-1" />
-                    {agentTypeLabels[agentData?.agentType || "reactive_lead"] || "Lead Reattivo"}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {personalityLabels[agentData?.personality || "consulente_professionale"] || "Professionale"}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* PERFORMANCE METRICS */}
-              <div className="flex items-center gap-4">
+              {/* PERFORMANCE METRICS - Better alignment */}
+              <div className="flex items-start gap-5">
                 <div className="flex-shrink-0">
                   <PerformanceGauge 
                     score={analytics.performance.score} 
                     trend={analytics.performance.trend}
                   />
                 </div>
-                <div className="flex-1 grid grid-cols-2 gap-2">
-                  <div className="p-2.5 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                      <MessageSquare className="h-3 w-3" />
-                      <span className="text-[10px]">Conversazioni</span>
+                <div className="flex-1 grid grid-cols-2 gap-2.5 pt-1">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">Conversazioni</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
                       {analytics.performance.conversationsTotal}
                     </p>
                   </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                      <Clock className="h-3 w-3" />
-                      <span className="text-[10px]">Risposta</span>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Clock className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">Risposta</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
                       {analytics.performance.avgResponseTime}
                     </p>
                   </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                      <Target className="h-3 w-3" />
-                      <span className="text-[10px]">Successo</span>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Target className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">Successo</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
                       {analytics.performance.successRate}%
                     </p>
                   </div>
-                  <div className="p-2.5 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-1.5 text-slate-500 mb-0.5">
-                      <Calendar className="h-3 w-3" />
-                      <span className="text-[10px]">Oggi</span>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">Oggi</span>
                     </div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
                       {analytics.performance.conversationsToday}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* TREND CHART - Compact */}
+              {/* TREND CHART - Polished */}
               {analytics.trendData && analytics.trendData.length > 0 && (
-                <div className="p-3 bg-slate-50/50 rounded-lg border border-slate-100">
-                  <h3 className="text-[10px] font-semibold text-slate-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
-                    <TrendingUp className="h-3 w-3 text-blue-500" />
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
                     Trend Ultimi 7 Giorni
                   </h3>
-                  <div className="h-28 w-full">
+                  <div className="h-32 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={analytics.trendData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 8 }} stroke="#94a3b8" />
-                        <YAxis tick={{ fontSize: 8 }} stroke="#94a3b8" width={25} />
+                        <XAxis dataKey="date" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                        <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" width={25} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "white",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            fontSize: "10px",
+                            border: "none",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                           }}
                         />
-                        <Line type="monotone" dataKey="conversations" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 2 }} name="Conversazioni" />
-                        <Line type="monotone" dataKey="successRate" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", r: 2 }} name="Successo %" />
+                        <Line type="monotone" dataKey="conversations" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 3 }} name="Conversazioni" />
+                        <Line type="monotone" dataKey="successRate" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", r: 3 }} name="Successo %" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1478,22 +1486,22 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
             <TabsContent value="integrations" className="space-y-4 mt-4">
               {/* Working Hours */}
               {agentData?.workingHours && (
-                <div className="p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="h-4 w-4 text-slate-500" />
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                    <Clock className="h-4 w-4 text-gray-400" />
                     <span className="text-sm font-medium">Orari di Lavoro</span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     {String(agentData.workingHours.start).padStart(2, '0')}:00 - {String(agentData.workingHours.end).padStart(2, '0')}:00
                     {agentData.workingHours.timezone && (
-                      <span className="text-xs text-slate-400 ml-1">({agentData.workingHours.timezone})</span>
+                      <span className="text-xs text-gray-400 ml-1">({agentData.workingHours.timezone})</span>
                     )}
                   </p>
                 </div>
               )}
 
               {/* Google Calendar */}
-              <div className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
+              <div className="p-3.5 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl border-0 shadow-sm">
                 <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                   <CalendarCheck className="h-4 w-4 text-green-500" />
                   Google Calendar
@@ -1539,7 +1547,7 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
               )}
 
               {/* Instagram DM */}
-              <div className="p-3 bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+              <div className="p-3.5 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-900/10 dark:to-purple-900/10 rounded-xl border-0 shadow-sm">
                 <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                   <Instagram className="h-4 w-4 text-pink-500" />
                   Instagram DM
