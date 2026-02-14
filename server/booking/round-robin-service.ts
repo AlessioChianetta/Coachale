@@ -315,6 +315,26 @@ export async function getPoolForAgent(agentConfigId: string): Promise<{
   };
 }
 
+export async function getPoolForConsultant(consultantId: string): Promise<{
+  poolId: string;
+  strategy: string;
+  poolName: string;
+} | null> {
+  const [pool] = await db
+    .select()
+    .from(bookingPools)
+    .where(and(eq(bookingPools.consultantId, consultantId), eq(bookingPools.isActive, true)))
+    .limit(1);
+
+  if (!pool) return null;
+
+  return {
+    poolId: pool.id,
+    strategy: pool.strategy,
+    poolName: pool.name,
+  };
+}
+
 export async function getPoolMembers(poolId: string): Promise<PoolMemberInfo[]> {
   const members = await db
     .select({
