@@ -118,21 +118,32 @@ router.post("/:slug/book", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Non puoi prenotare nel passato" });
     }
     
-    // Verify the slot is actually available
     const requestedDate = new Date(date);
-    const availableSlots = await getPublicAvailableSlots(
-      consultant.consultantId,
-      requestedDate,
-      new Date(requestedDate.getTime() + 24 * 60 * 60 * 1000)
-    );
-    
-    const isSlotAvailable = availableSlots.some(slot => {
-      // slot.date is "YYYY-MM-DD", slot.time is "HH:MM"
-      const [slotHour, slotMin] = slot.time.split(':').map(Number);
-      const slotDate = new Date(slot.date);
-      slotDate.setHours(slotHour, slotMin, 0, 0);
-      return slotDate.getTime() === scheduledAt.getTime();
-    });
+    const poolInfo = await getPoolForConsultant(consultant.consultantId);
+
+    let isSlotAvailable = false;
+    if (poolInfo) {
+      const poolSlots = await getAvailableSlotsFromPool(
+        poolInfo.poolId,
+        requestedDate,
+        new Date(requestedDate.getTime() + 24 * 60 * 60 * 1000),
+        consultant.appointmentDuration || 60,
+        consultant.timezone || "Europe/Rome"
+      );
+      isSlotAvailable = poolSlots.some(slot => slot.date === date && slot.time === time);
+    } else {
+      const availableSlots = await getPublicAvailableSlots(
+        consultant.consultantId,
+        requestedDate,
+        new Date(requestedDate.getTime() + 24 * 60 * 60 * 1000)
+      );
+      isSlotAvailable = availableSlots.some(slot => {
+        const [slotHour, slotMin] = slot.time.split(':').map(Number);
+        const slotDate = new Date(slot.date);
+        slotDate.setHours(slotHour, slotMin, 0, 0);
+        return slotDate.getTime() === scheduledAt.getTime();
+      });
+    }
     
     if (!isSlotAvailable) {
       return res.status(400).json({ 

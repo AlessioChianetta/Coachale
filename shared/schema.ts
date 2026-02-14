@@ -3365,6 +3365,7 @@ export const appointmentBookings = pgTable("appointment_bookings", {
   appointmentTime: text("appointment_time").notNull(),
   appointmentEndTime: text("appointment_end_time"),
   googleEventId: text("google_event_id"),
+  assignedAgentConfigId: varchar("assigned_agent_config_id"),
   calendarEventId: varchar("calendar_event_id").references(() => calendarEvents.id),
   status: text("status").$type<"proposed" | "confirmed" | "cancelled" | "completed">().default("proposed").notNull(),
   proposedSlots: jsonb("proposed_slots").$type<Array<{

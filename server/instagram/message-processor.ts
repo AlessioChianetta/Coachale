@@ -931,6 +931,10 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                         if (rrResult) {
                           const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
                           await recordRoundRobinAssignment(rrResult, newBooking.id);
+                          const { db: dbInst } = await import("../db");
+                          const { appointmentBookings: abTable } = await import("@shared/schema");
+                          const { eq: eqOp } = await import("drizzle-orm");
+                          await dbInst.update(abTable).set({ assignedAgentConfigId: rrResult.selectedAgentConfigId }).where(eqOp(abTable.id, newBooking.id));
                         }
                         if (calendarResult.googleEventId) {
                           googleEventId = calendarResult.googleEventId;
@@ -1083,6 +1087,10 @@ Ti ho inviato un invito calendario! 📬`;
                   if (rrResult2) {
                     const { recordRoundRobinAssignment } = await import("../booking/round-robin-service");
                     await recordRoundRobinAssignment(rrResult2, newBooking.id);
+                    const { db: dbInst } = await import("../db");
+                    const { appointmentBookings: abTable } = await import("@shared/schema");
+                    const { eq: eqOp } = await import("drizzle-orm");
+                    await dbInst.update(abTable).set({ assignedAgentConfigId: rrResult2.selectedAgentConfigId }).where(eqOp(abTable.id, newBooking.id));
                   }
                   if (calendarResult.googleEventId) {
                     googleEventId = calendarResult.googleEventId;

@@ -1109,6 +1109,10 @@ export async function processFullBooking(
   if (roundRobinResult) {
     const { recordRoundRobinAssignment } = await import("./round-robin-service");
     await recordRoundRobinAssignment(roundRobinResult, booking.id);
+    await db
+      .update(appointmentBookings)
+      .set({ assignedAgentConfigId: roundRobinResult.selectedAgentConfigId })
+      .where(eq(appointmentBookings.id, booking.id));
   }
 
   if (effectiveAgentConfigId) {
@@ -2086,6 +2090,10 @@ export async function createPublicBooking(params: PublicBookingParams): Promise<
               .where(eq(appointmentBookings.id, booking.id));
           }
           await recordRoundRobinAssignment(rrResult, booking.id);
+          await db
+            .update(appointmentBookings)
+            .set({ assignedAgentConfigId: rrResult.selectedAgentConfigId })
+            .where(eq(appointmentBookings.id, booking.id));
           try {
             const formattedDate = formatAppointmentDate(startDate, startTime, timezone);
             await sendBookingNotification(rrResult.selectedAgentConfigId, {
