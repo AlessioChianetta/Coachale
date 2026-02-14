@@ -1306,18 +1306,17 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                     Condividi
                   </Button>
                   <Button
-                    variant="outline"
                     size="sm"
-                    className="h-9 px-3 bg-white dark:bg-gray-800 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 border-0 shadow-sm rounded-xl gap-2 text-xs font-medium"
+                    className="h-10 px-5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white border-0 shadow-md rounded-xl gap-2 text-sm font-semibold transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                     onClick={handleAccessAsGold}
                     disabled={isLoadingGoldAccess}
                   >
                     {isLoadingGoldAccess ? (
-                      <Loader2 className="h-3.5 w-3.5 text-cyan-500 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <ExternalLink className="h-3.5 w-3.5 text-cyan-500" />
+                      <ExternalLink className="h-4 w-4" />
                     )}
-                    Accedi Gold
+                    Parla con il tuo dipendente
                   </Button>
                 </div>
               </div>
