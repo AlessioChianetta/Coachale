@@ -254,7 +254,8 @@ router.put("/agent/:agentConfigId/round-robin", async (req: Request, res: Respon
     if (enabled !== undefined) updateData.roundRobinEnabled = enabled;
     if (poolId !== undefined) updateData.bookingPoolId = poolId;
 
-    if (enabled === false) {
+    const { forgetPool } = req.body;
+    if (enabled === false && forgetPool === true) {
       updateData.bookingPoolId = null;
     }
 

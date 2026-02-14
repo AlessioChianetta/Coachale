@@ -24,6 +24,16 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -97,6 +107,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const [connectingMemberId, setConnectingMemberId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
 
   const { data: rrStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ["round-robin-status", agentConfigId],
@@ -150,7 +161,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   });
 
   const toggleRoundRobin = useMutation({
-    mutationFn: async (enabled: boolean) => {
+    mutationFn: async ({ enabled, forgetPool }: { enabled: boolean; forgetPool?: boolean }) => {
       let poolId = rrStatus?.bookingPoolId;
 
       if (enabled && !poolId) {
@@ -167,19 +178,23 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
       const res = await fetch(`/api/round-robin/agent/${agentConfigId}/round-robin`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ enabled, poolId }),
+        body: JSON.stringify({ enabled, poolId, forgetPool }),
       });
       if (!res.ok) throw new Error("Failed to toggle");
       return res.json();
     },
-    onSuccess: (_, enabled) => {
+    onSuccess: (_, { enabled, forgetPool }) => {
       queryClient.invalidateQueries({ queryKey: ["round-robin-status"] });
       queryClient.invalidateQueries({ queryKey: ["round-robin-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["round-robin-members"] });
+      const desc = enabled
+        ? "Gli appuntamenti verranno distribuiti tra i commerciali nel pool"
+        : forgetPool
+          ? "Pool e membri rimossi. Dovrai riconfigurarli alla prossima attivazione"
+          : "Disattivato ma i membri sono stati salvati per la prossima volta";
       toast({
         title: enabled ? "Round-Robin attivato" : "Round-Robin disattivato",
-        description: enabled
-          ? "Gli appuntamenti verranno distribuiti tra i commerciali nel pool"
-          : "Gli appuntamenti torneranno al calendario singolo",
+        description: desc,
       });
       if (enabled) setExpanded(true);
     },
@@ -375,7 +390,13 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
         </h3>
         <Switch
           checked={isEnabled}
-          onCheckedChange={(checked) => toggleRoundRobin.mutate(checked)}
+          onCheckedChange={(checked) => {
+            if (!checked && members.length > 0) {
+              setShowDisableDialog(true);
+            } else {
+              toggleRoundRobin.mutate({ enabled: checked });
+            }
+          }}
           disabled={toggleRoundRobin.isPending}
           className="scale-75"
         />
@@ -696,6 +717,46 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
           </div>
         </div>
       )}
+
+      <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disattivare il Round-Robin?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Hai {members.length} {members.length === 1 ? 'membro' : 'membri'} configurati nel pool:
+              </span>
+              <span className="block font-medium text-slate-700">
+                {members.map(m => m.agentName).join(', ')}
+              </span>
+              <span className="block mt-2">
+                Vuoi ricordare questa configurazione per la prossima volta che riattivi il round-robin?
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                toggleRoundRobin.mutate({ enabled: false, forgetPool: true });
+                setShowDisableDialog(false);
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Disattiva e dimentica membri
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                toggleRoundRobin.mutate({ enabled: false, forgetPool: false });
+                setShowDisableDialog(false);
+              }}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              Disattiva ma ricorda membri
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
