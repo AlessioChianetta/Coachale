@@ -109,6 +109,8 @@ Se il lead vuole:
   
   // Blocco slot disponibili (se presente)
   if (availableSlots && availableSlots.length > 0) {
+    const hasAgentNames = availableSlots.some(slot => slot.agentNames && slot.agentNames.length > 0);
+    
     const formattedSlots = availableSlots.slice(0, 6).map(slot => {
       const startDate = new Date(slot.start);
       const formatter = new Intl.DateTimeFormat('it-IT', {
@@ -121,8 +123,22 @@ Se il lead vuole:
         timeZone: timezone,
         hour12: false
       });
-      return formatter.format(startDate).replace(',', ' alle');
+      let formatted = formatter.format(startDate).replace(',', ' alle');
+      if (hasAgentNames && slot.agentNames && slot.agentNames.length > 0) {
+        formatted += ` [disponibile con: ${slot.agentNames.join(', ')}]`;
+      }
+      return formatted;
     });
+
+    const roundRobinBlock = hasAgentNames ? `
+🔄 ROUND-ROBIN ATTIVO - MULTI-CONSULENTE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ogni slot indica quali consulenti sono disponibili a quell'ora.
+- Se il lead chiede un orario non nella lista, controlla se è disponibile con un consulente specifico tra quelli elencati in altri slot.
+- Se l'orario richiesto NON è disponibile per nessun consulente, proponi l'orario più vicino indicando con quale consulente.
+- NON menzionare il sistema round-robin al lead. Dì semplicemente "a quell'ora ho disponibilità con [Nome]" o "per quell'orario abbiamo [Nome] disponibile".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : '';
     
     block += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -130,7 +146,7 @@ Se il lead vuole:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🗓️ DATA CORRENTE ASSOLUTA: ${formattedToday || 'oggi'}
-
+${roundRobinBlock}
 🚨🚨🚨 REGOLA ASSOLUTA PER CONFERMA APPUNTAMENTI 🚨🚨🚨
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -367,6 +383,13 @@ STEP 2 - Proponi ALMENO 2 slot specifici (in base alla preferenza):
 1. Se ci sono 2+ slot nello STESSO GIORNO nella fascia richiesta → proponi quelli
 2. Se c'è solo 1 slot nel giorno richiesto → aggiungi almeno 1 slot dal GIORNO SUCCESSIVO
 3. Se non ci sono slot nella fascia richiesta → proponi i primi 2-3 slot disponibili nei giorni seguenti
+
+🔄 GESTIONE MULTI-CONSULENTE (se negli slot vedi "[disponibile con: NomeX, NomeY]"):
+- Quando proponi gli slot al lead, NON mostrare i nomi dei consulenti nella prima proposta
+- Se il lead chiede un orario che NON è nella lista, controlla se quell'orario appare con un consulente diverso
+- Se l'orario è disponibile con un altro consulente, proponi: "Per quell'orario ho disponibilità con [Nome], ti va bene?"
+- Se l'orario NON è disponibile con nessuno, proponi l'orario più vicino disponibile
+- NON menzionare MAI "round-robin", "pool" o "sistema di distribuzione"
 
 ❌ MAI proporre UN SOLO orario - questo è VIETATO!
 ✅ SEMPRE minimo 2 orari, meglio se 3

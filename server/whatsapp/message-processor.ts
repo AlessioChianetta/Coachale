@@ -232,7 +232,7 @@ interface FormattedSlot {
   fullDateTime: string; // "lunedì 10 novembre 2025 alle ore 09:00"
 }
 
-function formatSlotForDisplay(slot: { start: Date | string; end: Date | string }, timezone: string = 'Europe/Rome'): FormattedSlot {
+function formatSlotForDisplay(slot: { start: Date | string; end: Date | string; agentNames?: string[] }, timezone: string = 'Europe/Rome'): FormattedSlot & { agentNames?: string[] } {
   const startDate = typeof slot.start === 'string' ? new Date(slot.start) : slot.start;
   const endDate = typeof slot.end === 'string' ? new Date(slot.end) : slot.end;
 
@@ -264,7 +264,7 @@ function formatSlotForDisplay(slot: { start: Date | string; end: Date | string }
     minute: '2-digit'
   }).replace(',', ' alle ore');
 
-  return {
+  const result: FormattedSlot & { agentNames?: string[] } = {
     start: slot.start,
     end: slot.end,
     date,
@@ -272,6 +272,10 @@ function formatSlotForDisplay(slot: { start: Date | string; end: Date | string }
     time,
     fullDateTime
   };
+  if (slot.agentNames && slot.agentNames.length > 0) {
+    result.agentNames = slot.agentNames;
+  }
+  return result;
 }
 
 function isWithinWorkingHours(settings: any): boolean {

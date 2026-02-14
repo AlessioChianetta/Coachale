@@ -21289,6 +21289,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               date: s.date,
               time: s.time,
               availableAgents: s.availableAgents,
+              agentNames: s.agentNames,
             })),
             count: poolSlots.length,
             settings: { appointmentDuration, bufferBefore, bufferAfter, timezone },

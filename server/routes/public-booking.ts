@@ -76,6 +76,7 @@ router.get("/:slug/slots", async (req: Request, res: Response) => {
         time: s.time,
         dayOfWeek: new Date(s.date).toLocaleDateString("it-IT", { weekday: "long" }),
         availableAgents: s.availableAgents,
+        agentNames: s.agentNames,
       }));
     } else {
       slots = await getPublicAvailableSlots(

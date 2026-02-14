@@ -607,11 +607,12 @@ export async function getAvailableSlotsFromPool(
   bufferBefore: number = 0,
   bufferAfter: number = 0,
   minHoursNotice: number = 0
-): Promise<Array<{ date: string; time: string; availableAgents: number }>> {
+): Promise<Array<{ date: string; time: string; availableAgents: number; agentNames: string[] }>> {
   const members = await db
     .select({
       id: bookingPoolMembers.id,
       agentConfigId: bookingPoolMembers.agentConfigId,
+      agentName: bookingPoolMembers.agentName,
     })
     .from(bookingPoolMembers)
     .where(
@@ -624,10 +625,12 @@ export async function getAvailableSlotsFromPool(
 
   if (members.length === 0) return [];
 
+  console.log(`📅 [POOL-SLOTS] Checking availability for ${members.length} pool members: ${members.map(m => m.agentName).join(', ')}`);
+
   const now = new Date();
   const minNoticeDate = new Date(now.getTime() + minHoursNotice * 60 * 60 * 1000);
 
-  const allSlots = new Map<string, number>();
+  const allSlots = new Map<string, { count: number; names: string[] }>();
 
   for (const member of members) {
     try {
@@ -635,7 +638,10 @@ export async function getAvailableSlotsFromPool(
         agentConfigId: member.agentConfigId,
         memberId: member.id,
       });
-      if (!calendar) continue;
+      if (!calendar) {
+        console.log(`   ⚠️ [POOL-SLOTS] ${member.agentName} has no calendar connected, skipping`);
+        continue;
+      }
 
       const calendarId = await getMemberCalendarId({
         agentConfigId: member.agentConfigId,
@@ -652,6 +658,7 @@ export async function getAvailableSlotsFromPool(
       });
 
       const busySlots = data.calendars?.[calendarId]?.busy || [];
+      let memberSlotCount = 0;
 
       const current = new Date(startDate);
       while (current <= endDate) {
@@ -680,24 +687,36 @@ export async function getAvailableSlotsFromPool(
             });
 
             if (!isBusy) {
-              allSlots.set(slotKey, (allSlots.get(slotKey) || 0) + 1);
+              const existing = allSlots.get(slotKey) || { count: 0, names: [] };
+              existing.count += 1;
+              if (member.agentName && !existing.names.includes(member.agentName)) {
+                existing.names.push(member.agentName);
+              }
+              allSlots.set(slotKey, existing);
+              memberSlotCount++;
             }
           }
         }
         current.setDate(current.getDate() + 1);
       }
+
+      console.log(`   ✅ [POOL-SLOTS] ${member.agentName}: ${memberSlotCount} slot disponibili`);
     } catch (error) {
-      console.log(`   ⚠️ [ROUND-ROBIN] Could not check calendar for member ${member.id}`);
+      console.log(`   ⚠️ [POOL-SLOTS] Could not check calendar for member ${member.agentName} (${member.id})`);
     }
   }
 
-  return Array.from(allSlots.entries())
-    .map(([key, count]) => {
+  const result = Array.from(allSlots.entries())
+    .map(([key, val]) => {
       const [date, time] = key.split("|");
-      return { date, time, availableAgents: count };
+      return { date, time, availableAgents: val.count, agentNames: val.names };
     })
     .sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.time.localeCompare(b.time);
     });
+
+  console.log(`📅 [POOL-SLOTS] Totale: ${result.length} slot unici, copertura media: ${result.length > 0 ? (result.reduce((s, r) => s + r.availableAgents, 0) / result.length).toFixed(1) : 0} agenti/slot`);
+
+  return result;
 }
