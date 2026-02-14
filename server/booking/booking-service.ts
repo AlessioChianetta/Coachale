@@ -982,14 +982,24 @@ export async function resolveRoundRobinAgent(
   date: string,
   time: string
 ): Promise<{ effectiveAgentConfigId: string; roundRobinResult: import("./round-robin-service").RoundRobinResult | null }> {
+  console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`🔄 [ROUND-ROBIN RESOLVER] Avviato alle ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}`);
+  console.log(`   📋 Agent: ${agentConfigId}`);
+  console.log(`   📅 Slot richiesto: ${date} alle ${time}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
   const { getPoolForAgent, selectRoundRobinAgent } = await import("./round-robin-service");
   const poolInfo = await getPoolForAgent(agentConfigId);
 
   if (!poolInfo) {
+    console.log(`   ℹ️ [ROUND-ROBIN RESOLVER] Nessun pool attivo per questo agente → booking diretto sul calendario dell'agente`);
     return { effectiveAgentConfigId: agentConfigId, roundRobinResult: null };
   }
 
-  console.log(`   🔄 [ROUND-ROBIN RESOLVER] Pool "${poolInfo.poolName}" (${poolInfo.strategy})`);
+  console.log(`   ✅ [ROUND-ROBIN RESOLVER] Pool trovato: "${poolInfo.poolName}"`);
+  console.log(`   ├── Pool ID: ${poolInfo.poolId}`);
+  console.log(`   ├── Strategia: ${poolInfo.strategy}`);
+  console.log(`   └── Avvio selezione membro...`);
 
   const settings = await db
     .select()
@@ -1000,14 +1010,26 @@ export async function resolveRoundRobinAgent(
   const duration = settings[0]?.appointmentDuration || 60;
   const timezone = settings[0]?.timezone || "Europe/Rome";
 
+  console.log(`   ⚙️ Settings: durata=${duration}min, timezone=${timezone}`);
+
+  const startTime = Date.now();
   const result = await selectRoundRobinAgent(poolInfo.poolId, date, time, duration, timezone);
+  const elapsed = Date.now() - startTime;
 
   if (result) {
-    console.log(`   ✅ [ROUND-ROBIN RESOLVER] Selected: ${result.selectedAgentConfigId}`);
+    console.log(`\n   ════════════════════════════════════════════`);
+    console.log(`   ✅ [ROUND-ROBIN RESOLVER] ASSEGNAZIONE COMPLETATA in ${elapsed}ms`);
+    console.log(`   ├── Membro scelto: ${result.selectedAgentConfigId}`);
+    console.log(`   ├── Pool member ID: ${result.memberId}`);
+    console.log(`   ├── Motivo: ${result.reason}`);
+    console.log(`   ├── Standalone: ${result.isStandaloneMember ? 'SÌ' : 'NO'}`);
+    console.log(`   └── Score: ${result.score?.toFixed(2) || 'N/A'}`);
+    console.log(`   ════════════════════════════════════════════\n`);
     return { effectiveAgentConfigId: result.selectedAgentConfigId, roundRobinResult: result };
   }
 
-  console.log(`   ⚠️ [ROUND-ROBIN RESOLVER] No available agent, falling back to original`);
+  console.log(`\n   ⚠️ [ROUND-ROBIN RESOLVER] Nessun membro disponibile per ${date} ${time} (${elapsed}ms)`);
+  console.log(`   └── Fallback: booking sul calendario dell'agente originale (${agentConfigId})`);
   return { effectiveAgentConfigId: agentConfigId, roundRobinResult: null };
 }
 

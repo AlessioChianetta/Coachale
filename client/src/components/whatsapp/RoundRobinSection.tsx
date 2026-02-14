@@ -465,29 +465,70 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
               </div>
             ) : (
               <div className="space-y-1.5">
-                {members.map((member) => (
-                  <MemberCard
-                    key={member.memberId}
-                    member={member}
-                    strategy={activePool?.strategy || "weighted"}
-                    expanded={expanded}
-                    onUpdate={(data) => updateMember.mutate({ memberId: member.memberId, data })}
-                    onRemove={() => removeMember.mutate(member.memberId)}
-                    onReset={() => resetMember.mutate(member.memberId)}
-                    onConnectCalendar={() => {
-                      if (member.isStandalone) {
-                        handleConnectStandaloneMemberCalendar(member.memberId);
-                      } else if (member.agentConfigId) {
-                        handleConnectCalendar(member.agentConfigId);
+                {activePool?.strategy === "weighted" && members.length > 0 && (() => {
+                  const totalWeight = members.reduce((sum, m) => sum + m.weight, 0);
+                  return (
+                    <div className="p-2 bg-blue-50/60 rounded border border-blue-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-medium text-blue-700">Distribuzione appuntamenti</span>
+                        <span className="text-[10px] text-blue-500">peso totale: {totalWeight}</span>
+                      </div>
+                      <div className="flex w-full h-3 rounded-full overflow-hidden bg-blue-100">
+                        {members.map((m, i) => {
+                          const pct = totalWeight > 0 ? (m.weight / totalWeight) * 100 : 0;
+                          const colors = ["bg-blue-500", "bg-indigo-500", "bg-violet-500", "bg-cyan-500", "bg-teal-500", "bg-emerald-500"];
+                          return (
+                            <div
+                              key={m.memberId}
+                              className={cn(colors[i % colors.length], "transition-all")}
+                              style={{ width: `${pct}%` }}
+                              title={`${m.agentName}: ${pct.toFixed(1)}%`}
+                            />
+                          );
+                        })}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                        {members.map((m, i) => {
+                          const pct = totalWeight > 0 ? (m.weight / totalWeight) * 100 : 0;
+                          const dotColors = ["bg-blue-500", "bg-indigo-500", "bg-violet-500", "bg-cyan-500", "bg-teal-500", "bg-emerald-500"];
+                          return (
+                            <div key={m.memberId} className="flex items-center gap-1">
+                              <div className={cn("w-2 h-2 rounded-full", dotColors[i % dotColors.length])} />
+                              <span className="text-[10px] text-slate-600">{m.agentName}: <strong>{pct.toFixed(1)}%</strong></span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {members.map((member) => {
+                  const totalWeight = members.reduce((sum, m) => sum + m.weight, 0);
+                  return (
+                    <MemberCard
+                      key={member.memberId}
+                      member={member}
+                      strategy={activePool?.strategy || "weighted"}
+                      expanded={expanded}
+                      totalWeight={totalWeight}
+                      onUpdate={(data) => updateMember.mutate({ memberId: member.memberId, data })}
+                      onRemove={() => removeMember.mutate(member.memberId)}
+                      onReset={() => resetMember.mutate(member.memberId)}
+                      onConnectCalendar={() => {
+                        if (member.isStandalone) {
+                          handleConnectStandaloneMemberCalendar(member.memberId);
+                        } else if (member.agentConfigId) {
+                          handleConnectCalendar(member.agentConfigId);
+                        }
+                      }}
+                      isUpdating={updateMember.isPending}
+                      isConnecting={
+                        (member.isStandalone && connectingMemberId === member.memberId) ||
+                        (!member.isStandalone && connectingAgentId === member.agentConfigId)
                       }
-                    }}
-                    isUpdating={updateMember.isPending}
-                    isConnecting={
-                      (member.isStandalone && connectingMemberId === member.memberId) ||
-                      (!member.isStandalone && connectingAgentId === member.agentConfigId)
-                    }
-                  />
-                ))}
+                    />
+                  );
+                })}
               </div>
             )}
 
@@ -660,6 +701,7 @@ function MemberCard({
   onConnectCalendar,
   isUpdating,
   isConnecting,
+  totalWeight,
 }: {
   member: PoolMember;
   strategy: string;
@@ -670,6 +712,7 @@ function MemberCard({
   onConnectCalendar: () => void;
   isUpdating: boolean;
   isConnecting: boolean;
+  totalWeight: number;
 }) {
   const [editWeight, setEditWeight] = useState(member.weight);
   const [editMaxDaily, setEditMaxDaily] = useState(member.maxDailyBookings);
@@ -705,7 +748,9 @@ function MemberCard({
               <span className="text-[10px] text-amber-600">Calendario non collegato</span>
             )}
             {strategy === "weighted" && (
-              <span className="text-[10px] text-blue-500 font-medium">peso: {member.weight}</span>
+              <span className="text-[10px] text-blue-500 font-medium">
+                peso: {member.weight} ({totalWeight > 0 ? ((member.weight / totalWeight) * 100).toFixed(1) : 0}%)
+              </span>
             )}
           </div>
           {member.hasCalendar && member.googleCalendarEmail && (

@@ -231,8 +231,12 @@ export async function selectRoundRobinAgent(
 
   let ranked: typeof eligible;
 
+  console.log(`\n   📊 [ROUND-ROBIN STRATEGY] Applying strategy: "${pool.strategy}"`);
+  console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
   switch (pool.strategy) {
     case "strict_round_robin": {
+      console.log(`   🔁 [STRICT] Sorting by: lowest totalBookingsCount → earliest lastAssignedAt`);
       ranked = [...eligible].sort((a, b) => {
         if (a.totalBookingsCount !== b.totalBookingsCount) {
           return a.totalBookingsCount - b.totalBookingsCount;
@@ -241,45 +245,64 @@ export async function selectRoundRobinAgent(
         const bTime = b.lastAssignedAt ? new Date(b.lastAssignedAt).getTime() : 0;
         return aTime - bTime;
       });
+      for (const m of ranked) {
+        const lastAt = m.lastAssignedAt ? new Date(m.lastAssignedAt).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'mai';
+        console.log(`      📋 ${m.agentName}: totali=${m.totalBookingsCount}, ultimo assegnato=${lastAt}`);
+      }
       break;
     }
 
     case "weighted": {
       const totalWeight = eligible.reduce((sum, m) => sum + m.weight, 0);
+      const totalAll = eligible.reduce((s, m) => s + m.totalBookingsCount, 0) || 1;
+      console.log(`   ⚖️  [WEIGHTED] Peso totale pool: ${totalWeight} | Booking totali pool: ${totalAll}`);
+      console.log(`   ⚖️  [WEIGHTED] Calcolo deficit per membro (expectedShare - actualShare):`);
       ranked = [...eligible].sort((a, b) => {
         const aExpectedShare = a.weight / totalWeight;
         const bExpectedShare = b.weight / totalWeight;
-        const totalAll = eligible.reduce((s, m) => s + m.totalBookingsCount, 0) || 1;
         const aActualShare = a.totalBookingsCount / totalAll;
         const bActualShare = b.totalBookingsCount / totalAll;
         const aDeficit = aExpectedShare - aActualShare;
         const bDeficit = bExpectedShare - bActualShare;
         return bDeficit - aDeficit;
       });
+      for (const m of ranked) {
+        const expectedPct = ((m.weight / totalWeight) * 100).toFixed(1);
+        const actualPct = ((m.totalBookingsCount / totalAll) * 100).toFixed(1);
+        const deficit = ((m.weight / totalWeight) - (m.totalBookingsCount / totalAll)).toFixed(4);
+        console.log(`      📋 ${m.agentName}: peso=${m.weight} (${expectedPct}% atteso) | booking=${m.totalBookingsCount} (${actualPct}% reale) | deficit=${deficit}`);
+      }
       break;
     }
 
     case "availability_first": {
+      console.log(`   📅 [AVAILABILITY] Sorting by: lowest todayBookingsCount → lowest totalBookingsCount`);
       ranked = [...eligible].sort((a, b) => {
         if (a.todayBookingsCount !== b.todayBookingsCount) {
           return a.todayBookingsCount - b.todayBookingsCount;
         }
         return a.totalBookingsCount - b.totalBookingsCount;
       });
+      for (const m of ranked) {
+        console.log(`      📋 ${m.agentName}: oggi=${m.todayBookingsCount}/${m.maxDailyBookings || '∞'}, totali=${m.totalBookingsCount}`);
+      }
       break;
     }
 
     default:
+      console.log(`   ⚠️ [UNKNOWN STRATEGY] "${pool.strategy}" - using default order`);
       ranked = eligible;
   }
 
-  console.log(`   🏆 Ranked order:`);
+  console.log(`\n   🏆 [RANKING FINALE] Ordine di priorità:`);
   ranked.forEach((m, i) => {
-    console.log(`      ${i + 1}. ${m.agentName} (weight: ${m.weight}, total: ${m.totalBookingsCount}, today: ${m.todayBookingsCount})`);
+    console.log(`      ${i + 1}° → ${m.agentName} (peso: ${m.weight}, totali: ${m.totalBookingsCount}, oggi: ${m.todayBookingsCount})`);
   });
 
+  console.log(`\n   🔍 [CALENDARIO] Verifica disponibilità in ordine di ranking...`);
   for (const member of ranked) {
-    console.log(`   🔍 Checking calendar availability for ${member.agentName}...`);
+    console.log(`   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   🔍 Verifico: ${member.agentName} | Slot: ${date} ${time} (${durationMinutes}min)`);
     const isAvailable = await checkMemberSlotAvailability(
       { agentConfigId: member.agentConfigId, memberId: member.memberId, agentName: member.agentName },
       date,
@@ -290,7 +313,15 @@ export async function selectRoundRobinAgent(
 
     if (isAvailable) {
       const score = member.weight / (member.totalBookingsCount + 1);
-      console.log(`   ✅ [ROUND-ROBIN] Selected: ${member.agentName} (score: ${score.toFixed(2)})`);
+      console.log(`   ✅ [CALENDARIO] ${member.agentName} è LIBERO!`);
+      console.log(`\n   ════════════════════════════════════════════`);
+      console.log(`   🎯 [ROUND-ROBIN DECISIONE FINALE]`);
+      console.log(`   ├── Strategia: ${pool.strategy}`);
+      console.log(`   ├── Membro selezionato: ${member.agentName}`);
+      console.log(`   ├── Peso: ${member.weight} | Score: ${score.toFixed(2)}`);
+      console.log(`   ├── Booking totali: ${member.totalBookingsCount} | Oggi: ${member.todayBookingsCount}`);
+      console.log(`   └── Slot assegnato: ${date} alle ${time}`);
+      console.log(`   ════════════════════════════════════════════\n`);
 
       return {
         selectedAgentConfigId: member.agentConfigId || member.memberId,
