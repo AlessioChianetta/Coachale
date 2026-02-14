@@ -421,28 +421,28 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
             </div>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-blue-500" />
-                <span className="text-xs font-medium text-slate-700">
+                <Users className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-semibold text-slate-700">
                   Membri Pool ({members.length})
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
                     setShowAddForm(true);
                     setExpanded(true);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
                 >
                   <UserPlus className="h-4 w-4" />
-                  <span className="text-xs font-medium">Aggiungi</span>
+                  <span className="text-sm font-medium">Aggiungi Membro</span>
                 </button>
                 <button
                   onClick={() => setExpanded(!expanded)}
-                  className="p-1.5 hover:bg-blue-100 rounded transition-colors"
+                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
                 >
                   {expanded ? (
                     <ChevronUp className="h-4 w-4 text-slate-500" />
@@ -458,22 +458,22 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                 <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
               </div>
             ) : members.length === 0 ? (
-              <div className="p-3 bg-amber-50/60 rounded border border-amber-200 text-center">
-                <AlertCircle className="h-4 w-4 text-amber-500 mx-auto mb-1" />
-                <p className="text-xs text-amber-700">Nessun membro nel pool</p>
-                <p className="text-[10px] text-amber-600">Usa il pulsante + per aggiungere membri</p>
+              <div className="p-4 bg-amber-50/60 rounded-lg border border-amber-200 text-center">
+                <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-1.5" />
+                <p className="text-sm text-amber-700 font-medium">Nessun membro nel pool</p>
+                <p className="text-xs text-amber-600 mt-0.5">Clicca "Aggiungi Membro" per iniziare</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {activePool?.strategy === "weighted" && members.length > 0 && (() => {
                   const totalWeight = members.reduce((sum, m) => sum + m.weight, 0);
                   return (
-                    <div className="p-2 bg-blue-50/60 rounded border border-blue-200 space-y-1.5">
+                    <div className="p-3 bg-blue-50/60 rounded-lg border border-blue-200 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-medium text-blue-700">Distribuzione appuntamenti</span>
-                        <span className="text-[10px] text-blue-500">peso totale: {totalWeight}</span>
+                        <span className="text-xs font-semibold text-blue-700">Distribuzione appuntamenti</span>
+                        <span className="text-xs text-blue-500">peso totale: {totalWeight}</span>
                       </div>
-                      <div className="flex w-full h-3 rounded-full overflow-hidden bg-blue-100">
+                      <div className="flex w-full h-4 rounded-full overflow-hidden bg-blue-100">
                         {members.map((m, i) => {
                           const pct = totalWeight > 0 ? (m.weight / totalWeight) * 100 : 0;
                           const colors = ["bg-blue-500", "bg-indigo-500", "bg-violet-500", "bg-cyan-500", "bg-teal-500", "bg-emerald-500"];
@@ -487,14 +487,14 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                           );
                         })}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
                         {members.map((m, i) => {
                           const pct = totalWeight > 0 ? (m.weight / totalWeight) * 100 : 0;
                           const dotColors = ["bg-blue-500", "bg-indigo-500", "bg-violet-500", "bg-cyan-500", "bg-teal-500", "bg-emerald-500"];
                           return (
-                            <div key={m.memberId} className="flex items-center gap-1">
-                              <div className={cn("w-2 h-2 rounded-full", dotColors[i % dotColors.length])} />
-                              <span className="text-[10px] text-slate-600">{m.agentName}: <strong>{pct.toFixed(1)}%</strong></span>
+                            <div key={m.memberId} className="flex items-center gap-1.5">
+                              <div className={cn("w-2.5 h-2.5 rounded-full", dotColors[i % dotColors.length])} />
+                              <span className="text-xs text-slate-600">{m.agentName}: <strong>{pct.toFixed(1)}%</strong></span>
                             </div>
                           );
                         })}
@@ -533,15 +533,15 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
             )}
 
             {showAddForm && (
-              <div className="p-2.5 rounded border border-blue-300 bg-white space-y-2">
-                <p className="text-[10px] font-medium text-slate-600">Aggiungi nuovo membro:</p>
+              <div className="p-3 rounded-lg border border-blue-300 bg-white space-y-2.5">
+                <p className="text-sm font-medium text-slate-700">Aggiungi nuovo membro</p>
                 <div className="flex items-center gap-2">
                   <Input
                     type="text"
-                    placeholder="Nome commerciale..."
+                    placeholder="Nome del commerciale..."
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
-                    className="h-8 text-xs flex-1"
+                    className="h-9 text-sm flex-1"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && newMemberName.trim()) {
                         addStandaloneMember.mutate(newMemberName.trim());
@@ -556,12 +556,15 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                       }
                     }}
                     disabled={!newMemberName.trim() || addStandaloneMember.isPending}
-                    className="h-8 px-3 text-xs"
+                    className="h-9 px-4 text-sm"
                   >
                     {addStandaloneMember.isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Plus className="h-3 w-3" />
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Conferma
+                      </>
                     )}
                   </Button>
                   <Button
@@ -571,39 +574,39 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                       setShowAddForm(false);
                       setNewMemberName("");
                     }}
-                    className="h-8 px-2 text-xs text-slate-500"
+                    className="h-9 px-2 text-sm text-slate-500"
                   >
                     ✕
                   </Button>
                 </div>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   Dopo l'aggiunta, potrai collegare il Google Calendar del membro
                 </p>
               </div>
             )}
 
             {nonMemberAgents.length > 0 && (
-              <div className="pt-2 border-t border-blue-200/50 space-y-2">
-                <p className="text-[10px] font-medium text-slate-600">Dipendenti WhatsApp disponibili:</p>
+              <div className="pt-3 border-t border-blue-200/50 space-y-2">
+                <p className="text-xs font-semibold text-slate-600">Dipendenti WhatsApp disponibili:</p>
 
                 {addableAgents.map((agent) => (
                   <div
                     key={agent.id}
-                    className="flex items-center gap-2 p-2 rounded border border-green-200 bg-white"
+                    className="flex items-center gap-2.5 p-2.5 rounded-lg border border-green-200 bg-white"
                   >
-                    <CalendarCheck className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                    <CalendarCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700 truncate">{agent.agentName}</p>
-                      <p className="text-[10px] text-green-600 truncate">{agent.googleCalendarEmail}</p>
+                      <p className="text-sm font-medium text-slate-700 truncate">{agent.agentName}</p>
+                      <p className="text-xs text-green-600 truncate">{agent.googleCalendarEmail}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => addMember.mutate(agent.id)}
                       disabled={addMember.isPending}
-                      className="h-7 px-2 text-xs text-blue-600 border-blue-300 hover:bg-blue-50"
+                      className="h-8 px-3 text-xs text-blue-600 border-blue-300 hover:bg-blue-50"
                     >
-                      <Plus className="h-3 w-3 mr-1" />
+                      <Plus className="h-3.5 w-3.5 mr-1" />
                       Aggiungi
                     </Button>
                   </div>
@@ -612,24 +615,24 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                 {agentsWithoutCalendar.map((agent) => (
                   <div
                     key={agent.id}
-                    className="flex items-center gap-2 p-2 rounded border border-amber-200 bg-amber-50/30"
+                    className="flex items-center gap-2.5 p-2.5 rounded-lg border border-amber-200 bg-amber-50/30"
                   >
-                    <Calendar className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                    <Calendar className="h-4 w-4 text-amber-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-slate-700 truncate">{agent.agentName}</p>
-                      <p className="text-[10px] text-amber-600">Calendario non collegato</p>
+                      <p className="text-sm font-medium text-slate-700 truncate">{agent.agentName}</p>
+                      <p className="text-xs text-amber-600">Calendario non collegato</p>
                     </div>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleConnectCalendar(agent.id)}
                       disabled={connectingAgentId === agent.id}
-                      className="h-7 px-2 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                      className="h-8 px-3 text-xs text-green-600 border-green-300 hover:bg-green-50"
                     >
                       {connectingAgentId === agent.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
                       ) : (
-                        <Link className="h-3 w-3 mr-1" />
+                        <Link className="h-3.5 w-3.5 mr-1" />
                       )}
                       Collega Calendar
                     </Button>
@@ -649,35 +652,35 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
             </button>
 
             {showStats && statsData && (
-              <div className="mt-2 space-y-2">
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div className="text-center p-1.5 bg-white rounded border border-blue-100">
-                    <p className="text-sm font-bold text-blue-600">{statsData.totalBookings}</p>
-                    <p className="text-[10px] text-slate-500">Totale</p>
+              <div className="mt-2.5 space-y-2.5">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center p-2 bg-white rounded-lg border border-blue-100">
+                    <p className="text-base font-bold text-blue-600">{statsData.totalBookings}</p>
+                    <p className="text-xs text-slate-500">Totale</p>
                   </div>
-                  <div className="text-center p-1.5 bg-white rounded border border-blue-100">
-                    <p className="text-sm font-bold text-green-600">{statsData.todayBookings}</p>
-                    <p className="text-[10px] text-slate-500">Oggi</p>
+                  <div className="text-center p-2 bg-white rounded-lg border border-blue-100">
+                    <p className="text-base font-bold text-green-600">{statsData.todayBookings}</p>
+                    <p className="text-xs text-slate-500">Oggi</p>
                   </div>
-                  <div className="text-center p-1.5 bg-white rounded border border-blue-100">
-                    <p className="text-sm font-bold text-indigo-600">{statsData.activeMembers}</p>
-                    <p className="text-[10px] text-slate-500">Attivi</p>
+                  <div className="text-center p-2 bg-white rounded-lg border border-blue-100">
+                    <p className="text-base font-bold text-indigo-600">{statsData.activeMembers}</p>
+                    <p className="text-xs text-slate-500">Attivi</p>
                   </div>
                 </div>
 
                 {statsData.distribution.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-medium text-slate-600">Distribuzione:</p>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-600">Distribuzione:</p>
                     {statsData.distribution.map((d) => (
                       <div key={d.agentConfigId} className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-600 w-20 truncate">{d.agentName}</span>
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <span className="text-xs text-slate-600 w-24 truncate">{d.agentName}</span>
+                        <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue-500 rounded-full transition-all"
                             style={{ width: `${Math.max(d.sharePercent, 2)}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-slate-500 w-8 text-right">{d.sharePercent}%</span>
+                        <span className="text-xs text-slate-500 w-10 text-right">{d.sharePercent}%</span>
                       </div>
                     ))}
                   </div>
@@ -720,7 +723,7 @@ function MemberCard({
   return (
     <div
       className={cn(
-        "p-2 rounded border transition-colors",
+        "p-3 rounded-lg border transition-colors",
         member.isPaused
           ? "bg-amber-50/50 border-amber-200"
           : member.isActive
@@ -728,50 +731,50 @@ function MemberCard({
             : "bg-slate-50 border-slate-200 opacity-60"
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-700 truncate">{member.agentName}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-700 truncate">{member.agentName}</span>
             {member.isStandalone && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Esterno</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">Esterno</span>
             )}
             {member.isPaused && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">In pausa</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">In pausa</span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2.5 mt-1">
             {member.hasCalendar ? (
-              <span className="text-[10px] text-slate-500">
+              <span className="text-xs text-slate-500">
                 {member.totalBookingsCount} totali | {member.todayBookingsCount}/{member.maxDailyBookings} oggi
               </span>
             ) : (
-              <span className="text-[10px] text-amber-600">Calendario non collegato</span>
+              <span className="text-xs text-amber-600 font-medium">Calendario non collegato</span>
             )}
             {strategy === "weighted" && (
-              <span className="text-[10px] text-blue-500 font-medium">
+              <span className="text-xs text-blue-500 font-semibold">
                 peso: {member.weight} ({totalWeight > 0 ? ((member.weight / totalWeight) * 100).toFixed(1) : 0}%)
               </span>
             )}
           </div>
           {member.hasCalendar && member.googleCalendarEmail && (
-            <p className="text-[10px] text-green-600 truncate">{member.googleCalendarEmail}</p>
+            <p className="text-xs text-green-600 truncate mt-0.5">{member.googleCalendarEmail}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {!member.hasCalendar && (
             <Button
               size="sm"
               variant="outline"
               onClick={onConnectCalendar}
               disabled={isConnecting}
-              className="h-6 px-2 text-[10px] text-green-600 border-green-300 hover:bg-green-50"
+              className="h-8 px-3 text-xs text-green-600 border-green-300 hover:bg-green-50"
             >
               {isConnecting ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <>
-                  <Link className="h-2.5 w-2.5 mr-1" />
+                  <Link className="h-3.5 w-3.5 mr-1" />
                   Collega
                 </>
               )}
@@ -779,30 +782,30 @@ function MemberCard({
           )}
           <button
             onClick={() => onUpdate({ isPaused: !member.isPaused })}
-            className="p-1 hover:bg-slate-100 rounded transition-colors"
+            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
             title={member.isPaused ? "Riattiva" : "Metti in pausa"}
           >
             {member.isPaused ? (
-              <Play className="h-3 w-3 text-green-500" />
+              <Play className="h-4 w-4 text-green-500" />
             ) : (
-              <Pause className="h-3 w-3 text-amber-500" />
+              <Pause className="h-4 w-4 text-amber-500" />
             )}
           </button>
           {expanded && (
             <>
               <button
                 onClick={onReset}
-                className="p-1 hover:bg-slate-100 rounded transition-colors"
+                className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 title="Reset contatore"
               >
-                <RotateCcw className="h-3 w-3 text-slate-400" />
+                <RotateCcw className="h-4 w-4 text-slate-400" />
               </button>
               <button
                 onClick={onRemove}
-                className="p-1 hover:bg-red-50 rounded transition-colors"
+                className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                 title="Rimuovi dal pool"
               >
-                <Trash2 className="h-3 w-3 text-red-400" />
+                <Trash2 className="h-4 w-4 text-red-400" />
               </button>
             </>
           )}
@@ -810,12 +813,12 @@ function MemberCard({
       </div>
 
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-slate-100 space-y-2">
+        <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-2.5">
           {strategy === "weighted" && (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-slate-500">Peso (priorità)</span>
-                <span className="text-[10px] font-medium text-blue-600">{editWeight}</span>
+                <span className="text-xs text-slate-500">Peso (priorità)</span>
+                <span className="text-xs font-semibold text-blue-600">{editWeight}</span>
               </div>
               <Slider
                 value={[editWeight]}
@@ -828,8 +831,8 @@ function MemberCard({
               />
             </div>
           )}
-          <div className="space-y-1">
-            <span className="text-[10px] text-slate-500">Max appuntamenti/giorno</span>
+          <div className="space-y-1.5">
+            <span className="text-xs text-slate-500">Max appuntamenti/giorno</span>
             <Input
               type="number"
               value={editMaxDaily}
@@ -841,7 +844,7 @@ function MemberCard({
                   onUpdate({ maxDailyBookings: editMaxDaily });
                 }
               }}
-              className="h-7 text-xs"
+              className="h-8 text-sm"
             />
           </div>
         </div>
