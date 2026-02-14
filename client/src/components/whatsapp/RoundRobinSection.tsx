@@ -15,6 +15,8 @@ import {
   Settings2,
   BarChart3,
   AlertCircle,
+  Link,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -89,6 +91,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [connectingAgentId, setConnectingAgentId] = useState<string | null>(null);
 
   const { data: rrStatus, isLoading: isLoadingStatus } = useQuery({
     queryKey: ["round-robin-status", agentConfigId],
@@ -267,13 +270,38 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
     },
   });
 
+  const handleConnectCalendar = async (targetAgentId: string) => {
+    setConnectingAgentId(targetAgentId);
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${targetAgentId}/calendar/oauth/start`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore durante la connessione');
+      }
+      const { authUrl } = await response.json();
+      window.location.href = authUrl;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile avviare la connessione al calendario"
+      });
+      setConnectingAgentId(null);
+    }
+  };
+
   const isEnabled = rrStatus?.roundRobinEnabled ?? false;
   const pools = poolsData?.pools || [];
   const activePool = pools.find((p) => p.id === activePoolId);
   const members = membersData?.members || [];
   const agents = availableAgents?.agents || [];
   const memberAgentIds = new Set(members.map((m) => m.agentConfigId));
-  const addableAgents = agents.filter((a) => !memberAgentIds.has(a.id) && a.hasCalendar);
+  const nonMemberAgents = agents.filter((a) => !memberAgentIds.has(a.id));
+  const addableAgents = nonMemberAgents.filter((a) => a.hasCalendar);
+  const agentsWithoutCalendar = nonMemberAgents.filter((a) => !a.hasCalendar);
 
   if (isLoadingStatus) {
     return (
@@ -368,7 +396,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
               <div className="p-3 bg-amber-50/60 rounded border border-amber-200 text-center">
                 <AlertCircle className="h-4 w-4 text-amber-500 mx-auto mb-1" />
                 <p className="text-xs text-amber-700">Nessun commerciale nel pool</p>
-                <p className="text-[10px] text-amber-600">Aggiungi dipendenti con Google Calendar collegato</p>
+                <p className="text-[10px] text-amber-600">Usa i pulsanti qui sotto per aggiungere i dipendenti</p>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -387,34 +415,65 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
               </div>
             )}
 
-            {expanded && addableAgents.length > 0 && (
-              <div className="pt-2 border-t border-blue-200/50">
-                <p className="text-[10px] text-slate-500 mb-1.5">Aggiungi commerciale:</p>
-                <div className="space-y-1">
-                  {addableAgents.map((agent) => (
-                    <button
-                      key={agent.id}
+            {nonMemberAgents.length > 0 && (
+              <div className="pt-2 border-t border-blue-200/50 space-y-2">
+                <p className="text-[10px] font-medium text-slate-600">Dipendenti disponibili:</p>
+
+                {addableAgents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex items-center gap-2 p-2 rounded border border-green-200 bg-white"
+                  >
+                    <CalendarCheck className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-700 truncate">{agent.agentName}</p>
+                      <p className="text-[10px] text-green-600 truncate">{agent.googleCalendarEmail}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => addMember.mutate(agent.id)}
                       disabled={addMember.isPending}
-                      className="w-full flex items-center gap-2 p-2 rounded border border-blue-200 bg-white hover:bg-blue-50 transition-colors text-left"
+                      className="h-7 px-2 text-xs text-blue-600 border-blue-300 hover:bg-blue-50"
                     >
-                      <Plus className="h-3 w-3 text-blue-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-700 truncate">{agent.agentName}</p>
-                        {agent.googleCalendarEmail && (
-                          <p className="text-[10px] text-slate-400 truncate">{agent.googleCalendarEmail}</p>
-                        )}
-                      </div>
-                      <CalendarCheck className="h-3 w-3 text-green-500 flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Aggiungi
+                    </Button>
+                  </div>
+                ))}
+
+                {agentsWithoutCalendar.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex items-center gap-2 p-2 rounded border border-amber-200 bg-amber-50/30"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-slate-700 truncate">{agent.agentName}</p>
+                      <p className="text-[10px] text-amber-600">Calendario non collegato</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleConnectCalendar(agent.id)}
+                      disabled={connectingAgentId === agent.id}
+                      className="h-7 px-2 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      {connectingAgentId === agent.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Link className="h-3 w-3 mr-1" />
+                      )}
+                      Collega Calendar
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
 
-            {expanded && addableAgents.length === 0 && agents.filter((a) => !memberAgentIds.has(a.id)).length > 0 && (
-              <p className="text-[10px] text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-                I dipendenti rimanenti non hanno Google Calendar collegato. Collegalo prima di aggiungerli al pool.
+            {nonMemberAgents.length === 0 && members.length > 0 && (
+              <p className="text-[10px] text-green-600 bg-green-50 p-2 rounded border border-green-200 text-center">
+                Tutti i dipendenti sono nel pool
               </p>
             )}
           </div>
