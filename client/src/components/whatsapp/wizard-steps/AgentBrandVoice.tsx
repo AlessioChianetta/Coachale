@@ -1328,11 +1328,31 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               {/* Existing Knowledge Items */}
               {knowledgeItems.length > 0 && (
                 <div className="space-y-3">
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <Label className="text-base font-semibold">✓ Elementi Salvati ({knowledgeItems.length})</Label>
-                    <p className="text-xs text-muted-foreground">
-                      📋 <strong>System Prompt</strong> = sempre in memoria (per testi brevi e istruzioni chiave) | 🔍 <strong>File Search</strong> = cerca solo quando serve (per PDF e documenti lunghi, risparmia token)
-                    </p>
+                    <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-foreground/80">Come viene usato ogni documento dall'AI:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 p-2">
+                          <span className="text-base mt-0.5">📋</span>
+                          <div>
+                            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">System Prompt</p>
+                            <p className="text-[11px] text-blue-600/80 dark:text-blue-400/80 leading-relaxed">
+                              L'AI legge <strong>SEMPRE</strong> questo documento ad ogni messaggio. Ideale per istruzioni importanti, regole e testi brevi. Consuma più token.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2 rounded-md bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 p-2">
+                          <span className="text-base mt-0.5">🔍</span>
+                          <div>
+                            <p className="text-xs font-semibold text-purple-700 dark:text-purple-300">File Search</p>
+                            <p className="text-[11px] text-purple-600/80 dark:text-purple-400/80 leading-relaxed">
+                              L'AI cerca nel documento <strong>SOLO</strong> quando la domanda è pertinente. Ideale per PDF lunghi, manuali e cataloghi. Risparmia token.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   {knowledgeItems.map((item) => {
                     const getBadgeColor = (type: string) => {
