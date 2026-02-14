@@ -3597,7 +3597,9 @@ Ci vediamo online! 🚀`;
                       }
                       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-                      const effectiveNotifAgentId = rrResult?.selectedAgentConfigId || conversation.agentConfigId;
+                      const effectiveNotifAgentId = (rrResult && !rrResult.isStandaloneMember)
+                        ? rrResult.selectedAgentConfigId
+                        : conversation.agentConfigId;
                       if (effectiveNotifAgentId) {
                         try {
                           const notifFormattedDate = formatAppointmentDate(extracted.date, extracted.time);

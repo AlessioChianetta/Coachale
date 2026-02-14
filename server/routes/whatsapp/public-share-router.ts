@@ -2329,7 +2329,11 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                           }
                           
                           // Notifica: al membro assegnato (round-robin) o all'agente originale
-                          const effectiveNotifAgentId = rrResult?.selectedAgentConfigId || agentConfig.id;
+                          // Per standalone members, selectedAgentConfigId è il memberId (non un agentConfigId valido)
+                          // quindi usiamo fallback all'agente originale del link
+                          const effectiveNotifAgentId = (rrResult && !rrResult.isStandaloneMember)
+                            ? rrResult.selectedAgentConfigId
+                            : agentConfig.id;
                           try {
                             const notificationFormattedDate = formatAppointmentDate(extractionResult.date, extractionResult.time);
                             const notifResult = await sendBookingNotification(effectiveNotifAgentId, {

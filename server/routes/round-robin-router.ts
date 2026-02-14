@@ -143,7 +143,7 @@ router.post("/pools/:poolId/members", async (req: Request, res: Response) => {
 router.post("/pools/:poolId/members/standalone", async (req: Request, res: Response) => {
   try {
     const { poolId } = req.params;
-    const { memberName, weight, maxDailyBookings } = req.body;
+    const { memberName, memberPhone, weight, maxDailyBookings } = req.body;
 
     if (!memberName || !memberName.trim()) {
       return res.status(400).json({ error: "Il nome è obbligatorio" });
@@ -155,6 +155,7 @@ router.post("/pools/:poolId/members/standalone", async (req: Request, res: Respo
         poolId,
         agentConfigId: null,
         memberName: memberName.trim(),
+        memberPhone: memberPhone?.trim() || null,
         weight: weight || 50,
         maxDailyBookings: maxDailyBookings || 10,
       })
@@ -199,13 +200,14 @@ router.post("/members/:memberId/calendar/oauth/start", async (req: Request, res:
 router.put("/pools/:poolId/members/:memberId", async (req: Request, res: Response) => {
   try {
     const { memberId } = req.params;
-    const { weight, maxDailyBookings, isActive, isPaused } = req.body;
+    const { weight, maxDailyBookings, isActive, isPaused, memberPhone } = req.body;
 
     const updateData: any = { updatedAt: new Date() };
     if (weight !== undefined) updateData.weight = weight;
     if (maxDailyBookings !== undefined) updateData.maxDailyBookings = maxDailyBookings;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (isPaused !== undefined) updateData.isPaused = isPaused;
+    if (memberPhone !== undefined) updateData.memberPhone = memberPhone;
 
     const [updated] = await db
       .update(bookingPoolMembers)

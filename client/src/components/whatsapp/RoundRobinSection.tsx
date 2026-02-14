@@ -60,6 +60,7 @@ interface PoolMember {
   memberId: string;
   agentConfigId: string | null;
   agentName: string;
+  memberPhone: string | null;
   weight: number;
   maxDailyBookings: number;
   isActive: boolean;
@@ -107,6 +108,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   const [connectingMemberId, setConnectingMemberId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberPhone, setNewMemberPhone] = useState("");
   const [showDisableDialog, setShowDisableDialog] = useState(false);
 
   const { data: rrStatus, isLoading: isLoadingStatus } = useQuery({
@@ -243,11 +245,11 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
   });
 
   const addStandaloneMember = useMutation({
-    mutationFn: async (memberName: string) => {
+    mutationFn: async ({ memberName, memberPhone }: { memberName: string; memberPhone?: string }) => {
       const res = await fetch(`/api/round-robin/pools/${activePoolId}/members/standalone`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ memberName }),
+        body: JSON.stringify({ memberName, memberPhone: memberPhone || undefined }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -259,6 +261,7 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
       queryClient.invalidateQueries({ queryKey: ["round-robin-members"] });
       queryClient.invalidateQueries({ queryKey: ["round-robin-stats"] });
       setNewMemberName("");
+      setNewMemberPhone("");
       setShowAddForm(false);
       toast({ title: "Membro aggiunto al pool", description: "Collega ora il Google Calendar" });
     },
@@ -562,16 +565,23 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
             {showAddForm && (
               <div className="p-3 rounded-lg border border-blue-300 bg-white space-y-2.5">
                 <p className="text-sm font-medium text-slate-700">Aggiungi nuovo membro</p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2">
                   <Input
                     type="text"
                     placeholder="Nome del commerciale..."
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
-                    className="h-9 text-sm flex-1"
+                    className="h-9 text-sm"
+                  />
+                  <Input
+                    type="tel"
+                    placeholder="Numero di telefono (opzionale)"
+                    value={newMemberPhone}
+                    onChange={(e) => setNewMemberPhone(e.target.value)}
+                    className="h-9 text-sm"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && newMemberName.trim()) {
-                        addStandaloneMember.mutate(newMemberName.trim());
+                        addStandaloneMember.mutate({ memberName: newMemberName.trim(), memberPhone: newMemberPhone.trim() || undefined });
                       }
                     }}
                   />
@@ -579,11 +589,11 @@ export default function RoundRobinSection({ agentConfigId, consultantId }: Round
                     size="sm"
                     onClick={() => {
                       if (newMemberName.trim()) {
-                        addStandaloneMember.mutate(newMemberName.trim());
+                        addStandaloneMember.mutate({ memberName: newMemberName.trim(), memberPhone: newMemberPhone.trim() || undefined });
                       }
                     }}
                     disabled={!newMemberName.trim() || addStandaloneMember.isPending}
-                    className="h-9 px-4 text-sm"
+                    className="h-9 px-4 text-sm w-full"
                   >
                     {addStandaloneMember.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -825,6 +835,9 @@ function MemberCard({
           </div>
           {member.hasCalendar && member.googleCalendarEmail && (
             <p className="text-xs text-green-600 truncate mt-0.5">{member.googleCalendarEmail}</p>
+          )}
+          {member.memberPhone && (
+            <p className="text-xs text-slate-500 truncate mt-0.5">📱 {member.memberPhone}</p>
           )}
         </div>
 

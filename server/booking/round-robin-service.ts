@@ -27,6 +27,7 @@ export interface PoolMemberInfo {
   memberId: string;
   agentConfigId: string | null;
   agentName: string;
+  memberPhone: string | null;
   weight: number;
   maxDailyBookings: number;
   isActive: boolean;
@@ -476,6 +477,7 @@ export async function getPoolMembers(poolId: string): Promise<PoolMemberInfo[]> 
       memberId: m.memberId,
       agentConfigId: m.agentConfigId,
       agentName: m.agentName,
+      memberPhone: null,
       weight: m.weight,
       maxDailyBookings: m.maxDailyBookings ?? 10,
       isActive: m.isActive,
@@ -494,6 +496,7 @@ export async function getPoolMembers(poolId: string): Promise<PoolMemberInfo[]> 
       memberId: m.id,
       agentConfigId: null,
       agentName: m.memberName || "Membro standalone",
+      memberPhone: m.memberPhone || null,
       weight: m.weight,
       maxDailyBookings: m.maxDailyBookings ?? 10,
       isActive: m.isActive,

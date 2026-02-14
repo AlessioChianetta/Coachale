@@ -2885,6 +2885,7 @@ export const bookingPoolMembers = pgTable("booking_pool_members", {
   poolId: varchar("pool_id").references(() => bookingPools.id, { onDelete: "cascade" }).notNull(),
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
   memberName: text("member_name"),
+  memberPhone: text("member_phone"),
   googleCalendarEmail: text("google_calendar_email"),
   googleRefreshToken: text("google_refresh_token"),
   googleAccessToken: text("google_access_token"),
