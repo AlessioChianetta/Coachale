@@ -497,14 +497,29 @@ export async function generateExecutionPlan(task: {
   additional_context?: string | null;
   voice_template_suggestion?: string | null;
   language?: string | null;
-}, options?: { isManual?: boolean }): Promise<DecisionResult> {
-  console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}`);
+}, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string }): Promise<DecisionResult> {
+  console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}${options?.skipGuardrails ? ' (SKIP_GUARDRAILS)' : ''} roleId=${options?.roleId || 'none'}`);
 
   const context = await buildTaskContext(task);
 
-  const { allowed, reason } = options?.isManual
-    ? await canExecuteManually(task.consultant_id)
-    : await canExecuteAutonomously(task.consultant_id);
+  let allowed = true;
+  let reason: string | undefined;
+  
+  if (options?.skipGuardrails) {
+    console.log(`${LOG_PREFIX} skip_guardrails=true → using canExecuteManually (no working hours/autonomy check)`);
+    const check = await canExecuteManually(task.consultant_id);
+    allowed = check.allowed;
+    reason = check.reason;
+  } else if (options?.isManual) {
+    const check = await canExecuteManually(task.consultant_id);
+    allowed = check.allowed;
+    reason = check.reason;
+  } else {
+    const check = await canExecuteAutonomously(task.consultant_id, options?.roleId);
+    allowed = check.allowed;
+    reason = check.reason;
+  }
+  
   if (!allowed) {
     console.log(`${LOG_PREFIX} Autonomous execution blocked: ${reason}`);
     await logActivity(task.consultant_id, {
