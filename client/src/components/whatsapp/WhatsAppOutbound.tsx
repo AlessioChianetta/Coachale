@@ -95,7 +95,7 @@ export default function WhatsAppOutbound() {
       const headers = getAuthHeaders();
 
       const [clientsRes, leadsRes, agentsRes] = await Promise.allSettled([
-        fetch("/api/clients", { headers }),
+        fetch("/api/clients?activeOnly=true", { headers }),
         fetch("/api/proactive-leads", { headers }),
         fetch("/api/whatsapp/config", { headers }),
       ]);
