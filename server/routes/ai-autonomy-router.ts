@@ -2308,4 +2308,221 @@ router.patch("/tasks/:id/mark-done", authenticateToken, requireAnyRole(["consult
   }
 });
 
+// =========================================================================
+// AGENT CHAT - Direct messaging with AI employees
+// =========================================================================
+
+const ROLE_CHAT_PERSONALITIES: Record<string, string> = {
+  alessia: `Sei Alessia, Voice Consultant AI. Sei professionale, empatica e attenta ai dettagli. Ti occupi di chiamate follow-up e supporto vocale ai clienti. Parli in modo chiaro e rassicurante.`,
+  millie: `Sei Millie, Data Analyst AI. Sei analitica, precisa e orientata ai dati. Aiuti il consulente a interpretare numeri, trend e performance. Parli con fatti e statistiche.`,
+  echo: `Sei Echo, Content Strategist AI. Sei creativa, moderna e orientata al marketing. Ti occupi di contenuti, campagne e strategie di comunicazione. Parli con entusiasmo e visione.`,
+  nova: `Sei Nova, Client Success Manager AI. Sei organizzata, proattiva e orientata ai risultati dei clienti. Monitori il percorso di ogni cliente e segnali criticità. Parli in modo strutturato e risolutivo.`,
+  stella: `Sei Stella, Retention Specialist AI. Sei attenta, premurosa e strategica. Ti occupi di fidelizzazione clienti e prevenzione churn. Parli con cura e lungimiranza.`,
+  iris: `Sei Iris, Revenue Optimizer AI. Sei diretta, strategica e focalizzata sui ricavi. Analizzi opportunità di upselling, cross-selling e ottimizzazione prezzi. Parli di numeri e opportunità.`,
+  marco: `Sei Marco, Executive Coach personale. Non sei un assistente educato — sei il coach che spinge oltre i limiti, tieni sotto pressione e non lasci scuse. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Parli come un socio che conosce bene il consulente, dai del "tu", usi un linguaggio diretto e concreto.`,
+  personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento.`,
+};
+
+router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId } = req.params;
+    const validRoleIds = Object.keys(AI_ROLES);
+    if (!validRoleIds.includes(roleId)) {
+      return res.status(400).json({ error: "Invalid role ID" });
+    }
+    const safeLimit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
+    const before = req.query.before as string;
+
+    let result;
+    if (before) {
+      result = await db.execute(sql`
+        SELECT id, ai_role, role_name, sender, message, created_at, metadata
+        FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          AND created_at < ${before}::timestamptz
+        ORDER BY created_at DESC LIMIT ${safeLimit}
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT id, ai_role, role_name, sender, message, created_at, metadata
+        FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ORDER BY created_at DESC LIMIT ${safeLimit}
+      `);
+    }
+    const messages = (result.rows as any[]).reverse();
+
+    return res.json({ messages, hasMore: messages.length === safeLimit });
+  } catch (error: any) {
+    console.error("[AGENT-CHAT] Error fetching messages:", error);
+    return res.status(500).json({ error: "Failed to fetch messages" });
+  }
+});
+
+router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId } = req.params;
+    if (!AI_ROLES[roleId]) {
+      return res.status(400).json({ error: "Invalid role ID" });
+    }
+    const { message } = req.body;
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+
+    const role = AI_ROLES[roleId];
+    const roleName = role?.name || roleId;
+
+    await db.execute(sql`
+      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
+      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()})
+    `);
+
+    const historyResult = await db.execute(sql`
+      SELECT sender, message, created_at FROM agent_chat_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY created_at DESC LIMIT 20
+    `);
+    const chatHistory = (historyResult.rows as any[]).reverse();
+
+    const contextResult = await db.execute(sql`
+      SELECT agent_contexts, custom_instructions FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    `);
+    const settingsRow = contextResult.rows[0] as any;
+    const agentCtx = settingsRow?.agent_contexts?.[roleId] || {};
+    const customInstructions = settingsRow?.custom_instructions || '';
+
+    const recentActivityResult = await db.execute(sql`
+      SELECT title, description, event_data, created_at FROM ai_activity_log
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY created_at DESC LIMIT 5
+    `);
+    const recentActivity = recentActivityResult.rows as any[];
+
+    const personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
+    const focusPriorities = agentCtx.focusPriorities || [];
+    const customContext = agentCtx.customContext || '';
+
+    let systemPrompt = `${personality}
+
+Stai chattando direttamente con il tuo consulente (il tuo "capo"). Rispondi in modo naturale, come in una conversazione WhatsApp. Sii conciso ma utile.
+
+${focusPriorities.length > 0 ? `LE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}` : ''}
+
+${customContext ? `CONTESTO PERSONALIZZATO DAL CONSULENTE:\n${customContext}` : ''}
+
+${customInstructions ? `ISTRUZIONI GENERALI DEL CONSULENTE:\n${customInstructions}` : ''}
+`;
+
+    if (recentActivity.length > 0) {
+      systemPrompt += `\nLE TUE ULTIME ANALISI/AZIONI:\n`;
+      for (const a of recentActivity) {
+        systemPrompt += `- [${new Date(a.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${a.title}: ${a.description?.substring(0, 200) || ''}\n`;
+      }
+    }
+
+    systemPrompt += `\nREGOLE:
+1. Rispondi SEMPRE in italiano
+2. Sii conciso — massimo 2-3 paragrafi per risposta
+3. Se il consulente ti aggiorna su qualcosa che hai suggerito, prendi nota e conferma
+4. Se non hai dati sufficienti per rispondere, dillo onestamente
+5. Usa il tuo tono/personalità specifico ma resta professionale
+6. NON inventare dati — basati solo sulle informazioni che hai
+7. Se il consulente dice di aver fatto qualcosa, riconosci il lavoro e suggerisci i prossimi passi`;
+
+    const conversationParts = chatHistory.map((m: any) => ({
+      role: m.sender === 'consultant' ? 'user' as const : 'model' as const,
+      parts: [{ text: m.message }],
+    }));
+
+    let aiResponse = '';
+    try {
+      const { getAIProvider } = await import("../ai/provider-factory");
+      let aiClient: any;
+      let model = GEMINI_3_MODEL;
+
+      try {
+        const provider = await getAIProvider(consultantId, consultantId);
+        aiClient = provider.client;
+        const providerName = provider.metadata?.name || '';
+        const { getModelForProviderName } = await import("../ai/provider-factory");
+        model = getModelForProviderName(providerName);
+      } catch {
+        const apiKey = await getGeminiApiKeyForClassifier();
+        if (apiKey) {
+          const genAI = new GoogleGenAI({ apiKey });
+          aiClient = genAI;
+        }
+      }
+
+      if (!aiClient) {
+        throw new Error("No AI provider available");
+      }
+
+      const response = await aiClient.generateContent({
+        model,
+        contents: [
+          { role: 'user' as const, parts: [{ text: systemPrompt }] },
+          { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
+          ...conversationParts,
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        },
+      });
+
+      aiResponse = response.text?.() || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
+    } catch (err: any) {
+      console.error(`[AGENT-CHAT] AI error for ${roleId}:`, err.message);
+      aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco. (${err.message?.substring(0, 100)})`;
+    }
+
+    await db.execute(sql`
+      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
+      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse})
+    `);
+
+    return res.json({
+      success: true,
+      response: {
+        role_name: roleName,
+        message: aiResponse,
+        ai_role: roleId,
+      },
+    });
+  } catch (error: any) {
+    console.error("[AGENT-CHAT] Error sending message:", error);
+    return res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
+router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId } = req.params;
+    if (!AI_ROLES[roleId]) {
+      return res.status(400).json({ error: "Invalid role ID" });
+    }
+    await db.execute(sql`
+      DELETE FROM agent_chat_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AGENT-CHAT] Error clearing chat:", error);
+    return res.status(500).json({ error: "Failed to clear chat" });
+  }
+});
+
 export default router;

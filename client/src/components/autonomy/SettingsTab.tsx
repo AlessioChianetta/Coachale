@@ -28,6 +28,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
+import AgentChat from "./AgentChat";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
@@ -586,6 +587,7 @@ function SettingsTab({
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
+  const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -2320,7 +2322,7 @@ function SettingsTab({
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-3 pt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -2337,6 +2339,18 @@ function SettingsTab({
                                     <Play className="h-3.5 w-3.5" />
                                   )}
                                   {triggeringRoleId === role.id ? 'Avvio in corso...' : `Avvia ${role.name} ora`}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs rounded-lg gap-1.5 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setChatOpenRoleId(role.id);
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Chatta con {role.name}
                                 </Button>
                                 {triggerRoleResult[role.id] && (
                                   <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
@@ -2619,6 +2633,21 @@ function SettingsTab({
           Salva Impostazioni
         </Button>
       </div>
+
+      {chatOpenRoleId && systemStatus?.roles && (() => {
+        const chatRole = systemStatus.roles.find(r => r.id === chatOpenRoleId);
+        const chatProfile = chatRole ? AI_ROLE_PROFILES[chatRole.id] : null;
+        return chatRole ? (
+          <AgentChat
+            roleId={chatRole.id}
+            roleName={chatRole.name}
+            avatar={chatProfile?.avatar || "🤖"}
+            accentColor={chatRole.accentColor}
+            open={true}
+            onClose={() => setChatOpenRoleId(null)}
+          />
+        ) : null;
+      })()}
     </motion.div>
   );
 }
