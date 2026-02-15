@@ -758,6 +758,48 @@ async function handleVoiceCall(
 ): Promise<Record<string, any>> {
   const callPrep = previousResults.prepare_call || {};
 
+  let resolvedPhone = task.contact_phone;
+  let resolvedName = task.contact_name;
+
+  if (!resolvedPhone || resolvedPhone === 'N/A' || resolvedPhone.trim() === '') {
+    if (task.ai_role === 'marco') {
+      const settingsResult = await db.execute(sql`
+        SELECT consultant_phone, consultant_whatsapp FROM ai_autonomy_settings
+        WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+      `);
+      const s = settingsResult.rows[0] as any;
+      const consultantPhone = s?.consultant_phone || s?.consultant_whatsapp;
+      if (consultantPhone) {
+        resolvedPhone = consultantPhone;
+        resolvedName = resolvedName || 'Consulente (tu)';
+        console.log(`${LOG_PREFIX} [MARCO] Resolved consultant phone: ${resolvedPhone}`);
+      }
+    }
+
+    if (!resolvedPhone || resolvedPhone === 'N/A') {
+      if (task.contact_id) {
+        const contactResult = await db.execute(sql`
+          SELECT phone_number, first_name, last_name FROM users WHERE id::text = ${task.contact_id}::text LIMIT 1
+        `);
+        const c = contactResult.rows[0] as any;
+        if (c?.phone_number) {
+          resolvedPhone = c.phone_number;
+          resolvedName = resolvedName || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+          console.log(`${LOG_PREFIX} Resolved contact phone from DB: ${resolvedPhone}`);
+        }
+      }
+    }
+
+    if (!resolvedPhone || resolvedPhone === 'N/A') {
+      console.warn(`${LOG_PREFIX} ⚠️ Cannot schedule voice_call: no valid phone number found for task ${task.id}`);
+      return {
+        success: false,
+        error: 'Nessun numero di telefono valido disponibile per la chiamata',
+        scheduled_call_id: null,
+      };
+    }
+  }
+
   const talkingPoints = callPrep.talking_points || [];
   const talkingPointsText = talkingPoints
     .map((tp: any) => `- ${tp.topic}: ${tp.key_message}`)
@@ -773,13 +815,35 @@ async function handleVoiceCall(
   const preferredTime = callPrep.preferred_call_time || _step.params?.preferred_time;
   let scheduledAtSql = sql`NOW()`;
 
-  console.log(`${LOG_PREFIX} Creating scheduled voice call ${scheduledCallId} for task ${task.id}, preferred: ${preferredDate || 'none'} ${preferredTime || 'none'}`);
+  console.log(`${LOG_PREFIX} Creating scheduled voice call ${scheduledCallId} for task ${task.id}, phone=${resolvedPhone}, preferred: ${preferredDate || 'none'} ${preferredTime || 'none'}`);
 
   let targetDateTimeStr: string | null = null;
   if (preferredDate && preferredTime) {
     targetDateTimeStr = `${preferredDate} ${preferredTime}:00`;
   } else if (preferredDate) {
     targetDateTimeStr = `${preferredDate} 10:00:00`;
+  }
+
+  if (targetDateTimeStr) {
+    const nowRomeResult = await db.execute(sql`
+      SELECT to_char(NOW() AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD HH24:MI:SS') as now_rome
+    `);
+    const nowRomeStr = (nowRomeResult.rows[0] as any).now_rome as string;
+    if (targetDateTimeStr < nowRomeStr) {
+      console.log(`${LOG_PREFIX} ⚠️ AI proposed past date ${targetDateTimeStr}, now is ${nowRomeStr}. Shifting to next business day 10:00`);
+      const nextSlotResult = await db.execute(sql`
+        SELECT to_char(
+          CASE 
+            WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'Europe/Rome')) = 5 THEN (NOW() AT TIME ZONE 'Europe/Rome')::date + 3
+            WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'Europe/Rome')) = 6 THEN (NOW() AT TIME ZONE 'Europe/Rome')::date + 2
+            ELSE (NOW() AT TIME ZONE 'Europe/Rome')::date + 1
+          END, 'YYYY-MM-DD'
+        ) as next_day
+      `);
+      const nextDay = (nextSlotResult.rows[0] as any).next_day;
+      targetDateTimeStr = `${nextDay} ${preferredTime || '10:00'}:00`;
+      console.log(`${LOG_PREFIX} Shifted call to ${targetDateTimeStr}`);
+    }
   }
 
   let timeWasShifted = false;
@@ -847,7 +911,7 @@ async function handleVoiceCall(
       custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
       priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
     ) VALUES (
-      ${scheduledCallId}, ${task.consultant_id}, ${task.contact_phone},
+      ${scheduledCallId}, ${task.consultant_id}, ${resolvedPhone},
       ${scheduledAtSql}, 'scheduled', 'assistenza',
       ${customPrompt}, ${customPrompt},
       'task', 0, 3,
@@ -865,8 +929,8 @@ async function handleVoiceCall(
       max_attempts, current_attempt, retry_delay_minutes,
       created_at, updated_at
     ) VALUES (
-      ${childTaskId}, ${task.consultant_id}, ${task.contact_phone},
-      ${task.contact_name}, 'single_call', ${customPrompt},
+      ${childTaskId}, ${task.consultant_id}, ${resolvedPhone},
+      ${resolvedName}, 'single_call', ${customPrompt},
       ${scheduledAtSql}, ${task.timezone || "Europe/Rome"}, 'scheduled', ${task.priority || 1}, ${task.id},
       ${task.contact_id}, ${task.task_category}, ${scheduledCallId},
       3, 0, 5,
@@ -891,19 +955,19 @@ async function handleVoiceCall(
 
   await logActivity(task.consultant_id, {
     event_type: "voice_call_scheduled",
-    title: `Chiamata programmata per ${task.contact_name || task.contact_phone}`,
+    title: `Chiamata programmata per ${resolvedName || resolvedPhone}`,
     description: `Programmata per ${scheduledDisplay}. ID chiamata: ${scheduledCallId}`,
     icon: "📅",
     severity: "info",
     task_id: task.id,
-    contact_name: task.contact_name,
+    contact_name: resolvedName,
     contact_id: task.contact_id,
   });
 
   return {
     call_id: scheduledCallId,
     child_task_id: childTaskId,
-    target_phone: task.contact_phone,
+    target_phone: resolvedPhone,
     custom_prompt: customPrompt,
     status: "scheduled",
     scheduled_at: scheduledAtReturn,
@@ -1148,7 +1212,39 @@ async function handleSendWhatsapp(
 ): Promise<Record<string, any>> {
   const reportData = previousResults.generate_report || {};
 
-  if (!task.contact_phone) {
+  let resolvedPhone = task.contact_phone;
+  let resolvedName = task.contact_name;
+
+  if (!resolvedPhone || resolvedPhone === 'N/A' || resolvedPhone.trim() === '') {
+    if (task.ai_role === 'marco') {
+      const settingsResult = await db.execute(sql`
+        SELECT consultant_phone, consultant_whatsapp FROM ai_autonomy_settings
+        WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+      `);
+      const s = settingsResult.rows[0] as any;
+      const consultantPhone = s?.consultant_whatsapp || s?.consultant_phone;
+      if (consultantPhone) {
+        resolvedPhone = consultantPhone;
+        resolvedName = resolvedName || 'Consulente (tu)';
+        console.log(`${LOG_PREFIX} [MARCO] WhatsApp: resolved consultant phone: ${resolvedPhone}`);
+      }
+    }
+
+    if (!resolvedPhone || resolvedPhone === 'N/A') {
+      if (task.contact_id) {
+        const contactResult = await db.execute(sql`
+          SELECT phone_number, first_name, last_name FROM users WHERE id::text = ${task.contact_id}::text LIMIT 1
+        `);
+        const c = contactResult.rows[0] as any;
+        if (c?.phone_number) {
+          resolvedPhone = c.phone_number;
+          resolvedName = resolvedName || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+        }
+      }
+    }
+  }
+
+  if (!resolvedPhone || resolvedPhone === 'N/A') {
     return { status: "skipped", reason: "Nessun numero di telefono disponibile" };
   }
 
@@ -1158,7 +1254,7 @@ async function handleSendWhatsapp(
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
-      const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${task.contact_name || 'il cliente'}.
+      const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${resolvedName || 'il cliente'}.
 Contesto: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
 ${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
@@ -1180,7 +1276,7 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
     const { sendWhatsAppMessage } = await import('../whatsapp/twilio-client');
     const messageSid = await sendWhatsAppMessage(
       task.consultant_id,
-      task.contact_phone,
+      resolvedPhone,
       messageText,
       undefined,
       task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : undefined,
@@ -1188,19 +1284,19 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_sent",
-      title: `WhatsApp inviato a ${task.contact_name || task.contact_phone}`,
+      title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
       description: `Messaggio: "${messageText.substring(0, 100)}..."`,
       icon: "💬",
       severity: "info",
       task_id: task.id,
-      contact_name: task.contact_name,
+      contact_name: resolvedName,
       contact_id: task.contact_id,
     });
 
     return {
       status: "sent",
       message_sid: messageSid,
-      target_phone: task.contact_phone,
+      target_phone: resolvedPhone,
       message_preview: messageText.substring(0, 100),
     };
   } catch (error: any) {

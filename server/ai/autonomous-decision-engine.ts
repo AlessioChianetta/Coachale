@@ -84,6 +84,13 @@ export interface TaskContext {
     status: string;
     custom_prompt?: string | null;
   }>;
+  role_completed_tasks?: Array<{
+    id: string;
+    ai_instruction: string;
+    contact_name?: string | null;
+    result_summary?: string | null;
+    completed_at: string;
+  }>;
   autonomy_settings: AutonomySettings;
   daily_counts: DailyActionCounts;
 }
@@ -389,7 +396,7 @@ export async function buildTaskContext(task: {
   contact_id?: string | null;
   contact_phone?: string;
   ai_instruction?: string;
-}): Promise<TaskContext> {
+}, roleId?: string): Promise<TaskContext> {
   console.log(`${LOG_PREFIX} Building context for consultant=${task.consultant_id}, contact=${task.contact_id || task.contact_phone || "N/A"}`);
 
   const [contactResult, recentTasksResult, recentActivityResult, upcomingCallsResult, autonomySettings, dailyCounts] = await Promise.all([
@@ -476,13 +483,37 @@ export async function buildTaskContext(task: {
     custom_prompt: r.custom_prompt,
   }));
 
-  console.log(`${LOG_PREFIX} Context built: contact=${contact?.name || contact?.phone || "none"}, tasks=${recent_tasks.length}, activities=${recent_activity.length}, upcoming_calls=${upcoming_calls.length}`);
+  let role_completed_tasks: TaskContext['role_completed_tasks'] = [];
+  if (roleId) {
+    try {
+      const completedResult = await db.execute(sql`
+        SELECT id, ai_instruction, contact_name, result_summary, 
+               to_char(completed_at AT TIME ZONE 'Europe/Rome', 'DD/MM/YYYY HH24:MI') as completed_at
+        FROM ai_scheduled_tasks
+        WHERE consultant_id::text = ${task.consultant_id}::text AND ai_role = ${roleId}
+          AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
+        ORDER BY completed_at DESC LIMIT 10
+      `);
+      role_completed_tasks = (completedResult.rows as any[]).map(r => ({
+        id: r.id,
+        ai_instruction: r.ai_instruction?.substring(0, 150) || '',
+        contact_name: r.contact_name,
+        result_summary: r.result_summary?.substring(0, 200) || null,
+        completed_at: r.completed_at,
+      }));
+    } catch (err: any) {
+      console.warn(`${LOG_PREFIX} Failed to load role completed tasks: ${err.message}`);
+    }
+  }
+
+  console.log(`${LOG_PREFIX} Context built: contact=${contact?.name || contact?.phone || "none"}, tasks=${recent_tasks.length}, activities=${recent_activity.length}, upcoming_calls=${upcoming_calls.length}, role_completed=${role_completed_tasks.length}`);
 
   return {
     contact,
     recent_tasks,
     recent_activity,
     upcoming_calls,
+    role_completed_tasks,
     autonomy_settings: autonomySettings,
     daily_counts: dailyCounts,
   };
@@ -556,7 +587,7 @@ export async function generateExecutionPlan(task: {
 }, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string }): Promise<DecisionResult> {
   console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}${options?.skipGuardrails ? ' (SKIP_GUARDRAILS)' : ''} roleId=${options?.roleId || 'none'}`);
 
-  const context = await buildTaskContext(task);
+  const context = await buildTaskContext(task, options?.roleId);
 
   let allowed = true;
   let reason: string | undefined;
@@ -612,7 +643,18 @@ export async function generateExecutionPlan(task: {
     ? `${rolePersonality}\nADATTA il tuo piano d'azione al settore reale del cliente basandoti sull'istruzione del task e sui dati disponibili.`
     : `Sei un assistente intelligente di un consulente. Agisci come un dipendente esperto e affidabile. NON assumere che il consulente lavori in un settore specifico (finanziario, legale, etc.) — il settore lo devi capire ESCLUSIVAMENTE dall'istruzione del task, dal nome del contatto e dai dati disponibili. Adatta il tuo ragionamento e il tuo piano d'azione al settore reale del cliente.`;
 
+  const nowRome = new Date().toLocaleString('it-IT', { 
+    timeZone: 'Europe/Rome', 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const todayISO = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+
   const prompt = `${identityBlock}
+
+DATA E ORA CORRENTE: ${nowRome} (Europe/Rome)
+DATA ODIERNA ISO: ${todayISO}
+REGOLA CRITICA SULLE DATE: TUTTE le date che proponi (preferred_date, chiamate, appuntamenti) DEVONO essere UGUALI o SUCCESSIVE a ${todayISO}. NON proporre MAI date nel passato.
 
 CONTESTO TASK:
 - ID Task: ${task.id}
@@ -647,6 +689,10 @@ ${context.autonomy_settings.custom_instructions || "Nessuna istruzione personali
 
 TASK RECENTI PER QUESTO CONTATTO:
 ${context.recent_tasks.length > 0 ? context.recent_tasks.map(t => `- [${t.status}] ${t.task_category}: "${t.ai_instruction}" (${t.scheduled_at})`).join("\n") : "Nessun task recente"}
+
+${context.role_completed_tasks && context.role_completed_tasks.length > 0 ? `I TUOI TASK GIA' COMPLETATI (cose che HAI GIA' FATTO — NON ripeterle inutilmente):
+${context.role_completed_tasks.map(t => `- [✅ ${t.completed_at}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction}${t.result_summary ? ` → ${t.result_summary}` : ''}`).join("\n")}
+REGOLA: NON duplicare task identici a quelli già completati sopra. Se un'azione è già stata fatta, non riprogrammarla.` : ''}
 
 ATTIVITA' RECENTI:
 ${context.recent_activity.length > 0 ? context.recent_activity.slice(0, 5).map(a => `- ${a.event_type}: ${a.title} (${a.created_at})`).join("\n") : "Nessuna attività recente"}

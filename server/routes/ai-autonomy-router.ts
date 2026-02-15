@@ -2409,7 +2409,7 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
         ORDER BY priority DESC, created_at DESC LIMIT 10
       `),
       db.execute(sql`
-        SELECT id, ai_instruction, task_category, contact_name, status, result_summary, completed_at
+        SELECT id, ai_instruction, task_category, contact_name, status, result_summary, result_data, completed_at
         FROM ai_scheduled_tasks
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
           AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
@@ -2470,10 +2470,42 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     }
 
     if (completedTasks.length > 0) {
-      systemPrompt += `\nTASK CHE HAI COMPLETATO DI RECENTE:\n`;
+      systemPrompt += `\nTASK CHE HAI COMPLETATO DI RECENTE (questi sono i TUOI risultati, li hai fatti TU):\n`;
       for (const t of completedTasks) {
-        systemPrompt += `- [✅ ${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 120)}${t.result_summary ? ` → ${t.result_summary.substring(0, 80)}` : ''}\n`;
+        systemPrompt += `\n--- TASK COMPLETATO ---\n`;
+        systemPrompt += `Data: ${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}\n`;
+        systemPrompt += `Istruzione: ${t.ai_instruction?.substring(0, 200) || 'N/A'}\n`;
+        systemPrompt += `Categoria: ${t.task_category || 'N/A'}${t.contact_name ? ` | Contatto: ${t.contact_name}` : ''}\n`;
+        if (t.result_summary) {
+          systemPrompt += `Risultato: ${t.result_summary.substring(0, 300)}\n`;
+        }
+        if (t.result_data) {
+          const rd = typeof t.result_data === 'string' ? JSON.parse(t.result_data) : t.result_data;
+          if (rd.generate_report?.report_text) {
+            systemPrompt += `Report generato:\n${rd.generate_report.report_text.substring(0, 800)}\n`;
+          }
+          if (rd.search_private_stores?.findings_summary) {
+            systemPrompt += `Documenti trovati: ${rd.search_private_stores.findings_summary.substring(0, 300)}\n`;
+          }
+          if (rd.analyze_patterns?.suggested_approach) {
+            systemPrompt += `Analisi: ${rd.analyze_patterns.suggested_approach.substring(0, 300)}\n`;
+          }
+          if (rd.send_email?.sent) {
+            systemPrompt += `Email inviata: ${rd.send_email.subject || 'N/A'}\n`;
+          }
+          if (rd.send_whatsapp?.sent) {
+            systemPrompt += `WhatsApp inviato: ${rd.send_whatsapp.message_preview?.substring(0, 150) || 'messaggio inviato'}\n`;
+          }
+          if (rd.voice_call?.scheduled_call_id) {
+            systemPrompt += `Chiamata programmata: ID ${rd.voice_call.scheduled_call_id}\n`;
+          }
+          const stepLog = rd.step_log || rd.execution_log;
+          if (Array.isArray(stepLog) && stepLog.length > 0) {
+            systemPrompt += `Step eseguiti: ${stepLog.map((s: any) => `${s.action || s.step}(${s.status || 'done'})`).join(' → ')}\n`;
+          }
+        }
       }
+      systemPrompt += `\nQUANDO IL CONSULENTE TI CHIEDE COSA HAI FATTO: Rispondi con i dettagli concreti dai task sopra. Cita numeri, nomi, risultati specifici.\n`;
     }
 
     if (recentActivity.length > 0) {
