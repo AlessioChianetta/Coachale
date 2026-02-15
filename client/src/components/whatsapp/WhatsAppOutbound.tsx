@@ -493,10 +493,13 @@ export default function WhatsAppOutbound() {
           <div className="space-y-2">
             <Label className="flex items-center gap-2 text-sm font-medium">
               <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              Contesto aggiuntivo
+              Istruzioni aggiuntive e contesto
             </Label>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              Queste informazioni vengono aggiunte al system prompt dell'agente. Segui attentamente o tieni a memoria.
+            </p>
             <Textarea
-              placeholder="Informazioni extra per l'agente (opzionale). L'agente seguirà comunque il suo template..."
+              placeholder="Es: Il lead ha già parlato con noi 2 settimane fa ed era interessato al percorso premium. Budget circa 500€/mese. Tono amichevole, chiamalo per nome..."
               value={form.ai_instruction}
               onChange={(e) => setForm((prev) => ({ ...prev, ai_instruction: e.target.value }))}
               rows={3}
