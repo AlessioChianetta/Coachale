@@ -60,6 +60,16 @@ interface AIScheduledTask {
   parent_task_id: string | null;
   call_after_task: boolean;
   post_actions: any[];
+  ai_role?: string | null;
+  preferred_channel?: string | null;
+  tone?: string | null;
+  urgency?: string | null;
+  scheduled_datetime?: string | null;
+  additional_context?: string | null;
+  objective?: string | null;
+  whatsapp_config_id?: string | null;
+  language?: string | null;
+  voice_template_suggestion?: string | null;
 }
 
 /**
@@ -592,17 +602,93 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       contact_id: task.contact_id,
     });
     
+    let resolvedContactPhone = task.contact_phone;
+    let resolvedContactName = task.contact_name;
+    let resolvedContactId = task.contact_id;
+    let resolvedWhatsappConfigId = task.whatsapp_config_id || null;
+
+    const taskRole = task.ai_role || null;
+
+    if (taskRole === 'marco') {
+      try {
+        const settingsResult = await db.execute(sql`
+          SELECT consultant_phone, consultant_whatsapp, consultant_email, agent_contexts
+          FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${task.consultant_id}::text
+          LIMIT 1
+        `);
+        const settingsRow = settingsResult.rows[0] as any;
+        if (settingsRow) {
+          const consultantPhone = settingsRow.consultant_phone || settingsRow.consultant_whatsapp;
+          if (consultantPhone) {
+            console.log(`🔄 [AI-SCHEDULER] [MARCO] Redirecting contact from ${resolvedContactPhone} to consultant: ${consultantPhone}`);
+            resolvedContactPhone = consultantPhone;
+            resolvedContactName = 'Consulente (tu)';
+            resolvedContactId = null;
+          } else {
+            console.warn(`⚠️ [AI-SCHEDULER] [MARCO] No consultant phone configured, keeping original contact`);
+          }
+          const agentContexts = settingsRow.agent_contexts || {};
+          const marcoCtx = agentContexts['marco'];
+          if (marcoCtx?.defaultWhatsappAgentId && !resolvedWhatsappConfigId) {
+            resolvedWhatsappConfigId = marcoCtx.defaultWhatsappAgentId;
+            console.log(`📱 [AI-SCHEDULER] [MARCO] Using configured WhatsApp agent: ${resolvedWhatsappConfigId}`);
+          }
+        }
+      } catch (err: any) {
+        console.error(`⚠️ [AI-SCHEDULER] [MARCO] Failed to resolve consultant contacts: ${err.message}`);
+      }
+    } else if (taskRole && taskRole !== 'marco') {
+      try {
+        const settingsResult = await db.execute(sql`
+          SELECT agent_contexts FROM ai_autonomy_settings
+          WHERE consultant_id::text = ${task.consultant_id}::text
+          LIMIT 1
+        `);
+        const settingsRow = settingsResult.rows[0] as any;
+        if (settingsRow) {
+          const agentContexts = settingsRow.agent_contexts || {};
+          const roleCtx = agentContexts[taskRole];
+          if (roleCtx?.defaultWhatsappAgentId && !resolvedWhatsappConfigId) {
+            resolvedWhatsappConfigId = roleCtx.defaultWhatsappAgentId;
+            console.log(`📱 [AI-SCHEDULER] [${taskRole.toUpperCase()}] Using configured WhatsApp agent: ${resolvedWhatsappConfigId}`);
+          }
+        }
+      } catch (err: any) {
+        console.error(`⚠️ [AI-SCHEDULER] [${taskRole.toUpperCase()}] Failed to resolve WhatsApp agent: ${err.message}`);
+      }
+    }
+
+    if (resolvedContactPhone !== task.contact_phone || resolvedWhatsappConfigId) {
+      try {
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks
+          SET contact_phone = ${resolvedContactPhone},
+              contact_name = ${resolvedContactName},
+              contact_id = ${resolvedContactId ? sql`${resolvedContactId}::uuid` : sql`NULL`},
+              whatsapp_config_id = ${resolvedWhatsappConfigId},
+              updated_at = NOW()
+          WHERE id = ${task.id}
+        `);
+        console.log(`💾 [AI-SCHEDULER] Persisted resolved contacts/agent for task ${task.id}`);
+      } catch (persistErr: any) {
+        console.warn(`⚠️ [AI-SCHEDULER] Failed to persist resolved contacts: ${persistErr.message}`);
+      }
+    }
+
     const taskInfo: AITaskInfo = {
       id: task.id,
       consultant_id: task.consultant_id,
-      contact_id: task.contact_id,
-      contact_phone: task.contact_phone,
-      contact_name: task.contact_name,
+      contact_id: resolvedContactId,
+      contact_phone: resolvedContactPhone,
+      contact_name: resolvedContactName,
       ai_instruction: task.ai_instruction,
       task_category: task.task_category,
       priority: task.priority,
       timezone: task.timezone || 'Europe/Rome',
       additional_context: task.additional_context,
+      ai_role: taskRole,
+      whatsapp_config_id: resolvedWhatsappConfigId,
     };
     
     const allResults: Record<string, any> = {};
@@ -1945,11 +2031,14 @@ function computeTaskScheduledAt(
         if (proposed > now) {
           const [startH] = settings.working_hours_start.split(':').map(Number);
           const [endH] = settings.working_hours_end.split(':').map(Number);
-          if (hour >= Math.max(startH, 8) && hour < Math.min(endH, 19)) {
+          const proposedRomeDay = new Date(proposed.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+          const proposedDayOfWeek = proposedRomeDay.getDay() === 0 ? 7 : proposedRomeDay.getDay();
+          const isWorkingDay = settings.working_days.includes(proposedDayOfWeek);
+          if (isWorkingDay && hour >= Math.max(startH, 8) && hour < Math.min(endH, 19)) {
             console.log(`📅 [SCHEDULING] AI suggested time accepted: ${aiScheduledFor} (Rome) → UTC: ${proposed.toISOString()}`);
             return proposed;
           }
-          console.log(`⚠️ [SCHEDULING] AI suggested time ${aiScheduledFor} outside working hours (${startH}-${endH}), using fallback`);
+          console.log(`⚠️ [SCHEDULING] AI suggested time ${aiScheduledFor} outside working hours/days (${startH}-${endH}, days: ${settings.working_days}), using fallback`);
         } else {
           console.log(`⚠️ [SCHEDULING] AI suggested time ${aiScheduledFor} is in the past, using fallback`);
         }
@@ -1962,6 +2051,12 @@ function computeTaskScheduledAt(
   if (urgency === 'oggi') {
     const offset = Math.floor(Math.random() * 60) + 15;
     return new Date(Date.now() + offset * 60 * 1000);
+  }
+
+  const now = new Date();
+  if (fallbackDate <= now) {
+    console.log(`⚠️ [SCHEDULING] Fallback date ${fallbackDate.toISOString()} is in the past, computing next working slot`);
+    return computeNextWorkingSlot(settings);
   }
 
   return fallbackDate;

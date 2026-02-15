@@ -19,6 +19,8 @@ export interface AITaskInfo {
   priority: number;
   timezone: string;
   additional_context?: string | null;
+  ai_role?: string | null;
+  whatsapp_config_id?: string | null;
 }
 
 export interface StepExecutionResult {
@@ -1161,6 +1163,8 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
       task.consultant_id,
       task.contact_phone,
       messageText,
+      undefined,
+      task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : undefined,
     );
 
     await logActivity(task.consultant_id, {
