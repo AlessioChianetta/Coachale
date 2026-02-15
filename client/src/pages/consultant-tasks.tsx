@@ -17,6 +17,13 @@ import {
   User,
   Calendar,
   Tag,
+  Sparkles,
+  Lightbulb,
+  CalendarClock,
+  MessageSquareText,
+  Loader2,
+  X,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +87,11 @@ export default function ConsultantTasks() {
   const [clientPriorityFilter, setClientPriorityFilter] = useState("all");
   const [clientSearch, setClientSearch] = useState("");
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+
+  const [aiInput, setAiInput] = useState("");
+  const [aiMode, setAiMode] = useState<"ideas" | "schedule" | "freetext">("freetext");
+  const [aiGeneratedTasks, setAiGeneratedTasks] = useState<any[]>([]);
+  const [showAiResults, setShowAiResults] = useState(false);
 
   const [isCreateClientTaskOpen, setIsCreateClientTaskOpen] = useState(false);
   const [ctClientId, setCtClientId] = useState("");
@@ -205,6 +217,88 @@ export default function ConsultantTasks() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/consultation-tasks/consultant"] }),
   });
+
+  const aiGenerateMutation = useMutation({
+    mutationFn: async (data: { input: string; mode: string }) => {
+      const res = await fetch("/api/consultant-personal-tasks/ai-generate", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Errore nella generazione");
+      }
+      return res.json();
+    },
+    onSuccess: (result) => {
+      const tasks = result.data || [];
+      if (tasks.length === 0) {
+        toast({ title: "Nessuna task generata", description: "L'AI non ha trovato attività concrete nel testo. Prova con più dettagli." });
+        return;
+      }
+      setAiGeneratedTasks(tasks);
+      setShowAiResults(true);
+      toast({ title: "Task generate!", description: `L'AI ha generato ${tasks.length} task. Rivedi e conferma.` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore AI", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleAiGenerate = () => {
+    if (!aiInput.trim()) return;
+    aiGenerateMutation.mutate({ input: aiInput.trim(), mode: aiMode });
+  };
+
+  const handleConfirmAiTask = async (task: any, index: number) => {
+    try {
+      const res = await fetch("/api/consultant-personal-tasks", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(task),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setAiGeneratedTasks(prev => prev.filter((_, i) => i !== index));
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant-personal-tasks"] });
+      toast({ title: "Task confermata", description: `"${task.title}" aggiunta alle tue task` });
+    } catch {
+      toast({ title: "Errore", description: "Impossibile salvare la task", variant: "destructive" });
+    }
+  };
+
+  const handleConfirmAllAiTasks = async () => {
+    let created = 0;
+    const failed: any[] = [];
+    for (let i = 0; i < aiGeneratedTasks.length; i++) {
+      try {
+        const res = await fetch("/api/consultant-personal-tasks", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(aiGeneratedTasks[i]),
+        });
+        if (res.ok) created++;
+        else failed.push(aiGeneratedTasks[i]);
+      } catch {
+        failed.push(aiGeneratedTasks[i]);
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["/api/consultant-personal-tasks"] });
+    if (failed.length > 0) {
+      setAiGeneratedTasks(failed);
+      toast({ title: "Salvate parzialmente", description: `${created} task salvate, ${failed.length} non riuscite. Riprova.`, variant: "destructive" });
+    } else {
+      setAiGeneratedTasks([]);
+      setShowAiResults(false);
+      setAiInput("");
+      toast({ title: "Task salvate!", description: `${created} task aggiunte con successo` });
+    }
+  };
+
+  const handleDismissAiTask = (index: number) => {
+    setAiGeneratedTasks(prev => prev.filter((_, i) => i !== index));
+    if (aiGeneratedTasks.length <= 1) setShowAiResults(false);
+  };
 
   const filteredPersonalTasks = useMemo(() => {
     let result = personalTasks as any[];
@@ -380,10 +474,148 @@ export default function ConsultantTasks() {
               <TabsContent value="personal" className="mt-6 space-y-6">
                 {renderStatsRow(personalStats)}
 
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 px-4 lg:px-6 py-3 flex items-center gap-2">
+                    <div className="p-1.5 bg-white/20 rounded-lg">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-white">AI Task Generator</h3>
+                    <span className="text-xs text-white/70 ml-auto">Gemini 3 Flash Preview</span>
+                  </div>
+                  <div className="p-4 lg:p-6 space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {([
+                        { value: "freetext" as const, icon: <MessageSquareText className="w-3.5 h-3.5" />, label: "Testo libero" },
+                        { value: "ideas" as const, icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Idee" },
+                        { value: "schedule" as const, icon: <CalendarClock className="w-3.5 h-3.5" />, label: "Schedula lista" },
+                      ]).map(m => (
+                        <button
+                          key={m.value}
+                          onClick={() => setAiMode(m.value)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                            aiMode === m.value
+                              ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm"
+                              : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          )}
+                        >
+                          {m.icon}
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Textarea
+                      placeholder={
+                        aiMode === "ideas"
+                          ? "Scrivi le tue idee... Es: Vorrei lanciare un webinar sulla pianificazione finanziaria, creare una newsletter mensile, espandere il portfolio clienti..."
+                          : aiMode === "schedule"
+                          ? "Scrivi la lista di cose da fare... Es:\n- Preparare presentazione Q1\n- Chiamare 5 prospect\n- Aggiornare CRM\n- Scrivere articolo blog\n- Analisi portafoglio clienti"
+                          : "Scrivi qualsiasi cosa... idee, note, appunti dalla riunione, cose da fare... L'AI estrarrà task concrete con date e priorità."
+                      }
+                      value={aiInput}
+                      onChange={(e) => setAiInput(e.target.value)}
+                      className="min-h-[100px] bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 resize-none text-sm"
+                    />
+
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        {aiMode === "ideas" ? "L'AI trasformerà le tue idee in task concrete con obiettivi misurabili"
+                          : aiMode === "schedule" ? "L'AI schedulerà ogni elemento con date realistiche"
+                          : "L'AI analizzerà il testo ed estrarrà tutte le attività"}
+                      </p>
+                      <Button
+                        onClick={handleAiGenerate}
+                        disabled={!aiInput.trim() || aiGenerateMutation.isPending}
+                        className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md"
+                      >
+                        {aiGenerateMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                            Genero...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-1.5" />
+                            Genera Task
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {showAiResults && aiGeneratedTasks.length > 0 && (
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-violet-500" />
+                            Task generate ({aiGeneratedTasks.length})
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setShowAiResults(false); setAiGeneratedTasks([]); }}
+                              className="h-8 text-xs"
+                            >
+                              Scarta tutte
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={handleConfirmAllAiTasks}
+                              className="h-8 text-xs bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-1" />
+                              Conferma tutte
+                            </Button>
+                          </div>
+                        </div>
+                        {aiGeneratedTasks.map((task: any, idx: number) => (
+                          <div key={idx} className="bg-violet-50/50 dark:bg-violet-950/20 rounded-xl border border-violet-200 dark:border-violet-800/50 p-3 hover:shadow-sm transition-all">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 flex flex-col gap-1 mt-0.5">
+                                <button
+                                  onClick={() => handleConfirmAiTask(task, idx)}
+                                  className="p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                                  title="Conferma"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDismissAiTask(idx)}
+                                  className="p-1 rounded-md bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors"
+                                  title="Scarta"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 dark:text-white text-sm">{task.title}</p>
+                                {task.description && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{task.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                  {renderPriorityBadge(task.priority)}
+                                  {renderCategoryBadge(task.category, personalCategoryLabels)}
+                                  {task.dueDate && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                      <Calendar className="w-3 h-3" />
+                                      {format(new Date(task.dueDate), "d MMM yyyy", { locale: it })}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 lg:p-6">
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                     <Plus className="w-4 h-4" />
-                    Nuova Task
+                    Nuova Task Manuale
                   </h3>
                   <div className="flex flex-col lg:flex-row gap-3">
                     <Input
