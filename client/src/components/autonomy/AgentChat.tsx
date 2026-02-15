@@ -243,7 +243,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed inset-y-0 right-0 w-full sm:w-[420px] z-50 bg-background border-l shadow-2xl flex flex-col"
+        className="w-full h-full bg-background flex flex-col"
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-muted/50 to-transparent">
           <AgentAvatar avatar={avatar} name={roleName} size="md" />

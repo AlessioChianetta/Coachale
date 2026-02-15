@@ -2454,14 +2454,16 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     }
 
     if (activeTasks.length > 0) {
-      systemPrompt += `\nI TUOI TASK ATTIVI (che devi ancora completare):\n`;
-      for (const t of activeTasks) {
+      systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task (che devi ancora completare):\n`;
+      for (let idx = 0; idx < activeTasks.length; idx++) {
+        const t = activeTasks[idx];
         const statusLabels: Record<string, string> = {
           scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
           in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
         };
-        systemPrompt += `- [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}${t.scheduled_at ? ` — programmato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}\n`;
+        systemPrompt += `${idx + 1}. [ID: ${t.id}] [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}${t.scheduled_at ? ` — programmato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}\n`;
       }
+      systemPrompt += `IMPORTANTE: Hai esattamente ${activeTasks.length} task attivi. Quando li menzioni, riporta il numero corretto.\n`;
       systemPrompt += `Puoi menzionare questi task nella conversazione, chiedere se procedere, o suggerire modifiche.\n`;
     }
 
@@ -2487,7 +2489,22 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 5. Se il consulente ti aggiorna, riconosci, commenta e suggerisci prossimi passi
 6. Se hai task in attesa di approvazione, chiedi se vuole approvarli
 7. NON inventare dati — basati solo sulle informazioni che hai
-8. Usa **grassetto** per cifre e concetti chiave`;
+8. Usa **grassetto** per cifre e concetti chiave
+
+AZIONI SUI TASK:
+Puoi proporre di approvare o avviare task. Il flusso è:
+1. PRIMA proponi l'azione e descrivi cosa farà il task, poi chiedi conferma esplicita
+2. SOLO DOPO che il consulente conferma (dice "sì", "ok", "vai", "procedi", "fallo", "approvalo"), includi il comando nella tua risposta
+3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
+4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
+5. NON eseguire mai azioni senza conferma esplicita del consulente
+6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
+
+Esempio di flusso corretto:
+- Tu: "Ho il task X in attesa. Vuoi che lo approvi?"
+- Consulente: "Sì, vai"
+- Tu: "Perfetto, approvo il task. [[APPROVA:uuid-del-task]] Fatto! Il task è stato approvato e verrà eseguito."`;
+
 
     const historyLimit = existingSummary ? 15 : 20;
     const relevantHistory = chatHistory.slice(-historyLimit);
@@ -2539,6 +2556,63 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
       console.error(`[AGENT-CHAT] AI error for ${roleId}:`, err.message);
       aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco. (${err.message?.substring(0, 100)})`;
     }
+
+    const actionResults: { type: string; taskId: string; success: boolean; error?: string }[] = [];
+    const approveMatches = aiResponse.match(/\[\[APPROVA:([a-f0-9-]+)\]\]/gi) || [];
+    const executeMatches = aiResponse.match(/\[\[ESEGUI:([a-f0-9-]+)\]\]/gi) || [];
+
+    for (const match of approveMatches) {
+      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '');
+      try {
+        const taskCheck = await db.execute(sql`
+          SELECT id, status, ai_instruction FROM ai_scheduled_tasks
+          WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+            AND status IN ('waiting_approval', 'scheduled', 'draft')
+          LIMIT 1
+        `);
+        if ((taskCheck.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks SET status = 'approved' WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+          `);
+          actionResults.push({ type: 'approve', taskId, success: true });
+          console.log(`✅ [AGENT-CHAT] Task ${taskId} approved via chat by ${roleId}`);
+        } else {
+          actionResults.push({ type: 'approve', taskId, success: false, error: 'Task non trovato o non in stato approvabile' });
+        }
+      } catch (actionErr: any) {
+        actionResults.push({ type: 'approve', taskId, success: false, error: actionErr.message });
+        console.error(`[AGENT-CHAT] Error approving task ${taskId}:`, actionErr.message);
+      }
+    }
+
+    for (const match of executeMatches) {
+      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '');
+      try {
+        const taskCheck = await db.execute(sql`
+          SELECT id, status FROM ai_scheduled_tasks
+          WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft')
+          LIMIT 1
+        `);
+        if ((taskCheck.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'scheduled',
+                scheduled_at = NOW()
+            WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+          `);
+          actionResults.push({ type: 'execute', taskId, success: true });
+          console.log(`🚀 [AGENT-CHAT] Task ${taskId} set for immediate execution via chat by ${roleId}`);
+        } else {
+          actionResults.push({ type: 'execute', taskId, success: false, error: 'Task non trovato o non in stato eseguibile' });
+        }
+      } catch (actionErr: any) {
+        actionResults.push({ type: 'execute', taskId, success: false, error: actionErr.message });
+        console.error(`[AGENT-CHAT] Error executing task ${taskId}:`, actionErr.message);
+      }
+    }
+
+    aiResponse = aiResponse.replace(/\[\[APPROVA:[a-f0-9-]+\]\]/gi, '').replace(/\[\[ESEGUI:[a-f0-9-]+\]\]/gi, '').trim();
 
     await db.execute(sql`
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
@@ -2635,6 +2709,7 @@ ${summaryInput}`;
         role_name: roleName,
         message: aiResponse,
         ai_role: roleId,
+        actions_executed: actionResults.length > 0 ? actionResults : undefined,
       },
     });
   } catch (error: any) {

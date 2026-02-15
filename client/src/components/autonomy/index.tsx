@@ -11,6 +11,8 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
+import AgentChat from "./AgentChat";
+import { AI_ROLE_PROFILES } from "./constants";
 
 import type {
   AutonomySettings, ActivityResponse, AITask, TasksResponse,
@@ -29,6 +31,7 @@ export default function ConsultantAIAutonomyPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("settings");
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
+  const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
 
   const [activityPage, setActivityPage] = useState(1);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
@@ -508,8 +511,8 @@ export default function ConsultantAIAutonomyPage() {
       <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
         <div className="flex-1 flex min-h-0">
-          <main className="flex-1 p-6 lg:px-8 overflow-auto">
-            <div className="max-w-5xl mx-auto space-y-8">
+          <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
+            <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-4xl" : "max-w-5xl")}>
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-violet-950 to-purple-950 p-6 lg:p-8 text-white shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
                 <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500/5 rounded-full blur-3xl" />
@@ -654,6 +657,8 @@ export default function ConsultantAIAutonomyPage() {
                     personalizzaSaving={personalizzaSaving}
                     onSavePersonalizza={savePersonalizzaConfig}
                     kbDocuments={kbDocuments}
+                    chatOpenRoleId={chatOpenRoleId}
+                    setChatOpenRoleId={setChatOpenRoleId}
                   />
                 </TabsContent>
 
@@ -768,6 +773,23 @@ export default function ConsultantAIAutonomyPage() {
               </Tabs>
             </div>
           </main>
+
+          {chatOpenRoleId && systemStatus?.roles && (() => {
+            const chatRole = systemStatus.roles.find((r: any) => r.id === chatOpenRoleId);
+            const chatProfile = chatRole ? AI_ROLE_PROFILES[chatRole.id] : null;
+            return chatRole ? (
+              <div className="w-[380px] sm:w-[420px] shrink-0 border-l bg-background h-full">
+                <AgentChat
+                  roleId={chatRole.id}
+                  roleName={chatRole.name}
+                  avatar={chatProfile?.avatar || "🤖"}
+                  accentColor={chatRole.accentColor}
+                  open={true}
+                  onClose={() => setChatOpenRoleId(null)}
+                />
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 

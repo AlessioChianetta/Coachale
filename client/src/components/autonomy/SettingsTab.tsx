@@ -28,7 +28,6 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
-import AgentChat from "./AgentChat";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
@@ -551,6 +550,8 @@ interface SettingsTabProps {
   personalizzaSaving: boolean;
   onSavePersonalizza: () => void;
   kbDocuments: KbDocument[];
+  chatOpenRoleId: string | null;
+  setChatOpenRoleId: (roleId: string | null) => void;
 }
 
 function SettingsTab({
@@ -582,12 +583,13 @@ function SettingsTab({
   personalizzaSaving,
   onSavePersonalizza,
   kbDocuments,
+  chatOpenRoleId,
+  setChatOpenRoleId,
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
-  const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -2634,20 +2636,6 @@ function SettingsTab({
         </Button>
       </div>
 
-      {chatOpenRoleId && systemStatus?.roles && (() => {
-        const chatRole = systemStatus.roles.find(r => r.id === chatOpenRoleId);
-        const chatProfile = chatRole ? AI_ROLE_PROFILES[chatRole.id] : null;
-        return chatRole ? (
-          <AgentChat
-            roleId={chatRole.id}
-            roleName={chatRole.name}
-            avatar={chatProfile?.avatar || "🤖"}
-            accentColor={chatRole.accentColor}
-            open={true}
-            onClose={() => setChatOpenRoleId(null)}
-          />
-        ) : null;
-      })()}
     </motion.div>
   );
 }
