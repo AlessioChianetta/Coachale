@@ -1382,7 +1382,6 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const now = new Date();
   const romeTimeStr = now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-  const globalTaskStatus = settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
   const scheduledAt = computeNextWorkingSlot(settings);
 
   let totalCreated = 0;
@@ -1439,7 +1438,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         continue;
       }
 
-      if (!dryRun && !isRoleWithinWorkingHours(settings, role.id)) {
+      if (!isRoleWithinWorkingHours(settings, role.id)) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Outside role-specific working hours, skipping`);
         if (dryRun) {
           simulationRoles.push({

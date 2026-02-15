@@ -1495,43 +1495,183 @@ function SettingsTab({
                                 </div>
                               )}
 
-                              <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground border-t">
-                                <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
-                                <span>•</span>
-                                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                  <Timer className="h-3 w-3" />
-                                  <Select
-                                    value={settings.role_frequencies[role.id] || "30"}
-                                    onValueChange={(value) => {
-                                      setSettings(prev => ({
-                                        ...prev,
-                                        role_frequencies: {
-                                          ...prev.role_frequencies,
-                                          [role.id]: value,
-                                        },
-                                      }));
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-7 w-[160px] text-xs rounded-lg border-border">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="15">Ogni 15 minuti</SelectItem>
-                                      <SelectItem value="30">Ogni 30 minuti</SelectItem>
-                                      <SelectItem value="60">Ogni ora</SelectItem>
-                                      <SelectItem value="120">Ogni 2 ore</SelectItem>
-                                      <SelectItem value="240">Ogni 4 ore</SelectItem>
-                                      <SelectItem value="480">Ogni 8 ore</SelectItem>
-                                      <SelectItem value="1440">Una volta al giorno</SelectItem>
-                                    </SelectContent>
-                                  </Select>
+                              <div className="space-y-3 pt-2 border-t">
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                                  <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
+                                  <span>•</span>
+                                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                    <Timer className="h-3 w-3" />
+                                    <Select
+                                      value={settings.role_frequencies[role.id] || "30"}
+                                      onValueChange={(value) => {
+                                        setSettings(prev => ({
+                                          ...prev,
+                                          role_frequencies: {
+                                            ...prev.role_frequencies,
+                                            [role.id]: value,
+                                          },
+                                        }));
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 w-[160px] text-xs rounded-lg border-border">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                                        <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                                        <SelectItem value="60">Ogni ora</SelectItem>
+                                        <SelectItem value="120">Ogni 2 ore</SelectItem>
+                                        <SelectItem value="240">Ogni 4 ore</SelectItem>
+                                        <SelectItem value="480">Ogni 8 ore</SelectItem>
+                                        <SelectItem value="1440">Una volta al giorno</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  {role.total_tasks_30d > 0 && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
+                                    </>
+                                  )}
                                 </div>
-                                {role.total_tasks_30d > 0 && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
-                                  </>
-                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3" onClick={(e) => e.stopPropagation()}>
+                                  <div className="rounded-lg border border-border p-3 space-y-2">
+                                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                                      <Shield className="h-3 w-3" />
+                                      Modalità autonomia
+                                    </p>
+                                    <Select
+                                      value={settings.role_autonomy_modes[role.id] || "global"}
+                                      onValueChange={(value) => {
+                                        setSettings(prev => ({
+                                          ...prev,
+                                          role_autonomy_modes: {
+                                            ...prev.role_autonomy_modes,
+                                            [role.id]: value,
+                                          },
+                                        }));
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs rounded-lg">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="global">Segui impostazione globale</SelectItem>
+                                        <SelectItem value="manual">Manuale (richiede approvazione)</SelectItem>
+                                        <SelectItem value="supervised">Supervisionato (propone, tu approvi)</SelectItem>
+                                        <SelectItem value="autonomous">Autonomo (fa e basta)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {settings.role_autonomy_modes[role.id] === 'autonomous'
+                                        ? `${role.name} eseguirà i task automaticamente senza chiedere`
+                                        : settings.role_autonomy_modes[role.id] === 'manual'
+                                        ? `Ogni task di ${role.name} richiederà la tua approvazione`
+                                        : settings.role_autonomy_modes[role.id] === 'supervised'
+                                        ? `${role.name} proporrà i task, tu decidi se eseguirli`
+                                        : `Usa il livello di autonomia globale (${settings.autonomy_level >= 4 ? 'auto-esecuzione' : 'richiede approvazione'})`
+                                      }
+                                    </p>
+                                  </div>
+
+                                  <div className="rounded-lg border border-border p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                                        <Clock className="h-3 w-3" />
+                                        Orario specifico
+                                      </p>
+                                      <Switch
+                                        checked={!!settings.role_working_hours[role.id]}
+                                        onCheckedChange={(checked) => {
+                                          setSettings(prev => {
+                                            const newRoleHours = { ...prev.role_working_hours };
+                                            if (checked) {
+                                              newRoleHours[role.id] = {
+                                                start: prev.working_hours_start,
+                                                end: prev.working_hours_end,
+                                                days: [...prev.working_days],
+                                              };
+                                            } else {
+                                              delete newRoleHours[role.id];
+                                            }
+                                            return { ...prev, role_working_hours: newRoleHours };
+                                          });
+                                        }}
+                                      />
+                                    </div>
+                                    {settings.role_working_hours[role.id] ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <Input
+                                            type="time"
+                                            value={settings.role_working_hours[role.id].start}
+                                            onChange={(e) => {
+                                              setSettings(prev => ({
+                                                ...prev,
+                                                role_working_hours: {
+                                                  ...prev.role_working_hours,
+                                                  [role.id]: { ...prev.role_working_hours[role.id], start: e.target.value },
+                                                },
+                                              }));
+                                            }}
+                                            className="h-7 text-xs rounded-lg w-24"
+                                          />
+                                          <span className="text-xs text-muted-foreground">-</span>
+                                          <Input
+                                            type="time"
+                                            value={settings.role_working_hours[role.id].end}
+                                            onChange={(e) => {
+                                              setSettings(prev => ({
+                                                ...prev,
+                                                role_working_hours: {
+                                                  ...prev.role_working_hours,
+                                                  [role.id]: { ...prev.role_working_hours[role.id], end: e.target.value },
+                                                },
+                                              }));
+                                            }}
+                                            className="h-7 text-xs rounded-lg w-24"
+                                          />
+                                        </div>
+                                        <div className="flex flex-wrap gap-1">
+                                          {DAYS_OF_WEEK.map((day) => (
+                                            <button
+                                              key={day.value}
+                                              type="button"
+                                              className={cn(
+                                                "text-[10px] px-1.5 py-0.5 rounded border transition-colors",
+                                                settings.role_working_hours[role.id]?.days?.includes(day.value)
+                                                  ? "bg-primary text-primary-foreground border-primary"
+                                                  : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                                              )}
+                                              onClick={() => {
+                                                setSettings(prev => {
+                                                  const currentDays = prev.role_working_hours[role.id]?.days || [];
+                                                  const newDays = currentDays.includes(day.value)
+                                                    ? currentDays.filter(d => d !== day.value)
+                                                    : [...currentDays, day.value].sort();
+                                                  return {
+                                                    ...prev,
+                                                    role_working_hours: {
+                                                      ...prev.role_working_hours,
+                                                      [role.id]: { ...prev.role_working_hours[role.id], days: newDays },
+                                                    },
+                                                  };
+                                                });
+                                              }}
+                                            >
+                                              {day.label.substring(0, 3)}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        Usa orario globale ({settings.working_hours_start} - {settings.working_hours_end})
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </motion.div>
