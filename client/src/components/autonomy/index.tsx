@@ -590,7 +590,7 @@ export default function ConsultantAIAutonomyPage() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 max-w-2xl h-12 rounded-xl bg-gray-100 dark:bg-gray-800/50 p-1">
+                <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto h-12 rounded-xl bg-gray-100 dark:bg-gray-800/50 p-1">
                   <TabsTrigger value="settings" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">Impostazioni</span>
