@@ -51,11 +51,15 @@ const TONE_OPTIONS = [
 ];
 
 const CATEGORY_OPTIONS = [
-  { value: "followup", label: "Follow-up" },
+  { value: "outreach", label: "Primo contatto" },
   { value: "reminder", label: "Promemoria" },
-  { value: "coaching", label: "Coaching" },
-  { value: "marketing", label: "Marketing" },
-  { value: "onboarding", label: "Onboarding" },
+  { value: "followup", label: "Follow-up" },
+  { value: "check_in", label: "Check-in" },
+  { value: "analysis", label: "Analisi" },
+  { value: "report", label: "Report" },
+  { value: "research", label: "Ricerca" },
+  { value: "preparation", label: "Preparazione" },
+  { value: "monitoring", label: "Monitoraggio" },
 ];
 
 const PRIORITY_OPTIONS = [
