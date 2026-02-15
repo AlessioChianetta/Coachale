@@ -20,7 +20,7 @@ import {
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
-  ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock
+  ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -112,6 +112,10 @@ function DashboardTab({
   const [actionDialogTask, setActionDialogTask] = React.useState<AITask | null>(null);
   const [restoringTaskId, setRestoringTaskId] = React.useState<string | null>(null);
   const [expandedHistoryIds, setExpandedHistoryIds] = React.useState<Set<string>>(new Set());
+  const [editTask, setEditTask] = React.useState<AITask | null>(null);
+  const [editInstruction, setEditInstruction] = React.useState("");
+  const [editContext, setEditContext] = React.useState("");
+  const [savingEdit, setSavingEdit] = React.useState(false);
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -1384,6 +1388,15 @@ function DashboardTab({
                                 )}>
                                   {task.ai_instruction}
                                 </p>
+                                {task.additional_context && expandedTaskIds.has(task.id) && (
+                                  <div className="mt-2 text-xs bg-amber-50/70 dark:bg-amber-950/20 rounded-lg px-2.5 py-1.5 border border-amber-200/50 dark:border-amber-800/30">
+                                    <span className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1 mb-0.5">
+                                      <Info className="h-3 w-3" />
+                                      Contesto aggiuntivo:
+                                    </span>
+                                    <span className="text-foreground/80">{task.additional_context}</span>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {getTaskStatusBadge(task.status)}
@@ -1502,6 +1515,20 @@ function DashboardTab({
                                   >
                                     <CalendarClock className="h-3.5 w-3.5" />
                                     Modifica orario
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5 h-8 px-3 text-xs font-medium border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditInstruction(task.ai_instruction || "");
+                                      setEditContext(task.additional_context || "");
+                                      setEditTask(task);
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Modifica testo
                                   </Button>
                                 </>
                               )}
@@ -2372,6 +2399,82 @@ function DashboardTab({
                   Approva con nuovo orario
                 </Button>
                 <Button variant="outline" onClick={() => setRescheduleTask(null)}>
+                  Annulla
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!editTask} onOpenChange={(open) => { if (!open) setEditTask(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-500" />
+              Modifica task
+            </DialogTitle>
+            <DialogDescription>
+              Modifica l'istruzione e il contesto aggiuntivo prima dell'esecuzione.
+            </DialogDescription>
+          </DialogHeader>
+          {editTask && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-instruction">Istruzione</Label>
+                <Textarea
+                  id="edit-instruction"
+                  value={editInstruction}
+                  onChange={(e) => setEditInstruction(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-context" className="flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5 text-amber-500" />
+                  Contesto aggiuntivo
+                </Label>
+                <Textarea
+                  id="edit-context"
+                  value={editContext}
+                  onChange={(e) => setEditContext(e.target.value)}
+                  rows={3}
+                  placeholder="Informazioni extra per l'agente..."
+                  className="resize-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={savingEdit || !editInstruction.trim()}
+                  onClick={async () => {
+                    if (!editTask || !editInstruction.trim()) return;
+                    setSavingEdit(true);
+                    try {
+                      const res = await fetch(`/api/ai-autonomy/tasks/${editTask.id}/edit`, {
+                        method: "PATCH",
+                        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                        body: JSON.stringify({ ai_instruction: editInstruction.trim(), additional_context: editContext.trim() || null }),
+                      });
+                      if (res.ok) {
+                        toast({ title: "Task aggiornato", description: "Istruzione e contesto modificati con successo" });
+                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                        setEditTask(null);
+                      } else {
+                        const err = await res.json().catch(() => ({}));
+                        toast({ title: "Errore", description: err.error || "Impossibile modificare il task", variant: "destructive" });
+                      }
+                    } catch {
+                      toast({ title: "Errore", description: "Errore di connessione", variant: "destructive" });
+                    } finally {
+                      setSavingEdit(false);
+                    }
+                  }}
+                >
+                  {savingEdit ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
+                  Salva modifiche
+                </Button>
+                <Button variant="outline" onClick={() => setEditTask(null)}>
                   Annulla
                 </Button>
               </div>

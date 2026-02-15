@@ -769,7 +769,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id, preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language } = req.body;
+    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id, preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, agent_config_id } = req.body;
 
     if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
       return res.status(400).json({ error: "ai_instruction is required" });
@@ -780,9 +780,12 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(400).json({ error: `task_category must be one of: ${validCategories.join(", ")}` });
     }
 
-    const sanitizedPhone = contact_phone ? String(contact_phone).replace(/[^0-9+\s\-()]/g, '') : null;
+    let sanitizedPhone = contact_phone ? String(contact_phone).replace(/[^0-9+\s\-()]/g, '').trim() : null;
     if (sanitizedPhone && !/^\+?[0-9\s\-()]{3,20}$/.test(sanitizedPhone)) {
       return res.status(400).json({ error: "Formato telefono non valido. Usa un numero di telefono o interno (es: +39 333 1234567, 1009)" });
+    }
+    if (sanitizedPhone && !sanitizedPhone.startsWith('+') && sanitizedPhone.replace(/[\s\-()]/g, '').length >= 9) {
+      sanitizedPhone = '+39' + sanitizedPhone.replace(/[\s\-()]/g, '');
     }
 
     if (client_id) {
@@ -803,11 +806,11 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       INSERT INTO ai_scheduled_tasks (
         id, consultant_id, task_type, task_category, ai_instruction, status,
         scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id,
-        preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language
+        preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, whatsapp_config_id
       ) VALUES (
         ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
         NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${sanitizedPhone || ''}, ${client_id || null},
-        ${preferred_channel || null}, ${tone || null}, ${urgency || 'normal'}, ${scheduled_datetime ? new Date(scheduled_datetime) : null}, ${objective || null}, ${additional_context || null}, ${voice_template_suggestion || null}, ${language || 'it'}
+        ${preferred_channel || null}, ${tone || null}, ${urgency || 'normal'}, ${scheduled_datetime ? new Date(scheduled_datetime) : null}, ${objective || null}, ${additional_context || null}, ${voice_template_suggestion || null}, ${language || 'it'}, ${agent_config_id || null}
       )
       RETURNING *
     `);
@@ -1955,6 +1958,41 @@ router.patch("/tasks/:id/reschedule", authenticateToken, requireAnyRole(["consul
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error rescheduling task:", error);
     return res.status(500).json({ error: "Failed to reschedule task" });
+  }
+});
+
+router.patch("/tasks/:id/edit", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { ai_instruction, additional_context } = req.body || {};
+
+    if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
+      return res.status(400).json({ error: "ai_instruction is required" });
+    }
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET ai_instruction = ${ai_instruction.trim()},
+          additional_context = ${additional_context?.trim() || null},
+          updated_at = NOW()
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non modificabile" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error editing task:", error);
+    return res.status(500).json({ error: "Failed to edit task" });
   }
 });
 

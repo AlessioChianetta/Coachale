@@ -10138,6 +10138,7 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
   additionalContext: text("additional_context"),
   voiceTemplateSuggestion: varchar("voice_template_suggestion", { length: 50 }),
   language: varchar("language", { length: 10 }).default("it"),
+  whatsappConfigId: uuid("whatsapp_config_id"),
 }, (table) => ({
   consultantIdx: index("idx_ai_tasks_consultant").on(table.consultantId),
   statusIdx: index("idx_ai_tasks_status").on(table.status),

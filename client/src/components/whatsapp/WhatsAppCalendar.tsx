@@ -330,6 +330,13 @@ export default function WhatsAppCalendar() {
                                   )}
                                 </div>
 
+                                {task.additional_context && (
+                                  <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
+                                    <p className="text-[10px] uppercase font-medium text-amber-700 dark:text-amber-400 mb-1">Contesto aggiuntivo</p>
+                                    <p className="text-xs text-foreground/80">{task.additional_context}</p>
+                                  </div>
+                                )}
+
                                 {task.ai_reasoning && (
                                   <div className="pt-2 border-t border-border/50">
                                     <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">Ragionamento AI</p>

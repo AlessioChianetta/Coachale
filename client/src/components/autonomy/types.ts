@@ -132,6 +132,8 @@ export interface AITask {
   scheduling_reason?: string;
   scheduled_by?: string;
   original_scheduled_at?: string;
+  additional_context?: string;
+  whatsapp_config_id?: string;
 }
 
 export interface TasksResponse {
