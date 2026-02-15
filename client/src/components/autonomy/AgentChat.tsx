@@ -346,19 +346,53 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
           )}
 
           {sending && (
-            <div className="flex gap-2 max-w-[90%]">
-              <div className="shrink-0 mt-1"><AgentAvatar avatar={avatar} name={roleName} size="sm" /></div>
-              <div className="bg-muted rounded-xl rounded-tl-sm px-3 py-2">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+            <motion.div
+              className="flex gap-2 max-w-[90%]"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="shrink-0 mt-1">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <AgentAvatar avatar={avatar} name={roleName} size="sm" />
+                </motion.div>
+              </div>
+              <div className="bg-muted rounded-xl rounded-tl-sm px-4 py-2.5 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    {[0, 1, 2].map((i) => (
+                      <motion.span
+                        key={i}
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: accentColor }}
+                        animate={{
+                          y: [0, -6, 0],
+                          opacity: [0.4, 1, 0.4],
+                          scale: [0.85, 1.15, 0.85],
+                        }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          delay: i * 0.15,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    ))}
                   </div>
-                  <span className="text-xs text-muted-foreground">Sta scrivendo...</span>
+                  <motion.span
+                    className="text-xs font-medium"
+                    style={{ color: accentColor }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    {roleName} sta scrivendo
+                  </motion.span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
 
