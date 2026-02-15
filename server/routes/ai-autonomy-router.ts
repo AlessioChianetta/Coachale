@@ -42,6 +42,7 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         custom_instructions: null,
         channels_enabled: { voice: true, email: false, whatsapp: false },
         role_frequencies: {},
+        role_autonomy_modes: {},
       });
     }
 
@@ -76,6 +77,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const customInstructions = body.custom_instructions || null;
     const channelsEnabled = JSON.stringify(body.channels_enabled ?? { voice: true, email: false, whatsapp: false });
     const roleFrequencies = JSON.stringify(body.role_frequencies ?? {});
+    const roleAutonomyModes = JSON.stringify(body.role_autonomy_modes ?? {});
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -83,13 +85,13 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         always_approve_actions, working_hours_start, working_hours_end, working_days,
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
-        role_frequencies
+        role_frequencies, role_autonomy_modes
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
-        ${roleFrequencies}::jsonb
+        ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -108,6 +110,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         custom_instructions = EXCLUDED.custom_instructions,
         channels_enabled = EXCLUDED.channels_enabled,
         role_frequencies = EXCLUDED.role_frequencies,
+        role_autonomy_modes = EXCLUDED.role_autonomy_modes,
         updated_at = now()
       RETURNING *
     `);
