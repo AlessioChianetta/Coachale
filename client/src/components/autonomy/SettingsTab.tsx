@@ -91,7 +91,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
   });
   const [contacts, setContacts] = useState({ phone: "", email: "", whatsapp: "" });
   const [loaded, setLoaded] = useState(false);
-  const [whatsappAgents, setWhatsappAgents] = useState<Array<{ id: string; agentName: string; agentType: string }>>([]);
+  const [whatsappAgents, setWhatsappAgents] = useState<Array<{ id: string; agentName: string; agentType: string; isActive?: boolean; hasTwilio?: boolean }>>([]);
 
   const loadContext = async () => {
     if (loaded) return;
@@ -358,39 +358,46 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-green-500" />
-                  Agente WhatsApp predefinito
-                </Label>
-                {whatsappAgents.length > 0 ? (
-                  <>
-                    <Select
-                      value={(ctx as any).defaultWhatsappAgentId || "_auto"}
-                      onValueChange={(v) => setCtx(prev => ({ ...prev, defaultWhatsappAgentId: v === "_auto" ? undefined : v } as any))}
-                    >
-                      <SelectTrigger className="h-8 text-xs rounded-lg">
-                        <SelectValue placeholder="Automatico" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_auto">Automatico (primo disponibile)</SelectItem>
-                        {whatsappAgents.map(a => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.agentName || a.agentType || a.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[10px] text-muted-foreground">
-                      L'agente WhatsApp che {roleName} userà per inviare messaggi
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-[10px] text-muted-foreground italic">
-                    Nessun agente WhatsApp configurato. Configura un agente nella sezione WhatsApp per abilitare questa opzione.
-                  </p>
-                )}
-              </div>
+              {(() => {
+                const connectedAgents = whatsappAgents.filter(a => a.hasTwilio && a.isActive !== false);
+                return (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <MessageSquare className="h-3.5 w-3.5 text-green-500" />
+                      Agente WhatsApp predefinito
+                    </Label>
+                    {connectedAgents.length > 0 ? (
+                      <>
+                        <Select
+                          value={(ctx as any).defaultWhatsappAgentId || "_auto"}
+                          onValueChange={(v) => setCtx(prev => ({ ...prev, defaultWhatsappAgentId: v === "_auto" ? undefined : v } as any))}
+                        >
+                          <SelectTrigger className="h-8 text-xs rounded-lg">
+                            <SelectValue placeholder="Automatico" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_auto">Automatico (primo disponibile)</SelectItem>
+                            {connectedAgents.map(a => (
+                              <SelectItem key={a.id} value={a.id}>
+                                {a.agentName || a.agentType || a.id}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">
+                          L'agente WhatsApp che {roleName} userà per inviare messaggi. Solo agenti con Twilio collegato.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic">
+                        {whatsappAgents.length > 0
+                          ? "Nessun agente ha Twilio collegato. Collega le credenziali Twilio nella sezione WhatsApp."
+                          : "Nessun agente WhatsApp configurato. Configura un agente nella sezione WhatsApp."}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {kbDocuments.length > 0 && (() => {
                 const linkedDocs = kbDocuments.filter(d => ctx.linkedKbDocumentIds.includes(d.id));

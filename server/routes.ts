@@ -19928,11 +19928,22 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           agentType: schema.consultantWhatsappConfig.agentType,
           businessName: schema.consultantWhatsappConfig.businessName,
           isActive: schema.consultantWhatsappConfig.isActive,
+          twilioAccountSid: schema.consultantWhatsappConfig.twilioAccountSid,
+          twilioWhatsappNumber: schema.consultantWhatsappConfig.twilioWhatsappNumber,
         })
         .from(schema.consultantWhatsappConfig)
         .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
 
-      res.json({ data: agents });
+      const safeAgents = agents.map(a => ({
+        id: a.id,
+        agentName: a.agentName,
+        agentType: a.agentType,
+        businessName: a.businessName,
+        isActive: a.isActive,
+        hasTwilio: !!(a.twilioAccountSid && a.twilioWhatsappNumber),
+      }));
+
+      res.json({ data: safeAgents });
     } catch (error: any) {
       console.error("Error fetching agent configs:", error);
       res.status(500).json({ message: error.message });
