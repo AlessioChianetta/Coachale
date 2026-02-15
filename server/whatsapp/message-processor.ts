@@ -1592,6 +1592,41 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
       );
     }
 
+    // Inject additional_context from recent outbound tasks for this phone number
+    if (consultantId && phoneNumber) {
+      try {
+        const recentOutboundTasks = await db.execute(sql`
+          SELECT additional_context, ai_instruction, task_category, contact_name, created_at
+          FROM ai_scheduled_tasks
+          WHERE consultant_id = ${consultantId}
+            AND contact_phone = ${phoneNumber}
+            AND additional_context IS NOT NULL
+            AND additional_context != ''
+            AND status IN ('completed', 'in_progress', 'scheduled')
+            AND created_at > NOW() - INTERVAL '7 days'
+          ORDER BY created_at DESC
+          LIMIT 3
+        `);
+
+        if (recentOutboundTasks.rows.length > 0) {
+          let taskContextBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ISTRUZIONI AGGIUNTIVE E CONTESTO DAL CONSULENTE
+Segui attentamente o tieni a memoria queste informazioni.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+          for (const task of recentOutboundTasks.rows) {
+            taskContextBlock += `\n${(task as any).additional_context}\n`;
+          }
+
+          systemPrompt += '\n\n' + taskContextBlock;
+          console.log(`📋 [OUTBOUND CONTEXT] Injected additional_context from ${recentOutboundTasks.rows.length} recent task(s) for ${phoneNumber}`);
+        }
+      } catch (ctxErr: any) {
+        console.warn(`⚠️ [OUTBOUND CONTEXT] Error loading task context: ${ctxErr.message}`);
+      }
+    }
+
     console.log(`📚 [STEP 7] Checking for reset request and fetching message history`);
     // Step 7: Check for reset request
     const resetKeywords = ['ricominciamo', 'reset', 'ripartiamo da capo', 'ricomincia', 'riparti da capo', 'ricominciare'];
