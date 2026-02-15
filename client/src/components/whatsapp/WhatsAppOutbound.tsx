@@ -18,6 +18,7 @@ interface UnifiedContact {
   phone: string;
   email?: string;
   source: "cliente" | "lead";
+  role?: string;
 }
 
 interface WhatsAppAgent {
@@ -106,13 +107,16 @@ export default function WhatsAppOutbound() {
           const data = await clientsRes.value.json();
           const arr = Array.isArray(data) ? data : [];
           arr.forEach((c: any) => {
-            if (c.first_name || c.last_name) {
+            const firstName = c.first_name || c.firstName || "";
+            const lastName = c.last_name || c.lastName || "";
+            if (firstName || lastName) {
               unified.push({
                 id: `client-${c.id}`,
-                name: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+                name: `${firstName} ${lastName}`.trim(),
                 phone: c.phone_number || c.phoneNumber || "",
                 email: c.email || "",
                 source: "cliente",
+                role: c.role || "client",
               });
             }
           });
@@ -146,7 +150,7 @@ export default function WhatsAppOutbound() {
       if (agentsRes.status === "fulfilled" && agentsRes.value.ok) {
         try {
           const agentData = await agentsRes.value.json();
-          const arr = Array.isArray(agentData) ? agentData : [];
+          const arr = agentData?.configs || (Array.isArray(agentData) ? agentData : []);
           setAgents(arr.filter((a: any) => a.isActive !== false && a.is_active !== false).map((a: any) => ({
             id: a.id,
             agentName: a.agentName || a.agent_name || "Agente",
@@ -161,15 +165,27 @@ export default function WhatsAppOutbound() {
     fetchAll();
   }, []);
 
-  const filteredContacts = useMemo(() => {
-    if (!contactSearch.trim()) return contacts.slice(0, 20);
+  const filteredClients = useMemo(() => {
+    const clientList = contacts.filter((c) => c.source === "cliente");
+    if (!contactSearch.trim()) return clientList.slice(0, 15);
     const q = contactSearch.toLowerCase();
-    return contacts.filter(
+    return clientList.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.phone?.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q)
-    ).slice(0, 20);
+    ).slice(0, 15);
+  }, [contacts, contactSearch]);
+
+  const filteredLeads = useMemo(() => {
+    const leadList = contacts.filter((c) => c.source === "lead");
+    if (!contactSearch.trim()) return leadList.slice(0, 15);
+    const q = contactSearch.toLowerCase();
+    return leadList.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone?.toLowerCase().includes(q)
+    ).slice(0, 15);
   }, [contacts, contactSearch]);
 
   const selectedAgent = useMemo(
@@ -350,43 +366,78 @@ export default function WhatsAppOutbound() {
                   className="border-emerald-200 dark:border-emerald-800/50 focus-visible:ring-emerald-500"
                 />
                 {!selectedContact && (
-                  <div className="max-h-36 overflow-y-auto border rounded-lg border-border bg-card">
+                  <div className="max-h-48 overflow-y-auto border rounded-lg border-border bg-card">
                     {loadingContacts ? (
                       <div className="p-3 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Caricamento...
                       </div>
-                    ) : filteredContacts.length === 0 ? (
+                    ) : filteredClients.length === 0 && filteredLeads.length === 0 ? (
                       <div className="p-3 text-center text-sm text-muted-foreground">
                         {contactSearch.trim() ? "Nessun risultato" : "Nessun contatto disponibile"}
                       </div>
                     ) : (
-                      filteredContacts.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => handleSelectContact(c)}
-                          className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors flex items-center justify-between text-sm border-b border-border/30 last:border-0"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium truncate">{c.name}</span>
-                            <Badge variant="outline" className={cn(
-                              "text-[9px] px-1.5 py-0 shrink-0",
-                              c.source === "cliente"
-                                ? "border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400"
-                                : "border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400"
-                            )}>
-                              {c.source === "cliente" ? "Cliente" : "Lead"}
-                            </Badge>
-                          </div>
-                          <span className="text-xs text-muted-foreground shrink-0 ml-2">{c.phone || c.email}</span>
-                        </button>
-                      ))
+                      <>
+                        {filteredClients.length > 0 && (
+                          <>
+                            <div className="px-3 py-1.5 bg-blue-50/80 dark:bg-blue-950/20 border-b border-border/30 sticky top-0 z-10">
+                              <span className="text-[10px] uppercase font-semibold text-blue-600 dark:text-blue-400 tracking-wider">
+                                Clienti ({filteredClients.length})
+                              </span>
+                            </div>
+                            {filteredClients.map((c) => (
+                              <button
+                                key={c.id}
+                                onClick={() => handleSelectContact(c)}
+                                className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors flex items-center justify-between text-sm border-b border-border/20 last:border-0"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <User className="h-3 w-3 text-blue-500 shrink-0" />
+                                  <span className="font-medium truncate">{c.name}</span>
+                                  {c.role === "consultant" && (
+                                    <Badge variant="outline" className="text-[8px] px-1 py-0 border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400">
+                                      Consulente
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground shrink-0 ml-2">{c.phone || c.email}</span>
+                              </button>
+                            ))}
+                          </>
+                        )}
+                        {filteredLeads.length > 0 && (
+                          <>
+                            <div className="px-3 py-1.5 bg-orange-50/80 dark:bg-orange-950/20 border-b border-border/30 sticky top-0 z-10">
+                              <span className="text-[10px] uppercase font-semibold text-orange-600 dark:text-orange-400 tracking-wider">
+                                Lead Proattivi ({filteredLeads.length})
+                              </span>
+                            </div>
+                            {filteredLeads.map((c) => (
+                              <button
+                                key={c.id}
+                                onClick={() => handleSelectContact(c)}
+                                className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors flex items-center justify-between text-sm border-b border-border/20 last:border-0"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Phone className="h-3 w-3 text-orange-500 shrink-0" />
+                                  <span className="font-medium truncate">{c.name}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground shrink-0 ml-2">{c.phone}</span>
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
                 {selectedContact && (
                   <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-3 py-2">
-                    <User className="h-3 w-3 shrink-0" />
+                    {selectedContact.source === "cliente" ? (
+                      <User className="h-3 w-3 shrink-0 text-blue-500" />
+                    ) : (
+                      <Phone className="h-3 w-3 shrink-0 text-orange-500" />
+                    )}
                     <span className="font-medium">{selectedContact.name}</span>
                     {selectedContact.phone && <span>• {selectedContact.phone}</span>}
                     <Badge variant="outline" className={cn(
