@@ -278,13 +278,69 @@ function ActivityTab({
 
             {eventData.overall_reasoning && (
               <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-bold mb-3 flex items-center gap-1.5">
                   <Brain className="h-3.5 w-3.5" />
                   Cosa ha pensato
                 </p>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {eventData.overall_reasoning}
-                </p>
+                {(() => {
+                  const text = eventData.overall_reasoning as string;
+                  const hasStructuredSections = /(📊|⚠️?|💡|🎯)\s*([^\n]+)/.test(text);
+                  
+                  if (!hasStructuredSections) {
+                    return (
+                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                        {text}
+                      </p>
+                    );
+                  }
+                  
+                  const sectionColors: Record<string, string> = {
+                    '📊': 'border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20',
+                    '⚠️': 'border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20',
+                    '⚠': 'border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20',
+                    '💡': 'border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20',
+                    '🎯': 'border-l-violet-400 bg-violet-50/50 dark:bg-violet-950/20',
+                  };
+                  
+                  const sections: { emoji: string; title: string; body: string }[] = [];
+                  const splitPattern = /(?=📊|⚠️?|💡|🎯)/;
+                  const parts = text.split(splitPattern).filter(Boolean);
+                  
+                  for (const part of parts) {
+                    const match = part.match(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)\n?([\s\S]*)/);
+                    if (match) {
+                      sections.push({
+                        emoji: match[1],
+                        title: match[2].trim(),
+                        body: match[3].trim(),
+                      });
+                    } else {
+                      const trimmed = part.trim();
+                      if (trimmed && sections.length === 0) {
+                        sections.push({ emoji: '', title: '', body: trimmed });
+                      } else if (trimmed && sections.length > 0) {
+                        sections[sections.length - 1].body += '\n' + trimmed;
+                      }
+                    }
+                  }
+                  
+                  return (
+                    <div className="space-y-3">
+                      {sections.map((sec, i) => (
+                        <div key={i} className={cn("rounded-lg border-l-4 p-3", sectionColors[sec.emoji] || 'border-l-gray-300 bg-muted/30')}>
+                          {sec.title && (
+                            <p className="text-xs font-bold mb-1.5">
+                              {sec.emoji} {sec.title}
+                            </p>
+                          )}
+                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {sec.body}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
