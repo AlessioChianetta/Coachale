@@ -334,26 +334,76 @@ router.get("/agent-context/:agentId", authenticateToken, requireAnyRole(["consul
     const { agentId } = req.params;
 
     const result = await db.execute(sql`
-      SELECT agent_contexts, consultant_phone, consultant_email, consultant_whatsapp 
+      SELECT agent_contexts, consultant_phone, consultant_email, consultant_whatsapp, marco_context 
       FROM ai_autonomy_settings 
       WHERE consultant_id::text = ${consultantId}::text LIMIT 1
     `);
 
     const row = result.rows[0] as any;
     const allContexts = row?.agent_contexts || {};
-    const agentCtx = allContexts[agentId] || {
-      focusPriorities: [],
-      customContext: "",
-      injectionMode: "system_prompt",
-      linkedKbDocumentIds: [],
-      reportStyle: "bilanciato",
+    let agentCtx = allContexts[agentId] || null;
+
+    const isEmptyContext = (ctx: any) => {
+      if (!ctx || typeof ctx !== 'object') return true;
+      if (Object.keys(ctx).length === 0) return true;
+      const hasPriorities = Array.isArray(ctx.focusPriorities) && ctx.focusPriorities.length > 0;
+      const hasCustom = typeof ctx.customContext === 'string' && ctx.customContext.trim().length > 0;
+      const hasKb = Array.isArray(ctx.linkedKbDocumentIds) && ctx.linkedKbDocumentIds.length > 0;
+      return !hasPriorities && !hasCustom && !hasKb;
     };
+
+    const oldMarco = row?.marco_context;
+    const hasOldMarcoData = oldMarco && typeof oldMarco === 'object' && (
+      (Array.isArray(oldMarco.objectives) && oldMarco.objectives.length > 0) ||
+      (typeof oldMarco.roadmap === 'string' && oldMarco.roadmap.trim().length > 0) ||
+      (Array.isArray(oldMarco.linkedKbDocumentIds) && oldMarco.linkedKbDocumentIds.length > 0)
+    );
+
+    if (isEmptyContext(agentCtx) && agentId === "marco" && hasOldMarcoData) {
+      const old = oldMarco as any;
+      const migratedPriorities: any[] = [];
+      if (Array.isArray(old.objectives)) {
+        old.objectives.forEach((obj: any, idx: number) => {
+          if (obj.name?.trim()) {
+            const label = obj.name + (obj.deadline ? ` (entro ${obj.deadline})` : "") + (obj.priority === "alta" ? " [ALTA]" : obj.priority === "bassa" ? " [BASSA]" : "");
+            migratedPriorities.push({ id: obj.id || crypto.randomUUID(), text: label, order: idx + 1 });
+          }
+        });
+      }
+      agentCtx = {
+        focusPriorities: migratedPriorities,
+        customContext: old.roadmap || "",
+        injectionMode: "system_prompt",
+        linkedKbDocumentIds: Array.isArray(old.linkedKbDocumentIds) ? old.linkedKbDocumentIds : [],
+        reportStyle: old.reportStyle || "bilanciato",
+      };
+    }
+
+    if (!agentCtx) {
+      agentCtx = {
+        focusPriorities: [],
+        customContext: "",
+        injectionMode: "system_prompt",
+        linkedKbDocumentIds: [],
+        reportStyle: "bilanciato",
+      };
+    }
+
+    let phone = row?.consultant_phone || "";
+    let email = row?.consultant_email || "";
+    let whatsapp = row?.consultant_whatsapp || "";
+    if (agentId === "marco" && hasOldMarcoData) {
+      const old = oldMarco as any;
+      if (!phone && old.consultantPhone) phone = old.consultantPhone;
+      if (!email && old.consultantEmail) email = old.consultantEmail;
+      if (!whatsapp && old.consultantWhatsapp) whatsapp = old.consultantWhatsapp;
+    }
 
     return res.json({
       context: agentCtx,
-      consultantPhone: row?.consultant_phone || "",
-      consultantEmail: row?.consultant_email || "",
-      consultantWhatsapp: row?.consultant_whatsapp || "",
+      consultantPhone: phone,
+      consultantEmail: email,
+      consultantWhatsapp: whatsapp,
     });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching agent context:", error.message);
