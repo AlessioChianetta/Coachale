@@ -775,7 +775,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(400).json({ error: "ai_instruction is required" });
     }
 
-    const validCategories = ["outreach", "reminder", "followup", "analysis", "report", "research", "preparation", "monitoring"];
+    const validCategories = ["outreach", "reminder", "followup", "analysis", "report", "research", "preparation", "monitoring", "check_in"];
     if (!task_category || !validCategories.includes(task_category)) {
       return res.status(400).json({ error: `task_category must be one of: ${validCategories.join(", ")}` });
     }
