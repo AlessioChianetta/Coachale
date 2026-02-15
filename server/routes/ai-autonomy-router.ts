@@ -2558,61 +2558,88 @@ Esempio di flusso corretto:
     }
 
     const actionResults: { type: string; taskId: string; success: boolean; error?: string }[] = [];
-    const approveMatches = aiResponse.match(/\[\[APPROVA:([a-f0-9-]+)\]\]/gi) || [];
-    const executeMatches = aiResponse.match(/\[\[ESEGUI:([a-f0-9-]+)\]\]/gi) || [];
+    const approveMatches = aiResponse.match(/\[\[APPROVA:[^\]]+\]\]/gi) || [];
+    const executeMatches = aiResponse.match(/\[\[ESEGUI:[^\]]+\]\]/gi) || [];
+
+    console.log(`📋 [AGENT-CHAT] Parsing action markers from AI response for ${roleId}:`);
+    console.log(`   Raw AI response length: ${aiResponse.length}`);
+    console.log(`   APPROVA markers found: ${approveMatches.length}`, approveMatches);
+    console.log(`   ESEGUI markers found: ${executeMatches.length}`, executeMatches);
 
     for (const match of approveMatches) {
-      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '');
+      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '').trim();
+      console.log(`🔍 [AGENT-CHAT] Processing APPROVA for taskId: "${taskId}"`);
       try {
         const taskCheck = await db.execute(sql`
           SELECT id, status, ai_instruction FROM ai_scheduled_tasks
-          WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
-            AND status IN ('waiting_approval', 'scheduled', 'draft')
+          WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            AND status IN ('waiting_approval', 'scheduled', 'draft', 'paused')
           LIMIT 1
         `);
+        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status } : 'NONE');
         if ((taskCheck.rows[0] as any)?.id) {
-          await db.execute(sql`
-            UPDATE ai_scheduled_tasks SET status = 'approved' WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+          const updateResult = await db.execute(sql`
+            UPDATE ai_scheduled_tasks SET status = 'approved', updated_at = NOW()
+            WHERE id = ${taskId} AND consultant_id = ${consultantId}
           `);
+          console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
           actionResults.push({ type: 'approve', taskId, success: true });
           console.log(`✅ [AGENT-CHAT] Task ${taskId} approved via chat by ${roleId}`);
         } else {
+          const allTaskCheck = await db.execute(sql`
+            SELECT id, status FROM ai_scheduled_tasks
+            WHERE id = ${taskId}
+            LIMIT 1
+          `);
+          console.log(`   ⚠️ Task not found with matching consultant. Global check: ${allTaskCheck.rows.length > 0 ? `found with status=${(allTaskCheck.rows[0] as any).status}` : 'NOT FOUND IN DB'}`);
           actionResults.push({ type: 'approve', taskId, success: false, error: 'Task non trovato o non in stato approvabile' });
         }
       } catch (actionErr: any) {
         actionResults.push({ type: 'approve', taskId, success: false, error: actionErr.message });
-        console.error(`[AGENT-CHAT] Error approving task ${taskId}:`, actionErr.message);
+        console.error(`❌ [AGENT-CHAT] Error approving task ${taskId}:`, actionErr.message);
       }
     }
 
     for (const match of executeMatches) {
-      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '');
+      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '').trim();
+      console.log(`🔍 [AGENT-CHAT] Processing ESEGUI for taskId: "${taskId}"`);
       try {
         const taskCheck = await db.execute(sql`
           SELECT id, status FROM ai_scheduled_tasks
-          WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
-            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft')
+          WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft', 'paused')
           LIMIT 1
         `);
+        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status } : 'NONE');
         if ((taskCheck.rows[0] as any)?.id) {
-          await db.execute(sql`
+          const updateResult = await db.execute(sql`
             UPDATE ai_scheduled_tasks
             SET status = 'scheduled',
-                scheduled_at = NOW()
-            WHERE id::text = ${taskId} AND consultant_id = ${consultantId}::uuid
+                scheduled_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${taskId} AND consultant_id = ${consultantId}
           `);
+          console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
           actionResults.push({ type: 'execute', taskId, success: true });
           console.log(`🚀 [AGENT-CHAT] Task ${taskId} set for immediate execution via chat by ${roleId}`);
         } else {
+          const allTaskCheck = await db.execute(sql`
+            SELECT id, status FROM ai_scheduled_tasks
+            WHERE id = ${taskId}
+            LIMIT 1
+          `);
+          console.log(`   ⚠️ Task not found with matching consultant. Global check: ${allTaskCheck.rows.length > 0 ? `found with status=${(allTaskCheck.rows[0] as any).status}` : 'NOT FOUND IN DB'}`);
           actionResults.push({ type: 'execute', taskId, success: false, error: 'Task non trovato o non in stato eseguibile' });
         }
       } catch (actionErr: any) {
         actionResults.push({ type: 'execute', taskId, success: false, error: actionErr.message });
-        console.error(`[AGENT-CHAT] Error executing task ${taskId}:`, actionErr.message);
+        console.error(`❌ [AGENT-CHAT] Error executing task ${taskId}:`, actionErr.message);
       }
     }
 
-    aiResponse = aiResponse.replace(/\[\[APPROVA:[a-f0-9-]+\]\]/gi, '').replace(/\[\[ESEGUI:[a-f0-9-]+\]\]/gi, '').trim();
+    console.log(`📊 [AGENT-CHAT] Action results summary:`, JSON.stringify(actionResults));
+
+    aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
 
     await db.execute(sql`
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
