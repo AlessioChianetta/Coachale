@@ -124,6 +124,8 @@ import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
 import { it } from "date-fns/locale";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
+import WhatsAppCalendar from "@/components/whatsapp/WhatsAppCalendar";
+import WhatsAppOutbound from "@/components/whatsapp/WhatsAppOutbound";
 import { getAuthHeaders } from "@/lib/auth";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { AgentInstructionsPanel } from "@/components/whatsapp/AgentInstructionsPanel";
@@ -1919,7 +1921,7 @@ export default function ConsultantWhatsAppPage() {
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-1.5">
-            <TabsList className="grid w-full grid-cols-5 gap-1 bg-transparent h-auto p-0">
+            <TabsList className="grid w-full grid-cols-6 gap-1 bg-transparent h-auto p-0">
               <TabsTrigger 
                 value="custom" 
                 className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
@@ -1940,6 +1942,13 @@ export default function ConsultantWhatsAppPage() {
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
                 Idee AI
+              </TabsTrigger>
+              <TabsTrigger 
+                value="calendario" 
+                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Calendario
               </TabsTrigger>
               <TabsTrigger 
                 value="employees" 
@@ -3054,6 +3063,17 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="calendario" className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <WhatsAppCalendar />
+              </div>
+              <div className="xl:col-span-1">
+                <WhatsAppOutbound />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="employees" className="space-y-6">
