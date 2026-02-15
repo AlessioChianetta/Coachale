@@ -206,7 +206,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   nova: { avatar: novaAvatar, quote: "Gestisco i tuoi social e il calendario editoriale.", role: "Social Media Manager" },
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
   iris: { avatar: irisAvatar, quote: "Gestisco i ticket email e le risposte automatiche.", role: "Email Hub Manager" },
-  marco: { avatar: marcoAvatar, quote: "Organizzo la tua giornata e ti preparo per ogni incontro.", role: "Executive Coach" },
+  marco: { avatar: marcoAvatar, quote: "Ti spingo oltre i tuoi limiti. Niente scuse, solo risultati.", role: "Executive Coach" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
 };
 
@@ -324,25 +324,22 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
   },
   marco: {
     canDo: [
-      { icon: "📅", text: "Analizza la tua agenda e i prossimi appuntamenti" },
-      { icon: "📊", text: "Monitora il tuo carico di lavoro e le performance" },
-      { icon: "📋", text: "Prepara briefing pre-consulenza con contesto cliente" },
-      { icon: "⚠️", text: "Ti avvisa se sei sovraccarico o hai buchi in agenda" },
-      { icon: "📈", text: "Genera report settimanali sulle tue attività" },
-      { icon: "🧠", text: "Suggerisce come organizzare meglio la giornata" },
-      { icon: "📅", text: "Monitora consulenze future e ti chiama se dimentichi di programmarle" },
-      { icon: "🎯", text: "Segue i tuoi obiettivi strategici e monitora i progressi" },
-      { icon: "🗺️", text: "Si allinea alla tua roadmap e note strategiche" },
-      { icon: "📚", text: "Consulta i documenti dalla Knowledge Base per contestualizzare le analisi" },
-      { icon: "📞", text: "Può chiamarti, scriverti su WhatsApp o inviarti email direttamente" },
+      { icon: "🔥", text: "Ti spinge a raggiungere gli obiettivi strategici, senza scuse" },
+      { icon: "🗺️", text: "Legge la roadmap e i documenti KB per tenerti sulla rotta" },
+      { icon: "📅", text: "Analizza l'agenda e ti chiama se non stai facendo abbastanza" },
+      { icon: "📞", text: "Ti chiama, ti manda WhatsApp, ti scrive email per farti muovere" },
+      { icon: "⚡", text: "Ti stressa se sei in ritardo su obiettivi o scadenze" },
+      { icon: "📊", text: "Monitora performance e carico di lavoro in tempo reale" },
+      { icon: "📋", text: "Prepara briefing pre-consulenza con contesto completo" },
+      { icon: "🎯", text: "Verifica che ogni azione sia allineata alla crescita dell'attività" },
+      { icon: "💪", text: "Tono informale e diretto — come un socio che ti parla chiaro" },
     ],
     cantDo: [
-      { icon: "📞", text: "Non contatta clienti direttamente" },
+      { icon: "📞", text: "Non contatta clienti direttamente — lavora solo su di te" },
       { icon: "📧", text: "Non invia email ai clienti" },
       { icon: "💬", text: "Non manda messaggi WhatsApp ai clienti" },
-      { icon: "👥", text: "Non gestisce relazioni con i clienti" },
     ],
-    workflow: "Ogni 30 minuti → Analizza agenda, obiettivi, roadmap, documenti KB e carico di lavoro → Identifica preparazioni necessarie, gap e progressi verso gli obiettivi → Crea task organizzativi, promemoria e report strategici",
+    workflow: "Ogni 30 minuti → Legge roadmap, obiettivi, documenti KB, agenda e dati reali → Valuta se stai facendo abbastanza per scalare → Ti chiama/scrive per spingerti ad agire",
   },
   personalizza: {
     canDo: [

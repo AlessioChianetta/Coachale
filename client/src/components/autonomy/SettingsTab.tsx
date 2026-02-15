@@ -1753,7 +1753,7 @@ function SettingsTab({
                 Obiettivi & Contesto di Marco
               </CardTitle>
               <CardDescription>
-                Definisci i tuoi obiettivi strategici, la tua roadmap e collega documenti dalla Knowledge Base. Marco userà queste informazioni per personalizzare analisi e suggerimenti.
+                Definisci i tuoi obiettivi strategici, la tua roadmap e collega documenti dalla Knowledge Base. Marco leggerà tutto ossessivamente e ti spingerà a raggiungere ogni obiettivo.
               </CardDescription>
             </CardHeader>
             <CardContent className="px-6 pb-6 space-y-5">
