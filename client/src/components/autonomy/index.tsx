@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Settings, Activity, ListTodo, Database, X } from "lucide-react";
+import { Bot, Settings, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -557,26 +557,93 @@ export default function ConsultantAIAutonomyPage() {
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
         <div className="flex-1 flex min-h-0">
           <main className="flex-1 p-6 lg:px-8 overflow-auto">
-            <div className="max-w-5xl mx-auto space-y-6">
-              <div>
-                <h1 className="text-2xl font-semibold flex items-center gap-3 tracking-tight">
-                  <div className="p-2 rounded-xl bg-primary/10">
-                    <Bot className="h-6 w-6 text-primary" />
+            <div className="max-w-5xl mx-auto space-y-8">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-violet-950 to-purple-950 p-6 lg:p-8 text-white shadow-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+                <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl" />
+
+                <div className="relative z-10 space-y-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                        <Bot className="h-7 w-7 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendente AI</h1>
+                        <p className="text-violet-200/70 text-sm mt-0.5">
+                          Configura, monitora e controlla il tuo team autonomo
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          systemStatus?.is_active ? "bg-green-400 animate-pulse" : "bg-red-400"
+                        )} />
+                        <span className={cn(
+                          "text-xs font-medium",
+                          systemStatus?.is_active ? "text-green-300" : "text-red-300"
+                        )}>
+                          {systemStatus?.is_active ? "Sistema attivo" : "Sistema spento"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                        <Zap className="h-3 w-3 text-amber-400" />
+                        <span className="text-xs text-amber-300 font-medium">
+                          Livello {settings.autonomy_level || 0}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  Dipendente AI
-                </h1>
-                <p className="text-sm text-muted-foreground mt-2 ml-[52px]">
-                  Configura il livello di autonomia e monitora le attività del tuo dipendente AI
-                </p>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                      settings.channels_enabled?.voice
+                        ? "bg-green-500/15 border-green-500/20"
+                        : "bg-white/5 border-white/10 opacity-50"
+                    )}>
+                      <Phone className="h-3.5 w-3.5 text-green-400" />
+                      <span className="text-xs font-medium text-green-300">Voice</span>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                      settings.channels_enabled?.email
+                        ? "bg-blue-500/15 border-blue-500/20"
+                        : "bg-white/5 border-white/10 opacity-50"
+                    )}>
+                      <Mail className="h-3.5 w-3.5 text-blue-400" />
+                      <span className="text-xs font-medium text-blue-300">Email</span>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                      settings.channels_enabled?.whatsapp
+                        ? "bg-emerald-500/15 border-emerald-500/20"
+                        : "bg-white/5 border-white/10 opacity-50"
+                    )}>
+                      <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
+                      <span className="text-xs font-medium text-emerald-300">WhatsApp</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
+                      <Cpu className="h-3.5 w-3.5 text-purple-400" />
+                      <span className="text-xs font-medium text-purple-300">
+                        {systemStatus?.roles?.filter((r: any) => r.enabled).length || 0} dipendenti
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 max-w-2xl h-11 rounded-xl">
-                  <TabsTrigger value="settings" className="flex items-center gap-2 rounded-xl text-sm">
+                <TabsList className="grid w-full grid-cols-4 max-w-2xl h-12 rounded-xl bg-gray-100 dark:bg-gray-800/50 p-1">
+                  <TabsTrigger value="settings" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">Impostazioni</span>
                   </TabsTrigger>
-                  <TabsTrigger value="activity" className="flex items-center gap-2 rounded-xl text-sm">
+                  <TabsTrigger value="activity" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
                     <Activity className="h-4 w-4" />
                     <span className="hidden sm:inline">Feed</span>
                     {unreadCount > 0 && (
@@ -585,11 +652,11 @@ export default function ConsultantAIAutonomyPage() {
                       </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-xl text-sm">
+                  <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
                     <ListTodo className="h-4 w-4" />
                     <span className="hidden sm:inline">Task</span>
                   </TabsTrigger>
-                  <TabsTrigger value="data-catalog" className="flex items-center gap-2 rounded-xl text-sm">
+                  <TabsTrigger value="data-catalog" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
                     <Database className="h-4 w-4" />
                     <span className="hidden sm:inline">Dati</span>
                   </TabsTrigger>
