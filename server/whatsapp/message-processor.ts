@@ -1602,7 +1602,7 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
             AND contact_phone = ${phoneNumber}
             AND additional_context IS NOT NULL
             AND additional_context != ''
-            AND status IN ('completed', 'in_progress', 'scheduled')
+            AND status IN ('in_progress', 'scheduled')
             AND created_at > NOW() - INTERVAL '7 days'
           ORDER BY created_at DESC
           LIMIT 3
