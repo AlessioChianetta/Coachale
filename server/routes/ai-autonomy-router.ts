@@ -2571,20 +2571,39 @@ Esempio di flusso corretto:
       console.log(`🔍 [AGENT-CHAT] Processing APPROVA for taskId: "${taskId}"`);
       try {
         const taskCheck = await db.execute(sql`
-          SELECT id, status, ai_instruction FROM ai_scheduled_tasks
+          SELECT id, status, ai_instruction, scheduled_at FROM ai_scheduled_tasks
           WHERE id = ${taskId} AND consultant_id = ${consultantId}
             AND status IN ('waiting_approval', 'scheduled', 'draft', 'paused')
           LIMIT 1
         `);
-        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status } : 'NONE');
+        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status, scheduled_at: (taskCheck.rows[0] as any).scheduled_at } : 'NONE');
         if ((taskCheck.rows[0] as any)?.id) {
-          const updateResult = await db.execute(sql`
-            UPDATE ai_scheduled_tasks SET status = 'approved', updated_at = NOW()
-            WHERE id = ${taskId} AND consultant_id = ${consultantId}
-          `);
-          console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
-          actionResults.push({ type: 'approve', taskId, success: true });
-          console.log(`✅ [AGENT-CHAT] Task ${taskId} approved via chat by ${roleId}`);
+          const task = taskCheck.rows[0] as any;
+          const scheduledAt = task.scheduled_at ? new Date(task.scheduled_at) : null;
+          const isPast = !scheduledAt || scheduledAt <= new Date();
+
+          if (isPast) {
+            const updateResult = await db.execute(sql`
+              UPDATE ai_scheduled_tasks
+              SET status = 'scheduled',
+                  scheduled_at = NOW(),
+                  updated_at = NOW()
+              WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            `);
+            console.log(`   scheduled_at was in the past (${scheduledAt?.toISOString() || 'NULL'}) -> status='scheduled' + scheduled_at=NOW()`);
+            console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
+            actionResults.push({ type: 'approve_and_execute', taskId, success: true });
+            console.log(`🚀 [AGENT-CHAT] Task ${taskId} approved+scheduled for immediate execution via chat by ${roleId}`);
+          } else {
+            const updateResult = await db.execute(sql`
+              UPDATE ai_scheduled_tasks SET status = 'approved', updated_at = NOW()
+              WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            `);
+            console.log(`   scheduled_at is in the future (${scheduledAt.toISOString()}) -> status='approved', will run at scheduled time`);
+            console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
+            actionResults.push({ type: 'approve', taskId, success: true });
+            console.log(`✅ [AGENT-CHAT] Task ${taskId} approved via chat by ${roleId}, will execute at ${scheduledAt.toISOString()}`);
+          }
         } else {
           const allTaskCheck = await db.execute(sql`
             SELECT id, status FROM ai_scheduled_tasks
