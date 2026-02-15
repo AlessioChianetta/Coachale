@@ -18,6 +18,8 @@ export interface AutonomySettings {
   custom_instructions: string;
   proactive_check_interval_minutes: number;
   role_frequencies: Record<string, string>;
+  role_autonomy_modes: Record<string, string>;
+  role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
 }
 
 export interface ActivityItem {

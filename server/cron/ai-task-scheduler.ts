@@ -17,7 +17,7 @@ function safeTextParam(value: string) {
   return sql.raw(`'${sanitized}'`);
 }
 import { withCronLock } from './cron-lock-manager';
-import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, getAutonomySettings } from '../ai/autonomous-decision-engine';
+import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
@@ -1382,7 +1382,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const now = new Date();
   const romeTimeStr = now.toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-  const taskStatus = settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
+  const globalTaskStatus = settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
   const scheduledAt = computeNextWorkingSlot(settings);
 
   let totalCreated = 0;
@@ -1430,6 +1430,24 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             skipped: true,
             skipReason: 'Nessun cliente idoneo disponibile',
             dataAnalyzed: { totalClients: clients.length, eligibleClients: 0, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            promptSent: '',
+            aiResponse: null,
+            providerUsed: providerName,
+            modelUsed: providerModel,
+          });
+        }
+        continue;
+      }
+
+      if (!dryRun && !isRoleWithinWorkingHours(settings, role.id)) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Outside role-specific working hours, skipping`);
+        if (dryRun) {
+          simulationRoles.push({
+            roleId: role.id,
+            roleName: role.name,
+            skipped: true,
+            skipReason: 'Fuori dall\'orario di lavoro specifico del ruolo',
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
             promptSent: '',
             aiResponse: null,
             providerUsed: providerName,
@@ -1686,7 +1704,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             channel: t.preferred_channel || role.preferredChannels[0] || 'none',
             priority: Math.min(Math.max(t.priority || 3, 1), 4),
             urgency: t.urgency || 'normale',
-            wouldBeStatus: taskStatus,
+            wouldBeStatus: getTaskStatusForRole(settings, role.id),
           }));
 
         simulationRoles.push({
@@ -1756,7 +1774,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
                 ${taskId}, ${sql.raw(`'${consultantId}'::uuid`)}, ${suggestedTask.contact_name || null},
                 ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
                 ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
-                ${taskStatus}, 'autonomous',
+                ${getTaskStatusForRole(settings, role.id)}, 'autonomous',
                 ${suggestedTask.task_category || role.categories[0] || 'followup'},
                 ${hasValidContactId ? sql`${contactIdValue}::text::uuid` : sql`NULL`},
                 ${suggestedTask.reasoning || null},

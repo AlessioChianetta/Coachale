@@ -374,6 +374,8 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
   custom_instructions: "",
   proactive_check_interval_minutes: 60,
   role_frequencies: {},
+  role_autonomy_modes: {},
+  role_working_hours: {},
 };
 
 export const EMPTY_NEW_TASK: NewTaskData = {

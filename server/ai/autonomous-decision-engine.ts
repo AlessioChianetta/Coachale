@@ -43,6 +43,7 @@ export interface AutonomySettings {
   channels_enabled: Record<string, boolean>;
   role_frequencies: Record<string, string>;
   role_autonomy_modes: Record<string, string>;
+  role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
 }
 
 export interface DailyActionCounts {
@@ -107,6 +108,7 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   channels_enabled: { voice: true, email: false, whatsapp: false },
   role_frequencies: {},
   role_autonomy_modes: {},
+  role_working_hours: {},
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -160,6 +162,7 @@ export async function getAutonomySettings(consultantId: string): Promise<Autonom
       channels_enabled: row.channels_enabled ?? DEFAULT_AUTONOMY_SETTINGS.channels_enabled,
       role_frequencies: row.role_frequencies ?? DEFAULT_AUTONOMY_SETTINGS.role_frequencies,
       role_autonomy_modes: row.role_autonomy_modes ?? DEFAULT_AUTONOMY_SETTINGS.role_autonomy_modes,
+      role_working_hours: row.role_working_hours ?? DEFAULT_AUTONOMY_SETTINGS.role_working_hours,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Error fetching autonomy settings:`, error.message);
@@ -203,6 +206,54 @@ export function isWithinWorkingHours(settings: AutonomySettings): boolean {
   const endMinutes = endH * 60 + endM;
 
   return currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
+}
+
+export function isRoleWithinWorkingHours(settings: AutonomySettings, roleId: string): boolean {
+  const roleHours = settings.role_working_hours?.[roleId];
+  if (!roleHours || !roleHours.start || !roleHours.end) {
+    return isWithinWorkingHours(settings);
+  }
+
+  const now = new Date();
+  const romeFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Rome",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const dayFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Rome",
+    weekday: "short",
+  });
+
+  const timeParts = romeFormatter.format(now).split(":");
+  const currentHour = parseInt(timeParts[0], 10);
+  const currentMinute = parseInt(timeParts[1], 10);
+  const currentTimeMinutes = currentHour * 60 + currentMinute;
+
+  const dayStr = dayFormatter.format(now);
+  const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const currentDay = dayMap[dayStr] ?? 1;
+
+  const roleDays = roleHours.days && roleHours.days.length > 0 ? roleHours.days : settings.working_days;
+  if (!roleDays.includes(currentDay)) {
+    return false;
+  }
+
+  const [startH, startM] = roleHours.start.split(":").map(Number);
+  const [endH, endM] = roleHours.end.split(":").map(Number);
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  return currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
+}
+
+export function getTaskStatusForRole(settings: AutonomySettings, roleId: string): string {
+  const roleMode = settings.role_autonomy_modes?.[roleId];
+  if (roleMode === 'autonomous') return 'scheduled';
+  if (roleMode === 'manual') return 'waiting_approval';
+  if (roleMode === 'supervised') return 'waiting_approval';
+  return settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
