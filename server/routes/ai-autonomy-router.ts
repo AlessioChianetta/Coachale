@@ -138,7 +138,7 @@ router.get("/roles/status", authenticateToken, requireAnyRole(["consultant", "su
 
     const roleStatuses: Record<string, any> = {};
 
-    for (const role of AI_ROLES) {
+    for (const role of Object.values(AI_ROLES)) {
       const isEnabled = enabledRoles[role.id] !== false;
       const effectiveLevel = getEffectiveRoleLevel(settings, role.id);
       const isWithinHours = isRoleWithinWorkingHours(settings, role.id);
