@@ -26,9 +26,284 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, MarcoContext, MarcoObjective, KbDocument, RoleStatus } from "./types";
+import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
+
+import type { AgentContext, AgentFocusItem } from "@shared/schema";
+
+function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string; roleName: string; kbDocuments: KbDocument[] }) {
+  const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [ctx, setCtx] = useState<AgentContext>({
+    focusPriorities: [],
+    customContext: "",
+    injectionMode: "system_prompt",
+    linkedKbDocumentIds: [],
+    reportStyle: "bilanciato",
+  });
+  const [contacts, setContacts] = useState({ phone: "", email: "", whatsapp: "" });
+  const [loaded, setLoaded] = useState(false);
+
+  const loadContext = async () => {
+    if (loaded) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/agent-context/${roleId}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setCtx(data.context || { focusPriorities: [], customContext: "", injectionMode: "system_prompt", linkedKbDocumentIds: [], reportStyle: "bilanciato" });
+        setContacts({ phone: data.consultantPhone || "", email: data.consultantEmail || "", whatsapp: data.consultantWhatsapp || "" });
+      }
+    } catch {}
+    setLoading(false);
+    setLoaded(true);
+  };
+
+  const saveContext = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/agent-context/${roleId}`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ context: ctx, consultantPhone: contacts.phone, consultantEmail: contacts.email, consultantWhatsapp: contacts.whatsapp }),
+      });
+      if (res.ok) toast({ title: "Salvato", description: `Contesto di ${roleName} aggiornato` });
+      else toast({ title: "Errore", description: "Salvataggio fallito", variant: "destructive" });
+    } catch {
+      toast({ title: "Errore", description: "Salvataggio fallito", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  const addFocus = () => {
+    setCtx(prev => ({
+      ...prev,
+      focusPriorities: [...prev.focusPriorities, { id: crypto.randomUUID(), text: "", order: prev.focusPriorities.length + 1 }],
+    }));
+  };
+
+  const removeFocus = (id: string) => {
+    setCtx(prev => ({
+      ...prev,
+      focusPriorities: prev.focusPriorities.filter(f => f.id !== id).map((f, i) => ({ ...f, order: i + 1 })),
+    }));
+  };
+
+  const moveFocus = (idx: number, dir: -1 | 1) => {
+    setCtx(prev => {
+      const items = [...prev.focusPriorities];
+      const target = idx + dir;
+      if (target < 0 || target >= items.length) return prev;
+      [items[idx], items[target]] = [items[target], items[idx]];
+      return { ...prev, focusPriorities: items.map((f, i) => ({ ...f, order: i + 1 })) };
+    });
+  };
+
+  const toggleOpen = () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    if (next) loadContext();
+  };
+
+  const hasFocusItems = ctx.focusPriorities.length > 0;
+  const hasKbDocs = ctx.linkedKbDocumentIds.length > 0;
+  const hasCustomCtx = !!ctx.customContext.trim();
+  const summaryParts: string[] = [];
+  if (hasFocusItems) summaryParts.push(`${ctx.focusPriorities.length} priorità`);
+  if (hasKbDocs) summaryParts.push(`${ctx.linkedKbDocumentIds.length} doc KB`);
+  if (hasCustomCtx) summaryParts.push("contesto custom");
+  const summaryText = summaryParts.length > 0 ? summaryParts.join(" · ") : "Nessun contesto configurato";
+
+  return (
+    <div className="border-t pt-3 mt-3" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={toggleOpen}
+        className="w-full flex items-center justify-between text-left group"
+      >
+        <div className="flex items-center gap-2">
+          <Target className="h-3.5 w-3.5 text-indigo-500" />
+          <span className="text-xs font-semibold">Contesto & Priorità</span>
+          {loaded && (
+            <span className="text-[10px] text-muted-foreground">{summaryText}</span>
+          )}
+        </div>
+        {isOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+      </button>
+
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.2 }}
+          className="mt-3 space-y-4"
+        >
+          {loading ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Flag className="h-3.5 w-3.5 text-indigo-500" />
+                    Priorità di focus (in ordine)
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFocus} className="h-7 text-[10px] rounded-lg">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Aggiungi
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Su cosa deve concentrarsi {roleName}? L'ordine determina la priorità: il primo elemento è il più importante.
+                </p>
+                {ctx.focusPriorities.length === 0 ? (
+                  <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
+                    Nessuna priorità definita — {roleName} seguirà il comportamento predefinito
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {ctx.focusPriorities.map((item, idx) => (
+                      <div key={item.id} className="flex items-center gap-2 group">
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button onClick={() => moveFocus(idx, -1)} disabled={idx === 0} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30">
+                            <ChevronUp className="h-3 w-3" />
+                          </button>
+                          <button onClick={() => moveFocus(idx, 1)} disabled={idx === ctx.focusPriorities.length - 1} className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-30">
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-md shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
+                        <Input
+                          value={item.text}
+                          onChange={(e) => {
+                            const updated = [...ctx.focusPriorities];
+                            updated[idx] = { ...updated[idx], text: e.target.value };
+                            setCtx(prev => ({ ...prev, focusPriorities: updated }));
+                          }}
+                          placeholder={idx === 0 ? "Es: Aumentare MRR, acquisire 10 nuovi clienti..." : "Es: Ridurre churn, migliorare onboarding..."}
+                          className="h-7 text-xs rounded-lg flex-1"
+                        />
+                        <button onClick={() => removeFocus(item.id)} className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                  Contesto personalizzato
+                </Label>
+                <Textarea
+                  value={ctx.customContext}
+                  onChange={(e) => setCtx(prev => ({ ...prev, customContext: e.target.value }))}
+                  placeholder={`Roadmap, note strategiche, istruzioni specifiche per ${roleName}...`}
+                  rows={3}
+                  className="rounded-lg text-xs resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5 text-violet-500" />
+                    Modalità iniezione
+                  </Label>
+                  <Select value={ctx.injectionMode} onValueChange={(v) => setCtx(prev => ({ ...prev, injectionMode: v as 'system_prompt' | 'file_search' }))}>
+                    <SelectTrigger className="h-8 text-xs rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system_prompt">System Prompt (sempre in memoria)</SelectItem>
+                      <SelectItem value="file_search">File Search (ricerca RAG)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">
+                    {ctx.injectionMode === "system_prompt"
+                      ? "Il contesto viene iniettato direttamente nel prompt — l'agente lo vede sempre"
+                      : "Il contesto viene salvato nel File Search — l'agente lo recupera quando rilevante"}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Stile report</Label>
+                  <Select value={ctx.reportStyle || "bilanciato"} onValueChange={(v) => setCtx(prev => ({ ...prev, reportStyle: v as any }))}>
+                    <SelectTrigger className="h-8 text-xs rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sintetico">Sintetico</SelectItem>
+                      <SelectItem value="bilanciato">Bilanciato</SelectItem>
+                      <SelectItem value="dettagliato">Dettagliato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {kbDocuments.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-blue-500" />
+                    Documenti Knowledge Base
+                  </Label>
+                  <div className="space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2">
+                    {kbDocuments.map((doc) => {
+                      const isLinked = ctx.linkedKbDocumentIds.includes(doc.id);
+                      return (
+                        <label key={doc.id} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-all text-xs", isLinked ? "bg-indigo-50 dark:bg-indigo-950/20" : "hover:bg-muted/50")}>
+                          <Checkbox
+                            checked={isLinked}
+                            onCheckedChange={(checked) => {
+                              setCtx(prev => ({
+                                ...prev,
+                                linkedKbDocumentIds: checked
+                                  ? [...prev.linkedKbDocumentIds, doc.id]
+                                  : prev.linkedKbDocumentIds.filter(id => id !== doc.id),
+                              }));
+                            }}
+                          />
+                          <span className="truncate">{doc.title}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{doc.file_type.toUpperCase()}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {ctx.linkedKbDocumentIds.length > 0 && (
+                    <p className="text-[10px] text-indigo-600">{ctx.linkedKbDocumentIds.length} documento/i collegato/i</p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-gray-500" />
+                  I tuoi contatti
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Input value={contacts.phone} onChange={(e) => setContacts(p => ({ ...p, phone: e.target.value }))} placeholder="Telefono" className="h-7 text-[10px] rounded-lg" />
+                  <Input value={contacts.whatsapp} onChange={(e) => setContacts(p => ({ ...p, whatsapp: e.target.value }))} placeholder="WhatsApp" className="h-7 text-[10px] rounded-lg" />
+                  <Input value={contacts.email} onChange={(e) => setContacts(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="h-7 text-[10px] rounded-lg" />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveContext} disabled={saving} size="sm" className="h-8 text-xs rounded-lg">
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                  Salva Contesto
+                </Button>
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
+    </div>
+  );
+}
 
 const ROLE_GRADIENT_MAP: Record<string, string> = {
   pink: "from-pink-400 to-rose-500",
@@ -68,11 +343,6 @@ interface SettingsTabProps {
   personalizzaLoading: boolean;
   personalizzaSaving: boolean;
   onSavePersonalizza: () => void;
-  marcoContext: MarcoContext;
-  setMarcoContext: React.Dispatch<React.SetStateAction<MarcoContext>>;
-  marcoContextLoading: boolean;
-  marcoContextSaving: boolean;
-  onSaveMarcoContext: () => void;
   kbDocuments: KbDocument[];
 }
 
@@ -104,11 +374,6 @@ function SettingsTab({
   personalizzaLoading,
   personalizzaSaving,
   onSavePersonalizza,
-  marcoContext,
-  setMarcoContext,
-  marcoContextLoading,
-  marcoContextSaving,
-  onSaveMarcoContext,
   kbDocuments,
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
@@ -1786,6 +2051,8 @@ function SettingsTab({
                                   </div>
                                 </div>
                               </div>
+
+                              <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
                             </div>
                           </motion.div>
                         )}
@@ -1991,283 +2258,6 @@ function SettingsTab({
                         <Save className="h-4 w-4 mr-2" />
                       )}
                       Salva Configurazione Personalizza
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 border-l-4 border-l-indigo-400 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-purple-500" />
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Target className="h-5 w-5 text-indigo-600" />
-              Obiettivi & Contesto di Marco
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Definisci i tuoi obiettivi strategici, la tua roadmap e collega documenti dalla Knowledge Base. Marco leggerà tutto ossessivamente e ti spingerà a raggiungere ogni obiettivo.
-            </p>
-            <div className="space-y-5">
-              {marcoContextLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <User className="h-4 w-4 text-indigo-500" />
-                      <Label className="text-sm font-semibold">I tuoi contatti (per farti raggiungere da Marco)</Label>
-                    </div>
-                    <p className="text-xs text-muted-foreground -mt-1">
-                      Marco potra' chiamarti, scriverti su WhatsApp o inviarti email quando serve comunicarti qualcosa di importante.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <Phone className="h-3 w-3" />
-                          Telefono
-                        </Label>
-                        <Input
-                          value={marcoContext.consultantPhone || ""}
-                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantPhone: e.target.value }))}
-                          placeholder="+39 351 927 2875"
-                          className="rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <MessageSquare className="h-3 w-3" />
-                          WhatsApp
-                        </Label>
-                        <Input
-                          value={marcoContext.consultantWhatsapp || ""}
-                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantWhatsapp: e.target.value }))}
-                          placeholder="+39 351 927 2875"
-                          className="rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <Mail className="h-3 w-3" />
-                          Email
-                        </Label>
-                        <Input
-                          value={marcoContext.consultantEmail || ""}
-                          onChange={(e) => setMarcoContext(prev => ({ ...prev, consultantEmail: e.target.value }))}
-                          placeholder="tu@tuoemail.it"
-                          className="rounded-xl text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        <Flag className="h-4 w-4 text-indigo-500" />
-                        Obiettivi Strategici
-                      </Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setMarcoContext(prev => ({
-                            ...prev,
-                            objectives: [...prev.objectives, {
-                              id: crypto.randomUUID(),
-                              name: "",
-                              deadline: null,
-                              priority: "media" as const,
-                            }],
-                          }));
-                        }}
-                        className="text-xs rounded-xl"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Aggiungi Obiettivo
-                      </Button>
-                    </div>
-
-                    {marcoContext.objectives.length === 0 ? (
-                      <div className="text-sm text-muted-foreground italic py-3 text-center border-2 border-dashed rounded-xl">
-                        Nessun obiettivo definito. Aggiungi i tuoi obiettivi strategici per aiutare Marco a focalizzare l'analisi.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {marcoContext.objectives.map((obj, idx) => (
-                          <div key={obj.id} className="flex items-start gap-3 p-3 border rounded-xl bg-muted/30">
-                            <div className="flex-1 space-y-2">
-                              <Input
-                                value={obj.name}
-                                onChange={(e) => {
-                                  const updated = [...marcoContext.objectives];
-                                  updated[idx] = { ...updated[idx], name: e.target.value };
-                                  setMarcoContext(prev => ({ ...prev, objectives: updated }));
-                                }}
-                                placeholder="Es: Raggiungere 50 clienti attivi entro giugno"
-                                className="rounded-xl text-sm"
-                              />
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <Input
-                                    type="date"
-                                    value={obj.deadline || ""}
-                                    onChange={(e) => {
-                                      const updated = [...marcoContext.objectives];
-                                      updated[idx] = { ...updated[idx], deadline: e.target.value || null };
-                                      setMarcoContext(prev => ({ ...prev, objectives: updated }));
-                                    }}
-                                    className="h-8 w-[160px] text-xs rounded-lg"
-                                  />
-                                </div>
-                                <Select
-                                  value={obj.priority}
-                                  onValueChange={(v) => {
-                                    const updated = [...marcoContext.objectives];
-                                    updated[idx] = { ...updated[idx], priority: v as 'alta' | 'media' | 'bassa' };
-                                    setMarcoContext(prev => ({ ...prev, objectives: updated }));
-                                  }}
-                                >
-                                  <SelectTrigger className="h-8 w-[120px] text-xs rounded-lg">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="alta">Priorità Alta</SelectItem>
-                                    <SelectItem value="media">Priorità Media</SelectItem>
-                                    <SelectItem value="bassa">Priorità Bassa</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setMarcoContext(prev => ({
-                                  ...prev,
-                                  objectives: prev.objectives.filter((_, i) => i !== idx),
-                                }));
-                              }}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-amber-500" />
-                      Roadmap e Note Strategiche
-                    </Label>
-                    <Textarea
-                      value={marcoContext.roadmap}
-                      onChange={(e) => setMarcoContext(prev => ({ ...prev, roadmap: e.target.value }))}
-                      placeholder="Descrivi la tua roadmap, dove vuoi arrivare, priorità del mese, note strategiche... Marco userà queste informazioni per contestualizzare i suoi suggerimenti."
-                      rows={5}
-                      className="rounded-xl"
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-500" />
-                      Documenti dalla Knowledge Base
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Seleziona i documenti che Marco deve consultare per le sue analisi. I contenuti verranno inclusi nel suo contesto.
-                    </p>
-                    
-                    {kbDocuments.length === 0 ? (
-                      <div className="text-sm text-muted-foreground italic py-3 text-center border-2 border-dashed rounded-xl">
-                        Nessun documento nella Knowledge Base. Carica documenti nella sezione Base di Conoscenza per poterli collegare a Marco.
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-60 overflow-y-auto border rounded-xl p-3">
-                        {kbDocuments.map((doc) => {
-                          const isLinked = marcoContext.linkedKbDocumentIds.includes(doc.id);
-                          return (
-                            <label
-                              key={doc.id}
-                              className={cn(
-                                "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all border",
-                                isLinked ? "border-indigo-300 bg-indigo-50 dark:bg-indigo-950/20" : "border-transparent hover:bg-muted/50"
-                              )}
-                            >
-                              <Checkbox
-                                checked={isLinked}
-                                onCheckedChange={(checked) => {
-                                  setMarcoContext(prev => ({
-                                    ...prev,
-                                    linkedKbDocumentIds: checked
-                                      ? [...prev.linkedKbDocumentIds, doc.id]
-                                      : prev.linkedKbDocumentIds.filter(id => id !== doc.id),
-                                  }));
-                                }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{doc.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {doc.category} • {doc.file_type.toUpperCase()} • {(doc.file_size / 1024).toFixed(0)} KB
-                                </p>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {marcoContext.linkedKbDocumentIds.length > 0 && (
-                      <p className="text-xs text-indigo-600">
-                        {marcoContext.linkedKbDocumentIds.length} documento/i collegato/i a Marco
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Stile Report</Label>
-                      <Select
-                        value={marcoContext.reportStyle}
-                        onValueChange={(v) => setMarcoContext(prev => ({ ...prev, reportStyle: v as any }))}
-                      >
-                        <SelectTrigger className="rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sintetico">Sintetico (breve e diretto)</SelectItem>
-                          <SelectItem value="bilanciato">Bilanciato (via di mezzo)</SelectItem>
-                          <SelectItem value="dettagliato">Dettagliato (analisi approfondita)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Focus Specifico (opzionale)</Label>
-                      <Input
-                        value={marcoContext.reportFocus}
-                        onChange={(e) => setMarcoContext(prev => ({ ...prev, reportFocus: e.target.value }))}
-                        placeholder="Es: crescita clienti, performance team..."
-                        className="rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button onClick={onSaveMarcoContext} disabled={marcoContextSaving} className="rounded-xl">
-                      {marcoContextSaving ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Salva Contesto di Marco
                     </Button>
                   </div>
                 </>

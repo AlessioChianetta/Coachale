@@ -327,6 +327,103 @@ router.put("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
   }
 });
 
+router.get("/agent-context/:agentId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+    const { agentId } = req.params;
+
+    const result = await db.execute(sql`
+      SELECT agent_contexts, consultant_phone, consultant_email, consultant_whatsapp 
+      FROM ai_autonomy_settings 
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+
+    const row = result.rows[0] as any;
+    const allContexts = row?.agent_contexts || {};
+    const agentCtx = allContexts[agentId] || {
+      focusPriorities: [],
+      customContext: "",
+      injectionMode: "system_prompt",
+      linkedKbDocumentIds: [],
+      reportStyle: "bilanciato",
+    };
+
+    return res.json({
+      context: agentCtx,
+      consultantPhone: row?.consultant_phone || "",
+      consultantEmail: row?.consultant_email || "",
+      consultantWhatsapp: row?.consultant_whatsapp || "",
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching agent context:", error.message);
+    return res.status(500).json({ error: "Errore nel recupero del contesto" });
+  }
+});
+
+router.put("/agent-context/:agentId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+    const { agentId } = req.params;
+    const { context, consultantPhone, consultantEmail, consultantWhatsapp } = req.body;
+
+    if (!context || typeof context !== 'object') {
+      return res.status(400).json({ error: "Contesto non valido" });
+    }
+
+    const existingResult = await db.execute(sql`
+      SELECT agent_contexts FROM ai_autonomy_settings 
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+    const existingContexts = (existingResult.rows[0] as any)?.agent_contexts || {};
+    existingContexts[agentId] = context;
+
+    await db.execute(sql`
+      UPDATE ai_autonomy_settings 
+      SET agent_contexts = ${JSON.stringify(existingContexts)}::jsonb,
+          consultant_phone = ${consultantPhone || null},
+          consultant_email = ${consultantEmail || null},
+          consultant_whatsapp = ${consultantWhatsapp || null},
+          updated_at = NOW()
+      WHERE consultant_id::text = ${consultantId}::text
+    `);
+
+    if (Array.isArray(context.linkedKbDocumentIds)) {
+      try {
+        await db.execute(sql`
+          DELETE FROM agent_knowledge_assignments
+          WHERE consultant_id = ${consultantId} AND agent_id = ${agentId}
+        `);
+
+        for (const docId of context.linkedKbDocumentIds) {
+          if (docId && typeof docId === 'string') {
+            const docExists = await db.execute(sql`
+              SELECT id FROM consultant_knowledge_documents
+              WHERE id = ${docId} AND consultant_id = ${consultantId}
+              LIMIT 1
+            `);
+            if (docExists.rows?.length > 0) {
+              await db.execute(sql`
+                INSERT INTO agent_knowledge_assignments (consultant_id, agent_id, document_id)
+                VALUES (${consultantId}, ${agentId}, ${docId})
+                ON CONFLICT (consultant_id, agent_id, document_id) DO NOTHING
+              `);
+            }
+          }
+        }
+      } catch (syncErr: any) {
+        console.warn(`[AI-AUTONOMY] Failed to sync ${agentId} KB assignments:`, syncErr.message);
+      }
+    }
+
+    return res.json({ success: true, message: "Contesto agente salvato" });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error saving agent context:", error.message);
+    return res.status(500).json({ error: "Errore nel salvataggio" });
+  }
+});
+
 router.get("/kb-documents-list", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

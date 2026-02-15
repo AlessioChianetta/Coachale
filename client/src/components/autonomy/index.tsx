@@ -14,7 +14,7 @@ import { AllessiaSidePanel } from "@/components/alessia/FloatingEmployeeChat";
 import type {
   AutonomySettings, ActivityResponse, AITask, TasksResponse,
   TasksStats, TaskDetailResponse, SystemStatus, AutonomousLogsResponse, NewTaskData,
-  PersonalizzaConfig, MarcoContext, KbDocument,
+  PersonalizzaConfig, KbDocument,
 } from "./types";
 import { DEFAULT_SETTINGS, EMPTY_NEW_TASK } from "./constants";
 
@@ -65,15 +65,6 @@ export default function ConsultantAIAutonomyPage() {
   const [personalizzaLoading, setPersonalizzaLoading] = useState(false);
   const [personalizzaSaving, setPersonalizzaSaving] = useState(false);
 
-  const [marcoContext, setMarcoContext] = useState<MarcoContext>({
-    objectives: [],
-    roadmap: "",
-    linkedKbDocumentIds: [],
-    reportStyle: "bilanciato",
-    reportFocus: "",
-  });
-  const [marcoContextLoading, setMarcoContextLoading] = useState(false);
-  const [marcoContextSaving, setMarcoContextSaving] = useState(false);
   const [kbDocuments, setKbDocuments] = useState<KbDocument[]>([]);
 
   const [showAlessiaChat, setShowAlessiaChat] = useState(false);
@@ -334,27 +325,6 @@ export default function ConsultantAIAutonomyPage() {
     }
   };
 
-  const fetchMarcoContext = async () => {
-    setMarcoContextLoading(true);
-    try {
-      const res = await fetch("/api/ai-autonomy/marco-context", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const data = await res.json();
-      setMarcoContext({
-        objectives: data.objectives || [],
-        roadmap: data.roadmap || "",
-        linkedKbDocumentIds: data.linkedKbDocumentIds || [],
-        reportStyle: data.reportStyle || "bilanciato",
-        reportFocus: data.reportFocus || "",
-      });
-    } catch (err) {
-      console.error("Error fetching marco context:", err);
-    } finally {
-      setMarcoContextLoading(false);
-    }
-  };
-
   const fetchKbDocuments = async () => {
     try {
       const res = await fetch("/api/ai-autonomy/kb-documents-list", {
@@ -369,7 +339,6 @@ export default function ConsultantAIAutonomyPage() {
 
   useEffect(() => {
     fetchPersonalizzaConfig();
-    fetchMarcoContext();
     fetchKbDocuments();
   }, []);
 
@@ -387,25 +356,6 @@ export default function ConsultantAIAutonomyPage() {
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     } finally {
       setPersonalizzaSaving(false);
-    }
-  };
-
-  const saveMarcoContext = async () => {
-    setMarcoContextSaving(true);
-    try {
-      const res = await fetch("/api/ai-autonomy/marco-context", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
-        body: JSON.stringify(marcoContext),
-      });
-      if (res.ok) {
-        toast({ title: "Salvato", description: "Contesto di Marco aggiornato con successo" });
-      }
-    } catch (err) {
-      console.error("Error saving marco context:", err);
-      toast({ title: "Errore", description: "Impossibile salvare il contesto di Marco", variant: "destructive" });
-    } finally {
-      setMarcoContextSaving(false);
     }
   };
 
@@ -691,11 +641,6 @@ export default function ConsultantAIAutonomyPage() {
                     personalizzaLoading={personalizzaLoading}
                     personalizzaSaving={personalizzaSaving}
                     onSavePersonalizza={savePersonalizzaConfig}
-                    marcoContext={marcoContext}
-                    setMarcoContext={setMarcoContext}
-                    marcoContextLoading={marcoContextLoading}
-                    marcoContextSaving={marcoContextSaving}
-                    onSaveMarcoContext={saveMarcoContext}
                     kbDocuments={kbDocuments}
                   />
                 </TabsContent>

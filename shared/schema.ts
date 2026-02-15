@@ -10167,6 +10167,10 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   channelsEnabled: jsonb("channels_enabled").$type<Record<string, boolean>>().default(sql`'{"voice": true, "email": false, "whatsapp": false}'::jsonb`),
   roleFrequencies: jsonb("role_frequencies").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   marcoContext: jsonb("marco_context").$type<MarcoContext>().default(sql`'{}'::jsonb`),
+  agentContexts: jsonb("agent_contexts").$type<AgentContexts>().default(sql`'{}'::jsonb`),
+  consultantPhone: varchar("consultant_phone", { length: 30 }),
+  consultantEmail: varchar("consultant_email", { length: 255 }),
+  consultantWhatsapp: varchar("consultant_whatsapp", { length: 30 }),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
@@ -10186,6 +10190,22 @@ export interface MarcoContext {
   reportStyle?: 'sintetico' | 'dettagliato' | 'bilanciato';
   reportFocus?: string;
 }
+
+export interface AgentFocusItem {
+  id: string;
+  text: string;
+  order: number;
+}
+
+export interface AgentContext {
+  focusPriorities: AgentFocusItem[];
+  customContext: string;
+  injectionMode: 'system_prompt' | 'file_search';
+  linkedKbDocumentIds: string[];
+  reportStyle?: 'sintetico' | 'dettagliato' | 'bilanciato';
+}
+
+export type AgentContexts = Record<string, AgentContext>;
 
 export type AIAutonomySettings = typeof aiAutonomySettings.$inferSelect;
 export type InsertAIAutonomySettings = typeof aiAutonomySettings.$inferInsert;
