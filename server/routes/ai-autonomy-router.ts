@@ -8,6 +8,7 @@ import { generateExecutionPlan, type ExecutionStep } from "../ai/autonomous-deci
 import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
 import { getTemplatesByDirection } from '../voice/voice-templates';
+import { AI_ROLES } from "../cron/ai-autonomous-roles";
 
 const router = Router();
 
@@ -1869,6 +1870,67 @@ router.post("/reset-all", authenticateToken, requireAnyRole(["consultant", "supe
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error resetting all data:", error);
     return res.status(500).json({ error: "Failed to reset data" });
+  }
+});
+
+router.get("/roles/system-prompts", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const prompts: Record<string, { name: string; displayName: string; description: string; systemPromptTemplate: string }> = {};
+
+    for (const [roleId, role] of Object.entries(AI_ROLES)) {
+      const templatePrompt = role.buildPrompt({
+        clientsList: [{ note: "-- Dati clienti inseriti dinamicamente ad ogni ciclo --" }],
+        roleData: {},
+        settings: { custom_instructions: "-- Istruzioni personalizzate del consulente inserite dinamicamente --" },
+        romeTimeStr: "-- Data/ora corrente inserita dinamicamente --",
+        recentCompletedTasks: [],
+        recentAllTasks: [],
+        permanentBlocks: [],
+      });
+
+      prompts[roleId] = {
+        name: role.name,
+        displayName: role.displayName,
+        description: role.description,
+        systemPromptTemplate: templatePrompt,
+      };
+    }
+
+    return res.json(prompts);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching system prompts:", error);
+    return res.status(500).json({ error: "Failed to fetch system prompts" });
+  }
+});
+
+router.patch("/tasks/:id/mark-done", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'completed',
+          completed_at = NOW(),
+          updated_at = NOW(),
+          result_summary = COALESCE(result_summary, '') || E'\n[Completato manualmente dal consulente]'
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non marcabile come completato" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error marking task as done:", error);
+    return res.status(500).json({ error: "Failed to mark task as done" });
   }
 });
 

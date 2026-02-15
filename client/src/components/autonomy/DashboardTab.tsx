@@ -271,6 +271,32 @@ function DashboardTab({
     setIsBlockCancel(false);
   };
 
+  const handleMarkDone = async (taskId: string, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("Hai già gestito questo task manualmente?\n\nVerrà segnato come completato e l'AI non lo riproporrà.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/mark-done`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({
+        title: "Task completato",
+        description: "Il task è stato segnato come già fatto da te",
+      });
+      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+      if (selectedTaskId === taskId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${taskId}`] });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile segnare il task come completato", variant: "destructive" });
+    }
+  };
+
   const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedTaskIds(prev => {
@@ -881,6 +907,15 @@ function DashboardTab({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-7 text-xs border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                    onClick={() => handleMarkDone(task.id)}
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Già fatta
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
                     onClick={() => setCancelDialogTask(task)}
                   >
@@ -1268,6 +1303,20 @@ function DashboardTab({
                                       toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
                                     }
                                   });
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                title="Già fatta da me"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarkDone(task.id);
                                 }}
                               >
                                 <CheckCircle className="h-4 w-4" />
@@ -1669,6 +1718,16 @@ function DashboardTab({
                       >
                         <CheckCircle className="h-4 w-4 mr-1.5" />
                         Approva Task
+                      </Button>
+                    )}
+                    {['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status) && (
+                      <Button
+                        variant="outline"
+                        className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                        onClick={() => handleMarkDone(task.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1.5" />
+                        Già fatta
                       </Button>
                     )}
                     {(task.status === 'paused' || task.status === 'scheduled') && (

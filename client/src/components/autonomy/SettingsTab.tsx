@@ -102,9 +102,20 @@ function SettingsTab({
   kbDocuments,
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
+  const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: systemPrompts } = useQuery<Record<string, { name: string; displayName: string; description: string; systemPromptTemplate: string }>>({
+    queryKey: ["/api/ai-autonomy/roles/system-prompts"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/roles/system-prompts", { headers: getAuthHeaders() });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: blocks = [] } = useQuery<Array<{
     id: string;
@@ -1444,6 +1455,45 @@ function SettingsTab({
                                   </div>
                                 </div>
                               </div>
+
+                              {systemPrompts?.[role.id] && (
+                                <div className="border-t pt-3">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs rounded-lg gap-1.5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowPromptForRole(showPromptForRole === role.id ? null : role.id);
+                                    }}
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                    {showPromptForRole === role.id ? "Nascondi System Prompt" : "Vedi System Prompt"}
+                                    {showPromptForRole === role.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                  </Button>
+                                  {showPromptForRole === role.id && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      transition={{ duration: 0.2 }}
+                                      className="mt-3"
+                                    >
+                                      <div className="rounded-xl border border-border bg-muted/30 p-4">
+                                        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                          <Brain className="h-3.5 w-3.5" />
+                                          System Prompt completo di {systemPrompts[role.id].name}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground mb-3 italic">
+                                          Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
+                                        </p>
+                                        <pre className="text-xs whitespace-pre-wrap font-mono bg-background rounded-lg p-3 border border-border max-h-[400px] overflow-y-auto leading-relaxed">
+                                          {systemPrompts[role.id].systemPromptTemplate}
+                                        </pre>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              )}
 
                               <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground border-t">
                                 <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
