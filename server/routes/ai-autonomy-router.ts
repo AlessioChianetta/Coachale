@@ -868,7 +868,8 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
         SELECT id, consultant_id, contact_name, contact_phone, contact_id, task_type, task_category,
                ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
                execution_plan, result_summary, result_data, scheduled_at,
-               completed_at, created_at, updated_at, call_after_task, ai_role
+               completed_at, created_at, updated_at, call_after_task, ai_role,
+               preferred_channel, tone, objective
         FROM ai_scheduled_tasks
         WHERE ${whereClause}
         ORDER BY created_at DESC

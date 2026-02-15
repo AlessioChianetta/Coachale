@@ -18,7 +18,9 @@ import {
   Plus, ChevronUp, ChevronLeft, ChevronRight, BookOpen, Sparkles,
   Loader2, Clock, CheckCircle, XCircle, User, ListTodo, TrendingUp,
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
-  Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database
+  Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
+  Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
+  ThumbsUp, Ban, UserCheck, ExternalLink
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -332,6 +334,107 @@ function DashboardTab({
       case 3: return 'border-l-blue-500';
       default: return 'border-l-gray-300 dark:border-l-gray-600';
     }
+  };
+
+  const detectPlannedActions = (task: AITask) => {
+    const actions: Array<{ icon: React.ReactNode; label: string; detail?: string; color: string }> = [];
+    const instruction = (task.ai_instruction || '').toLowerCase();
+    const channel = task.preferred_channel;
+    const plan = task.execution_plan || [];
+    const planActions = plan.map(s => s.action);
+    const isMarco = task.ai_role === 'marco';
+
+    if (channel === 'voice' || planActions.includes('voice_call') || planActions.includes('prepare_call') ||
+        instruction.includes('chiama') || instruction.includes('chiamata') || instruction.includes('telefonat')) {
+      actions.push({
+        icon: <Phone className="h-3.5 w-3.5" />,
+        label: isMarco ? "Ti chiamerà" : "Chiamata vocale",
+        detail: isMarco ? "a te" : (task.contact_phone || undefined),
+        color: isMarco
+          ? "text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800"
+          : "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800"
+      });
+    }
+
+    if (channel === 'email' || planActions.includes('send_email') ||
+        instruction.includes('email') || instruction.includes('e-mail') || instruction.includes('invia email')) {
+      actions.push({
+        icon: <Mail className="h-3.5 w-3.5" />,
+        label: isMarco ? "Email a te" : "Invio email",
+        detail: undefined,
+        color: isMarco
+          ? "text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800"
+          : "text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800"
+      });
+    }
+
+    if (channel === 'whatsapp' || planActions.includes('send_whatsapp') ||
+        instruction.includes('whatsapp') || instruction.includes('messaggio')) {
+      actions.push({
+        icon: <MessageSquare className="h-3.5 w-3.5" />,
+        label: isMarco ? "WhatsApp a te" : "Messaggio WhatsApp",
+        detail: isMarco ? "a te" : (task.contact_phone || undefined),
+        color: isMarco
+          ? "text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800"
+          : "text-green-600 bg-green-50 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800"
+      });
+    }
+
+    if (planActions.includes('web_search') || instruction.includes('ricerca') || instruction.includes('cerca')) {
+      actions.push({
+        icon: <Globe className="h-3.5 w-3.5" />,
+        label: "Ricerca web",
+        color: "text-cyan-600 bg-cyan-50 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-800"
+      });
+    }
+
+    if (planActions.includes('generate_report') || task.task_category === 'report' ||
+        instruction.includes('report') || instruction.includes('riepilog')) {
+      actions.push({
+        icon: <FileText className="h-3.5 w-3.5" />,
+        label: "Genera report",
+        color: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+      });
+    }
+
+    if (planActions.includes('fetch_client_data') || planActions.includes('analyze_patterns') ||
+        task.task_category === 'analysis' || instruction.includes('analiz')) {
+      actions.push({
+        icon: <Search className="h-3.5 w-3.5" />,
+        label: "Analisi dati",
+        color: "text-indigo-600 bg-indigo-50 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800"
+      });
+    }
+
+    if (planActions.includes('search_private_stores')) {
+      actions.push({
+        icon: <Database className="h-3.5 w-3.5" />,
+        label: "Ricerca documenti",
+        color: "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-950/30 dark:text-slate-400 dark:border-slate-800"
+      });
+    }
+
+    if (actions.length === 0) {
+      actions.push({
+        icon: <Brain className="h-3.5 w-3.5" />,
+        label: "Elaborazione AI",
+        color: "text-purple-600 bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800"
+      });
+    }
+
+    return actions;
+  };
+
+  const getObjectiveLabel = (obj?: string) => {
+    const map: Record<string, string> = {
+      informare: "Informare",
+      vendere: "Vendere",
+      fidelizzare: "Fidelizzare",
+      raccogliere_info: "Raccogliere info",
+      supporto: "Supporto",
+      followup: "Follow-up",
+    };
+    return obj ? map[obj] || obj : null;
   };
 
   const availableRoles = useMemo(() => {
@@ -1223,137 +1326,216 @@ function DashboardTab({
                     {tasks.length}
                   </Badge>
                 </div>
-                <div className="space-y-2 pl-2">
-                  {tasks.map((task) => (
-                    <Card
-                      key={task.id}
-                      className={cn(
-                        "cursor-pointer transition-all duration-200 border rounded-xl shadow-sm border-l-4",
-                        "hover:shadow-md hover:border-primary/30",
-                        getPriorityBorderColor(task.priority)
-                      )}
-                      onClick={(e) => toggleTaskExpand(task.id, e)}
-                    >
-                      <CardContent className="py-3 px-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            {task.contact_name && (
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <User className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs font-semibold text-foreground">{task.contact_name}</span>
+                <div className="space-y-3 pl-2">
+                  {tasks.map((task) => {
+                    const plannedActions = detectPlannedActions(task);
+                    const isWaiting = task.status === 'waiting_approval';
+                    const isActionable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
+                    const isCancellable = ['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status);
+
+                    return (
+                      <Card
+                        key={task.id}
+                        className={cn(
+                          "transition-all duration-200 border rounded-xl shadow-sm border-l-4 overflow-hidden",
+                          isWaiting ? "bg-slate-50/60 dark:bg-slate-900/20 border-primary/20 dark:border-primary/30 ring-1 ring-primary/10" : "",
+                          "hover:shadow-md",
+                          getPriorityBorderColor(task.priority)
+                        )}
+                      >
+                        <CardContent className="p-0">
+                          <div
+                            className="px-4 pt-3.5 pb-2 cursor-pointer"
+                            onClick={(e) => toggleTaskExpand(task.id, e)}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                  {task.ai_role === 'marco' && task.contact_name && (
+                                    <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                                      <span className="text-xs text-muted-foreground">Riguarda:</span>
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <span className="font-semibold">{task.contact_name}</span>
+                                    </span>
+                                  )}
+                                  {task.ai_role !== 'marco' && task.contact_name && (
+                                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                      {task.contact_name}
+                                    </span>
+                                  )}
+                                  {task.ai_role !== 'marco' && task.contact_phone && (
+                                    <span className="text-xs text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded">
+                                      {task.contact_phone}
+                                    </span>
+                                  )}
+                                  {task.origin_type === 'autonomous' && (
+                                    <Badge className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 text-[10px] py-0 px-1.5">
+                                      <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                                      AI
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className={cn(
+                                  "text-sm text-foreground leading-relaxed transition-all duration-200",
+                                  !expandedTaskIds.has(task.id) && "line-clamp-2"
+                                )}>
+                                  {task.ai_instruction}
+                                </p>
                               </div>
-                            )}
-                            <p className={cn(
-                              "text-sm text-foreground leading-relaxed transition-all duration-200",
-                              !expandedTaskIds.has(task.id) && "line-clamp-2"
-                            )}>
-                              {task.ai_instruction}
-                            </p>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {getTaskStatusBadge(task.status)}
+                                {getPriorityIndicator(task.priority)}
+                              </div>
+                            </div>
+
                             {task.origin_type === 'autonomous' && task.ai_reasoning && (
-                              <p className={cn(
-                                "text-xs text-muted-foreground mt-1.5 italic bg-purple-50 dark:bg-purple-950/20 rounded-lg px-2 py-1 border border-purple-200/50 dark:border-purple-800/30 transition-all duration-200",
+                              <div className={cn(
+                                "mt-2 text-xs text-muted-foreground italic bg-purple-50/70 dark:bg-purple-950/20 rounded-lg px-2.5 py-1.5 border border-purple-200/50 dark:border-purple-800/30 transition-all duration-200",
                                 !expandedTaskIds.has(task.id) && "line-clamp-1"
                               )}>
                                 <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
                                 {task.ai_reasoning}
-                              </p>
+                              </div>
                             )}
-                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                              {getTaskStatusBadge(task.status)}
+
+                            <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Azioni previste:</span>
+                              {plannedActions.map((action, idx) => (
+                                <span
+                                  key={idx}
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border",
+                                    action.color
+                                  )}
+                                >
+                                  {action.icon}
+                                  {action.label}
+                                  {action.detail && (
+                                    <span className="font-mono text-[10px] opacity-80">{action.detail}</span>
+                                  )}
+                                </span>
+                              ))}
                               {getCategoryBadge(task.task_category)}
-                              {getPriorityIndicator(task.priority)}
-                              {task.origin_type === 'autonomous' && (
-                                <Badge className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 text-xs">
-                                  <Sparkles className="h-3 w-3 mr-1" />
-                                  AI Autonomo
+                              {getObjectiveLabel(task.objective) && (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1.5">
+                                  <Target className="h-2.5 w-2.5 mr-0.5" />
+                                  {getObjectiveLabel(task.objective)}
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {getRelativeTime(task.created_at)}
                               </span>
                               {task.completed_at && (
                                 <span className="flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" />
-                                  Completato: {new Date(task.completed_at).toLocaleString("it-IT")}
+                                  <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                  {new Date(task.completed_at).toLocaleString("it-IT")}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {task.status === 'waiting_approval' && (
+
+                          {(isWaiting || isActionable) && (
+                            <div className={cn(
+                              "px-4 py-2.5 border-t flex items-center gap-2 flex-wrap",
+                              isWaiting
+                                ? "bg-slate-50/70 dark:bg-slate-900/30 border-primary/15 dark:border-primary/20"
+                                : "bg-muted/30 border-border/50"
+                            )}>
+                              {isWaiting && (
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1.5 h-8 px-3 text-xs font-medium"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                      method: "PATCH",
+                                      headers: getAuthHeaders(),
+                                    }).then(res => {
+                                      if (res.ok) {
+                                        toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                      } else {
+                                        toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <ThumbsUp className="h-3.5 w-3.5" />
+                                  Approva
+                                </Button>
+                              )}
+                              {isActionable && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMarkDone(task.id);
+                                  }}
+                                >
+                                  <UserCheck className="h-3.5 w-3.5" />
+                                  Già fatta da me
+                                </Button>
+                              )}
+                              {isCancellable && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCancelDialogTask(task);
+                                  }}
+                                >
+                                  <Ban className="h-3.5 w-3.5" />
+                                  Rifiuta
+                                </Button>
+                              )}
+                              <div className="ml-auto">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTaskId(task.id);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Dettagli
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {!isWaiting && !isActionable && (
+                            <div className="px-4 py-2 border-t border-border/50 bg-muted/20 flex items-center justify-end">
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                                title="Approva task"
+                                size="sm"
+                                className="gap-1.5 h-7 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                                    method: "PATCH",
-                                    headers: getAuthHeaders(),
-                                  }).then(res => {
-                                    if (res.ok) {
-                                      toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                                      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                    } else {
-                                      toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                                    }
-                                  });
+                                  setSelectedTaskId(task.id);
                                 }}
                               >
-                                <CheckCircle className="h-4 w-4" />
+                                <Eye className="h-3.5 w-3.5" />
+                                Dettagli
                               </Button>
-                            )}
-                            {['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                                title="Già fatta da me"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleMarkDone(task.id);
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                title="Cancella task"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCancelDialogTask(task);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                              title="Apri dettaglio"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTaskId(task.id);
-                              }}
-                            >
-                              <ChevronRight className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -1449,8 +1631,8 @@ function DashboardTab({
                             task.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400" :
                             task.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
                             task.status === 'in_progress' ? "bg-primary/10 text-primary border-primary/20" :
-                            task.status === 'paused' ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
-                            task.status === 'waiting_approval' ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
+                            task.status === 'paused' ? "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400" :
+                            task.status === 'waiting_approval' ? "bg-primary/10 text-primary border-primary/20" :
                             "bg-muted text-muted-foreground border-border"
                           )}>
                             {task.status === 'completed' ? '✅ Completato' :

@@ -54,9 +54,9 @@ export function getTaskStatusBadge(status: string) {
     approved: { className: "bg-primary/10 text-primary border-primary/20", label: "Attivo" },
     completed: { className: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400", label: "Completato" },
     failed: { className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400", label: "Fallito" },
-    paused: { className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400", label: "In pausa" },
-    draft: { className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400", label: "In pausa" },
-    waiting_approval: { className: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400", label: "In pausa" },
+    paused: { className: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400", label: "In pausa" },
+    draft: { className: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400", label: "Bozza" },
+    waiting_approval: { className: "bg-primary/10 text-primary border-primary/20", label: "Da approvare" },
   };
   const c = config[status];
   if (c) return <Badge className={c.className}>{c.label}</Badge>;

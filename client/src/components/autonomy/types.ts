@@ -116,6 +116,7 @@ export interface AITask {
   origin_type: string;
   priority: number;
   contact_name?: string;
+  contact_phone?: string;
   ai_reasoning?: string;
   ai_confidence?: number;
   execution_plan?: TaskStepPlan[];
@@ -125,6 +126,9 @@ export interface AITask {
   completed_at?: string;
   created_at: string;
   ai_role?: string;
+  preferred_channel?: string;
+  tone?: string;
+  objective?: string;
 }
 
 export interface TasksResponse {
