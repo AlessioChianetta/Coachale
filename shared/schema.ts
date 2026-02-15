@@ -596,6 +596,20 @@ export const consultationTasks = pgTable("consultation_tasks", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const consultantPersonalTasks = pgTable("consultant_personal_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date"),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  priority: text("priority").notNull().$type<"low" | "medium" | "high" | "urgent">().default("medium"),
+  category: text("category").notNull().$type<"business" | "marketing" | "operations" | "learning" | "finance" | "other">().default("other"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Client State Tracking Table
 export const clientStateTracking = pgTable("client_state_tracking", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1406,6 +1420,13 @@ export const updateConsultationTaskSchema = z.object({
   completedAt: z.coerce.date().nullable().optional(),
   priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
   category: z.enum(["preparation", "follow-up", "exercise", "goal", "reminder"]).optional(),
+});
+
+export const insertConsultantPersonalTaskSchema = createInsertSchema(consultantPersonalTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
 });
 
 // Client State Tracking insert schema
@@ -2449,6 +2470,8 @@ export type InsertDailyReflection = z.infer<typeof insertDailyReflectionSchema>;
 export type ConsultationTask = typeof consultationTasks.$inferSelect;
 export type InsertConsultationTask = z.infer<typeof insertConsultationTaskSchema>;
 export type UpdateConsultationTask = z.infer<typeof updateConsultationTaskSchema>;
+
+export type ConsultantPersonalTask = typeof consultantPersonalTasks.$inferSelect;
 
 // Client State Tracking types
 export type ClientStateTracking = typeof clientStateTracking.$inferSelect;

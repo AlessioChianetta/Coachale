@@ -553,6 +553,51 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     }
   }
 
+  const personalTasksResult = await db.execute(sql`
+    SELECT id, title, description, due_date, completed, completed_at, priority, category, created_at
+    FROM consultant_personal_tasks
+    WHERE consultant_id = ${consultantId}
+    ORDER BY completed ASC, 
+             CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+             due_date ASC NULLS LAST
+    LIMIT 30
+  `);
+
+  const clientTasksResult = await db.execute(sql`
+    SELECT ct.id, ct.title, ct.description, ct.due_date, ct.completed, ct.completed_at,
+           ct.priority, ct.category, ct.created_at,
+           u.first_name || ' ' || u.last_name as client_name, ct.client_id
+    FROM consultation_tasks ct
+    JOIN users u ON u.id::text = ct.client_id
+    JOIN consultations c ON c.id = ct.consultation_id
+    WHERE c.consultant_id = ${consultantId}::text
+      AND ct.draft_status = 'active'
+      AND ct.created_at > NOW() - INTERVAL '30 days'
+    ORDER BY ct.completed ASC,
+             CASE ct.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+             ct.due_date ASC NULLS LAST
+    LIMIT 50
+  `);
+
+  const clientTaskStatsResult = await db.execute(sql`
+    SELECT 
+      u.first_name || ' ' || u.last_name as client_name,
+      ct.client_id,
+      COUNT(*) as total_tasks,
+      COUNT(*) FILTER (WHERE ct.completed = true) as completed_tasks,
+      COUNT(*) FILTER (WHERE ct.completed = false) as pending_tasks,
+      COUNT(*) FILTER (WHERE ct.completed = false AND ct.due_date < NOW()) as overdue_tasks
+    FROM consultation_tasks ct
+    JOIN users u ON u.id::text = ct.client_id
+    JOIN consultations c ON c.id = ct.consultation_id
+    WHERE c.consultant_id = ${consultantId}::text
+      AND ct.draft_status = 'active'
+    GROUP BY ct.client_id, u.first_name, u.last_name
+    HAVING COUNT(*) FILTER (WHERE ct.completed = false) > 0
+    ORDER BY COUNT(*) FILTER (WHERE ct.completed = false AND ct.due_date < NOW()) DESC,
+             COUNT(*) FILTER (WHERE ct.completed = false) DESC
+  `);
+
   return {
     upcomingConsultations: mergedConsultations,
     workload: workloadResult.rows[0] || {},
@@ -562,6 +607,9 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     marcoContext,
     kbDocumentTitles,
     fileSearchStoreNames,
+    consultantPersonalTasks: personalTasksResult.rows,
+    clientTasks: clientTasksResult.rows,
+    clientTaskStats: clientTaskStatsResult.rows,
   };
 }
 
@@ -1237,6 +1285,24 @@ METRICHE CARICO DI LAVORO:
 - Task completati ultimi 7 giorni: ${workload.completed_7d || 0}
 - Task pendenti/programmati: ${workload.pending_tasks || 0}
 - Clienti attivi totali: ${clientCount}
+
+TASK PERSONALI DEL CONSULENTE:
+${(() => {
+  const personalTasks = roleData.consultantPersonalTasks || [];
+  if (personalTasks.length === 0) return 'Nessuna task personale';
+  const pending = personalTasks.filter((t: any) => !t.completed);
+  const completed = personalTasks.filter((t: any) => t.completed);
+  let result = `Pendenti: ${pending.length}, Completate: ${completed.length}\n`;
+  result += pending.map((t: any) => `- [${t.priority?.toUpperCase()}] ${t.title} (${t.category})${t.due_date ? ` scadenza: ${new Date(t.due_date).toLocaleDateString('it-IT')}` : ''}`).join('\n');
+  return result;
+})()}
+
+PROGRESSI TASK CLIENTI:
+${(() => {
+  const stats = roleData.clientTaskStats || [];
+  if (stats.length === 0) return 'Nessun dato sui task dei clienti';
+  return stats.map((s: any) => `- ${s.client_name}: ${s.completed_tasks}/${s.total_tasks} completate, ${s.pending_tasks} pendenti${parseInt(s.overdue_tasks) > 0 ? `, ⚠️ ${s.overdue_tasks} SCADUTE` : ''}`).join('\n');
+})()}
 
 MONITORAGGIO CONSULENZE LIMITATE:
 ${monitoringSummary.length > 0 ? JSON.stringify(monitoringSummary, null, 2) : 'Nessun cliente con pacchetto consulenze limitato'}

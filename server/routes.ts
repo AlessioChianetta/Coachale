@@ -63,6 +63,7 @@ import crypto from 'crypto'; // Import crypto for UUID generation
 import { generateCertificatePDF } from "./pdfGenerator";
 import financeSettingsRouter from "./routes/finance-settings";
 import consultationTasksRouter from "./routes/consultation-tasks";
+import consultantPersonalTasksRouter from "./routes/consultant-personal-tasks";
 import clientStateRouter from "./routes/client-state";
 import automatedEmailsRouter from "./routes/automated-emails";
 import momentumRouter from "./routes/momentum";
@@ -13646,6 +13647,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Consultation Tasks routes
   app.use("/api", consultationTasksRouter);
+
+  // Consultant Personal Tasks routes
+  app.use("/api", consultantPersonalTasksRouter);
 
   // Client State Tracking routes
   app.use("/api", clientStateRouter);

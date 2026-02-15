@@ -1,13 +1,9 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import it from "date-fns/locale/it";
-import { Link } from "wouter";
+import { it } from "date-fns/locale";
 import {
   ListTodo,
-  Filter,
-  Calendar,
-  User,
   CheckCircle2,
   Circle,
   Clock,
@@ -17,50 +13,44 @@ import {
   ChevronRight,
   AlertCircle,
   Plus,
-  FileEdit,
-  ExternalLink,
+  Trash2,
+  User,
+  Calendar,
+  Tag,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { getAuthHeaders } from "@/lib/auth";
-import ConsultationTasksManager from "@/components/consultation-tasks-manager";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-interface ConsultationTask {
-  id: string;
-  consultationId: string;
-  clientId: string;
-  clientName: string;
-  title: string;
-  description: string | null;
-  dueDate: string | null;
-  completed: boolean;
-  completedAt: string | null;
-  priority: "low" | "medium" | "high" | "urgent";
-  category: "preparation" | "follow-up" | "exercise" | "goal" | "reminder";
-  source: "manual" | "echo_extracted" | "auto_followup";
-  draftStatus: "draft" | "active" | "discarded";
-  createdAt: string;
-  updatedAt: string;
-}
-
-const priorityConfig = {
-  urgent: { variant: "destructive" as const, label: "Urgente", color: "text-red-600" },
-  high: { variant: "default" as const, label: "Alta", color: "text-orange-600" },
-  medium: { variant: "default" as const, label: "Media", color: "text-yellow-600" },
-  low: { variant: "default" as const, label: "Bassa", color: "text-green-600" },
+const priorityConfig: Record<string, { label: string; color: string; bg: string }> = {
+  urgent: { label: "Urgente", color: "text-red-700 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40" },
+  high: { label: "Alta", color: "text-orange-700 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40" },
+  medium: { label: "Media", color: "text-yellow-700 dark:text-yellow-400", bg: "bg-yellow-100 dark:bg-yellow-900/40" },
+  low: { label: "Bassa", color: "text-green-700 dark:text-green-400", bg: "bg-green-100 dark:bg-green-900/40" },
 };
 
-const categoryLabels = {
+const personalCategoryLabels: Record<string, string> = {
+  business: "Business",
+  marketing: "Marketing",
+  operations: "Operazioni",
+  learning: "Formazione",
+  finance: "Finanza",
+  other: "Altro",
+};
+
+const clientCategoryLabels: Record<string, string> = {
   preparation: "Preparazione",
   "follow-up": "Follow-up",
   exercise: "Esercizio",
@@ -72,606 +62,687 @@ export default function ConsultantTasks() {
   const isMobile = useIsMobile();
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  // Filtri
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedConsultations, setExpandedConsultations] = useState<Set<string>>(new Set());
-  
-  // Dialog creazione task
-  const [isCreateTaskDialogOpen, setIsCreateTaskDialogOpen] = useState(false);
-  const [selectedClientForTask, setSelectedClientForTask] = useState<{ id: string; name: string; consultationId: string } | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Fetch all tasks for consultant
-  const { data: allTasks = [], isLoading } = useQuery<ConsultationTask[]>({
-    queryKey: ["/api/consultation-tasks/consultant", filterStatus, filterPriority, filterCategory],
+  const [activeTab, setActiveTab] = useState("personal");
+
+  const [personalStatusFilter, setPersonalStatusFilter] = useState("all");
+  const [personalPriorityFilter, setPersonalPriorityFilter] = useState("all");
+  const [personalSearch, setPersonalSearch] = useState("");
+
+  const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState("medium");
+  const [newCategory, setNewCategory] = useState("business");
+  const [newDueDate, setNewDueDate] = useState("");
+
+  const [clientStatusFilter, setClientStatusFilter] = useState("all");
+  const [clientPriorityFilter, setClientPriorityFilter] = useState("all");
+  const [clientSearch, setClientSearch] = useState("");
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+
+  const [isCreateClientTaskOpen, setIsCreateClientTaskOpen] = useState(false);
+  const [ctClientId, setCtClientId] = useState("");
+  const [ctTitle, setCtTitle] = useState("");
+  const [ctDescription, setCtDescription] = useState("");
+  const [ctPriority, setCtPriority] = useState("medium");
+  const [ctCategory, setCtCategory] = useState("follow-up");
+  const [ctDueDate, setCtDueDate] = useState("");
+
+  const { data: personalTasks = [] } = useQuery({
+    queryKey: ["/api/consultant-personal-tasks"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filterStatus !== "all") {
-        params.append("completed", String(filterStatus === "completed"));
-      }
-      if (filterPriority !== "all") {
-        params.append("priority", filterPriority);
-      }
-      if (filterCategory !== "all") {
-        params.append("category", filterCategory);
-      }
-
-      const response = await fetch(`/api/consultation-tasks/consultant?${params.toString()}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch tasks");
-      const result = await response.json();
-      return result.data || result;
+      const res = await fetch("/api/consultant-personal-tasks", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      const result = await res.json();
+      return result.data || [];
     },
   });
 
-  // Separate draft tasks from Echo from active tasks
-  const draftTasksFromEcho = useMemo(() => {
-    return allTasks.filter(
-      task => task.draftStatus === "draft" && task.source === "echo_extracted"
-    );
-  }, [allTasks]);
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/consultant-personal-tasks", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant-personal-tasks"] });
+      setNewTitle("");
+      setNewPriority("medium");
+      setNewCategory("business");
+      setNewDueDate("");
+      toast({ title: "Task creata", description: "La task è stata creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile creare la task", variant: "destructive" });
+    },
+  });
 
-  // Filter out draft Echo tasks from main task list
-  const tasks = useMemo(() => {
-    return allTasks.filter(
-      task => !(task.draftStatus === "draft" && task.source === "echo_extracted")
-    );
-  }, [allTasks]);
+  const toggleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/consultant-personal-tasks/${id}/toggle`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/consultant-personal-tasks"] }),
+  });
 
-  // Fetch clients list
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/consultant-personal-tasks/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant-personal-tasks"] });
+      toast({ title: "Eliminata", description: "Task eliminata con successo" });
+    },
+  });
+
+  const { data: clientTasks = [] } = useQuery({
+    queryKey: ["/api/consultation-tasks/consultant"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultation-tasks/consultant", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      const result = await res.json();
+      return result.data || result || [];
+    },
+  });
+
   const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
     queryFn: async () => {
-      const response = await fetch("/api/clients", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch clients");
-      return response.json();
+      const res = await fetch("/api/clients", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
     },
   });
 
-  // Fetch consultations
-  const { data: consultations = [] } = useQuery({
-    queryKey: ["/api/consultations"],
-    queryFn: async () => {
-      const response = await fetch("/api/consultations", {
-        headers: getAuthHeaders(),
+  const createClientTaskMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch("/api/consultation-tasks", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to fetch consultations");
-      return response.json();
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultation-tasks/consultant"] });
+      setIsCreateClientTaskOpen(false);
+      setCtClientId("");
+      setCtTitle("");
+      setCtDescription("");
+      setCtPriority("medium");
+      setCtCategory("follow-up");
+      setCtDueDate("");
+      toast({ title: "Task creata", description: "Task cliente creata con successo" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile creare la task", variant: "destructive" });
     },
   });
 
-  // Filtra per search query
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) return tasks;
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(task => 
-      task.title.toLowerCase().includes(query) ||
-      task.description?.toLowerCase().includes(query) ||
-      task.clientName.toLowerCase().includes(query)
-    );
-  }, [tasks, searchQuery]);
+  const toggleClientTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/consultation-tasks/${taskId}/complete`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/consultation-tasks/consultant"] }),
+  });
 
-  // Raggruppa task per consulenza
-  const tasksByConsultation = useMemo(() => {
-    const grouped = new Map<string, ConsultationTask[]>();
-    
-    filteredTasks.forEach(task => {
-      const consultationId = task.consultationId;
-      if (!grouped.has(consultationId)) {
-        grouped.set(consultationId, []);
+  const filteredPersonalTasks = useMemo(() => {
+    let result = personalTasks as any[];
+    if (personalStatusFilter === "completed") result = result.filter((t: any) => t.completed);
+    else if (personalStatusFilter === "pending") result = result.filter((t: any) => !t.completed);
+    if (personalPriorityFilter !== "all") result = result.filter((t: any) => t.priority === personalPriorityFilter);
+    if (personalSearch.trim()) {
+      const q = personalSearch.toLowerCase();
+      result = result.filter((t: any) => t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q));
+    }
+    return result;
+  }, [personalTasks, personalStatusFilter, personalPriorityFilter, personalSearch]);
+
+  const personalStats = useMemo(() => {
+    const all = personalTasks as any[];
+    const total = all.length;
+    const completed = all.filter((t: any) => t.completed).length;
+    const pending = total - completed;
+    const urgent = all.filter((t: any) => t.priority === "urgent" && !t.completed).length;
+    return { total, completed, pending, urgent };
+  }, [personalTasks]);
+
+  const filteredClientTasks = useMemo(() => {
+    let result = clientTasks as any[];
+    if (clientStatusFilter === "completed") result = result.filter((t: any) => t.completed);
+    else if (clientStatusFilter === "pending") result = result.filter((t: any) => !t.completed);
+    if (clientPriorityFilter !== "all") result = result.filter((t: any) => t.priority === clientPriorityFilter);
+    if (clientSearch.trim()) {
+      const q = clientSearch.toLowerCase();
+      result = result.filter((t: any) => t.title?.toLowerCase().includes(q) || t.clientName?.toLowerCase().includes(q));
+    }
+    return result;
+  }, [clientTasks, clientStatusFilter, clientPriorityFilter, clientSearch]);
+
+  const clientStats = useMemo(() => {
+    const all = clientTasks as any[];
+    const total = all.length;
+    const completed = all.filter((t: any) => t.completed).length;
+    const pending = total - completed;
+    const urgent = all.filter((t: any) => t.priority === "urgent" && !t.completed).length;
+    return { total, completed, pending, urgent };
+  }, [clientTasks]);
+
+  const tasksByClient = useMemo(() => {
+    const grouped = new Map<string, { clientName: string; tasks: any[] }>();
+    filteredClientTasks.forEach((task: any) => {
+      const key = task.clientId || "unknown";
+      if (!grouped.has(key)) {
+        grouped.set(key, { clientName: task.clientName || "Cliente sconosciuto", tasks: [] });
       }
-      grouped.get(consultationId)!.push(task);
+      grouped.get(key)!.tasks.push(task);
     });
+    return Array.from(grouped.entries());
+  }, [filteredClientTasks]);
 
-    // Ordina per data di creazione più recente
-    return Array.from(grouped.entries())
-      .sort(([, tasksA], [, tasksB]) => {
-        const dateA = new Date(tasksA[0]?.createdAt || 0);
-        const dateB = new Date(tasksB[0]?.createdAt || 0);
-        return dateB.getTime() - dateA.getTime();
-      });
-  }, [filteredTasks]);
-
-  const toggleConsultation = (consultationId: string) => {
-    setExpandedConsultations(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(consultationId)) {
-        newSet.delete(consultationId);
-      } else {
-        newSet.add(consultationId);
-      }
-      return newSet;
+  const toggleClient = (clientId: string) => {
+    setExpandedClients((prev) => {
+      const next = new Set(prev);
+      if (next.has(clientId)) next.delete(clientId);
+      else next.add(clientId);
+      return next;
     });
   };
 
-  // Statistiche
-  const stats = useMemo(() => {
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.completed).length;
-    const pending = total - completed;
-    const urgent = tasks.filter(t => t.priority === "urgent" && !t.completed).length;
-    
-    return { total, completed, pending, urgent };
-  }, [tasks]);
+  const handleCreatePersonalTask = () => {
+    if (!newTitle.trim()) return;
+    createMutation.mutate({
+      title: newTitle.trim(),
+      priority: newPriority,
+      category: newCategory,
+      dueDate: newDueDate || undefined,
+    });
+  };
+
+  const handleCreateClientTask = () => {
+    if (!ctClientId || !ctTitle.trim()) return;
+    createClientTaskMutation.mutate({
+      clientId: ctClientId,
+      title: ctTitle.trim(),
+      description: ctDescription.trim() || undefined,
+      priority: ctPriority,
+      category: ctCategory,
+      dueDate: ctDueDate || undefined,
+    });
+  };
+
+  const renderStatsRow = (stats: { total: number; completed: number; pending: number; urgent: number }) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {[
+        { label: "Totale", value: stats.total, gradient: "from-blue-500 to-blue-600", icon: <ListTodo className="w-5 h-5 text-blue-600" />, iconBg: "bg-blue-100 dark:bg-blue-900/30" },
+        { label: "Completate", value: stats.completed, gradient: "from-emerald-500 to-emerald-600", icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, iconBg: "bg-emerald-100 dark:bg-emerald-900/30" },
+        { label: "In Sospeso", value: stats.pending, gradient: "from-amber-500 to-orange-500", icon: <Clock className="w-5 h-5 text-amber-600" />, iconBg: "bg-amber-100 dark:bg-amber-900/30" },
+        { label: "Urgenti", value: stats.urgent, gradient: "from-red-500 to-rose-600", icon: <AlertCircle className="w-5 h-5 text-red-600" />, iconBg: "bg-red-100 dark:bg-red-900/30" },
+      ].map((stat) => (
+        <div key={stat.label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-md transition-all duration-300">
+          <div className={`h-1.5 bg-gradient-to-r ${stat.gradient}`} />
+          <div className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
+            </div>
+            <div className={cn("p-2.5 rounded-xl", stat.iconBg)}>
+              {stat.icon}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderPriorityBadge = (priority: string) => {
+    const config = priorityConfig[priority] || priorityConfig.medium;
+    return (
+      <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", config.bg, config.color)}>
+        <Flag className="w-3 h-3" />
+        {config.label}
+      </span>
+    );
+  };
+
+  const renderCategoryBadge = (category: string, labels: Record<string, string>) => (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+      <Tag className="w-3 h-3" />
+      {labels[category] || category}
+    </span>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
+      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
-        <div className="flex-1 p-8 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm border-0">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-                  <p className="mt-6 text-slate-700 font-semibold text-lg">Caricamento task...</p>
-                </div>
-              </Card>
-            </div>
-          ) : (
-            <>
-          {/* Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
-                    <ListTodo className="w-8 h-8 text-white" />
+        <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
+          <div className="max-w-5xl mx-auto space-y-6">
+
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 text-white shadow-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
+              <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
+                    <ListTodo className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                      Task Clienti
-                    </h1>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg">
-                      Gestisci tutte le task assegnate ai tuoi clienti
-                    </p>
+                    <h1 className="text-2xl lg:text-3xl font-bold">Task Manager</h1>
+                    <p className="text-blue-200 text-sm lg:text-base">Gestisci le tue task personali e quelle dei tuoi clienti</p>
                   </div>
                 </div>
-                <Button
-                  onClick={() => setIsCreateTaskDialogOpen(true)}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Nuova Task
-                </Button>
+                <div className="flex items-center gap-3 mt-4 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-sm border border-white/10">
+                    <ListTodo className="w-3.5 h-3.5" />
+                    {personalStats.total} task personali
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-sm border border-white/10">
+                    <User className="w-3.5 h-3.5" />
+                    {clientStats.total} task clienti
+                  </span>
+                </div>
               </div>
             </div>
 
-          {/* Statistiche */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white dark:bg-slate-800 border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Totale Task</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
-                  </div>
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                    <ListTodo className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full grid grid-cols-2 h-12 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-1">
+                <TabsTrigger value="personal" className="rounded-xl text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white">
+                  Task Consulente
+                </TabsTrigger>
+                <TabsTrigger value="clients" className="rounded-xl text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white">
+                  Task Clienti
+                </TabsTrigger>
+              </TabsList>
 
-            <Card className="bg-white dark:bg-slate-800 border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Completate</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
-                  </div>
-                  <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              <TabsContent value="personal" className="mt-6 space-y-6">
+                {renderStatsRow(personalStats)}
 
-            <Card className="bg-white dark:bg-slate-800 border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">In Sospeso</p>
-                    <p className="text-3xl font-bold text-orange-600">{stats.pending}</p>
-                  </div>
-                  <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
-                    <Circle className="w-6 h-6 text-orange-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white dark:bg-slate-800 border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Urgenti</p>
-                    <p className="text-3xl font-bold text-red-600">{stats.urgent}</p>
-                  </div>
-                  <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl">
-                    <AlertCircle className="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filtri */}
-          <Card className="mb-8 bg-white dark:bg-slate-800 border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="w-5 h-5" />
-                Filtri
-              </CardTitle>
-              <CardDescription>Filtra e cerca le task dei tuoi clienti</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    Stato
-                  </label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="h-11 bg-slate-50 dark:bg-slate-900">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutte</SelectItem>
-                      <SelectItem value="completed">Completate</SelectItem>
-                      <SelectItem value="incomplete">In Sospeso</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    Priorità
-                  </label>
-                  <Select value={filterPriority} onValueChange={setFilterPriority}>
-                    <SelectTrigger className="h-11 bg-slate-50 dark:bg-slate-900">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutte</SelectItem>
-                      <SelectItem value="urgent">Urgente</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
-                      <SelectItem value="medium">Media</SelectItem>
-                      <SelectItem value="low">Bassa</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    Categoria
-                  </label>
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="h-11 bg-slate-50 dark:bg-slate-900">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tutte</SelectItem>
-                      <SelectItem value="preparation">Preparazione</SelectItem>
-                      <SelectItem value="follow-up">Follow-up</SelectItem>
-                      <SelectItem value="exercise">Esercizio</SelectItem>
-                      <SelectItem value="goal">Obiettivo</SelectItem>
-                      <SelectItem value="reminder">Promemoria</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    Cerca
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      type="text"
-                      placeholder="Cerca task o cliente..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 h-11 bg-slate-50 dark:bg-slate-900"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sezione Task in Bozza da Echo */}
-          {draftTasksFromEcho.length > 0 && (
-            <Card className="mb-8 bg-slate-100 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-600 shadow-lg">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                      <FileEdit className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg text-slate-700 dark:text-slate-300">
-                        Task in Bozza (da Echo)
-                      </CardTitle>
-                      <CardDescription className="text-slate-500 dark:text-slate-400">
-                        Task estratte automaticamente da Echo - in attesa di approvazione
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Link href="/consultant/echo-dashboard">
-                    <Button variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-700 dark:hover:bg-amber-900/30">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Vai a Echo Dashboard
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  {draftTasksFromEcho.map(task => (
-                    <div
-                      key={task.id}
-                      className="p-4 border border-dashed border-slate-300 dark:border-slate-600 rounded-xl bg-white/50 dark:bg-slate-900/30"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1">
-                          <div className="mt-1">
-                            <Circle className="w-5 h-5 text-slate-400" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold mb-1 text-slate-700 dark:text-slate-300">
-                              {task.title}
-                            </h4>
-                            <div className="flex items-center gap-3 flex-wrap mt-2">
-                              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                Attiva approvando l'email di riepilogo
-                              </Badge>
-                              <Badge className={`${priorityConfig[task.priority].variant === "destructive" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>
-                                <Flag className="w-3 h-3 mr-1" />
-                                {priorityConfig[task.priority].label}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs text-slate-600 dark:text-slate-400">
-                                {categoryLabels[task.category]}
-                              </Badge>
-                              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {task.clientName}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Lista Task raggruppate per consulenza */}
-          <div className="space-y-6">
-            {tasksByConsultation.length === 0 ? (
-              <Card className="bg-white dark:bg-slate-800 border-0 shadow-xl">
-                <CardContent className="p-16 text-center">
-                  <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <ListTodo className="w-12 h-12 text-blue-500" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-                    Nessuna task trovata
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 lg:p-6">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Nuova Task
                   </h3>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    {searchQuery ? "Prova a modificare i filtri di ricerca" : "Non ci sono task da visualizzare"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              tasksByConsultation.map(([consultationId, consultationTasks]) => {
-                const isExpanded = expandedConsultations.has(consultationId);
-                const firstTask = consultationTasks[0];
-                const completedCount = consultationTasks.filter(t => t.completed).length;
-                const totalCount = consultationTasks.length;
-
-                return (
-                  <Card key={consultationId} className="bg-white dark:bg-slate-800 border-0 shadow-xl overflow-hidden">
-                    <div
-                      className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 cursor-pointer hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 transition-all"
-                      onClick={() => toggleConsultation(consultationId)}
+                  <div className="flex flex-col lg:flex-row gap-3">
+                    <Input
+                      placeholder="Titolo della task..."
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      className="flex-1 h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      onKeyDown={(e) => { if (e.key === "Enter") handleCreatePersonalTask(); }}
+                    />
+                    <Select value={newPriority} onValueChange={setNewPriority}>
+                      <SelectTrigger className="w-full lg:w-[130px] h-10 bg-gray-50 dark:bg-gray-800">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Bassa</SelectItem>
+                        <SelectItem value="medium">Media</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={newCategory} onValueChange={setNewCategory}>
+                      <SelectTrigger className="w-full lg:w-[140px] h-10 bg-gray-50 dark:bg-gray-800">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(personalCategoryLabels).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      value={newDueDate}
+                      onChange={(e) => setNewDueDate(e.target.value)}
+                      className="w-full lg:w-[160px] h-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    />
+                    <Button
+                      onClick={handleCreatePersonalTask}
+                      disabled={!newTitle.trim() || createMutation.isPending}
+                      className="h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm">
-                            {isExpanded ? (
-                              <ChevronDown className="w-5 h-5 text-indigo-600" />
+                      <Plus className="w-4 h-4 mr-1" />
+                      Crea
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <Select value={personalStatusFilter} onValueChange={setPersonalStatusFilter}>
+                      <SelectTrigger className="w-full md:w-[150px] h-9 bg-gray-50 dark:bg-gray-800 text-sm">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="completed">Completate</SelectItem>
+                        <SelectItem value="pending">In Sospeso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={personalPriorityFilter} onValueChange={setPersonalPriorityFilter}>
+                      <SelectTrigger className="w-full md:w-[150px] h-9 bg-gray-50 dark:bg-gray-800 text-sm">
+                        <SelectValue placeholder="Priorità" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="medium">Media</SelectItem>
+                        <SelectItem value="low">Bassa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Cerca task..."
+                        value={personalSearch}
+                        onChange={(e) => setPersonalSearch(e.target.value)}
+                        className="pl-9 h-9 bg-gray-50 dark:bg-gray-800 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {filteredPersonalTasks.length === 0 ? (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <ListTodo className="w-8 h-8 text-blue-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Nessuna task trovata</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Crea la tua prima task personale</p>
+                    </div>
+                  ) : (
+                    filteredPersonalTasks.map((task: any) => (
+                      <div
+                        key={task.id}
+                        className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-md transition-all duration-300 group"
+                      >
+                        <div className="flex items-start gap-3">
+                          <button
+                            onClick={() => toggleMutation.mutate(task.id)}
+                            className="mt-0.5 flex-shrink-0"
+                          >
+                            {task.completed ? (
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                             ) : (
-                              <ChevronRight className="w-5 h-5 text-indigo-600" />
+                              <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-blue-500 transition-colors" />
                             )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <User className="w-5 h-5 text-indigo-600" />
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                                {firstTask.clientName}
-                              </h3>
-                              <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50">
-                                Consulenza #{consultationId.slice(0, 8)}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-                              <span className="flex items-center gap-1">
-                                <ListTodo className="w-4 h-4" />
-                                {totalCount} task totali
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                {completedCount} completate
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4 text-orange-600" />
-                                {totalCount - completedCount} in sospeso
-                              </span>
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("font-medium text-gray-900 dark:text-white", task.completed && "line-through text-gray-400 dark:text-gray-500")}>
+                              {task.title}
+                            </p>
+                            {task.description && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              {renderPriorityBadge(task.priority)}
+                              {renderCategoryBadge(task.category, personalCategoryLabels)}
+                              {task.dueDate && (
+                                <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                  <Calendar className="w-3 h-3" />
+                                  {format(new Date(task.dueDate), "d MMM yyyy", { locale: it })}
+                                </span>
+                              )}
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-slate-500 dark:text-slate-400">
-                            Progresso
-                          </div>
-                          <div className="text-2xl font-bold text-indigo-600">
-                            {Math.round((completedCount / totalCount) * 100)}%
-                          </div>
+                          <button
+                            onClick={() => deleteMutation.mutate(task.id)}
+                            className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
 
-                    {isExpanded && (
-                      <CardContent className="p-6">
-                        <div className="space-y-3">
-                          {consultationTasks.map(task => (
-                            <div
-                              key={task.id}
-                              className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 hover:shadow-md transition-all"
-                            >
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-start gap-3 flex-1">
-                                  <div className="mt-1">
+              <TabsContent value="clients" className="mt-6 space-y-6">
+                {renderStatsRow(clientStats)}
+
+                <div className="flex items-center justify-between">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col md:flex-row gap-3 flex-1">
+                    <Select value={clientStatusFilter} onValueChange={setClientStatusFilter}>
+                      <SelectTrigger className="w-full md:w-[150px] h-9 bg-gray-50 dark:bg-gray-800 text-sm">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="completed">Completate</SelectItem>
+                        <SelectItem value="pending">In Sospeso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={clientPriorityFilter} onValueChange={setClientPriorityFilter}>
+                      <SelectTrigger className="w-full md:w-[150px] h-9 bg-gray-50 dark:bg-gray-800 text-sm">
+                        <SelectValue placeholder="Priorità" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="medium">Media</SelectItem>
+                        <SelectItem value="low">Bassa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Cerca task o cliente..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        className="pl-9 h-9 bg-gray-50 dark:bg-gray-800 text-sm"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => setIsCreateClientTaskOpen(true)}
+                      className="h-9 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Nuova Task
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {tasksByClient.length === 0 ? (
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <User className="w-8 h-8 text-blue-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Nessuna task trovata</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Crea una task per un cliente</p>
+                    </div>
+                  ) : (
+                    tasksByClient.map(([clientId, { clientName, tasks }]) => {
+                      const isExpanded = expandedClients.has(clientId);
+                      const completedCount = tasks.filter((t: any) => t.completed).length;
+                      return (
+                        <div key={clientId} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-md transition-all duration-300">
+                          <button
+                            onClick={() => toggleClient(clientId)}
+                            className="w-full p-4 flex items-center justify-between bg-gradient-to-r from-gray-50 to-blue-50/50 dark:from-gray-800/50 dark:to-blue-950/30 hover:from-gray-100 hover:to-blue-100/50 dark:hover:from-gray-800 dark:hover:to-blue-950/50 transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                                {isExpanded ? <ChevronDown className="w-4 h-4 text-blue-600" /> : <ChevronRight className="w-4 h-4 text-blue-600" />}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-blue-600" />
+                                <span className="font-semibold text-gray-900 dark:text-white">{clientName}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                              <span>{tasks.length} task</span>
+                              <span className="text-emerald-600">{completedCount} completate</span>
+                            </div>
+                          </button>
+                          {isExpanded && (
+                            <div className="p-4 space-y-3 border-t border-gray-100 dark:border-gray-800">
+                              {tasks.map((task: any) => (
+                                <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                  <button
+                                    onClick={() => toggleClientTaskMutation.mutate(task.id)}
+                                    className="mt-0.5 flex-shrink-0"
+                                  >
                                     {task.completed ? (
-                                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                      <Circle className="w-5 h-5 text-slate-400" />
+                                      <Circle className="w-5 h-5 text-gray-300 dark:text-gray-600 hover:text-blue-500 transition-colors" />
                                     )}
-                                  </div>
-                                  <div className="flex-1">
-                                    <h4 className={`font-semibold mb-1 ${task.completed ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
+                                  </button>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn("font-medium text-gray-900 dark:text-white text-sm", task.completed && "line-through text-gray-400 dark:text-gray-500")}>
                                       {task.title}
-                                    </h4>
+                                    </p>
                                     {task.description && (
-                                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                                        {task.description}
-                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{task.description}</p>
                                     )}
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      <Badge className={`${priorityConfig[task.priority].variant === "destructive" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-700"}`}>
-                                        <Flag className="w-3 h-3 mr-1" />
-                                        {priorityConfig[task.priority].label}
-                                      </Badge>
-                                      <Badge variant="outline" className="text-xs">
-                                        {categoryLabels[task.category]}
-                                      </Badge>
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                      {renderPriorityBadge(task.priority)}
+                                      {renderCategoryBadge(task.category, clientCategoryLabels)}
                                       {task.dueDate && (
-                                        <span className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                           <Calendar className="w-3 h-3" />
-                                          Scadenza: {format(new Date(task.dueDate), "dd MMM yyyy", { locale: it })}
+                                          {format(new Date(task.dueDate), "d MMM yyyy", { locale: it })}
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              })
-            )}
-            </div>
-          </>
-          )}
+                      );
+                    })
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
-      <ConsultantAIAssistant />
 
-      {/* Dialog per creare nuova task */}
-      <Dialog open={isCreateTaskDialogOpen} onOpenChange={setIsCreateTaskDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={isCreateClientTaskOpen} onOpenChange={setIsCreateClientTaskOpen}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Crea Nuova Task per Cliente</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-600" />
+              Nuova Task Cliente
+            </DialogTitle>
           </DialogHeader>
-          
-          {!selectedClientForTask ? (
-            <div className="py-6">
-              <p className="text-sm text-muted-foreground mb-4">
-                Seleziona un cliente per cui creare una task:
-              </p>
-              <div className="grid gap-3">
-                {clients.map((client: any) => {
-                  // Trova la consulenza più recente per questo cliente
-                  const clientConsultations = consultations.filter(
-                    (c: any) => c.clientId === client.id
-                  );
-                  const latestConsultation = clientConsultations.sort(
-                    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                  )[0];
-
-                  return (
-                    <Button
-                      key={client.id}
-                      variant="outline"
-                      className="justify-start h-auto p-4 hover:bg-blue-50 dark:hover:bg-blue-950"
-                      onClick={() => {
-                        if (latestConsultation) {
-                          setSelectedClientForTask({
-                            id: client.id,
-                            name: `${client.firstName} ${client.lastName}`,
-                            consultationId: latestConsultation.id,
-                          });
-                        }
-                      }}
-                      disabled={!latestConsultation}
-                    >
-                      <div className="text-left">
-                        <div className="font-semibold">
-                          {client.firstName} {client.lastName}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {client.email}
-                        </div>
-                        {!latestConsultation && (
-                          <div className="text-xs text-red-500 mt-1">
-                            Nessuna consulenza disponibile
-                          </div>
-                        )}
-                      </div>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
+          <div className="space-y-4 mt-2">
             <div>
-              <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <p className="text-sm font-medium">
-                  Cliente selezionato: <span className="font-bold">{selectedClientForTask.name}</span>
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedClientForTask(null)}
-                  className="mt-2"
-                >
-                  Cambia cliente
-                </Button>
-              </div>
-              <ConsultationTasksManager
-                clientId={selectedClientForTask.id}
-                consultantId={""} 
-                consultationId={selectedClientForTask.consultationId}
-                readonly={false}
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Cliente</label>
+              <Select value={ctClientId} onValueChange={setCtClientId}>
+                <SelectTrigger className="h-10 bg-gray-50 dark:bg-gray-800">
+                  <SelectValue placeholder="Seleziona un cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(clients as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.firstName} {c.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Titolo</label>
+              <Input
+                placeholder="Titolo della task..."
+                value={ctTitle}
+                onChange={(e) => setCtTitle(e.target.value)}
+                className="h-10 bg-gray-50 dark:bg-gray-800"
               />
             </div>
-          )}
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Descrizione</label>
+              <Textarea
+                placeholder="Descrizione opzionale..."
+                value={ctDescription}
+                onChange={(e) => setCtDescription(e.target.value)}
+                className="bg-gray-50 dark:bg-gray-800 min-h-[80px]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Priorità</label>
+                <Select value={ctPriority} onValueChange={setCtPriority}>
+                  <SelectTrigger className="h-10 bg-gray-50 dark:bg-gray-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Bassa</SelectItem>
+                    <SelectItem value="medium">Media</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                    <SelectItem value="urgent">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Categoria</label>
+                <Select value={ctCategory} onValueChange={setCtCategory}>
+                  <SelectTrigger className="h-10 bg-gray-50 dark:bg-gray-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(clientCategoryLabels).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Scadenza</label>
+              <Input
+                type="date"
+                value={ctDueDate}
+                onChange={(e) => setCtDueDate(e.target.value)}
+                className="h-10 bg-gray-50 dark:bg-gray-800"
+              />
+            </div>
+            <Button
+              onClick={handleCreateClientTask}
+              disabled={!ctClientId || !ctTitle.trim() || createClientTaskMutation.isPending}
+              className="w-full h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Crea Task
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      <ConsultantAIAssistant />
     </div>
   );
 }

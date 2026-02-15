@@ -349,10 +349,15 @@ router.post("/consultation-tasks", authenticateToken, requireRole("consultant"),
         // Use the most recent consultation
         finalConsultationId = consultantConsultations[0].id;
       } else {
-        return res.status(400).json({ 
-          success: false, 
-          error: "No consultation found for this client. Please create a consultation first or provide a consultationId." 
+        const newConsultation = await storage.createConsultation({
+          clientId,
+          consultantId: req.user!.id,
+          scheduledAt: new Date(),
+          duration: 0,
+          status: "completed",
+          notes: "Consulenza generale per gestione task",
         });
+        finalConsultationId = newConsultation.id;
       }
     }
     
