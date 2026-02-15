@@ -571,6 +571,8 @@ function SettingsTab({
 }: SettingsTabProps) {
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
+  const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
+  const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -614,6 +616,36 @@ function SettingsTab({
       return res.json();
     },
   });
+
+  const handleTriggerRole = async (roleId: string, roleName: string) => {
+    setTriggeringRoleId(roleId);
+    setTriggerRoleResult(prev => ({ ...prev, [roleId]: undefined as any }));
+    try {
+      const res = await fetch(`/api/ai-autonomy/trigger-role/${roleId}`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      setTriggerRoleResult(prev => ({
+        ...prev,
+        [roleId]: { success: data.success, tasks: data.tasks_generated || 0, error: data.error },
+      }));
+      toast({
+        title: data.success ? `${roleName} avviato` : `Errore`,
+        description: data.success
+          ? `${data.tasks_generated} task generati da ${roleName}`
+          : (data.error || 'Errore durante l\'avvio'),
+        variant: data.success ? 'default' : 'destructive',
+      });
+    } catch (err: any) {
+      setTriggerRoleResult(prev => ({
+        ...prev,
+        [roleId]: { success: false, tasks: 0, error: err.message },
+      }));
+      toast({ title: 'Errore', description: err.message, variant: 'destructive' });
+    }
+    setTriggeringRoleId(null);
+  };
 
   const handleDeleteBlock = async (blockId: string) => {
     if (!window.confirm("Rimuovere questo blocco? L'AI potrà nuovamente proporre questo tipo di task.")) return;
@@ -2273,6 +2305,33 @@ function SettingsTab({
                                     )}
                                   </div>
                                 </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 pt-2" onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs rounded-lg gap-1.5 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-700 dark:hover:text-indigo-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTriggerRole(role.id, role.name);
+                                  }}
+                                  disabled={triggeringRoleId === role.id}
+                                >
+                                  {triggeringRoleId === role.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Play className="h-3.5 w-3.5" />
+                                  )}
+                                  {triggeringRoleId === role.id ? 'Avvio in corso...' : `Avvia ${role.name} ora`}
+                                </Button>
+                                {triggerRoleResult[role.id] && (
+                                  <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
+                                    {triggerRoleResult[role.id].success
+                                      ? `${triggerRoleResult[role.id].tasks} task generati`
+                                      : (triggerRoleResult[role.id].error || 'Errore')}
+                                  </span>
+                                )}
                               </div>
 
                               <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />

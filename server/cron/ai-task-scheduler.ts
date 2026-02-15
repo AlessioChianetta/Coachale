@@ -1229,19 +1229,15 @@ async function runAutonomousTaskGeneration(): Promise<void> {
   }
 }
 
-async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean }): Promise<number | SimulationResult> {
+async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean; onlyRoleId?: string }): Promise<number | SimulationResult> {
   const dryRun = options?.dryRun || false;
+  const onlyRoleId = options?.onlyRoleId || null;
   console.log(`🧠 [AUTONOMOUS-GEN] Starting generateTasksForConsultant for ${consultantId} (dryRun=${dryRun})`);
   const settings = await getAutonomySettings(consultantId);
   console.log(`🧠 [AUTONOMOUS-GEN] Settings loaded OK for ${consultantId}`);
 
   if (!dryRun) {
     if (!settings.is_active || settings.autonomy_level < 2) {
-      return 0;
-    }
-
-    if (!isWithinWorkingHours(settings)) {
-      console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultantId} outside working hours, skipping`);
       return 0;
     }
   }
@@ -1256,7 +1252,31 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     { alessia: true, millie: true, echo: true, nova: true, stella: true, iris: true };
 
   const { getActiveRoles } = await import("./ai-autonomous-roles");
-  const activeRoles = getActiveRoles(enabledRoles);
+  let activeRoles = getActiveRoles(enabledRoles);
+
+  if (onlyRoleId) {
+    activeRoles = activeRoles.filter(r => r.id === onlyRoleId);
+    if (activeRoles.length === 0) {
+      const allRolesModule = await import("./ai-autonomous-roles");
+      const allRoles = Object.values(allRolesModule.AI_ROLES);
+      const forcedRole = allRoles.find((r: any) => r.id === onlyRoleId);
+      if (forcedRole) {
+        activeRoles = [forcedRole];
+        console.log(`🧠 [AUTONOMOUS-GEN] Manual trigger: forcing role ${onlyRoleId} even if disabled`);
+      }
+    }
+  }
+
+  if (!dryRun && !onlyRoleId) {
+    const globalWithinHours = isWithinWorkingHours(settings);
+    const anyRoleHasCustomHours = activeRoles.some(r => settings.role_working_hours?.[r.id]?.start);
+    const anyRoleWithinHours = anyRoleHasCustomHours && activeRoles.some(r => isRoleWithinWorkingHours(settings, r.id));
+
+    if (!globalWithinHours && !anyRoleWithinHours) {
+      console.log(`🧠 [AUTONOMOUS-GEN] Consultant ${consultantId} outside all working hours (global + per-role), skipping`);
+      return 0;
+    }
+  }
   console.log(`🧠 [AUTONOMOUS-GEN] Active roles: ${activeRoles.map(r => r.id).join(', ')} for ${consultantId}`);
 
   if (activeRoles.length === 0) {
@@ -1525,7 +1545,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         continue;
       }
 
-      if (!isRoleWithinWorkingHours(settings, role.id)) {
+      if (!onlyRoleId && !isRoleWithinWorkingHours(settings, role.id)) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Outside role-specific working hours, skipping`);
         if (dryRun) {
           simulationRoles.push({
@@ -2144,9 +2164,9 @@ export async function triggerAITaskProcessing(): Promise<void> {
  */
 export { scheduleNextRecurrence, calculateNextDate };
 
-export async function triggerAutonomousGenerationForConsultant(consultantId: string): Promise<{ tasksGenerated: number; error?: string }> {
+export async function triggerAutonomousGenerationForConsultant(consultantId: string, roleId?: string): Promise<{ tasksGenerated: number; error?: string }> {
   try {
-    const tasksGenerated = await generateTasksForConsultant(consultantId) as number;
+    const tasksGenerated = await generateTasksForConsultant(consultantId, { onlyRoleId: roleId }) as number;
     return { tasksGenerated };
   } catch (error: any) {
     console.error(`❌ [AUTONOMOUS-GEN] Manual trigger error for ${consultantId}:`, error.message);

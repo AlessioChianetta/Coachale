@@ -1750,6 +1750,51 @@ router.post("/trigger-analysis", authenticateToken, requireAnyRole(["consultant"
   }
 });
 
+router.post("/trigger-role/:roleId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId } = req.params;
+
+    const validRoleIds = ['alessia', 'millie', 'echo', 'nova', 'stella', 'iris', 'marco', 'personalizza'];
+    if (!validRoleIds.includes(roleId)) {
+      return res.status(400).json({ error: "Ruolo non valido" });
+    }
+
+    const settingsCheck = await db.execute(sql`SELECT is_active, autonomy_level FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1`);
+    const s = settingsCheck.rows[0] as any;
+    if (!s || !s.is_active || s.autonomy_level < 2) {
+      return res.status(400).json({ success: false, error: "Sistema non attivo o livello autonomia insufficiente (min. 2)" });
+    }
+
+    console.log(`🧠 [AI-AUTONOMY] Manual trigger for role ${roleId} by consultant ${consultantId}`);
+
+    const result = await triggerAutonomousGenerationForConsultant(consultantId, roleId);
+
+    const roleName = roleId.charAt(0).toUpperCase() + roleId.slice(1);
+    await logActivity(consultantId, {
+      event_type: 'autonomous_analysis',
+      severity: result.error ? 'error' : 'info',
+      title: result.error ? `${roleName}: avvio manuale fallito` : `${roleName}: avvio manuale completato`,
+      description: result.error
+        ? `Errore durante l'avvio manuale di ${roleName}: ${result.error}`
+        : `${roleName} avviato manualmente. ${result.tasksGenerated} task generati.`,
+      event_data: { manual: true, role_id: roleId, tasks_generated: result.tasksGenerated, error: result.error || null },
+    });
+
+    return res.json({
+      success: !result.error,
+      tasks_generated: result.tasksGenerated,
+      role_id: roleId,
+      error: result.error || null,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error triggering role:", error);
+    return res.status(500).json({ error: "Failed to trigger role" });
+  }
+});
+
 router.get("/roles", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
