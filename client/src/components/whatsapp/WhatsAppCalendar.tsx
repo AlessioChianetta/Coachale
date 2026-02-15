@@ -228,9 +228,9 @@ export default function WhatsAppCalendar() {
             </div>
 
             {HOURS.map((hour) => (
-              <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/50 min-h-[60px]">
-                <div className="p-1.5 flex items-start justify-end pr-2 border-r border-border/50">
-                  <span className="text-[10px] font-medium text-muted-foreground">
+              <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border/50" style={{ minHeight: "48px" }}>
+                <div className="p-1 flex items-start justify-end pr-2 border-r border-border/50">
+                  <span className="text-[10px] font-medium text-muted-foreground mt-0.5">
                     {hour.toString().padStart(2, "0")}:00
                   </span>
                 </div>
@@ -242,9 +242,10 @@ export default function WhatsAppCalendar() {
                     <div
                       key={dayIdx}
                       className={cn(
-                        "border-l border-border/50 p-0.5 relative",
+                        "border-l border-border/50 p-0.5 relative overflow-hidden",
                         isToday && "bg-emerald-50/20 dark:bg-emerald-950/10"
                       )}
+                      style={{ maxHeight: cellTasks.length > 2 ? "96px" : undefined, overflowY: cellTasks.length > 2 ? "auto" : undefined }}
                     >
                       {cellTasks.map((task) => {
                         const colors = getColors(task.status);
@@ -253,25 +254,18 @@ export default function WhatsAppCalendar() {
                             <PopoverTrigger asChild>
                               <button
                                 className={cn(
-                                  "w-full text-left p-1.5 rounded-md border text-[11px] leading-tight mb-0.5 transition-all hover:shadow-md cursor-pointer",
+                                  "w-full text-left px-1.5 py-1 rounded border text-[10px] leading-none mb-0.5 transition-all hover:shadow-sm cursor-pointer flex items-center gap-1.5 min-h-0",
                                   colors.bg,
                                   colors.border
                                 )}
                               >
-                                {task.contact_name && (
-                                  <p className={cn("font-semibold truncate", colors.text)}>
-                                    {task.contact_name}
-                                  </p>
-                                )}
-                                <p className="text-muted-foreground truncate">
-                                  {task.ai_instruction?.slice(0, 40)}
-                                  {(task.ai_instruction?.length || 0) > 40 && "…"}
-                                </p>
+                                <span className={cn("font-semibold truncate shrink-0 max-w-[50%]", colors.text)}>
+                                  {task.contact_name || task.contact_phone || "—"}
+                                </span>
                                 {task.ai_role && (
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    <Sparkles className="h-2.5 w-2.5 text-muted-foreground" />
-                                    <span className="text-[10px] text-muted-foreground capitalize">{task.ai_role}</span>
-                                  </div>
+                                  <span className="text-[9px] text-muted-foreground capitalize shrink-0">
+                                    {task.ai_role}
+                                  </span>
                                 )}
                               </button>
                             </PopoverTrigger>
