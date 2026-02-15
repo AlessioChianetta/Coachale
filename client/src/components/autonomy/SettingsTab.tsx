@@ -85,6 +85,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
     focusPriorities: [],
     customContext: "",
     injectionMode: "system_prompt",
+    kbInjectionMode: "system_prompt",
     linkedKbDocumentIds: [],
     reportStyle: "bilanciato",
   });
@@ -159,8 +160,10 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
   if (hasFocusItems) summaryParts.push(`${ctx.focusPriorities.length} priorità`);
   if (hasKbDocs) summaryParts.push(`${ctx.linkedKbDocumentIds.length} doc KB`);
   if (hasCustomCtx) summaryParts.push("contesto custom");
-  const injLabel = ctx.injectionMode === "system_prompt" ? "SP" : "FS";
-  if (loaded && (hasFocusItems || hasKbDocs || hasCustomCtx)) summaryParts.push(injLabel);
+  if (hasKbDocs) {
+    const kbMode = ctx.kbInjectionMode || 'system_prompt';
+    summaryParts.push(kbMode === 'file_search' ? 'KB:FS' : 'KB:SP');
+  }
   const summaryText = summaryParts.length > 0 ? summaryParts.join(" · ") : "Nessun contesto configurato";
 
   const autoContextItems = AGENT_AUTO_CONTEXT[roleId] || [];
@@ -235,65 +238,6 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-violet-500" />
-                  Come viene iniettato il tuo contesto
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setCtx(prev => ({ ...prev, injectionMode: "system_prompt" }))}
-                    className={cn(
-                      "relative p-2.5 rounded-lg border-2 text-left transition-all",
-                      ctx.injectionMode === "system_prompt"
-                        ? "border-violet-400 bg-violet-50/50 dark:bg-violet-950/20 shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                    )}
-                  >
-                    {ctx.injectionMode === "system_prompt" && (
-                      <div className="absolute top-1.5 right-1.5">
-                        <CheckCircle className="h-3.5 w-3.5 text-violet-500" />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Brain className="h-3 w-3 text-violet-500" />
-                      <span className="text-[10px] font-bold">System Prompt</span>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground leading-relaxed">
-                      Sempre in memoria. {roleName} vede le tue priorità e istruzioni ad ogni analisi, senza eccezioni.
-                    </p>
-                    <div className="mt-1.5 flex items-center gap-1">
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium">100% visibilità</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setCtx(prev => ({ ...prev, injectionMode: "file_search" }))}
-                    className={cn(
-                      "relative p-2.5 rounded-lg border-2 text-left transition-all",
-                      ctx.injectionMode === "file_search"
-                        ? "border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                    )}
-                  >
-                    {ctx.injectionMode === "file_search" && (
-                      <div className="absolute top-1.5 right-1.5">
-                        <CheckCircle className="h-3.5 w-3.5 text-blue-500" />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <FileText className="h-3 w-3 text-blue-500" />
-                      <span className="text-[10px] font-bold">File Search (RAG)</span>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground leading-relaxed">
-                      Salvato nel File Search. {roleName} recupera le info solo quando sono rilevanti per il task in analisi.
-                    </p>
-                    <div className="mt-1.5 flex items-center gap-1">
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">Ricerca semantica</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
@@ -305,9 +249,12 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                     Aggiungi
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Su cosa deve concentrarsi {roleName}? L'ordine determina la priorità: il primo elemento è il più importante.
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[10px] text-muted-foreground">
+                    Su cosa deve concentrarsi {roleName}? L'ordine determina la priorità.
+                  </p>
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium shrink-0">System Prompt</span>
+                </div>
                 {ctx.focusPriorities.length === 0 ? (
                   <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
                     Nessuna priorità definita — {roleName} seguirà il comportamento predefinito
@@ -345,17 +292,48 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                  Contesto personalizzato
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                    Contesto personalizzato
+                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium">System Prompt</span>
+                    <span className={cn(
+                      "text-[8px] px-1.5 py-0.5 rounded font-medium tabular-nums",
+                      Math.ceil(ctx.customContext.length / 4) > 3000
+                        ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                        : Math.ceil(ctx.customContext.length / 4) > 2400
+                          ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                    )}>
+                      ~{Math.ceil(ctx.customContext.length / 4).toLocaleString()}/3.000 token
+                    </span>
+                  </div>
+                </div>
                 <Textarea
                   value={ctx.customContext}
-                  onChange={(e) => setCtx(prev => ({ ...prev, customContext: e.target.value }))}
+                  onChange={(e) => {
+                    const newVal = e.target.value;
+                    const estimatedTokens = Math.ceil(newVal.length / 4);
+                    if (estimatedTokens <= 3000) {
+                      setCtx(prev => ({ ...prev, customContext: newVal }));
+                    }
+                  }}
                   placeholder={`Roadmap, note strategiche, istruzioni specifiche per ${roleName}...`}
                   rows={3}
-                  className="rounded-lg text-xs resize-none"
+                  className={cn(
+                    "rounded-lg text-xs resize-none",
+                    Math.ceil(ctx.customContext.length / 4) > 2400 && "border-amber-300 dark:border-amber-700"
+                  )}
                 />
+                {Math.ceil(ctx.customContext.length / 4) > 2400 && (
+                  <p className="text-[10px] text-amber-600">
+                    {Math.ceil(ctx.customContext.length / 4) > 3000
+                      ? "Limite di 3.000 token raggiunto. Riduci il testo."
+                      : "Ti stai avvicinando al limite di 3.000 token."}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -372,39 +350,91 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </Select>
               </div>
 
-              {kbDocuments.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-blue-500" />
-                    Documenti Knowledge Base
-                  </Label>
-                  <div className="space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2">
-                    {kbDocuments.map((doc) => {
-                      const isLinked = ctx.linkedKbDocumentIds.includes(doc.id);
-                      return (
-                        <label key={doc.id} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-all text-xs", isLinked ? "bg-indigo-50 dark:bg-indigo-950/20" : "hover:bg-muted/50")}>
-                          <Checkbox
-                            checked={isLinked}
-                            onCheckedChange={(checked) => {
-                              setCtx(prev => ({
-                                ...prev,
-                                linkedKbDocumentIds: checked
-                                  ? [...prev.linkedKbDocumentIds, doc.id]
-                                  : prev.linkedKbDocumentIds.filter(id => id !== doc.id),
-                              }));
-                            }}
-                          />
-                          <span className="truncate">{doc.title}</span>
-                          <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{doc.file_type.toUpperCase()}</span>
-                        </label>
-                      );
-                    })}
+              {kbDocuments.length > 0 && (() => {
+                const linkedDocs = kbDocuments.filter(d => ctx.linkedKbDocumentIds.includes(d.id));
+                const totalKbTokens = linkedDocs.reduce((sum, d) => sum + Math.ceil((d.file_size || 0) / 4), 0);
+                const forcedFileSearch = totalKbTokens > 5000;
+                const effectiveKbMode = forcedFileSearch ? 'file_search' : (ctx.kbInjectionMode || 'system_prompt');
+
+                return (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-blue-500" />
+                      Documenti Knowledge Base
+                    </Label>
+                    <div className="space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2">
+                      {kbDocuments.map((doc) => {
+                        const isLinked = ctx.linkedKbDocumentIds.includes(doc.id);
+                        return (
+                          <label key={doc.id} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-all text-xs", isLinked ? "bg-indigo-50 dark:bg-indigo-950/20" : "hover:bg-muted/50")}>
+                            <Checkbox
+                              checked={isLinked}
+                              onCheckedChange={(checked) => {
+                                setCtx(prev => ({
+                                  ...prev,
+                                  linkedKbDocumentIds: checked
+                                    ? [...prev.linkedKbDocumentIds, doc.id]
+                                    : prev.linkedKbDocumentIds.filter(id => id !== doc.id),
+                                }));
+                              }}
+                            />
+                            <span className="truncate">{doc.title}</span>
+                            <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{doc.file_type.toUpperCase()}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {ctx.linkedKbDocumentIds.length > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] text-indigo-600 font-medium">{ctx.linkedKbDocumentIds.length} documento/i collegato/i</p>
+                          <span className="text-[8px] text-muted-foreground tabular-nums">~{totalKbTokens.toLocaleString()} token stimati</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <Label className="text-[10px] font-medium text-muted-foreground shrink-0">Iniezione KB:</Label>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => !forcedFileSearch && setCtx(prev => ({ ...prev, kbInjectionMode: 'system_prompt' }))}
+                              disabled={forcedFileSearch}
+                              className={cn(
+                                "text-[9px] px-2 py-1 rounded-md border transition-all",
+                                effectiveKbMode === 'system_prompt'
+                                  ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 font-semibold"
+                                  : "border-gray-200 dark:border-gray-700 text-muted-foreground",
+                                forcedFileSearch && "opacity-40 cursor-not-allowed"
+                              )}
+                            >
+                              <Brain className="h-2.5 w-2.5 inline mr-0.5" />
+                              System Prompt
+                            </button>
+                            <button
+                              onClick={() => setCtx(prev => ({ ...prev, kbInjectionMode: 'file_search' }))}
+                              className={cn(
+                                "text-[9px] px-2 py-1 rounded-md border transition-all",
+                                effectiveKbMode === 'file_search'
+                                  ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 font-semibold"
+                                  : "border-gray-200 dark:border-gray-700 text-muted-foreground"
+                              )}
+                            >
+                              <FileText className="h-2.5 w-2.5 inline mr-0.5" />
+                              File Search
+                            </button>
+                          </div>
+                        </div>
+
+                        {forcedFileSearch && (
+                          <p className="text-[9px] text-amber-600 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3 shrink-0" />
+                            Documenti superiori a 5.000 token — File Search forzato automaticamente
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {ctx.linkedKbDocumentIds.length > 0 && (
-                    <p className="text-[10px] text-indigo-600">{ctx.linkedKbDocumentIds.length} documento/i collegato/i</p>
-                  )}
-                </div>
-              )}
+                );
+              })()}
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">

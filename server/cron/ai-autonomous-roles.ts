@@ -33,7 +33,9 @@ interface AgentContextForPrompt {
   focusPriorities: { text: string; order: number }[];
   customContext: string;
   injectionMode: 'system_prompt' | 'file_search';
+  kbInjectionMode: 'system_prompt' | 'file_search';
   reportStyle: string;
+  kbForcedFileSearch: boolean;
 }
 
 export async function fetchAgentContext(consultantId: string, agentId: string): Promise<AgentContextForPrompt | null> {
@@ -64,17 +66,43 @@ export async function fetchAgentContext(consultantId: string, agentId: string): 
           focusPriorities: priorities,
           customContext: old.roadmap || '',
           injectionMode: 'system_prompt',
+          kbInjectionMode: 'system_prompt',
           reportStyle: old.reportStyle || 'bilanciato',
+          kbForcedFileSearch: false,
         };
       }
       return null;
+    }
+
+    const userKbMode = ctx.kbInjectionMode || ctx.injectionMode || 'system_prompt';
+    let kbForcedFileSearch = false;
+    if (userKbMode === 'system_prompt' && Array.isArray(ctx.linkedKbDocumentIds) && ctx.linkedKbDocumentIds.length > 0) {
+      try {
+        const sizeResult = await db.execute(sql`
+          SELECT COALESCE(SUM(file_size), 0) as total_size
+          FROM consultant_knowledge_documents
+          WHERE id = ANY(${ctx.linkedKbDocumentIds}::text[])
+            AND consultant_id = ${consultantId}
+            AND status = 'indexed'
+        `);
+        const totalBytes = Number((sizeResult.rows[0] as any)?.total_size || 0);
+        const estimatedTokens = Math.ceil(totalBytes / 4);
+        if (estimatedTokens > 5000) {
+          kbForcedFileSearch = true;
+          console.log(`📎 [${agentId.toUpperCase()}] KB docs exceed 5000 tokens (~${estimatedTokens}), forcing File Search`);
+        }
+      } catch (sizeErr: any) {
+        console.warn(`⚠️ [${agentId.toUpperCase()}] Failed to estimate KB token size: ${sizeErr.message}`);
+      }
     }
 
     return {
       focusPriorities: Array.isArray(ctx.focusPriorities) ? ctx.focusPriorities.filter((f: any) => f.text?.trim()) : [],
       customContext: ctx.customContext || '',
       injectionMode: ctx.injectionMode || 'system_prompt',
+      kbInjectionMode: kbForcedFileSearch ? 'file_search' : userKbMode,
       reportStyle: ctx.reportStyle || 'bilanciato',
+      kbForcedFileSearch,
     };
   } catch (err: any) {
     console.error(`⚠️ [${agentId.toUpperCase()}] Failed to fetch agent context: ${err.message}`);
@@ -84,7 +112,6 @@ export async function fetchAgentContext(consultantId: string, agentId: string): 
 
 export function buildAgentContextSection(ctx: AgentContextForPrompt | null, agentName: string): string {
   if (!ctx) return '';
-  if (ctx.injectionMode === 'file_search') return '';
 
   const parts: string[] = [];
 
@@ -97,8 +124,9 @@ export function buildAgentContextSection(ctx: AgentContextForPrompt | null, agen
   }
 
   if (ctx.customContext.trim()) {
+    const truncated = ctx.customContext.trim().slice(0, 12000);
     parts.push(`\n=== CONTESTO PERSONALIZZATO DEL CONSULENTE (per ${agentName}) ===`);
-    parts.push(ctx.customContext.trim());
+    parts.push(truncated);
   }
 
   if (ctx.reportStyle && ctx.reportStyle !== 'bilanciato') {

@@ -10201,6 +10201,7 @@ export interface AgentContext {
   focusPriorities: AgentFocusItem[];
   customContext: string;
   injectionMode: 'system_prompt' | 'file_search';
+  kbInjectionMode?: 'system_prompt' | 'file_search';
   linkedKbDocumentIds: string[];
   reportStyle?: 'sintetico' | 'dettagliato' | 'bilanciato';
 }
