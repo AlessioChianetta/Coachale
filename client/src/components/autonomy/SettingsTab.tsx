@@ -2102,6 +2102,21 @@ function SettingsTab({
                                             : `${role.name} ha autonomia completa, fa tutto da solo`
                                           }
                                         </p>
+                                        <div className="flex justify-end pt-1">
+                                          <Button 
+                                            size="sm" 
+                                            variant="ghost" 
+                                            className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSave();
+                                            }}
+                                            disabled={isSaving}
+                                          >
+                                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                            Salva
+                                          </Button>
+                                        </div>
                                       </div>
                                     ) : (
                                       <p className="text-[10px] text-muted-foreground">
@@ -2198,6 +2213,21 @@ function SettingsTab({
                                               {day.label.substring(0, 3)}
                                             </button>
                                           ))}
+                                        </div>
+                                        <div className="flex justify-end pt-1">
+                                          <Button 
+                                            size="sm" 
+                                            variant="ghost" 
+                                            className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onSave();
+                                            }}
+                                            disabled={isSaving}
+                                          >
+                                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                            Salva
+                                          </Button>
                                         </div>
                                       </div>
                                     ) : (
