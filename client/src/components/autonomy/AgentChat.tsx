@@ -84,14 +84,20 @@ function SafeMarkdown({ content }: { content: string }) {
     <ReactMarkdown
       rehypePlugins={[rehypeSanitize]}
       components={{
-        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-        ul: ({ children }) => <ul className="list-disc pl-4 mb-1">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal pl-4 mb-1">{children}</ol>,
-        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+        p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
+        strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+        ul: ({ children }) => <ul className="list-disc pl-4 mb-3 space-y-1">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal pl-4 mb-3 space-y-1">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold mb-1.5 mt-2 first:mt-0">{children}</h3>,
+        blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/30 pl-3 my-2 italic text-muted-foreground">{children}</blockquote>,
         code: ({ children }) => (
-          <code className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs">{children}</code>
+          <code className="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
         ),
+        hr: () => <hr className="my-3 border-border/50" />,
       }}
     >
       {content}
@@ -269,7 +275,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
 
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
         >
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -317,7 +323,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
                 </div>
                 <div
                   className={cn(
-                    "rounded-xl px-3 py-2 text-sm",
+                    "rounded-xl px-4 py-3 text-sm leading-relaxed",
                     msg.sender === "consultant"
                       ? "bg-primary text-primary-foreground rounded-tr-sm"
                       : "bg-muted rounded-tl-sm"

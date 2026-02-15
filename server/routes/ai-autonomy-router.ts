@@ -2313,14 +2313,14 @@ router.patch("/tasks/:id/mark-done", authenticateToken, requireAnyRole(["consult
 // =========================================================================
 
 const ROLE_CHAT_PERSONALITIES: Record<string, string> = {
-  alessia: `Sei Alessia, Voice Consultant AI. Sei professionale, empatica e attenta ai dettagli. Ti occupi di chiamate follow-up e supporto vocale ai clienti. Parli in modo chiaro e rassicurante.`,
-  millie: `Sei Millie, Data Analyst AI. Sei analitica, precisa e orientata ai dati. Aiuti il consulente a interpretare numeri, trend e performance. Parli con fatti e statistiche.`,
-  echo: `Sei Echo, Content Strategist AI. Sei creativa, moderna e orientata al marketing. Ti occupi di contenuti, campagne e strategie di comunicazione. Parli con entusiasmo e visione.`,
-  nova: `Sei Nova, Client Success Manager AI. Sei organizzata, proattiva e orientata ai risultati dei clienti. Monitori il percorso di ogni cliente e segnali criticità. Parli in modo strutturato e risolutivo.`,
-  stella: `Sei Stella, Retention Specialist AI. Sei attenta, premurosa e strategica. Ti occupi di fidelizzazione clienti e prevenzione churn. Parli con cura e lungimiranza.`,
-  iris: `Sei Iris, Revenue Optimizer AI. Sei diretta, strategica e focalizzata sui ricavi. Analizzi opportunità di upselling, cross-selling e ottimizzazione prezzi. Parli di numeri e opportunità.`,
-  marco: `Sei Marco, Executive Coach personale. Non sei un assistente educato — sei il coach che spinge oltre i limiti, tieni sotto pressione e non lasci scuse. Sei ossessivo, diretto, informale, e quando serve anche duro e crudo. Parli come un socio che conosce bene il consulente, dai del "tu", usi un linguaggio diretto e concreto.`,
-  personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento.`,
+  alessia: `Sei Alessia, Voice Consultant AI. Sei professionale, empatica e attenta ai dettagli. Ti occupi di chiamate follow-up e supporto vocale ai clienti. Parli in modo chiaro e rassicurante. In chat sei collaborativa: fai domande per capire meglio, proponi alternative, chiedi conferme prima di agire.`,
+  millie: `Sei Millie, Data Analyst AI. Sei analitica, precisa e orientata ai dati. Aiuti il consulente a interpretare numeri, trend e performance. In chat sei curiosa: chiedi quali metriche interessano di più, proponi approfondimenti, spieghi i dati in modo semplice e chiedi feedback.`,
+  echo: `Sei Echo, Content Strategist AI. Sei creativa, moderna e orientata al marketing. Ti occupi di contenuti, campagne e strategie di comunicazione. In chat sei propositiva: lanci idee, chiedi opinioni, fai brainstorming insieme al consulente, e adatti le proposte in base ai feedback.`,
+  nova: `Sei Nova, Client Success Manager AI. Sei organizzata, proattiva e orientata ai risultati dei clienti. In chat sei precisa ma dialogante: aggiorni sullo stato dei clienti, chiedi priorità, proponi azioni e chiedi conferma prima di procedere.`,
+  stella: `Sei Stella, Retention Specialist AI. Sei attenta, premurosa e strategica. Ti occupi di fidelizzazione clienti e prevenzione churn. In chat sei premurosa: segnali i rischi, proponi strategie, chiedi al consulente cosa pensa e se ha notato segnali che ti sfuggono.`,
+  iris: `Sei Iris, Revenue Optimizer AI. Sei diretta, strategica e focalizzata sui ricavi. In chat sei concreta: presenti opportunità con numeri, chiedi al consulente cosa ne pensa, proponi azioni e discuti le priorità di business.`,
+  marco: `Sei Marco, Executive Coach personale. Sei diretto, informale, e a volte anche duro — ma sei un COACH, non un dittatore. Dai del "tu", usi un linguaggio concreto. In chat: fai domande scomode ma utili, chiedi aggiornamenti su quello che avevi suggerito, dai feedback onesto ma DIALOGA — ascolta le risposte, fai follow-up, adatta i consigli in base a quello che il consulente ti dice. Non fare monologhi, fai conversazione.`,
+  personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento. In chat sei collaborativo e disponibile al dialogo.`,
 };
 
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
@@ -2384,27 +2384,46 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()})
     `);
 
-    const historyResult = await db.execute(sql`
-      SELECT sender, message, created_at FROM agent_chat_messages
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY created_at DESC LIMIT 20
-    `);
-    const chatHistory = (historyResult.rows as any[]).reverse();
+    const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
+      db.execute(sql`
+        SELECT sender, message, created_at FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ORDER BY created_at DESC LIMIT 20
+      `),
+      db.execute(sql`
+        SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
+        WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+      `),
+      db.execute(sql`
+        SELECT title, description, event_data, created_at FROM ai_activity_log
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ORDER BY created_at DESC LIMIT 5
+      `),
+      db.execute(sql`
+        SELECT id, ai_instruction, task_category, contact_name, status, priority, scheduled_at, created_at
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          AND status IN ('scheduled', 'waiting_approval', 'in_progress', 'approved', 'draft', 'paused')
+        ORDER BY priority DESC, created_at DESC LIMIT 10
+      `),
+      db.execute(sql`
+        SELECT id, ai_instruction, task_category, contact_name, status, result_summary, completed_at
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
+        ORDER BY completed_at DESC LIMIT 8
+      `),
+    ]);
 
-    const contextResult = await db.execute(sql`
-      SELECT agent_contexts, custom_instructions FROM ai_autonomy_settings
-      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
-    `);
+    const chatHistory = (historyResult.rows as any[]).reverse();
     const settingsRow = contextResult.rows[0] as any;
     const agentCtx = settingsRow?.agent_contexts?.[roleId] || {};
     const customInstructions = settingsRow?.custom_instructions || '';
-
-    const recentActivityResult = await db.execute(sql`
-      SELECT title, description, event_data, created_at FROM ai_activity_log
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY created_at DESC LIMIT 5
-    `);
+    const chatSummaries = settingsRow?.chat_summaries || {};
+    const existingSummary = chatSummaries[roleId]?.summary || '';
     const recentActivity = recentActivityResult.rows as any[];
+    const activeTasks = activeTasksResult.rows as any[];
+    const completedTasks = completedTasksResult.rows as any[];
 
     const personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
     const focusPriorities = agentCtx.focusPriorities || [];
@@ -2412,14 +2431,46 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
 
     let systemPrompt = `${personality}
 
-Stai chattando direttamente con il tuo consulente (il tuo "capo"). Rispondi in modo naturale, come in una conversazione WhatsApp. Sii conciso ma utile.
+Stai chattando direttamente con il tuo consulente (il tuo "capo"). Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
 
-${focusPriorities.length > 0 ? `LE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}` : ''}
+COME COMPORTARTI IN CHAT:
+- Fai domande di follow-up — non limitarti a dare ordini o report
+- Se il consulente ti dice qualcosa, rispondi a QUELLO specificamente
+- Chiedi chiarimenti se non hai abbastanza contesto
+- Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
+- Se hai task attivi o completati, menzionali naturalmente nella conversazione
+- Usa paragrafi separati per ogni concetto (NON fare muri di testo)
+- Usa **grassetto** per i punti chiave e le cifre importanti
 
-${customContext ? `CONTESTO PERSONALIZZATO DAL CONSULENTE:\n${customContext}` : ''}
+${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}` : ''}
 
-${customInstructions ? `ISTRUZIONI GENERALI DEL CONSULENTE:\n${customInstructions}` : ''}
+${customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
+
+${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 `;
+
+    if (existingSummary) {
+      systemPrompt += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI CON IL CONSULENTE:\n${existingSummary}\n`;
+    }
+
+    if (activeTasks.length > 0) {
+      systemPrompt += `\nI TUOI TASK ATTIVI (che devi ancora completare):\n`;
+      for (const t of activeTasks) {
+        const statusLabels: Record<string, string> = {
+          scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
+          in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
+        };
+        systemPrompt += `- [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}${t.scheduled_at ? ` — programmato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}\n`;
+      }
+      systemPrompt += `Puoi menzionare questi task nella conversazione, chiedere se procedere, o suggerire modifiche.\n`;
+    }
+
+    if (completedTasks.length > 0) {
+      systemPrompt += `\nTASK CHE HAI COMPLETATO DI RECENTE:\n`;
+      for (const t of completedTasks) {
+        systemPrompt += `- [✅ ${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 120)}${t.result_summary ? ` → ${t.result_summary.substring(0, 80)}` : ''}\n`;
+      }
+    }
 
     if (recentActivity.length > 0) {
       systemPrompt += `\nLE TUE ULTIME ANALISI/AZIONI:\n`;
@@ -2430,30 +2481,34 @@ ${customInstructions ? `ISTRUZIONI GENERALI DEL CONSULENTE:\n${customInstruction
 
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
-2. Sii conciso — massimo 2-3 paragrafi per risposta
-3. Se il consulente ti aggiorna su qualcosa che hai suggerito, prendi nota e conferma
-4. Se non hai dati sufficienti per rispondere, dillo onestamente
-5. Usa il tuo tono/personalità specifico ma resta professionale
-6. NON inventare dati — basati solo sulle informazioni che hai
-7. Se il consulente dice di aver fatto qualcosa, riconosci il lavoro e suggerisci i prossimi passi`;
+2. Usa paragrafi separati (lascia una riga vuota tra concetti diversi)
+3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
+4. DIALOGA: fai domande, chiedi feedback, proponi e chiedi conferma
+5. Se il consulente ti aggiorna, riconosci, commenta e suggerisci prossimi passi
+6. Se hai task in attesa di approvazione, chiedi se vuole approvarli
+7. NON inventare dati — basati solo sulle informazioni che hai
+8. Usa **grassetto** per cifre e concetti chiave`;
 
-    const conversationParts = chatHistory.map((m: any) => ({
+    const historyLimit = existingSummary ? 15 : 20;
+    const relevantHistory = chatHistory.slice(-historyLimit);
+    const conversationParts = relevantHistory.map((m: any) => ({
       role: m.sender === 'consultant' ? 'user' as const : 'model' as const,
       parts: [{ text: m.message }],
     }));
 
     let aiResponse = '';
+    let aiClient: any = null;
+    let providerModel = GEMINI_3_MODEL;
+
     try {
       const { getAIProvider } = await import("../ai/provider-factory");
-      let aiClient: any;
-      let model = GEMINI_3_MODEL;
 
       try {
         const provider = await getAIProvider(consultantId, consultantId);
         aiClient = provider.client;
         const providerName = provider.metadata?.name || '';
         const { getModelForProviderName } = await import("../ai/provider-factory");
-        model = getModelForProviderName(providerName);
+        providerModel = getModelForProviderName(providerName);
       } catch {
         const apiKey = await getGeminiApiKeyForClassifier();
         if (apiKey) {
@@ -2467,7 +2522,7 @@ ${customInstructions ? `ISTRUZIONI GENERALI DEL CONSULENTE:\n${customInstruction
       }
 
       const response = await aiClient.generateContent({
-        model,
+        model: providerModel,
         contents: [
           { role: 'user' as const, parts: [{ text: systemPrompt }] },
           { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
@@ -2489,6 +2544,90 @@ ${customInstructions ? `ISTRUZIONI GENERALI DEL CONSULENTE:\n${customInstruction
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse})
     `);
+
+    const totalCountResult = await db.execute(sql`
+      SELECT COUNT(*)::int as cnt FROM agent_chat_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+    const totalMessages = (totalCountResult.rows[0] as any)?.cnt || 0;
+
+    const capturedAiClient = aiClient;
+    const capturedModel = providerModel;
+    const capturedConsultantId = consultantId;
+    const capturedRoleId = roleId;
+    const capturedRoleName = roleName;
+
+    if (totalMessages >= 40 && capturedAiClient) {
+      (async () => {
+        try {
+          const allMsgsResult = await db.execute(sql`
+            SELECT sender, message, created_at FROM agent_chat_messages
+            WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+            ORDER BY created_at ASC
+          `);
+          const allMsgs = allMsgsResult.rows as any[];
+
+          const keepCount = 15;
+          if (allMsgs.length <= keepCount + 10) return;
+          const msgsToSummarize = allMsgs.slice(0, -keepCount);
+
+          const summaryInput = msgsToSummarize.map((m: any) =>
+            `[${m.sender === 'consultant' ? 'Consulente' : capturedRoleName}] ${m.message}`
+          ).join('\n\n');
+
+          const freshSettingsResult = await db.execute(sql`
+            SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id = ${capturedConsultantId}::uuid LIMIT 1
+          `);
+          const freshSummaries = (freshSettingsResult.rows[0] as any)?.chat_summaries || {};
+          const priorSummary = freshSummaries[capturedRoleId]?.summary || '';
+
+          const summaryPrompt = `Riassumi questa conversazione tra il consulente e ${capturedRoleName} in modo conciso ma completo. Mantieni:
+- Decisioni prese
+- Azioni concordate
+- Aggiornamenti importanti
+- Feedback e preferenze espresse dal consulente
+- Task discussi e il loro stato
+${priorSummary ? `\nRIASSUNTO PRECEDENTE (integra con le nuove informazioni):\n${priorSummary}\n` : ''}
+Scrivi il riassunto in italiano, in terza persona, max 500 parole.
+
+CONVERSAZIONE DA RIASSUMERE:
+${summaryInput}`;
+
+          const summaryResult = await capturedAiClient.generateContent({
+            model: capturedModel,
+            contents: [{ role: 'user' as const, parts: [{ text: summaryPrompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
+          });
+
+          const summaryText = summaryResult.text?.() || summaryResult.response?.text?.() || '';
+          if (summaryText && summaryText.length > 50) {
+            const reFetchResult = await db.execute(sql`
+              SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id = ${capturedConsultantId}::uuid LIMIT 1
+            `);
+            const latestSummaries = (reFetchResult.rows[0] as any)?.chat_summaries || {};
+            latestSummaries[capturedRoleId] = { summary: summaryText, updatedAt: new Date().toISOString(), messagesSummarized: msgsToSummarize.length };
+
+            await db.execute(sql`
+              UPDATE ai_autonomy_settings
+              SET chat_summaries = ${JSON.stringify(latestSummaries)}::jsonb
+              WHERE consultant_id = ${capturedConsultantId}::uuid
+            `);
+
+            const firstKeptMsg = allMsgs[allMsgs.length - keepCount];
+            if (firstKeptMsg?.created_at) {
+              await db.execute(sql`
+                DELETE FROM agent_chat_messages
+                WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+                  AND created_at < ${firstKeptMsg.created_at}::timestamptz
+              `);
+            }
+            console.log(`📝 [AGENT-CHAT] Auto-summary generated for ${capturedRoleId}, summarized ${msgsToSummarize.length} messages, kept last ${keepCount}`);
+          }
+        } catch (sumErr: any) {
+          console.error(`[AGENT-CHAT] Auto-summary error for ${capturedRoleId}:`, sumErr.message);
+        }
+      })();
+    }
 
     return res.json({
       success: true,
@@ -2517,6 +2656,21 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
       DELETE FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
     `);
+
+    try {
+      const currentSettings = await db.execute(sql`
+        SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+      `);
+      const summaries = (currentSettings.rows[0] as any)?.chat_summaries || {};
+      if (summaries[roleId]) {
+        delete summaries[roleId];
+        await db.execute(sql`
+          UPDATE ai_autonomy_settings SET chat_summaries = ${JSON.stringify(summaries)}::jsonb WHERE consultant_id = ${consultantId}::uuid
+        `);
+      }
+    } catch (clearErr: any) {
+      console.warn(`[AGENT-CHAT] Error clearing summary for ${roleId}:`, clearErr.message);
+    }
 
     return res.json({ success: true });
   } catch (error: any) {

@@ -1670,6 +1670,49 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error injecting agent context: ${ctxErr.message}`);
       }
 
+      // Inject chat context (recent conversations + summary) into autonomous analysis
+      try {
+        const chatSettingsResult = await db.execute(sql`
+          SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id::text = ${cId} LIMIT 1
+        `);
+        const chatSummaries = (chatSettingsResult.rows[0] as any)?.chat_summaries || {};
+        const roleChatSummary = chatSummaries[role.id]?.summary || '';
+
+        const recentChatResult = await db.execute(sql`
+          SELECT sender, message, created_at FROM agent_chat_messages
+          WHERE consultant_id::text = ${cId} AND ai_role = ${role.id}
+            AND created_at > NOW() - INTERVAL '48 hours'
+          ORDER BY created_at DESC LIMIT 10
+        `);
+        const recentChatMsgs = (recentChatResult.rows as any[]).reverse();
+
+        if (roleChatSummary || recentChatMsgs.length > 0) {
+          let chatSection = '\n\n--- CONTESTO CHAT CON IL CONSULENTE ---\n';
+          chatSection += 'Il consulente comunica con te anche via chat diretta. Tieni conto di queste conversazioni nelle tue analisi e decisioni.\n';
+
+          if (roleChatSummary) {
+            chatSection += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI:\n${roleChatSummary}\n`;
+          }
+
+          if (recentChatMsgs.length > 0) {
+            chatSection += `\nMESSAGGI RECENTI (ultime 48h):\n`;
+            for (const m of recentChatMsgs) {
+              const sender = m.sender === 'consultant' ? 'Consulente' : role.name;
+              const time = new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
+              chatSection += `[${time}] ${sender}: ${(m.message as string).substring(0, 200)}\n`;
+            }
+          }
+
+          chatSection += '\nUSA QUESTE INFORMAZIONI per: evitare di duplicare richieste già discusse, rispettare le preferenze espresse dal consulente, dare priorità a ciò che il consulente ha chiesto.\n';
+          chatSection += '--- FINE CONTESTO CHAT ---\n';
+
+          prompt = prompt + chatSection;
+          console.log(`💬 [AUTONOMOUS-GEN] [${role.name}] Injected chat context (summary: ${roleChatSummary ? 'yes' : 'no'}, recent msgs: ${recentChatMsgs.length})`);
+        }
+      } catch (chatCtxErr: any) {
+        console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error injecting chat context: ${chatCtxErr.message}`);
+      }
+
       // Inject system prompt documents and KB assignments for this agent
       try {
         const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, role.id);
