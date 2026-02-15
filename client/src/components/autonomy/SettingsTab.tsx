@@ -108,7 +108,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
       }
       if (agentsRes.ok) {
         const agentsData = await agentsRes.json();
-        setWhatsappAgents(Array.isArray(agentsData) ? agentsData : (agentsData.agents || []));
+        setWhatsappAgents(Array.isArray(agentsData) ? agentsData : (agentsData.data || agentsData.agents || []));
       }
     } catch {}
     setLoading(false);
@@ -358,33 +358,39 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </Select>
               </div>
 
-              {whatsappAgents.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5 text-green-500" />
-                    Agente WhatsApp predefinito
-                  </Label>
-                  <Select
-                    value={(ctx as any).defaultWhatsappAgentId || "_auto"}
-                    onValueChange={(v) => setCtx(prev => ({ ...prev, defaultWhatsappAgentId: v === "_auto" ? undefined : v } as any))}
-                  >
-                    <SelectTrigger className="h-8 text-xs rounded-lg">
-                      <SelectValue placeholder="Automatico" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_auto">Automatico (primo disponibile)</SelectItem>
-                      {whatsappAgents.map(a => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.agentName || a.agentType || a.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">
-                    L'agente WhatsApp che {roleName} userà per inviare messaggi
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-green-500" />
+                  Agente WhatsApp predefinito
+                </Label>
+                {whatsappAgents.length > 0 ? (
+                  <>
+                    <Select
+                      value={(ctx as any).defaultWhatsappAgentId || "_auto"}
+                      onValueChange={(v) => setCtx(prev => ({ ...prev, defaultWhatsappAgentId: v === "_auto" ? undefined : v } as any))}
+                    >
+                      <SelectTrigger className="h-8 text-xs rounded-lg">
+                        <SelectValue placeholder="Automatico" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_auto">Automatico (primo disponibile)</SelectItem>
+                        {whatsappAgents.map(a => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.agentName || a.agentType || a.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      L'agente WhatsApp che {roleName} userà per inviare messaggi
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Nessun agente WhatsApp configurato. Configura un agente nella sezione WhatsApp per abilitare questa opzione.
                   </p>
-                </div>
-              )}
+                )}
+              </div>
 
               {kbDocuments.length > 0 && (() => {
                 const linkedDocs = kbDocuments.filter(d => ctx.linkedKbDocumentIds.includes(d.id));
