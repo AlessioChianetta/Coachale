@@ -77,13 +77,19 @@ interface AIScheduledTask {
  */
 async function processAITasks(): Promise<void> {
   const result = await withCronLock(CRON_JOB_NAME, async () => {
-    console.log('🤖 [AI-SCHEDULER] Processing AI tasks...');
+    console.log('🤖 [AI-SCHEDULER] ══════ STEP 1: Starting task processing cycle ══════');
     
-    await db.execute(sql`
+    const approvedMoveResult = await db.execute(sql`
       UPDATE ai_scheduled_tasks 
       SET status = 'scheduled', updated_at = NOW()
       WHERE status = 'approved' AND scheduled_at <= NOW()
+      RETURNING id, ai_role, task_type
     `);
+    if (approvedMoveResult.rows.length > 0) {
+      console.log(`🤖 [AI-SCHEDULER] STEP 1: Moved ${approvedMoveResult.rows.length} approved→scheduled:`, approvedMoveResult.rows.map((r: any) => `${r.id}(${r.ai_role},${r.task_type})`));
+    } else {
+      console.log('🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move');
+    }
     
     // Find tasks ready to execute:
     // 1. Scheduled tasks whose time has come
@@ -103,11 +109,14 @@ async function processAITasks(): Promise<void> {
     const tasks = tasksResult.rows as AIScheduledTask[];
     
     if (tasks.length === 0) {
-      console.log('🤖 [AI-SCHEDULER] No tasks to process');
+      console.log('🤖 [AI-SCHEDULER] STEP 2: No tasks to process');
       return { processed: 0 };
     }
     
-    console.log(`🤖 [AI-SCHEDULER] Found ${tasks.length} tasks to process`);
+    console.log(`🤖 [AI-SCHEDULER] ══════ STEP 2: Found ${tasks.length} tasks to process ══════`);
+    tasks.forEach((t: any, i: number) => {
+      console.log(`   📋 Task ${i+1}: id=${t.id}, task_type=${t.task_type}, ai_role=${t.ai_role}, status=${t.status}, result_data=${JSON.stringify(t.result_data)}`);
+    });
     
     let processed = 0;
     let succeeded = 0;
@@ -139,13 +148,13 @@ async function processAITasks(): Promise<void> {
  * Execute a single AI task
  */
 async function executeTask(task: AIScheduledTask): Promise<void> {
-  // Calcola il numero del tentativo PRIMA di incrementare nel DB
-  // così abbiamo un valore consistente da usare ovunque
   const attemptNumber = task.current_attempt + 1;
   
-  console.log(`📞 [AI-SCHEDULER] Executing task ${task.id} for ${task.contact_phone} (attempt ${attemptNumber}/${task.max_attempts})`);
+  console.log(`🤖 [AI-SCHEDULER] ══════ STEP 3: executeTask ══════`);
+  console.log(`   📋 id=${task.id}, task_type=${task.task_type}, ai_role=${task.ai_role}, attempt=${attemptNumber}/${task.max_attempts}`);
+  console.log(`   📋 contact=${task.contact_phone || task.contact_name || 'N/A'}, result_data=${JSON.stringify(task.result_data)}`);
   
-  // 1. Update status to in_progress and increment attempt counter
+  console.log(`🤖 [AI-SCHEDULER] STEP 3a: Setting status to in_progress...`);
   await db.execute(sql`
     UPDATE ai_scheduled_tasks 
     SET status = 'in_progress',
@@ -155,16 +164,16 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
     WHERE id = ${task.id}
   `);
   
-  // Aggiorna l'oggetto task locale con il nuovo valore
   const updatedTask = { ...task, current_attempt: attemptNumber };
   
   try {
     if (task.task_type === 'ai_task') {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=ai_task → calling executeAutonomousTask`);
       await executeAutonomousTask(updatedTask);
       return;
     }
 
-    // 2. Attempt to make the call
+    console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=${task.task_type} → calling initiateVoiceCall`);
     const callSuccess = await initiateVoiceCall(updatedTask);
     
     if (callSuccess.success) {
@@ -173,6 +182,7 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
       await handleFailure(updatedTask, callSuccess.reason || 'Unknown error');
     }
   } catch (error: any) {
+    console.error(`❌ [AI-SCHEDULER] STEP 3 ERROR: ${error.message}`);
     await handleFailure(updatedTask, error.message);
   }
 }
@@ -480,21 +490,29 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
  * Task Executor (step-by-step execution), and guardrails enforcement
  */
 async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
-  console.log(`🧠 [AI-SCHEDULER] Executing autonomous task ${task.id} (category: ${task.task_category})`);
+  console.log(`🤖 [AI-SCHEDULER] ══════ STEP 4: executeAutonomousTask ══════`);
+  console.log(`   📋 id=${task.id}, category=${task.task_category}, ai_role=${task.ai_role}`);
+  console.log(`   📋 result_data=${JSON.stringify(task.result_data)}`);
   
   try {
     const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
     
+    console.log(`🤖 [AI-SCHEDULER] STEP 4a: skip_guardrails=${skipGuardrails}, ai_role=${task.ai_role}`);
+    
     if (skipGuardrails) {
-      console.log(`🔓 [AI-SCHEDULER] Task ${task.id} has skip_guardrails=true (chat-approved), using manual guardrails (skips working hours + autonomy level)`);
+      console.log(`🔓 [AI-SCHEDULER] STEP 4a: Using canExecuteManually (skips working hours + autonomy level)`);
+    } else {
+      console.log(`🔒 [AI-SCHEDULER] STEP 4a: Using canExecuteAutonomously with roleId=${task.ai_role || 'none'}`);
     }
     
     const guardrailCheck = skipGuardrails 
       ? await canExecuteManually(task.consultant_id)
       : await canExecuteAutonomously(task.consultant_id, task.ai_role || undefined);
     
+    console.log(`🤖 [AI-SCHEDULER] STEP 4b: Guardrail result: allowed=${guardrailCheck.allowed}, reason=${guardrailCheck.reason || 'OK'}`);
+    
     if (!guardrailCheck.allowed) {
-      console.log(`🛑 [AI-SCHEDULER] Task ${task.id} blocked by guardrails: ${guardrailCheck.reason}`);
+      console.log(`🛑 [AI-SCHEDULER] STEP 4b: Task ${task.id} BLOCKED by guardrails: ${guardrailCheck.reason}`);
       
       await db.execute(sql`
         UPDATE ai_scheduled_tasks 
