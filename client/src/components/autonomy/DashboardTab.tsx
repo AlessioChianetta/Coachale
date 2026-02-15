@@ -20,7 +20,7 @@ import {
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
-  ThumbsUp, Ban, UserCheck, ExternalLink
+  ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -99,6 +99,8 @@ function DashboardTab({
   const { toast } = useToast();
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
   const [cancelDialogTask, setCancelDialogTask] = React.useState<AITask | null>(null);
+  const [rescheduleTask, setRescheduleTask] = React.useState<AITask | null>(null);
+  const [rescheduleDate, setRescheduleDate] = React.useState("");
   const [isBlockCancel, setIsBlockCancel] = React.useState(false);
   const [blocksData, setBlocksData] = React.useState<any[]>([]);
   const [blocksLoading, setBlocksLoading] = React.useState(false);
@@ -1425,11 +1427,26 @@ function DashboardTab({
                               )}
                             </div>
 
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {getRelativeTime(task.created_at)}
                               </span>
+                              {task.scheduled_at && ['scheduled', 'waiting_approval', 'approved', 'draft', 'paused'].includes(task.status) && (
+                                <span className="flex items-center gap-1 text-primary font-medium" title={task.scheduling_reason || undefined}>
+                                  <CalendarClock className="h-3 w-3" />
+                                  Programmato: {new Date(task.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  {task.scheduled_by === 'ai' && (
+                                    <Sparkles className="h-2.5 w-2.5 text-purple-500" />
+                                  )}
+                                </span>
+                              )}
+                              {task.scheduling_reason && expandedTaskIds.has(task.id) && (
+                                <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 italic">
+                                  <Info className="h-3 w-3" />
+                                  {task.scheduling_reason}
+                                </span>
+                              )}
                               {task.completed_at && (
                                 <span className="flex items-center gap-1">
                                   <CheckCircle className="h-3 w-3 text-emerald-500" />
@@ -1447,29 +1464,46 @@ function DashboardTab({
                                 : "bg-muted/30 border-border/50"
                             )}>
                               {isWaiting && (
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1.5 h-8 px-3 text-xs font-medium"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                                      method: "PATCH",
-                                      headers: getAuthHeaders(),
-                                    }).then(res => {
-                                      if (res.ok) {
-                                        toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                      } else {
-                                        toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                                      }
-                                    });
-                                  }}
-                                >
-                                  <ThumbsUp className="h-3.5 w-3.5" />
-                                  Approva
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1.5 h-8 px-3 text-xs font-medium"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                        method: "PATCH",
+                                        headers: getAuthHeaders(),
+                                      }).then(res => {
+                                        if (res.ok) {
+                                          toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                          queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                        } else {
+                                          toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    <ThumbsUp className="h-3.5 w-3.5" />
+                                    Approva
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5 h-8 px-3 text-xs font-medium border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentScheduled = task.scheduled_at ? new Date(task.scheduled_at) : new Date();
+                                      const localIso = new Date(currentScheduled.getTime() - currentScheduled.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                                      setRescheduleDate(localIso);
+                                      setRescheduleTask(task);
+                                    }}
+                                  >
+                                    <CalendarClock className="h-3.5 w-3.5" />
+                                    Modifica orario
+                                  </Button>
+                                </>
                               )}
                               {isActionable && (
                                 <Button
@@ -2273,6 +2307,72 @@ function DashboardTab({
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Cancella e Blocca Permanentemente
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rescheduleTask} onOpenChange={(open) => { if (!open) setRescheduleTask(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-amber-500" />
+              Modifica orario esecuzione
+            </DialogTitle>
+            <DialogDescription>
+              Scegli quando vuoi che questo task venga eseguito. Il task verrà approvato automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          {rescheduleTask && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border p-3 space-y-1.5">
+                <p className="text-sm font-medium line-clamp-2">{rescheduleTask.ai_instruction}</p>
+                {rescheduleTask.scheduling_reason && (
+                  <p className="text-xs text-purple-600 dark:text-purple-400 italic flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Motivo AI: {rescheduleTask.scheduling_reason}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reschedule-date">Data e ora</Label>
+                <Input
+                  id="reschedule-date"
+                  type="datetime-local"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    if (!rescheduleDate || !rescheduleTask) return;
+                    fetch(`/api/ai-autonomy/tasks/${rescheduleTask.id}/reschedule`, {
+                      method: "PATCH",
+                      headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                      body: JSON.stringify({ scheduled_at: new Date(rescheduleDate).toISOString(), approve: true }),
+                    }).then(res => {
+                      if (res.ok) {
+                        toast({ title: "Orario aggiornato", description: "Il task è stato approvato con il nuovo orario" });
+                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                        setRescheduleTask(null);
+                      } else {
+                        toast({ title: "Errore", description: "Impossibile aggiornare l'orario", variant: "destructive" });
+                      }
+                    });
+                  }}
+                >
+                  <ThumbsUp className="h-4 w-4 mr-1.5" />
+                  Approva con nuovo orario
+                </Button>
+                <Button variant="outline" onClick={() => setRescheduleTask(null)}>
+                  Annulla
                 </Button>
               </div>
             </div>

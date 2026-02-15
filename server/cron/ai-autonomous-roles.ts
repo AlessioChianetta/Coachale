@@ -828,6 +828,16 @@ REGOLE DI ALESSIA:
 4. Il campo preferred_channel DEVE essere "voice"
 5. Non suggerire chiamate a clienti già chiamati negli ultimi 3 giorni
 6. Usa le categorie: followup, reminder
+7. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -845,6 +855,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione basata sui dati analizzati",
       "preferred_channel": "voice",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale|informale|empatico"
     }
   ]
@@ -915,6 +927,16 @@ REGOLE DI MILLIE:
    - Punti chiave da coprire
 4. Il campo preferred_channel DEVE essere "email"
 5. Usa le categorie: outreach, followup
+6. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -932,6 +954,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione basata sui dati",
       "preferred_channel": "email",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale|informale|empatico"
     }
   ]
@@ -1020,6 +1044,16 @@ REGOLE DI ECHO:
 4. Preferred_channel: "email" (invio riepilogo al cliente)
 5. Se NON ci sono consulenze da riepilogare, restituisci tasks vuoto
 6. Usa la categoria: analysis
+7. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -1037,6 +1071,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione",
       "preferred_channel": "email",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale"
     }
   ]
@@ -1106,6 +1142,16 @@ REGOLE DI NOVA:
    - Tema/argomento specifico
    - Hook e CTA suggeriti
 6. Usa le categorie: analysis, outreach
+7. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -1123,6 +1169,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione",
       "preferred_channel": "none",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale"
     }
   ]
@@ -1196,6 +1244,16 @@ REGOLE DI STELLA:
    - Tono appropriato
 4. Il campo preferred_channel DEVE essere "whatsapp"
 5. Usa le categorie: outreach, followup
+6. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -1213,6 +1271,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione",
       "preferred_channel": "whatsapp",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale|informale|empatico"
     }
   ]
@@ -1283,6 +1343,16 @@ REGOLE DI IRIS:
 4. Il campo preferred_channel DEVE essere "email"
 5. Se non ci sono email/ticket da gestire, restituisci tasks vuoto
 6. Usa le categorie: reminder, followup
+7. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -1300,6 +1370,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione",
       "preferred_channel": "email",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale"
     }
   ]
@@ -1488,6 +1560,15 @@ REGOLE DI MARCO:
 9. Usa le categorie: preparation, monitoring, report, scheduling
 10. Per contact_id usa il client_id della consulenza da preparare, o null per task diretti al consulente o organizzativi generali.
 11. Rispetta lo stile report preferito (sintetico/dettagliato/bilanciato) ma il tono resta SEMPRE informale e diretto.
+12. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per contattare il consulente nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Controlla le CONSULENZE IN PROGRAMMA e NON programmare durante quelle
+   - Per urgency "oggi": scegli uno slot libero tra le consulenze, preferibilmente nel pomeriggio
+   - Per urgency "settimana": scegli un momento strategico nei prossimi giorni
+   - Per chiamate vocali: scegli momenti in cui il consulente è probabilmente libero (tra una consulenza e l'altra, mattina presto, tardo pomeriggio)
+   - Per WhatsApp: qualsiasi orario lavorativo va bene (è asincrono)
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Se ci sono consulenze ravvicinate, programma DOPO l'ultima consulenza del giorno
+   - Il campo scheduling_reason deve spiegare perché quell'orario è il migliore per raggiungere il consulente
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO e deve essere il tuo PENSIERO COMPLETO — non una lista puntata fredda, ma un ragionamento elaborato, strutturato e scritto come parleresti davvero tu, Marco, al tuo consulente.
 
@@ -1527,6 +1608,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione basata sui dati analizzati",
       "preferred_channel": "none",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale"
     }
   ]
@@ -1617,6 +1700,16 @@ REGOLE DI PERSONALIZZA:
 5. Se NON ci sono istruzioni personalizzate, NON creare task. Restituisci tasks vuoto e nel reasoning spiega che il consulente deve configurare le istruzioni
 6. L'ai_instruction DEVE essere dettagliata e contestualizzata
 7. Adatta il tono e lo stile alle istruzioni del consulente
+8. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
+   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
+   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
+   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
+   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
+   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
+   - Per email: qualsiasi orario lavorativo va bene
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+   - Evita sovrapposizioni con consulenze già in programma
+   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
 IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
 
@@ -1634,6 +1727,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "reasoning": "Motivazione basata sui dati e sulle istruzioni personalizzate",
       "preferred_channel": "voice|email|whatsapp|none",
       "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
       "tone": "professionale|informale|empatico"
     }
   ]

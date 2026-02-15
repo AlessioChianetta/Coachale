@@ -1807,17 +1807,21 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             const contactIdValue = suggestedTask.contact_id || null;
             const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
 
+            const taskScheduledAt = computeTaskScheduledAt(suggestedTask.scheduled_for, suggestedTask.urgency, settings, scheduledAt);
+            const schedulingReason = suggestedTask.scheduling_reason || null;
+
             await db.execute(sql`
               INSERT INTO ai_scheduled_tasks (
                 id, consultant_id, contact_name, contact_phone, task_type,
                 ai_instruction, scheduled_at, timezone, status,
                 origin_type, task_category, contact_id, ai_reasoning,
                 priority, preferred_channel, tone, urgency,
-                max_attempts, recurrence_type, ai_role
+                max_attempts, recurrence_type, ai_role,
+                scheduling_reason, scheduled_by, original_scheduled_at
               ) VALUES (
                 ${taskId}, ${sql.raw(`'${consultantId}'::uuid`)}, ${suggestedTask.contact_name || null},
                 ${suggestedTask.contact_phone || 'N/A'}, 'ai_task',
-                ${suggestedTask.ai_instruction}, ${scheduledAt}, 'Europe/Rome',
+                ${suggestedTask.ai_instruction}, ${taskScheduledAt}, 'Europe/Rome',
                 ${getTaskStatusForRole(settings, role.id)}, 'autonomous',
                 ${suggestedTask.task_category || role.categories[0] || 'followup'},
                 ${hasValidContactId ? sql`${contactIdValue}::text::uuid` : sql`NULL`},
@@ -1826,7 +1830,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
                 ${suggestedTask.preferred_channel || role.preferredChannels[0] || 'none'},
                 ${suggestedTask.tone || 'professionale'},
                 ${suggestedTask.urgency || 'normale'},
-                1, 'once', ${role.id}
+                1, 'once', ${role.id},
+                ${schedulingReason}, 'ai', ${taskScheduledAt}
               )
             `);
 
@@ -1910,6 +1915,55 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   }
 
   return totalCreated;
+}
+
+function computeTaskScheduledAt(
+  aiScheduledFor: string | undefined,
+  urgency: string | undefined,
+  settings: { working_hours_start: string; working_hours_end: string; working_days: number[] },
+  fallbackDate: Date
+): Date {
+  if (aiScheduledFor && typeof aiScheduledFor === 'string') {
+    try {
+      const match = aiScheduledFor.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (match) {
+        const [, year, month, day, hour, minute] = match.map(Number);
+
+        const romeOffset = (() => {
+          const jan = new Date(year, 0, 1).toLocaleString('en-US', { timeZone: 'Europe/Rome', timeZoneName: 'shortOffset' });
+          const jul = new Date(year, 6, 1).toLocaleString('en-US', { timeZone: 'Europe/Rome', timeZoneName: 'shortOffset' });
+          const testDate = new Date(year, month - 1, day);
+          const testStr = testDate.toLocaleString('en-US', { timeZone: 'Europe/Rome', timeZoneName: 'shortOffset' });
+          const offsetMatch = testStr.match(/GMT([+-]\d+)/);
+          return offsetMatch ? parseInt(offsetMatch[1]) : 1;
+        })();
+
+        const proposed = new Date(Date.UTC(year, month - 1, day, hour - romeOffset, minute, 0, 0));
+
+        const now = new Date();
+        if (proposed > now) {
+          const [startH] = settings.working_hours_start.split(':').map(Number);
+          const [endH] = settings.working_hours_end.split(':').map(Number);
+          if (hour >= Math.max(startH, 8) && hour < Math.min(endH, 19)) {
+            console.log(`📅 [SCHEDULING] AI suggested time accepted: ${aiScheduledFor} (Rome) → UTC: ${proposed.toISOString()}`);
+            return proposed;
+          }
+          console.log(`⚠️ [SCHEDULING] AI suggested time ${aiScheduledFor} outside working hours (${startH}-${endH}), using fallback`);
+        } else {
+          console.log(`⚠️ [SCHEDULING] AI suggested time ${aiScheduledFor} is in the past, using fallback`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️ [SCHEDULING] Failed to parse AI scheduled_for: ${aiScheduledFor}`);
+    }
+  }
+
+  if (urgency === 'oggi') {
+    const offset = Math.floor(Math.random() * 60) + 15;
+    return new Date(Date.now() + offset * 60 * 1000);
+  }
+
+  return fallbackDate;
 }
 
 function computeNextWorkingSlot(settings: { working_hours_start: string; working_hours_end: string; working_days: number[] }): Date {

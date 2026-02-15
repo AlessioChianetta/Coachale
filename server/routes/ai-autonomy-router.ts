@@ -869,7 +869,8 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
                ai_instruction, status, origin_type, priority, ai_reasoning, ai_confidence,
                execution_plan, result_summary, result_data, scheduled_at,
                completed_at, created_at, updated_at, call_after_task, ai_role,
-               preferred_channel, tone, objective
+               preferred_channel, tone, objective,
+               scheduling_reason, scheduled_by, original_scheduled_at
         FROM ai_scheduled_tasks
         WHERE ${whereClause}
         ORDER BY created_at DESC
@@ -1899,6 +1900,60 @@ router.patch("/tasks/:id/approve", authenticateToken, requireAnyRole(["consultan
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error approving task:", error);
     return res.status(500).json({ error: "Failed to approve task" });
+  }
+});
+
+router.patch("/tasks/:id/reschedule", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { scheduled_at, approve } = req.body || {};
+
+    if (!scheduled_at) {
+      return res.status(400).json({ error: "scheduled_at is required" });
+    }
+
+    const newDate = new Date(scheduled_at);
+    if (isNaN(newDate.getTime())) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    if (newDate <= new Date()) {
+      return res.status(400).json({ error: "La data deve essere nel futuro" });
+    }
+
+    const romeTime = new Date(newDate.toLocaleString('en-US', { timeZone: 'Europe/Rome' }));
+    const romeHour = romeTime.getHours();
+    if (romeHour < 8 || romeHour >= 20) {
+      return res.status(400).json({ error: "L'orario deve essere tra le 08:00 e le 20:00 (ora italiana)" });
+    }
+
+    const newStatus = approve ? 'scheduled' : undefined;
+    const statusUpdate = newStatus ? sql`, status = ${newStatus}` : sql``;
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET scheduled_at = ${newDate},
+          scheduled_by = 'consultant',
+          updated_at = NOW()
+          ${statusUpdate}
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non modificabile" });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error rescheduling task:", error);
+    return res.status(500).json({ error: "Failed to reschedule task" });
   }
 });
 

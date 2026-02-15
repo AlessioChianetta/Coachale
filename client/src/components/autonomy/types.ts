@@ -129,6 +129,9 @@ export interface AITask {
   preferred_channel?: string;
   tone?: string;
   objective?: string;
+  scheduling_reason?: string;
+  scheduled_by?: string;
+  original_scheduled_at?: string;
 }
 
 export interface TasksResponse {
