@@ -1557,20 +1557,23 @@ function SettingsTab({
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="global">Segui impostazione globale</SelectItem>
-                                        <SelectItem value="manual">Manuale (richiede approvazione)</SelectItem>
-                                        <SelectItem value="supervised">Supervisionato (propone, tu approvi)</SelectItem>
-                                        <SelectItem value="autonomous">Autonomo (fa e basta)</SelectItem>
+                                        <SelectItem value="global">
+                                          Segui livello globale (ora: {settings.autonomy_level})
+                                        </SelectItem>
+                                        <SelectItem value="manual">
+                                          Manuale — propone, tu approvi (come livello 1-3)
+                                        </SelectItem>
+                                        <SelectItem value="autonomous">
+                                          Autonomo — fa e basta (come livello 4+)
+                                        </SelectItem>
                                       </SelectContent>
                                     </Select>
                                     <p className="text-[10px] text-muted-foreground">
                                       {settings.role_autonomy_modes[role.id] === 'autonomous'
-                                        ? `${role.name} eseguirà i task automaticamente senza chiedere`
+                                        ? `${role.name} eseguirà i task automaticamente senza chiedere, come se fosse a livello 4+`
                                         : settings.role_autonomy_modes[role.id] === 'manual'
-                                        ? `Ogni task di ${role.name} richiederà la tua approvazione`
-                                        : settings.role_autonomy_modes[role.id] === 'supervised'
-                                        ? `${role.name} proporrà i task, tu decidi se eseguirli`
-                                        : `Usa il livello di autonomia globale (${settings.autonomy_level >= 4 ? 'auto-esecuzione' : 'richiede approvazione'})`
+                                        ? `Ogni task di ${role.name} andrà in "da approvare", come se fosse a livello 1-3`
+                                        : `Segue il livello globale (${settings.autonomy_level}): ${settings.autonomy_level >= 4 ? 'esegue da solo' : 'chiede approvazione'}`
                                       }
                                     </p>
                                   </div>
