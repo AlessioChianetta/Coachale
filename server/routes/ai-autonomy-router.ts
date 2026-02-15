@@ -832,6 +832,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     const statusFilter = req.query.status as string | undefined;
     const categoryFilter = req.query.category as string | undefined;
     const originFilter = req.query.origin as string | undefined;
+    const roleFilter = req.query.ai_role as string | undefined;
 
     let conditions = [sql`consultant_id = ${consultantId}`, sql`task_type = 'ai_task'`];
     if (!statusFilter || statusFilter === 'all') {
@@ -851,6 +852,13 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (originFilter && originFilter !== 'all') {
       conditions.push(sql`origin_type = ${originFilter}`);
+    }
+    if (roleFilter && roleFilter !== 'all') {
+      if (roleFilter === '__manual__') {
+        conditions.push(sql`(ai_role IS NULL OR ai_role = '')`);
+      } else {
+        conditions.push(sql`ai_role = ${roleFilter}`);
+      }
     }
 
     const whereClause = sql.join(conditions, sql` AND `);

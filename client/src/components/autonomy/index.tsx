@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Settings, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -42,6 +43,7 @@ export default function ConsultantAIAutonomyPage() {
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState<string>("all");
   const [dashboardOriginFilter, setDashboardOriginFilter] = useState<string>("all");
+  const [dashboardRoleFilter, setDashboardRoleFilter] = useState<string>("all");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -228,7 +230,7 @@ export default function ConsultantAIAutonomyPage() {
     },
   });
 
-  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=10${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}`;
+  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=20${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}${dashboardRoleFilter !== "all" ? `&ai_role=${dashboardRoleFilter}` : ""}`;
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: NewTaskData) => {
@@ -613,6 +615,16 @@ export default function ConsultantAIAutonomyPage() {
                 </TabsList>
 
                 <TabsContent value="settings" className="mt-6 space-y-6">
+                  <div className="flex items-center gap-4 pb-2">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                      <Settings className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight">Impostazioni Autonomia</h2>
+                      <p className="text-sm text-muted-foreground">Configura livelli di autonomia, ruoli AI e comportamento dei dipendenti</p>
+                    </div>
+                  </div>
+                  <Separator />
                   <SettingsTab
                     settings={settings}
                     setSettings={setSettings}
@@ -646,6 +658,16 @@ export default function ConsultantAIAutonomyPage() {
                 </TabsContent>
 
                 <TabsContent value="activity" className="mt-6 space-y-6">
+                  <div className="flex items-center gap-4 pb-2">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
+                      <Activity className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight">Feed Attività</h2>
+                      <p className="text-sm text-muted-foreground">Monitora azioni, ragionamenti AI e simulazioni dei dipendenti in tempo reale</p>
+                    </div>
+                  </div>
+                  <Separator />
                   <ActivityTab
                     activityData={activityData}
                     loadingActivity={loadingActivity}
@@ -676,6 +698,16 @@ export default function ConsultantAIAutonomyPage() {
                 </TabsContent>
 
                 <TabsContent value="dashboard" className="mt-6 space-y-6">
+                  <div className="flex items-center gap-4 pb-2">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm">
+                      <ListTodo className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight">Gestione Task</h2>
+                      <p className="text-sm text-muted-foreground">Crea, approva e monitora i task dei dipendenti AI e manuali</p>
+                    </div>
+                  </div>
+                  <Separator />
                   <DashboardTab
                     showCreateTask={showCreateTask}
                     setShowCreateTask={setShowCreateTask}
@@ -702,6 +734,8 @@ export default function ConsultantAIAutonomyPage() {
                     setDashboardCategoryFilter={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}
                     dashboardOriginFilter={dashboardOriginFilter}
                     setDashboardOriginFilter={(val) => { setDashboardOriginFilter(val); setDashboardPage(1); }}
+                    dashboardRoleFilter={dashboardRoleFilter}
+                    setDashboardRoleFilter={(val) => { setDashboardRoleFilter(val); setDashboardPage(1); }}
                     dashboardPage={dashboardPage}
                     setDashboardPage={setDashboardPage}
                     tasksData={tasksData}
@@ -716,6 +750,16 @@ export default function ConsultantAIAutonomyPage() {
                 </TabsContent>
 
                 <TabsContent value="data-catalog" className="mt-6 space-y-6">
+                  <div className="flex items-center gap-4 pb-2">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm">
+                      <Database className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight">Catalogo Dati</h2>
+                      <p className="text-sm text-muted-foreground">Esplora le fonti dati, query e operazioni accessibili ai dipendenti AI</p>
+                    </div>
+                  </div>
+                  <Separator />
                   <DataCatalogTab
                     showArchDetails={showArchDetails}
                     setShowArchDetails={setShowArchDetails}

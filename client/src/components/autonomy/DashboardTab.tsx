@@ -57,6 +57,8 @@ interface DashboardTabProps {
   setDashboardCategoryFilter: (filter: string) => void;
   dashboardOriginFilter: string;
   setDashboardOriginFilter: (filter: string) => void;
+  dashboardRoleFilter: string;
+  setDashboardRoleFilter: (filter: string) => void;
   dashboardPage: number;
   setDashboardPage: (page: number | ((p: number) => number)) => void;
   tasksData: TasksResponse | undefined;
@@ -83,6 +85,7 @@ function DashboardTab({
   dashboardStatusFilter, setDashboardStatusFilter,
   dashboardCategoryFilter, setDashboardCategoryFilter,
   dashboardOriginFilter, setDashboardOriginFilter,
+  dashboardRoleFilter, setDashboardRoleFilter,
   dashboardPage, setDashboardPage,
   tasksData, loadingTasks,
   selectedTaskId, setSelectedTaskId,
@@ -93,7 +96,6 @@ function DashboardTab({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
-  const [dashboardRoleFilter, setDashboardRoleFilter] = React.useState<string>("all");
   const [cancelDialogTask, setCancelDialogTask] = React.useState<AITask | null>(null);
   const [isBlockCancel, setIsBlockCancel] = React.useState(false);
   const [blocksData, setBlocksData] = React.useState<any[]>([]);
@@ -361,8 +363,7 @@ function DashboardTab({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Dashboard Task</h2>
+        <div className="flex items-center justify-end">
           {!showCreateTask && (
             <Button onClick={() => setShowCreateTask(true)} className="gap-2">
               <Plus className="h-4 w-4" />
