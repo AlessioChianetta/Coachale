@@ -3,7 +3,7 @@ import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, G
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
-import { ExecutionStep, getAutonomySettings } from "./autonomous-decision-engine";
+import { ExecutionStep, getAutonomySettings, buildRolePersonality } from "./autonomous-decision-engine";
 import { fileSearchService } from "./file-search-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
@@ -111,6 +111,11 @@ export async function executeStep(
       }
     }
 
+    let rolePersonality: string | null = null;
+    if (task.ai_role) {
+      rolePersonality = await buildRolePersonality(task.consultant_id, task.ai_role);
+    }
+
     let result: Record<string, any>;
 
     switch (step.action) {
@@ -118,16 +123,16 @@ export async function executeStep(
         result = await handleFetchClientData(task, step, previousResults);
         break;
       case "search_private_stores":
-        result = await handleSearchPrivateStores(task, step, previousResults);
+        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality);
         break;
       case "analyze_patterns":
         result = await handleAnalyzePatterns(task, step, previousResults);
         break;
       case "generate_report":
-        result = await handleGenerateReport(task, step, previousResults);
+        result = await handleGenerateReport(task, step, previousResults, rolePersonality);
         break;
       case "prepare_call":
-        result = await handlePrepareCall(task, step, previousResults);
+        result = await handlePrepareCall(task, step, previousResults, rolePersonality);
         break;
       case "voice_call":
         result = await handleVoiceCall(task, step, previousResults);
@@ -300,6 +305,7 @@ async function handleSearchPrivateStores(
   task: AITaskInfo,
   _step: ExecutionStep,
   _previousResults: Record<string, any>,
+  rolePersonality?: string | null,
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}`);
 
@@ -377,7 +383,11 @@ async function handleSearchPrivateStores(
     console.log(`${LOG_PREFIX} Using fallback API key for file search`);
   }
 
-  const searchPrompt = `Sei un assistente AI per consulenti. Cerca nei documenti privati informazioni rilevanti per questo task.
+  const searchIdentity = rolePersonality
+    ? `${rolePersonality}\nCerca nei documenti privati informazioni rilevanti per questo task.`
+    : `Sei un assistente AI per consulenti. Cerca nei documenti privati informazioni rilevanti per questo task.`;
+
+  const searchPrompt = `${searchIdentity}
 
 ISTRUZIONE TASK: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
@@ -524,6 +534,7 @@ async function handleGenerateReport(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
+  rolePersonality?: string | null,
 ): Promise<Record<string, any>> {
   const analysisData = previousResults.analyze_patterns || previousResults;
   const clientData = previousResults.fetch_client_data || {};
@@ -538,7 +549,11 @@ async function handleGenerateReport(
     ? `\nRICERCA WEB:\n${webSearchData.findings || "Nessun risultato dalla ricerca web"}\n\nFONTI WEB:\n${webSearchData.sources?.map((s: any) => `- ${s.title}: ${s.url}`).join('\n') || "Nessuna fonte"}\n`
     : "";
 
-  const prompt = `Sei un assistente AI senior specializzato in consulenza. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO.
+  const reportIdentity = rolePersonality
+    ? `${rolePersonality}\nGenera un report COMPLETO, DETTAGLIATO e APPROFONDITO.`
+    : `Sei un assistente AI senior specializzato in consulenza. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO.`;
+
+  const prompt = `${reportIdentity}
 
 REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. Cita SEMPRE i documenti privati con il tag [CONSULENZA PRIVATA] e le date quando disponibili. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo, non di un riassunto.
 
@@ -629,13 +644,17 @@ async function handlePrepareCall(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
+  rolePersonality?: string | null,
 ): Promise<Record<string, any>> {
   const analysisData = previousResults.analyze_patterns || {};
   const reportData = previousResults.generate_report || {};
   const clientData = previousResults.fetch_client_data || {};
 
-  const prompt = `Sei un assistente AI per consulenti.
-Prepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.
+  const callIdentity = rolePersonality
+    ? `${rolePersonality}\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`
+    : `Sei un assistente AI per consulenti.\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`;
+
+  const prompt = `${callIdentity}
 
 IMPORTANT: The talking points and script MUST be about the CURRENT task instruction below, NOT about any previous task or report from a different context. Focus EXCLUSIVELY on what the current task asks.
 

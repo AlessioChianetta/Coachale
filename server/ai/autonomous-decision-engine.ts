@@ -3,6 +3,7 @@ import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
+import { getRoleById, fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 
 const LOG_PREFIX = "🧠 [DECISION-ENGINE]";
 
@@ -307,8 +308,19 @@ export async function canExecuteAutonomously(consultantId: string, roleId?: stri
     return { allowed: false, reason: "Autonomia AI non attiva per questo consulente" };
   }
 
-  if (settings.autonomy_level < 2) {
-    return { allowed: false, reason: `Livello di autonomia troppo basso (${settings.autonomy_level}). Richiesto almeno 2 per esecuzione automatica` };
+  const effectiveLevel = roleId ? getEffectiveRoleLevel(settings, roleId) : settings.autonomy_level;
+  console.log(`${LOG_PREFIX} canExecuteAutonomously: roleId=${roleId || 'none'}, globalLevel=${settings.autonomy_level}, effectiveLevel=${effectiveLevel}`);
+  
+  if (effectiveLevel === 0) {
+    return { allowed: false, reason: roleId 
+      ? `${roleId} è spento (livello 0)` 
+      : "Autonomia AI disattivata (livello 0)" };
+  }
+
+  if (effectiveLevel < 2) {
+    return { allowed: false, reason: roleId 
+      ? `Livello di autonomia di ${roleId} troppo basso (${effectiveLevel}). Richiesto almeno 2 per esecuzione automatica` 
+      : `Livello di autonomia troppo basso (${effectiveLevel}). Richiesto almeno 2 per esecuzione automatica` };
   }
 
   const withinHours = roleId 
@@ -476,6 +488,50 @@ export async function buildTaskContext(task: {
   };
 }
 
+export async function buildRolePersonality(consultantId: string, roleId: string): Promise<string | null> {
+  try {
+    const role = getRoleById(roleId);
+    if (!role) {
+      console.log(`${LOG_PREFIX} Role ${roleId} not found, using generic personality`);
+      return null;
+    }
+
+    const settingsResult = await db.execute(sql`
+      SELECT consultant_phone, consultant_whatsapp, consultant_email, custom_instructions
+      FROM ai_autonomy_settings
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+    const settingsRow = settingsResult.rows[0] as any;
+
+    const agentCtx = await fetchAgentContext(consultantId, roleId);
+    const ctxSection = buildAgentContextSection(agentCtx, role.name);
+
+    let personality = `Sei ${role.name} (${role.displayName}). ${role.description}\n`;
+    personality += `Il tuo stile: ${role.shortDescription}\n\n`;
+    
+    if (settingsRow) {
+      personality += `CONTATTI DIRETTI DEL CONSULENTE (per raggiungerlo personalmente):\n`;
+      personality += `Telefono: ${settingsRow.consultant_phone || 'Non configurato'}\n`;
+      personality += `Email: ${settingsRow.consultant_email || 'Non configurato'}\n`;
+      personality += `WhatsApp: ${settingsRow.consultant_whatsapp || 'Non configurato'}\n\n`;
+      
+      if (settingsRow.custom_instructions) {
+        personality += `ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:\n${settingsRow.custom_instructions}\n\n`;
+      }
+    }
+
+    if (ctxSection) {
+      personality += ctxSection + '\n\n';
+    }
+
+    console.log(`${LOG_PREFIX} Built personality for ${role.name} (${roleId}), length=${personality.length}`);
+    return personality;
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Failed to build role personality for ${roleId}: ${err.message}`);
+    return null;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // GENERATE EXECUTION PLAN (GEMINI)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -547,7 +603,16 @@ export async function generateExecutionPlan(task: {
     .map(([k]) => k)
     .join(", ");
 
-  const prompt = `Sei un assistente intelligente di un consulente. Agisci come un dipendente esperto e affidabile. NON assumere che il consulente lavori in un settore specifico (finanziario, legale, etc.) — il settore lo devi capire ESCLUSIVAMENTE dall'istruzione del task, dal nome del contatto e dai dati disponibili. Adatta il tuo ragionamento e il tuo piano d'azione al settore reale del cliente.
+  let rolePersonality: string | null = null;
+  if (options?.roleId) {
+    rolePersonality = await buildRolePersonality(task.consultant_id, options.roleId);
+  }
+
+  const identityBlock = rolePersonality 
+    ? `${rolePersonality}\nADATTA il tuo piano d'azione al settore reale del cliente basandoti sull'istruzione del task e sui dati disponibili.`
+    : `Sei un assistente intelligente di un consulente. Agisci come un dipendente esperto e affidabile. NON assumere che il consulente lavori in un settore specifico (finanziario, legale, etc.) — il settore lo devi capire ESCLUSIVAMENTE dall'istruzione del task, dal nome del contatto e dai dati disponibili. Adatta il tuo ragionamento e il tuo piano d'azione al settore reale del cliente.`;
+
+  const prompt = `${identityBlock}
 
 CONTESTO TASK:
 - ID Task: ${task.id}
