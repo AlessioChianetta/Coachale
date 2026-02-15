@@ -1039,101 +1039,103 @@ function DashboardTab({
         </Card>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border border-border rounded-xl shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <ListTodo className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.total ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Totali</p>
-              </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/20 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-500/15 dark:bg-blue-400/15">
+              <ListTodo className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border rounded-xl shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.active ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Attivi</p>
-              </div>
+            <div>
+              <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-blue-100">{loadingStats ? "—" : tasksStats?.total ?? 0}</p>
+              <p className="text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 uppercase tracking-wider">Totali</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border rounded-xl shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
-                <CheckCircle className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.completed ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Completati</p>
-              </div>
+          </div>
+          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-blue-400/10 dark:bg-blue-400/5" />
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/40 dark:to-orange-950/20 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/15 dark:bg-amber-400/15">
+              <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border rounded-xl shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-red-50 dark:bg-red-950/30">
-                <XCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{loadingStats ? "—" : tasksStats?.failed ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Falliti</p>
-              </div>
+            <div>
+              <p className="text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100">{loadingStats ? "—" : tasksStats?.active ?? 0}</p>
+              <p className="text-[11px] font-medium text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider">Attivi</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-amber-400/10 dark:bg-amber-400/5" />
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50 to-green-50/50 dark:from-emerald-950/40 dark:to-green-950/20 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-500/15 dark:bg-emerald-400/15">
+              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100">{loadingStats ? "—" : tasksStats?.completed ?? 0}</p>
+              <p className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">Completati</p>
+            </div>
+          </div>
+          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-emerald-400/10 dark:bg-emerald-400/5" />
+        </div>
+        <div className="relative overflow-hidden rounded-2xl border border-red-200/60 dark:border-red-800/40 bg-gradient-to-br from-red-50 to-rose-50/50 dark:from-red-950/40 dark:to-rose-950/20 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-red-500/15 dark:bg-red-400/15">
+              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold tracking-tight text-red-900 dark:text-red-100">{loadingStats ? "—" : tasksStats?.failed ?? 0}</p>
+              <p className="text-[11px] font-medium text-red-600/80 dark:text-red-400/80 uppercase tracking-wider">Falliti</p>
+            </div>
+          </div>
+          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-red-400/10 dark:bg-red-400/5" />
+        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <Select value={dashboardStatusFilter} onValueChange={(val) => { setDashboardStatusFilter(val); setDashboardPage(1); }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Stato" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti</SelectItem>
-            <SelectItem value="active">Attivi</SelectItem>
-            <SelectItem value="completed">Completati</SelectItem>
-            <SelectItem value="failed">Falliti</SelectItem>
-            <SelectItem value="paused">In pausa</SelectItem>
-            <SelectItem value="cancelled">Cancellati</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={dashboardCategoryFilter} onValueChange={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti</SelectItem>
-            <SelectItem value="outreach">Contatto</SelectItem>
-            <SelectItem value="reminder">Promemoria</SelectItem>
-            <SelectItem value="followup">Follow-up</SelectItem>
-            <SelectItem value="analysis">Analisi</SelectItem>
-            <SelectItem value="report">Report</SelectItem>
-            <SelectItem value="research">Ricerca</SelectItem>
-            <SelectItem value="preparation">Preparazione</SelectItem>
-            <SelectItem value="monitoring">Monitoraggio</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={dashboardOriginFilter} onValueChange={(val) => { setDashboardOriginFilter(val); setDashboardPage(1); }}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Origine" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tutti</SelectItem>
-            <SelectItem value="manual">Manuali</SelectItem>
-            <SelectItem value="autonomous">Autonomi (AI)</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtra task</span>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Select value={dashboardStatusFilter} onValueChange={(val) => { setDashboardStatusFilter(val); setDashboardPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 rounded-lg text-sm">
+              <SelectValue placeholder="Stato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutti gli stati</SelectItem>
+              <SelectItem value="active">Attivi</SelectItem>
+              <SelectItem value="completed">Completati</SelectItem>
+              <SelectItem value="failed">Falliti</SelectItem>
+              <SelectItem value="paused">In pausa</SelectItem>
+              <SelectItem value="cancelled">Cancellati</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dashboardCategoryFilter} onValueChange={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}>
+            <SelectTrigger className="w-[160px] h-9 rounded-lg text-sm">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutte le categorie</SelectItem>
+              <SelectItem value="outreach">Contatto</SelectItem>
+              <SelectItem value="reminder">Promemoria</SelectItem>
+              <SelectItem value="followup">Follow-up</SelectItem>
+              <SelectItem value="analysis">Analisi</SelectItem>
+              <SelectItem value="report">Report</SelectItem>
+              <SelectItem value="research">Ricerca</SelectItem>
+              <SelectItem value="preparation">Preparazione</SelectItem>
+              <SelectItem value="monitoring">Monitoraggio</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={dashboardOriginFilter} onValueChange={(val) => { setDashboardOriginFilter(val); setDashboardPage(1); }}>
+            <SelectTrigger className="w-[180px] h-9 rounded-lg text-sm">
+              <SelectValue placeholder="Origine" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tutte le origini</SelectItem>
+              <SelectItem value="manual">Manuali</SelectItem>
+              <SelectItem value="autonomous">Autonomi (AI)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {availableRoles.length > 0 && (
