@@ -3,7 +3,7 @@ import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, G
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
-import { ExecutionStep } from "./autonomous-decision-engine";
+import { ExecutionStep, getAutonomySettings } from "./autonomous-decision-engine";
 import { fileSearchService } from "./file-search-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
@@ -91,6 +91,23 @@ export async function executeStep(
   console.log(`${LOG_PREFIX} Executing step ${step.step}: ${step.action} - ${step.description}`);
 
   try {
+    // Channel enforcement: check if the channel is enabled before executing
+    const channelActions = ['voice_call', 'send_email', 'send_whatsapp'];
+    if (channelActions.includes(step.action)) {
+      const autonomySettings = await getAutonomySettings(task.consultant_id);
+      const channelMap: Record<string, string> = {
+        'voice_call': 'voice',
+        'send_email': 'email',
+        'send_whatsapp': 'whatsapp',
+      };
+      const channelKey = channelMap[step.action];
+      const channelName = channelKey.charAt(0).toUpperCase() + channelKey.slice(1);
+      if (autonomySettings.channels_enabled && !autonomySettings.channels_enabled[channelKey]) {
+        console.log(`${LOG_PREFIX} Channel ${channelKey} disabled, blocking step ${step.action}`);
+        return { success: false, result: {}, error: `Canale ${channelName} disabilitato nelle impostazioni di autonomia`, duration_ms: Date.now() - startTime };
+      }
+    }
+
     let result: Record<string, any>;
 
     switch (step.action) {

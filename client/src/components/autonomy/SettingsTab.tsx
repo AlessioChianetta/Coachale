@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, MarcoContext, MarcoObjective, KbDocument } from "./types";
+import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, MarcoContext, MarcoObjective, KbDocument, RoleStatus } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 
@@ -115,6 +115,16 @@ function SettingsTab({
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: roleStatuses } = useQuery<Record<string, RoleStatus>>({
+    queryKey: ["/api/ai-autonomy/roles/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/roles/status", { headers: getAuthHeaders() });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    refetchInterval: 60000,
   });
 
   const { data: blocks = [] } = useQuery<Array<{
@@ -1265,6 +1275,11 @@ function SettingsTab({
                   }))}
                 />
               </div>
+              <p className="text-xs text-muted-foreground ml-6 -mt-2">
+                {settings.channels_enabled.voice 
+                  ? "Usato da: Alessia (chiamate), Marco (coaching vocale), Personalizza (se configurato)" 
+                  : "Se disabilitato: Alessia, Marco e Personalizza non potranno effettuare chiamate vocali. I task di comunicazione vocale verranno bloccati."}
+              </p>
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1279,6 +1294,11 @@ function SettingsTab({
                   }))}
                 />
               </div>
+              <p className="text-xs text-muted-foreground ml-6 -mt-2">
+                {settings.channels_enabled.email 
+                  ? "Usato da: Millie (email personalizzate), Echo (invio riepiloghi), Iris (risposte email), Marco (comunicazioni)" 
+                  : "Se disabilitato: Millie, Echo, Iris e Marco non potranno inviare email. I task email verranno bloccati."}
+              </p>
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1293,6 +1313,11 @@ function SettingsTab({
                   }))}
                 />
               </div>
+              <p className="text-xs text-muted-foreground ml-6 -mt-2">
+                {settings.channels_enabled.whatsapp 
+                  ? "Usato da: Stella (messaggi WhatsApp), Marco (comunicazioni WhatsApp), Personalizza (se configurato)" 
+                  : "Se disabilitato: Stella, Marco e Personalizza non potranno inviare messaggi WhatsApp. I task WhatsApp verranno bloccati."}
+              </p>
             </CardContent>
           </Card>
 
@@ -1320,6 +1345,11 @@ function SettingsTab({
                         {cat.label}
                       </Label>
                       <p className="text-xs text-muted-foreground">{cat.description}</p>
+                      {!settings.allowed_task_categories.includes(cat.value) && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                          I task di questa categoria verranno scartati automaticamente dalla generazione autonoma
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1387,6 +1417,31 @@ function SettingsTab({
                             </div>
                             {profile?.quote && (
                               <p className="text-xs text-muted-foreground mt-0.5 italic">"{profile.quote}"</p>
+                            )}
+                            {roleStatuses?.[role.id] && (
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className={cn("text-[10px] rounded-lg px-1.5 py-0",
+                                  roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700" :
+                                  roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700" :
+                                  roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 dark:text-red-400 dark:border-red-700" :
+                                  "text-muted-foreground border-muted"
+                                )}>
+                                  {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
+                                   roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
+                                   roleStatuses[role.id].status === 'off' ? '○ Off' :
+                                   roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
+                                   roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
+                                   '○ Disabilitato'}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] rounded-lg px-1.5 py-0">
+                                  Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
+                                </Badge>
+                                {roleStatuses[role.id].lastExecution && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Ultimo: {new Date(roleStatuses[role.id].lastExecution!.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -1536,46 +1591,78 @@ function SettingsTab({
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3" onClick={(e) => e.stopPropagation()}>
-                                  <div className="rounded-lg border border-border p-3 space-y-2">
-                                    <p className="text-xs font-semibold flex items-center gap-1.5">
-                                      <Shield className="h-3 w-3" />
-                                      Modalità autonomia
-                                    </p>
-                                    <Select
-                                      value={settings.role_autonomy_modes[role.id] || "global"}
-                                      onValueChange={(value) => {
-                                        setSettings(prev => ({
-                                          ...prev,
-                                          role_autonomy_modes: {
-                                            ...prev.role_autonomy_modes,
-                                            [role.id]: value,
-                                          },
-                                        }));
-                                      }}
-                                    >
-                                      <SelectTrigger className="h-8 text-xs rounded-lg">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="global">
-                                          Segui livello globale (ora: {settings.autonomy_level})
-                                        </SelectItem>
-                                        <SelectItem value="manual">
-                                          Manuale — propone, tu approvi (come livello 1-3)
-                                        </SelectItem>
-                                        <SelectItem value="autonomous">
-                                          Autonomo — fa e basta (come livello 4+)
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <p className="text-[10px] text-muted-foreground">
-                                      {settings.role_autonomy_modes[role.id] === 'autonomous'
-                                        ? `${role.name} eseguirà i task automaticamente senza chiedere, come se fosse a livello 4+`
-                                        : settings.role_autonomy_modes[role.id] === 'manual'
-                                        ? `Ogni task di ${role.name} andrà in "da approvare", come se fosse a livello 1-3`
-                                        : `Segue il livello globale (${settings.autonomy_level}): ${settings.autonomy_level >= 4 ? 'esegue da solo' : 'chiede approvazione'}`
-                                      }
-                                    </p>
+                                  <div className="rounded-xl border border-border p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs font-semibold flex items-center gap-1.5">
+                                        <Shield className="h-3.5 w-3.5" />
+                                        Livello di Autonomia
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                          <Checkbox
+                                            checked={settings.role_autonomy_modes[role.id] === undefined || settings.role_autonomy_modes[role.id] === null}
+                                            onCheckedChange={(checked) => {
+                                              setSettings(prev => {
+                                                const newModes = { ...prev.role_autonomy_modes };
+                                                if (checked) {
+                                                  delete newModes[role.id];
+                                                } else {
+                                                  newModes[role.id] = prev.autonomy_level;
+                                                }
+                                                return { ...prev, role_autonomy_modes: newModes };
+                                              });
+                                            }}
+                                          />
+                                          <span className="text-xs text-muted-foreground">Segui globale ({settings.autonomy_level})</span>
+                                        </label>
+                                      </div>
+                                    </div>
+                                    {(settings.role_autonomy_modes[role.id] !== undefined && settings.role_autonomy_modes[role.id] !== null) ? (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-muted-foreground">Livello personalizzato</span>
+                                          <Badge className={cn("rounded-lg text-xs", getAutonomyBadgeColor(settings.role_autonomy_modes[role.id]))}>
+                                            {settings.role_autonomy_modes[role.id]}/10
+                                          </Badge>
+                                        </div>
+                                        <Slider
+                                          value={[settings.role_autonomy_modes[role.id]]}
+                                          onValueChange={(val) => {
+                                            setSettings(prev => ({
+                                              ...prev,
+                                              role_autonomy_modes: {
+                                                ...prev.role_autonomy_modes,
+                                                [role.id]: val[0],
+                                              },
+                                            }));
+                                          }}
+                                          max={10}
+                                          min={0}
+                                          step={1}
+                                          className="w-full"
+                                        />
+                                        <div className="flex justify-between">
+                                          <span className="text-[10px] text-muted-foreground">0 Off</span>
+                                          <span className="text-[10px] text-emerald-600">1-3</span>
+                                          <span className="text-[10px] text-amber-600">4-6</span>
+                                          <span className="text-[10px] text-orange-600">7-9</span>
+                                          <span className="text-[10px] text-red-600">10</span>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          {settings.role_autonomy_modes[role.id] === 0 ? `${role.name} è spento, non farà nulla`
+                                            : settings.role_autonomy_modes[role.id] <= 1 ? `${role.name} eseguirà solo task manuali creati da te`
+                                            : settings.role_autonomy_modes[role.id] <= 3 ? `${role.name} proporrà task ma chiederà approvazione`
+                                            : settings.role_autonomy_modes[role.id] <= 6 ? `${role.name} eseguirà task automaticamente (no chiamate vocali)`
+                                            : settings.role_autonomy_modes[role.id] <= 9 ? `${role.name} è quasi autonomo, anche chiamate vocali`
+                                            : `${role.name} ha autonomia completa, fa tutto da solo`
+                                          }
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        Segue il livello globale ({settings.autonomy_level}): {settings.autonomy_level >= 4 ? 'esegue da solo' : settings.autonomy_level >= 2 ? 'propone e chiede approvazione' : 'solo task manuali'}
+                                      </p>
+                                    )}
                                   </div>
 
                                   <div className="rounded-lg border border-border p-3 space-y-2">

@@ -17,7 +17,7 @@ function safeTextParam(value: string) {
   return sql.raw(`'${sanitized}'`);
 }
 import { withCronLock } from './cron-lock-manager';
-import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings } from '../ai/autonomous-decision-engine';
+import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings, getEffectiveRoleLevel, canRoleAutoCall } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
@@ -1456,6 +1456,26 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         continue;
       }
 
+      // Per-role autonomy level check
+      const effectiveRoleLevel = getEffectiveRoleLevel(settings, role.id);
+      if (effectiveRoleLevel < 2) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Role autonomy level too low (${effectiveRoleLevel}), skipping generation`);
+        if (dryRun) {
+          simulationRoles.push({
+            roleId: role.id,
+            roleName: role.name,
+            skipped: true,
+            skipReason: `Livello di autonomia del ruolo troppo basso (${effectiveRoleLevel}/10). Serve almeno livello 2 per generare task.`,
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            promptSent: '',
+            aiResponse: null,
+            providerUsed: providerName,
+            modelUsed: providerModel,
+          });
+        }
+        continue;
+      }
+
       const channelRequired = role.preferredChannels[0];
       if (channelRequired && channelRequired !== 'none' && settings.channels_enabled && !settings.channels_enabled[channelRequired]) {
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Channel "${channelRequired}" disabled, skipping`);
@@ -1694,6 +1714,11 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               return true;
             });
           })
+          .filter(t => {
+            const cat = t.task_category || role.categories[0] || 'followup';
+            if (settings.allowed_task_categories && settings.allowed_task_categories.length > 0 && !settings.allowed_task_categories.includes(cat)) return false;
+            return true;
+          })
           .map(t => ({
             contactName: t.contact_name || 'N/A',
             contactId: t.contact_id || null,
@@ -1739,6 +1764,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         for (const suggestedTask of tasksToProcess) {
           try {
             if (!suggestedTask.ai_instruction) continue;
+
+            // Check if task category is in allowed categories
+            const taskCat = suggestedTask.task_category || role.categories[0] || 'followup';
+            if (settings.allowed_task_categories && settings.allowed_task_categories.length > 0 && !settings.allowed_task_categories.includes(taskCat)) {
+              console.log(`🚫 [AUTONOMOUS-GEN] [${role.name}] Task category "${taskCat}" not in allowed categories, skipping`);
+              continue;
+            }
 
             if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
               continue;

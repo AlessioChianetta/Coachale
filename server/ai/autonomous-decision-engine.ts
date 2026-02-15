@@ -42,7 +42,7 @@ export interface AutonomySettings {
   custom_instructions: string | null;
   channels_enabled: Record<string, boolean>;
   role_frequencies: Record<string, string>;
-  role_autonomy_modes: Record<string, string>;
+  role_autonomy_modes: Record<string, number>;
   role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
 }
 
@@ -249,11 +249,21 @@ export function isRoleWithinWorkingHours(settings: AutonomySettings, roleId: str
 }
 
 export function getTaskStatusForRole(settings: AutonomySettings, roleId: string): string {
-  const roleMode = settings.role_autonomy_modes?.[roleId];
-  if (roleMode === 'autonomous') return 'scheduled';
-  if (roleMode === 'manual') return 'waiting_approval';
-  if (roleMode === 'supervised') return 'waiting_approval';
-  return settings.autonomy_level >= 4 ? 'scheduled' : 'waiting_approval';
+  const roleLevel = settings.role_autonomy_modes?.[roleId];
+  // If no per-role level set (null/undefined), use global level
+  const effectiveLevel = (roleLevel !== undefined && roleLevel !== null) ? roleLevel : settings.autonomy_level;
+  // Same logic as global: >= 4 means auto-execute, < 4 means needs approval
+  return effectiveLevel >= 4 ? 'scheduled' : 'waiting_approval';
+}
+
+export function getEffectiveRoleLevel(settings: AutonomySettings, roleId: string): number {
+  const roleLevel = settings.role_autonomy_modes?.[roleId];
+  return (roleLevel !== undefined && roleLevel !== null) ? roleLevel : settings.autonomy_level;
+}
+
+export function canRoleAutoCall(settings: AutonomySettings, roleId: string): boolean {
+  const level = getEffectiveRoleLevel(settings, roleId);
+  return level >= 7;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

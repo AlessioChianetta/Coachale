@@ -4,7 +4,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
-import { generateExecutionPlan, type ExecutionStep } from "../ai/autonomous-decision-engine";
+import { generateExecutionPlan, type ExecutionStep, getAutonomySettings, getEffectiveRoleLevel, isRoleWithinWorkingHours } from "../ai/autonomous-decision-engine";
 import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
 import { getTemplatesByDirection } from '../voice/voice-templates';
@@ -122,6 +122,73 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error upserting settings:", error);
     return res.status(500).json({ error: "Failed to update autonomy settings" });
+  }
+});
+
+router.get("/roles/status", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autorizzato" });
+
+    const settings = await getAutonomySettings(consultantId);
+    const enabledRolesResult = await db.execute(sql`
+      SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+    const enabledRoles: Record<string, boolean> = (enabledRolesResult.rows[0] as any)?.enabled_roles || {};
+
+    const roleStatuses: Record<string, any> = {};
+
+    for (const role of AI_ROLES) {
+      const isEnabled = enabledRoles[role.id] !== false;
+      const effectiveLevel = getEffectiveRoleLevel(settings, role.id);
+      const isWithinHours = isRoleWithinWorkingHours(settings, role.id);
+      const hasCustomLevel = settings.role_autonomy_modes?.[role.id] !== undefined && settings.role_autonomy_modes?.[role.id] !== null;
+
+      const lastRunResult = await db.execute(sql`
+        SELECT created_at, title, event_type FROM ai_activity_log
+        WHERE consultant_id::text = ${consultantId}::text
+          AND ai_role = ${role.id}
+          AND event_type IN ('autonomous_analysis', 'autonomous_task_created', 'task_completed', 'task_started')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `);
+      const lastRun = lastRunResult.rows[0] as any;
+
+      let status: string;
+      if (!settings.is_active) {
+        status = 'sistema_spento';
+      } else if (!isEnabled) {
+        status = 'disabilitato';
+      } else if (effectiveLevel === 0) {
+        status = 'off';
+      } else if (effectiveLevel < 2) {
+        status = 'solo_manuale';
+      } else if (!isWithinHours) {
+        status = 'fuori_orario';
+      } else {
+        status = 'attivo';
+      }
+
+      roleStatuses[role.id] = {
+        effectiveLevel,
+        hasCustomLevel,
+        customLevel: hasCustomLevel ? settings.role_autonomy_modes[role.id] : null,
+        globalLevel: settings.autonomy_level,
+        status,
+        isEnabled,
+        isWithinHours,
+        lastExecution: lastRun ? {
+          at: lastRun.created_at,
+          title: lastRun.title,
+          type: lastRun.event_type,
+        } : null,
+      };
+    }
+
+    return res.json(roleStatuses);
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching roles status:", error);
+    return res.status(500).json({ error: "Failed to fetch roles status" });
   }
 });
 

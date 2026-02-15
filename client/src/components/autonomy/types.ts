@@ -18,8 +18,23 @@ export interface AutonomySettings {
   custom_instructions: string;
   proactive_check_interval_minutes: number;
   role_frequencies: Record<string, string>;
-  role_autonomy_modes: Record<string, string>;
+  role_autonomy_modes: Record<string, number>;
   role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
+}
+
+export interface RoleStatus {
+  effectiveLevel: number;
+  hasCustomLevel: boolean;
+  customLevel: number | null;
+  globalLevel: number;
+  status: 'attivo' | 'fuori_orario' | 'disabilitato' | 'off' | 'solo_manuale' | 'sistema_spento';
+  isEnabled: boolean;
+  isWithinHours: boolean;
+  lastExecution: {
+    at: string;
+    title: string;
+    type: string;
+  } | null;
 }
 
 export interface ActivityItem {
