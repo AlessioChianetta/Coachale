@@ -1968,8 +1968,7 @@ export function initAITaskScheduler(): void {
     timezone: 'Europe/Rome'
   });
   
-  // Run autonomous task generation every 30 minutes
-  cron.schedule('*/30 * * * *', async () => {
+  cron.schedule('0,30 * * * *', async () => {
     try {
       await runAutonomousTaskGeneration();
     } catch (error: any) {
@@ -1980,7 +1979,7 @@ export function initAITaskScheduler(): void {
   });
   
   console.log('✅ [AI-SCHEDULER] AI Task Scheduler started (runs every minute)');
-  console.log('✅ [AUTONOMOUS-GEN] Autonomous Task Generation started (runs every 30 minutes)');
+  console.log('✅ [AUTONOMOUS-GEN] Autonomous Task Generation started (fixed schedule: XX:00 and XX:30)');
 }
 
 /**

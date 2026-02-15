@@ -155,7 +155,7 @@ export default function ConsultantAIAutonomyPage() {
       const params = new URLSearchParams({
         event_type: 'autonomous_analysis',
         page: String(reasoningPage),
-        limit: '20',
+        limit: '100',
       });
       if (reasoningPeriod !== 'all') params.set('period', reasoningPeriod);
       if (reasoningRole !== 'all') params.set('ai_role', reasoningRole);
