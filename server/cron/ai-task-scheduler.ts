@@ -1550,6 +1550,19 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         permanentBlocks,
       });
 
+      // Inject per-agent context (focus priorities, custom context) if injectionMode = system_prompt
+      try {
+        const { fetchAgentContext: fetchCtx, buildAgentContextSection: buildCtxSection } = await import('./ai-autonomous-roles');
+        const agentCtx = await fetchCtx(consultantId, role.id);
+        const ctxSection = buildCtxSection(agentCtx, role.name);
+        if (ctxSection) {
+          prompt = prompt + '\n\n' + ctxSection;
+          console.log(`🎯 [AUTONOMOUS-GEN] [${role.name}] Injected agent context (${agentCtx?.focusPriorities.length || 0} priorities, mode: ${agentCtx?.injectionMode})`);
+        }
+      } catch (ctxErr: any) {
+        console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error injecting agent context: ${ctxErr.message}`);
+      }
+
       // Inject system prompt documents and KB assignments for this agent
       try {
         const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, role.id);

@@ -32,11 +32,55 @@ import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./uti
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
+const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
+  alessia: [
+    { label: "Consultazioni", icon: "📋", items: ["Storico consultazioni (completate e programmate)", "Note e trascrizioni delle sessioni"] },
+    { label: "Chiamate vocali", icon: "📞", items: ["Chiamate programmate e completate", "Durata, stato e istruzioni delle chiamate"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati ad Alessia"] },
+  ],
+  millie: [
+    { label: "Journey Email", icon: "📧", items: ["Progresso journey email per ogni cliente", "Ultime email inviate (oggetto, data, apertura)"] },
+    { label: "Log Email", icon: "📨", items: ["Email automatiche degli ultimi 14 giorni"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Millie"] },
+  ],
+  echo: [
+    { label: "Pipeline Riassunti", icon: "📝", items: ["Consultazioni senza riassunto (ultimi 30gg)", "Riassunti recenti e stato invio"] },
+    { label: "Statistiche Pipeline", icon: "📊", items: ["Consultazioni programmate vs completate", "Trascrizioni mancanti, email in bozza/inviate"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Echo"] },
+  ],
+  nova: [
+    { label: "Contenuti", icon: "📱", items: ["Post recenti (titolo, piattaforma, stato, date)", "Idee contenuto pendenti"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Nova"] },
+  ],
+  stella: [
+    { label: "WhatsApp", icon: "💬", items: ["Conversazioni attive (telefono, ultimo messaggio, non letti)", "Messaggi recenti degli ultimi 7 giorni"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Stella"] },
+  ],
+  iris: [
+    { label: "Email Hub", icon: "📥", items: ["Email in arrivo non lette (ultimi 7gg)", "Mittente, oggetto, anteprima"] },
+    { label: "Ticket", icon: "🎫", items: ["Ticket aperti/pendenti con priorità e classificazione AI"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Iris"] },
+  ],
+  marco: [
+    { label: "Agenda", icon: "📅", items: ["Consultazioni prossimi 7 giorni (DB + Google Calendar)", "Stato, durata, note per ogni appuntamento"] },
+    { label: "Workload", icon: "⚡", items: ["Task completati (7gg e 30gg)", "Task pendenti in coda"] },
+    { label: "Monitoraggio Clienti", icon: "👥", items: ["Limite consultazioni mensili per cliente", "Consultazioni usate vs disponibili", "Gap di scheduling (3 mesi)"] },
+    { label: "Task", icon: "✅", items: ["Task personali del consulente (titolo, priorità, scadenza)", "Task clienti da consultazioni (con statistiche per cliente)", "Task scaduti e completamento"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati a Marco"] },
+  ],
+  personalizza: [
+    { label: "Consultazioni", icon: "📋", items: ["Consultazioni recenti per contesto"] },
+    { label: "Task recenti", icon: "✅", items: ["Task AI recenti generati"] },
+    { label: "Knowledge Base", icon: "📚", items: ["Documenti KB assegnati"] },
+  ],
+};
+
 function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string; roleName: string; kbDocuments: KbDocument[] }) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showAutoContext, setShowAutoContext] = useState(false);
   const [ctx, setCtx] = useState<AgentContext>({
     focusPriorities: [],
     customContext: "",
@@ -115,7 +159,11 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
   if (hasFocusItems) summaryParts.push(`${ctx.focusPriorities.length} priorità`);
   if (hasKbDocs) summaryParts.push(`${ctx.linkedKbDocumentIds.length} doc KB`);
   if (hasCustomCtx) summaryParts.push("contesto custom");
+  const injLabel = ctx.injectionMode === "system_prompt" ? "SP" : "FS";
+  if (loaded && (hasFocusItems || hasKbDocs || hasCustomCtx)) summaryParts.push(injLabel);
   const summaryText = summaryParts.length > 0 ? summaryParts.join(" · ") : "Nessun contesto configurato";
+
+  const autoContextItems = AGENT_AUTO_CONTEXT[roleId] || [];
 
   return (
     <div className="border-t pt-3 mt-3" onClick={(e) => e.stopPropagation()}>
@@ -144,6 +192,108 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
             <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
             <>
+              {autoContextItems.length > 0 && (
+                <div className="space-y-1.5">
+                  <button
+                    onClick={() => setShowAutoContext(!showAutoContext)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <Label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                      <Eye className="h-3.5 w-3.5 text-emerald-500" />
+                      Dati che {roleName} legge automaticamente
+                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-emerald-600 font-medium">{autoContextItems.length} fonti</span>
+                      {showAutoContext ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                    </div>
+                  </button>
+                  {showAutoContext && (
+                    <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-800/30 rounded-lg p-2.5 space-y-2">
+                      <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                        Questi dati vengono letti dal database ad ogni ciclo di analisi. Non devi inserirli manualmente.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {autoContextItems.map((group) => (
+                          <div key={group.label} className="bg-white/70 dark:bg-gray-900/50 rounded-md p-2 border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-xs">{group.icon}</span>
+                              <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300">{group.label}</span>
+                            </div>
+                            <ul className="space-y-0.5">
+                              {group.items.map((item, i) => (
+                                <li key={i} className="text-[9px] text-emerald-700/80 dark:text-emerald-400/80 flex items-start gap-1">
+                                  <span className="text-emerald-400 mt-[1px] shrink-0">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5 text-violet-500" />
+                  Come viene iniettato il tuo contesto
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setCtx(prev => ({ ...prev, injectionMode: "system_prompt" }))}
+                    className={cn(
+                      "relative p-2.5 rounded-lg border-2 text-left transition-all",
+                      ctx.injectionMode === "system_prompt"
+                        ? "border-violet-400 bg-violet-50/50 dark:bg-violet-950/20 shadow-sm"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    {ctx.injectionMode === "system_prompt" && (
+                      <div className="absolute top-1.5 right-1.5">
+                        <CheckCircle className="h-3.5 w-3.5 text-violet-500" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Brain className="h-3 w-3 text-violet-500" />
+                      <span className="text-[10px] font-bold">System Prompt</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-relaxed">
+                      Sempre in memoria. {roleName} vede le tue priorità e istruzioni ad ogni analisi, senza eccezioni.
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium">100% visibilità</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setCtx(prev => ({ ...prev, injectionMode: "file_search" }))}
+                    className={cn(
+                      "relative p-2.5 rounded-lg border-2 text-left transition-all",
+                      ctx.injectionMode === "file_search"
+                        ? "border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-sm"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    )}
+                  >
+                    {ctx.injectionMode === "file_search" && (
+                      <div className="absolute top-1.5 right-1.5">
+                        <CheckCircle className="h-3.5 w-3.5 text-blue-500" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <FileText className="h-3 w-3 text-blue-500" />
+                      <span className="text-[10px] font-bold">File Search (RAG)</span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-relaxed">
+                      Salvato nel File Search. {roleName} recupera le info solo quando sono rilevanti per il task in analisi.
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">Ricerca semantica</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
@@ -208,41 +358,18 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <Brain className="h-3.5 w-3.5 text-violet-500" />
-                    Modalità iniezione
-                  </Label>
-                  <Select value={ctx.injectionMode} onValueChange={(v) => setCtx(prev => ({ ...prev, injectionMode: v as 'system_prompt' | 'file_search' }))}>
-                    <SelectTrigger className="h-8 text-xs rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="system_prompt">System Prompt (sempre in memoria)</SelectItem>
-                      <SelectItem value="file_search">File Search (ricerca RAG)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">
-                    {ctx.injectionMode === "system_prompt"
-                      ? "Il contesto viene iniettato direttamente nel prompt — l'agente lo vede sempre"
-                      : "Il contesto viene salvato nel File Search — l'agente lo recupera quando rilevante"}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Stile report</Label>
-                  <Select value={ctx.reportStyle || "bilanciato"} onValueChange={(v) => setCtx(prev => ({ ...prev, reportStyle: v as any }))}>
-                    <SelectTrigger className="h-8 text-xs rounded-lg">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sintetico">Sintetico</SelectItem>
-                      <SelectItem value="bilanciato">Bilanciato</SelectItem>
-                      <SelectItem value="dettagliato">Dettagliato</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Stile report</Label>
+                <Select value={ctx.reportStyle || "bilanciato"} onValueChange={(v) => setCtx(prev => ({ ...prev, reportStyle: v as any }))}>
+                  <SelectTrigger className="h-8 text-xs rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sintetico">Sintetico</SelectItem>
+                    <SelectItem value="bilanciato">Bilanciato</SelectItem>
+                    <SelectItem value="dettagliato">Dettagliato</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {kbDocuments.length > 0 && (

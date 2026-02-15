@@ -29,6 +29,85 @@ async function fetchAgentKbContext(consultantId: string, agentId: string): Promi
   return { kbDocumentTitles, fileSearchStoreNames };
 }
 
+interface AgentContextForPrompt {
+  focusPriorities: { text: string; order: number }[];
+  customContext: string;
+  injectionMode: 'system_prompt' | 'file_search';
+  reportStyle: string;
+}
+
+export async function fetchAgentContext(consultantId: string, agentId: string): Promise<AgentContextForPrompt | null> {
+  try {
+    const result = await db.execute(sql`
+      SELECT agent_contexts, marco_context FROM ai_autonomy_settings 
+      WHERE consultant_id::text = ${consultantId}::text LIMIT 1
+    `);
+    const row = result.rows[0] as any;
+    if (!row) return null;
+
+    const allContexts = row.agent_contexts || {};
+    let ctx = allContexts[agentId];
+
+    if (!ctx || ((!ctx.focusPriorities?.length) && (!ctx.customContext?.trim()) && (!ctx.linkedKbDocumentIds?.length))) {
+      if (agentId === 'marco' && row.marco_context) {
+        const old = row.marco_context;
+        const priorities: { text: string; order: number }[] = [];
+        if (Array.isArray(old.objectives)) {
+          old.objectives.forEach((obj: any, idx: number) => {
+            if (obj.name?.trim()) {
+              const label = obj.name + (obj.deadline ? ` (entro ${obj.deadline})` : '') + (obj.priority === 'alta' ? ' [ALTA]' : obj.priority === 'bassa' ? ' [BASSA]' : '');
+              priorities.push({ text: label, order: idx + 1 });
+            }
+          });
+        }
+        return {
+          focusPriorities: priorities,
+          customContext: old.roadmap || '',
+          injectionMode: 'system_prompt',
+          reportStyle: old.reportStyle || 'bilanciato',
+        };
+      }
+      return null;
+    }
+
+    return {
+      focusPriorities: Array.isArray(ctx.focusPriorities) ? ctx.focusPriorities.filter((f: any) => f.text?.trim()) : [],
+      customContext: ctx.customContext || '',
+      injectionMode: ctx.injectionMode || 'system_prompt',
+      reportStyle: ctx.reportStyle || 'bilanciato',
+    };
+  } catch (err: any) {
+    console.error(`⚠️ [${agentId.toUpperCase()}] Failed to fetch agent context: ${err.message}`);
+    return null;
+  }
+}
+
+export function buildAgentContextSection(ctx: AgentContextForPrompt | null, agentName: string): string {
+  if (!ctx) return '';
+  if (ctx.injectionMode === 'file_search') return '';
+
+  const parts: string[] = [];
+
+  if (ctx.focusPriorities.length > 0) {
+    parts.push(`\n=== PRIORITÀ DI FOCUS DEL CONSULENTE (per ${agentName}) ===`);
+    parts.push('Il consulente ha definito queste priorità in ordine di importanza. DEVI tenerne conto in ogni analisi e proposta di task:');
+    ctx.focusPriorities.forEach((p) => {
+      parts.push(`  ${p.order}. ${p.text}`);
+    });
+  }
+
+  if (ctx.customContext.trim()) {
+    parts.push(`\n=== CONTESTO PERSONALIZZATO DEL CONSULENTE (per ${agentName}) ===`);
+    parts.push(ctx.customContext.trim());
+  }
+
+  if (ctx.reportStyle && ctx.reportStyle !== 'bilanciato') {
+    parts.push(`\n[Stile output richiesto: ${ctx.reportStyle}]`);
+  }
+
+  return parts.join('\n');
+}
+
 function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanentBlocks?: any[]): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
   const otherRoleTasks = recentAllTasks.filter(t => t.role !== roleId);

@@ -467,6 +467,53 @@ router.put("/agent-context/:agentId", authenticateToken, requireAnyRole(["consul
       }
     }
 
+    if (context.injectionMode === 'file_search') {
+      try {
+        const { FileSearchService } = await import('../ai/file-search-service');
+        const fileSearchService = new FileSearchService();
+
+        const contextParts: string[] = [];
+        contextParts.push(`=== Contesto Agente: ${agentId.toUpperCase()} ===\n`);
+        
+        if (Array.isArray(context.focusPriorities) && context.focusPriorities.length > 0) {
+          contextParts.push('PRIORITÀ DI FOCUS (in ordine di importanza):');
+          context.focusPriorities.forEach((p: any, i: number) => {
+            if (p.text?.trim()) contextParts.push(`  ${i + 1}. ${p.text}`);
+          });
+          contextParts.push('');
+        }
+
+        if (context.customContext?.trim()) {
+          contextParts.push('CONTESTO PERSONALIZZATO:');
+          contextParts.push(context.customContext.trim());
+          contextParts.push('');
+        }
+
+        if (context.reportStyle && context.reportStyle !== 'bilanciato') {
+          contextParts.push(`Stile output richiesto: ${context.reportStyle}`);
+        }
+
+        const textContent = contextParts.join('\n');
+        if (textContent.trim().length > 50) {
+          const stores = await fileSearchService.getConsultantOwnStores(consultantId);
+          if (stores.length > 0) {
+            await fileSearchService.uploadDocumentFromContent({
+              content: textContent,
+              displayName: `agent-context-${agentId}.txt`,
+              storeId: stores[0],
+              sourceType: 'manual',
+              sourceId: `agent-context-${agentId}`,
+              userId: consultantId,
+              skipHashCheck: true,
+            });
+            console.log(`📤 [AI-AUTONOMY] Synced ${agentId} context to File Search store`);
+          }
+        }
+      } catch (fsErr: any) {
+        console.warn(`[AI-AUTONOMY] Failed to sync ${agentId} context to File Search:`, fsErr.message);
+      }
+    }
+
     return res.json({ success: true, message: "Contesto agente salvato" });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error saving agent context:", error.message);
