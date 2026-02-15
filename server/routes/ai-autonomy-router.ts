@@ -1167,11 +1167,11 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
     const task = taskResult.rows[0] as any;
 
-    if (!['paused', 'scheduled', 'failed'].includes(task.status)) {
-      return res.status(400).json({ error: `Cannot execute task with status '${task.status}'. Only 'paused', 'scheduled', or 'failed' tasks can be manually executed.` });
+    if (!['paused', 'scheduled', 'failed', 'completed'].includes(task.status)) {
+      return res.status(400).json({ error: `Cannot execute task with status '${task.status}'. Only 'paused', 'scheduled', 'failed', or 'completed' tasks can be manually executed.` });
     }
 
-    const isRetry = task.status === 'failed';
+    const isRetry = task.status === 'failed' || task.status === 'completed';
 
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
@@ -1180,7 +1180,7 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
           last_attempt_at = NOW(),
           error_message = NULL,
           execution_plan = ${isRetry ? sql`'[]'::jsonb` : sql`execution_plan`},
-          result_data = ${isRetry ? sql`NULL` : sql`result_data`},
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"skip_guardrails": true}'::jsonb,
           result_summary = ${isRetry ? sql`NULL` : sql`result_summary`},
           updated_at = NOW()
       WHERE id = ${id}
@@ -1225,7 +1225,7 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
             additional_context: task.additional_context,
             voice_template_suggestion: task.voice_template_suggestion,
             language: task.language,
-          }, { isManual: true });
+          }, { isManual: true, skipGuardrails: true, roleId: task.ai_role || undefined });
 
           if (!decision.should_execute) {
             console.log(`🛑 [AI-AUTONOMY] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
