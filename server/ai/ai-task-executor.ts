@@ -18,6 +18,7 @@ export interface AITaskInfo {
   task_category: string;
   priority: number;
   timezone: string;
+  additional_context?: string | null;
 }
 
 export interface StepExecutionResult {
@@ -377,6 +378,7 @@ async function handleSearchPrivateStores(
   const searchPrompt = `Sei un assistente AI per consulenti. Cerca nei documenti privati informazioni rilevanti per questo task.
 
 ISTRUZIONE TASK: ${task.ai_instruction}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
 CATEGORIA: ${task.task_category}
 CONTATTO: ${task.contact_name || 'N/A'}
 
@@ -1013,6 +1015,7 @@ async function handleSendEmail(
       console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 Contesto: ${task.ai_instruction}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}
 
@@ -1136,6 +1139,7 @@ async function handleSendWhatsapp(
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${task.contact_name || 'il cliente'}.
 Contesto: ${task.ai_instruction}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
 ${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
 NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;

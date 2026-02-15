@@ -602,6 +602,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       task_category: task.task_category,
       priority: task.priority,
       timezone: task.timezone || 'Europe/Rome',
+      additional_context: task.additional_context,
     };
     
     const allResults: Record<string, any> = {};
