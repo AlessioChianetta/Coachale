@@ -491,7 +491,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
     
     const guardrailCheck = skipGuardrails 
       ? await canExecuteManually(task.consultant_id)
-      : await canExecuteAutonomously(task.consultant_id);
+      : await canExecuteAutonomously(task.consultant_id, task.ai_role || undefined);
     
     if (!guardrailCheck.allowed) {
       console.log(`🛑 [AI-SCHEDULER] Task ${task.id} blocked by guardrails: ${guardrailCheck.reason}`);

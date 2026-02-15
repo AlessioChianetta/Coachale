@@ -1935,7 +1935,9 @@ router.patch("/tasks/:id/approve", authenticateToken, requireAnyRole(["consultan
 
     const result = await db.execute(sql`
       UPDATE ai_scheduled_tasks
-      SET status = 'scheduled', updated_at = NOW()
+      SET status = 'scheduled',
+          updated_at = NOW(),
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"manually_approved": true, "skip_guardrails": true}'::jsonb
       WHERE id = ${id}
         AND consultant_id = ${consultantId}
         AND status = 'waiting_approval'

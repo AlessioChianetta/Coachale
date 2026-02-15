@@ -300,7 +300,7 @@ export async function getTodayActionCounts(consultantId: string): Promise<DailyA
 // CAN EXECUTE AUTONOMOUSLY
 // ═══════════════════════════════════════════════════════════════════════════
 
-export async function canExecuteAutonomously(consultantId: string): Promise<{ allowed: boolean; reason?: string }> {
+export async function canExecuteAutonomously(consultantId: string, roleId?: string): Promise<{ allowed: boolean; reason?: string }> {
   const settings = await getAutonomySettings(consultantId);
 
   if (!settings.is_active) {
@@ -311,8 +311,14 @@ export async function canExecuteAutonomously(consultantId: string): Promise<{ al
     return { allowed: false, reason: `Livello di autonomia troppo basso (${settings.autonomy_level}). Richiesto almeno 2 per esecuzione automatica` };
   }
 
-  if (!isWithinWorkingHours(settings)) {
-    return { allowed: false, reason: "Fuori dall'orario di lavoro configurato" };
+  const withinHours = roleId 
+    ? isRoleWithinWorkingHours(settings, roleId) 
+    : isWithinWorkingHours(settings);
+  
+  if (!withinHours) {
+    return { allowed: false, reason: roleId 
+      ? `Fuori dall'orario di lavoro configurato per ${roleId}` 
+      : "Fuori dall'orario di lavoro configurato" };
   }
 
   const counts = await getTodayActionCounts(consultantId);
