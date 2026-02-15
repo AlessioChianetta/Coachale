@@ -17,7 +17,7 @@ function safeTextParam(value: string) {
   return sql.raw(`'${sanitized}'`);
 }
 import { withCronLock } from './cron-lock-manager';
-import { generateExecutionPlan, canExecuteAutonomously, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings, getEffectiveRoleLevel, canRoleAutoCall } from '../ai/autonomous-decision-engine';
+import { generateExecutionPlan, canExecuteAutonomously, canExecuteManually, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings, getEffectiveRoleLevel, canRoleAutoCall } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
@@ -483,7 +483,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
   console.log(`🧠 [AI-SCHEDULER] Executing autonomous task ${task.id} (category: ${task.task_category})`);
   
   try {
-    const guardrailCheck = await canExecuteAutonomously(task.consultant_id);
+    const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
+    
+    if (skipGuardrails) {
+      console.log(`🔓 [AI-SCHEDULER] Task ${task.id} has skip_guardrails=true (chat-approved), using manual guardrails (skips working hours + autonomy level)`);
+    }
+    
+    const guardrailCheck = skipGuardrails 
+      ? await canExecuteManually(task.consultant_id)
+      : await canExecuteAutonomously(task.consultant_id);
+    
     if (!guardrailCheck.allowed) {
       console.log(`🛑 [AI-SCHEDULER] Task ${task.id} blocked by guardrails: ${guardrailCheck.reason}`);
       
@@ -554,7 +563,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
               ai_reasoning = ${decision.reasoning},
               ai_confidence = ${decision.confidence},
               result_summary = ${`AI ha deciso di non eseguire: ${decision.reasoning.substring(0, 200)}`},
-              result_data = ${JSON.stringify({ decision: 'skip', reasoning: decision.reasoning })}::jsonb,
+              result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ decision: 'skip', reasoning: decision.reasoning })}::jsonb,
               completed_at = NOW(),
               updated_at = NOW()
           WHERE id = ${task.id}
@@ -757,7 +766,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         SET status = 'failed',
             execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
             result_summary = ${`Fallito allo step "${failedStep}" (${completedSteps}/${totalSteps} completati)`},
-            result_data = ${JSON.stringify({ steps_completed: completedSteps, total_steps: totalSteps, results: allResults })}::jsonb,
+            result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ steps_completed: completedSteps, total_steps: totalSteps, results: allResults })}::jsonb,
             completed_at = NOW(),
             updated_at = NOW()
         WHERE id = ${task.id}
@@ -780,7 +789,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         SET status = 'completed',
             execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
             result_summary = ${`Completato: ${totalSteps} step eseguiti con successo`},
-            result_data = ${JSON.stringify({ steps_completed: totalSteps, total_steps: totalSteps, results: allResults })}::jsonb,
+            result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ steps_completed: totalSteps, total_steps: totalSteps, results: allResults })}::jsonb,
             completed_at = NOW(),
             updated_at = NOW()
         WHERE id = ${task.id}

@@ -2587,19 +2587,23 @@ Esempio di flusso corretto:
               UPDATE ai_scheduled_tasks
               SET status = 'scheduled',
                   scheduled_at = NOW(),
-                  updated_at = NOW()
+                  updated_at = NOW(),
+                  result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            console.log(`   scheduled_at was in the past (${scheduledAt?.toISOString() || 'NULL'}) -> status='scheduled' + scheduled_at=NOW()`);
+            console.log(`   scheduled_at was in the past (${scheduledAt?.toISOString() || 'NULL'}) -> status='scheduled' + scheduled_at=NOW() + skip_guardrails=true`);
             console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
             actionResults.push({ type: 'approve_and_execute', taskId, success: true });
-            console.log(`🚀 [AGENT-CHAT] Task ${taskId} approved+scheduled for immediate execution via chat by ${roleId}`);
+            console.log(`🚀 [AGENT-CHAT] Task ${taskId} approved+scheduled for immediate execution via chat by ${roleId} (guardrails bypassed)`);
           } else {
             const updateResult = await db.execute(sql`
-              UPDATE ai_scheduled_tasks SET status = 'approved', updated_at = NOW()
+              UPDATE ai_scheduled_tasks
+              SET status = 'approved',
+                  updated_at = NOW(),
+                  result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
               WHERE id = ${taskId} AND consultant_id = ${consultantId}
             `);
-            console.log(`   scheduled_at is in the future (${scheduledAt.toISOString()}) -> status='approved', will run at scheduled time`);
+            console.log(`   scheduled_at is in the future (${scheduledAt.toISOString()}) -> status='approved' + skip_guardrails=true, will run at scheduled time`);
             console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
             actionResults.push({ type: 'approve', taskId, success: true });
             console.log(`✅ [AGENT-CHAT] Task ${taskId} approved via chat by ${roleId}, will execute at ${scheduledAt.toISOString()}`);
@@ -2635,12 +2639,13 @@ Esempio di flusso corretto:
             UPDATE ai_scheduled_tasks
             SET status = 'scheduled',
                 scheduled_at = NOW(),
-                updated_at = NOW()
+                updated_at = NOW(),
+                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
             WHERE id = ${taskId} AND consultant_id = ${consultantId}
           `);
           console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
           actionResults.push({ type: 'execute', taskId, success: true });
-          console.log(`🚀 [AGENT-CHAT] Task ${taskId} set for immediate execution via chat by ${roleId}`);
+          console.log(`🚀 [AGENT-CHAT] Task ${taskId} set for immediate execution via chat by ${roleId} (guardrails bypassed)`);
         } else {
           const allTaskCheck = await db.execute(sql`
             SELECT id, status FROM ai_scheduled_tasks
