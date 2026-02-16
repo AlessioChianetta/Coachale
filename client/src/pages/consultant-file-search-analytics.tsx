@@ -3312,6 +3312,16 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           )}
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {(dept as any).hasStore && (
+                                            <div className="mb-3 p-2.5 bg-amber-50 rounded-lg border border-amber-100">
+                                              <div className="flex items-center gap-2 text-sm">
+                                                <Database className="h-4 w-4 text-amber-500" />
+                                                <span className="text-amber-700 font-medium">Contenitore: </span>
+                                                <code className="text-xs bg-white px-1.5 py-0.5 rounded border text-amber-600">{(dept as any).storeName || (dept as any).googleStoreName}</code>
+                                                <Badge variant="outline" className="text-xs ml-auto">{(dept as any).storeDocumentCount || 0} doc nel File Search</Badge>
+                                              </div>
+                                            </div>
+                                          )}
                                           {dept.hasDocuments ? (
                                             <div className="space-y-1">
                                               {dept.systemPromptDocs.map((doc: any) => (
@@ -3328,6 +3338,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <p className="text-gray-400 text-sm text-center py-2 italic">
                                               Nessuna istruzione AI assegnata a questo reparto.
                                             </p>
+                                          )}
+                                          {(dept as any).fileSearchDocuments && (dept as any).fileSearchDocuments.length > 0 && (
+                                            <div className="mt-2 pt-2 border-t border-gray-200">
+                                              <p className="text-xs text-gray-500 mb-1 font-medium">Documenti nel File Search Store:</p>
+                                              {(dept as any).fileSearchDocuments.map((doc: any) => (
+                                                <div key={`fs-${doc.id}`} className="flex items-center gap-2 p-2 bg-blue-50 rounded text-sm border border-blue-100">
+                                                  <FileText className="h-3 w-3 text-blue-500" />
+                                                  <span className="truncate flex-1 text-blue-800">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? 'Indicizzato' : 'In attesa'}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
                                           )}
                                         </CollapsibleContent>
                                       </Collapsible>
@@ -3563,6 +3587,22 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           )}
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                          {(agent as any).hasStore && (
+                                            <div className="mb-3 p-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
+                                              <div className="flex items-center gap-2 text-sm">
+                                                <Database className="h-4 w-4 text-indigo-500" />
+                                                <span className="text-indigo-700 font-medium">Contenitore: </span>
+                                                <code className="text-xs bg-white px-1.5 py-0.5 rounded border text-indigo-600">{(agent as any).storeName || (agent as any).googleStoreName}</code>
+                                                <Badge variant="outline" className="text-xs ml-auto">{(agent as any).storeDocumentCount || 0} doc nel File Search</Badge>
+                                              </div>
+                                            </div>
+                                          )}
+                                          {!(agent as any).hasStore && agent.hasDocuments && (
+                                            <div className="mb-3 p-2 bg-amber-50 rounded-lg border border-amber-100 text-sm text-amber-700">
+                                              <AlertCircle className="h-3.5 w-3.5 inline mr-1" />
+                                              Store File Search non ancora creato - si creerà automaticamente al primo documento file_search
+                                            </div>
+                                          )}
                                           {agent.hasDocuments ? (
                                             <div className="space-y-1">
                                               {agent.documents.map((doc: any) => (
@@ -3589,6 +3629,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                             <p className="text-gray-400 text-sm text-center py-2 italic">
                                               Nessun documento KB assegnato. Vai alla sezione Agenti AI nella Knowledge Base per assegnare documenti.
                                             </p>
+                                          )}
+                                          {(agent as any).fileSearchDocuments && (agent as any).fileSearchDocuments.length > 0 && (
+                                            <div className="mt-2 pt-2 border-t border-gray-200">
+                                              <p className="text-xs text-gray-500 mb-1 font-medium">Documenti nel File Search Store:</p>
+                                              {(agent as any).fileSearchDocuments.map((doc: any) => (
+                                                <div key={`fs-${doc.id}`} className="flex items-center gap-2 p-2 bg-blue-50 rounded text-sm border border-blue-100">
+                                                  <FileText className="h-3 w-3 text-blue-500" />
+                                                  <span className="truncate flex-1 text-blue-800">{doc.displayName}</span>
+                                                  <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? 'Indicizzato' : 'In attesa'}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </div>
                                           )}
                                         </CollapsibleContent>
                                       </Collapsible>
@@ -6190,6 +6244,16 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           {(analytics?.hierarchicalData as any)?.whatsappAgentStores?.filter((agent: any) => agent.storeId && agent.storeId !== "").map((agent: any) => (
                             <SelectItem key={agent.storeId} value={agent.storeId}>
                               {agent.storeName} (WhatsApp)
+                            </SelectItem>
+                          ))}
+                          {(analytics?.hierarchicalData as any)?.autonomousAgentStores?.filter((agent: any) => agent.storeId && agent.storeId !== "").map((agent: any) => (
+                            <SelectItem key={`auto-${agent.agentId}`} value={agent.storeId}>
+                              🤖 {agent.agentName} ({agent.storeDocumentCount || 0} doc)
+                            </SelectItem>
+                          ))}
+                          {(analytics?.hierarchicalData as any)?.departmentStores?.filter((dept: any) => dept.storeId && dept.storeId !== "").map((dept: any) => (
+                            <SelectItem key={`dept-${dept.departmentId}`} value={dept.storeId}>
+                              🏢 {dept.departmentName} ({dept.storeDocumentCount || 0} doc)
                             </SelectItem>
                           ))}
                           {analytics?.hierarchicalData?.clientStores?.filter(client => client.storeId && client.storeId !== "").map(client => (

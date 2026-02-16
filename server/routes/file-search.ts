@@ -1042,7 +1042,13 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     `);
     const whatsappAgentIds = (whatsappAgentsList.rows as any[]).map(a => a.id);
 
-    const allOwnerIds = [consultantId, ...clientIds, ...emailAccountIds, ...whatsappAgentIds];
+    const AUTONOMOUS_AGENT_IDS = ['alessia', 'millie', 'echo', 'nova', 'stella', 'iris', 'marco', 'personalizza'];
+    const autonomousAgentOwnerIds = AUTONOMOUS_AGENT_IDS.map(agentId => `${agentId}_${consultantId}`);
+
+    const allDepartmentsList = await db.select({ id: departments.id }).from(departments).where(eq(departments.consultantId, consultantId));
+    const departmentIds = allDepartmentsList.map(d => d.id);
+
+    const allOwnerIds = [consultantId, ...clientIds, ...emailAccountIds, ...whatsappAgentIds, ...autonomousAgentOwnerIds, ...departmentIds];
     
     // Get ALL stores: consultant store + client private stores
     const stores = await db
@@ -1281,15 +1287,30 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         injectionMode: d.injection_mode,
       }));
       const deptEmployees = allClients.filter(c => c.departmentId === dept.id && c.isEmployee === true);
+
+      const dedicatedStore = stores.find(s => s.ownerId === dept.id && s.ownerType === 'department');
+      const dedicatedStoreDocs = documents.filter(d => d.storeOwnerId === dept.id);
+
       return {
         departmentId: dept.id,
         departmentName: dept.name,
         departmentColor: dept.color,
         employeeCount: deptEmployees.length,
-        hasDocuments: deptSystemPromptDocs.length > 0,
+        hasDocuments: deptSystemPromptDocs.length > 0 || dedicatedStoreDocs.length > 0,
         systemPromptDocs: deptSystemPromptDocs,
+        storeId: dedicatedStore?.id || null,
+        storeName: dedicatedStore?.displayName || null,
+        googleStoreName: dedicatedStore?.googleStoreName || null,
+        hasStore: !!dedicatedStore,
+        storeDocumentCount: dedicatedStore?.documentCount || 0,
+        fileSearchDocuments: dedicatedStoreDocs.map(d => ({
+          id: d.id,
+          displayName: d.displayName,
+          status: d.status,
+          sourceType: d.sourceType,
+        })),
         totals: {
-          total: deptSystemPromptDocs.length,
+          total: deptSystemPromptDocs.length + dedicatedStoreDocs.length,
         },
       };
     });
@@ -1359,12 +1380,17 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         status: d.injection_mode === 'file_search' ? 'indexed' as const : 'pending' as const,
         injectionMode: d.injection_mode,
       }));
+
+      const agentOwnerId = `${agent.id}_${consultantId}`;
+      const dedicatedStore = stores.find(s => s.ownerId === agentOwnerId && s.ownerType === 'autonomous_agent');
+      const dedicatedStoreDocs = documents.filter(d => d.storeOwnerId === agentOwnerId);
+
       const totalDocs = agentDocs.length + agentSystemPromptDocs.length;
       return {
         agentId: agent.id,
         agentName: agent.name,
         agentDisplayName: agent.displayName,
-        hasDocuments: totalDocs > 0,
+        hasDocuments: totalDocs > 0 || dedicatedStoreDocs.length > 0,
         documents: agentDocs.map(d => ({
           documentId: d.document_id,
           title: d.title,
@@ -1373,9 +1399,20 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           fileName: d.file_name,
         })),
         systemPromptDocs: agentSystemPromptDocs,
+        storeId: dedicatedStore?.id || null,
+        storeName: dedicatedStore?.displayName || null,
+        googleStoreName: dedicatedStore?.googleStoreName || null,
+        hasStore: !!dedicatedStore,
+        storeDocumentCount: dedicatedStore?.documentCount || 0,
+        fileSearchDocuments: dedicatedStoreDocs.map(d => ({
+          id: d.id,
+          displayName: d.displayName,
+          status: d.status,
+          sourceType: d.sourceType,
+        })),
         totals: {
-          total: totalDocs,
-          indexed: agentDocs.filter(d => d.status === 'indexed').length + agentSystemPromptDocs.filter(d => d.status === 'indexed').length,
+          total: totalDocs + dedicatedStoreDocs.length,
+          indexed: agentDocs.filter(d => d.status === 'indexed').length + agentSystemPromptDocs.filter(d => d.status === 'indexed').length + dedicatedStoreDocs.filter(d => d.status === 'indexed').length,
         },
       };
     });
