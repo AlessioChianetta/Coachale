@@ -729,6 +729,7 @@ export default function SystemDocumentsSection() {
   const formRef = useRef<HTMLDivElement>(null);
   const [previewDoc, setPreviewDoc] = useState<{ type: 'system'; doc: SystemDocument } | { type: 'kb'; doc: KbDocSummary; content?: string; loading?: boolean } | null>(null);
   const [copiedContent, setCopiedContent] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1047,12 +1048,20 @@ export default function SystemDocumentsSection() {
         toast({ title: "Campi obbligatori", description: "Titolo e contenuto sono obbligatori", variant: "destructive" });
         return;
       }
-      updateMutation.mutate({ id: editingDoc.id, data: form });
     } else {
       if (contentEntries.length === 0) {
         toast({ title: "Nessun contenuto", description: "Aggiungi almeno un documento", variant: "destructive" });
         return;
       }
+    }
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmedSubmit = async () => {
+    setShowConfirmDialog(false);
+    if (editingDoc) {
+      updateMutation.mutate({ id: editingDoc.id, data: form });
+    } else {
       setBatchSaving(true);
       let successCount = 0;
       let errorCount = 0;
@@ -3449,6 +3458,282 @@ export default function SystemDocumentsSection() {
                 </pre>
               ) : null}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="text-lg font-semibold">
+              {editingDoc
+                ? 'Riepilogo Documento'
+                : contentEntries.length === 1
+                  ? 'Riepilogo Documento'
+                  : `Riepilogo ${contentEntries.length} Documenti`}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[65vh] px-6 pb-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Documenti</p>
+                {editingDoc ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Edit3 className="h-4 w-4 text-indigo-500 shrink-0" />
+                    <span className="truncate">Modifica documento: <span className="font-medium">{form.title}</span></span>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-sm text-slate-700">{contentEntries.length} documento{contentEntries.length !== 1 ? 'i' : ''} da creare</p>
+                    {contentEntries.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2 text-xs text-slate-600 pl-1">
+                        <FileText className="h-3 w-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{entry.title || 'Senza titolo'}</span>
+                        <span className="text-slate-400 shrink-0">~{Math.round(entry.content.length / 4).toLocaleString()} token</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editingDoc && (
+                  <p className="text-xs text-slate-500">~{Math.round(form.content.length / 4).toLocaleString()} token stimati ({form.content.length.toLocaleString()} caratteri)</p>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Modalità di consegna</p>
+                {form.injection_mode === 'system_prompt' ? (
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className="bg-slate-100 text-slate-800 border-slate-200 shrink-0">
+                      <StickyNote className="h-3 w-3 mr-1" />
+                      System Prompt
+                    </Badge>
+                    <span className="text-xs text-slate-600">Iniettato direttamente nel prompt AI ad ogni chiamata</span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 shrink-0">
+                      <Search className="h-3 w-3 mr-1" />
+                      File Search
+                    </Badge>
+                    <span className="text-xs text-slate-600">Indicizzato e recuperato solo quando rilevante (RAG)</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Destinatari</p>
+                <div className="space-y-2">
+                  {form.target_client_assistant && (() => {
+                    const mode = form.target_client_mode;
+                    const modeMap: Record<string, { icon: React.ReactNode; label: string }> = {
+                      consultant_only: { icon: <Lock className="h-4 w-4 text-slate-500" />, label: 'Solo per me' },
+                      all: { icon: <Globe className="h-4 w-4 text-blue-500" />, label: 'Tutti (clienti e dipendenti)' },
+                      clients_only: { icon: <UserRound className="h-4 w-4 text-blue-500" />, label: 'Tutti i clienti' },
+                      specific_clients: { icon: <UserRound className="h-4 w-4 text-blue-500" />, label: `${form.target_client_ids.length} clienti selezionati` },
+                      employees_only: { icon: <HardHat className="h-4 w-4 text-orange-500" />, label: 'Tutti i dipendenti' },
+                      specific_departments: { icon: <Building2 className="h-4 w-4 text-purple-500" />, label: `${form.target_department_ids.length} reparti selezionati` },
+                      specific_employees: { icon: <HardHat className="h-4 w-4 text-orange-500" />, label: `${form.target_client_ids.length} dipendenti selezionati` },
+                    };
+                    const info = modeMap[mode] || modeMap.all;
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
+                          <span className="font-medium">AI Assistant</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-600 pl-6">
+                          {info.icon}
+                          <span>{info.label}</span>
+                        </div>
+                        {form.injection_mode === 'file_search' && (
+                          <div className="flex items-center gap-2 text-xs text-slate-500 pl-6">
+                            <Database className="h-3 w-3 text-green-500" />
+                            <span>Store: Knowledge Base Consulente</span>
+                          </div>
+                        )}
+                        {mode === 'specific_clients' && form.target_client_ids.length > 0 && (
+                          <div className="pl-8 space-y-0.5">
+                            {form.target_client_ids.map(cid => {
+                              const client = nonEmployeeClients.find(c => c.id === cid) || employeeClients.find(c => c.id === cid);
+                              return client ? (
+                                <p key={cid} className="text-[11px] text-slate-500">• {client.firstName} {client.lastName}</p>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                        {mode === 'specific_departments' && form.target_department_ids.length > 0 && (
+                          <div className="pl-8 space-y-0.5">
+                            {form.target_department_ids.map(did => {
+                              const dept = departments.find(d => d.id === did);
+                              return dept ? (
+                                <div key={did} className="space-y-0.5">
+                                  <p className="text-[11px] text-slate-500">• {dept.name}</p>
+                                  {form.injection_mode === 'file_search' && (
+                                    <p className="text-[11px] text-slate-400 pl-2 flex items-center gap-1">
+                                      <Database className="h-2.5 w-2.5 text-green-400" />
+                                      Store Reparto: {dept.name}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                        {mode === 'specific_employees' && form.target_client_ids.length > 0 && (
+                          <div className="pl-8 space-y-0.5">
+                            {form.target_client_ids.map(cid => {
+                              const emp = employeeClients.find(c => c.id === cid);
+                              return emp ? (
+                                <p key={cid} className="text-[11px] text-slate-500">• {emp.firstName} {emp.lastName}</p>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {Object.entries(form.target_whatsapp_agents).filter(([, v]) => v).map(([agentId]) => {
+                    const agent = whatsappAgents.find(a => a.id === agentId);
+                    return agent ? (
+                      <div key={agentId} className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <MessageCircle className="h-4 w-4 text-green-500 shrink-0" />
+                          <span>{agent.agent_name}</span>
+                        </div>
+                        {form.injection_mode === 'file_search' && (
+                          <div className="flex items-center gap-2 text-xs text-slate-500 pl-6">
+                            <Database className="h-3 w-3 text-green-500" />
+                            <span>Store WhatsApp Agent: {agent.agent_name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : null;
+                  })}
+
+                  {Object.entries(form.target_autonomous_agents).filter(([, v]) => v).map(([agentId]) => {
+                    const agent = AUTONOMOUS_AGENTS.find(a => a.id === agentId);
+                    return agent ? (
+                      <div key={agentId} className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Bot className="h-4 w-4 text-purple-500 shrink-0" />
+                          <span>{agent.name}</span>
+                        </div>
+                        {form.injection_mode === 'file_search' && (
+                          <div className="flex items-center gap-2 text-xs text-slate-500 pl-6">
+                            <Database className="h-3 w-3 text-green-500" />
+                            <span>Store Agente Autonomo: {agent.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : null;
+                  })}
+
+                  {!form.target_client_assistant &&
+                    Object.values(form.target_whatsapp_agents).every(v => !v) &&
+                    Object.values(form.target_autonomous_agents).every(v => !v) && (
+                    <div className="flex items-center gap-2 text-sm text-red-600">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>Nessun destinatario selezionato</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {form.injection_mode === 'file_search' && (() => {
+                const stores: string[] = [];
+                if (form.target_client_assistant) {
+                  stores.push('Knowledge Base Consulente');
+                  if (form.target_client_mode === 'specific_departments') {
+                    form.target_department_ids.forEach(did => {
+                      const dept = departments.find(d => d.id === did);
+                      if (dept) stores.push(`Store Reparto: ${dept.name}`);
+                    });
+                  }
+                }
+                Object.entries(form.target_whatsapp_agents).filter(([, v]) => v).forEach(([agentId]) => {
+                  const agent = whatsappAgents.find(a => a.id === agentId);
+                  if (agent) stores.push(`Store WhatsApp Agent: ${agent.agent_name}`);
+                });
+                Object.entries(form.target_autonomous_agents).filter(([, v]) => v).forEach(([agentId]) => {
+                  const agent = AUTONOMOUS_AGENTS.find(a => a.id === agentId);
+                  if (agent) stores.push(`Store Agente Autonomo: ${agent.name}`);
+                });
+                return (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">📦 Store destinazione File Search</p>
+                      {stores.length > 0 ? (
+                        <div className="space-y-1">
+                          {stores.map((store, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs text-slate-700">
+                              <Database className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                              <span>{store}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-red-600">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>Nessun destinatario — il documento non verrà sincronizzato in nessuno store</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {(() => {
+                const warnings: React.ReactNode[] = [];
+                if (form.injection_mode === 'file_search' && form.target_client_assistant && form.target_client_mode === 'specific_clients') {
+                  warnings.push(
+                    <div key="specific-clients-note" className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg p-2.5">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>I clienti specifici selezionati filtrano la visibilità nel chatbot AI, ma il documento viene sincronizzato nello Store del Consulente (non negli store privati dei singoli clienti)</span>
+                    </div>
+                  );
+                }
+                if (!form.target_client_assistant &&
+                    Object.values(form.target_whatsapp_agents).every(v => !v) &&
+                    Object.values(form.target_autonomous_agents).every(v => !v)) {
+                  warnings.push(
+                    <div key="no-targets" className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2.5">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>Nessun destinatario selezionato. Il documento verrà creato ma non sarà visibile a nessun agente.</span>
+                    </div>
+                  );
+                }
+                if (warnings.length === 0) return null;
+                return (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Note</p>
+                      {warnings}
+                    </div>
+                  </>
+                );
+              })()}
+
+              <Separator />
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                  Modifica
+                </Button>
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  onClick={handleConfirmedSubmit}
+                >
+                  {editingDoc ? 'Conferma e Salva' : 'Conferma e Crea'}
+                </Button>
+              </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
