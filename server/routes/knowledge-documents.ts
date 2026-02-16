@@ -1873,7 +1873,48 @@ router.get(
         ORDER BY priority ASC, created_at DESC
       `);
 
-      res.json({ success: true, data: result.rows });
+      const docs = result.rows as any[];
+
+      const fileSearchDocs = docs.filter(d => d.injection_mode === 'file_search');
+      const fileSearchDocIds = fileSearchDocs.map(d => d.id);
+
+      let fileSearchSyncMap: Record<string, Array<{storeName: string, storeOwnerType: string, storeOwnerId: string, documentStatus: string}>> = {};
+
+      if (fileSearchDocIds.length > 0) {
+        const syncResult = await db.execute(sql`
+          SELECT 
+            fsd.source_id,
+            fsd.status as document_status,
+            fss.display_name as store_name,
+            fss.owner_type as store_owner_type,
+            fss.owner_id as store_owner_id
+          FROM file_search_documents fsd
+          INNER JOIN file_search_stores fss ON fsd.store_id = fss.id
+          WHERE fsd.source_type = 'system_prompt_document'
+            AND fsd.source_id IN (${sql.join(fileSearchDocIds.map(id => sql`${id}`), sql`,`)})
+        `);
+        
+        for (const row of syncResult.rows as any[]) {
+          if (!fileSearchSyncMap[row.source_id]) {
+            fileSearchSyncMap[row.source_id] = [];
+          }
+          fileSearchSyncMap[row.source_id].push({
+            storeName: row.store_name,
+            storeOwnerType: row.store_owner_type,
+            storeOwnerId: row.store_owner_id,
+            documentStatus: row.document_status,
+          });
+        }
+      }
+
+      const enrichedDocs = docs.map(doc => ({
+        ...doc,
+        file_search_stores: doc.injection_mode === 'file_search' 
+          ? (fileSearchSyncMap[doc.id] || [])
+          : undefined,
+      }));
+
+      res.json({ success: true, data: enrichedDocs });
     } catch (error: any) {
       console.error("❌ [SYSTEM PROMPT DOCS] Error listing:", error);
       res.status(500).json({ success: false, error: error.message || "Failed to list system prompt documents" });

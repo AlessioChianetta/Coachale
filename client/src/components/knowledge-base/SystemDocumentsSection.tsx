@@ -84,6 +84,8 @@ import {
   Zap,
   Share,
   ArrowRightLeft,
+  Database,
+  AlertCircle,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getAuthHeaders } from "@/lib/auth";
@@ -133,6 +135,12 @@ interface SystemDocument {
   target_autonomous_agents: Record<string, boolean>;
   target_whatsapp_agents: Record<string, boolean>;
   injection_mode: "system_prompt" | "file_search";
+  file_search_stores?: Array<{
+    storeName: string;
+    storeOwnerType: string;
+    storeOwnerId: string;
+    documentStatus: string;
+  }>;
   priority: number;
   google_drive_file_id: string | null;
   last_drive_sync_at: string | null;
@@ -1541,6 +1549,29 @@ export default function SystemDocumentsSection() {
                     {b.label}
                   </Badge>
                 ))}
+              </div>
+            )}
+
+            {doc.injection_mode === 'file_search' && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {doc.file_search_stores && doc.file_search_stores.length > 0 ? (
+                  doc.file_search_stores.map((store, idx) => (
+                    <span key={idx} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <Database className="h-2.5 w-2.5" />
+                      {store.storeName || store.storeOwnerId}
+                      {store.documentStatus === 'indexed' ? (
+                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                      ) : (
+                        <Clock className="h-2.5 w-2.5 text-amber-500" />
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                    <AlertCircle className="h-2.5 w-2.5" />
+                    Non sincronizzato in nessuno store
+                  </span>
+                )}
               </div>
             )}
 
