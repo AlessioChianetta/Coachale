@@ -543,16 +543,23 @@ function DashboardTab({
     return map;
   }, [tasksData?.tasks]);
 
-  const groupedTasks = useMemo(() => {
-    if (!tasksData?.tasks) return [];
+  const [showCompletedSection, setShowCompletedSection] = React.useState(false);
+
+  const { groupedTasks, completedTasks } = useMemo(() => {
+    if (!tasksData?.tasks) return { groupedTasks: [], completedTasks: [] };
     const topLevelTasks = tasksData.tasks.filter(t => !t.parent_task_id);
     const filteredTasks = dashboardRoleFilter === 'all'
       ? topLevelTasks
       : dashboardRoleFilter === '__manual__'
         ? topLevelTasks.filter(t => !t.ai_role)
         : topLevelTasks.filter(t => t.ai_role === dashboardRoleFilter);
-    const groups: Record<string, typeof filteredTasks> = {};
-    filteredTasks.forEach(task => {
+
+    const isAllTab = dashboardStatusFilter === 'all';
+    const activeTasks = isAllTab ? filteredTasks.filter(t => t.status !== 'completed') : filteredTasks;
+    const completed = isAllTab ? filteredTasks.filter(t => t.status === 'completed') : [];
+
+    const groups: Record<string, typeof activeTasks> = {};
+    activeTasks.forEach(task => {
       const role = task.ai_role || '__manual__';
       if (!groups[role]) groups[role] = [];
       groups[role].push(task);
@@ -562,8 +569,11 @@ function DashboardTab({
       if (b === '__manual__') return -1;
       return a.localeCompare(b);
     });
-    return roleOrder.map(role => ({ role, tasks: groups[role] }));
-  }, [tasksData?.tasks, dashboardRoleFilter]);
+    return {
+      groupedTasks: roleOrder.map(role => ({ role, tasks: groups[role] })),
+      completedTasks: completed,
+    };
+  }, [tasksData?.tasks, dashboardRoleFilter, dashboardStatusFilter]);
 
   const STATUS_TABS = [
     { value: 'all', label: 'Tutti', count: tasksStats?.total ?? 0, icon: <ListTodo className="h-3.5 w-3.5" />, color: '' },
@@ -1916,6 +1926,85 @@ function DashboardTab({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {completedTasks.length > 0 && dashboardStatusFilter === 'all' && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowCompletedSection(!showCompletedSection)}
+            className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors"
+          >
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Completati ({completedTasks.length})
+            </span>
+            <ChevronRight className={cn("h-4 w-4 text-muted-foreground ml-auto transition-transform", showCompletedSection && "rotate-90")} />
+          </button>
+          {showCompletedSection && (
+            <div className="mt-2 space-y-2 pl-2">
+              {completedTasks.map((task) => (
+                <Card key={task.id} className="border rounded-lg shadow-sm overflow-hidden opacity-70 hover:opacity-100 transition-opacity bg-muted/20 border-border/40">
+                  <CardContent className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={(e) => toggleTaskExpand(task.id, e)}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {task.contact_name && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              {task.contact_name}
+                            </span>
+                          )}
+                          {task.ai_role && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground">
+                              {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                            </Badge>
+                          )}
+                          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px] py-0 px-1.5">
+                            <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                            Completato
+                          </Badge>
+                        </div>
+                        <p className={cn("text-xs text-muted-foreground leading-relaxed", !expandedTaskIds.has(task.id) && "line-clamp-1")}>
+                          {task.ai_instruction}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                          {task.completed_at && (
+                            <span className="flex items-center gap-0.5">
+                              <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
+                              {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                          <span>{getRelativeTime(task.created_at)}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {task.ai_role && onOpenChatWithTask && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 h-7 px-2 text-[10px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                            onClick={(e) => { e.stopPropagation(); handleOpenChatAboutTask(task, 'Cosa hai fatto?'); }}
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            Cosa hai fatto?
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 h-7 px-2 text-[10px] text-muted-foreground"
+                          onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
