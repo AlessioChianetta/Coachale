@@ -3209,7 +3209,8 @@ export async function getConversations(clientId: string) {
     .from(aiConversations)
     .where(and(
       eq(aiConversations.clientId, clientId),
-      eq(aiConversations.isActive, true)
+      eq(aiConversations.isActive, true),
+      eq(aiConversations.mode, 'assistenza')
     ))
     .orderBy(desc(aiConversations.lastMessageAt));
 
@@ -5299,7 +5300,8 @@ export async function getConsultantConversations(consultantId: string) {
     .from(aiConversations)
     .where(and(
       eq(aiConversations.clientId, consultantId),
-      eq(aiConversations.isActive, true)
+      eq(aiConversations.isActive, true),
+      eq(aiConversations.mode, 'consulente')
     ))
     .orderBy(desc(aiConversations.lastMessageAt));
 
