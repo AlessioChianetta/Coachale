@@ -2392,22 +2392,11 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
     const mainTask = tasks[0];
     const secondaryTasks = tasks.slice(1);
 
-    const mergedNotes = secondaryTasks
-      .map((t: any, i: number) => `--- Follow-up aggregato #${i + 1} (da task ${t.id.substring(0, 8)})${t.contact_name ? ' [' + t.contact_name + ']' : ''} ---\n${t.ai_instruction}`)
-      .join('\n\n');
-
-    const mergedContext = [
-      mainTask.additional_context,
-      ...secondaryTasks.map((t: any) => t.additional_context).filter(Boolean),
-    ].filter(Boolean).join('\n---\n');
-
     const highestPriority = Math.min(...tasks.map((t: any) => t.priority || 3));
 
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
-      SET additional_context = ${mergedContext || null},
-          result_summary = COALESCE(result_summary, '') || ${'\n\n[AGGREGAZIONE]\n' + mergedNotes},
-          priority = ${highestPriority},
+      SET priority = ${highestPriority},
           updated_at = NOW()
       WHERE id = ${mainTask.id} AND consultant_id = ${consultantId}
     `);
@@ -2415,21 +2404,14 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
     const secondaryIdPlaceholders = sql.join(secondaryTasks.map((t: any) => sql`${t.id}`), sql`, `);
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
-      SET status = 'cancelled',
-          result_summary = COALESCE(result_summary, '') || ${'\n[Aggregato nel task principale ' + mainTask.id.substring(0, 8) + ']'},
+      SET parent_task_id = ${mainTask.id},
           updated_at = NOW()
       WHERE id IN (${secondaryIdPlaceholders}) AND consultant_id = ${consultantId}
     `);
 
-    for (const secTask of secondaryTasks) {
-      await db.execute(sql`
-        INSERT INTO ai_activity_log (consultant_id, task_id, event_type, title, description, is_read)
-        VALUES (${consultantId}, ${secTask.id}, 'merged', 'Task aggregato', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
-      `);
-    }
     await db.execute(sql`
       INSERT INTO ai_activity_log (consultant_id, task_id, event_type, title, description, is_read)
-      VALUES (${consultantId}, ${mainTask.id}, 'merged', 'Aggregazione task', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
+      VALUES (${consultantId}, ${mainTask.id}, 'merged', 'Aggregazione task', ${'Task principale: ' + secondaryTasks.length + ' follow-up collegati'}, false)
     `);
 
     return res.json({

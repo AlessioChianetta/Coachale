@@ -134,6 +134,7 @@ export interface AITask {
   original_scheduled_at?: string;
   additional_context?: string;
   whatsapp_config_id?: string;
+  parent_task_id?: string;
 }
 
 export interface TasksResponse {

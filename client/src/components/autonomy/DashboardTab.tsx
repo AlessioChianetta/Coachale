@@ -530,13 +530,27 @@ function DashboardTab({
     return tasksStats.role_counts.map(rc => rc.role).sort();
   }, [tasksStats?.role_counts]);
 
+  const subTaskMap = useMemo(() => {
+    if (!tasksData?.tasks) return new Map<string, typeof tasksData.tasks>();
+    const map = new Map<string, typeof tasksData.tasks>();
+    tasksData.tasks.forEach(task => {
+      if (task.parent_task_id) {
+        const existing = map.get(task.parent_task_id) || [];
+        existing.push(task);
+        map.set(task.parent_task_id, existing);
+      }
+    });
+    return map;
+  }, [tasksData?.tasks]);
+
   const groupedTasks = useMemo(() => {
     if (!tasksData?.tasks) return [];
+    const topLevelTasks = tasksData.tasks.filter(t => !t.parent_task_id);
     const filteredTasks = dashboardRoleFilter === 'all'
-      ? tasksData.tasks
+      ? topLevelTasks
       : dashboardRoleFilter === '__manual__'
-        ? tasksData.tasks.filter(t => !t.ai_role)
-        : tasksData.tasks.filter(t => t.ai_role === dashboardRoleFilter);
+        ? topLevelTasks.filter(t => !t.ai_role)
+        : topLevelTasks.filter(t => t.ai_role === dashboardRoleFilter);
     const groups: Record<string, typeof filteredTasks> = {};
     filteredTasks.forEach(task => {
       const role = task.ai_role || '__manual__';
@@ -1510,8 +1524,8 @@ function DashboardTab({
                     const isMergeSelected = selectedMergeIds.has(task.id);
 
                     return (
+                      <React.Fragment key={task.id}>
                       <Card
-                        key={task.id}
                         className={cn(
                           "transition-all duration-200 border rounded-xl shadow-sm border-l-4 overflow-hidden",
                           isWaiting ? "bg-slate-50/60 dark:bg-slate-900/20 border-primary/20 dark:border-primary/30 ring-1 ring-primary/10" : "",
@@ -1592,42 +1606,13 @@ function DashboardTab({
                               </div>
                             </div>
 
-                            {task.result_summary?.includes('[AGGREGAZIONE]') && (() => {
-                              const matches = task.result_summary.match(/--- Follow-up aggregato #\d+.*?(?:\[(.+?)\])? ---\n(.+?)(?=\n\n--- Follow-up|$)/gs) || [];
-                              const parsed = matches.map((m: string) => {
-                                const contactMatch = m.match(/\[(.+?)\]/);
-                                const instrMatch = m.match(/---\n(.+)/s);
-                                return {
-                                  contact: contactMatch?.[1] || null,
-                                  instruction: instrMatch?.[1]?.substring(0, 100) || '',
-                                };
-                              });
-                              return (
-                                <div className="mt-2 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-2 border border-purple-200/60 dark:border-purple-800/40">
-                                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1.5">
-                                    <Layers className="h-3.5 w-3.5" />
-                                    <span>Task principale — {parsed.length} task duplicati aggregati</span>
-                                  </div>
-                                  {expandedTaskIds.has(task.id) && parsed.length > 0 && (
-                                    <div className="space-y-1 ml-5">
-                                      {parsed.map((p: any, idx: number) => (
-                                        <div key={idx} className="text-[11px] text-purple-600/80 dark:text-purple-400/70 flex items-start gap-1.5">
-                                          <span className="shrink-0 mt-0.5">•</span>
-                                          <span>
-                                            {p.contact && <span className="font-semibold">{p.contact}: </span>}
-                                            <span className="italic">{p.instruction}...</span>
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                            {task.status === 'cancelled' && task.result_summary?.includes('[Aggregato nel task principale') && (
-                              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5 border border-border/50">
-                                <Layers className="h-3 w-3" />
-                                <span>Aggregato in un altro task principale</span>
+                            {subTaskMap.has(task.id) && (
+                              <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-1.5 border border-purple-200/60 dark:border-purple-800/40 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); toggleTaskExpand(task.id, e); }}
+                              >
+                                <Layers className="h-3.5 w-3.5" />
+                                <span>{subTaskMap.get(task.id)!.length} follow-up collegati</span>
+                                <ChevronRight className={cn("h-3.5 w-3.5 transition-transform ml-auto", expandedTaskIds.has(task.id) && "rotate-90")} />
                               </div>
                             )}
 
@@ -1895,6 +1880,36 @@ function DashboardTab({
                           )}
                         </CardContent>
                       </Card>
+                      {expandedTaskIds.has(task.id) && subTaskMap.has(task.id) && (
+                        <div className="ml-6 pl-4 border-l-2 border-purple-200 dark:border-purple-800 space-y-2">
+                          {subTaskMap.get(task.id)!.map((subTask) => (
+                            <Card key={subTask.id} className="border rounded-lg shadow-sm overflow-hidden bg-purple-50/30 dark:bg-purple-950/10 border-purple-200/50 dark:border-purple-800/30">
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    {subTask.contact_name && (
+                                      <div className="flex items-center gap-1.5 mb-1">
+                                        <User className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-xs font-semibold">{subTask.contact_name}</span>
+                                      </div>
+                                    )}
+                                    <p className="text-xs text-foreground/80 line-clamp-2">{subTask.ai_instruction}</p>
+                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
+                                      <span className="flex items-center gap-0.5">
+                                        <Layers className="h-2.5 w-2.5 text-purple-500" />
+                                        Follow-up
+                                      </span>
+                                      <span>{getRelativeTime(subTask.created_at)}</span>
+                                      {getTaskStatusBadge(subTask.status)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </div>
