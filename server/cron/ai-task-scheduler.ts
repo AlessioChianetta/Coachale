@@ -2100,6 +2100,7 @@ FORMATO JSON quando è un task nuovo (come prima):
 
             // === FOLLOW-UP HANDLING ===
             // 1. Explicit follow_up_of from Gemini (AI decided it's a follow-up)
+            // Aggregates into the existing task: appends context, updates instruction, bumps priority
             if (suggestedTask.follow_up_of) {
               const followUpId = suggestedTask.follow_up_of;
               const existingCheck = await db.execute(sql`
@@ -2113,22 +2114,21 @@ FORMATO JSON quando è un task nuovo (come prima):
 
               if (existingCheck.rows.length > 0) {
                 const existing = existingCheck.rows[0] as any;
-                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] AI explicitly marked follow_up_of=${followUpId}. Updating existing task.`);
+                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] AI follow_up_of=${followUpId}. Aggregating into existing task (status: ${existing.status}).`);
 
-                const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                const followUpNote = `\n\n--- Follow-up ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} ---\n${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
                 await db.execute(sql`
                   UPDATE ai_scheduled_tasks
                   SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
                       updated_at = NOW(),
-                      ai_instruction = ${suggestedTask.ai_instruction || existing.ai_instruction},
                       priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
                   WHERE id = ${followUpId}
                 `);
 
                 await logActivity(consultantId, {
-                  event_type: 'autonomous_task_followup',
-                  title: `[${role.name}] Follow-up su task esistente (AI)`,
-                  description: `AI ha aggiornato task ${followUpId}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
+                  event_type: 'autonomous_task_created',
+                  title: `[${role.name}] Follow-up aggregato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Aggiornamento'}`,
+                  description: `Aggiornamento aggregato al task ${followUpId}. L'istruzione originale resta invariata, il nuovo contesto è stato aggiunto.`,
                   icon: '🔄',
                   severity: 'info',
                   task_id: followUpId,
@@ -2183,22 +2183,21 @@ FORMATO JSON quando è un task nuovo (come prima):
               }
 
               if (matchedExisting) {
-                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Similar task detected (${matchedExisting.id}, status=${matchedExisting.status}). Converting to follow-up.`);
+                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Similar task detected (${matchedExisting.id}, status=${matchedExisting.status}). Aggregating as follow-up.`);
 
-                const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                const followUpNote = `\n\n--- Follow-up auto ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} ---\n${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
                 await db.execute(sql`
                   UPDATE ai_scheduled_tasks
                   SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
                       updated_at = NOW(),
-                      ai_instruction = ${suggestedTask.ai_instruction || matchedExisting.ai_instruction},
                       priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
                   WHERE id = ${matchedExisting.id}
                 `);
 
                 await logActivity(consultantId, {
-                  event_type: 'autonomous_task_followup',
-                  title: `[${role.name}] Follow-up su task esistente`,
-                  description: `Aggiornamento al task ${matchedExisting.id}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
+                  event_type: 'autonomous_task_created',
+                  title: `[${role.name}] Follow-up aggregato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Aggiornamento'}`,
+                  description: `Aggiornamento aggregato al task ${matchedExisting.id} (similarità automatica). L'istruzione originale resta, il nuovo contesto è stato aggiunto.`,
                   icon: '🔄',
                   severity: 'info',
                   task_id: matchedExisting.id,
