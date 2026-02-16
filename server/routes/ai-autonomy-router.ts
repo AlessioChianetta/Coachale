@@ -560,8 +560,16 @@ router.get("/activity", authenticateToken, requireAnyRole(["consultant", "super_
 
     const total = (countResult.rows[0] as any)?.total || 0;
 
+    const activities = (itemsResult.rows as any[]).map(row => {
+      if (row.event_data && typeof row.event_data === 'object' && row.event_data.full_prompt) {
+        const { full_prompt, ...rest } = row.event_data;
+        return { ...row, event_data: { ...rest, has_full_prompt: true } };
+      }
+      return row;
+    });
+
     return res.json({
-      activities: itemsResult.rows,
+      activities,
       total,
       page,
       limit,
@@ -591,6 +599,37 @@ router.post("/activity/:id/read", authenticateToken, requireAnyRole(["consultant
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error marking activity as read:", error);
     return res.status(500).json({ error: "Failed to mark activity as read" });
+  }
+});
+
+router.get("/activity/:id/full-prompt", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const result = await db.execute(sql`
+      SELECT event_data->>'full_prompt' as full_prompt, description, title
+      FROM ai_activity_log
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+        AND event_type = 'system_prompt_log'
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const row = result.rows[0] as any;
+    const prompt = row.full_prompt || row.description || '';
+
+    return res.json({ prompt, title: row.title });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching full prompt:", error);
+    return res.status(500).json({ error: "Failed to fetch full prompt" });
   }
 });
 

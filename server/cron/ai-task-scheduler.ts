@@ -1867,6 +1867,7 @@ FORMATO JSON quando è un task nuovo (come prima):
             clients_in_prompt: effectiveClientsList.length,
             total_clients: clients.length,
             uses_full_client_list: useFullClientList,
+            full_prompt: prompt,
           },
         });
         console.log(`📝 [AUTONOMOUS-GEN] [${role.name}] System prompt logged (${prompt.length} chars)`);
