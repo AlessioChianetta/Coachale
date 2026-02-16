@@ -1426,7 +1426,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   const allRecentTasksResult = await db.execute(sql`
     SELECT t.id, t.contact_id::text as contact_id, t.contact_name, t.task_category, 
            t.ai_instruction, t.status, t.ai_role, t.created_at,
-           t.completed_at
+           t.completed_at, t.result_summary
     FROM ai_scheduled_tasks t
     WHERE t.consultant_id::text = ${cId}
       AND t.created_at > NOW() - INTERVAL '7 days'
@@ -1442,7 +1442,26 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     status: t.status,
     role: t.ai_role || 'generic',
     created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
+    result: t.result_summary?.substring(0, 200) || null,
   }));
+
+  const recentReasoningResult = await db.execute(sql`
+    SELECT description, ai_role, created_at
+    FROM activity_logs
+    WHERE consultant_id = ${cId}
+      AND event_type = 'autonomous_analysis'
+      AND created_at > NOW() - INTERVAL '3 days'
+    ORDER BY created_at DESC
+    LIMIT 16
+  `);
+  const recentReasoningByRole: Record<string, string[]> = {};
+  for (const r of recentReasoningResult.rows as any[]) {
+    const role = r.ai_role || 'unknown';
+    if (!recentReasoningByRole[role]) recentReasoningByRole[role] = [];
+    if (recentReasoningByRole[role].length < 2 && r.description) {
+      recentReasoningByRole[role].push(r.description.substring(0, 500));
+    }
+  }
 
   const blocksResult = await db.execute(sql`
     SELECT b.contact_id::text, b.task_category, b.ai_role,
@@ -1699,6 +1718,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         recentCompletedTasks: recentTasksSummary,
         recentAllTasks: recentAllTasksSummary,
         permanentBlocks,
+        recentReasoningByRole,
       });
 
       const activeTasksForRole = recentAllTasksSummary.filter(t => 
@@ -1813,6 +1833,7 @@ FORMATO JSON quando è un task nuovo (come prima):
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
 
       let responseText: string | undefined;
+      const useFileSearch = !!agentFileSearchTool;
       for (let attempt = 0; attempt <= 2; attempt++) {
         try {
           const response = await aiClient!.generateContent({
@@ -1820,12 +1841,17 @@ FORMATO JSON quando è un task nuovo (come prima):
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 4096,
-              responseMimeType: 'application/json',
+              maxOutputTokens: 8192,
+              ...(useFileSearch ? {} : { responseMimeType: 'application/json' }),
             },
-            ...(agentFileSearchTool ? { tools: [agentFileSearchTool] } : {}),
+            ...(useFileSearch ? { tools: [agentFileSearchTool] } : {}),
           });
-          responseText = response.response.text();
+          try {
+            responseText = response.response.text();
+          } catch {
+            const parts = response.response.candidates?.[0]?.content?.parts || [];
+            responseText = parts.filter((p: any) => p.text).map((p: any) => p.text).join('');
+          }
           break;
         } catch (retryErr: any) {
           const isRetryable = retryErr.message?.includes('503') || retryErr.message?.includes('overloaded') || retryErr.message?.includes('UNAVAILABLE') || retryErr.status === 503;
@@ -1844,48 +1870,52 @@ FORMATO JSON quando è un task nuovo (come prima):
       }
 
       let parsed: { tasks: AutonomousSuggestedTask[], overall_reasoning?: string };
-      try {
-        parsed = JSON.parse(responseText);
-      } catch {
-        let cleaned = responseText.trim();
-        if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
-        if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
-        if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
-        cleaned = cleaned.trim();
+      let cleaned = responseText.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+      if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+      else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+      if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+      cleaned = cleaned.trim();
 
-        try {
-          parsed = JSON.parse(cleaned);
-        } catch {
-          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e1) {
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch {
             try {
-              parsed = JSON.parse(jsonMatch[0]);
+              const fixed = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
+              parsed = JSON.parse(fixed);
             } catch {
               try {
-                const fixed = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
-                parsed = JSON.parse(fixed);
+                const repaired = jsonMatch[0].replace(/[\n\r]/g, '\\n').replace(/\t/g, '\\t');
+                parsed = JSON.parse(repaired);
               } catch {
                 console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] First char code: ${responseText.charCodeAt(0)}, length: ${responseText.length}, hasFileSearch: ${useFileSearch}`);
                 continue;
               }
             }
-          } else {
-            const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-            if (arrayMatch) {
-              try {
-                const arr = JSON.parse(arrayMatch[0]);
-                parsed = { tasks: Array.isArray(arr) ? arr : [] };
-              } catch {
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response`);
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
-                continue;
-              }
-            } else {
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini response - no JSON found`);
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw response (first 500 chars): ${responseText.substring(0, 500)}`);
+          }
+        } else {
+          const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+          if (arrayMatch) {
+            try {
+              const arr = JSON.parse(arrayMatch[0]);
+              parsed = { tasks: Array.isArray(arr) ? arr : [] };
+            } catch {
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse array response`);
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
               continue;
             }
+          } else {
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] No JSON found in response (length: ${responseText.length}, firstCharCode: ${responseText.charCodeAt(0)})`);
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
+            continue;
           }
         }
       }
