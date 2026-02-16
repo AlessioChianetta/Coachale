@@ -43,7 +43,7 @@ export interface FileSearchStoreInfo {
   documentCount: number;
   createdAt: Date;
   ownerId: string;
-  ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
+  ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent' | 'email_account' | 'autonomous_agent' | 'department';
 }
 
 export interface FileSearchDocumentInfo {
@@ -130,6 +130,28 @@ export class FileSearchService {
             return agentConfig.consultantId;
           }
           console.warn(`⚠️ [FileSearch] Agent config ${store.ownerId} not found, falling back to SuperAdmin`);
+          return null;
+
+        case 'autonomous_agent':
+          // ownerId is formatted as agentId_consultantId, extract consultantId
+          const parts = store.ownerId.split('_');
+          if (parts.length >= 2) {
+            const consultantIdFromOwner = parts.slice(1).join('_');
+            return consultantIdFromOwner;
+          }
+          console.warn(`⚠️ [FileSearch] Autonomous agent ownerId ${store.ownerId} has unexpected format, falling back to SuperAdmin`);
+          return null;
+
+        case 'department':
+          // ownerId is departmentId (UUID), look up consultant via departments table
+          const deptResult = await db.execute(
+            sql`SELECT consultant_id FROM departments WHERE id = ${store.ownerId} LIMIT 1`
+          );
+          const deptRow = (deptResult.rows as any[])[0];
+          if (deptRow?.consultant_id) {
+            return deptRow.consultant_id;
+          }
+          console.warn(`⚠️ [FileSearch] Department ${store.ownerId} not found, falling back to SuperAdmin`);
           return null;
 
         case 'system':
@@ -300,7 +322,7 @@ export class FileSearchService {
   async createStore(params: {
     displayName: string;
     ownerId: string;
-    ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
+    ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent' | 'email_account' | 'autonomous_agent' | 'department';
     description?: string;
     userId?: string;
   }): Promise<{ success: boolean; storeId?: string; storeName?: string; error?: string }> {

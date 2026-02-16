@@ -1913,17 +1913,26 @@ router.post(
       if ((injection_mode || 'system_prompt') === 'file_search') {
         setImmediate(async () => {
           try {
-            const hasAutoAgents = Object.values(target_autonomous_agents || {}).some(v => v);
-            const needsConsultantStore = target_client_assistant || hasAutoAgents;
-            if (needsConsultantStore) {
+            if (target_client_assistant) {
               await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
-              if (hasAutoAgents) console.log(`✅ [SYSTEM PROMPT DOCS] Synced to File Search for consultant store (autonomous agents)`);
+            }
+            const autoAgents = target_autonomous_agents || {};
+            for (const [agentId, enabled] of Object.entries(autoAgents)) {
+              if (enabled) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'autonomous_agent', agentId, 'autonomous_agent');
+                console.log(`✅ [SYSTEM PROMPT DOCS] Synced to File Search for autonomous agent store: ${agentId}`);
+              }
             }
             const waAgents = target_whatsapp_agents || {};
             for (const [agentId, enabled] of Object.entries(waAgents)) {
               if (enabled) {
                 await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
               }
+            }
+            const deptIds = (target_client_mode === 'specific_departments' && target_department_ids) ? target_department_ids : [];
+            for (const deptId of deptIds) {
+              await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'department', deptId, 'department');
+              console.log(`✅ [SYSTEM PROMPT DOCS] Synced to File Search for department store: ${deptId}`);
             }
           } catch (err: any) {
             console.error('❌ [SYSTEM PROMPT DOCS] Background file_search sync failed:', err.message);
@@ -2017,13 +2026,18 @@ router.put(
         setImmediate(async () => {
           try {
             if (updatedDoc.injection_mode === 'file_search' && updatedDoc.is_active) {
-              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
-              const hasAutoAgents = Object.values(autoAgents).some(v => v);
-              const needsConsultantStore = updatedDoc.target_client_assistant || hasAutoAgents;
-              if (needsConsultantStore) {
+              if (updatedDoc.target_client_assistant) {
                 await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
               } else {
                 await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              }
+              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
+              for (const [agentId, enabled] of Object.entries(autoAgents)) {
+                if (enabled) {
+                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'autonomous_agent', agentId, 'autonomous_agent');
+                } else {
+                  await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, `${agentId}_${consultantId}`, 'autonomous_agent');
+                }
               }
               const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
               for (const [agentId, enabled] of Object.entries(waAgents)) {
@@ -2033,11 +2047,23 @@ router.put(
                   await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
                 }
               }
+              const updatedDeptIds = (updatedDoc.target_client_mode === 'specific_departments' && updatedDoc.target_department_ids) ? (typeof updatedDoc.target_department_ids === 'string' ? JSON.parse(updatedDoc.target_department_ids) : updatedDoc.target_department_ids) : [];
+              for (const deptId of updatedDeptIds) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'department', deptId, 'department');
+              }
             } else if (updatedDoc.injection_mode === 'system_prompt' || !updatedDoc.is_active) {
               await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
+              for (const agentId of Object.keys(autoAgents)) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, `${agentId}_${consultantId}`, 'autonomous_agent');
+              }
               const waAgents = (typeof updatedDoc.target_whatsapp_agents === 'string' ? JSON.parse(updatedDoc.target_whatsapp_agents) : updatedDoc.target_whatsapp_agents) || {};
               for (const agentId of Object.keys(waAgents)) {
                 await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+              }
+              const prevDeptIds = (updatedDoc.target_client_mode === 'specific_departments' && updatedDoc.target_department_ids) ? (typeof updatedDoc.target_department_ids === 'string' ? JSON.parse(updatedDoc.target_department_ids) : updatedDoc.target_department_ids) : [];
+              for (const deptId of prevDeptIds) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, deptId, 'department');
               }
             }
           } catch (err: any) {
@@ -2064,7 +2090,7 @@ router.delete(
       const { id } = req.params;
 
       const existing = await db.execute(sql`
-        SELECT id, target_whatsapp_agents, target_autonomous_agents, injection_mode
+        SELECT id, target_whatsapp_agents, target_autonomous_agents, injection_mode, target_client_mode, target_department_ids
         FROM system_prompt_documents
         WHERE id = ${id} AND consultant_id = ${consultantId}
       `);
@@ -2084,13 +2110,17 @@ router.delete(
         setImmediate(async () => {
           try {
             await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+            const autoAgents = (typeof docToDelete.target_autonomous_agents === 'string' ? JSON.parse(docToDelete.target_autonomous_agents) : docToDelete.target_autonomous_agents) || {};
+            for (const agentId of Object.keys(autoAgents)) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, `${agentId}_${consultantId}`, 'autonomous_agent');
+            }
             const waAgents = (typeof docToDelete.target_whatsapp_agents === 'string' ? JSON.parse(docToDelete.target_whatsapp_agents) : docToDelete.target_whatsapp_agents) || {};
             for (const agentId of Object.keys(waAgents)) {
               await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
             }
-            const autoAgents = (typeof docToDelete.target_autonomous_agents === 'string' ? JSON.parse(docToDelete.target_autonomous_agents) : docToDelete.target_autonomous_agents) || {};
-            if (Object.values(autoAgents).some(v => v)) {
-              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+            const deleteDeptIds = (docToDelete.target_client_mode === 'specific_departments' && docToDelete.target_department_ids) ? (typeof docToDelete.target_department_ids === 'string' ? JSON.parse(docToDelete.target_department_ids) : docToDelete.target_department_ids) : [];
+            for (const deptId of deleteDeptIds) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, deptId, 'department');
             }
           } catch (err: any) {
             console.error('❌ [SYSTEM PROMPT DOCS] Background file_search removal failed:', err.message);
@@ -2169,22 +2199,37 @@ router.patch(
           try {
             if (!toggled.is_active) {
               await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
+              const autoAgents = (typeof toggled.target_autonomous_agents === 'string' ? JSON.parse(toggled.target_autonomous_agents) : toggled.target_autonomous_agents) || {};
+              for (const agentId of Object.keys(autoAgents)) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, `${agentId}_${consultantId}`, 'autonomous_agent');
+              }
               const waAgents = (typeof toggled.target_whatsapp_agents === 'string' ? JSON.parse(toggled.target_whatsapp_agents) : toggled.target_whatsapp_agents) || {};
               for (const agentId of Object.keys(waAgents)) {
                 await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
               }
+              const toggleDeptIds = (toggled.target_client_mode === 'specific_departments' && toggled.target_department_ids) ? (typeof toggled.target_department_ids === 'string' ? JSON.parse(toggled.target_department_ids) : toggled.target_department_ids) : [];
+              for (const deptId of toggleDeptIds) {
+                await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, deptId, 'department');
+              }
             } else {
-              const autoAgents = (typeof toggled.target_autonomous_agents === 'string' ? JSON.parse(toggled.target_autonomous_agents) : toggled.target_autonomous_agents) || {};
-              const hasAutoAgents = Object.values(autoAgents).some(v => v);
-              const needsConsultantStore = toggled.target_client_assistant || hasAutoAgents;
-              if (needsConsultantStore) {
+              if (toggled.target_client_assistant) {
                 await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
+              }
+              const autoAgents = (typeof toggled.target_autonomous_agents === 'string' ? JSON.parse(toggled.target_autonomous_agents) : toggled.target_autonomous_agents) || {};
+              for (const [agentId, enabled] of Object.entries(autoAgents)) {
+                if (enabled) {
+                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'autonomous_agent', agentId, 'autonomous_agent');
+                }
               }
               const waAgents = (typeof toggled.target_whatsapp_agents === 'string' ? JSON.parse(toggled.target_whatsapp_agents) : toggled.target_whatsapp_agents) || {};
               for (const [agentId, enabled] of Object.entries(waAgents)) {
                 if (enabled) {
                   await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'whatsapp_agent', agentId, 'whatsapp_agent');
                 }
+              }
+              const toggledDeptIds = (toggled.target_client_mode === 'specific_departments' && toggled.target_department_ids) ? (typeof toggled.target_department_ids === 'string' ? JSON.parse(toggled.target_department_ids) : toggled.target_department_ids) : [];
+              for (const deptId of toggledDeptIds) {
+                await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'department', deptId, 'department');
               }
             }
           } catch (err: any) {

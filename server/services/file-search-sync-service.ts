@@ -44,6 +44,7 @@ import {
   emailJourneyTemplates,
   automatedEmailsLog,
   fileSearchSyncReports,
+  departments,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -7119,6 +7120,121 @@ export class FileSearchSyncService {
     });
   }
 
+  static async getAutonomousAgentStore(agentId: string, consultantId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    return await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, `${agentId}_${consultantId}`),
+        eq(fileSearchStores.ownerType, 'autonomous_agent'),
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
+  }
+
+  static async getOrCreateAutonomousAgentStore(agentId: string, consultantId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    try {
+      const ownerId = `${agentId}_${consultantId}`;
+      const existing = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, ownerId),
+          eq(fileSearchStores.ownerType, 'autonomous_agent'),
+          eq(fileSearchStores.isActive, true),
+        ),
+      });
+
+      if (existing) {
+        console.log(`✅ [FileSync] Found existing autonomous agent store for ${agentId} (consultant: ${consultantId})`);
+        return existing;
+      }
+
+      console.log(`🔍 [FileSync] Creating new autonomous agent store for ${agentId} (consultant: ${consultantId})`);
+      const createResult = await fileSearchService.createStore({
+        displayName: `Autonomous Agent: ${agentId}`,
+        ownerId,
+        ownerType: 'autonomous_agent',
+        description: `File Search store dedicato per agente autonomo ${agentId} del consulente ${consultantId}`,
+        userId: consultantId,
+      });
+
+      if (!createResult.success || !createResult.storeId) {
+        console.error(`❌ [FileSync] Failed to create autonomous agent store for ${agentId}: ${createResult.error}`);
+        return null;
+      }
+
+      const newStore = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, createResult.storeId),
+      });
+
+      if (newStore) {
+        console.log(`✅ [FileSync] Autonomous agent store created for ${agentId} (storeId: ${newStore.id})`);
+      }
+
+      return newStore || null;
+    } catch (error: any) {
+      console.error(`❌ [FileSync] Error in getOrCreateAutonomousAgentStore for ${agentId}:`, error.message);
+      return null;
+    }
+  }
+
+  static async getDepartmentStore(departmentId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    return await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, departmentId),
+        eq(fileSearchStores.ownerType, 'department'),
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
+  }
+
+  static async getOrCreateDepartmentStore(departmentId: string, consultantId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    try {
+      const existing = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, departmentId),
+          eq(fileSearchStores.ownerType, 'department'),
+          eq(fileSearchStores.isActive, true),
+        ),
+      });
+
+      if (existing) {
+        console.log(`✅ [FileSync] Found existing department store for ${departmentId}`);
+        return existing;
+      }
+
+      const dept = await db.query.departments.findFirst({
+        where: eq(departments.id, departmentId),
+      });
+
+      const departmentName = dept?.name || departmentId;
+
+      console.log(`🔍 [FileSync] Creating new department store for "${departmentName}" (${departmentId})`);
+      const createResult = await fileSearchService.createStore({
+        displayName: `Reparto: ${departmentName}`,
+        ownerId: departmentId,
+        ownerType: 'department',
+        description: `File Search store dedicato per reparto ${departmentName} del consulente ${consultantId}`,
+        userId: consultantId,
+      });
+
+      if (!createResult.success || !createResult.storeId) {
+        console.error(`❌ [FileSync] Failed to create department store for ${departmentId}: ${createResult.error}`);
+        return null;
+      }
+
+      const newStore = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, createResult.storeId),
+      });
+
+      if (newStore) {
+        console.log(`✅ [FileSync] Department store created for "${departmentName}" (storeId: ${newStore.id})`);
+      }
+
+      return newStore || null;
+    } catch (error: any) {
+      console.error(`❌ [FileSync] Error in getOrCreateDepartmentStore for ${departmentId}:`, error.message);
+      return null;
+    }
+  }
+
   /**
    * Run a Post-Import Audit for a client's private data
    * 
@@ -8800,9 +8916,9 @@ export class FileSearchSyncService {
   static async syncSystemPromptDocumentToFileSearch(
     documentId: string,
     consultantId: string,
-    target: 'client_assistant' | 'whatsapp_agent' | 'autonomous_agent',
+    target: 'client_assistant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
     targetOwnerId: string,
-    targetOwnerType: 'consultant' | 'whatsapp_agent',
+    targetOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const docResult = await db.execute(
@@ -8813,33 +8929,45 @@ export class FileSearchSyncService {
         return { success: false, error: 'System prompt document not found or not file_search mode' };
       }
 
-      let store = await db.query.fileSearchStores.findFirst({
-        where: and(
-          eq(fileSearchStores.ownerId, targetOwnerId),
-          eq(fileSearchStores.ownerType, targetOwnerType),
-        ),
-      });
+      let store: typeof fileSearchStores.$inferSelect | null | undefined = null;
 
-      if (!store) {
-        const storeName = targetOwnerType === 'consultant' 
-          ? 'Knowledge Base Consulente' 
-          : target === 'autonomous_agent'
-            ? 'Autonomous Agent Store'
-            : 'WhatsApp Agent Store';
-        const createResult = await fileSearchService.createStore({
-          displayName: storeName,
-          ownerId: targetOwnerId,
-          ownerType: targetOwnerType,
-          description: `File Search store per ${target === 'autonomous_agent' ? 'autonomous agent' : targetOwnerType}`,
-        });
-        if (!createResult.success || !createResult.storeId) {
-          return { success: false, error: 'Failed to create store for system prompt doc' };
-        }
-        store = await db.query.fileSearchStores.findFirst({
-          where: eq(fileSearchStores.id, createResult.storeId),
-        });
+      if (target === 'autonomous_agent') {
+        store = await this.getOrCreateAutonomousAgentStore(targetOwnerId, consultantId);
         if (!store) {
-          return { success: false, error: 'Store created but not found' };
+          return { success: false, error: `Failed to get/create autonomous agent store for ${targetOwnerId}` };
+        }
+      } else if (target === 'department') {
+        store = await this.getOrCreateDepartmentStore(targetOwnerId, consultantId);
+        if (!store) {
+          return { success: false, error: `Failed to get/create department store for ${targetOwnerId}` };
+        }
+      } else {
+        store = await db.query.fileSearchStores.findFirst({
+          where: and(
+            eq(fileSearchStores.ownerId, targetOwnerId),
+            eq(fileSearchStores.ownerType, targetOwnerType),
+          ),
+        });
+
+        if (!store) {
+          const storeName = targetOwnerType === 'consultant' 
+            ? 'Knowledge Base Consulente' 
+            : 'WhatsApp Agent Store';
+          const createResult = await fileSearchService.createStore({
+            displayName: storeName,
+            ownerId: targetOwnerId,
+            ownerType: targetOwnerType,
+            description: `File Search store per ${targetOwnerType}`,
+          });
+          if (!createResult.success || !createResult.storeId) {
+            return { success: false, error: 'Failed to create store for system prompt doc' };
+          }
+          store = await db.query.fileSearchStores.findFirst({
+            where: eq(fileSearchStores.id, createResult.storeId),
+          });
+          if (!store) {
+            return { success: false, error: 'Store created but not found' };
+          }
         }
       }
 
@@ -8881,7 +9009,7 @@ export class FileSearchSyncService {
   static async removeSystemPromptDocumentFromFileSearch(
     documentId: string,
     storeOwnerId: string,
-    storeOwnerType: 'consultant' | 'whatsapp_agent',
+    storeOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const store = await db.query.fileSearchStores.findFirst({

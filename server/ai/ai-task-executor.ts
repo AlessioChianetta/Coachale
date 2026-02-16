@@ -6,6 +6,7 @@ import { logActivity } from "../cron/ai-task-scheduler";
 import { ExecutionStep, getAutonomySettings, buildRolePersonality } from "./autonomous-decision-engine";
 import { fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 import { fileSearchService } from "./file-search-service";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
 
@@ -159,11 +160,20 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
 
     if (result.fileSearchDocTitles.length > 0) {
       try {
+        const agentStore = await fileSearchSyncService.getAutonomousAgentStore(agentId, consultantId);
+        if (agentStore?.googleStoreName) {
+          result.fileSearchStoreNames.push(agentStore.googleStoreName);
+          console.log(`🗂️ [AGENT-DOCS] [${agentId.toUpperCase()}] Dedicated agent File Search store loaded: ${agentStore.googleStoreName}`);
+        }
         const consultantStores = await fileSearchService.getConsultantOwnStores(consultantId);
-        result.fileSearchStoreNames = [...new Set(consultantStores)];
-        console.log(`🗂️ [AGENT-DOCS] [${agentId.toUpperCase()}] File Search stores loaded: ${result.fileSearchStoreNames.length} stores for ${result.fileSearchDocTitles.length} docs`);
+        for (const storeName of consultantStores) {
+          if (!result.fileSearchStoreNames.includes(storeName)) {
+            result.fileSearchStoreNames.push(storeName);
+          }
+        }
+        console.log(`🗂️ [AGENT-DOCS] [${agentId.toUpperCase()}] File Search stores loaded: ${result.fileSearchStoreNames.length} stores (agent+consultant) for ${result.fileSearchDocTitles.length} docs`);
       } catch (storeErr: any) {
-        console.warn(`⚠️ [AGENT-DOCS] [${agentId.toUpperCase()}] Failed to load consultant stores: ${storeErr.message}`);
+        console.warn(`⚠️ [AGENT-DOCS] [${agentId.toUpperCase()}] Failed to load stores: ${storeErr.message}`);
       }
     }
 

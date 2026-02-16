@@ -707,11 +707,15 @@ router.post(
           if ((injection_mode || 'system_prompt') === 'file_search') {
             setImmediate(async () => {
               try {
-                const hasAutoAgents = Object.values(target_autonomous_agents || {}).some(v => v);
-                const needsConsultantStore = target_client_assistant || hasAutoAgents;
-                if (needsConsultantStore) {
+                if (target_client_assistant) {
                   await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'client_assistant', consultantId, 'consultant');
-                  if (hasAutoAgents) console.log(`✅ [GOOGLE DRIVE → SYSTEM DOCS] Synced to File Search for consultant store (autonomous agents)`);
+                }
+                const autoAgents = target_autonomous_agents || {};
+                for (const [agentIdKey, enabled] of Object.entries(autoAgents)) {
+                  if (enabled) {
+                    await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'autonomous_agent', agentIdKey, 'autonomous_agent');
+                    console.log(`✅ [GOOGLE DRIVE → SYSTEM DOCS] Synced to File Search for autonomous agent store: ${agentIdKey}`);
+                  }
                 }
                 const waAgents = target_whatsapp_agents || {};
                 for (const [agentId, enabled] of Object.entries(waAgents)) {
