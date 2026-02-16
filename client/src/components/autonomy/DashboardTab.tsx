@@ -1592,6 +1592,19 @@ function DashboardTab({
                               </div>
                             </div>
 
+                            {task.result_summary?.includes('[AGGREGAZIONE]') && (
+                              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-1.5 border border-purple-200/60 dark:border-purple-800/40">
+                                <Layers className="h-3.5 w-3.5" />
+                                <span>Task principale — {(task.result_summary.match(/--- Follow-up aggregato/g) || []).length} task duplicati aggregati qui</span>
+                              </div>
+                            )}
+                            {task.status === 'cancelled' && task.result_summary?.includes('[Aggregato nel task principale') && (
+                              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5 border border-border/50">
+                                <Layers className="h-3 w-3" />
+                                <span>Aggregato in un altro task principale</span>
+                              </div>
+                            )}
+
                             {task.origin_type === 'autonomous' && task.ai_reasoning && (
                               <div className={cn(
                                 "mt-2 text-xs text-muted-foreground italic bg-purple-50/70 dark:bg-purple-950/20 rounded-lg px-2.5 py-1.5 border border-purple-200/50 dark:border-purple-800/30 transition-all duration-200",
