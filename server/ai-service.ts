@@ -33,7 +33,7 @@ import {
   OperationAttemptContext,
   GeminiUsageMetadata,
 } from "./ai/retry-manager";
-import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch, getGeminiApiKeyForClassifier, wrapWithUsageTracking } from "./ai/provider-factory";
+import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch, getGeminiApiKeyForClassifier } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
@@ -792,11 +792,6 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   let aiProviderResult: AiProviderResult;
   try {
     aiProviderResult = await getAIProvider(clientId, consultantId);
-    aiProviderResult.client = wrapWithUsageTracking(aiProviderResult.client, {
-      consultantId: consultantId || clientId,
-      clientId: clientId,
-      feature: 'chat',
-    });
   } catch (error: any) {
     if (error.message === "API_KEY_MISSING" || error.message.includes("No Gemini API key available")) {
       throw new Error("API Key Gemini mancante. Per favore, aggiungi la tua API Key personale nel profilo.");
@@ -1710,22 +1705,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(clientId, consultantId);
-        aiProviderResult.client = wrapWithUsageTracking(aiProviderResult.client, {
-          consultantId: consultantId || clientId,
-          clientId: clientId,
-          feature: 'chat',
-        });
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(clientId, consultantId);
-      aiProviderResult.client = wrapWithUsageTracking(aiProviderResult.client, {
-        consultantId: consultantId || clientId,
-        clientId: clientId,
-        feature: 'chat',
-      });
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }
@@ -3887,20 +3872,12 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(consultantId, consultantId);
-        aiProviderResult.client = wrapWithUsageTracking(aiProviderResult.client, {
-          consultantId,
-          feature: 'chat_title',
-        });
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(consultantId, consultantId);
-      aiProviderResult.client = wrapWithUsageTracking(aiProviderResult.client, {
-        consultantId,
-        feature: 'chat_title',
-      });
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }

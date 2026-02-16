@@ -181,7 +181,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
     
       { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-teal-500" },
-      { name: "Consumo AI", href: "/consultant/ai-usage", icon: BarChart3, color: "text-indigo-500" },
       { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard, color: "text-emerald-500" },  
     ]
   },

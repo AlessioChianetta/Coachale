@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory";
-import { logAiUsage, extractTokenUsage } from "./ai-usage-logger";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -761,18 +760,6 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: { temperature: 0.2, maxOutputTokens: 4096 },
       });
-
-      try {
-        const usage = extractTokenUsage(response);
-        if (usage.totalTokens > 0) {
-          logAiUsage({
-            consultantId: task.consultant_id,
-            feature: 'autonomous_agent',
-            model: GEMINI_3_MODEL || 'gemini-2.5-flash',
-            ...usage,
-          });
-        }
-      } catch {}
 
       const text = response.text;
       if (!text) throw new Error("Empty response from Gemini");

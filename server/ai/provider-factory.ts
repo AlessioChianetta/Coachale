@@ -14,7 +14,6 @@ import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
 import { decrypt } from "../encryption";
 import { rateLimitedGeminiCall } from "./gemini-rate-limiter";
-import { logAiUsage, extractTokenUsage } from "./ai-usage-logger";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -166,7 +165,7 @@ export interface GeminiClient {
     tools?: any[];
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
-  }): Promise<{ response: { text: () => string; candidates?: any[]; usageMetadata?: any } }>;
+  }): Promise<{ response: { text: () => string; candidates?: any[] } }>;
 
   generateContentStream(params: {
     model: string;
@@ -287,8 +286,7 @@ class VertexAIClientAdapter implements GeminiClient {
 
           throw new Error("Failed to extract text from Vertex AI response");
         },
-        candidates,
-        usageMetadata: result.response?.usageMetadata
+        candidates
       }
     };
   }
@@ -395,8 +393,7 @@ class GeminiClientAdapter implements GeminiClient {
             }
             throw new Error("Failed to extract text from response");
           },
-          candidates,
-          usageMetadata: result.usageMetadata || (result as any).response?.usageMetadata
+          candidates
         }
       };
     }, { context: `GeminiAdapter.generateContent(${params.model})` });
@@ -1536,45 +1533,6 @@ export function getCacheStats(): {
       settingsId: entry.settingsId,
       activatedAt: entry.activatedAt,
     })),
-  };
-}
-
-/**
- * Wrap a GeminiClient with automatic usage tracking.
- * Every generateContent call will log token usage to ai_usage_log.
- */
-export function wrapWithUsageTracking(
-  client: GeminiClient,
-  context: { consultantId: string; clientId?: string; feature: string }
-): GeminiClient {
-  const originalGenerateContent = client.generateContent.bind(client);
-  const originalGenerateContentStream = client.generateContentStream.bind(client);
-
-  return {
-    generateContent: async (params) => {
-      const startTime = Date.now();
-      const result = await originalGenerateContent(params);
-      const durationMs = Date.now() - startTime;
-
-      try {
-        const usage = extractTokenUsage(result.response || result);
-        if (usage.totalTokens > 0) {
-          logAiUsage({
-            consultantId: context.consultantId,
-            clientId: context.clientId,
-            feature: context.feature,
-            model: params.model || 'unknown',
-            promptTokens: usage.promptTokens,
-            completionTokens: usage.completionTokens,
-            totalTokens: usage.totalTokens,
-            durationMs,
-          });
-        }
-      } catch {}
-
-      return result;
-    },
-    generateContentStream: originalGenerateContentStream,
   };
 }
 

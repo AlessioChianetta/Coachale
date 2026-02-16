@@ -24,7 +24,6 @@ import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys, getAIProvider } from "../ai/provider-factory";
-import { logAiUsage, extractTokenUsage } from "../ai/ai-usage-logger";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { fetchSystemDocumentsForWhatsApp } from "../services/system-prompt-documents-service";
@@ -2007,18 +2006,6 @@ Segui attentamente o tieni a memoria queste informazioni.
 
         const geminiCallTime = Math.round(timings.geminiCallEnd - timings.geminiCallStart);
 
-        try {
-          const usage = extractTokenUsage(response);
-          if (usage.totalTokens > 0) {
-            logAiUsage({
-              consultantId,
-              feature: 'whatsapp',
-              model: currentProvider.type === 'vertex' ? GEMINI_LEGACY_MODEL : GEMINI_3_MODEL || 'gemini-2.5-flash',
-              ...usage,
-            });
-          }
-        } catch {}
-
         // Success - break retry loop
         console.log(`✅ [RETRY] Success on attempt ${attempt}!`);
         console.log(`⏱️  [TIMING] Gemini API call: ${geminiCallTime}ms`);
@@ -2232,17 +2219,6 @@ Segui attentamente o tieni a memoria queste informazioni.
             config: { systemInstruction: systemPrompt },
           });
         }
-        try {
-          const usage = extractTokenUsage(retryResponse);
-          if (usage.totalTokens > 0) {
-            logAiUsage({
-              consultantId,
-              feature: 'whatsapp',
-              model: GEMINI_3_MODEL || 'gemini-2.5-flash',
-              ...usage,
-            });
-          }
-        } catch {}
         let retryText = '';
         try {
           if (typeof retryResponse.response?.text === 'function') retryText = retryResponse.response.text();
@@ -2863,18 +2839,6 @@ LEAD: grazie per l'appuntamento, a presto!
                     contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
                   });
                 }
-
-                try {
-                  const usage = extractTokenUsage(extractionResponse);
-                  if (usage.totalTokens > 0) {
-                    logAiUsage({
-                      consultantId,
-                      feature: 'whatsapp',
-                      model: GEMINI_3_MODEL || 'gemini-2.5-flash',
-                      ...usage,
-                    });
-                  }
-                } catch {}
 
                 console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
                 break; // Success - exit retry loop

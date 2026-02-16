@@ -10250,22 +10250,3 @@ export const aiTaskBlocks = pgTable("ai_task_blocks", {
 
 export type AITaskBlock = typeof aiTaskBlocks.$inferSelect;
 export type InsertAITaskBlock = typeof aiTaskBlocks.$inferInsert;
-
-export const aiUsageLog = pgTable("ai_usage_log", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  consultantId: varchar("consultant_id").references(() => users.id).notNull(),
-  clientId: varchar("client_id").references(() => users.id),
-  feature: varchar("feature", { length: 100 }).notNull(),
-  model: varchar("model", { length: 100 }),
-  promptTokens: integer("prompt_tokens").default(0),
-  completionTokens: integer("completion_tokens").default(0),
-  totalTokens: integer("total_tokens").default(0),
-  estimatedCostUsd: real("estimated_cost_usd").default(0),
-  durationMs: integer("duration_ms"),
-  metadata: jsonb("metadata").$type<Record<string, any>>(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
-}, (table) => [
-  index("idx_ai_usage_consultant").on(table.consultantId),
-  index("idx_ai_usage_created").on(table.createdAt),
-  index("idx_ai_usage_feature").on(table.feature),
-]);
