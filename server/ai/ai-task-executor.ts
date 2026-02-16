@@ -112,9 +112,8 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
         AND is_active = true
         AND jsonb_extract_path_text(target_autonomous_agents, ${agentId}) = 'true'
     `);
-    const MAX_INLINE_CHARS = 32000;
     for (const row of spdResult.rows as any[]) {
-      if (row.injection_mode === 'system_prompt' && row.content.length <= MAX_INLINE_CHARS) {
+      if (row.injection_mode === 'system_prompt') {
         result.systemPromptDocs.push({
           id: row.id,
           title: row.title,
@@ -123,12 +122,9 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
           injection_mode: 'system_prompt',
         });
         console.log(`📄 [AGENT-DOCS] [${agentId.toUpperCase()}] System Prompt doc loaded: "${row.title}" (${row.content.length} chars) [source: Documenti di Sistema]`);
-      } else if (row.injection_mode === 'system_prompt' && row.content.length > MAX_INLINE_CHARS) {
+      } else if (row.injection_mode === 'file_search') {
         result.fileSearchDocTitles.push(row.title);
-        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] System Prompt doc TOO LARGE for inline (${row.content.length} chars > ${MAX_INLINE_CHARS}), redirected to File Search: "${row.title}"`);
-      } else {
-        result.fileSearchDocTitles.push(row.title);
-        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] File Search doc registered: "${row.title}" [source: Documenti di Sistema, mode: file_search]`);
+        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] File Search doc: "${row.title}" [source: Documenti di Sistema, mode: file_search]`);
       }
     }
 
@@ -144,23 +140,20 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
     `);
     for (const row of kbResult.rows as any[]) {
       const fileSize = Number(row.file_size || 0);
-      const estimatedTokens = Math.ceil(fileSize / 4);
+      const alreadyLoaded = result.systemPromptDocs.some(d => d.id === row.id);
 
-      if (row.spd_mode === 'system_prompt' && row.spd_content && estimatedTokens <= 8000) {
-        const alreadyLoaded = result.systemPromptDocs.some(d => d.id === row.id);
-        if (!alreadyLoaded) {
-          result.systemPromptDocs.push({
-            id: row.id,
-            title: row.title,
-            content: row.spd_content,
-            source: 'kb_document',
-            injection_mode: 'system_prompt',
-          });
-          console.log(`📄 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc loaded inline: "${row.title}" (~${estimatedTokens} tokens) [source: Knowledge Base, mode: system_prompt]`);
-        }
-      } else {
+      if (row.spd_mode === 'system_prompt' && row.spd_content && !alreadyLoaded) {
+        result.systemPromptDocs.push({
+          id: row.id,
+          title: row.title,
+          content: row.spd_content,
+          source: 'kb_document',
+          injection_mode: 'system_prompt',
+        });
+        console.log(`📄 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc loaded inline: "${row.title}" (${row.spd_content.length} chars) [source: Knowledge Base, mode: system_prompt]`);
+      } else if (!alreadyLoaded) {
         result.fileSearchDocTitles.push(row.title);
-        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc for File Search: "${row.title}" (~${estimatedTokens} tokens, ${(fileSize / 1024 / 1024).toFixed(1)}MB) [source: Knowledge Base, mode: file_search]`);
+        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc in File Search: "${row.title}" (${(fileSize / 1024 / 1024).toFixed(1)}MB) [source: Knowledge Base, status: ${row.status}]`);
       }
     }
 
