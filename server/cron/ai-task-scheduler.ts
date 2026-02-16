@@ -1451,11 +1451,11 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     id: t.id,
     contact: t.contact_name || t.contact_id || 'N/A',
     category: t.task_category,
-    instruction: t.ai_instruction?.substring(0, 400),
+    instruction: t.ai_instruction || '',
     status: t.status,
     role: t.ai_role || 'generic',
     created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
-    result: t.result_summary?.substring(0, 500) || null,
+    result: t.result_summary || null,
   }));
 
   const recentReasoningResult = await db.execute(sql`
@@ -1474,7 +1474,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     const role = r.ai_role || 'unknown';
     if (!recentReasoningByRole[role]) recentReasoningByRole[role] = [];
     if (recentReasoningByRole[role].length < 2 && r.description) {
-      recentReasoningByRole[role].push(r.description.substring(0, 2000));
+      recentReasoningByRole[role].push(r.description);
     }
   }
 
