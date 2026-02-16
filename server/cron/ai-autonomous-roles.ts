@@ -2,10 +2,12 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
+import { FileSearchSyncService } from "../services/file-search-sync-service";
 
 async function fetchAgentKbContext(consultantId: string, agentId: string): Promise<{ kbDocumentTitles: string[]; fileSearchStoreNames: string[] }> {
   let kbDocumentTitles: string[] = [];
   let fileSearchStoreNames: string[] = [];
+  let needsFileSearch = false;
 
   try {
     const assignmentsResult = await db.execute(sql`
@@ -17,10 +19,39 @@ async function fetchAgentKbContext(consultantId: string, agentId: string): Promi
         AND d.status = 'indexed'
     `);
     kbDocumentTitles = assignmentsResult.rows.map((r: any) => r.title);
-
     if (kbDocumentTitles.length > 0) {
+      needsFileSearch = true;
+    }
+
+    const spdFileSearchResult = await db.execute(sql`
+      SELECT title FROM system_prompt_documents
+      WHERE consultant_id = ${consultantId}
+        AND is_active = true
+        AND injection_mode = 'file_search'
+        AND jsonb_extract_path_text(target_autonomous_agents, ${agentId}) = 'true'
+    `);
+    for (const row of spdFileSearchResult.rows as any[]) {
+      if (!kbDocumentTitles.includes(row.title)) {
+        kbDocumentTitles.push(row.title);
+      }
+      needsFileSearch = true;
+    }
+
+    if (needsFileSearch) {
+      const agentStore = await FileSearchSyncService.getAutonomousAgentStore(agentId, consultantId);
+      if (agentStore?.googleStoreName) {
+        fileSearchStoreNames.push(agentStore.googleStoreName);
+        console.log(`🗂️ [${agentId.toUpperCase()}] Analysis: dedicated agent store loaded: ${agentStore.googleStoreName}`);
+      }
+
       const fileSearchService = new FileSearchService();
-      fileSearchStoreNames = await fileSearchService.getConsultantOwnStores(consultantId);
+      const consultantStores = await fileSearchService.getConsultantOwnStores(consultantId);
+      for (const storeName of consultantStores) {
+        if (!fileSearchStoreNames.includes(storeName)) {
+          fileSearchStoreNames.push(storeName);
+        }
+      }
+      console.log(`🗂️ [${agentId.toUpperCase()}] Analysis: File Search stores loaded: ${fileSearchStoreNames.length} stores (agent+consultant) for ${kbDocumentTitles.length} docs`);
     }
   } catch (err: any) {
     console.error(`⚠️ [${agentId.toUpperCase()}] Failed to fetch KB context: ${err.message}`);
