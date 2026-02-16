@@ -1702,13 +1702,16 @@ function DashboardTab({
                                 </div>
                               )}
 
-                              {isExpanded && task.origin_type === 'autonomous' && task.ai_reasoning && (
-                                <details className="mt-2.5">
+                              {task.origin_type === 'autonomous' && task.ai_reasoning && (
+                                <details className="mt-2.5" open={isExpanded}>
                                   <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground/70 flex items-center gap-1">
                                     <Sparkles className="h-3 w-3 text-purple-400" />
                                     Insight AI
                                   </summary>
-                                  <p className="mt-1 text-xs text-muted-foreground/80 italic pl-4">
+                                  <p className={cn(
+                                    "mt-1 text-xs text-muted-foreground/80 italic pl-4",
+                                    !isExpanded && "line-clamp-2"
+                                  )}>
                                     {task.ai_reasoning}
                                   </p>
                                 </details>
