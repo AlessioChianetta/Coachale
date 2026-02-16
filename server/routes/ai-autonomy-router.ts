@@ -2423,13 +2423,13 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
 
     for (const secTask of secondaryTasks) {
       await db.execute(sql`
-        INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
-        VALUES (${consultantId}, ${secTask.id}, 'merged', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
+        INSERT INTO ai_activity_log (consultant_id, task_id, event_type, title, description, is_read)
+        VALUES (${consultantId}, ${secTask.id}, 'merged', 'Task aggregato', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
       `);
     }
     await db.execute(sql`
-      INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
-      VALUES (${consultantId}, ${mainTask.id}, 'merged', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
+      INSERT INTO ai_activity_log (consultant_id, task_id, event_type, title, description, is_read)
+      VALUES (${consultantId}, ${mainTask.id}, 'merged', 'Aggregazione task', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
     `);
 
     return res.json({
