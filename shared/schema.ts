@@ -620,16 +620,14 @@ export const clientStateTracking = pgTable("client_state_tracking", {
   internalBenefit: text("internal_benefit"),
   externalBenefit: text("external_benefit"),
   mainObstacle: text("main_obstacle"),
-  pastAttempts: text("past_attempts"), // Cosa ha già provato in passato
-  currentActions: text("current_actions"), // Cosa sta facendo adesso
-  futureVision: text("future_vision"), // Dove vuole essere tra 3-5 anni
-  motivationDrivers: text("motivation_drivers"), // nullable - cosa motiva il cliente
+  pastAttempts: text("past_attempts"),
+  currentActions: text("current_actions"),
+  futureVision: text("future_vision"),
+  motivationDrivers: text("motivation_drivers"),
+  version: integer("version").default(1).notNull(),
+  source: varchar("source", { length: 20 }).default("manual").notNull(),
   lastUpdated: timestamp("last_updated").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
-}, (table) => {
-  return {
-    uniqueClientConsultant: unique().on(table.clientId, table.consultantId),
-  }
 });
 
 // Automated Emails Log Table
@@ -1434,10 +1432,12 @@ export const insertClientStateTrackingSchema = createInsertSchema(clientStateTra
   id: true,
   createdAt: true,
   lastUpdated: true,
+  version: true,
 }).extend({
   currentState: z.string().min(1, "Current state is required"),
   idealState: z.string().min(1, "Ideal state is required"),
   motivationDrivers: z.string().nullable().optional(),
+  source: z.enum(["manual", "ai"]).optional(),
 });
 
 export const updateClientStateTrackingSchema = z.object({

@@ -66,9 +66,9 @@ export default function ConsultantClientStatePage() {
   });
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
+    queryKey: ["/api/clients", "activeOnly"],
     queryFn: async () => {
-      const response = await fetch("/api/clients", {
+      const response = await fetch("/api/clients?activeOnly=true", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch clients");

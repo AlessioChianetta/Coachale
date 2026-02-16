@@ -254,6 +254,7 @@ export interface IStorage {
   // Client State Tracking operations
   upsertClientState(data: InsertClientStateTracking): Promise<ClientStateTracking>;
   getClientState(clientId: string, consultantId: string): Promise<ClientStateTracking | undefined>;
+  getClientStateHistory(clientId: string, consultantId: string): Promise<ClientStateTracking[]>;
   updateClientState(id: string, updates: UpdateClientStateTracking): Promise<ClientStateTracking | undefined>;
   getClientStatesByConsultant(consultantId: string): Promise<ClientStateTracking[]>;
 
@@ -1481,22 +1482,20 @@ export class DatabaseStorage implements IStorage {
 
   // Client State Tracking operations
   async upsertClientState(data: InsertClientStateTracking): Promise<ClientStateTracking> {
+    const latestVersion = await db.select({ maxVersion: sql<number>`COALESCE(MAX(version), 0)` })
+      .from(schema.clientStateTracking)
+      .where(and(
+        eq(schema.clientStateTracking.clientId, data.clientId),
+        eq(schema.clientStateTracking.consultantId, data.consultantId)
+      ));
+
+    const nextVersion = (latestVersion[0]?.maxVersion || 0) + 1;
+
     const [state] = await db.insert(schema.clientStateTracking)
-      .values(data)
-      .onConflictDoUpdate({
-        target: [schema.clientStateTracking.clientId, schema.clientStateTracking.consultantId],
-        set: {
-          currentState: data.currentState,
-          idealState: data.idealState,
-          internalBenefit: data.internalBenefit,
-          externalBenefit: data.externalBenefit,
-          mainObstacle: data.mainObstacle,
-          pastAttempts: data.pastAttempts,
-          currentActions: data.currentActions,
-          futureVision: data.futureVision,
-          motivationDrivers: data.motivationDrivers,
-          lastUpdated: new Date(),
-        }
+      .values({
+        ...data,
+        version: nextVersion,
+        lastUpdated: new Date(),
       })
       .returning();
     return state;
@@ -1508,8 +1507,20 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(schema.clientStateTracking.clientId, clientId),
         eq(schema.clientStateTracking.consultantId, consultantId)
-      ));
+      ))
+      .orderBy(desc(schema.clientStateTracking.version))
+      .limit(1);
     return state || undefined;
+  }
+
+  async getClientStateHistory(clientId: string, consultantId: string): Promise<ClientStateTracking[]> {
+    return db.select()
+      .from(schema.clientStateTracking)
+      .where(and(
+        eq(schema.clientStateTracking.clientId, clientId),
+        eq(schema.clientStateTracking.consultantId, consultantId)
+      ))
+      .orderBy(desc(schema.clientStateTracking.version));
   }
 
   async updateClientState(id: string, updates: UpdateClientStateTracking): Promise<ClientStateTracking | undefined> {

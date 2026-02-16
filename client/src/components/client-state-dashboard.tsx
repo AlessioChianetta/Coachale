@@ -18,23 +18,28 @@ import {
   Telescope,
   ChevronDown,
   ChevronUp,
+  Clock,
+  Bot,
+  User,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ClientState {
   id: string;
   clientId: string;
   consultantId: string;
+  version: number;
+  source: string;
   currentState: string;
   idealState: string;
   internalBenefit: string | null;
@@ -54,13 +59,118 @@ interface ClientStateDashboardProps {
   readonly?: boolean;
 }
 
+function StateCardContent({ state }: { state: ClientState }) {
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <MapPin className="w-4 h-4 text-blue-500" />
+          Stato Attuale
+        </div>
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm whitespace-pre-wrap">{state.currentState}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Target className="w-4 h-4 text-green-500" />
+          Stato Ideale
+        </div>
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm whitespace-pre-wrap">{state.idealState}</p>
+        </div>
+      </div>
+
+      {state.internalBenefit && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Gem className="w-4 h-4 text-purple-500" />
+            Beneficio Interno
+          </div>
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm whitespace-pre-wrap">{state.internalBenefit}</p>
+          </div>
+        </div>
+      )}
+
+      {state.externalBenefit && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Star className="w-4 h-4 text-yellow-500" />
+            Beneficio Esterno
+          </div>
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm whitespace-pre-wrap">{state.externalBenefit}</p>
+          </div>
+        </div>
+      )}
+
+      {state.mainObstacle && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Construction className="w-4 h-4 text-orange-500" />
+            Ostacolo Principale
+          </div>
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm whitespace-pre-wrap">{state.mainObstacle}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <History className="w-4 h-4 text-indigo-500" />
+          Cosa ha già provato in passato
+        </div>
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm whitespace-pre-wrap">{state.pastAttempts || 'Non ancora specificato'}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Activity className="w-4 h-4 text-teal-500" />
+          Cosa sta facendo adesso
+        </div>
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm whitespace-pre-wrap">{state.currentActions || 'Non ancora specificato'}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Telescope className="w-4 h-4 text-pink-500" />
+          Dove vuole essere tra 3-5 anni
+        </div>
+        <div className="p-4 bg-muted rounded-lg">
+          <p className="text-sm whitespace-pre-wrap">{state.futureVision || 'Non ancora specificato'}</p>
+        </div>
+      </div>
+
+      {state.motivationDrivers && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Flame className="w-4 h-4 text-red-500" />
+            Cosa la motiva a raggiungere i risultati
+          </div>
+          <div className="p-4 bg-muted rounded-lg">
+            <p className="text-sm whitespace-pre-wrap">{state.motivationDrivers}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientStateDashboard({ clientId, consultantId, readonly = false }: ClientStateDashboardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(!readonly); // Parte chiuso se readonly (cliente), aperto se consultant
+  const [isOpen, setIsOpen] = useState(!readonly);
+  const [selectedVersionId, setSelectedVersionId] = useState<string>("");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     currentState: "",
     idealState: "",
@@ -73,7 +183,6 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     motivationDrivers: "",
   });
 
-  // Fetch client state
   const { data: clientState, isLoading } = useQuery<ClientState>({
     queryKey: ["/api/clients/state", clientId, consultantId],
     queryFn: async () => {
@@ -94,7 +203,21 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     },
   });
 
-  // Update client state mutation
+  const { data: stateHistory = [] } = useQuery<ClientState[]>({
+    queryKey: ["/api/clients/state/history", clientId],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${clientId}/state/history`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) return [];
+
+      const result = await response.json();
+      return result.data || [];
+    },
+    enabled: !readonly,
+  });
+
   const updateStateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const response = await fetch(`/api/clients/${clientId}/state`, {
@@ -115,10 +238,11 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients/state"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients/state/history"] });
       setIsEditDialogOpen(false);
       toast({
         title: "Stato aggiornato",
-        description: "Lo stato del cliente è stato aggiornato con successo",
+        description: "Una nuova versione dello stato è stata salvata",
       });
     },
     onError: (error: Error) => {
@@ -130,7 +254,6 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     },
   });
 
-  // AI generate client state mutation
   const aiGenerateMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/clients/${clientId}/state/ai-generate`, {
@@ -150,9 +273,10 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients/state"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients/state/history"] });
       toast({
         title: "Analisi AI completata",
-        description: "Lo stato del cliente è stato generato automaticamente dall'AI usando il contesto completo",
+        description: "Una nuova versione dello stato è stata generata dall'AI",
       });
     },
     onError: (error: Error) => {
@@ -164,7 +288,6 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     },
   });
 
-  // Handlers
   const handleOpenEditDialog = () => {
     if (clientState) {
       setFormData({
@@ -206,7 +329,10 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     updateStateMutation.mutate(formData);
   };
 
-  // Loading state
+  const selectedHistoryState = selectedVersionId
+    ? stateHistory.find(s => s.id === selectedVersionId)
+    : null;
+
   if (isLoading) {
     return (
       <Card>
@@ -228,7 +354,6 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
     );
   }
 
-  // Empty state
   if (!clientState) {
     return (
       <Card>
@@ -280,168 +405,19 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
           )}
         </CardContent>
 
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Configura Stato Cliente</DialogTitle>
-              <DialogDescription>
-                Definisci lo stato attuale, gli obiettivi e la motivazione del cliente
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              {/* Current State */}
-              <div className="space-y-2">
-                <Label htmlFor="currentState" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Stato Attuale *
-                </Label>
-                <Textarea
-                  id="currentState"
-                  placeholder="Descrivi la situazione attuale del cliente..."
-                  value={formData.currentState}
-                  onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              {/* Ideal State */}
-              <div className="space-y-2">
-                <Label htmlFor="idealState" className="flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  Stato Ideale *
-                </Label>
-                <Textarea
-                  id="idealState"
-                  placeholder="Descrivi dove il cliente vuole arrivare..."
-                  value={formData.idealState}
-                  onChange={(e) => setFormData({ ...formData, idealState: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              {/* Internal Benefit */}
-              <div className="space-y-2">
-                <Label htmlFor="internalBenefit" className="flex items-center gap-2">
-                  <Gem className="w-4 h-4" />
-                  Beneficio Interno
-                </Label>
-                <Textarea
-                  id="internalBenefit"
-                  placeholder="Benefici personali e interni per il cliente..."
-                  value={formData.internalBenefit}
-                  onChange={(e) => setFormData({ ...formData, internalBenefit: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* External Benefit */}
-              <div className="space-y-2">
-                <Label htmlFor="externalBenefit" className="flex items-center gap-2">
-                  <Star className="w-4 h-4" />
-                  Beneficio Esterno
-                </Label>
-                <Textarea
-                  id="externalBenefit"
-                  placeholder="Benefici esterni e visibili per il cliente..."
-                  value={formData.externalBenefit}
-                  onChange={(e) => setFormData({ ...formData, externalBenefit: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Main Obstacle */}
-              <div className="space-y-2">
-                <Label htmlFor="mainObstacle" className="flex items-center gap-2">
-                  <Construction className="w-4 h-4" />
-                  Ostacolo Principale
-                </Label>
-                <Textarea
-                  id="mainObstacle"
-                  placeholder="Principale ostacolo che impedisce al cliente di progredire..."
-                  value={formData.mainObstacle}
-                  onChange={(e) => setFormData({ ...formData, mainObstacle: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Past Attempts */}
-              <div className="space-y-2">
-                <Label htmlFor="pastAttempts" className="flex items-center gap-2">
-                  <History className="w-4 h-4" />
-                  Cosa ha già provato in passato
-                </Label>
-                <Textarea
-                  id="pastAttempts"
-                  placeholder="Cosa ha già tentato il cliente in passato..."
-                  value={formData.pastAttempts}
-                  onChange={(e) => setFormData({ ...formData, pastAttempts: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Current Actions */}
-              <div className="space-y-2">
-                <Label htmlFor="currentActions" className="flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  Cosa sta facendo adesso
-                </Label>
-                <Textarea
-                  id="currentActions"
-                  placeholder="Cosa sta facendo attualmente il cliente..."
-                  value={formData.currentActions}
-                  onChange={(e) => setFormData({ ...formData, currentActions: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Future Vision */}
-              <div className="space-y-2">
-                <Label htmlFor="futureVision" className="flex items-center gap-2">
-                  <Telescope className="w-4 h-4" />
-                  Dove vuole essere tra 3-5 anni
-                </Label>
-                <Textarea
-                  id="futureVision"
-                  placeholder="Dove il cliente vuole essere tra 3-5 anni..."
-                  value={formData.futureVision}
-                  onChange={(e) => setFormData({ ...formData, futureVision: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              {/* Motivation Drivers */}
-              <div className="space-y-2">
-                <Label htmlFor="motivationDrivers" className="flex items-center gap-2">
-                  <Flame className="w-4 h-4" />
-                  Cosa la motiva a raggiungere i risultati
-                </Label>
-                <Textarea
-                  id="motivationDrivers"
-                  placeholder="Descrivi cosa motiva il cliente..."
-                  value={formData.motivationDrivers}
-                  onChange={(e) => setFormData({ ...formData, motivationDrivers: e.target.value })}
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Annulla
-              </Button>
-              <Button onClick={handleUpdateState} disabled={updateStateMutation.isPending}>
-                {updateStateMutation.isPending ? "Salvataggio..." : "Salva"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EditDialog
+          isOpen={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          formData={formData}
+          setFormData={setFormData}
+          onSave={handleUpdateState}
+          isPending={updateStateMutation.isPending}
+          title="Configura Stato Cliente"
+        />
       </Card>
     );
   }
 
-  // Display state
   return (
     <>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -456,6 +432,16 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
                       <CardTitle className="flex items-center gap-2">
                         Stato Cliente
                       </CardTitle>
+                      <Badge variant={clientState.source === "ai" ? "default" : "secondary"} className="ml-2">
+                        {clientState.source === "ai" ? (
+                          <><Bot className="w-3 h-3 mr-1" /> AI</>
+                        ) : (
+                          <><User className="w-3 h-3 mr-1" /> Manuale</>
+                        )}
+                      </Badge>
+                      <Badge variant="outline" className="ml-1">
+                        v{clientState.version}
+                      </Badge>
                       {isOpen ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
                     </div>
                   </Button>
@@ -490,276 +476,274 @@ export default function ClientStateDashboard({ clientId, consultantId, readonly 
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Current State */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <MapPin className="w-4 h-4 text-blue-500" />
-                Stato Attuale
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm whitespace-pre-wrap">{clientState.currentState}</p>
-              </div>
-            </div>
-
-            {/* Ideal State */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Target className="w-4 h-4 text-green-500" />
-                Stato Ideale
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm whitespace-pre-wrap">{clientState.idealState}</p>
-              </div>
-            </div>
-
-            {/* Internal Benefit */}
-            {clientState.internalBenefit && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Gem className="w-4 h-4 text-purple-500" />
-                  Beneficio Interno
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{clientState.internalBenefit}</p>
-                </div>
-              </div>
-            )}
-
-            {/* External Benefit */}
-            {clientState.externalBenefit && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Star className="w-4 h-4 text-yellow-500" />
-                  Beneficio Esterno
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{clientState.externalBenefit}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Main Obstacle */}
-            {clientState.mainObstacle && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Construction className="w-4 h-4 text-orange-500" />
-                  Ostacolo Principale
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{clientState.mainObstacle}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Past Attempts - SEMPRE VISIBILE */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <History className="w-4 h-4 text-indigo-500" />
-                Cosa ha già provato in passato
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm whitespace-pre-wrap">{clientState.pastAttempts || 'Non ancora specificato'}</p>
-              </div>
-            </div>
-
-            {/* Current Actions - SEMPRE VISIBILE */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Activity className="w-4 h-4 text-teal-500" />
-                Cosa sta facendo adesso
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm whitespace-pre-wrap">{clientState.currentActions || 'Non ancora specificato'}</p>
-              </div>
-            </div>
-
-            {/* Future Vision - SEMPRE VISIBILE */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Telescope className="w-4 h-4 text-pink-500" />
-                Dove vuole essere tra 3-5 anni
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm whitespace-pre-wrap">{clientState.futureVision || 'Non ancora specificato'}</p>
-              </div>
-            </div>
-
-            {/* Motivation Drivers */}
-            {clientState.motivationDrivers && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Flame className="w-4 h-4 text-red-500" />
-                  Cosa la motiva a raggiungere i risultati
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">{clientState.motivationDrivers}</p>
-                </div>
-              </div>
-            )}
-          </div>
+              <StateCardContent state={clientState} />
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Modifica Stato Cliente</DialogTitle>
-            <DialogDescription>
-              Aggiorna lo stato attuale, gli obiettivi e la motivazione del cliente
-            </DialogDescription>
-          </DialogHeader>
+      {!readonly && stateHistory.length > 1 && (
+        <Collapsible open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+          <Card className="mt-4">
+            <CardHeader className="pb-3">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="p-0 h-auto hover:bg-transparent w-full justify-start">
+                  <div className="flex items-center gap-2 w-full">
+                    <Clock className="w-5 h-5" />
+                    <CardTitle className="text-base">
+                      Storico Versioni ({stateHistory.length})
+                    </CardTitle>
+                    {isHistoryOpen ? <ChevronUp className="w-4 h-4 ml-auto" /> : <ChevronDown className="w-4 h-4 ml-auto" />}
+                  </div>
+                </Button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Seleziona una versione precedente</Label>
+                  <Select value={selectedVersionId} onValueChange={setSelectedVersionId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Scegli una versione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stateHistory.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          <div className="flex items-center gap-2">
+                            <span>v{s.version}</span>
+                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground">
+                              {format(new Date(s.createdAt), "dd/MM/yyyy HH:mm", { locale: it })}
+                            </span>
+                            <Badge variant={s.source === "ai" ? "default" : "secondary"} className="text-xs px-1.5 py-0">
+                              {s.source === "ai" ? "AI" : "Manuale"}
+                            </Badge>
+                            {s.id === clientState.id && (
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">Corrente</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="space-y-4 py-4">
-            {/* Current State */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-currentState" className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Stato Attuale *
-              </Label>
-              <Textarea
-                id="edit-currentState"
-                placeholder="Descrivi la situazione attuale del cliente..."
-                value={formData.currentState}
-                onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
-                rows={3}
-              />
-            </div>
+                {selectedHistoryState && selectedHistoryState.id !== clientState.id && (
+                  <div className="border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Badge variant={selectedHistoryState.source === "ai" ? "default" : "secondary"}>
+                        {selectedHistoryState.source === "ai" ? (
+                          <><Bot className="w-3 h-3 mr-1" /> AI</>
+                        ) : (
+                          <><User className="w-3 h-3 mr-1" /> Manuale</>
+                        )}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Versione {selectedHistoryState.version} - {format(new Date(selectedHistoryState.createdAt), "dd MMMM yyyy 'alle' HH:mm", { locale: it })}
+                      </span>
+                    </div>
+                    <StateCardContent state={selectedHistoryState} />
+                  </div>
+                )}
 
-            {/* Ideal State */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-idealState" className="flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Stato Ideale *
-              </Label>
-              <Textarea
-                id="edit-idealState"
-                placeholder="Descrivi dove il cliente vuole arrivare..."
-                value={formData.idealState}
-                onChange={(e) => setFormData({ ...formData, idealState: e.target.value })}
-                rows={3}
-              />
-            </div>
+                {selectedHistoryState && selectedHistoryState.id === clientState.id && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Questa è la versione corrente, già visibile sopra
+                  </p>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
-            {/* Internal Benefit */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-internalBenefit" className="flex items-center gap-2">
-                <Gem className="w-4 h-4" />
-                Beneficio Interno
-              </Label>
-              <Textarea
-                id="edit-internalBenefit"
-                placeholder="Benefici personali e interni per il cliente..."
-                value={formData.internalBenefit}
-                onChange={(e) => setFormData({ ...formData, internalBenefit: e.target.value })}
-                rows={2}
-              />
-            </div>
+      <EditDialog
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        formData={formData}
+        setFormData={setFormData}
+        onSave={handleUpdateState}
+        isPending={updateStateMutation.isPending}
+        title="Modifica Stato Cliente"
+      />
+    </>
+  );
+}
 
-            {/* External Benefit */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-externalBenefit" className="flex items-center gap-2">
-                <Star className="w-4 h-4" />
-                Beneficio Esterno
-              </Label>
-              <Textarea
-                id="edit-externalBenefit"
-                placeholder="Benefici esterni e visibili per il cliente..."
-                value={formData.externalBenefit}
-                onChange={(e) => setFormData({ ...formData, externalBenefit: e.target.value })}
-                rows={2}
-              />
-            </div>
+function EditDialog({
+  isOpen,
+  onOpenChange,
+  formData,
+  setFormData,
+  onSave,
+  isPending,
+  title,
+}: {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  formData: {
+    currentState: string;
+    idealState: string;
+    internalBenefit: string;
+    externalBenefit: string;
+    mainObstacle: string;
+    pastAttempts: string;
+    currentActions: string;
+    futureVision: string;
+    motivationDrivers: string;
+  };
+  setFormData: (data: typeof formData) => void;
+  onSave: () => void;
+  isPending: boolean;
+  title: string;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Ogni salvataggio crea una nuova versione, quella precedente resta nello storico
+          </DialogDescription>
+        </DialogHeader>
 
-            {/* Main Obstacle */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-mainObstacle" className="flex items-center gap-2">
-                <Construction className="w-4 h-4" />
-                Ostacolo Principale
-              </Label>
-              <Textarea
-                id="edit-mainObstacle"
-                placeholder="Principale ostacolo che impedisce al cliente di progredire..."
-                value={formData.mainObstacle}
-                onChange={(e) => setFormData({ ...formData, mainObstacle: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            {/* Past Attempts */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-pastAttempts" className="flex items-center gap-2">
-                <History className="w-4 h-4" />
-                Cosa ha già provato in passato
-              </Label>
-              <Textarea
-                id="edit-pastAttempts"
-                placeholder="Cosa ha già tentato il cliente in passato..."
-                value={formData.pastAttempts}
-                onChange={(e) => setFormData({ ...formData, pastAttempts: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            {/* Current Actions */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-currentActions" className="flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Cosa sta facendo adesso
-              </Label>
-              <Textarea
-                id="edit-currentActions"
-                placeholder="Cosa sta facendo attualmente il cliente..."
-                value={formData.currentActions}
-                onChange={(e) => setFormData({ ...formData, currentActions: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            {/* Future Vision */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-futureVision" className="flex items-center gap-2">
-                <Telescope className="w-4 h-4" />
-                Dove vuole essere tra 3-5 anni
-              </Label>
-              <Textarea
-                id="edit-futureVision"
-                placeholder="Dove il cliente vuole essere tra 3-5 anni..."
-                value={formData.futureVision}
-                onChange={(e) => setFormData({ ...formData, futureVision: e.target.value })}
-                rows={2}
-              />
-            </div>
-
-            {/* Motivation Drivers */}
-            <div className="space-y-2">
-              <Label htmlFor="edit-motivationDrivers" className="flex items-center gap-2">
-                <Flame className="w-4 h-4" />
-                Cosa la motiva a raggiungere i risultati
-              </Label>
-              <Textarea
-                id="edit-motivationDrivers"
-                placeholder="Descrivi cosa motiva il cliente..."
-                value={formData.motivationDrivers}
-                onChange={(e) => setFormData({ ...formData, motivationDrivers: e.target.value })}
-                rows={3}
-              />
-            </div>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-currentState" className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              Stato Attuale *
+            </Label>
+            <Textarea
+              id="edit-currentState"
+              placeholder="Descrivi la situazione attuale del cliente..."
+              value={formData.currentState}
+              onChange={(e) => setFormData({ ...formData, currentState: e.target.value })}
+              rows={3}
+            />
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Annulla
-            </Button>
-            <Button onClick={handleUpdateState} disabled={updateStateMutation.isPending}>
-              {updateStateMutation.isPending ? "Salvataggio..." : "Salva Modifiche"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="space-y-2">
+            <Label htmlFor="edit-idealState" className="flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Stato Ideale *
+            </Label>
+            <Textarea
+              id="edit-idealState"
+              placeholder="Descrivi dove il cliente vuole arrivare..."
+              value={formData.idealState}
+              onChange={(e) => setFormData({ ...formData, idealState: e.target.value })}
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-internalBenefit" className="flex items-center gap-2">
+              <Gem className="w-4 h-4" />
+              Beneficio Interno
+            </Label>
+            <Textarea
+              id="edit-internalBenefit"
+              placeholder="Benefici personali e interni per il cliente..."
+              value={formData.internalBenefit}
+              onChange={(e) => setFormData({ ...formData, internalBenefit: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-externalBenefit" className="flex items-center gap-2">
+              <Star className="w-4 h-4" />
+              Beneficio Esterno
+            </Label>
+            <Textarea
+              id="edit-externalBenefit"
+              placeholder="Benefici esterni e visibili per il cliente..."
+              value={formData.externalBenefit}
+              onChange={(e) => setFormData({ ...formData, externalBenefit: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-mainObstacle" className="flex items-center gap-2">
+              <Construction className="w-4 h-4" />
+              Ostacolo Principale
+            </Label>
+            <Textarea
+              id="edit-mainObstacle"
+              placeholder="Principale ostacolo che impedisce al cliente di progredire..."
+              value={formData.mainObstacle}
+              onChange={(e) => setFormData({ ...formData, mainObstacle: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-pastAttempts" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Cosa ha già provato in passato
+            </Label>
+            <Textarea
+              id="edit-pastAttempts"
+              placeholder="Cosa ha già tentato il cliente in passato..."
+              value={formData.pastAttempts}
+              onChange={(e) => setFormData({ ...formData, pastAttempts: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-currentActions" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Cosa sta facendo adesso
+            </Label>
+            <Textarea
+              id="edit-currentActions"
+              placeholder="Cosa sta facendo attualmente il cliente..."
+              value={formData.currentActions}
+              onChange={(e) => setFormData({ ...formData, currentActions: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-futureVision" className="flex items-center gap-2">
+              <Telescope className="w-4 h-4" />
+              Dove vuole essere tra 3-5 anni
+            </Label>
+            <Textarea
+              id="edit-futureVision"
+              placeholder="Dove il cliente vuole essere tra 3-5 anni..."
+              value={formData.futureVision}
+              onChange={(e) => setFormData({ ...formData, futureVision: e.target.value })}
+              rows={2}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-motivationDrivers" className="flex items-center gap-2">
+              <Flame className="w-4 h-4" />
+              Cosa la motiva a raggiungere i risultati
+            </Label>
+            <Textarea
+              id="edit-motivationDrivers"
+              placeholder="Descrivi cosa motiva il cliente..."
+              value={formData.motivationDrivers}
+              onChange={(e) => setFormData({ ...formData, motivationDrivers: e.target.value })}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Annulla
+          </Button>
+          <Button onClick={onSave} disabled={isPending}>
+            {isPending ? "Salvataggio..." : "Salva Nuova Versione"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

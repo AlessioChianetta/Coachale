@@ -6,7 +6,7 @@ import { z } from "zod";
 import { buildUserContext } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { GEMINI_3_MODEL } from "../ai/provider-factory";
+import { GEMINI_3_MODEL, getSuperAdminGeminiKeys } from "../ai/provider-factory";
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -27,15 +27,7 @@ router.post("/clients/:id/state", authenticateToken, requireRole("consultant"), 
       });
     }
     
-    // Verify client is actually a client (not a consultant)
-    if (client.role !== "client") {
-      return res.status(400).json({ 
-        success: false, 
-        error: "User is not a client" 
-      });
-    }
-    
-    // Verify consultant has access to this client
+    // Verify consultant has access to this client (supports both clients and consultants who are also clients)
     if (client.consultantId !== req.user!.id) {
       return res.status(403).json({ 
         success: false, 
@@ -48,6 +40,7 @@ router.post("/clients/:id/state", authenticateToken, requireRole("consultant"), 
       ...req.body,
       clientId,
       consultantId: req.user!.id,
+      source: req.body.source || "manual",
     });
     
     const state = await storage.upsertClientState(validatedData);
@@ -82,14 +75,6 @@ router.get("/clients/:id/state", authenticateToken, async (req: AuthRequest, res
       return res.status(404).json({ 
         success: false, 
         error: "Client not found" 
-      });
-    }
-    
-    // Verify client is actually a client (not a consultant)
-    if (client.role !== "client") {
-      return res.status(400).json({ 
-        success: false, 
-        error: "User is not a client" 
       });
     }
     
@@ -194,14 +179,24 @@ router.get("/clients/state/statistics", authenticateToken, requireRole("consulta
     // Get all states for this consultant's clients
     const states = await storage.getClientStatesByConsultant(consultantId);
     
-    // Calculate statistics
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
+    const uniqueClients = new Set(states.map(s => s.clientId));
+    
+    const latestByClient = new Map<string, typeof states[0]>();
+    for (const s of states) {
+      const existing = latestByClient.get(s.clientId);
+      if (!existing || s.version > existing.version) {
+        latestByClient.set(s.clientId, s);
+      }
+    }
+    const latestStates = Array.from(latestByClient.values());
+    
     const stats = {
-      totalClientsWithState: states.length,
-      aiGenerated: 0, // This will be calculated by checking if state was created in same minute as AI generation
-      updatedToday: states.filter(s => {
+      totalClientsWithState: uniqueClients.size,
+      aiGenerated: states.filter(s => s.source === "ai").length,
+      updatedToday: latestStates.filter(s => {
         if (!s.lastUpdated) return false;
         const lastUpdated = new Date(s.lastUpdated);
         return lastUpdated >= todayStart;
@@ -221,6 +216,35 @@ router.get("/clients/state/statistics", authenticateToken, requireRole("consulta
   }
 });
 
+// GET /api/clients/:id/state/history - Get all state versions for a client
+router.get("/clients/:id/state/history", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.params.id;
+    const consultantId = req.user!.id;
+
+    const client = await storage.getUser(clientId);
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Client not found" });
+    }
+
+    if (client.consultantId !== consultantId) {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    const history = await storage.getClientStateHistory(clientId, consultantId);
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch state history",
+    });
+  }
+});
+
 // POST /api/clients/:id/state/ai-generate - AI auto-generates client state from full context (consultant only)
 router.post("/clients/:id/state/ai-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
@@ -231,7 +255,7 @@ router.post("/clients/:id/state/ai-generate", authenticateToken, requireRole("co
     
     // Verify client exists and belongs to this consultant
     const client = await storage.getUser(clientId);
-    if (!client || client.role !== "client") {
+    if (!client) {
       return res.status(404).json({ success: false, error: "Client not found" });
     }
     
@@ -239,28 +263,27 @@ router.post("/clients/:id/state/ai-generate", authenticateToken, requireRole("co
       return res.status(403).json({ success: false, error: "Access denied - this is not your client" });
     }
     
-    // Get client's API keys for Gemini (each client has their own keys managed by consultant)
-    const [clientUser] = await db.select().from(users).where(eq(users.id, clientId)).limit(1);
-    if (!clientUser) {
-      return res.status(404).json({ success: false, error: "Client user not found" });
-    }
-    
-    const apiKeys = clientUser.geminiApiKeys || [];
-    const currentIndex = clientUser.geminiApiKeyIndex || 0;
+    // Get consultant's API keys for Gemini
+    const [consultantUser] = await db.select().from(users).where(eq(users.id, consultantId)).limit(1);
+    const apiKeys = consultantUser?.geminiApiKeys || [];
+    const currentIndex = consultantUser?.geminiApiKeyIndex || 0;
     let apiKey: string;
     let shouldRotate = false;
-    let apiKeysLength = 0;
-    
+
     if (apiKeys.length > 0) {
-      const validIndex = currentIndex % apiKeys.length;
-      apiKey = apiKeys[validIndex];
+      apiKey = apiKeys[currentIndex % apiKeys.length];
       shouldRotate = true;
-      apiKeysLength = apiKeys.length;
     } else {
-      apiKey = process.env.GEMINI_API_KEY || "";
-      if (!apiKey) {
-        return res.status(500).json({ success: false, error: "Gemini API key not configured" });
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+        apiKey = superAdminKeys.keys[0];
+      } else {
+        apiKey = process.env.GEMINI_API_KEY || "";
       }
+    }
+
+    if (!apiKey) {
+      return res.status(500).json({ success: false, error: "Gemini API key not configured" });
     }
     
     // Build full user context (EXACTLY like AI assistant does)
@@ -345,14 +368,14 @@ Rispondi SOLO con JSON valido:
     console.log(`✅ [AI STATE] AI analysis generated successfully`);
     console.log(`   Campi generati: currentState, idealState, pastAttempts, currentActions, futureVision`);
     
-    // Rotate API key if using client's keys
+    // Rotate API key if using consultant's keys
     if (shouldRotate) {
       await db.execute(
         drizzleSql`UPDATE users 
-            SET gemini_api_key_index = (COALESCE(gemini_api_key_index, 0) + 1) % ${apiKeysLength}
-            WHERE id = ${clientId}`
+            SET gemini_api_key_index = (COALESCE(gemini_api_key_index, 0) + 1) % ${apiKeys.length}
+            WHERE id = ${consultantId}`
       );
-      console.log(`🔄 [AI STATE] Rotated API key for client ${clientId}`);
+      console.log(`🔄 [AI STATE] Rotated API key for consultant ${consultantId}`);
     }
     
     // Validate that AI generated all required fields
@@ -377,6 +400,7 @@ Rispondi SOLO con JSON valido:
       currentActions: aiAnalysis.currentActions || null,
       futureVision: aiAnalysis.futureVision || null,
       motivationDrivers: aiAnalysis.motivationDrivers || null,
+      source: "ai" as const,
     };
     
     console.log(`📝 [AI STATE] Saving data with fields:`, {
