@@ -2679,7 +2679,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
                                   {consultantStoreOpen ? <ChevronDown className="h-5 w-5 text-blue-600" /> : <ChevronRight className="h-5 w-5 text-blue-600" />}
                                   <FolderOpen className="h-5 w-5 text-blue-600" />
-                                  <span className="font-semibold text-blue-900">Store Globale Consulente</span>
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-semibold text-blue-900">Store Globale Consulente</span>
+                                    {hData.consultantStore.storeName && (
+                                      <code className="text-[10px] text-blue-500 bg-blue-100 px-1.5 py-0.5 rounded mt-0.5 font-normal">{hData.consultantStore.storeName}</code>
+                                    )}
+                                  </div>
                                   <Badge className="ml-auto bg-blue-200 text-blue-800">{consultantTotal} documenti</Badge>
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="mt-2 ml-4 space-y-2">
@@ -2932,6 +2937,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {openClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <User className={`h-4 w-4 ${client.hasDocuments ? 'text-purple-600' : 'text-amber-500'}`} />
                                           <span className="text-gray-800 font-medium">{client.clientName}</span>
+                                          {client.storeName && (
+                                            <code className="text-[10px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded hidden lg:inline">{client.storeName}</code>
+                                          )}
                                           <span className="text-gray-400 text-xs hidden md:inline">({client.clientEmail})</span>
                                           {client.hasDocuments ? (
                                             <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -3300,6 +3308,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {openClients[`dept-${dept.departmentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <Building2 className={`h-4 w-4 ${dept.hasDocuments ? 'text-amber-600' : 'text-gray-400'}`} />
                                           <span className="text-gray-800 font-medium">{dept.departmentName}</span>
+                                          {(dept as any).storeName && (
+                                            <code className="text-[10px] text-amber-400 bg-amber-100 px-1 py-0.5 rounded hidden lg:inline">{(dept as any).storeName}</code>
+                                          )}
                                           <span className="text-gray-400 text-xs">{dept.employeeCount} dipendenti</span>
                                           {dept.hasDocuments ? (
                                             <Badge variant="outline" className="ml-auto bg-indigo-50 text-indigo-700 border-indigo-200">
@@ -3434,6 +3445,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {openClients[`email-${account.accountId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <Mail className={`h-4 w-4 ${account.hasDocuments ? 'text-blue-600' : 'text-amber-500'}`} />
                                           <span className="text-gray-800 font-medium">{account.accountName}</span>
+                                          {account.storeName && (
+                                            <code className="text-[10px] text-blue-400 bg-blue-50 px-1 py-0.5 rounded hidden lg:inline">{account.storeName}</code>
+                                          )}
                                           <span className="text-gray-400 text-xs hidden md:inline">({account.emailAddress})</span>
                                           {account.hasDocuments ? (
                                             <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
@@ -3510,6 +3524,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {openClients[`wa-${agent.agentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <MessageCircle className={`h-4 w-4 ${agent.hasDocuments ? 'text-green-600' : 'text-amber-500'}`} />
                                           <span className="text-gray-800 font-medium">{agent.agentName}</span>
+                                          {agent.storeName && (
+                                            <code className="text-[10px] text-green-400 bg-green-50 px-1 py-0.5 rounded hidden lg:inline">{agent.storeName}</code>
+                                          )}
                                           <Badge variant="outline" className="text-xs">{agent.agentType}</Badge>
                                           {!agent.isActive && <Badge variant="secondary" className="text-xs">Inattivo</Badge>}
                                           {agent.hasDocuments ? (
@@ -3575,6 +3592,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {openClients[`auto-${agent.agentId}`] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <Bot className={`h-4 w-4 ${agent.hasDocuments ? 'text-indigo-600' : 'text-gray-400'}`} />
                                           <span className="text-gray-800 font-medium">{agent.agentName}</span>
+                                          {agent.storeName && (
+                                            <code className="text-[10px] text-indigo-400 bg-indigo-50 px-1 py-0.5 rounded hidden lg:inline">{agent.storeName}</code>
+                                          )}
                                           <span className="text-gray-400 text-xs hidden md:inline">{agent.agentDisplayName.split(' – ')[1] || ''}</span>
                                           {agent.hasDocuments ? (
                                             <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
