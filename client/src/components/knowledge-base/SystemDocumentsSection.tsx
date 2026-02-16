@@ -392,12 +392,11 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
   };
 
   const handleSelectAll = () => {
-    const selectableFiles = filteredFiles.filter((f: any) => !fullImportedMap.has(f.id));
-    if (selectedFiles.size === selectableFiles.length && selectableFiles.length > 0) {
+    if (selectedFiles.size === filteredFiles.length && filteredFiles.length > 0) {
       setSelectedFiles(new Map());
     } else {
       const newMap = new Map<string, { id: string; name: string }>();
-      selectableFiles.forEach((f: any) => newMap.set(f.id, { id: f.id, name: f.name }));
+      filteredFiles.forEach((f: any) => newMap.set(f.id, { id: f.id, name: f.name }));
       setSelectedFiles(newMap);
     }
   };
@@ -607,21 +606,15 @@ function DriveFilePicker({ onTextExtracted, onMultipleExtracted, existingDocumen
                     <div
                       key={file.id}
                       className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${
-                        isImportedFile ? 'bg-green-50/40' : selectedFiles.has(file.id) ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
+                        selectedFiles.has(file.id) ? 'bg-indigo-50/60' : isImportedFile ? 'bg-green-50/20 hover:bg-green-50/40' : 'hover:bg-slate-50'
                       }`}
                     >
-                      {isImportedFile ? (
-                        <div className="shrink-0 w-4 h-4 flex items-center justify-center">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        </div>
-                      ) : (
-                        <Checkbox
-                          checked={selectedFiles.has(file.id)}
-                          onCheckedChange={(checked) => handleFileCheck(file, !!checked)}
-                          className="shrink-0"
-                          disabled={isImporting}
-                        />
-                      )}
+                      <Checkbox
+                        checked={selectedFiles.has(file.id)}
+                        onCheckedChange={(checked) => handleFileCheck(file, !!checked)}
+                        className="shrink-0"
+                        disabled={isImporting}
+                      />
                       {getFileIcon(file.mimeType)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
