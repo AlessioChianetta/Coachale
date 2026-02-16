@@ -95,6 +95,104 @@ function buildFollowUpSection(previousResults: Record<string, any>): string {
   return `\n=== FOLLOW-UP COLLEGATI A QUESTO TASK (${followUps.length}) ===\nQuesti sono sotto-task collegati allo stesso obiettivo. Tienili in considerazione per avere il quadro completo:\n${items}\n`;
 }
 
+export interface AgentDocuments {
+  systemPromptDocs: { id: string; title: string; content: string; source: 'system_prompt_document' | 'kb_document'; injection_mode: string }[];
+  fileSearchStoreNames: string[];
+  fileSearchDocTitles: string[];
+}
+
+export async function loadAgentDocuments(consultantId: string, agentId: string, taskId: string): Promise<AgentDocuments> {
+  const result: AgentDocuments = { systemPromptDocs: [], fileSearchStoreNames: [], fileSearchDocTitles: [] };
+
+  try {
+    const spdResult = await db.execute(sql`
+      SELECT id, title, content, injection_mode
+      FROM system_prompt_documents
+      WHERE consultant_id = ${consultantId}
+        AND is_active = true
+        AND jsonb_extract_path_text(target_autonomous_agents, ${agentId}) = 'true'
+    `);
+    const MAX_INLINE_CHARS = 32000;
+    for (const row of spdResult.rows as any[]) {
+      if (row.injection_mode === 'system_prompt' && row.content.length <= MAX_INLINE_CHARS) {
+        result.systemPromptDocs.push({
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          source: 'system_prompt_document',
+          injection_mode: 'system_prompt',
+        });
+        console.log(`📄 [AGENT-DOCS] [${agentId.toUpperCase()}] System Prompt doc loaded: "${row.title}" (${row.content.length} chars) [source: Documenti di Sistema]`);
+      } else if (row.injection_mode === 'system_prompt' && row.content.length > MAX_INLINE_CHARS) {
+        result.fileSearchDocTitles.push(row.title);
+        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] System Prompt doc TOO LARGE for inline (${row.content.length} chars > ${MAX_INLINE_CHARS}), redirected to File Search: "${row.title}"`);
+      } else {
+        result.fileSearchDocTitles.push(row.title);
+        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] File Search doc registered: "${row.title}" [source: Documenti di Sistema, mode: file_search]`);
+      }
+    }
+
+    const kbResult = await db.execute(sql`
+      SELECT d.id, d.title, d.file_size, d.status,
+        spd.injection_mode as spd_mode, spd.content as spd_content
+      FROM agent_knowledge_assignments aka
+      JOIN consultant_knowledge_documents d ON d.id = aka.document_id
+      LEFT JOIN system_prompt_documents spd ON spd.id = d.id AND spd.consultant_id = ${consultantId}
+      WHERE aka.consultant_id = ${consultantId}
+        AND aka.agent_id = ${agentId}
+        AND d.status = 'indexed'
+    `);
+    for (const row of kbResult.rows as any[]) {
+      const fileSize = Number(row.file_size || 0);
+      const estimatedTokens = Math.ceil(fileSize / 4);
+
+      if (row.spd_mode === 'system_prompt' && row.spd_content && estimatedTokens <= 8000) {
+        const alreadyLoaded = result.systemPromptDocs.some(d => d.id === row.id);
+        if (!alreadyLoaded) {
+          result.systemPromptDocs.push({
+            id: row.id,
+            title: row.title,
+            content: row.spd_content,
+            source: 'kb_document',
+            injection_mode: 'system_prompt',
+          });
+          console.log(`📄 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc loaded inline: "${row.title}" (~${estimatedTokens} tokens) [source: Knowledge Base, mode: system_prompt]`);
+        }
+      } else {
+        result.fileSearchDocTitles.push(row.title);
+        console.log(`🔍 [AGENT-DOCS] [${agentId.toUpperCase()}] KB doc for File Search: "${row.title}" (~${estimatedTokens} tokens, ${(fileSize / 1024 / 1024).toFixed(1)}MB) [source: Knowledge Base, mode: file_search]`);
+      }
+    }
+
+    if (result.fileSearchDocTitles.length > 0) {
+      try {
+        const consultantStores = await fileSearchService.getConsultantOwnStores(consultantId);
+        result.fileSearchStoreNames = [...new Set(consultantStores)];
+        console.log(`🗂️ [AGENT-DOCS] [${agentId.toUpperCase()}] File Search stores loaded: ${result.fileSearchStoreNames.length} stores for ${result.fileSearchDocTitles.length} docs`);
+      } catch (storeErr: any) {
+        console.warn(`⚠️ [AGENT-DOCS] [${agentId.toUpperCase()}] Failed to load consultant stores: ${storeErr.message}`);
+      }
+    }
+
+    await logActivity(consultantId, {
+      event_type: "agent_documents_loaded",
+      title: `📚 ${agentId}: ${result.systemPromptDocs.length} doc in memoria, ${result.fileSearchDocTitles.length} doc in ricerca`,
+      description: [
+        ...result.systemPromptDocs.map(d => `📄 "${d.title}" (${d.source === 'system_prompt_document' ? 'Doc Sistema' : 'Knowledge Base'}) → System Prompt`),
+        ...result.fileSearchDocTitles.map(t => `🔍 "${t}" → File Search/RAG`),
+      ].join('\n') || 'Nessun documento assegnato',
+      icon: "📚",
+      severity: "info",
+      task_id: taskId,
+    });
+
+  } catch (err: any) {
+    console.error(`⚠️ [AGENT-DOCS] [${agentId?.toUpperCase()}] Failed to load documents: ${err.message}`);
+  }
+
+  return result;
+}
+
 export async function executeStep(
   task: AITaskInfo,
   step: ExecutionStep,
@@ -123,6 +221,7 @@ export async function executeStep(
 
     let rolePersonality: string | null = null;
     let agentContextSection = '';
+    let agentDocs: AgentDocuments | null = null;
     if (task.ai_role) {
       rolePersonality = await buildRolePersonality(task.consultant_id, task.ai_role);
       try {
@@ -134,6 +233,22 @@ export async function executeStep(
       } catch (ctxErr: any) {
         console.warn(`${LOG_PREFIX} Failed to load agent context for ${task.ai_role}: ${ctxErr.message}`);
       }
+
+      try {
+        agentDocs = await loadAgentDocuments(task.consultant_id, task.ai_role, task.id);
+        if (agentDocs.systemPromptDocs.length > 0) {
+          const docsSection = agentDocs.systemPromptDocs.map(d =>
+            `\n=== DOCUMENTO: ${d.title} (${d.source === 'system_prompt_document' ? 'Istruzione di Sistema' : 'Knowledge Base'}) ===\n${d.content}`
+          ).join('\n');
+          agentContextSection += `\n\n📚 DOCUMENTI ASSEGNATI AL DIPENDENTE (${agentDocs.systemPromptDocs.length} documenti in memoria):${docsSection}`;
+          console.log(`${LOG_PREFIX} Injected ${agentDocs.systemPromptDocs.length} system prompt docs into context (${docsSection.length} chars added)`);
+        }
+        if (agentDocs.fileSearchDocTitles.length > 0) {
+          console.log(`${LOG_PREFIX} ${agentDocs.fileSearchDocTitles.length} docs available for File Search: ${agentDocs.fileSearchDocTitles.join(', ')}`);
+        }
+      } catch (docsErr: any) {
+        console.warn(`${LOG_PREFIX} Failed to load agent documents for ${task.ai_role}: ${docsErr.message}`);
+      }
     }
 
     let result: Record<string, any>;
@@ -143,7 +258,7 @@ export async function executeStep(
         result = await handleFetchClientData(task, step, previousResults);
         break;
       case "search_private_stores":
-        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection);
+        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection, agentDocs);
         break;
       case "analyze_patterns":
         result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection);
@@ -353,8 +468,9 @@ async function handleSearchPrivateStores(
   _previousResults: Record<string, any>,
   rolePersonality?: string | null,
   agentContextSection?: string,
+  agentDocs?: AgentDocuments | null,
 ): Promise<Record<string, any>> {
-  console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}`);
+  console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}, agent_file_search_docs=${agentDocs?.fileSearchDocTitles?.length || 0}`);
 
   let storeNames: string[] = [];
 
@@ -362,8 +478,37 @@ async function handleSearchPrivateStores(
     try {
       const clientStores = await fileSearchService.getStoreNamesForClient(task.contact_id, task.consultant_id);
       storeNames.push(...clientStores);
+      if (clientStores.length > 0) {
+        console.log(`${LOG_PREFIX} Found ${clientStores.length} client stores`);
+      }
     } catch (err: any) {
       console.warn(`${LOG_PREFIX} Failed to get client stores: ${err.message}`);
+    }
+  }
+
+  if (agentDocs && agentDocs.fileSearchStoreNames.length > 0) {
+    storeNames.push(...agentDocs.fileSearchStoreNames);
+    console.log(`${LOG_PREFIX} Added ${agentDocs.fileSearchStoreNames.length} agent File Search stores (for docs: ${agentDocs.fileSearchDocTitles.join(', ')})`);
+    
+    await logActivity(task.consultant_id, {
+      event_type: "step_search_agent_docs",
+      title: `🔍 Ricerca nei documenti assegnati: ${agentDocs.fileSearchDocTitles.join(', ')}`,
+      description: `File Search RAG in ${agentDocs.fileSearchStoreNames.length} archivi del consulente`,
+      icon: "🔍",
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+  } else if (!task.contact_id) {
+    try {
+      const consultantStores = await fileSearchService.getConsultantOwnStores(task.consultant_id);
+      if (consultantStores.length > 0) {
+        storeNames.push(...consultantStores);
+        console.log(`${LOG_PREFIX} Added ${consultantStores.length} consultant own stores (no contact_id, fallback)`);
+      }
+    } catch (err: any) {
+      console.warn(`${LOG_PREFIX} Failed to get consultant stores: ${err.message}`);
     }
   }
 

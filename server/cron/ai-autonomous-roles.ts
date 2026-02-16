@@ -76,12 +76,18 @@ export async function fetchAgentContext(consultantId: string, agentId: string): 
 
     const userKbMode = ctx.kbInjectionMode || ctx.injectionMode || 'system_prompt';
     let kbForcedFileSearch = false;
-    if (userKbMode === 'system_prompt' && Array.isArray(ctx.linkedKbDocumentIds) && ctx.linkedKbDocumentIds.length > 0) {
+    let rawKbIds = ctx.linkedKbDocumentIds;
+    if (typeof rawKbIds === 'string') {
+      try { rawKbIds = JSON.parse(rawKbIds); } catch { rawKbIds = [rawKbIds]; }
+    }
+    const kbDocIds = Array.isArray(rawKbIds) ? rawKbIds.filter((id: string) => typeof id === 'string' && id.trim()) : [];
+    if (userKbMode === 'system_prompt' && kbDocIds.length > 0) {
       try {
+        const pgArray = `{${kbDocIds.join(',')}}`;
         const sizeResult = await db.execute(sql`
           SELECT COALESCE(SUM(file_size), 0) as total_size
           FROM consultant_knowledge_documents
-          WHERE id = ANY(${ctx.linkedKbDocumentIds}::text[])
+          WHERE id = ANY(${pgArray}::text[])
             AND consultant_id = ${consultantId}
             AND status = 'indexed'
         `);
