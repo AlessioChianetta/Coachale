@@ -1,0 +1,80 @@
+:58:20 PM [express] GET /api/ai-autonomy/roles/status 200 in 2022ms :: {"alessia":{"effectiveLevel"…
+🧠 [AI-AUTONOMY] Manual trigger by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🧠 [AUTONOMOUS-GEN] Starting generateTasksForConsultant for 0c73bbe5-51e1-4108-866b-6be7a52fce3b (dryRun=false)
+🧠 [AUTONOMOUS-GEN] Settings loaded OK for 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🧠 [AUTONOMOUS-GEN] Active roles: alessia, millie, echo, nova, stella, iris, marco, personalizza for 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🧠 [AUTONOMOUS-GEN] Fetching clients for 0c73bbe5-51e1-4108-866b-6be7a52fce3b...
+🧠 [AUTONOMOUS-GEN] Found 14 clients, enriching with dates...
+🧠 [AUTONOMOUS-GEN] Enriched 14 clients, proceeding to pending tasks...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)
+   🔑 Key: 1/1
+🧠 [AUTONOMOUS-GEN] Using provider: Google AI Studio (model: gemini-3-flash-preview)
+🧠 [AUTONOMOUS-GEN] Running 8 AI roles for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: Alessia, Millie, Echo, Nova, Stella, Iris, Marco, Personalizza (cycle: cycle_1771261107671_krkk1t)
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🧠 [AUTONOMOUS-GEN] [Alessia] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Millie] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Echo] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Nova] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Stella] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Iris] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] [Marco] Fetching role-specific data... (clients: 14/14 [FULL])
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://5b5ed958-4f7a-4b54-a060-cefb5402be7c-00-2ms28dlzyk5g3.kirk.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 [LIST EVENTS] Using consultant's calendar (legacy flow): primary
+📅 Fetching events from calendar: primary
+📅 [LIST EVENTS] Date range: 2026-02-16T16:58:27.968Z → 2026-02-23T16:58:27.968Z
+📅 [LIST EVENTS] Total events from Google: 17
+📅 [LIST EVENTS] Cancelled events (filtered out): 0
+📅 [LIST EVENTS] Transparent/Free events (filtered out): 0
+📅 [LIST EVENTS] Final events after filtering: 17
+📅 [LIST EVENTS] First event: FINE GIORNATA on 2026-02-16T19:00:00.000Z
+📅 [LIST EVENTS] Last event: PRANZO on 2026-02-23T12:00:00.000Z
+ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+🔍 [FileSearch] getConsultantOwnStores - ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 1 consultant-only stores: Knowledge Base Consulente
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://5b5ed958-4f7a-4b54-a060-cefb5402be7c-00-2ms28dlzyk5g3.kirk.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 [LIST EVENTS] Using consultant's calendar (legacy flow): primary
+📅 Fetching events from calendar: primary
+📅 [LIST EVENTS] Date range: 2026-02-01T00:00:00.000Z → 2026-05-01T00:00:00.000Z
+📅 [LIST EVENTS] Total events from Google: 234
+📅 [LIST EVENTS] Cancelled events (filtered out): 0
+📅 [LIST EVENTS] Transparent/Free events (filtered out): 1
+📅 [LIST EVENTS] Sample transparent events being filtered:
+   - "Buon compleanno!" on 2026-02-02
+📅 [LIST EVENTS] Final events after filtering: 233
+📅 [LIST EVENTS] First event: INIZIO GIORNATA on 2026-02-02T07:00:00.000Z
+📅 [LIST EVENTS] Last event: FINE GIORNATA on 2026-04-30T18:00:00.000Z
+🧠 [AUTONOMOUS-GEN] [Marco] Role data fetched OK (keys: upcomingConsultations, workload, clientCount, consultationMonitoring, schedulingGaps, marcoContext, kbDocumentTitles, fileSearchStoreNames, consultantPersonalTasks, clientTasks, clientTaskStats)
+📎 [MARCO] KB docs exceed 5000 tokens (~1058111), forcing File Search
+🎯 [AUTONOMOUS-GEN] [Marco] Injected agent context (3 priorities, KB mode: file_search [FORCED])
+💬 [AUTONOMOUS-GEN] [Marco] Injected chat context (summary: no, recent msgs: 10)
+📌 [SYSTEM-DOCS] Fetched 0 system docs for agent "marco" of consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📌 [SYSTEM-DOCS] Fetched 1 KB docs for agent "marco" of consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📌 [AUTONOMOUS-GEN] [Marco] Injected system docs into prompt
+ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+✅ [FileSearch] Store name valid: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+🧠 [AUTONOMOUS-GEN] [Marco] File Search enabled with 1 stores
+🧠 [AUTONOMOUS-GEN] [Marco] Calling Gemini (Google AI Studio, gemini-3-flash-preview)...
+📝 [AUTONOMOUS-GEN] [Marco] System prompt logged (148728 chars)
+🔒 [Semaphore] Acquired slot (1/3 in use)
+4:58:35 PM [express] POST /api/activity/session/heartbeat 200 in 431ms :: {"success":true,"lastActiv…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔓 [Semaphore] Released slot (0/3 in use)
+🔄 [AUTONOMOUS-GEN] [Marco] AI explicitly marked follow_up_of=auto_marco_1771236025265_3hvsnr. Updating existing task.
+⚠️ [SCHEDULING] AI suggested time 2026-02-16T18:30 outside working hours/days (12-15, days: 1,2,3,4,5,6,7), using fallback
+✅ [AUTONOMOUS-GEN] [Marco] Created task auto_marco_1771261130509_itt98j for Strategia Pricing & Upsell (preparation)
+🧠 [AUTONOMOUS-GEN] [Personalizza] Outside role-specific working hours, skipping
+🧠 [AUTONOMOUS-GEN] Total: 1 tasks  created across 8 roles for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+4:58:50 PM [express] POST /api/ai-autonomy/trigger-analysis 200 in 27926ms :: {"success":true,"tasks…
+4:58:51 PM [express] GET /api/ai-autonomy/system-status 200 in 1000ms :: {"is_active":true,"autonomy…
+4:58:51 PM [express] GET /api/ai-autonomy/autonomous-logs 200 in 724ms :: {"logs":[{"id":"d0776843-5…
+4:58:52 PM [express] GET /api/ai-autonomy/system-status 304 in 722ms :: {"is_active":true,"autonomy_…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0

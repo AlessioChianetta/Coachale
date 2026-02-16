@@ -1755,14 +1755,14 @@ router.get("/autonomous-logs", authenticateToken, requireAnyRole(["consultant", 
     const eventTypeFilter = req.query.event_type as string || "all";
     const severityFilter = req.query.severity as string || "all";
 
-    const allowedEventTypes = ['autonomous_analysis', 'autonomous_task_created', 'autonomous_error'];
+    const allowedEventTypes = ['autonomous_analysis', 'autonomous_task_created', 'autonomous_error', 'system_prompt_log'];
     const filterEventTypes = eventTypeFilter !== "all" && allowedEventTypes.includes(eventTypeFilter)
       ? [eventTypeFilter]
       : allowedEventTypes;
 
     const eventTypeSql = filterEventTypes.length === 1
       ? sql`AND event_type = ${filterEventTypes[0]}`
-      : sql`AND event_type IN ('autonomous_analysis', 'autonomous_task_created', 'autonomous_error')`;
+      : sql`AND event_type IN ('autonomous_analysis', 'autonomous_task_created', 'autonomous_error', 'system_prompt_log')`;
 
     const severitySql = severityFilter !== "all"
       ? sql`AND severity = ${severityFilter}`

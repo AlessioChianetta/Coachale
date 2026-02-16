@@ -1153,6 +1153,7 @@ function SettingsTab({
                       <SelectItem value="autonomous_analysis">Analisi</SelectItem>
                       <SelectItem value="autonomous_task_created">Task creati</SelectItem>
                       <SelectItem value="autonomous_error">Errori</SelectItem>
+                      <SelectItem value="system_prompt_log">System Prompt</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={autonomousLogSeverityFilter} onValueChange={(val) => { setAutonomousLogSeverityFilter(val); setAutonomousLogsPage(1); }}>
