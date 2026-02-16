@@ -2372,7 +2372,7 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
       return res.status(400).json({ error: "Massimo 20 task per aggregazione" });
     }
 
-    const idPlaceholders = sql.join(task_ids.map((id: string) => sql`${id}::uuid`), sql`, `);
+    const idPlaceholders = sql.join(task_ids.map((id: string) => sql`${id}`), sql`, `);
     const tasksResult = await db.execute(sql`
       SELECT id, ai_instruction, ai_role, contact_name, contact_id, contact_phone,
              task_category, priority, status, additional_context, ai_reasoning,
@@ -2412,7 +2412,7 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
       WHERE id = ${mainTask.id} AND consultant_id = ${consultantId}
     `);
 
-    const secondaryIdPlaceholders = sql.join(secondaryTasks.map((t: any) => sql`${t.id}::uuid`), sql`, `);
+    const secondaryIdPlaceholders = sql.join(secondaryTasks.map((t: any) => sql`${t.id}`), sql`, `);
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
       SET status = 'cancelled',
@@ -2424,12 +2424,12 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
     for (const secTask of secondaryTasks) {
       await db.execute(sql`
         INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
-        VALUES (${consultantId}::uuid, ${secTask.id}::uuid, 'merged', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
+        VALUES (${consultantId}, ${secTask.id}, 'merged', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
       `);
     }
     await db.execute(sql`
       INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
-      VALUES (${consultantId}::uuid, ${mainTask.id}::uuid, 'merged', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
+      VALUES (${consultantId}, ${mainTask.id}, 'merged', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
     `);
 
     return res.json({
