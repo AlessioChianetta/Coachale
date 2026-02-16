@@ -1447,9 +1447,11 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const recentReasoningResult = await db.execute(sql`
     SELECT description, ai_role, created_at
-    FROM activity_logs
+    FROM ai_activity_log
     WHERE consultant_id = ${cId}
       AND event_type = 'autonomous_analysis'
+      AND description IS NOT NULL
+      AND description != ''
       AND created_at > NOW() - INTERVAL '3 days'
     ORDER BY created_at DESC
     LIMIT 16
@@ -1462,6 +1464,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       recentReasoningByRole[role].push(r.description.substring(0, 500));
     }
   }
+
+  const reasoningRolesCount = Object.keys(recentReasoningByRole).length;
+  const reasoningTotalEntries = Object.values(recentReasoningByRole).reduce((sum, arr) => sum + arr.length, 0);
+  console.log(`🧠 [AUTONOMOUS-GEN] Loaded reasoning context: ${reasoningRolesCount} roles, ${reasoningTotalEntries} entries`);
+  
+  const tasksWithResults = recentAllTasksSummary.filter(t => t.result);
+  console.log(`📊 [AUTONOMOUS-GEN] Task memory: ${recentAllTasksSummary.length} total tasks, ${tasksWithResults.length} with result_summary`);
 
   const blocksResult = await db.execute(sql`
     SELECT b.contact_id::text, b.task_category, b.ai_role,
