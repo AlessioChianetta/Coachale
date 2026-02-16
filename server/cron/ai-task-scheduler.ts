@@ -1785,6 +1785,7 @@ FORMATO JSON quando è un task nuovo (come prima):
       }
 
       // Inject chat context (recent conversations + summary) into autonomous analysis
+      // Target: ~8k tokens of chat context (roughly 32k chars). Full messages, no truncation.
       try {
         const chatSettingsResult = await db.execute(sql`
           SELECT chat_summaries FROM ai_autonomy_settings WHERE consultant_id::text = ${cId} LIMIT 1
@@ -1795,33 +1796,45 @@ FORMATO JSON quando è un task nuovo (come prima):
         const recentChatResult = await db.execute(sql`
           SELECT sender, message, created_at FROM agent_chat_messages
           WHERE consultant_id::text = ${cId} AND ai_role = ${role.id}
-            AND created_at > NOW() - INTERVAL '48 hours'
-          ORDER BY created_at DESC LIMIT 10
+          ORDER BY created_at DESC LIMIT 80
         `);
-        const recentChatMsgs = (recentChatResult.rows as any[]).reverse();
+        const allChatMsgs = (recentChatResult.rows as any[]).reverse();
 
-        if (roleChatSummary || recentChatMsgs.length > 0) {
+        if (roleChatSummary || allChatMsgs.length > 0) {
           let chatSection = '\n\n--- CONTESTO CHAT CON IL CONSULENTE ---\n';
-          chatSection += 'Il consulente comunica con te anche via chat diretta. Tieni conto di queste conversazioni nelle tue analisi e decisioni.\n';
+          chatSection += 'Il consulente comunica con te anche via chat diretta. Queste conversazioni sono FONDAMENTALI: contengono richieste, feedback, decisioni e istruzioni dirette. Leggile attentamente e tienine conto in ogni analisi e decisione.\n';
 
           if (roleChatSummary) {
-            chatSection += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI:\n${roleChatSummary}\n`;
+            chatSection += `\nRIASSUNTO STORICO CONVERSAZIONI:\n${roleChatSummary}\n`;
           }
 
-          if (recentChatMsgs.length > 0) {
-            chatSection += `\nMESSAGGI RECENTI (ultime 48h):\n`;
-            for (const m of recentChatMsgs) {
+          let includedCount = 0;
+          if (allChatMsgs.length > 0) {
+            const TOKEN_CHAR_LIMIT = 32000;
+            let msgsText = '';
+
+            for (const m of allChatMsgs) {
               const sender = m.sender === 'consultant' ? 'Consulente' : role.name;
-              const time = new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
-              chatSection += `[${time}] ${sender}: ${(m.message as string).substring(0, 200)}\n`;
+              const time = new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', dateStyle: 'short', timeStyle: 'short' });
+              const line = `[${time}] ${sender}: ${m.message}\n`;
+
+              if (msgsText.length + line.length > TOKEN_CHAR_LIMIT) break;
+              msgsText += line;
+              includedCount++;
+            }
+
+            chatSection += `\nMESSAGGI RECENTI (${includedCount} messaggi):\n${msgsText}`;
+
+            if (includedCount < allChatMsgs.length) {
+              chatSection += `\n(${allChatMsgs.length - includedCount} messaggi più vecchi omessi — vedi il riassunto storico sopra)\n`;
             }
           }
 
-          chatSection += '\nUSA QUESTE INFORMAZIONI per: evitare di duplicare richieste già discusse, rispettare le preferenze espresse dal consulente, dare priorità a ciò che il consulente ha chiesto.\n';
+          chatSection += '\nUSA QUESTE INFORMAZIONI per:\n- Evitare di duplicare richieste già discusse in chat\n- Rispettare le preferenze e decisioni espresse dal consulente\n- Dare MASSIMA priorità a ciò che il consulente ti ha chiesto direttamente\n- Se il consulente ti ha dato un compito in chat, QUEL compito ha priorità su tutto il resto\n';
           chatSection += '--- FINE CONTESTO CHAT ---\n';
 
           prompt = prompt + chatSection;
-          console.log(`💬 [AUTONOMOUS-GEN] [${role.name}] Injected chat context (summary: ${roleChatSummary ? 'yes' : 'no'}, recent msgs: ${recentChatMsgs.length})`);
+          console.log(`💬 [AUTONOMOUS-GEN] [${role.name}] Injected chat context (summary: ${roleChatSummary ? 'yes' : 'no'}, recent msgs: ${includedCount}/${allChatMsgs.length}, chars: ${chatSection.length})`);
         }
       } catch (chatCtxErr: any) {
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error injecting chat context: ${chatCtxErr.message}`);
