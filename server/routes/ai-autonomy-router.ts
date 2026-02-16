@@ -2578,6 +2578,8 @@ Esempio di flusso corretto:
 - Tu: "Perfetto, approvo il task. [[APPROVA:uuid-del-task]] Fatto! Il task è stato approvato e verrà eseguito."`;
 
 
+    console.log(`\n${'='.repeat(80)}\n[AGENT-CHAT] System prompt completo per ${roleId.toUpperCase()} (${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}):\n${'='.repeat(80)}\n${systemPrompt}\n${'='.repeat(80)}\n`);
+
     const historyLimit = existingSummary ? 15 : 20;
     const relevantHistory = chatHistory.slice(-historyLimit);
     const conversationParts = relevantHistory.map((m: any) => ({

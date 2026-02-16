@@ -148,8 +148,8 @@ function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanent
   let section = `\n⚠️ MEMORIA TASK (ULTIMI 7 GIORNI) - ANTI-DUPLICAZIONE:`;
   
   if (pendingTasks.length > 0) {
-    section += `\n\nTASK GIÀ IN CODA (NON duplicare):`;
-    section += `\n${JSON.stringify(pendingTasks.map(t => ({ contact: t.contact, category: t.category, instruction: t.instruction, status: t.status })), null, 2)}`;
+    section += `\n\nTASK GIÀ IN CODA (usa follow_up_of per aggiornare invece di creare duplicati):`;
+    section += `\n${JSON.stringify(pendingTasks.map(t => ({ id: t.id, contact: t.contact, category: t.category, instruction: t.instruction, status: t.status })), null, 2)}`;
   }
   
   if (cancelledTasks.length > 0) {
@@ -182,7 +182,13 @@ function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanent
     section += `\n${JSON.stringify(roleBlocks.map(b => ({ client: b.contactName || b.contactId, category: b.category || 'qualsiasi', role: b.role || 'qualsiasi' })), null, 2)}`;
   }
 
-  section += `\n\nREGOLA ANTI-DUPLICAZIONE: NON creare task identici o molto simili a quelli già in coda, completati o cancellati. Se un task è stato cancellato, il consulente non lo vuole - non riproporlo. Se c'è un BLOCCO PERMANENTE per un cliente/categoria, NON proporre MAI quel tipo di task. Se un altro ruolo AI ha già un task per quel cliente, evita sovrapposizioni.\n`;
+  section += `\n\nREGOLA ANTI-DUPLICAZIONE CRITICA:
+- Se vuoi aggiornare/insistere su un task GIÀ IN CODA (stesso obiettivo, stesso argomento, stessi clienti coinvolti), usa il campo "follow_up_of" con l'ID del task esistente INVECE di creare un nuovo task. Questo aggiorna il task esistente con la tua nuova istruzione.
+- Esempi di duplicati: "lancia le ADS" e "sei in ritardo sulle ADS" → stesso obiettivo → follow_up_of. "Contatta 5 clienti esauriti" e "blocca consulenze extra per clienti esauriti" → stesso obiettivo → follow_up_of.
+- NON creare task identici o molto simili a quelli già in coda, completati o cancellati.
+- Se un task è stato cancellato, il consulente non lo vuole - non riproporlo.
+- Se c'è un BLOCCO PERMANENTE per un cliente/categoria, NON proporre MAI quel tipo di task.
+- Se un altro ruolo AI ha già un task per quel cliente, evita sovrapposizioni.\n`;
   
   return section;
 }

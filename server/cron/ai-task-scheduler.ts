@@ -1176,6 +1176,9 @@ interface AutonomousSuggestedTask {
   preferred_channel: string;
   urgency: string;
   tone: string;
+  follow_up_of?: string;
+  scheduled_for?: string;
+  scheduling_reason?: string;
 }
 
 interface SimulationRoleResult {
@@ -1421,20 +1424,21 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   }));
 
   const allRecentTasksResult = await db.execute(sql`
-    SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, 
+    SELECT t.id, t.contact_id::text as contact_id, t.contact_name, t.task_category, 
            t.ai_instruction, t.status, t.ai_role, t.created_at,
            t.completed_at
     FROM ai_scheduled_tasks t
     WHERE t.consultant_id::text = ${cId}
       AND t.created_at > NOW() - INTERVAL '7 days'
-      AND t.status IN ('scheduled', 'waiting_approval', 'approved', 'cancelled', 'completed', 'failed')
+      AND t.status IN ('scheduled', 'waiting_approval', 'approved', 'cancelled', 'completed', 'failed', 'deferred')
     ORDER BY t.created_at DESC
     LIMIT 40
   `);
   const recentAllTasksSummary = (allRecentTasksResult.rows as any[]).map(t => ({
+    id: t.id,
     contact: t.contact_name || t.contact_id || 'N/A',
     category: t.task_category,
-    instruction: t.ai_instruction?.substring(0, 120),
+    instruction: t.ai_instruction?.substring(0, 150),
     status: t.status,
     role: t.ai_role || 'generic',
     created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
@@ -1697,6 +1701,35 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         permanentBlocks,
       });
 
+      const activeTasksForRole = recentAllTasksSummary.filter(t => 
+        t.role === role.id && ['scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress'].includes(t.status)
+      );
+      if (activeTasksForRole.length > 0) {
+        prompt += `\n\n--- ISTRUZIONE FOLLOW-UP (OBBLIGATORIA) ---
+Hai ${activeTasksForRole.length} task ATTIVI. Se il task che vuoi creare riguarda lo STESSO OBIETTIVO o ARGOMENTO di uno dei tuoi task attivi, NON creare un task nuovo. Usa invece il campo "follow_up_of" nel JSON con l'ID del task esistente.
+
+COME DECIDERE:
+- Stesso cliente + stesso argomento → follow_up_of
+- Stesso argomento anche se categoria diversa (es. "ADS" in monitoring vs preparation) → follow_up_of
+- Argomento completamente diverso → nuovo task (senza follow_up_of)
+
+FORMATO JSON quando è un follow-up:
+{
+  "follow_up_of": "ID_DEL_TASK_ESISTENTE",
+  "ai_instruction": "La nuova istruzione aggiornata (sostituirà quella vecchia)",
+  "priority": 2,
+  "reasoning": "Perché aggiorno questo task invece di crearne uno nuovo"
+}
+
+FORMATO JSON quando è un task nuovo (come prima):
+{
+  "contact_id": "...",
+  "contact_name": "...",
+  ... (tutti i campi normali, SENZA follow_up_of)
+}
+--- FINE ISTRUZIONE FOLLOW-UP ---`;
+      }
+
       // Inject per-agent context: focus priorities + custom context always in system prompt; KB docs follow kbInjectionMode
       try {
         const { fetchAgentContext: fetchCtx, buildAgentContextSection: buildCtxSection } = await import('./ai-autonomous-roles');
@@ -1930,6 +1963,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             reasoning: t.reasoning || '',
             channel: t.preferred_channel || role.preferredChannels[0] || 'none',
             priority: Math.min(Math.max(t.priority || 3, 1), 4),
+            followUpOf: t.follow_up_of || null,
             urgency: t.urgency || 'normale',
             wouldBeStatus: getTaskStatusForRole(settings, role.id),
           }));
@@ -1992,6 +2026,51 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               }
             }
 
+            // === FOLLOW-UP HANDLING ===
+            // 1. Explicit follow_up_of from Gemini (AI decided it's a follow-up)
+            if (suggestedTask.follow_up_of) {
+              const followUpId = suggestedTask.follow_up_of;
+              const existingCheck = await db.execute(sql`
+                SELECT id, status, ai_instruction, task_category
+                FROM ai_scheduled_tasks
+                WHERE id = ${followUpId}
+                  AND consultant_id = ${consultantId}::uuid
+                  AND status IN ('scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress')
+                LIMIT 1
+              `);
+
+              if (existingCheck.rows.length > 0) {
+                const existing = existingCheck.rows[0] as any;
+                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] AI explicitly marked follow_up_of=${followUpId}. Updating existing task.`);
+
+                const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                await db.execute(sql`
+                  UPDATE ai_scheduled_tasks
+                  SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
+                      updated_at = NOW(),
+                      ai_instruction = ${suggestedTask.ai_instruction || existing.ai_instruction},
+                      priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
+                  WHERE id = ${followUpId}
+                `);
+
+                await logActivity(consultantId, {
+                  event_type: 'autonomous_task_followup',
+                  title: `[${role.name}] Follow-up su task esistente (AI)`,
+                  description: `AI ha aggiornato task ${followUpId}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
+                  icon: '🔄',
+                  severity: 'info',
+                  task_id: followUpId,
+                  contact_name: suggestedTask.contact_name,
+                  ai_role: role.id,
+                  cycle_id: cycleId,
+                });
+                continue;
+              } else {
+                console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] follow_up_of=${followUpId} not found or not active. Creating as new task.`);
+              }
+            }
+
+            // 2. Automatic similarity check (safety net - broader than before: no category constraint, 7-day window)
             const contactIdValue = suggestedTask.contact_id || null;
             const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
 
@@ -2002,40 +2081,61 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
                 AND ai_role = ${role.id}
                 AND status IN ('scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress')
                 AND (
-                  (${hasValidContactId ? sql`contact_id = ${contactIdValue}::text::uuid` : sql`TRUE`})
+                  (${hasValidContactId ? sql`contact_id = ${contactIdValue}::text::uuid` : sql`FALSE`})
                   OR (${suggestedTask.contact_name ? sql`contact_name = ${suggestedTask.contact_name}` : sql`FALSE`})
                 )
-                AND task_category = ${suggestedTask.task_category || role.categories[0] || 'followup'}
-                AND created_at > NOW() - interval '48 hours'
-              LIMIT 1
+                AND created_at > NOW() - interval '7 days'
+              ORDER BY created_at DESC
+              LIMIT 3
             `);
 
             if (similarCheck.rows.length > 0) {
-              const existing = similarCheck.rows[0] as any;
-              console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Similar task already exists (${existing.id}, status=${existing.status}). Converting to follow-up instead of creating new.`);
+              const candidates = similarCheck.rows as any[];
+              let matchedExisting: any = null;
 
-              const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 300) || 'Aggiornamento'}`;
-              await db.execute(sql`
-                UPDATE ai_scheduled_tasks
-                SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
-                    updated_at = NOW(),
-                    ai_instruction = ${suggestedTask.ai_instruction || existing.ai_instruction},
-                    priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
-                WHERE id = ${existing.id}
-              `);
+              const stopWords = new Set(['questo', 'quella', 'quelli', 'delle', 'della', 'degli', 'nelle', 'nella', 'sulla', 'sulle', 'senza', 'essere', 'avere', 'anche', 'ancora', 'perché', 'quando', 'come', 'dove', 'molto', 'tutti', 'tutto', 'ogni', 'altro', 'altri', 'prima', 'dopo', 'contro', 'verso', 'sotto', 'sopra', 'dentro', 'fuori', 'subito', 'devi', 'deve', 'devono', 'stai', 'sono', 'hanno', 'fatto', 'fare', 'farlo', 'farsi', 'vuoi', 'vuole', 'puoi', 'potenziale', 'cliente', 'clienti', 'consulente', 'consulenza', 'consulenze', 'livello', 'mese', 'month']);
+              for (const candidate of candidates) {
+                const existingWords = new Set((candidate.ai_instruction || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 5 && !stopWords.has(w)));
+                const newWords = new Set((suggestedTask.ai_instruction || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 5 && !stopWords.has(w)));
+                if (newWords.size < 3) continue;
+                let overlap = 0;
+                for (const w of newWords) {
+                  if (existingWords.has(w)) overlap++;
+                }
+                const similarity = newWords.size > 0 ? overlap / newWords.size : 0;
+                if (similarity >= 0.4) {
+                  matchedExisting = candidate;
+                  console.log(`🔍 [AUTONOMOUS-GEN] [${role.name}] Word similarity ${(similarity * 100).toFixed(0)}% with task ${candidate.id} (${overlap}/${newWords.size} words)`);
+                  break;
+                }
+              }
 
-              await logActivity(consultantId, {
-                event_type: 'autonomous_task_followup',
-                title: `[${role.name}] Follow-up su task esistente`,
-                description: `Aggiornamento al task ${existing.id}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
-                icon: '🔄',
-                severity: 'info',
-                task_id: existing.id,
-                contact_name: suggestedTask.contact_name,
-                ai_role: role.id,
-                cycle_id: cycleId,
-              });
-              continue;
+              if (matchedExisting) {
+                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Similar task detected (${matchedExisting.id}, status=${matchedExisting.status}). Converting to follow-up.`);
+
+                const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                await db.execute(sql`
+                  UPDATE ai_scheduled_tasks
+                  SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
+                      updated_at = NOW(),
+                      ai_instruction = ${suggestedTask.ai_instruction || matchedExisting.ai_instruction},
+                      priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
+                  WHERE id = ${matchedExisting.id}
+                `);
+
+                await logActivity(consultantId, {
+                  event_type: 'autonomous_task_followup',
+                  title: `[${role.name}] Follow-up su task esistente`,
+                  description: `Aggiornamento al task ${matchedExisting.id}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
+                  icon: '🔄',
+                  severity: 'info',
+                  task_id: matchedExisting.id,
+                  contact_name: suggestedTask.contact_name,
+                  ai_role: role.id,
+                  cycle_id: cycleId,
+                });
+                continue;
+              }
             }
 
             const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
