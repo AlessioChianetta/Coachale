@@ -32,6 +32,7 @@ export default function ConsultantAIAutonomyPage() {
   const [activeTab, setActiveTab] = useState("settings");
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
+  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
 
   const [activityPage, setActivityPage] = useState(1);
   const [severityFilter, setSeverityFilter] = useState<string>("all");
@@ -751,6 +752,10 @@ export default function ConsultantAIAutonomyPage() {
                     loadingTaskDetail={loadingTaskDetail}
                     onExecuteTask={(taskId) => executeTaskMutation.mutate(taskId)}
                     tasksUrl={tasksUrl}
+                    onOpenChatWithTask={(roleId, context) => {
+                      setChatInitialMessage(context);
+                      setChatOpenRoleId(roleId);
+                    }}
                   />
                 </TabsContent>
 
@@ -785,7 +790,8 @@ export default function ConsultantAIAutonomyPage() {
                   avatar={chatProfile?.avatar || "🤖"}
                   accentColor={chatRole.accentColor}
                   open={true}
-                  onClose={() => setChatOpenRoleId(null)}
+                  onClose={() => { setChatOpenRoleId(null); setChatInitialMessage(undefined); }}
+                  initialMessage={chatInitialMessage}
                 />
               </div>
             ) : null;

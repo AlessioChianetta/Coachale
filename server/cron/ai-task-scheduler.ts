@@ -90,6 +90,16 @@ async function processAITasks(): Promise<void> {
     } else {
       console.log('🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move');
     }
+
+    const deferredMoveResult = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'waiting_approval', updated_at = NOW()
+      WHERE status = 'deferred' AND scheduled_at <= NOW()
+      RETURNING id, ai_role, task_type
+    `);
+    if (deferredMoveResult.rows.length > 0) {
+      console.log(`🤖 [AI-SCHEDULER] STEP 1b: Re-queued ${deferredMoveResult.rows.length} deferred→waiting_approval:`, deferredMoveResult.rows.map((r: any) => `${r.id}(${r.ai_role})`));
+    }
     
     // Find tasks ready to execute:
     // 1. Scheduled tasks whose time has come
@@ -1982,10 +1992,53 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
               }
             }
 
-            const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
             const contactIdValue = suggestedTask.contact_id || null;
             const hasValidContactId = contactIdValue && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(contactIdValue);
+
+            const similarCheck = await db.execute(sql`
+              SELECT id, status, ai_instruction, task_category, scheduled_at
+              FROM ai_scheduled_tasks
+              WHERE consultant_id = ${sql.raw(`'${consultantId}'::uuid`)}
+                AND ai_role = ${role.id}
+                AND status IN ('scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress')
+                AND (
+                  (${hasValidContactId ? sql`contact_id = ${contactIdValue}::text::uuid` : sql`TRUE`})
+                  OR (${suggestedTask.contact_name ? sql`contact_name = ${suggestedTask.contact_name}` : sql`FALSE`})
+                )
+                AND task_category = ${suggestedTask.task_category || role.categories[0] || 'followup'}
+                AND created_at > NOW() - interval '48 hours'
+              LIMIT 1
+            `);
+
+            if (similarCheck.rows.length > 0) {
+              const existing = similarCheck.rows[0] as any;
+              console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Similar task already exists (${existing.id}, status=${existing.status}). Converting to follow-up instead of creating new.`);
+
+              const followUpNote = `\n[Follow-up AI ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]: ${suggestedTask.ai_instruction?.substring(0, 300) || 'Aggiornamento'}`;
+              await db.execute(sql`
+                UPDATE ai_scheduled_tasks
+                SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
+                    updated_at = NOW(),
+                    ai_instruction = ${suggestedTask.ai_instruction || existing.ai_instruction},
+                    priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
+                WHERE id = ${existing.id}
+              `);
+
+              await logActivity(consultantId, {
+                event_type: 'autonomous_task_followup',
+                title: `[${role.name}] Follow-up su task esistente`,
+                description: `Aggiornamento al task ${existing.id}: ${suggestedTask.ai_instruction?.substring(0, 100) || 'Follow-up'}`,
+                icon: '🔄',
+                severity: 'info',
+                task_id: existing.id,
+                contact_name: suggestedTask.contact_name,
+                ai_role: role.id,
+                cycle_id: cycleId,
+              });
+              continue;
+            }
+
+            const taskId = `auto_${role.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
             const taskScheduledAt = computeTaskScheduledAt(suggestedTask.scheduled_for, suggestedTask.urgency, settings, scheduledAt);
             const schedulingReason = suggestedTask.scheduling_reason || null;

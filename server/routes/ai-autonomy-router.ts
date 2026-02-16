@@ -948,7 +948,7 @@ router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "sup
           COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
           COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
           COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
-          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval'))::int as pending
+          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval', 'deferred'))::int as pending
         FROM ai_scheduled_tasks
         WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'
       `),
@@ -2309,6 +2309,44 @@ router.patch("/tasks/:id/mark-done", authenticateToken, requireAnyRole(["consult
     return res.status(500).json({ error: "Failed to mark task as done" });
   }
 });
+
+// =========================================================================
+// POSTPONE TASK - Mark as deferred (done for now, but pending re-analysis)
+// =========================================================================
+
+router.patch("/tasks/:id/postpone", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const { note, reschedule_hours } = req.body;
+
+    const hours = Math.min(Math.max(parseInt(reschedule_hours) || 24, 1), 168);
+    const noteText = note ? `\n[Rimandato dal consulente: ${note}]` : '\n[Rimandato dal consulente]';
+
+    const result = await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'deferred',
+          updated_at = NOW(),
+          result_summary = COALESCE(result_summary, '') || ${noteText},
+          scheduled_at = NOW() + make_interval(hours => ${hours})
+      WHERE id = ${id}
+        AND consultant_id = ${consultantId}
+        AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+    `);
+
+    if ((result.rowCount ?? 0) === 0) {
+      return res.status(400).json({ error: "Task non trovato o non rimandabile" });
+    }
+
+    return res.json({ success: true, message: "Task rimandato, verrà ri-analizzato automaticamente" });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error postponing task:", error);
+    return res.status(500).json({ error: "Failed to postpone task" });
+  }
+});
+
 
 // =========================================================================
 // AGENT CHAT - Direct messaging with AI employees

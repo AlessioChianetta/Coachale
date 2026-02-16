@@ -25,6 +25,7 @@ interface AgentChatProps {
   accentColor: string;
   open: boolean;
   onClose: () => void;
+  initialMessage?: string;
 }
 
 function AgentAvatar({ avatar, name, size = "md" }: { avatar: string; name: string; size?: "sm" | "md" | "lg" }) {
@@ -119,7 +120,7 @@ function getRelativeTime(dateStr: string): string {
   return date.toLocaleDateString("it-IT");
 }
 
-export default function AgentChat({ roleId, roleName, avatar, accentColor, open, onClose }: AgentChatProps) {
+export default function AgentChat({ roleId, roleName, avatar, accentColor, open, onClose, initialMessage }: AgentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -127,6 +128,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   const [clearing, setClearing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initialMessageProcessed = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -159,6 +161,19 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
       fetchMessages();
     }
   }, [open, fetchMessages]);
+
+  useEffect(() => {
+    if (open && initialMessage && !initialMessageProcessed.current && !loading) {
+      initialMessageProcessed.current = true;
+      setInput(initialMessage);
+    }
+  }, [open, initialMessage, loading]);
+
+  useEffect(() => {
+    if (!open) {
+      initialMessageProcessed.current = false;
+    }
+  }, [open]);
 
   const sendMessage = async (text?: string) => {
     const messageText = (text || input).trim();

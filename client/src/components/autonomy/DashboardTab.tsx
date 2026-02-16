@@ -71,6 +71,7 @@ interface DashboardTabProps {
   loadingTaskDetail: boolean;
   onExecuteTask: (taskId: string) => void;
   tasksUrl: string;
+  onOpenChatWithTask?: (roleId: string, taskContext: string) => void;
 }
 
 function DashboardTab({
@@ -94,6 +95,7 @@ function DashboardTab({
   taskDetailData, loadingTaskDetail,
   onExecuteTask,
   tasksUrl,
+  onOpenChatWithTask,
 }: DashboardTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -116,6 +118,9 @@ function DashboardTab({
   const [editInstruction, setEditInstruction] = React.useState("");
   const [editContext, setEditContext] = React.useState("");
   const [savingEdit, setSavingEdit] = React.useState(false);
+  const [postponeTask, setPostponeTask] = React.useState<AITask | null>(null);
+  const [postponeNote, setPostponeNote] = React.useState("");
+  const [postponeHours, setPostponeHours] = React.useState("24");
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -305,6 +310,37 @@ function DashboardTab({
     } catch {
       toast({ title: "Errore", description: "Impossibile segnare il task come completato", variant: "destructive" });
     }
+  };
+
+  const handlePostpone = async (taskId: string) => {
+    try {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/postpone`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ note: postponeNote, reschedule_hours: parseInt(postponeHours) || 24 }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({
+        title: "Task rimandato",
+        description: `Verrà riproposto tra ${postponeHours} ore per ri-analisi`,
+      });
+      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+      setPostponeTask(null);
+      setPostponeNote("");
+      setPostponeHours("24");
+    } catch {
+      toast({ title: "Errore", description: "Impossibile rimandare il task", variant: "destructive" });
+    }
+  };
+
+  const handleOpenChatAboutTask = (task: AITask, question?: string) => {
+    const roleId = task.ai_role || 'alessia';
+    const prefix = question || 'Cosa hai fatto?';
+    const context = `${prefix} Parlo del task: "${task.ai_instruction?.substring(0, 200)}"${task.contact_name ? ` (riguarda ${task.contact_name})` : ''}. Stato: ${task.status}.`;
+    onOpenChatWithTask?.(roleId, context);
   };
 
   const toggleTaskExpand = (taskId: string, e: React.MouseEvent) => {
@@ -1106,6 +1142,7 @@ function DashboardTab({
               <SelectItem value="completed">Completati</SelectItem>
               <SelectItem value="failed">Falliti</SelectItem>
               <SelectItem value="paused">In pausa</SelectItem>
+              <SelectItem value="deferred">Rimandati</SelectItem>
               <SelectItem value="cancelled">Cancellati</SelectItem>
             </SelectContent>
           </Select>
@@ -1338,8 +1375,10 @@ function DashboardTab({
                   {tasks.map((task) => {
                     const plannedActions = detectPlannedActions(task);
                     const isWaiting = task.status === 'waiting_approval';
-                    const isActionable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
-                    const isCancellable = ['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status);
+                    const isActionable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved', 'deferred'].includes(task.status);
+                    const isCancellable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'deferred'].includes(task.status);
+                    const canPostpone = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
+                    const canRequestReport = ['completed', 'in_progress', 'failed'].includes(task.status);
 
                     return (
                       <Card
@@ -1548,6 +1587,48 @@ function DashboardTab({
                                   Già fatta da me
                                 </Button>
                               )}
+                              {canPostpone && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPostponeTask(task);
+                                  }}
+                                >
+                                  <Clock className="h-3.5 w-3.5" />
+                                  Rimanda
+                                </Button>
+                              )}
+                              {canRequestReport && task.ai_role && onOpenChatWithTask && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenChatAboutTask(task, 'Cosa hai fatto?');
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Cosa hai fatto?
+                                </Button>
+                              )}
+                              {task.ai_role && onOpenChatWithTask && !canRequestReport && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenChatAboutTask(task);
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Parlane in chat
+                                </Button>
+                              )}
                               {isCancellable && (
                                 <Button
                                   variant="outline"
@@ -1580,19 +1661,49 @@ function DashboardTab({
                           )}
 
                           {!isWaiting && !isActionable && (
-                            <div className="px-4 py-2 border-t border-border/50 bg-muted/20 flex items-center justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-1.5 h-7 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedTaskId(task.id);
-                                }}
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Dettagli
-                              </Button>
+                            <div className="px-4 py-2 border-t border-border/50 bg-muted/20 flex items-center gap-2 flex-wrap">
+                              {canRequestReport && task.ai_role && onOpenChatWithTask && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-7 px-3 text-xs font-medium border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenChatAboutTask(task, 'Cosa hai fatto?');
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Cosa hai fatto?
+                                </Button>
+                              )}
+                              {task.ai_role && onOpenChatWithTask && !canRequestReport && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1.5 h-7 px-3 text-xs font-medium border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenChatAboutTask(task);
+                                  }}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  Parlane in chat
+                                </Button>
+                              )}
+                              <div className="ml-auto">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 h-7 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTaskId(task.id);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Dettagli
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </CardContent>
@@ -1702,6 +1813,7 @@ function DashboardTab({
                              task.status === 'failed' ? '❌ Fallito' :
                              task.status === 'in_progress' ? '⚡ In esecuzione' :
                              task.status === 'paused' ? '⏸️ In pausa' :
+                             task.status === 'deferred' ? '🔄 Rimandato' :
                              task.status === 'scheduled' ? '📅 Programmato' :
                              task.status === 'waiting_approval' ? '⏳ In attesa di approvazione' :
                              task.status}
@@ -2484,6 +2596,66 @@ function DashboardTab({
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!postponeTask} onOpenChange={(open) => { if (!open) { setPostponeTask(null); setPostponeNote(""); setPostponeHours("24"); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orange-500" />
+              Rimanda task
+            </DialogTitle>
+            <DialogDescription>
+              Il task verrà segnato come rimandato e riproposto automaticamente dopo il tempo scelto.
+            </DialogDescription>
+          </DialogHeader>
+          {postponeTask && (
+            <div className="space-y-4 pt-2">
+              <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 border">
+                {postponeTask.ai_instruction?.substring(0, 150)}{(postponeTask.ai_instruction?.length || 0) > 150 ? '...' : ''}
+              </div>
+              <div className="space-y-2">
+                <Label>Quando riproporre?</Label>
+                <Select value={postponeHours} onValueChange={setPostponeHours}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4">Tra 4 ore</SelectItem>
+                    <SelectItem value="8">Tra 8 ore</SelectItem>
+                    <SelectItem value="24">Domani (24h)</SelectItem>
+                    <SelectItem value="48">Tra 2 giorni</SelectItem>
+                    <SelectItem value="72">Tra 3 giorni</SelectItem>
+                    <SelectItem value="168">Tra una settimana</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nota (opzionale)</Label>
+                <Textarea
+                  value={postponeNote}
+                  onChange={(e) => setPostponeNote(e.target.value)}
+                  placeholder="Es: Non ho tempo oggi, vediamolo domani..."
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={() => handlePostpone(postponeTask.id)}
+                >
+                  <Clock className="h-4 w-4 mr-1.5" />
+                  Rimanda
+                </Button>
+                <Button variant="outline" onClick={() => { setPostponeTask(null); setPostponeNote(""); setPostponeHours("24"); }}>
+                  Annulla
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
