@@ -1525,32 +1525,6 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
-      
-      const consultantClients = await db.query.users.findMany({
-        where: eq(users.consultantId, userId),
-        columns: { id: true, firstName: true, lastName: true },
-      });
-      
-      if (consultantClients.length > 0) {
-        const clientIds = consultantClients.map(c => c.id);
-        conditions.push(
-          and(
-            inArray(fileSearchStores.ownerId, clientIds),
-            eq(fileSearchStores.ownerType, 'client'),
-            eq(fileSearchStores.isActive, true)
-          )
-        );
-      }
-      
-      if (consultantId && consultantId !== userId) {
-        conditions.push(
-          and(
-            eq(fileSearchStores.ownerId, consultantId),
-            eq(fileSearchStores.ownerType, 'consultant'),
-            eq(fileSearchStores.isActive, true)
-          )
-        );
-      }
     } else if (userRole === 'client') {
       conditions.push(
         and(
