@@ -7,6 +7,7 @@ import { buildUserContext } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
 import { GEMINI_3_MODEL, getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { logAiUsage, extractTokenUsage } from "../ai/ai-usage-logger";
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -331,6 +332,19 @@ Rispondi SOLO con JSON valido:
       },
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
     });
+
+    try {
+      const usage = extractTokenUsage(result);
+      if (usage.totalTokens > 0) {
+        logAiUsage({
+          consultantId,
+          clientId,
+          feature: 'client_state',
+          model: GEMINI_3_MODEL || 'gemini-2.5-flash',
+          ...usage,
+        });
+      }
+    } catch {}
     
     const responseText = result.text || "";
     console.log(`📝 [AI STATE] Raw response length: ${responseText.length} chars`);
