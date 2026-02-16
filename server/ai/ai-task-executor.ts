@@ -85,6 +85,15 @@ function generateScheduledCallId(): string {
   return `sc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
+function buildFollowUpSection(previousResults: Record<string, any>): string {
+  const followUps = previousResults.fetch_client_data?.follow_up_tasks;
+  if (!followUps || followUps.length === 0) return "";
+  const items = followUps.map((f: any) =>
+    `- [${f.ai_role || 'N/A'}] (${f.status}) ${f.contact_name || 'N/A'}: ${f.ai_instruction}${f.result_summary ? ` → Risultato: ${f.result_summary}` : ''}`
+  ).join('\n');
+  return `\n=== FOLLOW-UP COLLEGATI A QUESTO TASK (${followUps.length}) ===\nQuesti sono sotto-task collegati allo stesso obiettivo. Tienili in considerazione per avere il quadro completo:\n${items}\n`;
+}
+
 export async function executeStep(
   task: AITaskInfo,
   step: ExecutionStep,
@@ -289,7 +298,32 @@ async function handleFetchClientData(
     }));
   }
 
-  console.log(`${LOG_PREFIX} Client data fetched: contact=${contactData ? "found" : "not found"}, recent_tasks=${recentTasks.length}`);
+  let followUpTasks: any[] = [];
+  try {
+    const followUpResult = await db.execute(sql`
+      SELECT id, ai_instruction, task_category, status, contact_name, ai_role,
+             scheduled_at, created_at, result_summary, priority
+      FROM ai_scheduled_tasks
+      WHERE parent_task_id = ${task.id} AND consultant_id = ${task.consultant_id}
+      ORDER BY created_at ASC
+    `);
+    followUpTasks = followUpResult.rows.map((row: any) => ({
+      id: row.id,
+      ai_instruction: row.ai_instruction,
+      task_category: row.task_category,
+      status: row.status,
+      contact_name: row.contact_name,
+      ai_role: row.ai_role,
+      scheduled_at: row.scheduled_at,
+      created_at: row.created_at,
+      result_summary: row.result_summary,
+      priority: row.priority,
+    }));
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Failed to fetch follow-up tasks: ${err.message}`);
+  }
+
+  console.log(`${LOG_PREFIX} Client data fetched: contact=${contactData ? "found" : "not found"}, recent_tasks=${recentTasks.length}, follow_ups=${followUpTasks.length}`);
 
   return {
     contact: contactData || {
@@ -297,6 +331,7 @@ async function handleFetchClientData(
       name: task.contact_name,
     },
     recent_tasks: recentTasks,
+    follow_up_tasks: followUpTasks,
     contact_found: !!contactData,
   };
 }
@@ -390,7 +425,7 @@ async function handleSearchPrivateStores(
   const searchPrompt = `${searchIdentity}
 
 ISTRUZIONE TASK: ${task.ai_instruction}
-${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 CATEGORIA: ${task.task_category}
 CONTATTO: ${task.contact_name || 'N/A'}
 
@@ -454,7 +489,7 @@ ${JSON.stringify(clientData.recent_tasks || [], null, 2)}
 ${privateStoreSection}
 === ISTRUZIONE ORIGINALE DEL TASK ===
 ${task.ai_instruction}
-
+${buildFollowUpSection(previousResults)}
 === CATEGORIA TASK ===
 ${task.task_category}
 
@@ -584,7 +619,7 @@ ${JSON.stringify(clientData.contact || {}, null, 2)}
 ${privateStoreSection}${webSearchSection}
 === ISTRUZIONE ORIGINALE ===
 ${task.ai_instruction}
-
+${buildFollowUpSection(previousResults)}
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 {
   "title": "Titolo descrittivo del report",
@@ -660,7 +695,7 @@ IMPORTANT: The talking points and script MUST be about the CURRENT task instruct
 
 ISTRUZIONE DEL TASK CORRENTE (questa è la PRIORITÀ ASSOLUTA - la chiamata DEVE riguardare QUESTO argomento):
 ${task.ai_instruction}
-
+${buildFollowUpSection(previousResults)}
 CATEGORIA: ${task.task_category}
 
 DATI CLIENTE:
@@ -1100,7 +1135,7 @@ async function handleSendEmail(
       console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 Contesto: ${task.ai_instruction}
-${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}
 
@@ -1256,7 +1291,7 @@ async function handleSendWhatsapp(
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${resolvedName || 'il cliente'}.
 Contesto: ${task.ai_instruction}
-${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}
+${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 ${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
 NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;

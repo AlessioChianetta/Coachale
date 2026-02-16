@@ -160,9 +160,24 @@ export interface TasksStats {
   manual_count?: number;
 }
 
+export interface FollowUpTask {
+  id: string;
+  ai_instruction: string;
+  task_category: string;
+  status: string;
+  contact_name: string | null;
+  ai_role: string | null;
+  scheduled_at: string | null;
+  created_at: string;
+  result_summary: string | null;
+  priority: number;
+  completed_at: string | null;
+}
+
 export interface TaskDetailResponse {
   task: AITask;
   activity: ActivityItem[];
+  follow_ups?: FollowUpTask[];
 }
 
 export interface SystemStatus {

@@ -21,7 +21,7 @@ import {
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
   ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil,
-  Layers, Square, CheckSquare
+  Layers, Square, CheckSquare, GitBranch
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2342,6 +2342,72 @@ function DashboardTab({
                     </div>
                   )}
                 </div>
+
+                {taskDetailData.follow_ups && taskDetailData.follow_ups.length > 0 && (
+                  <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-3">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <GitBranch className="h-5 w-5 text-violet-500" />
+                      Follow-up collegati
+                      <Badge variant="outline" className="text-xs ml-1">{taskDetailData.follow_ups.length}</Badge>
+                    </h3>
+                    <div className="space-y-2">
+                      {taskDetailData.follow_ups.map((fu) => (
+                        <div key={fu.id} className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
+                          <div className={cn(
+                            "mt-0.5 p-1 rounded-full shrink-0",
+                            fu.status === 'completed' ? "bg-emerald-50 text-emerald-500 dark:bg-emerald-950/30" :
+                            fu.status === 'failed' ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
+                            fu.status === 'in_progress' ? "bg-primary/10 text-primary" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {fu.status === 'completed' ? <CheckCircle className="h-3.5 w-3.5" /> :
+                             fu.status === 'failed' ? <XCircle className="h-3.5 w-3.5" /> :
+                             fu.status === 'in_progress' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> :
+                             <Clock className="h-3.5 w-3.5" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              {fu.contact_name && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground">
+                                  <User className="h-3 w-3" />
+                                  {fu.contact_name}
+                                </span>
+                              )}
+                              {fu.ai_role && (
+                                <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", getRoleBadge(fu.ai_role))}>
+                                  {fu.ai_role.charAt(0).toUpperCase() + fu.ai_role.slice(1)}
+                                </Badge>
+                              )}
+                              <span className={cn(
+                                "text-[10px] px-1.5 py-0 rounded-full border",
+                                fu.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                                fu.status === 'failed' ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
+                                fu.status === 'in_progress' ? "bg-primary/10 text-primary border-primary/20" :
+                                "bg-muted text-muted-foreground border-border"
+                              )}>
+                                {fu.status === 'completed' ? 'Completato' :
+                                 fu.status === 'failed' ? 'Fallito' :
+                                 fu.status === 'in_progress' ? 'In esecuzione' :
+                                 fu.status === 'waiting_approval' ? 'Da approvare' :
+                                 fu.status === 'scheduled' ? 'Programmato' :
+                                 fu.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{fu.ai_instruction}</p>
+                            {fu.result_summary && (
+                              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 leading-relaxed">
+                                → {fu.result_summary}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap mt-0.5">
+                            {new Date(fu.created_at).toLocaleDateString("it-IT", { day: '2-digit', month: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-xl border border-border shadow-sm bg-card p-4">
                   <div className="flex items-center gap-3 flex-wrap">
