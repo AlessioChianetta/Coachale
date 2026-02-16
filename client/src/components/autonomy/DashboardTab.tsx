@@ -1924,21 +1924,90 @@ function DashboardTab({
                         </CardContent>
                       </Card>
                       {isExpanded && subTaskMap.has(task.id) && (
-                        <div className="ml-6 pl-4 border-l-2 border-purple-200/60 dark:border-purple-800/40 space-y-1.5">
-                          {subTaskMap.get(task.id)!.map((subTask) => (
-                            <div key={subTask.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/20 border border-border/20">
-                              <div className="flex-1 min-w-0">
-                                {subTask.contact_name && (
-                                  <span className="text-xs font-semibold text-foreground/80 mr-2">{subTask.contact_name}</span>
-                                )}
-                                <p className="text-xs text-muted-foreground line-clamp-1">{subTask.ai_instruction}</p>
+                        <div className="ml-6 pl-4 border-l-2 border-purple-200/60 dark:border-purple-800/40 space-y-2">
+                          {subTaskMap.get(task.id)!.map((subTask) => {
+                            const subExpanded = expandedTaskIds.has(subTask.id);
+                            const subPlannedActions = detectPlannedActions(subTask);
+                            return (
+                              <div
+                                key={subTask.id}
+                                className="rounded-lg bg-muted/20 border border-border/20 overflow-hidden cursor-pointer hover:bg-muted/30 transition-colors"
+                                onClick={(e) => toggleTaskExpand(subTask.id, e)}
+                              >
+                                <div className="flex items-start gap-2 px-3 py-2.5">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                      {subTask.contact_name && (
+                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground/80">
+                                          <User className="h-3 w-3 text-muted-foreground/60" />
+                                          {subTask.contact_name}
+                                        </span>
+                                      )}
+                                      {getTaskStatusBadge(subTask.status)}
+                                      {subTask.priority <= 2 && getPriorityIndicator(subTask.priority)}
+                                    </div>
+                                    <p className={cn(
+                                      "text-xs text-muted-foreground leading-relaxed",
+                                      !subExpanded && "line-clamp-1"
+                                    )}>
+                                      {subTask.ai_instruction}
+                                    </p>
+
+                                    {subExpanded && (
+                                      <>
+                                        {subTask.additional_context && (
+                                          <div className="mt-2 text-[11px] bg-muted/40 rounded px-2.5 py-1.5 border border-border/30">
+                                            <span className="font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
+                                              <Info className="h-2.5 w-2.5" />
+                                              Contesto
+                                            </span>
+                                            <span className="text-foreground/70">{subTask.additional_context}</span>
+                                          </div>
+                                        )}
+
+                                        {subTask.origin_type === 'autonomous' && subTask.ai_reasoning && (
+                                          <div className="mt-2 text-[11px] text-muted-foreground/70 italic bg-purple-50/30 dark:bg-purple-950/10 rounded px-2.5 py-1.5 border border-purple-200/30 dark:border-purple-800/20">
+                                            <Sparkles className="h-2.5 w-2.5 inline mr-1 text-purple-400" />
+                                            {subTask.ai_reasoning}
+                                          </div>
+                                        )}
+
+                                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                                          {subPlannedActions.map((action, idx) => (
+                                            <span key={idx} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
+                                              {action.icon}
+                                              {action.label}
+                                            </span>
+                                          ))}
+                                          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
+                                            {getCategoryBadge(subTask.task_category)}
+                                          </span>
+                                        </div>
+
+                                        {subTask.result_summary && (
+                                          <div className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/10 rounded px-2.5 py-1.5 border border-emerald-200/30 dark:border-emerald-800/20">
+                                            <CheckCircle className="h-2.5 w-2.5 inline mr-1" />
+                                            {subTask.result_summary}
+                                          </div>
+                                        )}
+
+                                        {subTask.scheduled_at && (
+                                          <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-primary/80 font-medium">
+                                            <CalendarClock className="h-2.5 w-2.5" />
+                                            {new Date(subTask.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground/60">
+                                    <span>{getRelativeTime(subTask.created_at)}</span>
+                                    <ChevronRight className={cn("h-3 w-3 transition-transform", subExpanded && "rotate-90")} />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-muted-foreground/60">
-                                <span>{getRelativeTime(subTask.created_at)}</span>
-                                {getTaskStatusBadge(subTask.status)}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                       </React.Fragment>
