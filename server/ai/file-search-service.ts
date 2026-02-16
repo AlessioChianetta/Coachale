@@ -1559,6 +1559,20 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
+
+      const clientUser = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { isEmployee: true, departmentId: true },
+      });
+      if (clientUser?.isEmployee && clientUser.departmentId) {
+        conditions.push(
+          and(
+            eq(fileSearchStores.ownerId, clientUser.departmentId),
+            eq(fileSearchStores.ownerType, 'department'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+      }
     }
 
     conditions.push(

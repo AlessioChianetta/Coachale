@@ -607,7 +607,10 @@ export async function syncSystemDocFromDrive(
         const { FileSearchSyncService } = await import('./file-search-sync-service');
 
         if (document.target_client_assistant) {
-          await FileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'client_assistant', consultantId, 'consultant');
+          const driveSyncStores = await FileSearchSyncService.resolveClientAssistantStores(document.target_client_mode || 'all', document.target_client_ids || [], document.target_department_ids || [], consultantId);
+          for (const driveSyncStore of driveSyncStores) {
+            await FileSearchSyncService.syncSystemPromptDocumentToFileSearch(documentId, consultantId, 'client_assistant', driveSyncStore.ownerId, driveSyncStore.ownerType);
+          }
         }
         const waAgents = document.target_whatsapp_agents || {};
         for (const [agentId, active] of Object.entries(waAgents)) {

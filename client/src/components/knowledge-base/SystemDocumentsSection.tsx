@@ -2499,7 +2499,7 @@ export default function SystemDocumentsSection() {
                         <div className="flex items-center justify-between">
                           <Label className="text-sm font-semibold flex items-center gap-2">
                             <FileText className="h-4 w-4 text-indigo-600" />
-                            {contentEntries.length} documento{contentEntries.length !== 1 ? 'i' : ''} da creare
+                            {contentEntries.length} {contentEntries.length === 1 ? 'documento' : 'documenti'} da creare
                           </Label>
                           {contentEntries.length > 1 && (
                             <Button variant="ghost" size="sm" className="text-xs text-red-500 hover:text-red-700 h-7"
@@ -3483,7 +3483,7 @@ export default function SystemDocumentsSection() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <p className="text-sm text-slate-700">{contentEntries.length} documento{contentEntries.length !== 1 ? 'i' : ''} da creare</p>
+                    <p className="text-sm text-slate-700">{contentEntries.length} {contentEntries.length === 1 ? 'documento' : 'documenti'} da creare</p>
                     {contentEntries.map((entry) => (
                       <div key={entry.id} className="flex items-center gap-2 text-xs text-slate-600 pl-1">
                         <FileText className="h-3 w-3 text-slate-400 shrink-0" />
@@ -3548,10 +3548,16 @@ export default function SystemDocumentsSection() {
                           {info.icon}
                           <span>{info.label}</span>
                         </div>
-                        {form.injection_mode === 'file_search' && (
+                        {form.injection_mode === 'file_search' && mode === 'consultant_only' && (
                           <div className="flex items-center gap-2 text-xs text-slate-500 pl-6">
                             <Database className="h-3 w-3 text-green-500" />
                             <span>Store: Knowledge Base Consulente</span>
+                          </div>
+                        )}
+                        {form.injection_mode === 'file_search' && (mode === 'all' || mode === 'clients_only' || mode === 'employees_only') && (
+                          <div className="flex items-center gap-2 text-xs text-slate-500 pl-6">
+                            <Database className="h-3 w-3 text-green-500" />
+                            <span>Store: {mode === 'all' ? 'Store Privato di ogni cliente e dipendente' : mode === 'clients_only' ? 'Store Privato di ogni cliente' : 'Store Privato di ogni dipendente'}</span>
                           </div>
                         )}
                         {mode === 'specific_clients' && form.target_client_ids.length > 0 && (
@@ -3559,7 +3565,15 @@ export default function SystemDocumentsSection() {
                             {form.target_client_ids.map(cid => {
                               const client = nonEmployeeClients.find(c => c.id === cid) || employeeClients.find(c => c.id === cid);
                               return client ? (
-                                <p key={cid} className="text-[11px] text-slate-500">• {client.firstName} {client.lastName}</p>
+                                <div key={cid} className="space-y-0.5">
+                                  <p className="text-[11px] text-slate-500">• {client.firstName} {client.lastName}</p>
+                                  {form.injection_mode === 'file_search' && (
+                                    <p className="text-[11px] text-slate-400 pl-2 flex items-center gap-1">
+                                      <Database className="h-2.5 w-2.5 text-green-400" />
+                                      Store Privato: {client.firstName} {client.lastName}
+                                    </p>
+                                  )}
+                                </div>
                               ) : null;
                             })}
                           </div>
@@ -3587,7 +3601,15 @@ export default function SystemDocumentsSection() {
                             {form.target_client_ids.map(cid => {
                               const emp = employeeClients.find(c => c.id === cid);
                               return emp ? (
-                                <p key={cid} className="text-[11px] text-slate-500">• {emp.firstName} {emp.lastName}</p>
+                                <div key={cid} className="space-y-0.5">
+                                  <p className="text-[11px] text-slate-500">• {emp.firstName} {emp.lastName}</p>
+                                  {form.injection_mode === 'file_search' && (
+                                    <p className="text-[11px] text-slate-400 pl-2 flex items-center gap-1">
+                                      <Database className="h-2.5 w-2.5 text-green-400" />
+                                      Store Privato: {emp.firstName} {emp.lastName}
+                                    </p>
+                                  )}
+                                </div>
                               ) : null;
                             })}
                           </div>
@@ -3646,11 +3668,29 @@ export default function SystemDocumentsSection() {
               {form.injection_mode === 'file_search' && (() => {
                 const stores: string[] = [];
                 if (form.target_client_assistant) {
-                  stores.push('Knowledge Base Consulente');
-                  if (form.target_client_mode === 'specific_departments') {
+                  const mode = form.target_client_mode;
+                  if (mode === 'consultant_only') {
+                    stores.push('Knowledge Base Consulente');
+                  } else if (mode === 'all') {
+                    stores.push(`Store Privato di ${nonEmployeeClients.length + employeeClients.length} clienti/dipendenti`);
+                  } else if (mode === 'clients_only') {
+                    stores.push(`Store Privato di ${nonEmployeeClients.length} clienti`);
+                  } else if (mode === 'specific_clients') {
+                    form.target_client_ids.forEach(cid => {
+                      const client = nonEmployeeClients.find(c => c.id === cid) || employeeClients.find(c => c.id === cid);
+                      if (client) stores.push(`Store Privato: ${client.firstName} ${client.lastName}`);
+                    });
+                  } else if (mode === 'employees_only') {
+                    stores.push(`Store Privato di ${employeeClients.length} dipendenti`);
+                  } else if (mode === 'specific_departments') {
                     form.target_department_ids.forEach(did => {
                       const dept = departments.find(d => d.id === did);
                       if (dept) stores.push(`Store Reparto: ${dept.name}`);
+                    });
+                  } else if (mode === 'specific_employees') {
+                    form.target_client_ids.forEach(cid => {
+                      const emp = employeeClients.find(c => c.id === cid);
+                      if (emp) stores.push(`Store Privato: ${emp.firstName} ${emp.lastName}`);
                     });
                   }
                 }
@@ -3689,14 +3729,6 @@ export default function SystemDocumentsSection() {
 
               {(() => {
                 const warnings: React.ReactNode[] = [];
-                if (form.injection_mode === 'file_search' && form.target_client_assistant && form.target_client_mode === 'specific_clients') {
-                  warnings.push(
-                    <div key="specific-clients-note" className="flex items-start gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg p-2.5">
-                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                      <span>I clienti specifici selezionati filtrano la visibilità nel chatbot AI, ma il documento viene sincronizzato nello Store del Consulente (non negli store privati dei singoli clienti)</span>
-                    </div>
-                  );
-                }
                 if (!form.target_client_assistant &&
                     Object.values(form.target_whatsapp_agents).every(v => !v) &&
                     Object.values(form.target_autonomous_agents).every(v => !v)) {

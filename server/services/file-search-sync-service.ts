@@ -1647,12 +1647,23 @@ export class FileSearchSyncService {
               ? JSON.parse(doc.target_autonomous_agents)
               : (doc.target_autonomous_agents || {});
             const hasAutoAgents = typeof autoTargets === 'object' && !Array.isArray(autoTargets) && Object.values(autoTargets).some(v => v === true);
-            const needsConsultantStore = doc.target_client_assistant || hasAutoAgents;
-            if (needsConsultantStore) {
+            if (hasAutoAgents) {
               const result = await this.syncSystemPromptDocumentToFileSearch(
                 doc.id, consultantId, 'client_assistant', consultantId, 'consultant'
               );
               if (result.success) synced++; else failed++;
+            }
+            if (doc.target_client_assistant) {
+              const clientMode = doc.target_client_mode || 'all';
+              const clientIds = typeof doc.target_client_ids === 'string' ? JSON.parse(doc.target_client_ids) : (doc.target_client_ids || []);
+              const deptIds = typeof doc.target_department_ids === 'string' ? JSON.parse(doc.target_department_ids) : (doc.target_department_ids || []);
+              const resolvedStores = await this.resolveClientAssistantStores(clientMode, clientIds, deptIds, consultantId);
+              for (const rs of resolvedStores) {
+                try {
+                  const result = await this.syncSystemPromptDocumentToFileSearch(doc.id, consultantId, 'client_assistant', rs.ownerId, rs.ownerType);
+                  if (result.success) synced++; else failed++;
+                } catch { failed++; }
+              }
             }
             const whatsappTargets = typeof doc.target_whatsapp_agents === 'string'
               ? JSON.parse(doc.target_whatsapp_agents)
@@ -8913,12 +8924,92 @@ export class FileSearchSyncService {
     }
   }
 
+  static async resolveClientAssistantStores(
+    targetClientMode: string,
+    targetClientIds: string[],
+    targetDepartmentIds: string[],
+    consultantId: string,
+  ): Promise<Array<{ ownerId: string; ownerType: 'consultant' | 'client' | 'department' }>> {
+    switch (targetClientMode) {
+      case 'consultant_only':
+        return [{ ownerId: consultantId, ownerType: 'consultant' }];
+
+      case 'all': {
+        const allClients = await db.execute(sql`
+          SELECT u.id FROM users u
+          WHERE u.consultant_id = ${consultantId} AND u.role = 'client'
+        `);
+        return (allClients.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
+      }
+
+      case 'clients_only': {
+        const clients = await db.execute(sql`
+          SELECT u.id FROM users u
+          WHERE u.consultant_id = ${consultantId} AND u.role = 'client' AND u.is_employee = false
+        `);
+        return (clients.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
+      }
+
+      case 'specific_clients':
+        return (targetClientIds || []).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+
+      case 'employees_only': {
+        const employees = await db.execute(sql`
+          SELECT u.id FROM users u
+          WHERE u.consultant_id = ${consultantId} AND u.role = 'client' AND u.is_employee = true
+        `);
+        return (employees.rows as any[]).map((c: any) => ({ ownerId: c.id, ownerType: 'client' as const }));
+      }
+
+      case 'specific_departments':
+        return (targetDepartmentIds || []).map(id => ({ ownerId: id, ownerType: 'department' as const }));
+
+      case 'specific_employees':
+        return (targetClientIds || []).map(id => ({ ownerId: id, ownerType: 'client' as const }));
+
+      default:
+        return [{ ownerId: consultantId, ownerType: 'consultant' }];
+    }
+  }
+
+  static async removeSystemPromptDocumentFromAllStores(
+    documentId: string,
+  ): Promise<{ success: boolean; removed: number; error?: string }> {
+    try {
+      const docs = await db.query.fileSearchDocuments.findMany({
+        where: and(
+          eq(fileSearchDocuments.sourceType, 'system_prompt_document'),
+          eq(fileSearchDocuments.sourceId, documentId),
+        ),
+      });
+
+      let removed = 0;
+      for (const doc of docs) {
+        try {
+          await fileSearchService.deleteDocument(doc.id);
+          removed++;
+        } catch (err: any) {
+          console.error(`[FileSync] Error removing system prompt doc ${doc.id} from store:`, err.message);
+        }
+      }
+
+      if (removed > 0) {
+        console.log(`🗑️ [FileSync] Removed system prompt doc ${documentId} from ${removed} stores`);
+      }
+
+      return { success: true, removed };
+    } catch (error: any) {
+      console.error(`[FileSync] Error removing system prompt doc from all stores:`, error);
+      return { success: false, removed: 0, error: error.message };
+    }
+  }
+
   static async syncSystemPromptDocumentToFileSearch(
     documentId: string,
     consultantId: string,
     target: 'client_assistant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
     targetOwnerId: string,
-    targetOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
+    targetOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department' | 'client',
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const docResult = await db.execute(
@@ -8950,9 +9041,12 @@ export class FileSearchSyncService {
         });
 
         if (!store) {
-          const storeName = targetOwnerType === 'consultant' 
-            ? 'Knowledge Base Consulente' 
-            : 'WhatsApp Agent Store';
+          let storeName = 'WhatsApp Agent Store';
+          if (targetOwnerType === 'consultant') {
+            storeName = 'Knowledge Base Consulente';
+          } else if (targetOwnerType === 'client') {
+            storeName = 'Client Private Store';
+          }
           const createResult = await fileSearchService.createStore({
             displayName: storeName,
             ownerId: targetOwnerId,
@@ -9009,7 +9103,7 @@ export class FileSearchSyncService {
   static async removeSystemPromptDocumentFromFileSearch(
     documentId: string,
     storeOwnerId: string,
-    storeOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department',
+    storeOwnerType: 'consultant' | 'whatsapp_agent' | 'autonomous_agent' | 'department' | 'client',
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const store = await db.query.fileSearchStores.findFirst({

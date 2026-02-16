@@ -708,7 +708,10 @@ router.post(
             setImmediate(async () => {
               try {
                 if (target_client_assistant) {
-                  await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'client_assistant', consultantId, 'consultant');
+                  const gdStores = await fileSearchSyncService.resolveClientAssistantStores(target_client_mode || 'all', target_client_ids || [], target_department_ids || [], consultantId);
+                  for (const gdStore of gdStores) {
+                    await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(docId, consultantId, 'client_assistant', gdStore.ownerId, gdStore.ownerType);
+                  }
                 }
                 const autoAgents = target_autonomous_agents || {};
                 for (const [agentIdKey, enabled] of Object.entries(autoAgents)) {
