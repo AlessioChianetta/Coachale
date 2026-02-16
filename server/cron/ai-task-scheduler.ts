@@ -1871,6 +1871,7 @@ FORMATO JSON quando è un task nuovo (come prima):
           },
         });
         console.log(`📝 [AUTONOMOUS-GEN] [${role.name}] System prompt logged (${prompt.length} chars)`);
+        console.log(`\n${'═'.repeat(80)}\n📋 SYSTEM PROMPT — ${role.name.toUpperCase()} (${prompt.length} chars)\n${'═'.repeat(80)}\n${prompt}\n${'═'.repeat(80)}\n`);
       } catch (logErr: any) {
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to log system prompt: ${logErr.message}`);
       }
