@@ -93,6 +93,80 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
   const [loaded, setLoaded] = useState(false);
   const [whatsappAgents, setWhatsappAgents] = useState<Array<{ id: string; agentName: string; agentType: string; isActive?: boolean; hasTwilio?: boolean }>>([]);
 
+  const [marcoOpen, setMarcoOpen] = useState(false);
+  const [marcoLoaded, setMarcoLoaded] = useState(false);
+  const [marcoLoading, setMarcoLoading] = useState(false);
+  const [marcoSaving, setMarcoSaving] = useState(false);
+  const [marcoCtx, setMarcoCtx] = useState<{ objectives: Array<{ id: string; name: string; deadline: string | null; priority: 'alta' | 'media' | 'bassa' }>; roadmap: string; reportFocus: string }>({
+    objectives: [],
+    roadmap: "",
+    reportFocus: "",
+  });
+
+  const loadMarcoContext = async () => {
+    if (marcoLoaded) return;
+    setMarcoLoading(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/marco-context`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setMarcoCtx({
+          objectives: data.objectives || [],
+          roadmap: data.roadmap || "",
+          reportFocus: data.reportFocus || "",
+        });
+      }
+    } catch {}
+    setMarcoLoading(false);
+    setMarcoLoaded(true);
+  };
+
+  const saveMarcoContext = async () => {
+    setMarcoSaving(true);
+    try {
+      const currentRes = await fetch(`/api/ai-autonomy/marco-context`, { headers: getAuthHeaders() });
+      const currentData = currentRes.ok ? await currentRes.json() : {};
+
+      const merged = {
+        ...currentData,
+        objectives: marcoCtx.objectives,
+        roadmap: marcoCtx.roadmap,
+        reportFocus: marcoCtx.reportFocus,
+      };
+
+      const res = await fetch(`/api/ai-autonomy/marco-context`, {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(merged),
+      });
+      if (res.ok) toast({ title: "Salvato", description: "Strategia Marco aggiornata" });
+      else toast({ title: "Errore", description: "Salvataggio fallito", variant: "destructive" });
+    } catch {
+      toast({ title: "Errore", description: "Salvataggio fallito", variant: "destructive" });
+    }
+    setMarcoSaving(false);
+  };
+
+  const toggleMarcoSection = () => {
+    const next = !marcoOpen;
+    setMarcoOpen(next);
+    if (next) loadMarcoContext();
+  };
+
+  const addObjective = () => {
+    setMarcoCtx(prev => ({
+      ...prev,
+      objectives: [...prev.objectives, { id: crypto.randomUUID(), name: "", deadline: null, priority: "media" }],
+    }));
+  };
+
+  const removeObjective = (id: string) => {
+    setMarcoCtx(prev => ({
+      ...prev,
+      objectives: prev.objectives.filter(o => o.id !== id),
+    }));
+  };
+
   const loadContext = async () => {
     if (loaded) return;
     setLoading(true);
@@ -484,6 +558,150 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                   </div>
                 );
               })()}
+
+              {roleId === 'marco' && (
+                <div className="space-y-2">
+                  <button
+                    onClick={toggleMarcoSection}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <Label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                      <Target className="h-3.5 w-3.5 text-orange-500" />
+                      🎯 Strategia & Obiettivi
+                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      {marcoLoaded && marcoCtx.objectives.length > 0 && (
+                        <span className="text-[10px] text-orange-600 font-medium">{marcoCtx.objectives.length} obiettivi</span>
+                      )}
+                      {marcoOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                    </div>
+                  </button>
+
+                  {marcoOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-4 pl-1"
+                    >
+                      {marcoLoading ? (
+                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                                <Flag className="h-3.5 w-3.5 text-orange-500" />
+                                Obiettivi Strategici
+                              </Label>
+                              <Button type="button" variant="outline" size="sm" onClick={addObjective} className="h-7 text-[10px] rounded-lg">
+                                <Plus className="h-3 w-3 mr-1" />
+                                Aggiungi obiettivo
+                              </Button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                              Definisci gli obiettivi strategici che Marco deve monitorare e su cui basare le analisi.
+                            </p>
+                            {marcoCtx.objectives.length === 0 ? (
+                              <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
+                                Nessun obiettivo definito — Marco seguirà il comportamento predefinito
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {marcoCtx.objectives.map((obj, idx) => (
+                                  <div key={obj.id} className="flex items-center gap-2 group">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-md shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
+                                    <Input
+                                      value={obj.name}
+                                      onChange={(e) => {
+                                        const updated = [...marcoCtx.objectives];
+                                        updated[idx] = { ...updated[idx], name: e.target.value };
+                                        setMarcoCtx(prev => ({ ...prev, objectives: updated }));
+                                      }}
+                                      placeholder="Es: Aumentare MRR del 20%"
+                                      className="h-7 text-xs rounded-lg flex-1"
+                                    />
+                                    <Input
+                                      type="date"
+                                      value={obj.deadline || ""}
+                                      onChange={(e) => {
+                                        const updated = [...marcoCtx.objectives];
+                                        updated[idx] = { ...updated[idx], deadline: e.target.value || null };
+                                        setMarcoCtx(prev => ({ ...prev, objectives: updated }));
+                                      }}
+                                      className="h-7 text-[10px] rounded-lg w-32 shrink-0"
+                                    />
+                                    <Select
+                                      value={obj.priority}
+                                      onValueChange={(v) => {
+                                        const updated = [...marcoCtx.objectives];
+                                        updated[idx] = { ...updated[idx], priority: v as 'alta' | 'media' | 'bassa' };
+                                        setMarcoCtx(prev => ({ ...prev, objectives: updated }));
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 text-[10px] rounded-lg w-24 shrink-0">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="alta">Alta</SelectItem>
+                                        <SelectItem value="media">Media</SelectItem>
+                                        <SelectItem value="bassa">Bassa</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <button onClick={() => removeObjective(obj.id)} className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold flex items-center gap-1.5">
+                              <FileText className="h-3.5 w-3.5 text-blue-500" />
+                              Roadmap / Note Strategiche
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              Scrivi la roadmap, le milestone e le note strategiche che Marco deve considerare nelle analisi.
+                            </p>
+                            <Textarea
+                              value={marcoCtx.roadmap}
+                              onChange={(e) => setMarcoCtx(prev => ({ ...prev, roadmap: e.target.value }))}
+                              placeholder="Es: Q1 2026 — lancio nuovo prodotto. Q2 — espansione mercato tedesco..."
+                              rows={4}
+                              className="rounded-lg text-xs resize-none"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-xs font-semibold flex items-center gap-1.5">
+                              <Target className="h-3.5 w-3.5 text-indigo-500" />
+                              Focus Report
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              Su cosa Marco deve focalizzare i report e le analisi periodiche.
+                            </p>
+                            <Input
+                              value={marcoCtx.reportFocus}
+                              onChange={(e) => setMarcoCtx(prev => ({ ...prev, reportFocus: e.target.value }))}
+                              placeholder="Es: Conversioni lead, retention clienti, performance team vendite"
+                              className="h-7 text-xs rounded-lg"
+                            />
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button onClick={saveMarcoContext} disabled={marcoSaving} size="sm" variant="outline" className="h-8 text-xs rounded-lg border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950/20">
+                              {marcoSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                              Salva Strategia Marco
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">

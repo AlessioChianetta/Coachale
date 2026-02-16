@@ -1572,7 +1572,13 @@ OBIETTIVI STRATEGICI DEL CONSULENTE:
 ${(() => {
   const objectives = roleData.marcoContext?.objectives || [];
   if (objectives.length === 0) return 'Nessun obiettivo definito';
-  return objectives.map((obj: any, i: number) => `${i + 1}. ${obj.text || obj}${obj.completed ? ' ✅ COMPLETATO' : ''}`).join('\n');
+  return objectives.map((obj: any, i: number) => {
+    const name = obj.name || obj.text || (typeof obj === 'string' ? obj : JSON.stringify(obj));
+    const deadline = obj.deadline ? ` (scadenza: ${obj.deadline})` : '';
+    const priority = obj.priority ? ` [priorità: ${obj.priority}]` : '';
+    const completed = obj.completed ? ' ✅ COMPLETATO' : '';
+    return `${i + 1}. ${name}${deadline}${priority}${completed}`;
+  }).join('\n');
 })()}
 
 ROADMAP E NOTE STRATEGICHE:
