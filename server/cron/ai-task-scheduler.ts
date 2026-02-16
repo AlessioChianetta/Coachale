@@ -1403,6 +1403,19 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
   }));
 
+  const allClientsList = clients.map(c => ({
+    id: c.id,
+    name: [c.first_name, c.last_name].filter(Boolean).join(' '),
+    email: c.email || 'N/A',
+    phone: c.phone_number || 'N/A',
+    last_consultation: c.last_consultation_date ? new Date(c.last_consultation_date).toISOString() : 'Mai',
+    last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
+    has_pending_tasks: clientsWithPendingTasks.has(c.id?.toString()),
+    recently_completed: clientsWithRecentCompletion.has(c.id?.toString()),
+  }));
+
+  const allClientIds = clients.map((c: any) => c.id?.toString()).filter(Boolean);
+
   const clientIds = eligibleClients.map((c: any) => c.id?.toString()).filter(Boolean);
 
   const recentTasksResult = await db.execute(sql`
@@ -1464,13 +1477,6 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       recentReasoningByRole[role].push(r.description.substring(0, 500));
     }
   }
-
-  const reasoningRolesCount = Object.keys(recentReasoningByRole).length;
-  const reasoningTotalEntries = Object.values(recentReasoningByRole).reduce((sum, arr) => sum + arr.length, 0);
-  console.log(`🧠 [AUTONOMOUS-GEN] Loaded reasoning context: ${reasoningRolesCount} roles, ${reasoningTotalEntries} entries`);
-  
-  const tasksWithResults = recentAllTasksSummary.filter(t => t.result);
-  console.log(`📊 [AUTONOMOUS-GEN] Task memory: ${recentAllTasksSummary.length} total tasks, ${tasksWithResults.length} with result_summary`);
 
   const blocksResult = await db.execute(sql`
     SELECT b.contact_id::text, b.task_category, b.ai_role,
@@ -1709,10 +1715,15 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         }
       }
 
-      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data...`);
+      const rolesWithFullClientList = ['marco', 'nova'];
+      const useFullClientList = rolesWithFullClientList.includes(role.id);
+      const effectiveClientsList = useFullClientList ? allClientsList : clientsList;
+      const effectiveClientIds = useFullClientList ? allClientIds : clientIds;
+
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data... (clients: ${effectiveClientIds.length}/${clients.length}${useFullClientList ? ' [FULL]' : ' [FILTERED]'})`);
       let roleData: Record<string, any>;
       try {
-        roleData = await role.fetchRoleData(consultantId, clientIds);
+        roleData = await role.fetchRoleData(consultantId, effectiveClientIds);
         console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Role data fetched OK (keys: ${Object.keys(roleData).join(', ')})`);
       } catch (fetchErr: any) {
         console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] fetchRoleData FAILED: ${fetchErr.message}`);
@@ -1720,7 +1731,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       }
 
       let prompt = role.buildPrompt({
-        clientsList,
+        clientsList: effectiveClientsList,
         roleData,
         settings,
         romeTimeStr,
@@ -1840,6 +1851,28 @@ FORMATO JSON quando è un task nuovo (come prima):
       }
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
+
+      try {
+        await logActivity(consultantId, {
+          event_type: 'system_prompt_log',
+          title: `System Prompt: ${role.name}`,
+          description: prompt.substring(0, 8000),
+          ai_role: role.id,
+          severity: 'debug',
+          event_data: {
+            prompt_length: prompt.length,
+            model: providerModel,
+            provider: providerName,
+            file_search: !!agentFileSearchTool,
+            clients_in_prompt: effectiveClientsList.length,
+            total_clients: clients.length,
+            uses_full_client_list: useFullClientList,
+          },
+        });
+        console.log(`📝 [AUTONOMOUS-GEN] [${role.name}] System prompt logged (${prompt.length} chars)`);
+      } catch (logErr: any) {
+        console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to log system prompt: ${logErr.message}`);
+      }
 
       let responseText: string | undefined;
       const useFileSearch = !!agentFileSearchTool;
