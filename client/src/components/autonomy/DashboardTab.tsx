@@ -20,8 +20,10 @@ import {
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
-  ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil
+  ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil,
+  Layers, Square, CheckSquare
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { AITask, TasksResponse, TasksStats, TaskDetailResponse, NewTaskData, ActivityItem } from "./types";
@@ -121,6 +123,9 @@ function DashboardTab({
   const [postponeTask, setPostponeTask] = React.useState<AITask | null>(null);
   const [postponeNote, setPostponeNote] = React.useState("");
   const [postponeHours, setPostponeHours] = React.useState("24");
+  const [mergeMode, setMergeMode] = React.useState(false);
+  const [selectedMergeIds, setSelectedMergeIds] = React.useState<Set<string>>(new Set());
+  const [isMerging, setIsMerging] = React.useState(false);
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -336,6 +341,47 @@ function DashboardTab({
     }
   };
 
+  const handleMergeTasks = async () => {
+    if (selectedMergeIds.size < 2) return;
+    setIsMerging(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/tasks/merge", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ task_ids: Array.from(selectedMergeIds) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Errore durante l'aggregazione");
+      }
+      const data = await res.json();
+      toast({
+        title: "Task aggregati",
+        description: `${data.merged_count} task aggregati nel task principale`,
+      });
+      setSelectedMergeIds(new Set());
+      setMergeMode(false);
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.includes("/api/ai-autonomy/");
+        },
+      });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message || "Impossibile aggregare i task", variant: "destructive" });
+    }
+    setIsMerging(false);
+  };
+
+  const toggleMergeSelect = (taskId: string) => {
+    setSelectedMergeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
   const handleOpenChatAboutTask = (task: AITask, question?: string) => {
     const roleId = task.ai_role || 'alessia';
     const prefix = question || 'Cosa hai fatto?';
@@ -505,16 +551,65 @@ function DashboardTab({
     return roleOrder.map(role => ({ role, tasks: groups[role] }));
   }, [tasksData?.tasks, dashboardRoleFilter]);
 
+  const STATUS_TABS = [
+    { value: 'all', label: 'Tutti', count: tasksStats?.total ?? 0, icon: <ListTodo className="h-3.5 w-3.5" />, color: '' },
+    { value: 'waiting_approval', label: 'Da approvare', count: tasksStats?.waiting_approval ?? 0, icon: <ThumbsUp className="h-3.5 w-3.5" />, color: 'text-amber-600 dark:text-amber-400' },
+    { value: 'scheduled', label: 'Programmati', count: tasksStats?.scheduled ?? 0, icon: <CalendarClock className="h-3.5 w-3.5" />, color: 'text-blue-600 dark:text-blue-400' },
+    { value: 'in_progress', label: 'In corso', count: tasksStats?.in_progress ?? 0, icon: <Activity className="h-3.5 w-3.5" />, color: 'text-primary' },
+    { value: 'completed', label: 'Completati', count: tasksStats?.completed ?? 0, icon: <CheckCircle className="h-3.5 w-3.5" />, color: 'text-emerald-600 dark:text-emerald-400' },
+    { value: 'failed', label: 'Falliti', count: tasksStats?.failed ?? 0, icon: <XCircle className="h-3.5 w-3.5" />, color: 'text-red-600 dark:text-red-400' },
+    { value: 'deferred', label: 'Rimandati', count: tasksStats?.deferred ?? 0, icon: <Clock className="h-3.5 w-3.5" />, color: 'text-orange-600 dark:text-orange-400' },
+    { value: 'cancelled', label: 'Cancellati', count: tasksStats?.cancelled ?? 0, icon: <Ban className="h-3.5 w-3.5" />, color: 'text-muted-foreground' },
+  ];
+
+  const handleStatusTabChange = (value: string) => {
+    setDashboardStatusFilter(value);
+    setDashboardPage(1);
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex items-center justify-end">
-          {!showCreateTask && (
-            <Button onClick={() => setShowCreateTask(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Crea Nuovo Task
-            </Button>
-          )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {mergeMode && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs tabular-nums px-2 py-1">
+                  {selectedMergeIds.size} selezionati
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => { setMergeMode(false); setSelectedMergeIds(new Set()); }}
+                >
+                  Annulla
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!mergeMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-9 text-xs font-medium border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950/30"
+                onClick={() => { setMergeMode(true); setSelectedMergeIds(new Set()); }}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                Aggrega duplicati
+              </Button>
+            )}
+            {!showCreateTask && (
+              <Button
+                onClick={() => setShowCreateTask(true)}
+                className="gap-2 h-10 px-5 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md hover:shadow-lg transition-all duration-200 text-sm font-semibold"
+              >
+                <Plus className="h-4.5 w-4.5" />
+                Crea Nuovo Task
+              </Button>
+            )}
+          </div>
         </div>
 
         {showCreateTask && (
@@ -1075,6 +1170,39 @@ function DashboardTab({
         </Card>
       )}
 
+      <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="flex items-center overflow-x-auto scrollbar-none">
+          {STATUS_TABS.map(tab => {
+            const effectiveActive = dashboardStatusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => handleStatusTabChange(tab.value)}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-3 text-xs font-medium whitespace-nowrap transition-all duration-200 border-b-2 relative",
+                  effectiveActive
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <span className={cn(tab.color)}>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className={cn(
+                    "min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
+                    effectiveActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/20 p-4">
           <div className="flex items-center gap-3">
@@ -1379,6 +1507,7 @@ function DashboardTab({
                     const isCancellable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'deferred'].includes(task.status);
                     const canPostpone = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
                     const canRequestReport = ['completed', 'in_progress', 'failed'].includes(task.status);
+                    const isMergeSelected = selectedMergeIds.has(task.id);
 
                     return (
                       <Card
@@ -1387,14 +1516,32 @@ function DashboardTab({
                           "transition-all duration-200 border rounded-xl shadow-sm border-l-4 overflow-hidden",
                           isWaiting ? "bg-slate-50/60 dark:bg-slate-900/20 border-primary/20 dark:border-primary/30 ring-1 ring-primary/10" : "",
                           "hover:shadow-md",
-                          getPriorityBorderColor(task.priority)
+                          getPriorityBorderColor(task.priority),
+                          mergeMode && isMergeSelected && "ring-2 ring-purple-400 bg-purple-50/30 dark:bg-purple-950/20"
                         )}
                       >
                         <CardContent className="p-0">
                           <div
-                            className="px-4 pt-3.5 pb-2 cursor-pointer"
-                            onClick={(e) => toggleTaskExpand(task.id, e)}
+                            className="px-4 pt-3.5 pb-2 cursor-pointer flex gap-3"
+                            onClick={(e) => {
+                              if (mergeMode) {
+                                e.stopPropagation();
+                                toggleMergeSelect(task.id);
+                              } else {
+                                toggleTaskExpand(task.id, e);
+                              }
+                            }}
                           >
+                            {mergeMode && (
+                              <div className="pt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={isMergeSelected}
+                                  onCheckedChange={() => toggleMergeSelect(task.id)}
+                                  className="h-5 w-5 border-2"
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -1508,6 +1655,7 @@ function DashboardTab({
                                 </span>
                               )}
                             </div>
+                          </div>
                           </div>
 
                           {(isWaiting || isActionable) && (
@@ -2655,6 +2803,41 @@ function DashboardTab({
           )}
         </DialogContent>
       </Dialog>
+
+      {mergeMode && selectedMergeIds.size >= 2 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+        >
+          <div className="flex items-center gap-3 bg-card border-2 border-purple-300 dark:border-purple-700 rounded-2xl shadow-2xl px-5 py-3">
+            <div className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-semibold">
+                {selectedMergeIds.size} task selezionati
+              </span>
+            </div>
+            <Separator orientation="vertical" className="h-6" />
+            <Button
+              onClick={handleMergeTasks}
+              disabled={isMerging}
+              className="gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md"
+            >
+              {isMerging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers className="h-4 w-4" />}
+              Aggrega selezionati
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => { setMergeMode(false); setSelectedMergeIds(new Set()); }}
+            >
+              Annulla
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
     </div>
   );

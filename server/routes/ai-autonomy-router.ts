@@ -843,9 +843,11 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'active') {
-        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
+        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved', 'waiting_approval')`);
       } else if (statusFilter === 'paused') {
-        conditions.push(sql`status IN ('paused', 'draft', 'waiting_approval')`);
+        conditions.push(sql`status IN ('paused', 'draft')`);
+      } else if (statusFilter === 'cancelled') {
+        conditions.push(sql`status = 'cancelled'`);
       } else {
         conditions.push(sql`status = ${statusFilter}`);
       }
@@ -948,7 +950,12 @@ router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "sup
           COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
           COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
           COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
-          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval', 'deferred'))::int as pending
+          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval', 'deferred'))::int as pending,
+          COUNT(*) FILTER (WHERE status = 'waiting_approval')::int as waiting_approval,
+          COUNT(*) FILTER (WHERE status = 'scheduled')::int as scheduled,
+          COUNT(*) FILTER (WHERE status = 'in_progress')::int as in_progress,
+          COUNT(*) FILTER (WHERE status = 'deferred')::int as deferred,
+          COUNT(*) FILTER (WHERE status = 'cancelled')::int as cancelled
         FROM ai_scheduled_tasks
         WHERE consultant_id = ${consultantId} AND task_type = 'ai_task'
       `),
@@ -2347,6 +2354,94 @@ router.patch("/tasks/:id/postpone", authenticateToken, requireAnyRole(["consulta
   }
 });
 
+
+// =========================================================================
+// MERGE TASKS - Aggregate duplicate tasks into one
+// =========================================================================
+
+router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { task_ids } = req.body;
+    if (!Array.isArray(task_ids) || task_ids.length < 2) {
+      return res.status(400).json({ error: "Serve almeno 2 task per l'aggregazione" });
+    }
+    if (task_ids.length > 20) {
+      return res.status(400).json({ error: "Massimo 20 task per aggregazione" });
+    }
+
+    const tasksResult = await db.execute(sql`
+      SELECT id, ai_instruction, ai_role, contact_name, contact_id, contact_phone,
+             task_category, priority, status, additional_context, ai_reasoning,
+             created_at, scheduled_at, origin_type
+      FROM ai_scheduled_tasks
+      WHERE id = ANY(${task_ids}::uuid[])
+        AND consultant_id = ${consultantId}
+        AND task_type = 'ai_task'
+      ORDER BY priority ASC, created_at ASC
+    `);
+
+    if (tasksResult.rows.length < 2) {
+      return res.status(400).json({ error: "Task non trovati o non accessibili" });
+    }
+
+    const tasks = tasksResult.rows as any[];
+    const mainTask = tasks[0];
+    const secondaryTasks = tasks.slice(1);
+
+    const mergedNotes = secondaryTasks
+      .map((t: any, i: number) => `--- Follow-up aggregato #${i + 1} (da task ${t.id.substring(0, 8)}) ---\n${t.ai_instruction}`)
+      .join('\n\n');
+
+    const mergedContext = [
+      mainTask.additional_context,
+      ...secondaryTasks.map((t: any) => t.additional_context).filter(Boolean),
+    ].filter(Boolean).join('\n---\n');
+
+    const highestPriority = Math.min(...tasks.map((t: any) => t.priority || 3));
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET additional_context = ${mergedContext || null},
+          result_summary = COALESCE(result_summary, '') || ${'\n\n[AGGREGAZIONE]\n' + mergedNotes},
+          priority = ${highestPriority},
+          updated_at = NOW()
+      WHERE id = ${mainTask.id} AND consultant_id = ${consultantId}
+    `);
+
+    const secondaryIds = secondaryTasks.map((t: any) => t.id);
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'cancelled',
+          result_summary = COALESCE(result_summary, '') || ${'\n[Aggregato nel task principale ' + mainTask.id.substring(0, 8) + ']'},
+          updated_at = NOW()
+      WHERE id = ANY(${secondaryIds}::uuid[]) AND consultant_id = ${consultantId}
+    `);
+
+    for (const secTask of secondaryTasks) {
+      await db.execute(sql`
+        INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
+        VALUES (${consultantId}::uuid, ${secTask.id}::uuid, 'merged', ${'Aggregato nel task ' + mainTask.id.substring(0, 8)}, false)
+      `);
+    }
+    await db.execute(sql`
+      INSERT INTO ai_activity_log (consultant_id, task_id, action_type, details, is_read)
+      VALUES (${consultantId}::uuid, ${mainTask.id}::uuid, 'merged', ${'Task principale: aggregati ' + secondaryTasks.length + ' task duplicati'}, false)
+    `);
+
+    return res.json({
+      success: true,
+      main_task_id: mainTask.id,
+      merged_count: secondaryTasks.length,
+      message: `${secondaryTasks.length} task aggregati nel task principale`,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error merging tasks:", error);
+    return res.status(500).json({ error: "Failed to merge tasks" });
+  }
+});
 
 // =========================================================================
 // AGENT CHAT - Direct messaging with AI employees

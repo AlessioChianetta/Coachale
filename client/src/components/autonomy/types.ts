@@ -150,6 +150,11 @@ export interface TasksStats {
   completed: number;
   failed: number;
   pending: number;
+  waiting_approval?: number;
+  scheduled?: number;
+  in_progress?: number;
+  deferred?: number;
+  cancelled?: number;
   role_counts?: Array<{role: string, count: number}>;
   manual_count?: number;
 }
