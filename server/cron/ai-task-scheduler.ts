@@ -659,7 +659,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         `);
         const settingsRow = settingsResult.rows[0] as any;
         if (settingsRow) {
-          const consultantPhone = settingsRow.consultant_phone || settingsRow.consultant_whatsapp;
+          const consultantPhone = settingsRow.consultant_whatsapp || settingsRow.consultant_phone;
           if (consultantPhone) {
             console.log(`🔄 [AI-SCHEDULER] [MARCO] Redirecting contact from ${resolvedContactPhone} to consultant: ${consultantPhone}`);
             resolvedContactPhone = consultantPhone;

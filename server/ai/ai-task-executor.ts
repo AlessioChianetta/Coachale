@@ -4,6 +4,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { ExecutionStep, getAutonomySettings, buildRolePersonality } from "./autonomous-decision-engine";
+import { fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 import { fileSearchService } from "./file-search-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
@@ -121,8 +122,18 @@ export async function executeStep(
     }
 
     let rolePersonality: string | null = null;
+    let agentContextSection = '';
     if (task.ai_role) {
       rolePersonality = await buildRolePersonality(task.consultant_id, task.ai_role);
+      try {
+        const agentCtx = await fetchAgentContext(task.consultant_id, task.ai_role);
+        agentContextSection = buildAgentContextSection(agentCtx, task.ai_role);
+        if (agentContextSection) {
+          console.log(`${LOG_PREFIX} Loaded agent context for role ${task.ai_role} (${agentContextSection.length} chars)`);
+        }
+      } catch (ctxErr: any) {
+        console.warn(`${LOG_PREFIX} Failed to load agent context for ${task.ai_role}: ${ctxErr.message}`);
+      }
     }
 
     let result: Record<string, any>;
@@ -132,25 +143,25 @@ export async function executeStep(
         result = await handleFetchClientData(task, step, previousResults);
         break;
       case "search_private_stores":
-        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality);
+        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection);
         break;
       case "analyze_patterns":
-        result = await handleAnalyzePatterns(task, step, previousResults);
+        result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection);
         break;
       case "generate_report":
-        result = await handleGenerateReport(task, step, previousResults, rolePersonality);
+        result = await handleGenerateReport(task, step, previousResults, rolePersonality, agentContextSection);
         break;
       case "prepare_call":
-        result = await handlePrepareCall(task, step, previousResults, rolePersonality);
+        result = await handlePrepareCall(task, step, previousResults, rolePersonality, agentContextSection);
         break;
       case "voice_call":
         result = await handleVoiceCall(task, step, previousResults);
         break;
       case "send_email":
-        result = await handleSendEmail(task, step, previousResults);
+        result = await handleSendEmail(task, step, previousResults, agentContextSection);
         break;
       case "send_whatsapp":
-        result = await handleSendWhatsapp(task, step, previousResults);
+        result = await handleSendWhatsapp(task, step, previousResults, agentContextSection);
         break;
       case "web_search":
         result = await handleWebSearch(task, step, previousResults);
@@ -341,6 +352,7 @@ async function handleSearchPrivateStores(
   _step: ExecutionStep,
   _previousResults: Record<string, any>,
   rolePersonality?: string | null,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}`);
 
@@ -469,6 +481,8 @@ async function handleAnalyzePatterns(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
+  rolePersonality?: string | null,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   const clientData = previousResults.fetch_client_data || previousResults;
 
@@ -477,7 +491,12 @@ async function handleAnalyzePatterns(
     ? `\nDOCUMENTI PRIVATI TROVATI:\n${privateStoreData.findings_summary || "Nessun documento privato trovato"}\n\nCITAZIONI:\n${privateStoreData.citations?.map((c: any) => `- ${c.source}: ${c.content}`).join('\n') || "Nessuna citazione"}\n`
     : "";
 
-  const prompt = `Sei un analista AI senior. Il tuo compito è analizzare in modo DETTAGLIATO e APPROFONDITO la situazione del cliente basandoti esclusivamente sui dati e documenti disponibili.
+  const analyzerIdentity = rolePersonality
+    ? `${rolePersonality}\nAnalizza in modo DETTAGLIATO e APPROFONDITO la situazione del cliente basandoti esclusivamente sui dati e documenti disponibili.`
+    : `Sei un analista AI senior. Il tuo compito è analizzare in modo DETTAGLIATO e APPROFONDITO la situazione del cliente basandoti esclusivamente sui dati e documenti disponibili.`;
+
+  const prompt = `${analyzerIdentity}
+${agentContextSection || ''}
 
 IMPORTANTE: La tua analisi deve essere COMPLETA e DETTAGLIATA (almeno 2000 caratteri totali nel JSON). Analizza TUTTI i dati disponibili, incluse TUTTE le citazioni dai documenti privati. Non essere generico - fornisci insight specifici con esempi concreti dai dati.
 
@@ -570,6 +589,7 @@ async function handleGenerateReport(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
   rolePersonality?: string | null,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   const analysisData = previousResults.analyze_patterns || previousResults;
   const clientData = previousResults.fetch_client_data || {};
@@ -589,6 +609,7 @@ async function handleGenerateReport(
     : `Sei un assistente AI senior specializzato in consulenza. Genera un report COMPLETO, DETTAGLIATO e APPROFONDITO.`;
 
   const prompt = `${reportIdentity}
+${agentContextSection || ''}
 
 REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. Cita SEMPRE i documenti privati con il tag [CONSULENZA PRIVATA] e le date quando disponibili. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo, non di un riassunto.
 
@@ -680,6 +701,7 @@ async function handlePrepareCall(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
   rolePersonality?: string | null,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   const analysisData = previousResults.analyze_patterns || {};
   const reportData = previousResults.generate_report || {};
@@ -690,6 +712,7 @@ async function handlePrepareCall(
     : `Sei un assistente AI per consulenti.\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`;
 
   const prompt = `${callIdentity}
+${agentContextSection || ''}
 
 IMPORTANT: The talking points and script MUST be about the CURRENT task instruction below, NOT about any previous task or report from a different context. Focus EXCLUSIVELY on what the current task asks.
 
@@ -750,23 +773,24 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   const text = response.response.text() || "";
   console.log(`${LOG_PREFIX} Gemini call prep response length: ${text.length}`);
 
+  let parsed: Record<string, any> | null = null;
+
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (_step.params?.preferred_time && !parsed.preferred_call_time) {
-        parsed.preferred_call_time = _step.params.preferred_time;
+      parsed = JSON.parse(jsonMatch[0]);
+      if (_step.params?.preferred_time && !parsed!.preferred_call_time) {
+        parsed!.preferred_call_time = _step.params.preferred_time;
       }
-      if (_step.params?.preferred_date && !parsed.preferred_call_date) {
-        parsed.preferred_call_date = _step.params.preferred_date;
+      if (_step.params?.preferred_date && !parsed!.preferred_call_date) {
+        parsed!.preferred_call_date = _step.params.preferred_date;
       }
-      return parsed;
     }
   } catch (parseError: any) {
     console.warn(`${LOG_PREFIX} Failed to parse call prep JSON, returning raw text`);
   }
 
-  return {
+  const result = parsed || {
     talking_points: [
       {
         topic: task.task_category,
@@ -784,6 +808,141 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     preferred_call_date: _step.params?.preferred_date || null,
     raw_response: text,
   };
+
+  const callDate = result.preferred_call_date;
+  const callTime = result.preferred_call_time;
+  if (callDate || callTime) {
+    try {
+      let resolvedPhone = task.contact_phone;
+      let resolvedName = task.contact_name;
+      if (!resolvedPhone || resolvedPhone === 'N/A' || resolvedPhone.trim() === '') {
+        if (task.ai_role === 'marco') {
+          const settingsResult = await db.execute(sql`
+            SELECT consultant_phone, consultant_whatsapp FROM ai_autonomy_settings
+            WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+          `);
+          const s = settingsResult.rows[0] as any;
+          const consultantPhone = s?.consultant_whatsapp || s?.consultant_phone;
+          if (consultantPhone) {
+            resolvedPhone = consultantPhone;
+            resolvedName = 'Consulente (tu)';
+          }
+        }
+        if ((!resolvedPhone || resolvedPhone === 'N/A') && task.contact_id) {
+          const contactResult = await db.execute(sql`
+            SELECT phone_number, first_name, last_name FROM users WHERE id::text = ${task.contact_id}::text LIMIT 1
+          `);
+          const c = contactResult.rows[0] as any;
+          if (c?.phone_number) {
+            resolvedPhone = c.phone_number;
+            resolvedName = resolvedName || `${c.first_name || ''} ${c.last_name || ''}`.trim();
+          }
+        }
+      }
+
+      if (resolvedPhone && resolvedPhone !== 'N/A') {
+        const existingCallResult = await db.execute(sql`
+          SELECT id FROM scheduled_voice_calls
+          WHERE source_task_id = ${task.id}
+            AND status IN ('scheduled', 'pending')
+          LIMIT 1
+        `);
+        if (existingCallResult.rows.length > 0) {
+          console.log(`${LOG_PREFIX} [PREPARE_CALL] Skipping auto-schedule: voice call already exists for task ${task.id} (voice_call step will handle it)`);
+          result.auto_schedule_skipped = 'existing_call_found';
+        } else {
+          const scheduledCallId = generateScheduledCallId();
+          let targetDateTimeStr = callDate && callTime
+            ? `${callDate} ${callTime}:00`
+            : callDate
+              ? `${callDate} 10:00:00`
+              : null;
+
+          if (targetDateTimeStr) {
+            const nowRomeResult = await db.execute(sql`
+              SELECT to_char(NOW() AT TIME ZONE 'Europe/Rome', 'YYYY-MM-DD HH24:MI:SS') as now_rome
+            `);
+            const nowRomeStr = (nowRomeResult.rows[0] as any).now_rome as string;
+            if (targetDateTimeStr < nowRomeStr) {
+              const nextSlotResult = await db.execute(sql`
+                SELECT to_char(
+                  CASE 
+                    WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'Europe/Rome')) = 5 THEN (NOW() AT TIME ZONE 'Europe/Rome')::date + 3
+                    WHEN EXTRACT(DOW FROM (NOW() AT TIME ZONE 'Europe/Rome')) = 6 THEN (NOW() AT TIME ZONE 'Europe/Rome')::date + 2
+                    ELSE (NOW() AT TIME ZONE 'Europe/Rome')::date + 1
+                  END, 'YYYY-MM-DD'
+                ) as next_day
+              `);
+              const nextDay = (nextSlotResult.rows[0] as any).next_day;
+              targetDateTimeStr = `${nextDay} ${callTime || '10:00'}:00`;
+            }
+
+            let currentCheckStr = targetDateTimeStr;
+            for (let attempt = 0; attempt < 10; attempt++) {
+              const conflictResult = await db.execute(sql`
+                SELECT scheduled_at FROM scheduled_voice_calls
+                WHERE consultant_id = ${task.consultant_id}
+                  AND status IN ('scheduled', 'pending')
+                  AND ABS(EXTRACT(EPOCH FROM (scheduled_at - (${currentCheckStr}::timestamp AT TIME ZONE 'Europe/Rome')))) < 1800
+                LIMIT 1
+              `);
+              if (conflictResult.rows.length === 0) break;
+              console.log(`${LOG_PREFIX} [PREPARE_CALL] Conflict at ${currentCheckStr}, shifting +30 minutes`);
+              const shiftedResult = await db.execute(sql`
+                SELECT to_char((${currentCheckStr}::timestamp + interval '30 minutes'), 'YYYY-MM-DD HH24:MI:SS') as shifted
+              `);
+              currentCheckStr = (shiftedResult.rows[0] as any).shifted;
+            }
+            targetDateTimeStr = currentCheckStr;
+
+            const talkingPoints = result.talking_points || [];
+            const talkingPointsText = talkingPoints
+              .map((tp: any) => `- ${tp.topic}: ${tp.key_message}`)
+              .join("\n");
+            const customPrompt = result.opening_script
+              ? `${result.opening_script}\n\nPunti chiave:\n${talkingPointsText}\n\n${result.closing_script || ""}`
+              : task.ai_instruction;
+
+            await db.execute(sql`
+              INSERT INTO scheduled_voice_calls (
+                id, consultant_id, target_phone, scheduled_at, status, ai_mode,
+                custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
+                priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
+              ) VALUES (
+                ${scheduledCallId}, ${task.consultant_id}, ${resolvedPhone},
+                ${sql`${targetDateTimeStr}::timestamp AT TIME ZONE 'Europe/Rome'`}, 'scheduled', 'assistenza',
+                ${customPrompt}, ${customPrompt},
+                'task', 0, 3,
+                ${task.priority || 1}, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
+              )
+            `);
+
+            result.auto_scheduled_call_id = scheduledCallId;
+            result.auto_scheduled_at = targetDateTimeStr;
+            console.log(`${LOG_PREFIX} [PREPARE_CALL] Auto-scheduled voice call ${scheduledCallId} at ${targetDateTimeStr} for ${resolvedPhone}`);
+
+            await logActivity(task.consultant_id, {
+              event_type: "voice_call_auto_scheduled",
+              title: `Chiamata auto-programmata per ${resolvedName || resolvedPhone}`,
+              description: `Programmata per ${targetDateTimeStr}. ID: ${scheduledCallId}`,
+              icon: "📅",
+              severity: "info",
+              task_id: task.id,
+              contact_name: resolvedName,
+              contact_id: task.contact_id,
+            });
+          }
+        }
+      } else {
+        console.log(`${LOG_PREFIX} [PREPARE_CALL] No valid phone for auto-scheduling, skipping`);
+      }
+    } catch (schedErr: any) {
+      console.warn(`${LOG_PREFIX} [PREPARE_CALL] Failed to auto-schedule call: ${schedErr.message}`);
+      result.auto_schedule_error = schedErr.message;
+    }
+  }
+
+  return result;
 }
 
 async function handleVoiceCall(
@@ -1103,6 +1262,7 @@ async function handleSendEmail(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   const clientData = previousResults.fetch_client_data || {};
   const reportData = previousResults.generate_report || {};
@@ -1134,6 +1294,7 @@ async function handleSendEmail(
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
       console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
+${agentContextSection || ''}
 Contesto: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
@@ -1244,6 +1405,7 @@ async function handleSendWhatsapp(
   task: AITaskInfo,
   _step: ExecutionStep,
   previousResults: Record<string, any>,
+  agentContextSection?: string,
 ): Promise<Record<string, any>> {
   const reportData = previousResults.generate_report || {};
 
@@ -1290,6 +1452,7 @@ async function handleSendWhatsapp(
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${resolvedName || 'il cliente'}.
+${agentContextSection || ''}
 Contesto: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 ${reportData.title ? `Report preparato: "${reportData.title}"` : ''}

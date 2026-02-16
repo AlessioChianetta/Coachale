@@ -1302,17 +1302,90 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
           contact_id: task.contact_id,
         });
 
+        let resolvedContactPhone = task.contact_phone;
+        let resolvedContactName = task.contact_name;
+        let resolvedContactId = task.contact_id;
+        let resolvedWhatsappConfigId = task.whatsapp_config_id || null;
+        const taskRole = task.ai_role || null;
+
+        if (taskRole === 'marco') {
+          try {
+            const settingsResult = await db.execute(sql`
+              SELECT consultant_phone, consultant_whatsapp, consultant_email, agent_contexts
+              FROM ai_autonomy_settings
+              WHERE consultant_id::text = ${task.consultant_id}::text
+              LIMIT 1
+            `);
+            const settingsRow = settingsResult.rows[0] as any;
+            if (settingsRow) {
+              const consultantPhone = settingsRow.consultant_whatsapp || settingsRow.consultant_phone;
+              if (consultantPhone) {
+                console.log(`🔄 [AI-AUTONOMY] [MANUAL-EXEC] [MARCO] Redirecting contact to consultant: ${consultantPhone}`);
+                resolvedContactPhone = consultantPhone;
+                resolvedContactName = 'Consulente (tu)';
+                resolvedContactId = null;
+              }
+              const agentContexts = settingsRow.agent_contexts || {};
+              const marcoCtx = agentContexts['marco'];
+              if (marcoCtx?.defaultWhatsappAgentId && !resolvedWhatsappConfigId) {
+                resolvedWhatsappConfigId = marcoCtx.defaultWhatsappAgentId;
+                console.log(`📱 [AI-AUTONOMY] [MANUAL-EXEC] [MARCO] Using configured WhatsApp agent: ${resolvedWhatsappConfigId}`);
+              }
+            }
+          } catch (err: any) {
+            console.error(`⚠️ [AI-AUTONOMY] [MANUAL-EXEC] [MARCO] Failed to resolve consultant contacts: ${err.message}`);
+          }
+        } else if (taskRole && taskRole !== 'marco') {
+          try {
+            const settingsResult = await db.execute(sql`
+              SELECT agent_contexts FROM ai_autonomy_settings
+              WHERE consultant_id::text = ${task.consultant_id}::text
+              LIMIT 1
+            `);
+            const settingsRow = settingsResult.rows[0] as any;
+            if (settingsRow) {
+              const agentContexts = settingsRow.agent_contexts || {};
+              const roleCtx = agentContexts[taskRole];
+              if (roleCtx?.defaultWhatsappAgentId && !resolvedWhatsappConfigId) {
+                resolvedWhatsappConfigId = roleCtx.defaultWhatsappAgentId;
+                console.log(`📱 [AI-AUTONOMY] [MANUAL-EXEC] [${taskRole.toUpperCase()}] Using configured WhatsApp agent: ${resolvedWhatsappConfigId}`);
+              }
+            }
+          } catch (err: any) {
+            console.error(`⚠️ [AI-AUTONOMY] [MANUAL-EXEC] [${taskRole.toUpperCase()}] Failed to resolve WhatsApp agent: ${err.message}`);
+          }
+        }
+
+        if (resolvedContactPhone !== task.contact_phone || resolvedWhatsappConfigId) {
+          try {
+            await db.execute(sql`
+              UPDATE ai_scheduled_tasks
+              SET contact_phone = ${resolvedContactPhone},
+                  contact_name = ${resolvedContactName},
+                  contact_id = ${resolvedContactId ? sql`${resolvedContactId}::uuid` : sql`NULL`},
+                  whatsapp_config_id = ${resolvedWhatsappConfigId},
+                  updated_at = NOW()
+              WHERE id = ${task.id}
+            `);
+            console.log(`💾 [AI-AUTONOMY] [MANUAL-EXEC] Persisted resolved contacts/agent for task ${task.id}`);
+          } catch (persistErr: any) {
+            console.warn(`⚠️ [AI-AUTONOMY] [MANUAL-EXEC] Failed to persist resolved contacts: ${persistErr.message}`);
+          }
+        }
+
         const taskInfo: AITaskInfo = {
           id: task.id,
           consultant_id: task.consultant_id,
-          contact_id: task.contact_id,
-          contact_phone: task.contact_phone,
-          contact_name: task.contact_name,
+          contact_id: resolvedContactId,
+          contact_phone: resolvedContactPhone,
+          contact_name: resolvedContactName,
           ai_instruction: task.ai_instruction,
           task_category: task.task_category,
           priority: task.priority,
           timezone: task.timezone || 'Europe/Rome',
           additional_context: task.additional_context,
+          ai_role: taskRole,
+          whatsapp_config_id: resolvedWhatsappConfigId,
         };
 
         const allResults: Record<string, any> = {};
