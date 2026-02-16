@@ -356,38 +356,57 @@ Rispondi SOLO con JSON valido:
       aiAnalysis = JSON.parse(jsonText);
     } catch (parseError: any) {
       console.warn(`⚠️ [AI STATE] JSON parse error, attempting repair: ${parseError.message}`);
-      try {
-        const lastBrace = jsonText.lastIndexOf('}');
-        if (lastBrace > 0) {
-          const trimmed = jsonText.substring(0, lastBrace + 1);
-          aiAnalysis = JSON.parse(trimmed);
-          console.log(`✅ [AI STATE] JSON repaired by trimming trailing content`);
-        } else {
-          throw parseError;
-        }
-      } catch {
+      
+      let repaired: string | null = null;
+      
+      const lastCompletePattern = /,\s*"[^"]+"\s*:\s*"[^"]*"\s*\}?\s*$/;
+      const lastBrace = jsonText.lastIndexOf('}');
+      if (lastBrace > 0) {
+        const trimmed = jsonText.substring(0, lastBrace + 1);
         try {
-          const openBraces = (jsonText.match(/\{/g) || []).length;
-          const closeBraces = (jsonText.match(/\}/g) || []).length;
-          let repaired = jsonText;
-          if (openBraces > closeBraces) {
-            const lastQuote = repaired.lastIndexOf('"');
-            if (lastQuote > 0) {
-              repaired = repaired.substring(0, lastQuote + 1);
-            }
-            for (let i = 0; i < openBraces - closeBraces; i++) {
-              repaired += '}';
-            }
-            aiAnalysis = JSON.parse(repaired);
-            console.log(`✅ [AI STATE] JSON repaired by closing ${openBraces - closeBraces} braces`);
-          } else {
-            throw parseError;
+          aiAnalysis = JSON.parse(trimmed);
+          repaired = "trimmed trailing content";
+        } catch {}
+      }
+      
+      if (!repaired) {
+        const lastGoodComma = jsonText.lastIndexOf('",');
+        if (lastGoodComma > 0) {
+          let truncated = jsonText.substring(0, lastGoodComma + 1);
+          const openBraces = (truncated.match(/\{/g) || []).length;
+          const closeBraces = (truncated.match(/\}/g) || []).length;
+          for (let i = 0; i < openBraces - closeBraces; i++) {
+            truncated += '\n}';
           }
-        } catch {
-          console.error(`❌ [AI STATE] JSON repair failed`);
-          console.error(`📝 [AI STATE] Failed JSON text:`, jsonText.substring(0, 500));
-          throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+          try {
+            aiAnalysis = JSON.parse(truncated);
+            repaired = `truncated at last complete value and closed ${openBraces - closeBraces} braces`;
+          } catch {}
         }
+      }
+      
+      if (!repaired) {
+        const fields = ['currentState', 'idealState', 'internalBenefit', 'externalBenefit', 'mainObstacle', 'pastAttempts', 'currentActions', 'futureVision', 'motivationDrivers'];
+        const extracted: Record<string, string> = {};
+        for (const field of fields) {
+          const regex = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`);
+          const match = jsonText.match(regex);
+          if (match) {
+            extracted[field] = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+        }
+        if (extracted.currentState && extracted.idealState) {
+          aiAnalysis = extracted;
+          repaired = `regex-extracted ${Object.keys(extracted).length} fields`;
+        }
+      }
+      
+      if (repaired) {
+        console.log(`✅ [AI STATE] JSON repaired: ${repaired}`);
+      } else {
+        console.error(`❌ [AI STATE] JSON repair failed`);
+        console.error(`📝 [AI STATE] Failed JSON text (last 300 chars):`, jsonText.substring(jsonText.length - 300));
+        throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
       }
     }
     
