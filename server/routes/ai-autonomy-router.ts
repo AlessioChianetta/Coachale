@@ -2372,12 +2372,13 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
       return res.status(400).json({ error: "Massimo 20 task per aggregazione" });
     }
 
+    const idPlaceholders = sql.join(task_ids.map((id: string) => sql`${id}::uuid`), sql`, `);
     const tasksResult = await db.execute(sql`
       SELECT id, ai_instruction, ai_role, contact_name, contact_id, contact_phone,
              task_category, priority, status, additional_context, ai_reasoning,
              created_at, scheduled_at, origin_type
       FROM ai_scheduled_tasks
-      WHERE id = ANY(${task_ids}::uuid[])
+      WHERE id IN (${idPlaceholders})
         AND consultant_id = ${consultantId}
         AND task_type = 'ai_task'
       ORDER BY priority ASC, created_at ASC
@@ -2411,13 +2412,13 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
       WHERE id = ${mainTask.id} AND consultant_id = ${consultantId}
     `);
 
-    const secondaryIds = secondaryTasks.map((t: any) => t.id);
+    const secondaryIdPlaceholders = sql.join(secondaryTasks.map((t: any) => sql`${t.id}::uuid`), sql`, `);
     await db.execute(sql`
       UPDATE ai_scheduled_tasks
       SET status = 'cancelled',
           result_summary = COALESCE(result_summary, '') || ${'\n[Aggregato nel task principale ' + mainTask.id.substring(0, 8) + ']'},
           updated_at = NOW()
-      WHERE id = ANY(${secondaryIds}::uuid[]) AND consultant_id = ${consultantId}
+      WHERE id IN (${secondaryIdPlaceholders}) AND consultant_id = ${consultantId}
     `);
 
     for (const secTask of secondaryTasks) {
