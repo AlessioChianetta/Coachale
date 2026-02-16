@@ -843,7 +843,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'active') {
-        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved', 'waiting_approval')`);
+        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
       } else if (statusFilter === 'paused') {
         conditions.push(sql`status IN ('paused', 'draft')`);
       } else if (statusFilter === 'cancelled') {

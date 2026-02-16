@@ -1032,7 +1032,7 @@ function DashboardTab({
                       {getCategoryBadge(task.task_category)}
                       {getPriorityIndicator(task.priority)}
                       <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                        {task.status === "in_progress" ? "In esecuzione" : "Programmato"}
+                        {task.status === "in_progress" ? "In esecuzione" : task.status === "approved" ? "Approvato" : "Programmato"}
                       </Badge>
                     </div>
                   </div>
