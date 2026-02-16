@@ -1,0 +1,181 @@
+Ti do consigli pratici e applicabili subito, ragionando da prodotto / UX.
+
+1. Gerarchia visiva: ora è piatta
+
+Attualmente tutto pesa uguale: titolo, descrizione, badge, bottoni.
+
+Come sistemarla
+
+Usa 3 livelli chiari:
+
+🔝 Livello 1 — decisione rapida
+
+Titolo task (più grande / bold)
+
+Stato (Da approvare / Alta / Media)
+
+👉 Tutto il resto deve “fare un passo indietro”.
+
+🔹 Livello 2 — contesto
+
+Descrizione (max 2 righe visibili)
+
+Eventuali alert (es. “fuori orario”, “superato limite”)
+
+👉 Il testo lungo va collassato.
+
+🔻 Livello 3 — azioni
+
+Pulsanti secondari
+
+Log, date, follow-up
+
+👉 Devono essere presenti, ma non urlare.
+
+2. Troppi bottoni = ansia decisionale
+
+Questa è la cosa che più “sporca” visivamente.
+
+Ora hai:
+
+Approva
+
+Modifica orario
+
+Modifica testo
+
+Già fatta
+
+Rimanda
+
+Parlane in chat
+
+Rifiuta
+
+😵‍💫
+
+Soluzione semplice e molto elegante
+
+3 bottoni visibili, gli altri dietro a “Altro”.
+
+Visibili
+
+✅ Approva (primary)
+
+⏸ Rimanda
+
+❌ Rifiuta (destructive)
+
+Menu “⋯ Altro”
+
+Modifica testo
+
+Modifica orario
+
+Già fatta da me
+
+Parlane in chat
+
+Questo da solo ti dimezza il rumore visivo.
+
+3. Badge: troppi colori, stesso peso
+
+I badge colorati sono utili, ma ora sono tutti allo stesso livello emotivo.
+
+Regola d’oro
+
+Rosso → solo per problemi reali
+
+Arancione → attenzione
+
+Grigio / lilla soft → informativo
+
+Esempio:
+
+“Alta” → rosso
+
+“Da approvare” → arancione
+
+“AI”, “WhatsApp”, “Preparazione” → grigio chiaro
+
+Se tutto è colorato, niente è importante.
+
+4. Descrizioni troppo lunghe (ma preziose)
+
+Il contenuto è buono, ma visivamente pesa troppo.
+
+Pattern consigliato
+
+Mostra prime 2 righe
+
+Link “Mostra dettagli”
+
+Dentro ai dettagli:
+
+testo completo
+
+note AI
+
+spiegazioni strategiche
+
+Questo rende la lista scansionabile in 3 secondi.
+
+5. Separare “task” da “spiegazione”
+
+Le parti in corsivo viola sono utili, ma dovrebbero essere secondarie.
+
+Suggerimento:
+
+Metterle in:
+
+box “💡 Insight AI”
+
+oppure tooltip / collapsible
+
+Così non competono col task vero.
+
+6. Spaziatura: meno bordi, più aria
+
+Ora ogni card è:
+
+bordo
+
+ombra
+
+separatore
+
+outline colorato
+
+👉 scegli solo 1:
+
+o ombra soft
+
+o border leggero
+
+E aumenta:
+
+padding verticale
+
+spazio tra una card e l’altra
+
+L’occhio respira → il caos sparisce.
+
+7. Bonus: vista “Executive”
+
+Visto che sei imprenditore, ti suggerisco una modalità alternativa:
+
+Toggle:
+
+Vista Operativa
+
+Vista Executive
+
+Executive
+
+solo titolo
+
+priorità
+
+CTA principale
+
+Perfetta quando devi decidere in fretta.

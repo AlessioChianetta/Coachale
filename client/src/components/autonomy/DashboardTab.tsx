@@ -21,9 +21,10 @@ import {
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
   ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil,
-  Layers, Square, CheckSquare, GitBranch
+  Layers, Square, CheckSquare, GitBranch, MoreHorizontal, LayoutList, Zap
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { AITask, TasksResponse, TasksStats, TaskDetailResponse, NewTaskData, ActivityItem } from "./types";
@@ -126,6 +127,7 @@ function DashboardTab({
   const [mergeMode, setMergeMode] = React.useState(false);
   const [selectedMergeIds, setSelectedMergeIds] = React.useState<Set<string>>(new Set());
   const [isMerging, setIsMerging] = React.useState(false);
+  const [executiveView, setExecutiveView] = React.useState(false);
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -613,6 +615,26 @@ function DashboardTab({
             )}
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/50">
+              <Button
+                variant={executiveView ? "ghost" : "secondary"}
+                size="sm"
+                className={cn("h-7 px-2.5 text-xs gap-1 rounded-md", !executiveView && "shadow-sm")}
+                onClick={() => setExecutiveView(false)}
+              >
+                <LayoutList className="h-3 w-3" />
+                Operativa
+              </Button>
+              <Button
+                variant={executiveView ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("h-7 px-2.5 text-xs gap-1 rounded-md", executiveView && "shadow-sm")}
+                onClick={() => setExecutiveView(true)}
+              >
+                <Zap className="h-3 w-3" />
+                Executive
+              </Button>
+            </div>
             {!mergeMode && (
               <Button
                 variant="outline"
@@ -1523,7 +1545,7 @@ function DashboardTab({
                     {tasks.length}
                   </Badge>
                 </div>
-                <div className="space-y-3 pl-2">
+                <div className={cn("space-y-4 pl-1", executiveView && "space-y-1.5")}>
                   {tasks.map((task) => {
                     const plannedActions = detectPlannedActions(task);
                     const isWaiting = task.status === 'waiting_approval';
@@ -1532,21 +1554,86 @@ function DashboardTab({
                     const canPostpone = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
                     const canRequestReport = ['completed', 'in_progress', 'failed'].includes(task.status);
                     const isMergeSelected = selectedMergeIds.has(task.id);
+                    const isExpanded = expandedTaskIds.has(task.id);
+
+                    if (executiveView) {
+                      return (
+                        <React.Fragment key={task.id}>
+                        <div
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors cursor-pointer",
+                            "hover:bg-muted/40",
+                            getPriorityBorderColor(task.priority),
+                            "border-l-4",
+                            isWaiting && "bg-amber-50/30 dark:bg-amber-950/10"
+                          )}
+                          onClick={(e) => toggleTaskExpand(task.id, e)}
+                        >
+                          <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                            {task.contact_name && (
+                              <span className="text-sm font-semibold text-foreground shrink-0">
+                                {task.contact_name}
+                              </span>
+                            )}
+                            <p className="text-sm text-muted-foreground truncate">
+                              {task.ai_instruction}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {getPriorityIndicator(task.priority)}
+                            {getTaskStatusBadge(task.status)}
+                            {isWaiting && (
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-2.5 text-xs gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                    method: "PATCH",
+                                    headers: getAuthHeaders(),
+                                  }).then(res => {
+                                    if (res.ok) {
+                                      toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                    } else {
+                                      toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                    }
+                                  });
+                                }}
+                              >
+                                <ThumbsUp className="h-3 w-3" />
+                                Approva
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground"
+                              onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        </React.Fragment>
+                      );
+                    }
 
                     return (
                       <React.Fragment key={task.id}>
                       <Card
                         className={cn(
-                          "transition-all duration-200 border rounded-xl shadow-sm border-l-4 overflow-hidden",
-                          isWaiting ? "bg-slate-50/60 dark:bg-slate-900/20 border-primary/20 dark:border-primary/30 ring-1 ring-primary/10" : "",
-                          "hover:shadow-md",
+                          "transition-all duration-200 border rounded-xl border-l-4 overflow-hidden",
+                          isWaiting ? "bg-muted/20 dark:bg-muted/5" : "bg-card",
                           getPriorityBorderColor(task.priority),
                           mergeMode && isMergeSelected && "ring-2 ring-purple-400 bg-purple-50/30 dark:bg-purple-950/20"
                         )}
                       >
                         <CardContent className="p-0">
                           <div
-                            className="px-4 pt-3.5 pb-2 cursor-pointer flex gap-3"
+                            className="px-4 pt-4 pb-3 cursor-pointer flex gap-3"
                             onClick={(e) => {
                               if (mergeMode) {
                                 e.stopPropagation();
@@ -1566,309 +1653,252 @@ function DashboardTab({
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                  {task.ai_role === 'marco' && task.contact_name && (
-                                    <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
-                                      <span className="text-xs text-muted-foreground">Riguarda:</span>
-                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                      <span className="font-semibold">{task.contact_name}</span>
-                                    </span>
-                                  )}
-                                  {task.ai_role !== 'marco' && task.contact_name && (
-                                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                                      <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                      {task.contact_name}
-                                    </span>
-                                  )}
-                                  {task.ai_role !== 'marco' && task.contact_phone && (
-                                    <span className="text-xs text-muted-foreground font-mono bg-muted/60 px-1.5 py-0.5 rounded">
-                                      {task.contact_phone}
-                                    </span>
-                                  )}
-                                  {task.origin_type === 'autonomous' && (
-                                    <Badge className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 text-[10px] py-0 px-1.5">
-                                      <Sparkles className="h-2.5 w-2.5 mr-0.5" />
-                                      AI
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className={cn(
-                                  "text-sm text-foreground leading-relaxed transition-all duration-200",
-                                  !expandedTaskIds.has(task.id) && "line-clamp-2"
-                                )}>
-                                  {task.ai_instruction}
-                                </p>
-                                {task.additional_context && expandedTaskIds.has(task.id) && (
-                                  <div className="mt-2 text-xs bg-amber-50/70 dark:bg-amber-950/20 rounded-lg px-2.5 py-1.5 border border-amber-200/50 dark:border-amber-800/30">
-                                    <span className="font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1 mb-0.5">
-                                      <Info className="h-3 w-3" />
-                                      Contesto aggiuntivo:
-                                    </span>
-                                    <span className="text-foreground/80">{task.additional_context}</span>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    {task.contact_name && (
+                                      <span className="inline-flex items-center gap-1.5 text-base font-bold text-foreground">
+                                        <User className="h-4 w-4 text-muted-foreground/70" />
+                                        {task.ai_role === 'marco' && <span className="text-xs font-normal text-muted-foreground mr-0.5">Riguarda:</span>}
+                                        {task.contact_name}
+                                      </span>
+                                    )}
+                                    {task.ai_role !== 'marco' && task.contact_phone && (
+                                      <span className="text-[11px] text-muted-foreground/70 font-mono">
+                                        {task.contact_phone}
+                                      </span>
+                                    )}
                                   </div>
+                                  <p className={cn(
+                                    "text-sm text-foreground/80 leading-relaxed transition-all duration-200",
+                                    !isExpanded && "line-clamp-2"
+                                  )}>
+                                    {task.ai_instruction}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {getTaskStatusBadge(task.status)}
+                                  {getPriorityIndicator(task.priority)}
+                                </div>
+                              </div>
+
+                              {isExpanded && task.additional_context && (
+                                <div className="mt-2.5 text-xs bg-muted/40 dark:bg-muted/20 rounded-lg px-3 py-2 border border-border/40">
+                                  <span className="font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
+                                    <Info className="h-3 w-3" />
+                                    Contesto aggiuntivo
+                                  </span>
+                                  <span className="text-foreground/70">{task.additional_context}</span>
+                                </div>
+                              )}
+
+                              {subTaskMap.has(task.id) && (
+                                <div className="mt-2 flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 cursor-pointer"
+                                  onClick={(e) => { e.stopPropagation(); toggleTaskExpand(task.id, e); }}
+                                >
+                                  <Layers className="h-3 w-3" />
+                                  <span>{subTaskMap.get(task.id)!.length} follow-up</span>
+                                  <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
+                                </div>
+                              )}
+
+                              {isExpanded && task.origin_type === 'autonomous' && task.ai_reasoning && (
+                                <details className="mt-2.5">
+                                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground/70 flex items-center gap-1">
+                                    <Sparkles className="h-3 w-3 text-purple-400" />
+                                    Insight AI
+                                  </summary>
+                                  <p className="mt-1 text-xs text-muted-foreground/80 italic pl-4">
+                                    {task.ai_reasoning}
+                                  </p>
+                                </details>
+                              )}
+
+                              <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                                {plannedActions.map((action, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30"
+                                  >
+                                    {action.icon}
+                                    {action.label}
+                                  </span>
+                                ))}
+                                {task.origin_type === 'autonomous' && (
+                                  <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
+                                    <Sparkles className="h-2.5 w-2.5" />
+                                    AI
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
+                                  {getCategoryBadge(task.task_category)}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/70">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {getRelativeTime(task.created_at)}
+                                </span>
+                                {task.scheduled_at && ['scheduled', 'waiting_approval', 'approved', 'draft', 'paused'].includes(task.status) && (
+                                  <span className="flex items-center gap-1 text-primary/80 font-medium" title={task.scheduling_reason || undefined}>
+                                    <CalendarClock className="h-2.5 w-2.5" />
+                                    {new Date(task.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                                {task.completed_at && (
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
+                                    {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {getTaskStatusBadge(task.status)}
-                                {getPriorityIndicator(task.priority)}
-                              </div>
                             </div>
-
-                            {subTaskMap.has(task.id) && (
-                              <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-1.5 border border-purple-200/60 dark:border-purple-800/40 cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); toggleTaskExpand(task.id, e); }}
-                              >
-                                <Layers className="h-3.5 w-3.5" />
-                                <span>{subTaskMap.get(task.id)!.length} follow-up collegati</span>
-                                <ChevronRight className={cn("h-3.5 w-3.5 transition-transform ml-auto", expandedTaskIds.has(task.id) && "rotate-90")} />
-                              </div>
-                            )}
-
-                            {task.origin_type === 'autonomous' && task.ai_reasoning && (
-                              <div className={cn(
-                                "mt-2 text-xs text-muted-foreground italic bg-purple-50/70 dark:bg-purple-950/20 rounded-lg px-2.5 py-1.5 border border-purple-200/50 dark:border-purple-800/30 transition-all duration-200",
-                                !expandedTaskIds.has(task.id) && "line-clamp-1"
-                              )}>
-                                <Sparkles className="h-3 w-3 inline mr-1 text-purple-500" />
-                                {task.ai_reasoning}
-                              </div>
-                            )}
-
-                            <div className="mt-2.5 flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Azioni previste:</span>
-                              {plannedActions.map((action, idx) => (
-                                <span
-                                  key={idx}
-                                  className={cn(
-                                    "inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg border",
-                                    action.color
-                                  )}
-                                >
-                                  {action.icon}
-                                  {action.label}
-                                  {action.detail && (
-                                    <span className="font-mono text-[10px] opacity-80">{action.detail}</span>
-                                  )}
-                                </span>
-                              ))}
-                              {getCategoryBadge(task.task_category)}
-                              {getObjectiveLabel(task.objective) && (
-                                <Badge variant="outline" className="text-[10px] py-0 px-1.5">
-                                  <Target className="h-2.5 w-2.5 mr-0.5" />
-                                  {getObjectiveLabel(task.objective)}
-                                </Badge>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {getRelativeTime(task.created_at)}
-                              </span>
-                              {task.scheduled_at && ['scheduled', 'waiting_approval', 'approved', 'draft', 'paused'].includes(task.status) && (
-                                <span className="flex items-center gap-1 text-primary font-medium" title={task.scheduling_reason || undefined}>
-                                  <CalendarClock className="h-3 w-3" />
-                                  Programmato: {new Date(task.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  {task.scheduled_by === 'ai' && (
-                                    <Sparkles className="h-2.5 w-2.5 text-purple-500" />
-                                  )}
-                                </span>
-                              )}
-                              {task.scheduling_reason && expandedTaskIds.has(task.id) && (
-                                <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 italic">
-                                  <Info className="h-3 w-3" />
-                                  {task.scheduling_reason}
-                                </span>
-                              )}
-                              {task.completed_at && (
-                                <span className="flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3 text-emerald-500" />
-                                  {new Date(task.completed_at).toLocaleString("it-IT")}
-                                </span>
-                              )}
-                            </div>
-                          </div>
                           </div>
 
                           {(isWaiting || isActionable) && (
-                            <div className={cn(
-                              "px-4 py-2.5 border-t flex items-center gap-2 flex-wrap",
-                              isWaiting
-                                ? "bg-slate-50/70 dark:bg-slate-900/30 border-primary/15 dark:border-primary/20"
-                                : "bg-muted/30 border-border/50"
-                            )}>
+                            <div className="px-4 py-2 border-t border-border/30 bg-muted/10 flex items-center gap-2">
                               {isWaiting && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1.5 h-8 px-3 text-xs font-medium"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                                        method: "PATCH",
-                                        headers: getAuthHeaders(),
-                                      }).then(res => {
-                                        if (res.ok) {
-                                          toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                                          queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                        } else {
-                                          toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                                        }
-                                      });
-                                    }}
-                                  >
-                                    <ThumbsUp className="h-3.5 w-3.5" />
-                                    Approva
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1.5 h-8 px-3 text-xs font-medium border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950/30"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const currentScheduled = task.scheduled_at ? new Date(task.scheduled_at) : new Date();
-                                      const localIso = new Date(currentScheduled.getTime() - currentScheduled.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                                      setRescheduleDate(localIso);
-                                      setRescheduleTask(task);
-                                    }}
-                                  >
-                                    <CalendarClock className="h-3.5 w-3.5" />
-                                    Modifica orario
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-1.5 h-8 px-3 text-xs font-medium border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditInstruction(task.ai_instruction || "");
-                                      setEditContext(task.additional_context || "");
-                                      setEditTask(task);
-                                    }}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    Modifica testo
-                                  </Button>
-                                </>
-                              )}
-                              {isActionable && (
                                 <Button
-                                  variant="outline"
                                   size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-sky-200 text-sky-700 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-400 dark:hover:bg-sky-950/30"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 h-7 px-3 text-xs font-medium"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleMarkDone(task.id);
+                                    fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
+                                      method: "PATCH",
+                                      headers: getAuthHeaders(),
+                                    }).then(res => {
+                                      if (res.ok) {
+                                        toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
+                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                      } else {
+                                        toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
+                                      }
+                                    });
                                   }}
                                 >
-                                  <UserCheck className="h-3.5 w-3.5" />
-                                  Già fatta da me
+                                  <ThumbsUp className="h-3 w-3" />
+                                  Approva
                                 </Button>
                               )}
                               {canPostpone && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950/30"
+                                  className="gap-1 h-7 px-2.5 text-xs border-border/50 text-muted-foreground hover:text-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setPostponeTask(task);
                                   }}
                                 >
-                                  <Clock className="h-3.5 w-3.5" />
+                                  <Clock className="h-3 w-3" />
                                   Rimanda
-                                </Button>
-                              )}
-                              {canRequestReport && task.ai_role && onOpenChatWithTask && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenChatAboutTask(task, 'Cosa hai fatto?');
-                                  }}
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                  Cosa hai fatto?
-                                </Button>
-                              )}
-                              {task.ai_role && onOpenChatWithTask && !canRequestReport && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenChatAboutTask(task);
-                                  }}
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                  Parlane in chat
                                 </Button>
                               )}
                               {isCancellable && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+                                  className="gap-1 h-7 px-2.5 text-xs border-red-200/50 text-red-500 hover:bg-red-50/50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/20"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setCancelDialogTask(task);
                                   }}
                                 >
-                                  <Ban className="h-3.5 w-3.5" />
+                                  <Ban className="h-3 w-3" />
                                   Rifiuta
                                 </Button>
                               )}
-                              <div className="ml-auto">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1.5 h-8 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTaskId(task.id);
-                                  }}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                  Dettagli
-                                </Button>
-                              </div>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  {isWaiting && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => {
+                                        setEditInstruction(task.ai_instruction || "");
+                                        setEditContext(task.additional_context || "");
+                                        setEditTask(task);
+                                      }}>
+                                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                                        Modifica testo
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => {
+                                        const currentScheduled = task.scheduled_at ? new Date(task.scheduled_at) : new Date();
+                                        const localIso = new Date(currentScheduled.getTime() - currentScheduled.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                                        setRescheduleDate(localIso);
+                                        setRescheduleTask(task);
+                                      }}>
+                                        <CalendarClock className="h-3.5 w-3.5 mr-2" />
+                                        Modifica orario
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {isActionable && (
+                                    <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
+                                      <UserCheck className="h-3.5 w-3.5 mr-2" />
+                                      Già fatta da me
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canRequestReport && task.ai_role && onOpenChatWithTask && (
+                                    <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task, 'Cosa hai fatto?')}>
+                                      <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                                      Cosa hai fatto?
+                                    </DropdownMenuItem>
+                                  )}
+                                  {task.ai_role && onOpenChatWithTask && !canRequestReport && (
+                                    <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
+                                      <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                                      Parlane in chat
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                                    <Eye className="h-3.5 w-3.5 mr-2" />
+                                    Dettagli
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           )}
 
                           {!isWaiting && !isActionable && (
-                            <div className="px-4 py-2 border-t border-border/50 bg-muted/20 flex items-center gap-2 flex-wrap">
+                            <div className="px-4 py-2 border-t border-border/20 bg-muted/5 flex items-center gap-2">
                               {canRequestReport && task.ai_role && onOpenChatWithTask && (
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  className="gap-1.5 h-7 px-3 text-xs font-medium border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                  className="gap-1 h-7 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50/50 dark:text-violet-400 dark:hover:bg-violet-950/20"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenChatAboutTask(task, 'Cosa hai fatto?');
                                   }}
                                 >
-                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <MessageSquare className="h-3 w-3" />
                                   Cosa hai fatto?
                                 </Button>
                               )}
                               {task.ai_role && onOpenChatWithTask && !canRequestReport && (
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  className="gap-1.5 h-7 px-3 text-xs font-medium border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-950/30"
+                                  className="gap-1 h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenChatAboutTask(task);
                                   }}
                                 >
-                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <MessageSquare className="h-3 w-3" />
                                   Parlane in chat
                                 </Button>
                               )}
@@ -1876,13 +1906,13 @@ function DashboardTab({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="gap-1.5 h-7 px-3 text-xs font-medium text-muted-foreground hover:text-primary"
+                                  className="gap-1 h-7 px-2.5 text-xs text-muted-foreground hover:text-primary"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedTaskId(task.id);
                                   }}
                                 >
-                                  <Eye className="h-3.5 w-3.5" />
+                                  <Eye className="h-3 w-3" />
                                   Dettagli
                                 </Button>
                               </div>
@@ -1890,32 +1920,21 @@ function DashboardTab({
                           )}
                         </CardContent>
                       </Card>
-                      {expandedTaskIds.has(task.id) && subTaskMap.has(task.id) && (
-                        <div className="ml-6 pl-4 border-l-2 border-purple-200 dark:border-purple-800 space-y-2">
+                      {isExpanded && subTaskMap.has(task.id) && (
+                        <div className="ml-6 pl-4 border-l-2 border-purple-200/60 dark:border-purple-800/40 space-y-1.5">
                           {subTaskMap.get(task.id)!.map((subTask) => (
-                            <Card key={subTask.id} className="border rounded-lg shadow-sm overflow-hidden bg-purple-50/30 dark:bg-purple-950/10 border-purple-200/50 dark:border-purple-800/30">
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    {subTask.contact_name && (
-                                      <div className="flex items-center gap-1.5 mb-1">
-                                        <User className="h-3 w-3 text-muted-foreground" />
-                                        <span className="text-xs font-semibold">{subTask.contact_name}</span>
-                                      </div>
-                                    )}
-                                    <p className="text-xs text-foreground/80 line-clamp-2">{subTask.ai_instruction}</p>
-                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
-                                      <span className="flex items-center gap-0.5">
-                                        <Layers className="h-2.5 w-2.5 text-purple-500" />
-                                        Follow-up
-                                      </span>
-                                      <span>{getRelativeTime(subTask.created_at)}</span>
-                                      {getTaskStatusBadge(subTask.status)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
+                            <div key={subTask.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/20 border border-border/20">
+                              <div className="flex-1 min-w-0">
+                                {subTask.contact_name && (
+                                  <span className="text-xs font-semibold text-foreground/80 mr-2">{subTask.contact_name}</span>
+                                )}
+                                <p className="text-xs text-muted-foreground line-clamp-1">{subTask.ai_instruction}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-muted-foreground/60">
+                                <span>{getRelativeTime(subTask.created_at)}</span>
+                                {getTaskStatusBadge(subTask.status)}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}

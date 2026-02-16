@@ -84,9 +84,9 @@ export function getCategoryBadge(category: string) {
 
 export function getPriorityIndicator(priority: number) {
   if (priority === 1) return <Badge className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 text-xs">Alta</Badge>;
-  if (priority === 2) return <Badge className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 text-xs">Media-Alta</Badge>;
-  if (priority === 3) return <Badge className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 text-xs">Media</Badge>;
-  return <Badge className="bg-muted text-muted-foreground text-xs">Bassa</Badge>;
+  if (priority === 2) return <Badge className="bg-orange-50/60 text-orange-600/80 border-orange-200/50 dark:bg-orange-950/20 dark:text-orange-400/70 text-[11px]">Media-Alta</Badge>;
+  if (priority === 3) return <Badge className="bg-muted/50 text-muted-foreground/70 border-border/40 text-[11px]">Media</Badge>;
+  return <Badge className="bg-muted/30 text-muted-foreground/50 border-border/30 text-[11px]">Bassa</Badge>;
 }
 
 export function getStepStatusIcon(status: string) {
