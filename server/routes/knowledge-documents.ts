@@ -1913,8 +1913,11 @@ router.post(
       if ((injection_mode || 'system_prompt') === 'file_search') {
         setImmediate(async () => {
           try {
-            if (target_client_assistant) {
+            const hasAutoAgents = Object.values(target_autonomous_agents || {}).some(v => v);
+            const needsConsultantStore = target_client_assistant || hasAutoAgents;
+            if (needsConsultantStore) {
               await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
+              if (hasAutoAgents) console.log(`✅ [SYSTEM PROMPT DOCS] Synced to File Search for consultant store (autonomous agents)`);
             }
             const waAgents = target_whatsapp_agents || {};
             for (const [agentId, enabled] of Object.entries(waAgents)) {
@@ -2014,7 +2017,10 @@ router.put(
         setImmediate(async () => {
           try {
             if (updatedDoc.injection_mode === 'file_search' && updatedDoc.is_active) {
-              if (updatedDoc.target_client_assistant) {
+              const autoAgents = (typeof updatedDoc.target_autonomous_agents === 'string' ? JSON.parse(updatedDoc.target_autonomous_agents) : updatedDoc.target_autonomous_agents) || {};
+              const hasAutoAgents = Object.values(autoAgents).some(v => v);
+              const needsConsultantStore = updatedDoc.target_client_assistant || hasAutoAgents;
+              if (needsConsultantStore) {
                 await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
               } else {
                 await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
@@ -2058,7 +2064,7 @@ router.delete(
       const { id } = req.params;
 
       const existing = await db.execute(sql`
-        SELECT id, target_whatsapp_agents, injection_mode
+        SELECT id, target_whatsapp_agents, target_autonomous_agents, injection_mode
         FROM system_prompt_documents
         WHERE id = ${id} AND consultant_id = ${consultantId}
       `);
@@ -2081,6 +2087,10 @@ router.delete(
             const waAgents = (typeof docToDelete.target_whatsapp_agents === 'string' ? JSON.parse(docToDelete.target_whatsapp_agents) : docToDelete.target_whatsapp_agents) || {};
             for (const agentId of Object.keys(waAgents)) {
               await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
+            }
+            const autoAgents = (typeof docToDelete.target_autonomous_agents === 'string' ? JSON.parse(docToDelete.target_autonomous_agents) : docToDelete.target_autonomous_agents) || {};
+            if (Object.values(autoAgents).some(v => v)) {
+              await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, consultantId, 'consultant');
             }
           } catch (err: any) {
             console.error('❌ [SYSTEM PROMPT DOCS] Background file_search removal failed:', err.message);
@@ -2164,7 +2174,10 @@ router.patch(
                 await fileSearchSyncService.removeSystemPromptDocumentFromFileSearch(id, agentId, 'whatsapp_agent');
               }
             } else {
-              if (toggled.target_client_assistant) {
+              const autoAgents = (typeof toggled.target_autonomous_agents === 'string' ? JSON.parse(toggled.target_autonomous_agents) : toggled.target_autonomous_agents) || {};
+              const hasAutoAgents = Object.values(autoAgents).some(v => v);
+              const needsConsultantStore = toggled.target_client_assistant || hasAutoAgents;
+              if (needsConsultantStore) {
                 await fileSearchSyncService.syncSystemPromptDocumentToFileSearch(id, consultantId, 'client_assistant', consultantId, 'consultant');
               }
               const waAgents = (typeof toggled.target_whatsapp_agents === 'string' ? JSON.parse(toggled.target_whatsapp_agents) : toggled.target_whatsapp_agents) || {};

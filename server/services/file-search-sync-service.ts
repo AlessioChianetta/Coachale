@@ -1633,7 +1633,7 @@ export class FileSearchSyncService {
       let synced = 0, skipped = 0, failed = 0;
       try {
         const spDocsResult = await db.execute(
-          sql`SELECT id, title, target_client_assistant, target_whatsapp_agents
+          sql`SELECT id, title, target_client_assistant, target_whatsapp_agents, target_autonomous_agents
               FROM system_prompt_documents
               WHERE consultant_id = ${consultantId}
                 AND is_active = true
@@ -1642,7 +1642,12 @@ export class FileSearchSyncService {
         const spDocs = spDocsResult.rows as any[];
         for (const doc of spDocs) {
           try {
-            if (doc.target_client_assistant) {
+            const autoTargets = typeof doc.target_autonomous_agents === 'string'
+              ? JSON.parse(doc.target_autonomous_agents)
+              : (doc.target_autonomous_agents || {});
+            const hasAutoAgents = typeof autoTargets === 'object' && !Array.isArray(autoTargets) && Object.values(autoTargets).some(v => v === true);
+            const needsConsultantStore = doc.target_client_assistant || hasAutoAgents;
+            if (needsConsultantStore) {
               const result = await this.syncSystemPromptDocumentToFileSearch(
                 doc.id, consultantId, 'client_assistant', consultantId, 'consultant'
               );
@@ -8795,7 +8800,7 @@ export class FileSearchSyncService {
   static async syncSystemPromptDocumentToFileSearch(
     documentId: string,
     consultantId: string,
-    target: 'client_assistant' | 'whatsapp_agent',
+    target: 'client_assistant' | 'whatsapp_agent' | 'autonomous_agent',
     targetOwnerId: string,
     targetOwnerType: 'consultant' | 'whatsapp_agent',
   ): Promise<{ success: boolean; error?: string }> {
@@ -8818,12 +8823,14 @@ export class FileSearchSyncService {
       if (!store) {
         const storeName = targetOwnerType === 'consultant' 
           ? 'Knowledge Base Consulente' 
-          : 'WhatsApp Agent Store';
+          : target === 'autonomous_agent'
+            ? 'Autonomous Agent Store'
+            : 'WhatsApp Agent Store';
         const createResult = await fileSearchService.createStore({
           displayName: storeName,
           ownerId: targetOwnerId,
           ownerType: targetOwnerType,
-          description: `File Search store per ${targetOwnerType}`,
+          description: `File Search store per ${target === 'autonomous_agent' ? 'autonomous agent' : targetOwnerType}`,
         });
         if (!createResult.success || !createResult.storeId) {
           return { success: false, error: 'Failed to create store for system prompt doc' };
