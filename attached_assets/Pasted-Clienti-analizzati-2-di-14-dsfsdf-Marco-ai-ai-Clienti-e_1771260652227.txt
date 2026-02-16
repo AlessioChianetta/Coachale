@@ -1,0 +1,541 @@
+Clienti analizzati (2 di 14)
+
+dsfsdf
+Marco ai ai
+Clienti esclusi
+
+Con task pendenti: 15
+Completati di recente: 1
+Dati ruolo-specifici
+
+{
+  "workload": {
+    "completed_7d": "7",
+    "completed_30d": "7",
+    "pending_tasks": "1"
+  },
+  "clientCount": "13",
+  "clientTasks": [],
+  "marcoContext": {
+    "roadmap": "Profilo Cliente Ideale (ICP) e Proposta di Valore\nQuesto documento delinea il cliente target, la proposta di valore centrale e le funzionalità del servizio, con l'obiettivo di supportare le fasi di scaling e marketing definite nella strategia aziendale.\n1. Aiutiamo Chi a Fare Cosa e Come\nAiuto imprenditori con clienti ricorrenti a installare un Dipendente AI che gestisce assistenza clienti e onboarding, seguendo la tua documentazione, le tue regole e il tuo tono Per farti lavorare meno in azienda, riprenderti tempo per te e scalare senza colli di bottiglia, grazie al Sistema Orbitale.\n1.1. Chi Aiutiamo (Ideal Customer Profile - ICP)\nSegmento Cliente\nDescrizione Dettagliata\nAziende/PMI\nTitolari di piccole e medie imprese o dirigenti (es. CEO, CTO) in settori ad alto volume di interazione con il cliente (es. e-commerce, servizi professionali, agenzie di marketing/vendita). Sono bloccati da processi interni inefficienti e cercano soluzioni per la scalabilità senza aumentare il personale.\nConsulenti/Formatori\nProfessionisti o aziende che vendono corsi, coaching o servizi di consulenza. Hanno bisogno di automatizzare l'assistenza post-vendita e la fase di lead generation per concentrarsi sulla creazione di valore.\nStart-up in Fase di Crescita\nAziende con un prodotto validato e un MRR in crescita che necessitano di infrastrutture automatizzate per gestire l'aumento della domanda (es. gestione appuntamenti, customer support di primo livello).\n\n1.2. Cosa Aiutiamo a Fare\nObiettivo Primario: Trasformare processi ad alta intensità di lavoro manuale in sistemi automatizzati e scalabili, riducendo i costi operativi e aumentando il tasso di conversione.\n\nEsempi di Risultati:\n\nGenerazione Lead: Ottenere più appuntamenti qualificati tramite l'AI (Livello 4 e 6).\nSupporto Clienti: Fornire assistenza 24/7 con costi ridotti (Livello 3).\nScalabilità: Fornire l'infrastruttura per creare e vendere agenti AI personalizzati (Livello 5).\n1.3. Il Nostro Metodo (Come)\nForniamo la nostra soluzione attraverso una struttura di servizi modulare, dal supporto di base all'infrastruttura completa e alla consulenza personalizzata.\n\nLivello di Servizio\nMetodo (Il Come)\nLivello 1 & 2 (Bronze e Silver Accesso)\nFree | 49 €/M\nAccesso immediato a un dipendente AI predefinito per la prova o l'uso illimitato.\nLivello 3 (Gold Supporto AI)\n99 €/M | 299 €/M\nFormazione (Corsi) e interazione vocale con AI per supporto e assistenza specifica. | 2 Consulenze al mese se richieste\nLivello 4 (Deluxe Consulente Agenti Specifici)\n299 €/M Setup 997 euro\nSolo Implementazione di un agente AI dedicato alla presa appuntamenti sui canali social/email.\nLivello 5 (Exclusive Infrastruttura)\n499 €/M Setup 1997 euro\nFornitura di un'infrastruttura completa e Onboarding dedicato per l'autonomia nella creazione di agenti e corsi AI. Gestione onboarding clienti e dipendenti\nLivello 6 (Consulenza)\n999 €/M Setup 1997 euro\nIntegrazione completa dei servizi precedenti con consulenze esclusive per l'analisi e l'ottimizzazione dei processi aziendali e consigli di implementazione dell’AI nelle aziende.\n\n2. Il Problema che Risolviamo\nIl nostro servizio si rivolge direttamente ai seguenti problemi chiave sperimentati dai nostri ICP:\n\nProblema del Cliente\nImpatto Negativo (Il Costo del Non Agire)\nInefficienza Operativa e Costi Elevati del Personale\nL'assunzione di personale per compiti ripetitivi e a basso valore è costosa e non scalabile. Ciò limita la capacità di crescita.\nPerdita di Opportunità (Lead)\nLa mancata risposta tempestiva su canali come WhatsApp o Instagram porta alla perdita di potenziali clienti e appuntamenti.\nMancanza di Scalabilità del Supporto\nIl supporto clienti non può crescere alla stessa velocità delle vendite, portando a churn e recensioni negative.\nMancanza di Competenze Interne sull'AI\nI clienti sanno di dover usare l'AI ma non hanno le competenze o l'infrastruttura per implementarla efficacemente.\n\n3. Funzionalità e Soluzioni (Per Livello)\nLe funzionalità si allineano direttamente alla risoluzione dei problemi del cliente, suddivise per livello di servizio.\nA. Funzionalità di Base e Interazione\nFunzionalità\nLivelli\nSoluzione al Problema\nAccesso a Dipendente AI\n1, 2\nTest e Uso Immediato di un assistente AI pre-addestrato per compiti generici.\nMessaggi Illimitati\n2, 3, 4, 5, 6\nDisponibilità Costante senza limitazioni di utilizzo.\nInterazione Vocale\n3, 4, 5, 6\nSupporto Dinamico e Accessibile che simula l'interazione umana per una migliore esperienza.\nMemoria AI\n3, 4, 5, 6\nContesto Persistente per conversazioni più efficaci e personalizzate (l'AI ricorda le interazioni precedenti).\n\nB. Funzionalità di Crescita e Vendita\nFunzionalità\nLivelli\nSoluzione al Problema\nPresa Appuntamenti Automatica\n4, 5, 6\nZero Lead Persi: L'AI gestisce la qualificazione e la prenotazione di appuntamenti su WhatsApp, Instagram ed Email.\nCorsi e Supporto AI\n3, 5, 6\nFormazione e Autonomia: Strumenti per l'apprendimento e l'applicazione pratica dell'AI.\nFornitura Infrastruttura Completa\n5, 6\nScalabilità Massima: Possibilità di creare e distribuire i propri agenti AI (per uso interno o rivendita).\nConsulenze Personalizzate\n6\nOttimizzazione Profonda: Analisi dei processi aziendali per raccomandare software e strategie per l'efficienza.\n\n\nPer saperne di più su come implementare queste funzionalità, consulta la documentazione completa del prodotto disponibile al seguente link: File\n\n4. Modello di Partnership e Rivendita (Applicabile ai Livelli 5)\nI clienti che accedono al Livello 5 (Exclusive Infrastruttura) godono della possibilità unica di diventare partner e rivendere i servizi di Livello 1, 2 e 3 (Accesso Bronze e Silver, Supporto AI Gold) ai propri clienti. Questo modello di partnership consente ai nostri clienti di Livello 5 di generare flussi di entrate aggiuntivi e di monetizzare l'infrastruttura AI che hanno implementato.\n\nQuesta opportunità è estesa anche ai partner di Livello 5 che scelgono di concentrarsi esclusivamente sulla rivendita, pur mantenendo l'accesso all'infrastruttura necessaria per il supporto e la configurazione dei prodotti rivenduti.\n4.1. Struttura delle Commissioni di Rivendita\nLa percentuale di commissione sulla rivendita dei servizi di Livello 1, 2 e 3 è determinata dal livello di coinvolgimento del partner (Livello 5) nell'assistenza e nell'onboarding del cliente finale:\n\nServizio di Rivendita (Livelli 1, 2, 3)\nResponsabilità di Onboarding e Assistenza\nCommissione per il Partner (Livello 5)\nLivello 1, 2, 3\nGestita da Exit 5kk (Il Fornitore)\n50% del ricavo mensile netto\nLivello 1, 2, 3\nGestita dal Partner (Livello 5)\n35% del ricavo mensile netto\n\n\nNota: La commissione del 35% si applica quando il partner di Livello 5 gestisce autonomamente l'integrazione, l'onboarding e il supporto continuo per i servizi di Livello 1, 2 o 3 venduti al cliente finale. La commissione del 50% è riservata ai casi in cui Exit 5kk gestisce direttamente queste fasi cruciali.\n\n\nStrategia di Targeting e Proposta di Valore (AI-Powered)\nQuesto documento sintetizza il Profilo Cliente Ideale (ICP) e i modelli di pricing e servizio, allineando le offerte (Livelli 1-6) alle esigenze specifiche della clientela (Acquisizione Lead, Supporto e Onboarding, Rivenditori). L'obiettivo è massimizzare il valore e la scalabilità, passando da un modello di servizio a una piattaforma.\n1. Focalizzazione sul Cliente Ideale (ICP)\nIl cliente ideale è un'azienda B2B in abbonamento (SaaS, MSP, software house a retainer, servizi productized) con un team di 5–30 persone che serve clienti PMI e ha due motori operativi ripetibili ma inefficienti: il supporto multi-canale e l'onboarding.\n\nObiettivo Primario del Cliente\nNichia Target\nStato Attuale (Dolore)\nTrasformazione (Stato Ideale)\nAcquisizione/Lead Gen\nAziende con Alto Volume di Contatti Social/WhatsApp\nAlto volume di messaggi/commenti dispersivi (INFO, PREZZO), lead persi, follow-up manuale.\nL'AI risponde immediatamente, qualifica i lead e prende appuntamenti su WhatsApp/IG (Livello 4).\nStandardizzazione/Controllo\nB2B Subscription Business (5-30 persone)\nSupporto \"a memoria\" incoerente, founder/senior interrotti, onboarding lento, documentazione non applicata.\nSupporto coerente, team autonomo, onboarding guidato, founder concentrato sulla crescita (Livelli 3,4, 5, 6).\nEspansione/Distribuzione\nRivenditori, Agenzie High-Ticket\nVogliono integrare l'AI ma non hanno l'infrastruttura di hosting, governance o training.\nPiattaforma completa per creare, distribuire e rivendere agenti AI con supporto dedicato (Livello 5 e schema fee).\n\n2. Allineamento Livelli di Servizio alle Esigenze\nI 6 livelli di servizio sono strutturati per coprire le tre macro-esigenze del mercato (Lead, Supporto, Infrastruttura/Rivendita).\n\nLivello\nPrezzo\nFocus Principale\nAllineamento all'ICP\nDettagli chiave\n1 (Gratuito)\nGratuito\nTest e Prova\nConvalida del concetto AI\nAccesso per test a un dipendente predefinito.\n2 (Silver)\n47 €/Mese\nUtilizzo Illimitato\nUso individuale di base/Piccoli team\nMessaggi illimitati con il dipendente predefinito.\n3 (Gold)\n97 €/Mese\nSupporto e Formazione\nStandardizzazione del Know-How (Soft)\nCorsi, supporto AI, interazione vocale, Memoria AI per coerenza.\n4 (Premium Lead)\n1000 € Setup + 297 €/Mese\nLead Generation Automatica\nAlta Urgenza (Chi ha Campagne/Follower)\nDipendente AI che prende appuntamenti su WhatsApp/Instagram/Email.\n5 (Infrastruttura)\n2000 € Setup + 497 €/Mese\nPiattaforma e Rivendita\nICP che vuole Scalare / Rivenditori\nFornitura dell'infrastruttura completa per creare e distribuire agenti AI, Onboarding dedicato e supporto.\n6 (Executive)\n2000 € Setup + 997 €/Mese\nConsulenza Strategica\nICP High-Value/Enterprise\nTutti i servizi precedenti + consulenze esclusive per l'analisi dei processi aziendali e raccomandazione di software.\n\n3. Strategia di Prezzi (Pricing) e Monetizzazione\nPer la scalabilità e la crescita, è fondamentale adottare modelli di prezzo che riflettano il valore erogato e che gestiscano in modo sostenibile i costi operativi delle API AI.\n3.1. Modello per i Servizi Core (Livelli 1-4)\nQuesto modello si basa sull'abbonamento mensile, con un Setup Fee che copre l'implementazione e la configurazione iniziale (principalmente per i livelli ad alto valore).\n3.2. Modello per Rivenditori e Licenze (Livello 5)\nIl Livello 5 è progettato per agenzie, software house o grandi clienti che desiderano distribuire gli Agenti AI internamente o rivenderli a terzi.\n\nElemento di Prezzo\nDescrizione\nSetup Fee (Infrastruttura)\n2000 € Una Tantum per l'installazione iniziale dell'infrastruttura di agent building, onboarding e governance.\nLicenza Base (Piattaforma)\n497 €/Mese per l'accesso illimitato alla piattaforma di creazione e gestione degli agenti (la tua UI/Dashboard).\nModello di Rivendita (Royalty)\n% sui Ricavi Ricorrenti (MRR): Applicare una percentuale (es. 35%-50%) sul MRR generato dal rivenditore. Questo garantisce un guadagno passivo.\nFee per Crediti AI (Gestione API)\nVedi Sezione 3.3.\n\n3.3. Gestione dei Costi API (Crediti AI)\nPer i livelli base (1-4), i costi AI (API key) sono inclusi nel prezzo per semplificare l'offerta e incentivare l'adozione. Per i clienti ad alto consumo (Livello 5 e 6, e Rivenditori), la strategia deve cambiare per proteggere i margini.\n\nSoglia di Consumo\nStrategia di Gestione Costi AI\nConsumo Basso/Medio (Livelli 1-4)\nCosto Inclusi: I costi API sono gestiti internamente. L'abbonamento è sufficiente per coprire l'utilizzo tipico, creando un buffer di rischio gestibile.\nConsumo Alto (Livelli 5-6, Rivenditori)\nFatturazione Diretta o Add-on: Quando il consumo supera una soglia definita (es. >50 € di crediti al mese), si passa a due opzioni:\n\n\nOpzione A: Fatturazione Pass-Through: Aggiungere un add-on mensile calcolato sui costi API effettivi con un piccolo markup (es. 10%).\n\n\nOpzione B: API Key del Cliente: Configurare l'ambiente di produzione direttamente sull'API Key (Gemini/Vertex AI) del cliente. Questo li rende responsabili diretti del consumo. Consigliato per Livello 5/6.\n\n4. Esempi Operativi di Trasformazione\nDi seguito sono riportati esempi di come le diverse offerte risolvono i problemi operativi dei clienti, trasformando la documentazione esistente in azioni automatiche.\n4.1. Caso 1: Gestione Contatti Social (Livello 4)\nAzione\nStato Attuale\nTrasformazione AI (Livello 4)\nDomanda IG/WhatsApp\n\"Scrivi INFO e ti contatto\" è gestito da un junior in orari di ufficio, con ritardi.\nL'AI risponde immediatamente, qualifica (Budget/Bisogno), usa il link per la prenotazione Calendar event e salva il contatto nel CRM File.\nOnboarding Team\nI junior chiedono al senior/founder: \"Cosa rispondo se chiede uno sconto?\".\nL'Agente AI (Mario/Assistente di Person) risponde in base alla policy aziendale (es. \"Lo sconto è concesso solo per pagamenti annuali > 5k €\").\n\n4.2. Caso 2: Onboarding Clienti (Livelli 3 e 5)\nAzione\nStato Attuale\nTrasformazione AI (Livello 5)\nRaccolta Accessi\nEmail/WhatsApp manuale con ritardi.\nIl Workflow AI chiede i dati in sequenza, crea la checklist e li salva automaticamente in un sistema sicuro.\nTraining Iniziale\nCall ripetitive e dispendiose.\nIl Cliente interagisce con l'Assistente Formativo AI (Livello 3/5) che risponde a dubbi operativi 24/7 (es. \"Come configuro la prima campagna?\").\n\n4.3. Caso 3: Personalizzazione Estrema (Servizio Bonus - \"Crea il tuo Dipendente AI\")\n\nQuesto servizio funge da dimostrazione della versatilità della piattaforma e può essere un upsell strategico per i Livelli 5 e 6 o un'attività ad alto margine su progetto. L'obiettivo è trasformare qualsiasi manuale o ruolo aziendale in un agente AI personalizzato con personalità specifica.\n\nAzione\nStato Attuale\nTrasformazione AI (Bonus Service / Livello 5+)\nPersonalizzazione Ruolo\nIl know-how è legato alla singola persona (es. il cameriere esperto).\nCreazione di un Agente AI personalizzato (es. \"Cameriere AI per il tavolo X\") che incarna il tono di voce e le competenze specifiche dell'azienda.\nAssistenza al Cliente Finale\nIl cliente chiede informazioni sul menu, tempi di attesa, allergeni al personale occupato.\nL'Agente AI, accessibile via QR Code al tavolo, risponde immediatamente a tutte le domande, consiglia piatti basati su preferenze note e gestisce informazioni specifiche (es. allergeni, ingredienti, abbinamenti vino).\nScalabilità del Tono\nIl tono di servizio è incostante tra i dipendenti.\nL'AI garantisce un tono di voce coerente e brandizzato in ogni interazione, indipendentemente dal volume di richieste.\n\n\n5. Implementazione Strategica (Focus Iniziale)\nPer passare da 2k MRR a 7k MRR, la priorità è concentrarsi sulla convalida dell'offerta Lead Generation (Livello 4) e sulla standardizzazione del servizio Supporto (Livello 3).\n\nFocalizzazione sul Livello 4: È la soluzione più visibile e urgente per i clienti con problemi di acquisizione. Lanciare campagne mirate con la frase filtro: \"Smetti di perdere lead su WhatsApp/Instagram. Installa l'AI che qualifica e prenota per te.\"\nPreparazione per la Scalabilità (Livello 5): Sviluppare il playbook di implementazione per i rivenditori. Creare il contratto di rivendita (vedi attività in [1]) basato sul modello Licenza + % su MRR.\nMarketing Coerente: Utilizzare la Trasformazione Rivelatrice ([4]): Da supporto e onboarding che dipendono da persone a supporto e onboarding che dipendono da regole applicate automaticamente.\n\nStrategia di Marketing per Livelli a Valore Aggiunto (Livelli 4 e 5)\nIl presente documento è strutturato per fungere da playbook scalabile per le campagne pubblicitarie (ADS) relative al Livello 4 (Lead Generation Automatica) e al Livello 5 (Infrastruttura e Onboarding). Per ogni livello, sono identificate le sezioni chiave necessarie per l'implementazione creativa e di copy.\n\nSi rimanda al documento \"Exit 5kk\" per i dettagli sui costi e le descrizioni dei livelli.\n1. Campagne di Marketing per il Livello 4 (Premium Lead)\nFocus Principale: Risolvere l'urgenza della perdita di contatti (Lead) sui canali social e via email, automatizzando la qualificazione e la presa appuntamenti.\n\nTarget ICP: Aziende con Alto Volume di Contatti Social/WhatsApp (vedi sezione 1.3 del documento di riferimento).\n\nLivello\nPrezzo\nFocus Principale\nLivello 4 (Premium Lead)\n1000 € Setup + 297 €/Mese\nLead Generation Automatica\n\nCampagna 4.1: \"Stop alla Perdita di Lead\" (Acquisizione - High Intent)\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video 4.1: Contatto mancato/Appuntamento preso automaticamente\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 4.1. Deve includere il problema (lead persi), la soluzione (AI Level 4), e la CTA per la prova/setup.\n\nCampagna 4.2: \"AI su WhatsApp 24/7\" (Considerazione - Canale Specifico)\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video 4.2: Chat di WhatsApp con l'AI che prenota un evento Calendar event\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 4.2. Focus su disponibilità 24/7 e come l'AI gestisce le conversazioni complesse (Qualificazione/Obiezioni).\n\nCampagna Scalabile Aggiuntiva (Livello 4)\nPer inserire campagne future, utilizzare la struttura seguente:\n\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video per Campagna 4.3\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 4.3.\n\n2. Campagne di Marketing per il Livello 5 (Infrastruttura)\nFocus Principale: Offrire la piattaforma completa per la scalabilità interna (Onboarding Dipendenti) e l'opportunità di Rivendita (Modello Partner).\n\nTarget ICP: ICP che vuole Scalare / Rivenditori (Agenzie, Software House, Imprese con forte necessità di controllo interno).\n\nLivello\nPrezzo\nFocus Principale\nLivello 5 (Infrastruttura)\n2000 € Setup + 497 €/Mese\nPiattaforma e Rivendita\n\nCampagna 5.1: \"La Tua Agenzia AI\" (Acquisizione - Rivenditori)\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video 5.1: Illustrazione del modello Royalty e Commissioni di Rivendita\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 5.1. Deve enfatizzare il modello di Partnership (fino al 50% di commissione) e la possibilità di monetizzare l'AI senza sviluppo interno.\n\nCampagna 5.2: \"Onboarding Automatico dei Dipendenti\" (Considerazione - Aziende Interne)\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video 5.2: Un dipendente che riceve supporto da un Assistente AI (Mario, l'assistente di Person)\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 5.2. Focus sulla standardizzazione del Know-How (Trasformazione del manuale aziendale in AI) e il risparmio di tempo per il management.\n\nCampagna Scalabile Aggiuntiva (Livello 5)\nPer inserire campagne future, utilizzare la struttura seguente:\n\nElemento Creativo\nPlaceholder per Contenuto\nImmagine/Video\n File Immagine/Video per Campagna 5.3\nCopy Breve (Video/Immagine)\nInserisci qui il testo breve (titolo e poche righe) per l'ADS\nCopy Lungo (Descrizione Dettagliata)\nInserisci qui il copy persuasivo e dettagliato per la Campagna 5.3.\n\n3. Riepilogo Strategia Creativa (ADS)\nDi seguito una tabella di riepilogo delle creatività pianificate per i lanci iniziali.\n\nLivello\nCampagna\nFocus\nTipo Contenuto\nStatus ADS \nLivello 4\nStop alla Perdita di Lead\nAcquisizione\nVideo\nInserisci qui lo stato\nLivello 4\nAI su WhatsApp 24/7\nCanale Specifico\nImmagine\nInserisci qui lo stato\nLivello 5\nLa Tua Agenzia AI\nRivenditori\nVideo\nInserisci qui lo stato\nLivello 5\nOnboarding Automatico\nScalabilità Interna\nImmagine\nInserisci qui lo stato\nLivello 4\nCampagna 4.3\nInserisci qui il focus\nInserisci qui il tipo\nInserisci qui lo stato\n\n\n",
+    "objectives": [
+      {
+        "id": "403c8d76-16f2-4461-aaa0-1415ff9cfba5",
+        "name": "Raggiungere l'indipendenza finanziaria mia e dell'attività",
+        "deadline": "2027-01-13",
+        "priority": "alta"
+      }
+    ],
+    "reportFocus": "Arrivare a scalare l'attività da solo, con l'aiuto di dipendenti AI e farla arrivare a 1kk all'anno, e venderla ad almeno 5kk",
+    "reportStyle": "bilanciato",
+    "consultantEmail": "chianettaalessio@gmail.com",
+    "consultantPhone": "1009",
+    "consultantWhatsapp": "+393890566422",
+    "linkedKbDocumentIds": [
+      "6ca35bac-0893-426c-af68-296e7dcce479"
+    ]
+  },
+  "schedulingGaps": [
+    {
+      "email": "fernandovillon96@hotmail.com",
+      "client_id": "7cdfb7ae-d06b-40f6-9840-91f72772a390",
+      "month_name": "February 2026",
+      "client_name": "Fernando Villon",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393476747084",
+      "scheduled_count": 3,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "fernandovillon96@hotmail.com",
+      "client_id": "7cdfb7ae-d06b-40f6-9840-91f72772a390",
+      "month_name": "March 2026",
+      "client_name": "Fernando Villon",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393476747084",
+      "scheduled_count": 3,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "fernandovillon96@hotmail.com",
+      "client_id": "7cdfb7ae-d06b-40f6-9840-91f72772a390",
+      "month_name": "April 2026",
+      "client_name": "Fernando Villon",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393476747084",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "giuliacell23@gmail.com",
+      "client_id": "bc1dec4d-8a20-4d23-a109-b4de82a4b4e7",
+      "month_name": "February 2026",
+      "client_name": "Giulia Turatto",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "3355420572",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "giuliacell23@gmail.com",
+      "client_id": "bc1dec4d-8a20-4d23-a109-b4de82a4b4e7",
+      "month_name": "March 2026",
+      "client_name": "Giulia Turatto",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "3355420572",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "giuliacell23@gmail.com",
+      "client_id": "bc1dec4d-8a20-4d23-a109-b4de82a4b4e7",
+      "month_name": "April 2026",
+      "client_name": "Giulia Turatto",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "3355420572",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "giusy.dattilo@gmail.com",
+      "client_id": "7e40b56c-2cc8-4515-b843-dc105e478f38",
+      "month_name": "February 2026",
+      "client_name": "Giusy Dattilo",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393493865140",
+      "scheduled_count": 4,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "giusy.dattilo@gmail.com",
+      "client_id": "7e40b56c-2cc8-4515-b843-dc105e478f38",
+      "month_name": "March 2026",
+      "client_name": "Giusy Dattilo",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393493865140",
+      "scheduled_count": 3,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "giusy.dattilo@gmail.com",
+      "client_id": "7e40b56c-2cc8-4515-b843-dc105e478f38",
+      "month_name": "April 2026",
+      "client_name": "Giusy Dattilo",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393493865140",
+      "scheduled_count": 3,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "email": "santigloria74@gmail.com",
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "February 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 3,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "santigloria74@gmail.com",
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "March 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "santigloria74@gmail.com",
+      "client_id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "month_name": "April 2026",
+      "client_name": "Gloria Santi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393491069059",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "famiglia838@gmail.com",
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "February 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "famiglia838@gmail.com",
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "March 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "famiglia838@gmail.com",
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "month_name": "April 2026",
+      "client_name": "marco massi",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393713903773",
+      "scheduled_count": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "info@elischool.it",
+      "client_id": "c2146759-f08a-430a-afdf-701bbc674300",
+      "month_name": "February 2026",
+      "client_name": "Massimo Onofri",
+      "month_label": "2026-02",
+      "month_start": "2026-02-01 00:00:00+00",
+      "phone_number": "+393332901788",
+      "scheduled_count": 0,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "info@elischool.it",
+      "client_id": "c2146759-f08a-430a-afdf-701bbc674300",
+      "month_name": "March 2026",
+      "client_name": "Massimo Onofri",
+      "month_label": "2026-03",
+      "month_start": "2026-03-01 00:00:00+00",
+      "phone_number": "+393332901788",
+      "scheduled_count": 0,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "email": "info@elischool.it",
+      "client_id": "c2146759-f08a-430a-afdf-701bbc674300",
+      "month_name": "April 2026",
+      "client_name": "Massimo Onofri",
+      "month_label": "2026-04",
+      "month_start": "2026-04-01 00:00:00+00",
+      "phone_number": "+393332901788",
+      "scheduled_count": 0,
+      "monthly_consultation_limit": 2
+    }
+  ],
+  "clientTaskStats": [
+    {
+      "client_id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "client_name": "marco massi",
+      "total_tasks": "7",
+      "overdue_tasks": "3",
+      "pending_tasks": "6",
+      "completed_tasks": "1"
+    },
+    {
+      "client_id": "42105c6d-d065-4f4e-b5b2-290742b4dd1d",
+      "client_name": "Silvia Caldironi",
+      "total_tasks": "9",
+      "overdue_tasks": "0",
+      "pending_tasks": "9",
+      "completed_tasks": "0"
+    }
+  ],
+  "kbDocumentTitles": [
+    "Exit 5kk"
+  ],
+  "fileSearchStoreNames": [
+    "fileSearchStores/knowledge-base-consulente-juw371zchi3s"
+  ],
+  "upcomingConsultations": [
+    {
+      "id": "gcal_0_1771243200000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-16T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_1_1771246800000",
+      "notes": "Gloria e Alessio",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Gloria e Alessio",
+      "scheduled_at": "2026-02-16T13:00:00.000Z"
+    },
+    {
+      "id": "gcal_2_1771254000000",
+      "notes": "Marco Massi e Alessio",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Marco Massi e Alessio",
+      "scheduled_at": "2026-02-16T15:00:00.000Z"
+    },
+    {
+      "id": "gcal_3_1771268400000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-16T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_4_1771311600000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-17T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_5_1771329600000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-17T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_6_1771354800000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-17T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_7_1771398000000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-18T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_8_1771416000000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-18T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_9_1771441200000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-18T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_10_1771484400000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-19T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_11_1771502400000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-19T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_12_1771527600000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-19T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_13_1771570800000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-20T07:00:00.000Z"
+    },
+    {
+      "id": "gcal_14_1771588800000",
+      "notes": "PRANZO",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "PRANZO",
+      "scheduled_at": "2026-02-20T12:00:00.000Z"
+    },
+    {
+      "id": "gcal_15_1771596000000",
+      "notes": "Consulenza — Fernando Villon",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "Consulenza — Fernando Villon",
+      "scheduled_at": "2026-02-20T14:00:00.000Z"
+    },
+    {
+      "id": "a07721e1-8266-471e-8d97-f0d9dc6188f5",
+      "notes": "Consulenza programmata con Fernando Villon",
+      "source": "database",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": "7cdfb7ae-d06b-40f6-9840-91f72772a390",
+      "client_name": "Fernando Villon",
+      "scheduled_at": "2026-02-20 15:00:00",
+      "google_calendar_event_id": "tq4e5k4arh55mjau14ufij6l5g"
+    },
+    {
+      "id": "21ad3ae3-cc66-467e-9c83-c0bee7f155e2",
+      "notes": "Consulenza programmata con Giusy Dattilo",
+      "source": "database",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": "7e40b56c-2cc8-4515-b843-dc105e478f38",
+      "client_name": "Giusy Dattilo",
+      "scheduled_at": "2026-02-20 16:00:00",
+      "google_calendar_event_id": "nfl77ldf0ea260hnmaispumfc8"
+    },
+    {
+      "id": "gcal_16_1771614000000",
+      "notes": "FINE GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "FINE GIORNATA",
+      "scheduled_at": "2026-02-20T19:00:00.000Z"
+    },
+    {
+      "id": "gcal_17_1771830000000",
+      "notes": "INIZIO GIORNATA",
+      "source": "google_calendar",
+      "status": "scheduled",
+      "duration": 60,
+      "client_id": null,
+      "client_name": "INIZIO GIORNATA",
+      "scheduled_at": "2026-02-23T07:00:00.000Z"
+    }
+  ],
+  "consultationMonitoring": [
+    {
+      "id": "7e40b56c-2cc8-4515-b843-dc105e478f38",
+      "email": "giusy.dattilo@gmail.com",
+      "client_name": "Giusy Dattilo",
+      "consultations_used": 4,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "id": "7cdfb7ae-d06b-40f6-9840-91f72772a390",
+      "email": "fernandovillon96@hotmail.com",
+      "client_name": "Fernando Villon",
+      "consultations_used": 3,
+      "monthly_consultation_limit": 3
+    },
+    {
+      "id": "117d8d1c-6b6b-4805-9504-6db3c7191036",
+      "email": "santigloria74@gmail.com",
+      "client_name": "Gloria Santi",
+      "consultations_used": 3,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "id": "bc1dec4d-8a20-4d23-a109-b4de82a4b4e7",
+      "email": "giuliacell23@gmail.com",
+      "client_name": "Giulia Turatto",
+      "consultations_used": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "id": "c806e79d-42d5-4f6e-87ae-eb85e63d7da0",
+      "email": "famiglia838@gmail.com",
+      "client_name": "marco massi",
+      "consultations_used": 2,
+      "monthly_consultation_limit": 2
+    },
+    {
+      "id": "c2146759-f08a-430a-afdf-701bbc674300",
+      "email": "info@elischool.it",
+      "client_name": "Massimo Onofri",
+      "consultations_used": 0,
+      "monthly_consultation_limit": 2
+    }
+  ],
+  "consultantPersonalTasks": []
+}
+Task recenti (7)
+
+N/A
+·
+monitoring
+·
+N/A
+·
+monitoring
+·
+N/A
+·
+scheduling
+·
+N/A
+·
+followup
+·
+N/A
+·
+followup
+·
+N/A
+·
+outreach
+·
+N/A
+·
+analysis
+·
