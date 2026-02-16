@@ -1469,12 +1469,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     ORDER BY created_at DESC
     LIMIT 16
   `);
-  const recentReasoningByRole: Record<string, string[]> = {};
+  const recentReasoningByRole: Record<string, any[]> = {};
   for (const r of recentReasoningResult.rows as any[]) {
     const role = r.ai_role || 'unknown';
     if (!recentReasoningByRole[role]) recentReasoningByRole[role] = [];
     if (recentReasoningByRole[role].length < 2 && r.description) {
-      recentReasoningByRole[role].push(r.description);
+      const ts = r.created_at ? new Date(r.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', dateStyle: 'short', timeStyle: 'short' }) : '';
+      recentReasoningByRole[role].push({ text: r.description, timestamp: ts });
     }
   }
 

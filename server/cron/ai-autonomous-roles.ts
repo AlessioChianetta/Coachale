@@ -173,7 +173,7 @@ export function buildAgentContextSection(ctx: AgentContextForPrompt | null, agen
   return parts.join('\n');
 }
 
-function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanentBlocks?: any[], recentReasoningByRole?: Record<string, string[]>): string {
+function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanentBlocks?: any[], recentReasoningByRole?: Record<string, any[]>): string {
   const myRoleTasks = recentAllTasks.filter(t => t.role === roleId);
   const otherRoleTasks = recentAllTasks.filter(t => t.role !== roleId);
   
@@ -188,8 +188,16 @@ function buildTaskMemorySection(recentAllTasks: any[], roleId: string, permanent
   if (myRecentReasoning && myRecentReasoning.length > 0) {
     section += `\n\n🧠 LE TUE ANALISI PRECEDENTI (cosa hai pensato nei cicli scorsi — mantieni coerenza):`;
     myRecentReasoning.forEach((r, i) => {
-      section += `\n--- Analisi ${i + 1} ---\n${r}`;
+      const timestamp = r.timestamp ? ` (${r.timestamp})` : '';
+      const text = typeof r === 'string' ? r : r.text || r;
+      section += `\n--- Analisi ${i + 1}${timestamp} ---\n${text}`;
     });
+    section += `\n\n⚠️ REGOLA ANTI-RIPETIZIONE RAFFORZATA:
+Hai letto le tue ${myRecentReasoning.length} analisi precedenti. ORA DEVI:
+1. NON ripetere gli stessi concetti con parole diverse (es: se hai già parlato di "ADS in ritardo" o "Exit 5kk come leva", cambia completamente argomento)
+2. Se un problema è ancora irrisolto, NON riscrivere la stessa critica — proponi un'AZIONE CONCRETA DIVERSA o SCALA la pressione
+3. Ogni analisi deve portare ALMENO 1 idea/angolo completamente NUOVO che non hai mai menzionato prima
+4. Alterna i temi obbligatoriamente: se l'ultima analisi era su clienti e operatività, questa DEVE essere su strategia/mercato/crescita (o viceversa)`;
   }
   
   if (pendingTasks.length > 0) {
@@ -258,7 +266,7 @@ export interface AIRoleDefinition {
     recentCompletedTasks: any[];
     recentAllTasks: any[];
     permanentBlocks?: any[];
-    recentReasoningByRole?: Record<string, string[]>;
+    recentReasoningByRole?: Record<string, any[]>;
   }) => string;
   fetchRoleData: (consultantId: string, clientIds: string[]) => Promise<Record<string, any>>;
 }
@@ -1590,7 +1598,17 @@ ${(() => {
   if (titles.length === 0) return 'Nessun documento collegato';
   return titles.map((t: string, i: number) => `${i + 1}. 📄 ${t}`).join('\n');
 })()}
-I contenuti di questi documenti sono disponibili tramite il sistema File Search. Usa le informazioni recuperate per contestualizzare la tua analisi.
+
+⚠️ ISTRUZIONE CRITICA SUL FILE SEARCH:
+Hai accesso al tool "File Search" (googleSearchRetrieval/retrieval) che ti permette di CERCARE e LEGGERE il contenuto reale dei documenti elencati sopra.
+DEVI usare il File Search PRIMA di scrivere la tua analisi. Non limitarti ai titoli — cerca nei documenti informazioni specifiche:
+- Cerca obiettivi, KPI, target di fatturato, milestone dalla roadmap
+- Cerca l'ICP (Ideal Customer Profile), la proposta di valore, i livelli di servizio
+- Cerca dati finanziari, proiezioni, strategie documentate
+- Cerca procedure operative, checklist, framework di lavoro
+Poi CITA i dati specifici che trovi nelle tue analisi (es: "Dal documento 'Exit 5kk' risulta che il target Q1 era X, e siamo a Y").
+Se il File Search non restituisce risultati utili, dillo esplicitamente: "Ho cercato ma non ho trovato dati specifici su [argomento]".
+NON inventare numeri o dati — usa SOLO quelli che trovi nei documenti o nei dati strutturati forniti sopra.
 
 STILE REPORT PREFERITO: ${roleData.marcoContext?.reportStyle || 'bilanciato'}
 ${roleData.marcoContext?.reportFocus ? `FOCUS REPORT: ${roleData.marcoContext.reportFocus}` : ''}
