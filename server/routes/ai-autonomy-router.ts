@@ -2393,7 +2393,7 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
     const secondaryTasks = tasks.slice(1);
 
     const mergedNotes = secondaryTasks
-      .map((t: any, i: number) => `--- Follow-up aggregato #${i + 1} (da task ${t.id.substring(0, 8)}) ---\n${t.ai_instruction}`)
+      .map((t: any, i: number) => `--- Follow-up aggregato #${i + 1} (da task ${t.id.substring(0, 8)})${t.contact_name ? ' [' + t.contact_name + ']' : ''} ---\n${t.ai_instruction}`)
       .join('\n\n');
 
     const mergedContext = [
@@ -2436,6 +2436,12 @@ router.post("/tasks/merge", authenticateToken, requireAnyRole(["consultant", "su
       success: true,
       main_task_id: mainTask.id,
       merged_count: secondaryTasks.length,
+      merged_tasks: secondaryTasks.map((t: any) => ({
+        id: t.id,
+        contact_name: t.contact_name,
+        ai_instruction: t.ai_instruction?.substring(0, 120),
+        ai_role: t.ai_role,
+      })),
       message: `${secondaryTasks.length} task aggregati nel task principale`,
     });
   } catch (error: any) {

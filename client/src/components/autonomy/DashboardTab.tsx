@@ -1592,12 +1592,38 @@ function DashboardTab({
                               </div>
                             </div>
 
-                            {task.result_summary?.includes('[AGGREGAZIONE]') && (
-                              <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-1.5 border border-purple-200/60 dark:border-purple-800/40">
-                                <Layers className="h-3.5 w-3.5" />
-                                <span>Task principale — {(task.result_summary.match(/--- Follow-up aggregato/g) || []).length} task duplicati aggregati qui</span>
-                              </div>
-                            )}
+                            {task.result_summary?.includes('[AGGREGAZIONE]') && (() => {
+                              const matches = task.result_summary.match(/--- Follow-up aggregato #\d+.*?(?:\[(.+?)\])? ---\n(.+?)(?=\n\n--- Follow-up|$)/gs) || [];
+                              const parsed = matches.map((m: string) => {
+                                const contactMatch = m.match(/\[(.+?)\]/);
+                                const instrMatch = m.match(/---\n(.+)/s);
+                                return {
+                                  contact: contactMatch?.[1] || null,
+                                  instruction: instrMatch?.[1]?.substring(0, 100) || '',
+                                };
+                              });
+                              return (
+                                <div className="mt-2 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg px-2.5 py-2 border border-purple-200/60 dark:border-purple-800/40">
+                                  <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-700 dark:text-purple-400 mb-1.5">
+                                    <Layers className="h-3.5 w-3.5" />
+                                    <span>Task principale — {parsed.length} task duplicati aggregati</span>
+                                  </div>
+                                  {expandedTaskIds.has(task.id) && parsed.length > 0 && (
+                                    <div className="space-y-1 ml-5">
+                                      {parsed.map((p: any, idx: number) => (
+                                        <div key={idx} className="text-[11px] text-purple-600/80 dark:text-purple-400/70 flex items-start gap-1.5">
+                                          <span className="shrink-0 mt-0.5">•</span>
+                                          <span>
+                                            {p.contact && <span className="font-semibold">{p.contact}: </span>}
+                                            <span className="italic">{p.instruction}...</span>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             {task.status === 'cancelled' && task.result_summary?.includes('[Aggregato nel task principale') && (
                               <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg px-2.5 py-1.5 border border-border/50">
                                 <Layers className="h-3 w-3" />
