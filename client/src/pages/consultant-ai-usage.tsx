@@ -253,7 +253,7 @@ export default function ConsultantAIUsagePage() {
   const selectedUserFeatureData = selectedUserFeatures?.data || selectedUserFeatures || [];
 
   const selectedUserFeaturesWithData = useMemo(() => {
-    if (!selectedUser || !selectedUserFeatureData.length) return [];
+    if (!selectedUser) return [];
     const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number }>();
     const keyBreakdown = new Map<string, { key: string; totalTokens: number; totalCost: number; requestCount: number }[]>();
     const knownUids = new Set<string>();
