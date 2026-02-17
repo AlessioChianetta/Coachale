@@ -277,6 +277,7 @@ router.post("/rules/generate-with-ai", authenticateToken, requireRole("consultan
     }
 
     const aiProvider = await getAIProvider(req.user!.id, "admin");
+    aiProvider.setFeature?.('followup-engine');
 
     if (!aiProvider) {
       return res.status(500).json({ message: "Impossibile accedere al provider AI. Contatta l'amministratore." });

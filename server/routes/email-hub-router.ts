@@ -1943,7 +1943,7 @@ router.post("/emails/:id/ai-responses", async (req: AuthRequest, res) => {
             draftBodyHtml: null,
             draftBodyText: null,
             confidence: 0,
-            modelUsed: "gemini-2.5-flash",
+            modelUsed: "gemini-3-flash-preview",
             reasoning: result.classification as any,
             status: "draft_needs_review",
           })
@@ -2428,7 +2428,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
       confidence: result.classification.confidence,
       confidenceThreshold,
       decisionReason: result.classification.reasoning || "Classificazione AI completata",
-      modelUsed: "gemini-2.5-flash",
+      modelUsed: "gemini-3-flash-preview",
       processingTimeMs,
       knowledgeDocsUsed: result.documentCitationsUsed?.length 
         ? result.documentCitationsUsed 
@@ -2473,7 +2473,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
           draftBodyHtml: null,
           draftBodyText: null,
           confidence: 0,
-          modelUsed: "gemini-2.5-flash",
+          modelUsed: "gemini-3-flash-preview",
           reasoning: result.classification as any,
           status: "draft_needs_review",
         });
@@ -2501,7 +2501,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         decision: "escalate",
         decisionReason: result.riskReason || "Parola chiave di escalation rilevata",
         ticketId: result.ticketId,
-        modelUsed: "gemini-2.5-flash",
+        modelUsed: "gemini-3-flash-preview",
         processingTimeMs: Date.now() - startTime,
         knowledgeDocsUsed: result.documentCitationsUsed?.length 
           ? result.documentCitationsUsed 
@@ -2531,7 +2531,7 @@ async function processNewEmailAI(emailId: string, accountId: string, consultantI
         confidence: result.classification.confidence,
         decision: "error",
         decisionReason: "Generazione bozza fallita",
-        modelUsed: "gemini-2.5-flash",
+        modelUsed: "gemini-3-flash-preview",
         processingTimeMs,
         knowledgeDocsUsed: result.documentCitationsUsed?.length 
           ? result.documentCitationsUsed 

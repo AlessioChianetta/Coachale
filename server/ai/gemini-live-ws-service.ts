@@ -24,6 +24,7 @@ import { getTemplateById, resolveTemplateVariables, INBOUND_TEMPLATES, OUTBOUND_
 import { VoiceBookingSupervisor, ConversationMessage as BookingMessage, AvailableSlot } from '../voice/voice-booking-supervisor';
 import { VoiceTaskSupervisor, TaskConversationMessage, TaskSupervisorResult } from '../voice/voice-task-supervisor';
 import { executeConsultationTool } from './consultation-tool-executor';
+import { tokenTracker } from './token-tracker';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
@@ -8625,6 +8626,23 @@ ${compactFeedback}
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         }
         
+        // 📊 TOKEN TRACKING: Fire-and-forget track accumulated session usage
+        if (consultantId && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+          const sessionDurationMs = sessionStartTime ? Date.now() - sessionStartTime : undefined;
+          tokenTracker.track({
+            consultantId,
+            clientId: userId || undefined,
+            model: liveModelId || 'gemini-live-2.5-flash-native-audio',
+            feature: 'live-session',
+            requestType: 'live',
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            cachedTokens: totalCachedTokens,
+            totalTokens: totalInputTokens + totalOutputTokens,
+            durationMs: sessionDurationMs,
+          }).catch(e => console.error(`[LiveSession TokenTracker] Error:`, e));
+        }
+
         // 🔌 CLEANUP: Remove from connection tracker on normal close
         if (activeGeminiConnections.has(connectionId)) {
           activeGeminiConnections.delete(connectionId);
@@ -8938,7 +8956,7 @@ ${compactFeedback}
                       try {
                         generatedDiscoveryRec = await generateDiscoveryRec(
                           fullTranscript,
-                          conversation.prospectName || 'Prospect'
+                          consultantId || 'system'
                         );
                         
                         if (generatedDiscoveryRec) {

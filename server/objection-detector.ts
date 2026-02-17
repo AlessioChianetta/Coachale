@@ -1,8 +1,7 @@
 import { db } from "./db";
 import { objectionTracking, clientObjectionProfile } from "../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "./ai/provider-factory";
+import { quickGenerate } from "./ai/provider-factory";
 
 export type ObjectionType = "price" | "time" | "trust" | "competitor" | "value" | "other";
 
@@ -14,21 +13,11 @@ export interface ObjectionDetectionResult {
   confidence: number;
 }
 
-interface AIProvider {
-  type: 'vertex' | 'studio';
-  projectId?: string;
-  location?: string;
-  credentials?: string;
-  apiKey?: string;
-}
-
 export async function detectObjection(
   messageText: string,
-  provider: AIProvider
+  consultantId: string
 ): Promise<ObjectionDetectionResult> {
   try {
-    let response: any;
-    
     const prompt = `Analizza il seguente messaggio di un potenziale cliente e classifica se contiene un'obiezione.
 
 MESSAGGIO:
@@ -60,57 +49,18 @@ Rispondi in formato JSON con questa struttura:
   "reasoning": "breve spiegazione"
 }`;
 
-    // Validate Vertex AI credentials if vertex provider
-    const hasVertexCredentials = provider.type === 'vertex' && 
-                                  provider.projectId && 
-                                  provider.location && 
-                                  provider.credentials;
-    
-    if (provider.type === 'vertex' && hasVertexCredentials) {
-      // Use Vertex AI
-      const vertexClient = createVertexGeminiClient(
-        provider.projectId!,
-        provider.location!,
-        provider.credentials!
-      );
-      
-      response = await vertexClient.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      });
-    } else {
-      // Use Google AI Studio (fallback or default)
-      if (provider.type === 'vertex' && !hasVertexCredentials) {
-        console.warn('⚠️ [OBJECTION-DETECTOR] Vertex AI requested but credentials missing - this should not happen (caller should create studio provider)');
-        if (!provider.apiKey) {
-          throw new Error('No API key available for fallback to Google AI Studio');
-        }
-      }
-      
-      const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
-      console.log(`🧠 [OBJECTION-DETECTOR] Using model: ${GEMINI_3_MODEL} with thinking: ${GEMINI_3_THINKING_LEVEL}`);
-      response = await ai.models.generateContent({
-        model: GEMINI_3_MODEL,
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          thinkingConfig: {
-            thinkingLevel: GEMINI_3_THINKING_LEVEL
-          }
-        },
-      });
-    }
+    const response = await quickGenerate({
+      consultantId,
+      feature: 'objection-detector',
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+      thinkingLevel: 'minimal',
+    });
 
-    const resultText = typeof response.text === 'function' ? response.text() : response.text;
+    const resultText = response.text;
     
-    // Validate response before parsing
     if (!resultText || resultText === 'undefined' || typeof resultText !== 'string') {
       console.warn(`⚠️ [OBJECTION-DETECTOR] Invalid AI response: ${resultText}`);
       return {

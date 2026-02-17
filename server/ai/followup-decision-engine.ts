@@ -234,6 +234,7 @@ export async function evaluateFollowup(
 
     // Get AI provider using the unified provider factory
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    aiProviderResult.setFeature?.('followup-engine');
     const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
     console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
@@ -603,7 +604,7 @@ export async function logFollowupDecision(
   conversationId: string,
   context: FollowupContext,
   decision: FollowupDecision,
-  modelUsed: string = "gemini-2.5-flash",
+  modelUsed: string = "gemini-3-flash-preview",
   tokensUsed?: number,
   latencyMs?: number
 ): Promise<void> {
@@ -756,6 +757,7 @@ RISPONDI SOLO IN JSON:
 
       // getAIProvider restituisce un client già pronto da usare
       const aiProvider = await getAIProvider(consultantId, consultantId);
+      aiProvider.setFeature?.('followup-engine');
 
       if (!aiProvider || !aiProvider.client) {
         throw new Error("No AI provider available");
@@ -1023,6 +1025,7 @@ export async function evaluateConversationsBatch(
 
   try {
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    aiProviderResult.setFeature?.('followup-engine');
     const { model: batchModel, useThinking: batchUseThinking, thinkingLevel: batchThinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [FOLLOWUP-ENGINE-BATCH] Using ${aiProviderResult.metadata.name} for batch evaluation`);
     console.log(`[AI] Using model: ${batchModel} with thinking: ${batchUseThinking ? batchThinkingLevel : 'disabled'}`);

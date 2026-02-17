@@ -1847,7 +1847,8 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     detectedArchetype?: ArchetypeId | null;
     archetypeReasoning?: string | null;
   }> {
-    const { client: aiClient, cleanup, provider } = await getAIProvider(params.clientId, params.consultantId);
+    const { client: aiClient, cleanup, provider, setFeature } = await getAIProvider(params.clientId, params.consultantId);
+    setFeature?.('sales-agent');
 
     // Retry context for error recovery (500/503)
     const retryContext: AiRetryContext = {
@@ -1873,6 +1874,7 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
               generationConfig: {
                 temperature: 0,
                 maxOutputTokens: 4000,
+                thinkingConfig: { thinkingBudget: 1024 },
               }
             }),
             this.timeout(this.TIMEOUT_MS)

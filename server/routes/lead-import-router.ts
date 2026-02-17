@@ -429,7 +429,7 @@ router.post(
       }
 
       const { aiMapColumns } = await import("../services/lead-import-ai-mapper");
-      const suggestions = await aiMapColumns(columns);
+      const suggestions = await aiMapColumns(columns, req.user?.id);
 
       res.json({
         success: true,

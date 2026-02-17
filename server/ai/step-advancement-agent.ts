@@ -164,7 +164,8 @@ export class StepAdvancementAgent {
       // Ottieni il client AI usando il sistema a 3 livelli (Vertex client -> Vertex admin -> Google AI Studio)
       console.log(`   📡 Getting AI provider...`);
       const providerStart = Date.now();
-      const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
+      const { client: aiClient, cleanup, setFeature } = await getAIProvider(params.clientId, params.consultantId);
+      setFeature?.('step-advancement');
       console.log(`   ✅ AI provider obtained in ${Date.now() - providerStart}ms`);
       
       try {
@@ -187,8 +188,9 @@ export class StepAdvancementAgent {
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0, // Deterministico
-              maxOutputTokens: 1000, // 🔧 FIX: Aumentato da 500 a 1000 per evitare troncamento JSON
+              temperature: 0,
+              maxOutputTokens: 1000,
+              thinkingConfig: { thinkingBudget: 1024 },
             }
           }),
           this.timeout(this.TIMEOUT_MS)
@@ -622,7 +624,8 @@ Esempio se NON avanzare (manca risposta prospect):
     
     try {
       // Ottieni il client AI
-      const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
+      const { client: aiClient, cleanup, setFeature } = await getAIProvider(params.clientId, params.consultantId);
+      setFeature?.('step-advancement');
       
       try {
         // Costruisci il prompt per l'analisi semantica
@@ -643,8 +646,9 @@ Esempio se NON avanzare (manca risposta prospect):
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
-              temperature: 0, // Deterministico per coerenza
-              maxOutputTokens: 4000, // 🔧 FIX: Token abbondanti per evitare troncamento
+              temperature: 0,
+              maxOutputTokens: 4000,
+              thinkingConfig: { thinkingBudget: 1024 },
             }
           }),
           this.timeout(this.TIMEOUT_MS)

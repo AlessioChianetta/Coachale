@@ -37,7 +37,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GoogleGenAI } from "@google/genai";
-import { getSuperAdminGeminiKeys, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
+import { getSuperAdminGeminiKeys, GEMINI_LEGACY_MODEL, trackedGenerateContent } from "../ai/provider-factory";
 
 const execAsync = promisify(exec);
 
@@ -237,7 +237,7 @@ async function transcribeAudioWithGemini(audioPath: string): Promise<TranscriptR
       const ai = new GoogleGenAI({ apiKey });
       
       // Usa Gemini per trascrivere (modello legacy per audio con inlineData)
-      const response = await ai.models.generateContent({
+      const response = await trackedGenerateContent(ai, {
         model: GEMINI_LEGACY_MODEL,
         contents: [
           {
@@ -260,12 +260,12 @@ Requisiti:
               }
             ]
           }
-        ],
+        ] as any,
         config: {
           maxOutputTokens: 8192,
           temperature: 0.1
         }
-      });
+      }, { consultantId: 'system', feature: 'youtube-service', keySource: 'super-admin' });
       
       const transcript = response.text?.trim() || '';
       

@@ -673,6 +673,7 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
     // Step 6: Get AI provider (Vertex AI)
     console.log('\n🔌 [STEP 6] Getting AI provider...');
     const aiProvider = await getAIProvider(consultantId, consultantId);
+    aiProvider.setFeature?.('whatsapp-agent');
     console.log(`✅ AI Provider obtained: ${aiProvider.source} (${aiProvider.metadata.provider})`);
 
     // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
@@ -955,6 +956,7 @@ export async function generateConversationTitle(
     // Get AI provider
     console.log('🔌 Getting AI provider...');
     const aiProvider = await getAIProvider(consultantId, consultantId);
+    aiProvider.setFeature?.('whatsapp-agent');
     console.log(`✅ AI Provider: ${aiProvider.source}`);
 
     // Generate title

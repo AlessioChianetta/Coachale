@@ -217,9 +217,10 @@ Rispondi con:
 
 Usa un tono professionale ma incoraggiante. Sii specifico con i numeri.`;
 
-    const { client, metadata } = await getAIProvider(userId, consultantId);
+    const { client, metadata, setFeature } = await getAIProvider(userId, consultantId);
+    setFeature?.('sales-reports');
     const result = await client.generateContent({
-      model: metadata.model || "gemini-2.5-flash",
+      model: metadata.model || "gemini-3-flash-preview",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
     });
@@ -460,9 +461,10 @@ ${recentReflections.length > 0 ? recentReflections.slice(0, 3).map(r => `[${r.da
       { role: "user", parts: [{ text: message.trim() }] },
     ];
 
-    const { client, metadata } = await getAIProvider(userId, consultantId);
+    const { client, metadata, setFeature } = await getAIProvider(userId, consultantId);
+    setFeature?.('sales-reports');
     const result = await client.generateContent({
-      model: metadata.model || "gemini-2.5-flash",
+      model: metadata.model || "gemini-3-flash-preview",
       contents,
       generationConfig: { temperature: 0.85, maxOutputTokens: 1024 },
     });

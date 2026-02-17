@@ -1,7 +1,7 @@
 import { db } from "../../db";
 import { aiConversations, aiMessages, aiDailySummaries, aiMemoryGenerationLogs, users, managerDailySummaries, clientLevelSubscriptions, consultantWhatsappConfig, whatsappAgentConsultantConversations, whatsappAgentConsultantMessages, bronzeUserAgentAccess } from "../../../shared/schema";
 import { eq, and, desc, lt, gte, isNotNull, isNull, sql, or, inArray, like } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
+import { quickGenerate } from "../../ai/provider-factory";
 import { startOfDay, subDays, format, eachDayOfInterval } from "date-fns";
 import { it } from "date-fns/locale";
 
@@ -148,7 +148,7 @@ export class ConversationMemoryService {
 
   async generateAISummary(
     conversationId: string,
-    apiKey: string
+    consultantId: string
   ): Promise<string | null> {
     try {
       const messages = await this.getConversationMessages(conversationId, 20);
@@ -159,15 +159,16 @@ export class ConversationMemoryService {
         .map(m => `${m.role === 'user' ? 'Utente' : 'Assistente'}: ${m.content.substring(0, 500)}`)
         .join('\n');
 
-      const genai = new GoogleGenAI({ apiKey });
-      
-      const result = await genai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: `Genera un riassunto brevissimo (max 2 frasi, max 150 caratteri) di questa conversazione. 
+      const prompt = `Genera un riassunto brevissimo (max 2 frasi, max 150 caratteri) di questa conversazione. 
 Concentrati sui punti chiave e le richieste principali dell'utente. Rispondi SOLO con il riassunto, senza prefissi.
 
 Conversazione:
-${conversationText}`,
+${conversationText}`;
+
+      const result = await quickGenerate({
+        consultantId,
+        feature: 'memory-service',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
 
       const summary = result.text?.trim() || "";
@@ -187,7 +188,7 @@ ${conversationText}`,
 
   async generateSummaryIfNeeded(
     conversationId: string,
-    apiKey: string,
+    consultantId: string,
     messageCount: number
   ): Promise<void> {
     if (messageCount < 4) return;
@@ -202,7 +203,7 @@ ${conversationText}`,
 
     if (conversation?.summary && messageCount < 8) return;
 
-    await this.generateAISummary(conversationId, apiKey);
+    await this.generateAISummary(conversationId, consultantId);
   }
 
   // ============= DAILY SUMMARIES =============
@@ -249,7 +250,7 @@ ${conversationText}`,
   async generateDailySummary(
     userId: string,
     targetDate: Date,
-    apiKey: string
+    _apiKey?: string
   ): Promise<string | null> {
     try {
       const dayStart = startOfDay(targetDate);
@@ -299,10 +300,7 @@ ${conversationText}`,
 
       const dateStr = format(targetDate, "d MMMM yyyy", { locale: it });
 
-      const genai = new GoogleGenAI({ apiKey });
-      const result = await genai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Genera un riassunto dettagliato del giorno ${dateStr} delle conversazioni AI.
+      const dailyPrompt = `Genera un riassunto dettagliato del giorno ${dateStr} delle conversazioni AI.
 
 REGOLE:
 - Scrivi 4-6 frasi complete e informative (400-600 caratteri circa)
@@ -312,7 +310,12 @@ REGOLE:
 - Rispondi SOLO con il riassunto, senza prefissi o intestazioni
 
 Conversazioni del giorno (${conversations.length} chat, ${totalMessageCount} messaggi):
-${conversationText}`,
+${conversationText}`;
+
+      const result = await quickGenerate({
+        consultantId: userId,
+        feature: 'memory-service',
+        contents: [{ role: 'user', parts: [{ text: dailyPrompt }] }],
       });
 
       const summary = result.text?.trim() || "";
@@ -910,7 +913,7 @@ ${conversationText}`,
     subscriptionId: string,
     consultantId: string,
     targetDate: Date,
-    apiKey: string,
+    _apiKey?: string,
     agentProfileId?: string
   ): Promise<string | null> {
     try {
@@ -982,10 +985,7 @@ ${conversationText}`,
 
       const dateStr = format(targetDate, "d MMMM yyyy", { locale: it });
 
-      const genai = new GoogleGenAI({ apiKey });
-      const result = await genai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Genera un riassunto del ${dateStr} delle nostre conversazioni.
+      const mgrPrompt = `Genera un riassunto del ${dateStr} delle nostre conversazioni.
 
 REGOLE FONDAMENTALI:
 - Scrivi come se fossi tu (l'AI) a ricordare cosa avete discusso insieme
@@ -997,7 +997,12 @@ REGOLE FONDAMENTALI:
 - Rispondi SOLO con il riassunto, senza prefissi
 
 Conversazioni del ${dateStr} (${conversationCount} chat, ${totalMessageCount} messaggi):
-${conversationText}`,
+${conversationText}`;
+
+      const result = await quickGenerate({
+        consultantId,
+        feature: 'memory-service',
+        contents: [{ role: 'user', parts: [{ text: mgrPrompt }] }],
       });
 
       const summary = result.text?.trim() || "";

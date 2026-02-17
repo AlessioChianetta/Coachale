@@ -67,6 +67,7 @@ async function generateHookFromObjectives(
     const uncino = leadInfo.uncino || campaignSnapshot.uncino || "";
     
     const provider = await getAIProvider(consultantId, consultantId);
+    provider.setFeature?.('lead-welcome');
     console.log(`[WELCOME EMAIL] Using AI provider: ${provider.metadata.name} with model ${GEMINI_3_MODEL}`);
 
     const prompt = `Sei un copywriter esperto. Genera un breve "hook" (2-3 frasi) per un'email di benvenuto a un potenziale cliente.

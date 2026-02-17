@@ -645,6 +645,7 @@ async function getOrCreateCachedAiProvider(session: SessionState): Promise<Cache
       session.clientId,
       session.consultantId || undefined
     );
+    aiProvider.setFeature?.('video-copilot');
 
     session.cachedAiProvider = {
       client: aiProvider.client,

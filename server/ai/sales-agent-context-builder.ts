@@ -191,6 +191,7 @@ export async function extractSalesAgentContext(
 
   // Get AI provider
   const providerResult = await getAIProvider(clientId, consultantId);
+  providerResult.setFeature?.('sales-agent');
   const client = providerResult.client;
   const provider = providerResult.provider;
 

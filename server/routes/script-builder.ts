@@ -348,6 +348,7 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       try {
         console.log('\n🔌 Connessione AI Provider...');
         const aiProvider = await getAIProvider(clientId, consultantId);
+        aiProvider.setFeature?.('script-builder');
         
         if (!aiProvider) {
           console.log('⚠️ Nessun AI provider disponibile, ritorno template base');

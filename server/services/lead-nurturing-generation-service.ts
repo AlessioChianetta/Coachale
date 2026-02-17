@@ -458,6 +458,7 @@ async function generateTemplateForDay(
   const category = getCategoryForDay(day);
   
   const provider = await getAIProvider(consultantId, consultantId);
+  provider.setFeature?.('email-automated');
   
   const brandVoiceContext = buildBrandVoiceContext(config.brandVoiceData);
   
@@ -1257,6 +1258,7 @@ export async function generateTopicsOutline(
     
     // Get AI provider
     const provider = await getAIProvider(consultantId, consultantId);
+    provider.setFeature?.('email-automated');
     
     // Build brand context
     let brandContext = "";

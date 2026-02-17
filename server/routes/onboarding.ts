@@ -624,7 +624,7 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
           },
         });
         
-        const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
         const result = await model.generateContent('Rispondi solo "OK" se funziona.');
         const response = result.response;
         const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -694,7 +694,7 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
         },
       });
       
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1182,7 +1182,7 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
         },
       });
       
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = vertexAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1740,6 +1740,7 @@ router.post('/ai-ideas/improve-text', authenticateToken, requireRole('consultant
     }
     
     const providerResult = await getAIProvider(consultantId, consultantId);
+    providerResult.setFeature?.('onboarding');
     
     if (!providerResult || !providerResult.client) {
       return res.status(400).json({
@@ -1798,6 +1799,7 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
     }
     
     const providerResult = await getAIProvider(consultantId, consultantId);
+    providerResult.setFeature?.('onboarding');
     
     if (!providerResult || !providerResult.client) {
       return res.status(400).json({

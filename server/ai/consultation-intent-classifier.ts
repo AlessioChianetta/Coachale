@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { quickGenerate } from "./provider-factory";
 import { randomUUID } from "crypto";
 
 export type ConsultationIntent = 
@@ -112,14 +112,13 @@ OUTPUT FORMAT (wrap in <json></json>):
 
 export async function classifyConsultationIntent(
   message: string,
-  apiKey: string,
+  consultantId: string,
   context?: ClassifierContext
 ): Promise<IntentClassification> {
   const traceId = randomUUID().slice(0, 8);
   const startTime = Date.now();
   
   try {
-    const ai = new GoogleGenAI({ apiKey });
     
     // Build conversation context string from recent messages - NO TRUNCATION
     let conversationContextStr = '';
@@ -177,29 +176,20 @@ export async function classifyConsultationIntent(
     }
     console.log(`${'═'.repeat(80)}`);
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-lite',
+    const response = await quickGenerate({
+      consultantId,
+      feature: 'intent-classifier',
       contents: requestContents,
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 200,
-      }
+      },
+      thinkingLevel: 'minimal',
     });
 
     const latencyMs = Date.now() - startTime;
     
-    // Handle different SDK response structures
-    let text = '';
-    if (response.response?.text) {
-      // Standard SDK structure
-      text = response.response.text() || '';
-    } else if (response.candidates && response.candidates[0]?.content?.parts) {
-      // Direct candidates structure (some SDK versions)
-      text = response.candidates[0].content.parts.map((p: any) => p.text || '').join('');
-    } else if ((response as any).text) {
-      // Direct text property
-      text = (response as any).text() || '';
-    }
+    const text = response.text || '';
     
     // FULL RESPONSE LOGGING - no truncation
     console.log(`\n${'═'.repeat(80)}`);

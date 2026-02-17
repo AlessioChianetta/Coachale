@@ -2,7 +2,7 @@ import { db } from "../../db";
 import { consultantColumnMappings } from "../../../shared/schema";
 import { eq, and, ilike, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { getSuperAdminGeminiKeys } from "../../ai/provider-factory";
+import { getSuperAdminGeminiKeys, trackedGenerateContent } from "../../ai/provider-factory";
 import type { DistributedSample, ColumnProfile } from "./column-profiler";
 import { profileColumn } from "./column-profiler";
 
@@ -423,10 +423,10 @@ IMPORTANTE:
 - confidence tra 0 e 1 (quanto sei sicuro del tipo)
 - Rispondi SOLO con il JSON, nessun altro testo`;
 
-    const response = await genAI.models.generateContent({
+    const response = await trackedGenerateContent(genAI, {
       model: "gemini-2.5-flash",
       contents: prompt,
-    });
+    } as any, { consultantId: 'system', feature: 'data-analysis', keySource: 'super-admin' });
 
     const text = response.text || "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);

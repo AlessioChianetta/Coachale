@@ -6,12 +6,15 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import { Writer as WavWriter } from "wav";
 import { Readable, PassThrough } from "stream";
+import { tokenTracker } from './token-tracker';
 
 interface TTSConfig {
   text: string;
   vertexClient: any; // Can be VertexAI or GeminiClient adapter with __vertexAI attached
   projectId: string;
   location: string;
+  consultantId?: string;
+  clientId?: string;
 }
 
 /**
@@ -61,7 +64,9 @@ export async function generateSpeech({
   text,
   vertexClient,
   projectId,
-  location
+  location,
+  consultantId,
+  clientId
 }: TTSConfig): Promise<Buffer> {
   
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -86,6 +91,8 @@ export async function generateSpeech({
     // pitch: slightly higher for warmth, rate: medium for clarity
     const styledText = `<speak><prosody pitch="+1st" rate="medium"><emphasis level="moderate">${text}</emphasis></prosody></speak>`;
     
+    const ttsStartMs = Date.now();
+
     // Generate audio with Achernar voice configuration
     const result = await model.generateContent({
       contents: [{
@@ -103,7 +110,7 @@ export async function generateSpeech({
         }
       }
     });
-    
+
     // Extract audio data from response
     const audioData = result.response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     
@@ -111,11 +118,30 @@ export async function generateSpeech({
       throw new Error('No audio data received from Gemini TTS');
     }
     
+    const ttsDurationMs = Date.now() - ttsStartMs;
     const pcmBuffer = Buffer.from(audioData, 'base64');
     
     console.log(`✅ Raw PCM audio received`);
     console.log(`   PCM Size: ${pcmBuffer.length} bytes (~${(pcmBuffer.length / 1024).toFixed(2)} KB)`);
     console.log(`   Format: 16-bit PCM LINEAR16 @ 24kHz Mono`);
+
+    if (consultantId) {
+      const usage = result.response.usageMetadata;
+      const inputTokens = usage?.promptTokenCount || Math.ceil(text.length / 4);
+      const outputTokens = usage?.candidatesTokenCount || 0;
+      const totalTokens = usage?.totalTokenCount || (inputTokens + outputTokens);
+      tokenTracker.track({
+        consultantId,
+        clientId: clientId || undefined,
+        model: 'gemini-2.5-flash-tts',
+        feature: 'tts',
+        requestType: 'generate',
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        durationMs: ttsDurationMs,
+      }).catch(e => console.error('[TTS TokenTracker] Error:', e));
+    }
     
     // Convert raw PCM to WAV format with proper headers
     console.log('🔧 Converting PCM to WAV format with headers...');

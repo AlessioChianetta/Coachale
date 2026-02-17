@@ -17,8 +17,7 @@ import { consultantAvailabilitySettings, users } from "@shared/schema";
 import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
-import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from '../ai/provider-factory';
-import { GoogleGenAI } from "@google/genai";
+import { quickGenerate } from '../ai/provider-factory';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -3601,14 +3600,6 @@ router.post("/improve-instruction", authenticateToken, requireAnyRole(["consulta
       return res.status(400).json({ error: "Istruzione troppo breve o mancante" });
     }
 
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (!apiKey) {
-      console.error("[VOICE] No Gemini API key available for instruction improvement");
-      return res.status(503).json({ error: "Servizio AI non disponibile" });
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-
     const taskTypeDescriptions: Record<string, string> = {
       'single_call': 'una singola chiamata telefonica (es: promemoria, conferma appuntamento)',
       'follow_up': 'una serie di chiamate di follow-up programmate (es: ricontattare un lead, verificare stato)',
@@ -3635,14 +3626,15 @@ CRITICO: Completa SEMPRE ogni frase. Non lasciare mai frasi a metà o incomplete
 
 OUTPUT: Restituisci SOLO l'istruzione migliorata, senza spiegazioni o prefissi. Assicurati che ogni frase sia completa.`;
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_3_MODEL,
+    const response = await quickGenerate({
+      consultantId: req.user?.id || '',
+      feature: 'voice-call',
       contents: [
         { role: 'user', parts: [{ text: systemPrompt }] },
         { role: 'model', parts: [{ text: 'Capito. Inviami l\'istruzione da migliorare.' }] },
         { role: 'user', parts: [{ text: `Istruzione originale: "${instruction}"` }] }
       ],
-      config: {
+      generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1024
       }

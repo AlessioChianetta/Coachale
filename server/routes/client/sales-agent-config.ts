@@ -1170,13 +1170,8 @@ router.post("/:agentId/training/conversation/:conversationId/generate-rec", auth
       return res.status(400).json({ message: "Trascrizione troppo breve per generare la REC" });
     }
 
-    const apiKey = await getGeminiApiKey(userId, agent.consultantId);
-    if (!apiKey) {
-      return res.status(500).json({ message: "API key Gemini non disponibile" });
-    }
-
     console.log(`[TrainingAPI] Generating REC with transcript length: ${transcriptText.length} chars`);
-    const rec = await generateDiscoveryRec(transcriptText, apiKey);
+    const rec = await generateDiscoveryRec(transcriptText, agent.consultantId || userId);
 
     if (!rec) {
       return res.status(500).json({ message: "Errore durante la generazione della REC" });

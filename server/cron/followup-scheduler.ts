@@ -2384,6 +2384,7 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
 
   try {
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    aiProviderResult.setFeature?.('followup-engine');
     console.log(`🚀 [FOLLOWUP-SCHEDULER] Using ${aiProviderResult.metadata.name} for freeform message generation`);
     
     const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
@@ -2704,6 +2705,7 @@ async function generateAIFollowupMessage(
   
   // Get AI provider
   const aiProvider = await getAIProvider(consultantId, 'consultant');
+  aiProvider.setFeature?.('followup-engine');
   
   if (!aiProvider) {
     console.log(`⚠️ [FOLLOWUP-AI] No AI provider available`);

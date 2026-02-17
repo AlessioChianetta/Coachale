@@ -199,6 +199,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-teal-500" },
       { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "text-emerald-500", badge: "RAG" },
+      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign, color: "text-amber-500" },
     ]
   }
 ];

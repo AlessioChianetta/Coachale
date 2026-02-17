@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "./provider-factory";
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "./provider-factory";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -755,11 +755,11 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
       if (!apiKey) throw new Error("No Gemini API key available");
 
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
+      const response = await trackedGenerateContent(ai, {
         model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: { temperature: 0.2, maxOutputTokens: 4096 },
-      });
+      }, { consultantId, feature: 'decision-engine', keySource: 'classifier' });
 
       const text = response.text;
       if (!text) throw new Error("Empty response from Gemini");

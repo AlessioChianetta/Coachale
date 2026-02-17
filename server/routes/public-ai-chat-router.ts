@@ -168,6 +168,7 @@ router.post("/:slug/chat", async (req: Request, res: Response) => {
 
     try {
       const aiProvider = await getAIProvider(agent.consultantId, agent.consultantId);
+      aiProvider.setFeature?.('public-chat');
       const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
 
       const systemPrompt = await buildWhatsAppAgentPrompt(agent);

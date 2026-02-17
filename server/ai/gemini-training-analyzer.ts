@@ -236,6 +236,7 @@ export class GeminiTrainingAnalyzer {
     // Get AI provider (use CLIENT's Vertex credentials, not consultant's)
     console.log(`🔍 Getting AI provider for client ${this.clientId} (consultant: ${this.consultantId})...`);
     const provider = await getAIProvider(this.clientId, this.consultantId);
+    provider.setFeature?.('training-analyzer');
 
     if (!provider || !provider.client) {
       throw new Error('Failed to initialize AI provider for training analysis');
@@ -273,14 +274,15 @@ export class GeminiTrainingAnalyzer {
 
     // Call Gemini using provider factory client
     const response = await provider.client.generateContent({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-3-flash-preview',
       contents: [{
         role: 'user',
         parts: [{ text: prompt }]
       }],
       generationConfig: {
-        temperature: 0.3, // Low temperature for consistent, factual analysis
+        temperature: 0.3,
         maxOutputTokens: 8000,
+        thinkingConfig: { thinkingBudget: 16384 },
       }
     });
 
@@ -523,6 +525,7 @@ RESTITUISCI SOLO IL JSON, NIENTE ALTRO.`;
     // STEP 2: Call Gemini 2.5 Pro for analysis
     console.log(`┌─ STEP 2: Analyzing with Gemini 2.5 Pro...`);
     const provider = await getAIProvider(this.clientId, this.consultantId);
+    provider.setFeature?.('training-analyzer');
 
     if (!provider || !provider.client) {
       throw new Error('Failed to initialize AI provider for conversation analysis');
@@ -535,14 +538,15 @@ RESTITUISCI SOLO IL JSON, NIENTE ALTRO.`;
     console.log(`│  🔮 Sending ${prompt.length} chars to Gemini...`);
     
     const result = await provider.client.generateContent({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-3-flash-preview',
       contents: [{
         role: 'user',
         parts: [{ text: prompt }]
       }],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 8192
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 16384 },
       }
     });
 

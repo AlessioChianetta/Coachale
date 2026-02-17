@@ -1428,7 +1428,8 @@ ${content}
 
 RISPONDI SOLO con il testo compresso, nessuna spiegazione.`;
 
-    const { model, generateContent } = await getAIProvider(consultantId, "content-compress");
+    const { model, generateContent, setFeature } = await getAIProvider(consultantId, "content-compress");
+    setFeature?.('content-studio');
     
     const result = await generateContent({
       contents: [{ role: "user", parts: [{ text: compressPrompt }] }],
@@ -3287,7 +3288,8 @@ RISPONDI SOLO con un JSON valido nel formato:
 }`;
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "content-ideas");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "content-ideas");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
@@ -3643,7 +3645,8 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "post-copy");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "post-copy");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
@@ -4071,7 +4074,8 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   );
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "post-copy-variations");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "post-copy-variations");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
@@ -4177,7 +4181,8 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "campaign-content");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "campaign-content");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
@@ -4307,7 +4312,8 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "image-prompt");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "image-prompt");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({
@@ -4387,7 +4393,8 @@ PIATTAFORMA: ${platform.toUpperCase()}
 RISPONDI SOLO con il testo accorciato, niente altro. Non aggiungere spiegazioni.`;
 
   try {
-    const { client, metadata } = await getAIProvider(consultantId, "shorten-copy");
+    const { client, metadata, setFeature } = await getAIProvider(consultantId, "shorten-copy");
+    setFeature?.('content-studio');
     const { model } = getModelWithThinking(metadata?.name);
     
     const result = await client.generateContent({

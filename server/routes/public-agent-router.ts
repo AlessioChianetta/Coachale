@@ -1128,6 +1128,7 @@ router.post(
 
       try {
         const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+        aiProvider.setFeature?.('public-chat');
         const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
         modelUsed = modelName;
 
@@ -1331,14 +1332,15 @@ ${share.agentInstructions}
         try {
           // Use Gemini Flash Lite for title generation (fast and cheap)
           const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+          aiProvider.setFeature?.('public-chat');
           
           const titleResult = await aiProvider.client.generateContent({
-            model: "gemini-2.0-flash-lite",
+            model: "gemini-2.5-flash-lite",
             contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
             generationConfig: { 
               systemInstruction: "Rispondi solo con il titolo, senza virgolette o altro testo.",
               temperature: 0.5, 
-              maxOutputTokens: 50 
+              maxOutputTokens: 50,
             },
           });
 
@@ -1422,6 +1424,7 @@ router.post(
 
       try {
         const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+        aiProvider.setFeature?.('public-chat');
         const { model: modelName } = getModelWithThinking(aiProvider.metadata.name);
 
         const systemPrompt = agentConfig.agentInstructions || 
@@ -1564,6 +1567,7 @@ Genera il messaggio di benvenuto:`;
 
       try {
         const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+        aiProvider.setFeature?.('public-chat');
 
         const result = await aiProvider.client.generateContent({
           model: "gemini-2.0-flash-lite",

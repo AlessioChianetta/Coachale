@@ -451,6 +451,7 @@ export async function explainResults(
 
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
+    providerResult.setFeature?.('data-analysis');
     const client = providerResult.client;
     
     // Use getModelWithThinking which correctly maps provider to model

@@ -26,7 +26,7 @@ export interface ConversationMessage {
   toolResults?: Array<{ tool: string; data: any }>;
 }
 
-const INTENT_ROUTER_MODEL = "gemini-2.5-flash-lite";
+const INTENT_ROUTER_MODEL = "gemini-3-flash-preview";
 
 const ROUTER_PROMPT = `Sei un classificatore di intenti INTELLIGENTE. NON fare analisi, NON generare numeri.
 
@@ -307,6 +307,7 @@ export async function routeIntent(
   
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
+    providerResult.setFeature?.('data-analysis');
     const client = providerResult.client;
     console.log(`[INTENT-ROUTER] Using provider: ${providerResult.metadata?.name || "unknown"}`);
     
@@ -332,6 +333,7 @@ ${question}`;
       generationConfig: {
         temperature: 0.0,
         maxOutputTokens: 256,
+        thinkingConfig: { thinkingBudget: 1024 },
       },
       systemInstruction: {
         role: "system",

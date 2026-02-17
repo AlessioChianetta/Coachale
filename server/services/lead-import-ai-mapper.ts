@@ -1,5 +1,4 @@
-import { getSuperAdminGeminiKeys, GEMINI_3_MODEL } from "../ai/provider-factory";
-import { GoogleGenAI } from "@google/genai";
+import { quickGenerate } from "../ai/provider-factory";
 
 interface ColumnData {
   name: string;
@@ -39,15 +38,7 @@ const CRM_FIELDS = [
   { key: 'dateCreated', label: 'Data Inserimento', description: 'Creation date' },
 ];
 
-export async function aiMapColumns(columns: ColumnData[]): Promise<AiMappingSuggestion[]> {
-  const geminiKeys = await getSuperAdminGeminiKeys();
-  if (!geminiKeys || geminiKeys.keys.length === 0) {
-    throw new Error("Gemini API non configurata");
-  }
-
-  const apiKey = geminiKeys.keys[0];
-  const genAI = new GoogleGenAI({ apiKey });
-
+export async function aiMapColumns(columns: ColumnData[], consultantId?: string): Promise<AiMappingSuggestion[]> {
   const prompt = `Sei un assistente AI che aiuta a mappare colonne di un foglio Google a campi CRM.
 
 COLONNE DEL FOGLIO (con dati di esempio):
@@ -72,28 +63,20 @@ Prioritizza la mappatura del campo phoneNumber che è obbligatorio.`;
   try {
     console.log('[AI Mapper] Calling Gemini API with', columns.length, 'columns');
     
-    const response = await genAI.models.generateContent({
-      model: GEMINI_3_MODEL,
+    const response = await quickGenerate({
+      consultantId: consultantId || 'system',
+      feature: 'lead-import',
       contents: [{
         role: 'user',
         parts: [{ text: prompt }]
       }],
-      config: {
+      generationConfig: {
         temperature: 0.2,
         maxOutputTokens: 8192,
       }
     });
 
-    let text = '';
-    if (typeof (response as any).response?.text === 'function') {
-      text = (response as any).response.text();
-    } else if (typeof (response as any).response?.text === 'string') {
-      text = (response as any).response.text;
-    } else if ((response as any).response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      text = (response as any).response.candidates[0].content.parts[0].text;
-    } else if ((response as any).text) {
-      text = typeof (response as any).text === 'function' ? (response as any).text() : (response as any).text;
-    }
+    const text = response.text || '';
     
     console.log('[AI Mapper] Got response, length:', text.length);
     

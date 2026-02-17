@@ -2113,7 +2113,7 @@ router.get(
           success: true,
           data: {
             clientId: userId,
-            preferredModel: "gemini-2.5-flash",
+            preferredModel: "gemini-3-flash-preview",
             thinkingLevel: "none",
             writingStyle: "default",
             responseLength: "medium",
@@ -2173,7 +2173,7 @@ router.put(
           .insert(clientDataAiPreferences)
           .values({
             clientId: userId,
-            preferredModel: preferredModel ?? "gemini-2.5-flash",
+            preferredModel: preferredModel ?? "gemini-3-flash-preview",
             thinkingLevel: thinkingLevel ?? "none",
             writingStyle: writingStyle ?? "default",
             responseLength: responseLength ?? "medium",

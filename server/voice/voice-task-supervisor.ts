@@ -202,7 +202,7 @@ export class VoiceTaskSupervisor {
       const llmPromise = aiClient.generateContent({
         model: VoiceTaskSupervisor.MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 2000 },
+        generationConfig: { temperature: 0, maxOutputTokens: 2000, thinkingConfig: { thinkingBudget: 1024 } },
       });
 
       const response = await Promise.race([llmPromise, timeoutPromise]);

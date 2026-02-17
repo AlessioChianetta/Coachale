@@ -3,8 +3,7 @@ import { db } from "../db";
 import { consultantPersonalTasks } from "../../shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
-import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
+import { quickGenerate } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -117,9 +116,6 @@ router.post("/consultant-personal-tasks/ai-generate", authenticateToken, require
     const { input, mode } = req.body;
     if (!input?.trim()) return res.status(400).json({ success: false, error: "Input richiesto" });
 
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (!apiKey) return res.status(500).json({ success: false, error: "AI non configurata" });
-
     const today = new Date();
     const romeDate = today.toLocaleDateString("it-IT", { timeZone: "Europe/Rome", weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
@@ -168,23 +164,22 @@ RISPONDI SOLO con un array JSON valido (senza markdown, senza backtick), dove og
       ? "L'utente ti sta condividendo delle IDEE. Trasformale in task concrete e actionable con obiettivi misurabili. Aggiungi sotto-step se necessario."
       : "L'utente ti sta dando un TESTO LIBERO. Analizzalo e estrai tutte le attività concrete che riesci a individuare. Sii proattivo e suggerisci anche task complementari se utili.";
 
-    const genAI = new GoogleGenAI({ apiKey });
-    
     let tasks: any[] = [];
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const result = await genAI.models.generateContent({
-          model: GEMINI_3_MODEL,
+        const result = await quickGenerate({
+          consultantId: req.user!.id,
+          feature: 'personal-tasks',
           contents: [
             { role: "user", parts: [{ text: `${modeInstruction}\n\nInput dell'utente:\n${input.trim()}` }] },
           ],
-          config: {
-            systemInstruction: systemPrompt,
+          systemInstruction: systemPrompt,
+          generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 4096,
             responseMimeType: "application/json",
-            thinkingConfig: { thinkingBudget: 1024 },
           },
+          thinkingLevel: 'minimal',
         });
 
         const responseText = result.text?.trim() || "";

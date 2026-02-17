@@ -166,7 +166,7 @@ export class VoiceBookingSupervisor {
       const llmPromise = aiClient.generateContent({
         model: VoiceBookingSupervisor.MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1500 },
+        generationConfig: { temperature: 0, maxOutputTokens: 1500, thinkingConfig: { thinkingBudget: 1024 } },
       });
 
       const response = await Promise.race([llmPromise, timeoutPromise]);

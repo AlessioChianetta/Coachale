@@ -51,6 +51,8 @@ const ConsultantAIAutonomy = lazy(() => import("@/pages/consultant-ai-autonomy")
 const ConsultantVoiceCalls = lazy(() => import("@/pages/consultant-voice-calls"));
 const ConsultantVoiceCallDetail = lazy(() => import("@/pages/consultant-voice-call-detail"));
 const ConsultantFileSearchAnalytics = lazy(() => import("@/pages/consultant-file-search-analytics"));
+const ConsultantAIUsage = lazy(() => import("@/pages/consultant-ai-usage"));
+const AdminAIUsage = lazy(() => import("@/pages/admin-ai-usage"));
 const ConsultantApiKeysUnified = lazy(() => import("@/pages/consultant-api-keys-unified"));
 const ConsultantClientState = lazy(() => import("@/pages/consultant-client-state"));
 const ConsultantWhatsApp = lazy(() => import("@/pages/consultant-whatsapp"));
@@ -496,6 +498,12 @@ function Router() {
             </AuthGuard>
           </Route>
 
+          <Route path="/consultant/ai-usage">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAIUsage />
+            </AuthGuard>
+          </Route>
+
           <Route path="/consultant/api-keys-unified">
             <AuthGuard requiredRole="consultant">
               <ConsultantApiKeysUnified />
@@ -913,6 +921,12 @@ function Router() {
           <Route path="/admin/settings">
             <AuthGuard requiredRole="super_admin">
               <AdminSettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/admin/ai-usage">
+            <AuthGuard requiredRole="super_admin">
+              <AdminAIUsage />
             </AuthGuard>
           </Route>
 

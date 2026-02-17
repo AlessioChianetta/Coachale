@@ -28,6 +28,7 @@ import { startDrivePendingSyncScheduler } from "./cron/drive-pending-sync";
 import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
 import { initAITaskScheduler } from "./cron/ai-task-scheduler";
+import { initAIUsageAggregator } from "./cron/ai-usage-aggregator";
 import { warmupPool } from "./db";
 
 function validateEnvironmentVariables() {
@@ -547,5 +548,16 @@ app.use((req, res, next) => {
     log("✅ Dataset sync scheduler started");
   } else {
     log("📊 Dataset sync scheduler is disabled (set DATASET_SYNC_SCHEDULER_ENABLED=true to enable)");
+  }
+
+  // Setup AI Usage Aggregator (Daily at 02:00 UTC)
+  const aiUsageAggregatorEnabled = schedulersMasterEnabled && process.env.AI_USAGE_AGGREGATOR_ENABLED !== "false";
+  
+  if (aiUsageAggregatorEnabled) {
+    log("📊 AI usage aggregator enabled - starting scheduler (02:00 UTC daily)...");
+    initAIUsageAggregator();
+    log("✅ AI usage aggregator started");
+  } else {
+    log("📊 AI usage aggregator is disabled (set AI_USAGE_AGGREGATOR_ENABLED=true to enable)");
   }
 })();

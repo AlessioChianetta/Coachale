@@ -48,6 +48,7 @@ import { fileSearchService } from "../ai/file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { isRetryableError } from "../ai/retry-manager";
 import { shouldRespondWithAudio } from "./audio-response-utils";
+import { tokenTracker } from '../ai/token-tracker';
 import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 import {
   extractBookingDataFromConversation,
@@ -2400,7 +2401,9 @@ Segui attentamente o tieni a memoria queste informazioni.
           text: aiResponse,
           vertexClient: vertexClient,
           projectId: vertexProjectId,
-          location: vertexLocation
+          location: vertexLocation,
+          consultantId: conversation.consultantId,
+          clientId: conversation.phoneNumber || undefined
         });
         const ttsEndTime = performance.now();
         const ttsGenerationMs = Math.round(ttsEndTime - ttsStartTime);
@@ -3263,6 +3266,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               
               // Get AI provider for booking extraction (aligned with public-share-router.ts)
               const bookingAiProvider = await getAIProvider(conversation.consultantId, conversation.consultantId);
+              bookingAiProvider.setFeature?.('whatsapp-agent');
               
               // Estrai dati booking dalla conversazione usando il servizio centralizzato
               // ACCUMULATOR PATTERN: Passa conversationId per accumulare dati progressivamente

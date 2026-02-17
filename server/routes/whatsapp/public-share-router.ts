@@ -15,7 +15,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
 import { shouldRespondWithAudio } from '../../whatsapp/audio-response-utils';
-import { getAIProvider, getModelWithThinking, getSuperAdminGeminiKeys } from '../../ai/provider-factory';
+import { getAIProvider, getModelWithThinking, getSuperAdminGeminiKeys, trackedGenerateContent } from '../../ai/provider-factory';
 import { getAudioDurationInSeconds } from 'get-audio-duration';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1520,6 +1520,7 @@ router.post(
             
             // ACCUMULATOR PATTERN: Always proceed with intent extraction (no pre-check skip)
             const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+            aiProvider.setFeature?.('whatsapp-agent');
             console.log(`   ✅ [ACCUMULATOR] Always proceeding with intent extraction (no pre-check skip)`);
               
               // Recupera cronologia conversazione (ultimi 15 messaggi)
@@ -2080,6 +2081,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             try {
               // Get AI provider for TTS
               const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+              aiProvider.setFeature?.('whatsapp-agent');
               
               if (!aiProvider.vertexClient) {
                 console.warn('⚠️ [TTS] No VertexAI client available - falling back to text-only');
@@ -2195,6 +2197,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 
                 // ACCUMULATOR PATTERN: Always proceed with extraction (no pre-check skip)
                 const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+                aiProvider.setFeature?.('whatsapp-agent');
                 console.log(`   ✅ [ACCUMULATOR] Always proceeding with new booking analysis (no pre-check skip)`);
                   
                 // Recupera cronologia conversazione (ultimi 15 messaggi)
@@ -2533,10 +2536,10 @@ Esempi di buoni titoli:
 Titolo:`;
 
                 console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
-                const result = await genai.models.generateContent({
-                  model: 'gemini-2.0-flash-lite',
+                const result = await trackedGenerateContent(genai, {
+                  model: 'gemini-2.5-flash-lite',
                   contents: titlePrompt,
-                });
+                } as any, { consultantId: agentConfig.consultantId, feature: 'whatsapp-agent' });
                 
                 const generatedTitle = result.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
                 
@@ -2713,6 +2716,7 @@ router.post(
       // 3. Get AI provider (Vertex AI)
       console.log('\n🔌 [STEP 3] Getting Vertex AI provider...');
       const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+      aiProvider.setFeature?.('whatsapp-agent');
       console.log(`✅ Provider: ${aiProvider.source}`);
       
       // 4. Transcribe audio with Vertex AI

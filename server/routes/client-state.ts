@@ -5,11 +5,10 @@ import { insertClientStateTrackingSchema, updateClientStateTrackingSchema } from
 import { z } from "zod";
 import { buildUserContext } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
-import { GoogleGenAI } from "@google/genai";
-import { GEMINI_3_MODEL, getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { quickGenerate } from "../ai/provider-factory";
 import { db } from "../db";
 import { users } from "../../shared/schema";
-import { eq, sql as drizzleSql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -263,29 +262,6 @@ router.post("/clients/:id/state/ai-generate", authenticateToken, requireRole("co
       return res.status(403).json({ success: false, error: "Access denied - this is not your client" });
     }
     
-    // Get consultant's API keys for Gemini
-    const [consultantUser] = await db.select().from(users).where(eq(users.id, consultantId)).limit(1);
-    const apiKeys = consultantUser?.geminiApiKeys || [];
-    const currentIndex = consultantUser?.geminiApiKeyIndex || 0;
-    let apiKey: string;
-    let shouldRotate = false;
-
-    if (apiKeys.length > 0) {
-      apiKey = apiKeys[currentIndex % apiKeys.length];
-      shouldRotate = true;
-    } else {
-      const superAdminKeys = await getSuperAdminGeminiKeys();
-      if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
-        apiKey = superAdminKeys.keys[0];
-      } else {
-        apiKey = process.env.GEMINI_API_KEY || "";
-      }
-    }
-
-    if (!apiKey) {
-      return res.status(500).json({ success: false, error: "Gemini API key not configured" });
-    }
-    
     // Build full user context (EXACTLY like AI assistant does)
     console.log(`🔍 [AI STATE] Building full 360° context for client...`);
     const userContext = await buildUserContext(clientId);
@@ -318,18 +294,19 @@ Rispondi SOLO con JSON valido:
   "motivationDrivers": "Testo descrittivo di cosa motiva il cliente a raggiungere i suoi obiettivi"
 }`;
     
-    // Call Gemini API EXACTLY like ai-service.ts does (with systemInstruction!)
+    // Call Gemini API via provider-factory
     console.log(`🤖 [AI STATE] Calling Gemini API with systemInstruction...`);
-    const genai = new GoogleGenAI({ apiKey });
-    const result = await genai.models.generateContent({
-      model: GEMINI_3_MODEL,
-      config: {
+    const result = await quickGenerate({
+      consultantId,
+      clientId,
+      feature: 'client-state',
+      contents: [{ role: "user", parts: [{ text: userMessage }] }],
+      systemInstruction: systemPrompt,
+      generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 250000,
         responseMimeType: "application/json",
-        systemInstruction: systemPrompt, // 🔥 KEY: Use buildSystemPrompt as systemInstruction (like AI Assistant)
       },
-      contents: [{ role: "user", parts: [{ text: userMessage }] }],
     });
     
     const responseText = result.text || "";
@@ -417,16 +394,6 @@ Rispondi SOLO con JSON valido:
     
     console.log(`✅ [AI STATE] AI analysis generated successfully`);
     console.log(`   Campi generati: currentState, idealState, pastAttempts, currentActions, futureVision`);
-    
-    // Rotate API key if using consultant's keys
-    if (shouldRotate) {
-      await db.execute(
-        drizzleSql`UPDATE users 
-            SET gemini_api_key_index = (COALESCE(gemini_api_key_index, 0) + 1) % ${apiKeys.length}
-            WHERE id = ${consultantId}`
-      );
-      console.log(`🔄 [AI STATE] Rotated API key for consultant ${consultantId}`);
-    }
     
     // Validate that AI generated all required fields
     if (!aiAnalysis.pastAttempts || !aiAnalysis.currentActions || !aiAnalysis.futureVision) {

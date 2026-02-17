@@ -1466,6 +1466,7 @@ export async function planQuery(
   allowedTools?: string[]
 ): Promise<QueryPlan> {
   const providerResult = await getAIProvider(consultantId || "system", consultantId);
+  providerResult.setFeature?.('data-analysis');
   const client = providerResult.client;
   const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
 
@@ -1676,6 +1677,7 @@ async function retryPlanWithFeedback(
   }
 
   const providerResult = await getAIProvider(consultantId || "system", consultantId);
+  providerResult.setFeature?.('data-analysis');
   const client = providerResult.client;
   const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
 
@@ -2436,6 +2438,7 @@ async function extractProposalAsQuestion(
   
   try {
     const providerResult = await getAIProvider(consultantId || "system", consultantId);
+    providerResult.setFeature?.('data-analysis');
     const client = providerResult.client;
     
     const extractionPrompt = `Analizza questo messaggio dell'assistente e ESTRAI la proposta/domanda che ha fatto all'utente.
@@ -2462,9 +2465,9 @@ RISPONDI SOLO con la domanda esplicita da eseguire, senza spiegazioni. Se non tr
 
     const result = await executeWithRetry(
       () => client.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 256 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 256, thinkingConfig: { thinkingBudget: 1024 } }
       }),
       "FOLLOW_THROUGH-EXTRACT"
     );
@@ -3277,6 +3280,7 @@ async function generateStrategyResponse(
   consultantId?: string
 ): Promise<string> {
   const providerResult = await getAIProvider(consultantId || "system", consultantId);
+  providerResult.setFeature?.('data-analysis');
   const client = providerResult.client;
   const { model: modelName } = getModelWithThinking(providerResult.metadata?.name);
 

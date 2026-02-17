@@ -2209,6 +2209,7 @@ router.post("/consultant/journey-templates/generate", authenticateToken, require
     
     try {
       const result = await getAIProvider(null, consultantId);
+      result.setFeature?.('email-automated');
       aiClient = result.client;
       cleanup = result.cleanup;
       providerName = result.metadata.name;

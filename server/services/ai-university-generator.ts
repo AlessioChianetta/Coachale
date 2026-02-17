@@ -289,6 +289,7 @@ export async function analyzeCoursesForTrimesterAssignment(
     console.log(`📊 [AI-UNIVERSITY] Analyzing ${courses.length} courses`);
 
     const providerResult = await getAIProvider(consultantId);
+    providerResult.setFeature?.('university-generator');
     if (!providerResult.client) {
       return { success: false, error: "Provider AI non disponibile" };
     }

@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent, type GeminiClient } from "./provider-factory";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
@@ -66,14 +66,14 @@ async function resolveProviderForTask(consultantId: string): Promise<ResolvedPro
     const ai = new GoogleGenAI({ apiKey });
     const fallbackClient: GeminiClient = {
       generateContent: async (params: any) => {
-        const result = await ai.models.generateContent({
+        const result = await trackedGenerateContent(ai, {
           model: params.model,
           contents: params.contents,
           config: {
             ...params.generationConfig,
             ...(params.tools && { tools: params.tools }),
           },
-        });
+        }, { consultantId, feature: 'task-executor', keySource: 'classifier' });
         const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
         return { response: { text: () => text, candidates: [] } };
       },

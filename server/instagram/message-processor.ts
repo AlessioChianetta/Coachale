@@ -520,6 +520,7 @@ async function processInstagramConversation(
         
         // Get AI provider for booking extraction
         const bookingAiProvider = await getAIProvider(config.consultantId, config.consultantId);
+        bookingAiProvider.setFeature?.('instagram-agent');
         
         // Extract booking data using centralized service with accumulator pattern
         // Pass existing booking if found to detect MODIFY/CANCEL/ADD_ATTENDEES intents
@@ -1640,6 +1641,7 @@ ${triggerContext}
 
     // Get AI provider and generate response (uses pre-configured client)
     const aiProvider = await getAIProvider(consultant.id, consultant.id);
+    aiProvider.setFeature?.('instagram-agent');
     
     // Map source to canonical provider name for getModelWithThinking
     // source "google" = Google AI Studio, "vertex"/"superadmin"/"client"/"admin" = Vertex AI

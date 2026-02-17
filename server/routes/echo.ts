@@ -640,6 +640,7 @@ router.post("/extract-tasks", async (req: any, res) => {
     // Use AI to extract tasks from transcript
     const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
     const aiProvider = await getAIProvider(consultantId, consultantId);
+    aiProvider.setFeature?.('echo');
 
     const prompt = `Analizza la seguente trascrizione di una consulenza e identifica TUTTE le azioni concrete, compiti e follow-up discussi.
 
@@ -1033,6 +1034,7 @@ router.post("/generate-summary-from-transcript", async (req: any, res) => {
     // Get consultant's AI configuration
     const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
     const aiProvider = await getAIProvider(consultantId, consultantId);
+    aiProvider.setFeature?.('echo');
     
     if (!aiProvider) {
       return res.status(500).json({ error: "Configurazione AI non disponibile" });

@@ -9,8 +9,7 @@
  * Supporta sia API key diretta che Vertex AI tramite provider-factory
  */
 
-import { GoogleGenAI } from "@google/genai";
-import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, GeminiClient } from "./provider-factory";
+import { quickGenerate, getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, GeminiClient } from "./provider-factory";
 
 export interface DiscoveryRec {
   motivazioneCall?: string;
@@ -71,7 +70,7 @@ RISPONDI SOLO CON UN JSON VALIDO nel seguente formato:
  */
 export async function generateDiscoveryRec(
   transcript: string,
-  apiKey: string
+  consultantId: string
 ): Promise<DiscoveryRec | null> {
 
   console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -85,16 +84,15 @@ export async function generateDiscoveryRec(
   }
 
   try {
-    const genAI = new GoogleGenAI({ apiKey });
-
     const prompt = DISCOVERY_REC_PROMPT.replace("{{TRANSCRIPT}}", transcript);
 
     const startTime = Date.now();
 
-    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-preview-05-20",
-      contents: prompt,
-      config: {
+    const response = await quickGenerate({
+      consultantId,
+      feature: 'discovery-rec',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 20000,
       }
@@ -240,6 +238,7 @@ export async function generateDiscoveryRecWithProvider(
 
   try {
     const providerResult = await getAIProvider(clientId, consultantId);
+    providerResult.setFeature?.('discovery-rec');
     const client = providerResult.client;
 
     console.log(`✅ [DiscoveryRecGenerator] Using provider: ${providerResult.source}`);

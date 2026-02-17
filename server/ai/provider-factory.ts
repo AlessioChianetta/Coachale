@@ -33,7 +33,7 @@ export interface TrackingContext {
  * NOTE: Gemini 3 does NOT support Live API or Vertex AI yet
  */
 export const GEMINI_3_MODEL = "gemini-3-flash-preview";
-export const GEMINI_LEGACY_MODEL = "gemini-2.5-flash";
+export const GEMINI_LEGACY_MODEL = "gemini-3-flash-preview";
 
 /**
  * Get the appropriate model based on provider type
@@ -194,7 +194,7 @@ class VertexAIClientAdapter implements GeminiClient {
   public vertexAI?: VertexAI;
   public trackingContext: TrackingContext | null = null;
 
-  constructor(private model: GenerativeModel, modelName: string = 'gemini-2.5-flash') {
+  constructor(private model: GenerativeModel, modelName: string = 'gemini-3-flash-preview') {
     this.currentModelName = modelName;
   }
 
@@ -747,7 +747,7 @@ export function createVertexGeminiClient(
   projectId: string,
   location: string,
   credentials: any,
-  modelName: string = 'gemini-2.5-flash'
+  modelName: string = 'gemini-3-flash-preview'
 ): GeminiClient {
   console.log("🚀 Creating VertexAI instance with Service Account credentials");
   console.log("  - project:", projectId);
@@ -1875,5 +1875,98 @@ export async function getRawGoogleGenAIForFileSearch(
   } catch (error: any) {
     console.error(`❌ [Raw GenAI] Failed to create GoogleGenAI instance:`, error.message);
     return null;
+  }
+}
+
+export async function quickGenerate(params: {
+  consultantId: string;
+  clientId?: string;
+  feature: string;
+  model?: string;
+  contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+  systemInstruction?: string;
+  generationConfig?: any;
+  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
+  tools?: any[];
+  toolConfig?: any;
+}): Promise<{ text: string; usageMetadata?: any; candidates?: any[] }> {
+  const provider = await getAIProvider(params.consultantId, params.consultantId);
+  provider.setFeature?.(params.feature);
+
+  const model = params.model || GEMINI_3_MODEL;
+
+  const result = await provider.client.generateContent({
+    model,
+    contents: params.contents,
+    generationConfig: {
+      ...params.generationConfig,
+      ...(params.thinkingLevel && {
+        thinkingConfig: { thinkingBudget: params.thinkingLevel === 'minimal' ? 1024 : params.thinkingLevel === 'low' ? 4096 : params.thinkingLevel === 'medium' ? 8192 : 16384 }
+      }),
+    },
+    ...(params.systemInstruction && {
+      systemInstruction: { role: 'user', parts: [{ text: params.systemInstruction }] }
+    }),
+    ...(params.tools && { tools: params.tools }),
+    ...(params.toolConfig && { toolConfig: params.toolConfig }),
+  });
+
+  provider.cleanup?.();
+
+  return {
+    text: result.response.text(),
+    usageMetadata: (result as any).usageMetadata || (result as any).response?.usageMetadata,
+    candidates: result.response.candidates,
+  };
+}
+
+export async function trackedGenerateContent(
+  ai: { models: { generateContent: (params: any) => Promise<any> } },
+  params: {
+    model: string;
+    contents: Array<{ role: string; parts: Array<{ text: string }> }>;
+    config?: any;
+  },
+  context: { consultantId: string; clientId?: string; feature: string; keySource?: string }
+): Promise<any> {
+  const start = Date.now();
+  let error = false;
+  try {
+    const result = await ai.models.generateContent(params);
+    const usage = result?.usageMetadata;
+    if (usage) {
+      tokenTracker.track({
+        consultantId: context.consultantId,
+        clientId: context.clientId,
+        model: params.model,
+        feature: context.feature,
+        requestType: 'generate',
+        keySource: context.keySource || 'env',
+        inputTokens: usage.promptTokenCount || usage.inputTokens || 0,
+        outputTokens: usage.candidatesTokenCount || usage.outputTokens || 0,
+        cachedTokens: usage.cachedContentTokenCount || usage.cachedTokens || 0,
+        thinkingTokens: usage.thoughtsTokenCount || usage.thinkingTokens || 0,
+        totalTokens: usage.totalTokenCount || usage.totalTokens || 0,
+        durationMs: Date.now() - start,
+        hasTools: false,
+        hasFileSearch: false,
+        error: false,
+      }).catch(e => console.error('[TokenTracker] trackedGenerateContent error:', e));
+    }
+    return result;
+  } catch (err) {
+    tokenTracker.track({
+      consultantId: context.consultantId,
+      clientId: context.clientId,
+      model: params.model,
+      feature: context.feature,
+      requestType: 'generate',
+      keySource: context.keySource || 'env',
+      inputTokens: 0,
+      outputTokens: 0,
+      durationMs: Date.now() - start,
+      error: true,
+    }).catch(e => console.error('[TokenTracker] trackedGenerateContent error:', e));
+    throw err;
   }
 }

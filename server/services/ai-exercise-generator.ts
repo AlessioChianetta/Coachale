@@ -659,6 +659,7 @@ export async function generateExercisesForCourse(params: {
 
     console.log(`🤖 [AI-EXERCISE] Getting AI provider for consultant: ${consultantId}`);
     const providerResult = await getAIProvider(consultantId);
+    providerResult.setFeature?.('university-generator');
     if (!providerResult.client) {
       console.log(`❌ [AI-EXERCISE] AI provider not available`);
       return { success: false, error: 'Provider AI non disponibile' };
@@ -801,6 +802,7 @@ export async function generateExercisesForCourseWithProgress(params: {
 
     console.log(`🤖 [AI-EXERCISE-STREAM] Getting AI provider for consultant: ${consultantId}`);
     const providerResult = await getAIProvider(consultantId);
+    providerResult.setFeature?.('university-generator');
     if (!providerResult.client) {
       console.log(`❌ [AI-EXERCISE-STREAM] AI provider not available`);
       return { success: false, error: 'Provider AI non disponibile' };

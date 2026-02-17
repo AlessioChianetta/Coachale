@@ -107,6 +107,7 @@ class TokenTracker {
     this.startFlushTimer();
     process.on('SIGTERM', () => this.flush());
     process.on('SIGINT', () => this.flush());
+    process.on('beforeExit', () => this.flush());
   }
 
   private startFlushTimer() {

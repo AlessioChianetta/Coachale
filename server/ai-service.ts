@@ -2291,9 +2291,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     
     if (shouldRunClassifier) {
-      const apiKey = await getGeminiApiKeyForClassifier();
-      if (apiKey) {
-        consultationIntentClassification = await classifyConsultationIntent(message, apiKey, classifierContext);
+      if (consultantId) {
+        consultationIntentClassification = await classifyConsultationIntent(message, consultantId, classifierContext);
         isConsultationQuery = shouldUseConsultationTools(consultationIntentClassification, classifierContext);
         clarificationNeeded = shouldAskClarification(consultationIntentClassification);
         clarificationPrompt = getClarificationPrompt(consultationIntentClassification);
@@ -3037,7 +3036,7 @@ Titolo:`;
 
           console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
           const clientTitleResult = await clientTitleGenai.models.generateContent({
-            model: 'gemini-2.0-flash-lite',
+            model: 'gemini-3-flash-preview',
             contents: clientTitlePrompt,
           });
           
@@ -4199,7 +4198,7 @@ Titolo:`;
 
           console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
           const titleResult = await titleGenai.models.generateContent({
-            model: 'gemini-2.0-flash-lite',
+            model: 'gemini-3-flash-preview',
             contents: titlePrompt,
           });
           

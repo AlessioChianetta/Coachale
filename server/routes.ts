@@ -114,6 +114,7 @@ import weeklyCheckinRouter from "./routes/weekly-checkin-router";
 import fileSearchRouter from "./routes/file-search";
 import echoRouter from "./routes/echo";
 import aiAssistantRouter from "./routes/ai-assistant-router";
+import aiUsageRouter from "./routes/ai-usage-router";
 import managerRouter from "./routes/manager-router";
 import publicAgentRouter from "./routes/public-agent-router";
 import publicAIChatRouter from "./routes/public-ai-chat-router";
@@ -7838,6 +7839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { getAIProvider } = await import("./ai/provider-factory");
       const providerResult = await getAIProvider(req.user!.id);
+      providerResult.setFeature?.('unknown');
       
       if (!providerResult.client) {
         // Fallback: genera nomi generici
@@ -7950,6 +7952,7 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         try {
           const { getAIProvider } = await import("./ai/provider-factory");
           const providerResult = await getAIProvider(consultantId);
+          providerResult.setFeature?.('unknown');
           
           const sanitizeText = (text: string): string => {
             if (!text) return '';
@@ -8171,6 +8174,7 @@ Rispondi SOLO con JSON: {"1":"A","2":"B",...}`;
       
       const { getAIProvider } = await import("./ai/provider-factory");
       const providerResult = await getAIProvider(req.user!.id);
+      providerResult.setFeature?.('unknown');
       
       if (!providerResult.client) {
         const moduleCount = modules.length;
@@ -12175,6 +12179,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       
       // Get AI provider for the consultant
       const aiProvider = await getAIProvider(consultantId, consultantId);
+      aiProvider.setFeature?.('unknown');
       
       if (!aiProvider.client) {
         return res.status(500).json({ 
@@ -13986,6 +13991,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // AI Assistant Agent Integration routes (agent selection in AI assistant)
   app.use("/api/ai-assistant", aiAssistantRouter);
+
+  // AI Usage Analytics routes (consultant and admin dashboards)
+  app.use("/api/ai-usage", aiUsageRouter);
+  app.use("/api/admin/ai-usage", aiUsageRouter);
 
   // Manager Users routes (authenticated public agent access)
   app.use("/api/managers", managerRouter);
@@ -20193,6 +20202,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           try {
             // Get AI provider for TTS
             const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+            aiProvider.setFeature?.('unknown');
             
             if (!aiProvider.vertexClient) {
               console.warn('⚠️ [TTS] No VertexAI client available - falling back to text-only');
@@ -20426,6 +20436,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // 2. Get AI provider (Vertex AI)
         console.log('\n🔌 [STEP 2] Getting Vertex AI provider...');
         const aiProvider = await getAIProvider(consultantId, consultantId);
+        aiProvider.setFeature?.('unknown');
         console.log(`✅ Provider: ${aiProvider.source}`);
 
         // 3. Transcribe audio with Vertex AI

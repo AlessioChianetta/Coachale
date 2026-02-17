@@ -521,7 +521,7 @@ async function generateEmailWithRetry(
 
   const { model: modelName, useThinking, thinkingLevel } = options?.providerName 
     ? getModelWithThinking(options.providerName) 
-    : { model: "gemini-2.5-flash", useThinking: false, thinkingLevel: GEMINI_3_THINKING_LEVEL };
+    : { model: "gemini-3-flash-preview", useThinking: false, thinkingLevel: GEMINI_3_THINKING_LEVEL };
 
   console.log(`[AI] Using model: ${modelName} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
 
@@ -671,6 +671,7 @@ export async function generateMotivationalEmail(
         // Fallback to normal provider if Google AI Studio not available - NO File Search tool
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider (File Search disabled)`);
         const result = await getAIProvider(input.clientId, input.consultantId);
+        result.setFeature?.('email-generator');
         aiClient = result.client;
         providerMetadata = result.metadata;
         cleanup = result.cleanup;
@@ -679,6 +680,7 @@ export async function generateMotivationalEmail(
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       const result = await getAIProvider(input.clientId, input.consultantId);
+      result.setFeature?.('email-generator');
       aiClient = result.client;
       providerMetadata = result.metadata;
       cleanup = result.cleanup;
@@ -1488,6 +1490,7 @@ export async function generateConsultationSummaryEmail(
         // Fallback to normal provider if Google AI Studio not available - NO File Search tool
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider (File Search disabled)`);
         const result = await getAIProvider(input.clientId, input.consultantId);
+        result.setFeature?.('email-generator');
         aiClient = result.client;
         providerMetadata = result.metadata;
         cleanup = result.cleanup;
@@ -1496,6 +1499,7 @@ export async function generateConsultationSummaryEmail(
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       const result = await getAIProvider(input.clientId, input.consultantId);
+      result.setFeature?.('email-generator');
       aiClient = result.client;
       providerMetadata = result.metadata;
       cleanup = result.cleanup;
@@ -1841,7 +1845,8 @@ export async function generateSystemUpdateEmail(
     console.log(`📢 [SYSTEM UPDATE EMAIL] Starting generation for ${input.clientName}...`);
 
     // Get AI provider using 3-tier priority system
-    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
+    const { client: aiClient, metadata: providerMetadata, cleanup, setFeature } = await getAIProvider(input.clientId, input.consultantId);
+    setFeature?.('email-generator');
     console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
 
     // Build context section if available

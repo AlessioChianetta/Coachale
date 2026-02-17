@@ -523,6 +523,7 @@ export async function evaluateWithHumanLikeAI(
     
     // Ottieni AI provider
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    aiProviderResult.setFeature?.('decision-engine');
     const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [HUMAN-AI] Using ${aiProviderResult.metadata.name} for evaluation`);
     console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
@@ -592,7 +593,7 @@ export async function logHumanLikeDecision(
   conversationId: string,
   context: ConversationContext,
   decision: HumanLikeDecision,
-  modelUsed: string = "gemini-2.5-flash",
+  modelUsed: string = "gemini-3-flash-preview",
   latencyMs?: number
 ): Promise<void> {
   try {

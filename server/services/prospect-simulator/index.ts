@@ -206,6 +206,7 @@ export class ProspectSimulator {
 
     try {
       const providerResult = await getAIProvider(this.options.clientId, this.options.consultantId);
+      providerResult.setFeature?.('prospect-simulator');
       this.aiClient = providerResult.client;
       this.aiCleanup = providerResult.cleanup;
       

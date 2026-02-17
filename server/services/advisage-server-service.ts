@@ -1,4 +1,4 @@
-import { getAIProvider, getModelWithThinking, getSuperAdminGeminiKeys } from "../ai/provider-factory";
+import { getAIProvider, getModelWithThinking, getSuperAdminGeminiKeys, trackedGenerateContent } from "../ai/provider-factory";
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
 import * as schema from "@shared/schema";
@@ -54,7 +54,8 @@ export async function analyzeAdTextServerSide(
 ): Promise<AdvisageAnalysis> {
   console.log(`[ADVISAGE-SERVER] Analyzing text for ${platform}, consultantId: ${consultantId}`);
   
-  const { client, metadata } = await getAIProvider(consultantId, consultantId);
+  const { client, metadata, setFeature } = await getAIProvider(consultantId, consultantId);
+  setFeature?.('advisage');
   const modelConfig = getModelWithThinking(metadata.name);
   
   const brandInfo = settings.brandColor 
@@ -185,11 +186,11 @@ export async function generateImageServerSide(
     
     console.log(`[ADVISAGE-SERVER] Using model: gemini-2.5-flash-image`);
     
-    const response = await ai.models.generateContent({
+    const response = await trackedGenerateContent(ai, {
       model: 'gemini-2.5-flash-image',
-      contents: { parts: [{ text: prompt }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }] as any,
       config: { imageConfig: { aspectRatio } } as any
-    });
+    }, { consultantId, feature: 'advisage' });
     
     const part = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
     

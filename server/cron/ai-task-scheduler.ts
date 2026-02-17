@@ -19,7 +19,7 @@ function safeTextParam(value: string) {
 import { withCronLock } from './cron-lock-manager';
 import { generateExecutionPlan, canExecuteAutonomously, canExecuteManually, type ExecutionStep, isWithinWorkingHours, isRoleWithinWorkingHours, getTaskStatusForRole, getAutonomySettings, getEffectiveRoleLevel, canRoleAutoCall } from '../ai/autonomous-decision-engine';
 import { executeStep, type AITaskInfo } from '../ai/ai-task-executor';
-import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, type GeminiClient } from '../ai/provider-factory';
+import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent, type GeminiClient } from '../ai/provider-factory';
 import { GoogleGenAI } from '@google/genai';
 import { FileSearchService } from '../ai/file-search-service';
 import { fetchSystemDocumentsForAgent } from '../services/system-prompt-documents-service';
@@ -1530,13 +1530,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     const genAI = new GoogleGenAI({ apiKey });
     aiClient = {
       generateContent: async (params: any) => {
-        const result = await genAI.models.generateContent({
+        const result = await trackedGenerateContent(genAI, {
           model: params.model,
           contents: params.contents,
           config: {
             ...params.generationConfig,
           },
-        });
+        }, { consultantId, feature: 'task-executor', keySource: 'classifier' });
         const text = typeof result.text === 'function' ? result.text() : (result as any).text;
         return { response: { text: () => text || '', candidates: [] } };
       },

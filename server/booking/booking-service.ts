@@ -772,17 +772,15 @@ export async function extractBookingDataFromConversation(
     );
   }
 
-  // Use gemini-2.5-flash-lite for booking extraction - fast and efficient
   const model = 'gemini-2.5-flash-lite';
-  const useThinking = false;
-  console.log(`   🧠 [AI] Using model: ${model}, thinking: disabled`);
+  console.log(`   🧠 [AI] Using model: ${model}, thinking: minimal`);
 
   try {
     const response = await aiClient.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
+        thinkingConfig: { thinkingBudget: 1024 },
       },
     });
 

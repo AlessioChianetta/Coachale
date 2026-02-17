@@ -63,6 +63,7 @@ export async function generateLessonFromVideo(params: GenerateLessonParams): Pro
     const prompt = buildLessonPrompt(video, instructions, settings.preserveSpeakerStyle, theme);
     
     const providerResult = await getAIProvider(params.consultantId);
+    providerResult.setFeature?.('university-generator');
     if (!providerResult.client) {
       console.log(`❌ [AI-LESSON] Provider AI non disponibile`);
       return { success: false, error: 'AI provider not available' };

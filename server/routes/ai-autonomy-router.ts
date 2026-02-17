@@ -3,7 +3,7 @@ import { authenticateToken, requireAnyRole, type AuthRequest } from "../middlewa
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL } from "../ai/provider-factory";
+import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "../ai/provider-factory";
 import { generateExecutionPlan, type ExecutionStep, getAutonomySettings, getEffectiveRoleLevel, isRoleWithinWorkingHours } from "../ai/autonomous-decision-engine";
 import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
@@ -735,19 +735,19 @@ Rispondi SOLO con un JSON valido (no markdown, no backticks):
 }`;
 
     const { GoogleGenAI } = await import("@google/genai");
-    const { getGeminiApiKeyForClassifier, GEMINI_LEGACY_MODEL } = await import("../ai/provider-factory");
+    const { getGeminiApiKeyForClassifier, GEMINI_LEGACY_MODEL, trackedGenerateContent: trackedGen } = await import("../ai/provider-factory");
 
     const apiKey = await getGeminiApiKeyForClassifier();
     const genAI = new GoogleGenAI({ apiKey });
 
-    const result = await genAI.models.generateContent({
+    const result = await trackedGen(genAI, {
       model: GEMINI_LEGACY_MODEL,
       contents: prompt,
       config: {
         temperature: 0.3,
         maxOutputTokens: 500,
       }
-    });
+    } as any, { consultantId: req.user?.id || '', feature: 'decision-engine', keySource: 'classifier' });
 
     const responseText = result.text?.trim() || '';
 
@@ -1120,7 +1120,7 @@ Non inventare dati sui clienti - usa solo quelli disponibili nel contesto.`;
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const result = await ai.models.generateContent({
+    const result = await trackedGenerateContent(ai, {
       model: GEMINI_3_MODEL,
       contents: chatHistory,
       config: {
@@ -1129,7 +1129,7 @@ Non inventare dati sui clienti - usa solo quelli disponibili nel contesto.`;
         maxOutputTokens: 2048,
         thinkingConfig: { thinkingBudget: 1024 },
       },
-    });
+    } as any, { consultantId: req.user?.id || '', feature: 'decision-engine', keySource: 'classifier' });
 
     let responseText = "";
     if (result.text) {
@@ -2803,6 +2803,7 @@ Esempio di flusso corretto:
 
       try {
         const provider = await getAIProvider(consultantId, consultantId);
+        provider.setFeature?.('decision-engine');
         aiClient = provider.client;
         const providerName = provider.metadata?.name || '';
         const { getModelForProviderName } = await import("../ai/provider-factory");
@@ -2819,20 +2820,34 @@ Esempio di flusso corretto:
         throw new Error("No AI provider available");
       }
 
-      const response = await aiClient.generateContent({
-        model: providerModel,
-        contents: [
-          { role: 'user' as const, parts: [{ text: systemPrompt }] },
-          { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
-          ...conversationParts,
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-        },
-      });
+      const chatContents = [
+        { role: 'user' as const, parts: [{ text: systemPrompt }] },
+        { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
+        ...conversationParts,
+      ];
 
-      aiResponse = response.text?.() || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
+      let response: any;
+      if (aiClient.models?.generateContent) {
+        response = await trackedGenerateContent(aiClient, {
+          model: providerModel,
+          contents: chatContents,
+          config: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+          },
+        } as any, { consultantId, feature: 'decision-engine' });
+      } else {
+        response = await aiClient.generateContent({
+          model: providerModel,
+          contents: chatContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+          },
+        });
+      }
+
+      aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
     } catch (err: any) {
       console.error(`[AGENT-CHAT] AI error for ${roleId}:`, err.message);
       aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco. (${err.message?.substring(0, 100)})`;
