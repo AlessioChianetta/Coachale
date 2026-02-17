@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { dailySalesReports } from "@shared/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { dailySalesReports, salesGoals, salesChatMessages } from "@shared/schema";
+import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { getAIProvider } from "../ai/provider-factory";
 
 const router = Router();
@@ -234,6 +234,245 @@ Usa un tono professionale ma incoraggiante. Sii specifico con i numeri.`;
     });
   } catch (error: any) {
     console.error("❌ [SALES AI] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/sales-goals", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { periodType, periodValue } = req.query;
+
+    if (!periodType || !periodValue) {
+      return res.status(400).json({ error: "periodType and periodValue are required" });
+    }
+
+    const goals = await db
+      .select()
+      .from(salesGoals)
+      .where(
+        and(
+          eq(salesGoals.userId, userId),
+          eq(salesGoals.periodType, periodType as string),
+          eq(salesGoals.periodValue, periodValue as string)
+        )
+      );
+
+    res.json(goals);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/sales-goals", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const consultantId = req.user!.consultantId || req.user!.id;
+    const { periodType, periodValue, metric, targetValue } = req.body;
+
+    if (!periodType || !periodValue || !metric) {
+      return res.status(400).json({ error: "periodType, periodValue, and metric are required" });
+    }
+
+    const [existing] = await db
+      .select()
+      .from(salesGoals)
+      .where(
+        and(
+          eq(salesGoals.userId, userId),
+          eq(salesGoals.periodType, periodType),
+          eq(salesGoals.periodValue, periodValue),
+          eq(salesGoals.metric, metric)
+        )
+      )
+      .limit(1);
+
+    let goal;
+    if (existing) {
+      [goal] = await db
+        .update(salesGoals)
+        .set({
+          targetValue: String(targetValue ?? 0),
+          updatedAt: new Date(),
+        })
+        .where(eq(salesGoals.id, existing.id))
+        .returning();
+    } else {
+      [goal] = await db
+        .insert(salesGoals)
+        .values({
+          userId,
+          consultantId,
+          periodType,
+          periodValue,
+          metric,
+          targetValue: String(targetValue ?? 0),
+        })
+        .returning();
+    }
+
+    res.json(goal);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/sales-chat/messages", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    const messages = await db
+      .select()
+      .from(salesChatMessages)
+      .where(eq(salesChatMessages.userId, userId))
+      .orderBy(salesChatMessages.createdAt)
+      .limit(limit);
+
+    res.json({ messages });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/sales-chat/send", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const consultantId = req.user!.consultantId || req.user!.id;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "message is required" });
+    }
+
+    await db.insert(salesChatMessages).values({
+      userId,
+      consultantId,
+      role: "user",
+      content: message.trim(),
+    });
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentReports = await db
+      .select()
+      .from(dailySalesReports)
+      .where(
+        and(
+          eq(dailySalesReports.userId, userId),
+          gte(dailySalesReports.date, thirtyDaysAgo.toISOString().split('T')[0])
+        )
+      );
+
+    const totals = {
+      calls: 0, discoBooked: 0, discoScheduled: 0, discoShowed: 0,
+      demoBooked: 0, demoScheduled: 0, demoShowed: 0,
+      depositsAmount: 0, contractsClosed: 0, contractsAmount: 0,
+      daysWithData: recentReports.length,
+    };
+    for (const r of recentReports) {
+      totals.calls += r.calls;
+      totals.discoBooked += r.discoBooked;
+      totals.discoScheduled += r.discoScheduled;
+      totals.discoShowed += r.discoShowed;
+      totals.demoBooked += r.demoBooked;
+      totals.demoScheduled += r.demoScheduled;
+      totals.demoShowed += r.demoShowed;
+      totals.depositsAmount += parseFloat(r.depositsAmount || "0");
+      totals.contractsClosed += r.contractsClosed;
+      totals.contractsAmount += parseFloat(r.contractsAmount || "0");
+    }
+
+    const conversionRates = {
+      callsToDisco: totals.calls > 0 ? ((totals.discoBooked / totals.calls) * 100).toFixed(1) : "0",
+      discoShowRate: totals.discoScheduled > 0 ? ((totals.discoShowed / totals.discoScheduled) * 100).toFixed(1) : "0",
+      demoShowRate: totals.demoScheduled > 0 ? ((totals.demoShowed / totals.demoScheduled) * 100).toFixed(1) : "0",
+      demoToContract: totals.demoShowed > 0 ? ((totals.contractsClosed / totals.demoShowed) * 100).toFixed(1) : "0",
+    };
+
+    const history = await db
+      .select()
+      .from(salesChatMessages)
+      .where(eq(salesChatMessages.userId, userId))
+      .orderBy(desc(salesChatMessages.createdAt))
+      .limit(20);
+
+    const orderedHistory = history.reverse();
+
+    const systemPrompt = `Sei un Sales Coach AI specializzato. Parla SEMPRE in italiano. Sei motivazionale ma professionale.
+
+DATI VENDITE ULTIMI 30 GIORNI dell'utente:
+- Giorni con dati: ${totals.daysWithData}
+- Call effettuate: ${totals.calls}
+- Discovery prenotate: ${totals.discoBooked}
+- Discovery programmate: ${totals.discoScheduled}
+- Discovery presentati: ${totals.discoShowed}
+- Demo prenotate: ${totals.demoBooked}
+- Demo programmate: ${totals.demoScheduled}
+- Demo presentati: ${totals.demoShowed}
+- Depositi: €${totals.depositsAmount.toFixed(2)}
+- Contratti chiusi: ${totals.contractsClosed}
+- Importo contratti: €${totals.contractsAmount.toFixed(2)}
+
+TASSI DI CONVERSIONE:
+- Call → Discovery: ${conversionRates.callsToDisco}%
+- Discovery show rate: ${conversionRates.discoShowRate}%
+- Demo show rate: ${conversionRates.demoShowRate}%
+- Demo → Contratti: ${conversionRates.demoToContract}%
+
+Il tuo ruolo:
+- Fornisci coaching vendite azionabile e specifico
+- Analizza il funnel di conversione e identifica colli di bottiglia
+- Suggerisci strategie concrete per migliorare i numeri
+- Celebra i successi e motiva per le aree deboli
+- Rispondi sempre in italiano con tono professionale e incoraggiante
+- Usa i dati reali per personalizzare i consigli`;
+
+    const contents = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Capito! Sono il tuo Sales Coach AI. Ho accesso ai tuoi dati di vendita e sono pronto ad aiutarti. Come posso supportarti oggi?" }] },
+      ...orderedHistory.slice(0, -1).map(m => ({
+        role: m.role === "user" ? "user" : "model",
+        parts: [{ text: m.content }],
+      })),
+      { role: "user", parts: [{ text: message.trim() }] },
+    ];
+
+    const { client, metadata } = await getAIProvider(userId, consultantId);
+    const result = await client.generateContent({
+      model: metadata.model || "gemini-2.5-flash",
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+    });
+
+    const responseText = result.response.text();
+
+    const [assistantMsg] = await db.insert(salesChatMessages).values({
+      userId,
+      consultantId,
+      role: "assistant",
+      content: responseText,
+    }).returning();
+
+    res.json({
+      message: assistantMsg,
+    });
+  } catch (error: any) {
+    console.error("❌ [SALES CHAT] Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/sales-chat/clear", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    await db
+      .delete(salesChatMessages)
+      .where(eq(salesChatMessages.userId, userId));
+
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

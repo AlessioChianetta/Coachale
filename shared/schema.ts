@@ -1426,6 +1426,42 @@ export const insertDailySalesReportSchema = createInsertSchema(dailySalesReports
   updatedAt: true,
 });
 
+export const salesGoals = pgTable("sales_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  periodType: varchar("period_type", { length: 10 }).notNull(),
+  periodValue: varchar("period_value", { length: 10 }).notNull(),
+  metric: varchar("metric", { length: 50 }).notNull(),
+  targetValue: numeric("target_value", { precision: 12, scale: 2 }).notNull().default("0"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueGoal: unique().on(table.userId, table.periodType, table.periodValue, table.metric),
+  };
+});
+
+export const insertSalesGoalSchema = createInsertSchema(salesGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const salesChatMessages = pgTable("sales_chat_messages", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  role: varchar("role", { length: 10 }).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export const insertSalesChatMessageSchema = createInsertSchema(salesChatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Consultation Tasks insert schema
 export const insertConsultationTaskSchema = createInsertSchema(consultationTasks).omit({
   id: true,
@@ -2497,6 +2533,12 @@ export type DailyReflection = typeof dailyReflections.$inferSelect;
 export type InsertDailyReflection = z.infer<typeof insertDailyReflectionSchema>;
 export type DailySalesReport = typeof dailySalesReports.$inferSelect;
 export type InsertDailySalesReport = z.infer<typeof insertDailySalesReportSchema>;
+
+export type SalesGoal = typeof salesGoals.$inferSelect;
+export type InsertSalesGoal = z.infer<typeof insertSalesGoalSchema>;
+
+export type SalesChatMessage = typeof salesChatMessages.$inferSelect;
+export type InsertSalesChatMessage = z.infer<typeof insertSalesChatMessageSchema>;
 
 // Consultation Tasks types
 export type ConsultationTask = typeof consultationTasks.$inferSelect;
