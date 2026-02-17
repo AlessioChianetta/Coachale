@@ -1742,6 +1742,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     let totalCachedTokens = 0; // NEW: Track cached input tokens (94% cost savings!)
+    let totalThinkingTokens = 0; // Track thinking/reasoning tokens
     let totalAudioInputSeconds = 0; // NEW: Track audio input duration
     let totalAudioOutputSeconds = 0; // NEW: Track audio output duration (most expensive!)
     
@@ -6298,8 +6299,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
           if (response.usageMetadata) {
             const usage = response.usageMetadata;
             const inputTokens = usage.promptTokenCount || 0; // Fresh text input tokens
-            const outputTokens = usage.candidatesTokenCount || 0; // Audio output tokens
+            const outputTokens = usage.responseTokenCount || 0; // Audio output tokens
             const cachedTokens = usage.cachedContentTokenCount || 0; // Cached input tokens (94% savings!)
+            const thinkingTokens = usage.thoughtsTokenCount || 0; // Thinking/reasoning tokens
             
             // 🔬 DEBUG: Log FULL usageMetadata to see if there are hidden fields
             console.log(`\n🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -6465,6 +6467,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             totalInputTokens += inputTokens;
             totalOutputTokens += outputTokens;
             totalCachedTokens += cachedTokens;
+            totalThinkingTokens += thinkingTokens;
             totalAudioInputSeconds += audioInputSeconds;
             totalAudioOutputSeconds += audioOutputSeconds;
             
@@ -6581,7 +6584,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 consultantId: consultantId,
                 sessionId: connectionId, // Use WebSocket connectionId as session grouping
                 callType: 'live_api',
-                modelName: 'gemini-2.5-flash', // Current Live API model
+                modelName: liveModelId || 'gemini-live-2.5-flash-native-audio',
                 
                 // Token counts
                 promptTokens: inputTokens,
@@ -6602,6 +6605,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 // Store full metadata for analysis
                 requestMetadata: {
                   usageMetadata: usage,
+                  thinkingTokens: thinkingTokens,
                   serverContent: response.serverContent ? {
                     hasAudio: !!response.serverContent.modelTurn?.parts?.some((p: any) => p.inlineData),
                     hasText: !!response.serverContent.modelTurn?.parts?.some((p: any) => p.text),
@@ -7499,7 +7503,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               if (bookingSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
-                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(consultantId!, consultantId!);
                     setFeature?.('voice-call');
                     try {
                       const bookingMessages: BookingMessage[] = conversationMessages
@@ -7559,7 +7563,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               if (taskSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
-                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(consultantId!, consultantId!);
                     setFeature?.('voice-call');
                     try {
                       const taskMessages: TaskConversationMessage[] = conversationMessages
@@ -8644,6 +8648,7 @@ ${compactFeedback}
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
             cachedTokens: totalCachedTokens,
+            thinkingTokens: totalThinkingTokens,
             totalTokens: totalInputTokens + totalOutputTokens,
             durationMs: sessionDurationMs,
           }).catch(e => console.error(`[LiveSession TokenTracker] Error:`, e));
