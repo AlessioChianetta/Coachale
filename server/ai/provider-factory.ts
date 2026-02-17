@@ -594,6 +594,10 @@ export interface AiProviderResult {
   source: AiProviderSource;
   cleanup?: () => Promise<void>;
   setFeature?: (feature: string) => void;
+  trackedGenerateContent: (
+    params: any,
+    context: { consultantId: string; clientId?: string; feature: string; callerRole?: 'client' | 'consultant' }
+  ) => Promise<{ response: { text: () => string; candidates?: any[] } }>;
 }
 
 /**
@@ -1360,6 +1364,17 @@ export async function getAIProvider(
     if ((result.client as any).trackingContext) {
       (result.client as any).trackingContext.feature = feature;
     }
+  };
+
+  result.trackedGenerateContent = async (params: any, context: { consultantId: string; clientId?: string; feature: string; callerRole?: 'client' | 'consultant' }) => {
+    if ((result.client as any).trackingContext) {
+      (result.client as any).trackingContext.feature = context.feature;
+      (result.client as any).trackingContext.callerRole = context.callerRole;
+      if (context.clientId) {
+        (result.client as any).trackingContext.clientId = context.clientId;
+      }
+    }
+    return result.client.generateContent(params);
   };
 
   return result;

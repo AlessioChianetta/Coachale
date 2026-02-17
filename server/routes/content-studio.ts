@@ -1992,8 +1992,7 @@ router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), 
       return res.status(400).json({ error: "Fornisci almeno topic, target audience o brand voice" });
     }
     
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "content-suggest-levels");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-suggest-levels");
     const { model } = getModelWithThinking(metadata?.name);
     
     // Build brand voice context if available
@@ -2048,14 +2047,14 @@ Contesto Aggiuntivo: "${additionalContext || "Non specificato"}"${brandVoiceCont
 Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
 {"awarenessLevel": "<scegli tra: unaware, problem_aware, solution_aware, product_aware, most_aware>", "awarenessReason": "<spiega in 1-2 frasi PERCHÉ questo livello è adatto AL TARGET SPECIFICO fornito>", "sophisticationLevel": "<scegli tra: level_1, level_2, level_3, level_4, level_5>", "sophisticationReason": "<spiega in 1-2 frasi PERCHÉ questo livello è adatto AL MERCATO SPECIFICO di questo topic>"}`;
 
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.5,
         maxOutputTokens: 2048,
       },
-    });
+    } as any, { consultantId, feature: 'content-suggest-levels', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     console.log("[SUGGEST-LEVELS] Model:", model);
@@ -2124,8 +2123,7 @@ router.post("/ai/suggest-niche-target", authenticateToken, requireRole("consulta
       return res.status(400).json({ success: false, error: "Brand Voice data richiesto" });
     }
     
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "content-suggest-niche");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-suggest-niche");
     const { model } = getModelWithThinking(metadata?.name);
     
     // Build brand voice context
@@ -2162,14 +2160,14 @@ ${brandVoiceContext}
 Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
 {"niche": "<nicchia specifica in 3-8 parole, es: 'Finanza personale per professionisti under 40'>", "targetAudience": "<descrizione target in 5-15 parole, es: 'Professionisti 30-45 anni con reddito medio-alto che vogliono investire'>"}`;
 
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1024,
       },
-    });
+    } as any, { consultantId, feature: 'content-suggest-niche', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     console.log("[SUGGEST-NICHE-TARGET] Model:", model);
@@ -2841,8 +2839,7 @@ router.post("/generate-brand-voice", authenticateToken, requireRole("consultant"
     
     console.log(`🤖 [BRAND-VOICE-AI] Generating brand voice for consultant ${consultantId}`);
     
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "brand-voice-generator");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "brand-voice-generator");
     const { model } = getModelWithThinking(metadata?.name);
     
     const prompt = `Sei un esperto di brand strategy e copywriting. Devi creare una Brand Voice completa basata sulle risposte dell'utente.
@@ -2892,14 +2889,14 @@ Rispondi ESCLUSIVAMENTE con questo JSON (nessun testo prima o dopo):
   "keywords": ["parola1", "parola2", "parola3", ...]
 }`;
 
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.8,
         maxOutputTokens: 4096,
       },
-    });
+    } as any, { consultantId, feature: 'brand-voice-generator', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     console.log("[BRAND-VOICE-AI] Model:", model);
@@ -3195,8 +3192,7 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     const consultantId = req.user!.id;
     const validated = advisageAnalysisSchema.parse(req.body);
     
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, consultantId);
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, consultantId);
     const modelConfig = getModelWithThinking(metadata.name);
     
     const brandInfo = validated.brandColor 
@@ -3228,16 +3224,16 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     }`;
     
     console.log("[ADVISAGE] Calling AI provider with model:", modelConfig.model);
-    const response = await client.generateContent({
+    const response = await trackedGenerateContent({
       model: modelConfig.model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7,
       }
-    });
+    } as any, { consultantId, feature: 'advisage-analyze', callerRole: 'consultant' });
     
-    const responseText = (response.response?.text?.() || response.text?.() || "").trim();
+    const responseText = (response.response?.text?.() || (response as any).text?.() || "").trim();
     console.log("[ADVISAGE] Response length:", responseText.length);
     
     if (!responseText) {
@@ -3793,8 +3789,8 @@ router.get("/topics/suggest", authenticateToken, requireRole("consultant"), asyn
     
     const businessContext = brandAsset?.nicheDescription || niche || "business generico";
     
-    const { generateContent, setFeature } = await getAIProvider(consultantId, "topic-suggest");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "topic-suggest");
+    const { model } = getModelWithThinking(metadata?.name);
     
     const prompt = `Sei un esperto di content marketing. Genera ${count} argomenti/topic per creare contenuti social per un business nel settore: "${businessContext}".
 
@@ -3807,10 +3803,11 @@ Per ogni argomento fornisci:
 Rispondi SOLO con un JSON array valido, senza spiegazioni:
 [{"name": "...", "pillar": "...", "description": "...", "keywords": ["...", "..."]}]`;
 
-    const result = await generateContent({
+    const result = await trackedGenerateContent({
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.8, maxOutputTokens: 2000 }
-    });
+    } as any, { consultantId, feature: 'topic-suggest', callerRole: 'consultant' });
     
     const responseText = result.response.text().trim();
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);

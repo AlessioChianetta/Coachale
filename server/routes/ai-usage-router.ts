@@ -133,37 +133,78 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
     const { start, end } = getDateRange(period, from, to);
 
     const result = await db.execute(sql`
-      SELECT
-        t.client_id AS "clientId",
-        COALESCE(u.first_name || ' ' || u.last_name, cu.first_name || ' ' || cu.last_name) AS "userName",
-        t.client_role AS "clientRole",
-        COALESCE(SUM(t.total_tokens), 0)::text AS "totalTokens",
-        COALESCE(SUM(t.total_cost::numeric), 0)::text AS "totalCost",
-        COUNT(*)::text AS "requestCount",
-        MAX(t.created_at)::text AS "lastUsed",
-        (SELECT feature FROM ai_token_usage t2
-         WHERE t2.consultant_id = ${consultantId}
-           AND t2.created_at >= ${start}
-           AND t2.created_at <= ${end}
-           AND ((t2.client_id IS NULL AND t.client_id IS NULL) OR t2.client_id = t.client_id)
-         GROUP BY feature
-         ORDER BY COUNT(*) DESC
-         LIMIT 1
-        ) AS "topFeature"
-      FROM ai_token_usage t
-      LEFT JOIN users u ON t.client_id = u.id
-      LEFT JOIN users cu ON t.consultant_id = cu.id
-      WHERE t.consultant_id = ${consultantId}
-        AND t.created_at >= ${start}
-        AND t.created_at <= ${end}
-      GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name, t.client_role
-      ORDER BY SUM(t.total_cost::numeric) DESC
+      WITH usage_data AS (
+        SELECT
+          t.client_id AS client_id,
+          CASE 
+            WHEN t.client_id IS NULL THEN cu.first_name || ' ' || cu.last_name
+            ELSE u.first_name || ' ' || u.last_name
+          END AS user_name,
+          CASE 
+            WHEN t.client_id IS NULL THEN 'consultant'
+            ELSE 'client'
+          END AS client_role,
+          COALESCE(SUM(t.total_tokens), 0) AS total_tokens,
+          COALESCE(SUM(t.total_cost::numeric), 0) AS total_cost,
+          COUNT(*) AS request_count,
+          MAX(t.created_at)::text AS last_used,
+          (SELECT feature FROM ai_token_usage t2
+           WHERE t2.consultant_id = ${consultantId}
+             AND t2.created_at >= ${start}
+             AND t2.created_at <= ${end}
+             AND ((t2.client_id IS NULL AND t.client_id IS NULL) OR t2.client_id = t.client_id)
+           GROUP BY feature
+           ORDER BY COUNT(*) DESC
+           LIMIT 1
+          ) AS top_feature
+        FROM ai_token_usage t
+        LEFT JOIN users u ON t.client_id = u.id
+        LEFT JOIN users cu ON t.consultant_id = cu.id
+        WHERE t.consultant_id = ${consultantId}
+          AND t.created_at >= ${start}
+          AND t.created_at <= ${end}
+        GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name
+      ),
+      active_clients AS (
+        SELECT
+          ac.id AS client_id,
+          ac.first_name || ' ' || ac.last_name AS user_name,
+          'client' AS client_role
+        FROM users ac
+        WHERE ac.consultant_id = ${consultantId}
+          AND ac.role IN ('client', 'consultant')
+          AND ac.id NOT IN (SELECT ud.client_id FROM usage_data ud WHERE ud.client_id IS NOT NULL)
+      )
+      SELECT * FROM (
+        SELECT
+          client_id AS "clientId",
+          user_name AS "userName",
+          client_role AS "clientRole",
+          total_tokens::text AS "totalTokens",
+          total_cost::text AS "totalCost",
+          request_count::text AS "requestCount",
+          last_used AS "lastUsed",
+          top_feature AS "topFeature"
+        FROM usage_data
+        UNION ALL
+        SELECT
+          client_id AS "clientId",
+          user_name AS "userName",
+          client_role AS "clientRole",
+          '0' AS "totalTokens",
+          '0' AS "totalCost",
+          '0' AS "requestCount",
+          NULL AS "lastUsed",
+          NULL AS "topFeature"
+        FROM active_clients
+      ) combined
+      ORDER BY "totalCost"::numeric DESC NULLS LAST
     `);
 
     res.json((result.rows as any[]).map(r => ({
       clientId: r.clientId,
       clientName: r.userName || "Sconosciuto",
-      clientRole: r.clientRole || (r.clientId ? 'client' : 'consultant'),
+      clientRole: r.clientRole,
       totalTokens: parseInt(r.totalTokens) || 0,
       totalCost: parseFloat(r.totalCost) || 0,
       requestCount: parseInt(r.requestCount) || 0,

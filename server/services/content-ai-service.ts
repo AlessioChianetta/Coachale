@@ -1428,16 +1428,17 @@ ${content}
 
 RISPONDI SOLO con il testo compresso, nessuna spiegazione.`;
 
-    const { model, generateContent, setFeature } = await getAIProvider(consultantId, "content-compress");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-compress");
+    const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await generateContent({
+    const result = await trackedGenerateContent({
+      model,
       contents: [{ role: "user", parts: [{ text: compressPrompt }] }],
       generationConfig: {
-        temperature: 0.3, // Low temperature for consistent output
+        temperature: 0.3,
         maxOutputTokens: Math.ceil(targetLimit / 3),
       },
-    });
+    } as any, { consultantId, feature: 'content-compress', callerRole: 'consultant' });
 
     const response = result.response;
     const compressedText = response.text().trim();
@@ -3288,18 +3289,17 @@ RISPONDI SOLO con un JSON valido nel formato:
 }`;
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "content-ideas");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-ideas");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 1.0,  // Aumentata da 0.8 a 1.0 per maggiore varietà (come Email Nurturing 365)
+        temperature: 1.0,
         maxOutputTokens: 8192,
       },
-    });
+    } as any, { consultantId, feature: 'content-ideas', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     const parsed = parseJsonResponse<{ ideas: ContentIdea[] }>(responseText, { ideas: [] });
@@ -3645,18 +3645,17 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "post-copy");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "post-copy");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2048,
       },
-    });
+    } as any, { consultantId, feature: 'post-copy', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     const parsed = parseJsonResponse<PostCopy>(responseText, {
@@ -4074,18 +4073,17 @@ export async function generatePostCopyVariations(params: GeneratePostCopyVariati
   );
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "post-copy-variations");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "post-copy-variations");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.9,
         maxOutputTokens: 4096,
       },
-    });
+    } as any, { consultantId, feature: 'post-copy-variations', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     const variations = parseVariationsResponse(responseText, outputType);
@@ -4181,18 +4179,17 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "campaign-content");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "campaign-content");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 4096,
       },
-    });
+    } as any, { consultantId, feature: 'campaign-content', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     const parsed = parseJsonResponse<CampaignContent>(responseText, getDefaultCampaign(productOrService, targetAudience));
@@ -4312,18 +4309,17 @@ RISPONDI SOLO con un JSON valido:
 }`;
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "image-prompt");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "image-prompt");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.6,
         maxOutputTokens: 1024,
       },
-    });
+    } as any, { consultantId, feature: 'image-prompt', callerRole: 'consultant' });
     
     const responseText = result.response.text();
     const parsed = parseJsonResponse<{ prompt: string; negativePrompt: string; styleNotes: string }>(responseText, {
@@ -4393,18 +4389,17 @@ PIATTAFORMA: ${platform.toUpperCase()}
 RISPONDI SOLO con il testo accorciato, niente altro. Non aggiungere spiegazioni.`;
 
   try {
-    const { client, metadata, setFeature } = await getAIProvider(consultantId, "shorten-copy");
-    setFeature?.('content-studio');
+    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "shorten-copy");
     const { model } = getModelWithThinking(metadata?.name);
     
-    const result = await client.generateContent({
+    const result = await trackedGenerateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.3, // Low temperature for more focused editing
+        temperature: 0.3,
         maxOutputTokens: 2048,
       },
-    });
+    } as any, { consultantId, feature: 'shorten-copy', callerRole: 'consultant' });
     
     let shortenedCopy = result.response.text().trim();
     
