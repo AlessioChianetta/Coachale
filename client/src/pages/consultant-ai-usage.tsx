@@ -5,15 +5,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getToken } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState, useMemo } from "react";
-import { DollarSign, Zap, Hash, TrendingUp } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  DollarSign, Zap, Hash, TrendingUp, BarChart3, Users,
+  Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
+  Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
+  BookOpen, HelpCircle, LayoutGrid
+} from "lucide-react";
+import {
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -22,7 +28,15 @@ import {
   BarChart,
   Bar,
   Cell,
+  Legend,
+  PieChart,
+  Pie,
 } from "recharts";
+
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Sparkles, Home, BarChart3, ListTodo, MessageSquare, Phone, Bot, Target,
+  Lightbulb, PenLine, Palette, FileText, FileSearch, Video, BookOpen, HelpCircle, Zap, LayoutGrid,
+};
 
 const FEATURE_MAP: Record<string, { label: string; category: string; icon: string }> = {
   'consultant-chat': { label: 'AI Assistant', category: 'Principale', icon: 'Sparkles' },
@@ -42,6 +56,7 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'decision-engine': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'task-executor': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'ai-task-file-search': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-scheduler': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'lead-import': { label: 'HUB Lead', category: 'Comunicazione', icon: 'Target' },
   'advisage': { label: 'AdVisage AI', category: 'Content Studio', icon: 'Zap' },
   'advisage-analyze': { label: 'AdVisage AI', category: 'Content Studio', icon: 'Zap' },
@@ -80,6 +95,42 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Altro': '#cbd5e1',
 };
 
+const CATEGORY_ORDER = [
+  'Principale',
+  'Lavoro Quotidiano',
+  'Comunicazione',
+  'Content Studio',
+  'Cervello AI',
+  'AI Avanzato',
+  'Cliente',
+  'Sistema',
+];
+
+interface SidebarFeature {
+  label: string;
+  category: string;
+  icon: string;
+  featureKeys: string[];
+}
+
+const ALL_SIDEBAR_FEATURES: SidebarFeature[] = (() => {
+  const map = new Map<string, SidebarFeature>();
+  Object.entries(FEATURE_MAP).forEach(([key, val]) => {
+    const uid = `${val.category}::${val.label}`;
+    if (map.has(uid)) {
+      map.get(uid)!.featureKeys.push(key);
+    } else {
+      map.set(uid, { label: val.label, category: val.category, icon: val.icon, featureKeys: [key] });
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => {
+    const catA = CATEGORY_ORDER.indexOf(a.category);
+    const catB = CATEGORY_ORDER.indexOf(b.category);
+    if (catA !== catB) return catA - catB;
+    return a.label.localeCompare(b.label);
+  });
+})();
+
 function getFeatureLabel(feature: string): string {
   return FEATURE_MAP[feature]?.label || feature;
 }
@@ -107,10 +158,16 @@ async function fetchWithAuth(url: string) {
   return res.json();
 }
 
+function FeatureIcon({ name, className }: { name: string; className?: string }) {
+  const Icon = ICON_MAP[name] || HelpCircle;
+  return <Icon className={className} />;
+}
+
 export default function ConsultantAIUsagePage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [period, setPeriod] = useState("month");
+  const [activeTab, setActiveTab] = useState("panoramica");
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["/api/ai-usage/summary", period],
@@ -137,21 +194,69 @@ export default function ConsultantAIUsagePage() {
   const clientData = byClient?.data || byClient || [];
   const featureData = byFeature?.data || byFeature || [];
 
-  const totalFeatureTokens = featureData.reduce?.((sum: number, f: any) => sum + (f.totalTokens || 0), 0) || 1;
+  const allFeaturesWithData = useMemo(() => {
+    const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number }>();
+    const knownUids = new Set<string>();
+    const unknownFeatures: SidebarFeature[] = [];
+
+    (featureData as any[]).forEach((f: any) => {
+      const label = getFeatureLabel(f.feature);
+      const cat = getFeatureCategory(f.feature);
+      const uid = `${cat}::${label}`;
+      const existing = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      existing.totalTokens += f.totalTokens || 0;
+      existing.totalCost += f.totalCost || 0;
+      existing.requestCount += f.requestCount || 0;
+      featureMap.set(uid, existing);
+
+      if (!FEATURE_MAP[f.feature]) {
+        if (!knownUids.has(uid)) {
+          knownUids.add(uid);
+          unknownFeatures.push({ label, category: cat, icon: 'HelpCircle', featureKeys: [f.feature] });
+        }
+      }
+    });
+
+    const totalTokens = Array.from(featureMap.values()).reduce((s, v) => s + v.totalTokens, 0) || 1;
+
+    const allFeatures = [...ALL_SIDEBAR_FEATURES];
+    unknownFeatures.forEach(uf => {
+      const exists = allFeatures.some(af => `${af.category}::${af.label}` === `${uf.category}::${uf.label}`);
+      if (!exists) allFeatures.push(uf);
+    });
+
+    return allFeatures.map(sf => {
+      const uid = `${sf.category}::${sf.label}`;
+      const data = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      return {
+        ...sf,
+        ...data,
+        pct: totalTokens > 0 ? (data.totalTokens / totalTokens) * 100 : 0,
+      };
+    });
+  }, [featureData]);
 
   const categoryData = useMemo(() => {
-    if (!featureData?.length) return [];
     const catMap = new Map<string, { category: string; totalCost: number; totalTokens: number; requestCount: number }>();
-    featureData.forEach((f: any) => {
-      const cat = getFeatureCategory(f.feature);
-      const existing = catMap.get(cat) || { category: cat, totalCost: 0, totalTokens: 0, requestCount: 0 };
-      existing.totalCost += f.totalCost || 0;
-      existing.totalTokens += f.totalTokens || 0;
-      existing.requestCount += f.requestCount || 0;
-      catMap.set(cat, existing);
+    allFeaturesWithData.forEach(f => {
+      const existing = catMap.get(f.category) || { category: f.category, totalCost: 0, totalTokens: 0, requestCount: 0 };
+      existing.totalCost += f.totalCost;
+      existing.totalTokens += f.totalTokens;
+      existing.requestCount += f.requestCount;
+      catMap.set(f.category, existing);
     });
-    return Array.from(catMap.values()).sort((a, b) => b.totalCost - a.totalCost);
-  }, [featureData]);
+    return CATEGORY_ORDER
+      .map(cat => catMap.get(cat) || { category: cat, totalCost: 0, totalTokens: 0, requestCount: 0 })
+      .filter(c => c.totalCost > 0 || c.totalTokens > 0);
+  }, [allFeaturesWithData]);
+
+  const pieData = useMemo(() => {
+    return categoryData.filter(c => c.totalCost > 0).map(c => ({
+      name: c.category,
+      value: c.totalCost,
+      fill: CATEGORY_COLORS[c.category] || CATEGORY_COLORS['Altro'],
+    }));
+  }, [categoryData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
@@ -160,6 +265,7 @@ export default function ConsultantAIUsagePage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Costi AI</h1>
@@ -177,10 +283,10 @@ export default function ConsultantAIUsagePage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {loadingSummary ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <Card key={i}>
+                  <Card key={i} className="border-0 shadow-sm">
                     <CardContent className="p-4">
                       <Skeleton className="h-4 w-24 mb-2" />
                       <Skeleton className="h-8 w-32" />
@@ -189,242 +295,323 @@ export default function ConsultantAIUsagePage() {
                 ))
               ) : (
                 <>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="h-4 w-4 text-amber-500" />
-                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Costo Totale</span>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCost(stats.totalCost || 0)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Zap className="h-4 w-4 text-teal-500" />
-                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Token Totali</span>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatTokens(stats.totalTokens || 0)}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Hash className="h-4 w-4 text-blue-500" />
-                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Richieste</span>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.requestCount || 0}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="h-4 w-4 text-violet-500" />
-                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Costo Medio/Richiesta</span>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {formatCost(stats.requestCount ? (stats.totalCost || 0) / stats.requestCount : 0)}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <StatCard icon={DollarSign} iconColor="text-amber-500" iconBg="bg-amber-50 dark:bg-amber-900/20" label="Costo Totale" value={formatCost(stats.totalCost || 0)} />
+                  <StatCard icon={Zap} iconColor="text-teal-500" iconBg="bg-teal-50 dark:bg-teal-900/20" label="Token Totali" value={formatTokens(stats.totalTokens || 0)} />
+                  <StatCard icon={Hash} iconColor="text-blue-500" iconBg="bg-blue-50 dark:bg-blue-900/20" label="Richieste" value={String(stats.requestCount || 0)} />
+                  <StatCard icon={TrendingUp} iconColor="text-violet-500" iconBg="bg-violet-50 dark:bg-violet-900/20" label="Costo Medio" value={formatCost(stats.requestCount ? (stats.totalCost || 0) / stats.requestCount : 0)} />
                 </>
               )}
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Trend Giornaliero</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingTimeline ? (
-                  <Skeleton className="h-[250px] w-full" />
-                ) : timelineData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-slate-500" />
-                      <YAxis
-                        yAxisId="left"
-                        tick={{ fontSize: 12 }}
-                        className="text-slate-500"
-                        tickFormatter={(v: number) => "$" + v.toFixed(2)}
-                      />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fontSize: 12 }}
-                        className="text-slate-500"
-                        tickFormatter={(v: number) => formatTokens(v)}
-                      />
-                      <Tooltip
-                        formatter={(value: number, name: string) => {
-                          if (name === "Costo") return ["$" + value.toFixed(4), "Costo"];
-                          return [formatTokens(value), "Token"];
-                        }}
-                        labelFormatter={(label) => `Data: ${label}`}
-                        contentStyle={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px" }}
-                      />
-                      <Line yAxisId="left" type="monotone" dataKey="totalCost" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Costo" />
-                      <Line yAxisId="right" type="monotone" dataKey="totalTokens" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Token" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[250px] text-slate-400">
-                    Nessun dato disponibile per il periodo selezionato
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="bg-white dark:bg-gray-800 border shadow-sm">
+                <TabsTrigger value="panoramica" className="gap-1.5">
+                  <BarChart3 className="h-4 w-4" />
+                  Panoramica
+                </TabsTrigger>
+                <TabsTrigger value="funzionalita" className="gap-1.5">
+                  <LayoutGrid className="h-4 w-4" />
+                  Funzionalità
+                </TabsTrigger>
+                <TabsTrigger value="utenti" className="gap-1.5">
+                  <Users className="h-4 w-4" />
+                  Per Utente
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Utilizzo per Categoria</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loadingFeature ? (
-                    <Skeleton className="h-[300px] w-full" />
-                  ) : categoryData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={categoryData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                        <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v: number) => "$" + v.toFixed(2)} />
-                        <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={120} />
-                        <Tooltip
-                          formatter={(value: number) => ["$" + value.toFixed(4), "Costo"]}
-                          contentStyle={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px" }}
-                        />
-                        <Bar dataKey="totalCost" radius={[0, 4, 4, 0]}>
-                          {categoryData.map((entry, index) => (
-                            <Cell key={index} fill={CATEGORY_COLORS[entry.category] || CATEGORY_COLORS['Altro']} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-[300px] text-slate-400">
-                      Nessun dato disponibile
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <TabsContent value="panoramica" className="mt-4 space-y-6">
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">Trend Giornaliero</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingTimeline ? (
+                      <Skeleton className="h-[280px] w-full" />
+                    ) : timelineData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={280}>
+                        <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                          <YAxis
+                            yAxisId="left"
+                            tick={{ fontSize: 11, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v: number) => "$" + v.toFixed(2)}
+                            width={55}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tick={{ fontSize: 11, fill: '#94a3b8' }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v: number) => formatTokens(v)}
+                            width={55}
+                          />
+                          <Tooltip
+                            formatter={(value: number, name: string) => {
+                              if (name === "Costo") return ["$" + value.toFixed(4), "Costo"];
+                              return [formatTokens(value), "Token"];
+                            }}
+                            labelFormatter={(label) => `${label}`}
+                            contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }}
+                          />
+                          <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                          <Area yAxisId="left" type="monotone" dataKey="totalCost" stroke="#10b981" strokeWidth={2} fill="url(#costGrad)" name="Costo" dot={{ r: 3, fill: '#10b981' }} />
+                          <Area yAxisId="right" type="monotone" dataKey="totalTokens" stroke="#6366f1" strokeWidth={2} fill="url(#tokenGrad)" name="Token" dot={{ r: 3, fill: '#6366f1' }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">
+                        Nessun dato disponibile per il periodo selezionato
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Per Utente</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {loadingClient ? (
-                    <div className="p-6 space-y-3">
-                      {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                    </div>
-                  ) : clientData.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Utente</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Funz. principale</TableHead>
-                            <TableHead className="text-right">Token</TableHead>
-                            <TableHead className="text-right">Costo</TableHead>
-                            <TableHead className="text-right">Richieste</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {clientData.map((row: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell className="font-medium">{row.clientName || "—"}</TableCell>
-                              <TableCell>
-                                {row.clientRole === "consultant" ? (
-                                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100">Tu</Badge>
-                                ) : (
-                                  <Badge variant="secondary">Cliente</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                                {row.topFeature ? getFeatureLabel(row.topFeature) : "—"}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatTokens(row.totalTokens || 0)}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatCost(row.totalCost || 0)}</TableCell>
-                              <TableCell className="text-right">{row.requestCount || 0}</TableCell>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base font-semibold">Costo per Categoria</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingFeature ? (
+                        <Skeleton className="h-[280px] w-full" />
+                      ) : categoryData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <BarChart data={categoryData} layout="vertical" margin={{ left: 0, right: 16, top: 5, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                            <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => "$" + v.toFixed(3)} />
+                            <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={110} />
+                            <Tooltip
+                              formatter={(value: number) => ["$" + value.toFixed(4), "Costo"]}
+                              contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }}
+                            />
+                            <Bar dataKey="totalCost" radius={[0, 6, 6, 0]} barSize={24}>
+                              {categoryData.map((entry, index) => (
+                                <Cell key={index} fill={CATEGORY_COLORS[entry.category] || CATEGORY_COLORS['Altro']} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">
+                          Nessun dato disponibile
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base font-semibold">Distribuzione</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingFeature ? (
+                        <Skeleton className="h-[280px] w-full" />
+                      ) : pieData.length > 0 ? (
+                        <div className="flex flex-col items-center">
+                          <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                              <Pie
+                                data={pieData}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={85}
+                                paddingAngle={2}
+                                stroke="none"
+                              >
+                                {pieData.map((entry, index) => (
+                                  <Cell key={index} fill={entry.fill} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value: number) => ["$" + value.toFixed(4), "Costo"]}
+                                contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
+                            {pieData.map((entry, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                {entry.name}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-[280px] text-slate-400 text-sm">
+                          Nessun dato disponibile
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="funzionalita" className="mt-4">
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">Tutte le Funzionalità AI</CardTitle>
+                    <p className="text-xs text-slate-500 mt-1">Tutte le funzionalità disponibili con i relativi consumi nel periodo selezionato</p>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {loadingFeature ? (
+                      <div className="p-6 space-y-3">
+                        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
+                              <TableHead className="w-[240px]">Funzionalità</TableHead>
+                              <TableHead className="w-[140px]">Categoria</TableHead>
+                              <TableHead className="text-right w-[100px]">Token</TableHead>
+                              <TableHead className="text-right w-[100px]">Costo</TableHead>
+                              <TableHead className="text-right w-[80px]">Richieste</TableHead>
+                              <TableHead className="w-[180px]">% del Totale</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="p-8 text-center text-slate-400">Nessun dato disponibile</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Dettaglio per Funzionalità</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {loadingFeature ? (
-                  <div className="p-6 space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                  </div>
-                ) : featureData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Funzionalità</TableHead>
-                          <TableHead>Categoria</TableHead>
-                          <TableHead className="text-right">Token</TableHead>
-                          <TableHead className="text-right">Costo</TableHead>
-                          <TableHead className="text-right">Richieste</TableHead>
-                          <TableHead className="w-[180px]">% del Totale</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {featureData.map((row: any, i: number) => {
-                          const pct = totalFeatureTokens > 0 ? ((row.totalTokens || 0) / totalFeatureTokens) * 100 : 0;
-                          const cat = getFeatureCategory(row.feature);
-                          return (
-                            <TableRow key={i}>
-                              <TableCell>
-                                <div>
-                                  <span className="font-medium">{getFeatureLabel(row.feature)}</span>
-                                  <div className="mt-0.5">
+                          </TableHeader>
+                          <TableBody>
+                            {allFeaturesWithData.map((row, i) => {
+                              const catColor = CATEGORY_COLORS[row.category] || CATEGORY_COLORS['Altro'];
+                              const hasData = row.totalTokens > 0 || row.requestCount > 0;
+                              return (
+                                <TableRow key={i} className={hasData ? '' : 'opacity-50'}>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
+                                        <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
+                                      </div>
+                                      <span className="font-medium text-sm">{row.label}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
                                     <span
-                                      className="inline-block text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                                      style={{ backgroundColor: CATEGORY_COLORS[cat] || CATEGORY_COLORS['Altro'] }}
+                                      className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
+                                      style={{ backgroundColor: catColor }}
                                     >
-                                      {cat}
+                                      {row.category}
                                     </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-sm">{cat}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatTokens(row.totalTokens || 0)}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatCost(row.totalCost || 0)}</TableCell>
-                              <TableCell className="text-right">{row.requestCount || 0}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Progress value={pct} className="h-2 flex-1" />
-                                  <span className="text-xs text-slate-500 w-10 text-right">{pct.toFixed(1)}%</span>
-                                </div>
-                              </TableCell>
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                  <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
+                                  <TableCell>
+                                    {hasData ? (
+                                      <div className="flex items-center gap-2">
+                                        <Progress value={row.pct} className="h-1.5 flex-1" />
+                                        <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">—</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="utenti" className="mt-4">
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">Consumo per Utente</CardTitle>
+                    <p className="text-xs text-slate-500 mt-1">Dettaglio dei token e costi per ogni utente nel periodo selezionato</p>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {loadingClient ? (
+                      <div className="p-6 space-y-3">
+                        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                      </div>
+                    ) : clientData.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
+                              <TableHead>Utente</TableHead>
+                              <TableHead className="w-[90px]">Tipo</TableHead>
+                              <TableHead>Funzione principale</TableHead>
+                              <TableHead className="text-right">Token</TableHead>
+                              <TableHead className="text-right">Costo</TableHead>
+                              <TableHead className="text-right">Richieste</TableHead>
                             </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="p-8 text-center text-slate-400">Nessun dato disponibile</div>
-                )}
-              </CardContent>
-            </Card>
+                          </TableHeader>
+                          <TableBody>
+                            {clientData.map((row: any, i: number) => {
+                              const hasData = (row.totalTokens || 0) > 0;
+                              return (
+                                <TableRow key={i} className={hasData ? '' : 'opacity-50'}>
+                                  <TableCell className="font-medium">{row.clientName || "—"}</TableCell>
+                                  <TableCell>
+                                    {row.clientRole === "consultant" ? (
+                                      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-xs">Cliente</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                                    {row.topFeature ? getFeatureLabel(row.topFeature) : "—"}
+                                  </TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
+                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                  <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-slate-400 text-sm">Nessun dato disponibile</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
           </div>
         </main>
       </div>
     </div>
+  );
+}
+
+function StatCard({ icon: Icon, iconColor, iconBg, label, value }: { icon: React.ComponentType<any>; iconColor: string; iconBg: string; label: string; value: string }) {
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
