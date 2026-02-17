@@ -15,7 +15,8 @@ import {
   DollarSign, Zap, Hash, TrendingUp, BarChart3, Users,
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
-  BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code
+  BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
+  ArrowLeft
 } from "lucide-react";
 import {
   AreaChart,
@@ -193,26 +194,21 @@ export default function ConsultantAIUsagePage() {
   const [period, setPeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("panoramica");
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
-  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
-  const [userFeatures, setUserFeatures] = useState<Record<string, any[]>>({});
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [expandedUserFeatures, setExpandedUserFeatures] = useState<Set<string>>(new Set());
 
-  const toggleUserExpand = async (userId: string) => {
-    setExpandedUsers(prev => {
+  const selectUser = (userId: string, userName: string, userRole: string) => {
+    setSelectedUser({ id: userId, name: userName, role: userRole });
+    setExpandedUserFeatures(new Set());
+  };
+
+  const toggleUserFeatureExpand = (uid: string) => {
+    setExpandedUserFeatures(prev => {
       const next = new Set(prev);
-      if (next.has(userId)) { next.delete(userId); }
-      else { next.add(userId); }
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
       return next;
     });
-    if (!userFeatures[userId]) {
-      const token = getToken();
-      const res = await fetch(`/api/ai-usage/by-client/${userId}/features?period=${period}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUserFeatures(prev => ({ ...prev, [userId]: data }));
-      }
-    }
   };
 
   const toggleFeatureExpand = (uid: string) => {
@@ -244,10 +240,89 @@ export default function ConsultantAIUsagePage() {
     queryFn: () => fetchWithAuth(`/api/ai-usage/timeline?period=${period}`),
   });
 
+  const { data: selectedUserFeatures, isLoading: loadingUserFeatures } = useQuery({
+    queryKey: ["/api/ai-usage/by-client", selectedUser?.id, "features", period],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/by-client/${selectedUser!.id}/features?period=${period}`),
+    enabled: !!selectedUser,
+  });
+
   const stats = summary?.data || summary || {};
   const timelineData = timeline?.data || timeline || [];
   const clientData = byClient?.data || byClient || [];
   const featureData = byFeature?.data || byFeature || [];
+  const selectedUserFeatureData = selectedUserFeatures?.data || selectedUserFeatures || [];
+
+  const selectedUserFeaturesWithData = useMemo(() => {
+    if (!selectedUser || !selectedUserFeatureData.length) return [];
+    const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number }>();
+    const keyBreakdown = new Map<string, { key: string; totalTokens: number; totalCost: number; requestCount: number }[]>();
+    const knownUids = new Set<string>();
+    const unknownFeatures: SidebarFeature[] = [];
+
+    (selectedUserFeatureData as any[]).forEach((f: any) => {
+      const label = getFeatureLabel(f.feature);
+      const cat = getFeatureCategory(f.feature);
+      const uid = `${cat}::${label}`;
+      const existing = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      existing.totalTokens += f.totalTokens || 0;
+      existing.totalCost += f.totalCost || 0;
+      existing.requestCount += f.requestCount || 0;
+      featureMap.set(uid, existing);
+
+      const breakdown = keyBreakdown.get(uid) || [];
+      breakdown.push({ key: f.feature, totalTokens: f.totalTokens || 0, totalCost: f.totalCost || 0, requestCount: f.requestCount || 0 });
+      keyBreakdown.set(uid, breakdown);
+
+      if (!FEATURE_MAP[f.feature] && !knownUids.has(uid)) {
+        knownUids.add(uid);
+        unknownFeatures.push({ label, category: cat, icon: 'HelpCircle', featureKeys: [f.feature] });
+      }
+    });
+
+    const totalTokens = Array.from(featureMap.values()).reduce((s, v) => s + v.totalTokens, 0) || 1;
+    const allFeatures = [...ALL_SIDEBAR_FEATURES];
+    unknownFeatures.forEach(uf => {
+      if (!allFeatures.some(af => `${af.category}::${af.label}` === `${uf.category}::${uf.label}`)) allFeatures.push(uf);
+    });
+
+    return allFeatures.map(sf => {
+      const uid = `${sf.category}::${sf.label}`;
+      const data = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      const keys = keyBreakdown.get(uid) || [];
+      return { ...sf, ...data, pct: totalTokens > 0 ? (data.totalTokens / totalTokens) * 100 : 0, subKeys: keys.sort((a, b) => b.totalTokens - a.totalTokens) };
+    });
+  }, [selectedUserFeatureData, selectedUser]);
+
+  const selectedUserStats = useMemo(() => {
+    if (!selectedUserFeaturesWithData.length) return { totalTokens: 0, totalCost: 0, requestCount: 0 };
+    return selectedUserFeaturesWithData.reduce((acc, f) => ({
+      totalTokens: acc.totalTokens + f.totalTokens,
+      totalCost: acc.totalCost + f.totalCost,
+      requestCount: acc.requestCount + f.requestCount,
+    }), { totalTokens: 0, totalCost: 0, requestCount: 0 });
+  }, [selectedUserFeaturesWithData]);
+
+  const selectedUserCategoryData = useMemo(() => {
+    const catMap = new Map<string, { category: string; totalCost: number; totalTokens: number; requestCount: number }>();
+    selectedUserFeaturesWithData.forEach(f => {
+      const existing = catMap.get(f.category) || { category: f.category, totalCost: 0, totalTokens: 0, requestCount: 0 };
+      existing.totalCost += f.totalCost;
+      existing.totalTokens += f.totalTokens;
+      existing.requestCount += f.requestCount;
+      catMap.set(f.category, existing);
+    });
+    return CATEGORY_ORDER
+      .map(cat => catMap.get(cat) || { category: cat, totalCost: 0, totalTokens: 0, requestCount: 0 })
+      .filter(c => c.totalCost > 0 || c.totalTokens > 0);
+  }, [selectedUserFeaturesWithData]);
+
+  const selectedUserPieData = useMemo(() => {
+    return selectedUserCategoryData.filter(c => c.totalCost > 0).map(c => ({
+      name: c.category,
+      value: c.totalCost,
+      fill: CATEGORY_COLORS[c.category] || CATEGORY_COLORS['Altro'],
+    }));
+  }, [selectedUserCategoryData]);
 
   const allFeaturesWithData = useMemo(() => {
     const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number; consultantTokens: number; consultantCost: number; consultantRequests: number; clientTokens: number; clientCost: number; clientRequests: number }>();
@@ -653,48 +728,239 @@ export default function ConsultantAIUsagePage() {
               </TabsContent>
 
               <TabsContent value="utenti" className="mt-4">
-                <Card className="border-0 shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-semibold">Consumo per Utente</CardTitle>
-                    <p className="text-xs text-slate-500 mt-1">Dettaglio dei token e costi per ogni utente nel periodo selezionato</p>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {loadingClient ? (
-                      <div className="p-6 space-y-3">
-                        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                {selectedUser ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setSelectedUser(null)}
+                        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Torna alla lista
+                      </button>
+                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-600" />
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900 dark:text-white">{selectedUser.name}</span>
+                        {selectedUser.role === 'consultant' ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Cliente</Badge>
+                        )}
                       </div>
-                    ) : clientData.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
-                              <TableHead>Utente</TableHead>
-                              <TableHead className="w-[90px]">Tipo</TableHead>
-                              <TableHead>Funzione principale</TableHead>
-                              <TableHead className="text-right">Token</TableHead>
-                              <TableHead className="text-right">Costo</TableHead>
-                              <TableHead className="text-right">Richieste</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {clientData.map((row: any, i: number) => {
-                              const hasData = (row.totalTokens || 0) > 0;
-                              const userId = row.clientRole === 'consultant' ? 'self' : row.clientId;
-                              const isUserExpanded = userId && expandedUsers.has(userId);
-                              const features = userId ? userFeatures[userId] : null;
-                              return (
-                                <React.Fragment key={`user-${i}`}>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <StatCard icon={Zap} iconColor="text-teal-500" iconBg="bg-teal-50 dark:bg-teal-900/20" label="Token Totali" value={formatTokens(selectedUserStats.totalTokens)} />
+                      <StatCard icon={DollarSign} iconColor="text-amber-500" iconBg="bg-amber-50 dark:bg-amber-900/20" label="Costo Totale" value={formatCost(selectedUserStats.totalCost)} />
+                      <StatCard icon={Hash} iconColor="text-blue-500" iconBg="bg-blue-50 dark:bg-blue-900/20" label="Richieste" value={String(selectedUserStats.requestCount)} />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <Card className="border-0 shadow-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base font-semibold">Costo per Categoria</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {loadingUserFeatures ? (
+                            <Skeleton className="h-[220px] w-full" />
+                          ) : selectedUserCategoryData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={220}>
+                              <BarChart data={selectedUserCategoryData} layout="vertical" margin={{ left: 0, right: 16, top: 5, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                                <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => "$" + v.toFixed(3)} />
+                                <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={110} />
+                                <Tooltip formatter={(value: number) => ["$" + value.toFixed(4), "Costo"]} contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }} />
+                                <Bar dataKey="totalCost" radius={[0, 6, 6, 0]} barSize={20}>
+                                  {selectedUserCategoryData.map((entry, index) => (
+                                    <Cell key={index} fill={CATEGORY_COLORS[entry.category] || CATEGORY_COLORS['Altro']} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-[220px] text-slate-400 text-sm">Nessun dato disponibile</div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-0 shadow-sm">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base font-semibold">Distribuzione</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {loadingUserFeatures ? (
+                            <Skeleton className="h-[220px] w-full" />
+                          ) : selectedUserPieData.length > 0 ? (
+                            <div className="flex flex-col items-center">
+                              <ResponsiveContainer width="100%" height={170}>
+                                <PieChart>
+                                  <Pie data={selectedUserPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} stroke="none">
+                                    {selectedUserPieData.map((entry, index) => (
+                                      <Cell key={index} fill={entry.fill} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip formatter={(value: number) => ["$" + value.toFixed(4), "Costo"]} contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1">
+                                {selectedUserPieData.map((entry, i) => (
+                                  <div key={i} className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                    {entry.name}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-[220px] text-slate-400 text-sm">Nessun dato disponibile</div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card className="border-0 shadow-sm">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-semibold">Funzionalità utilizzate da {selectedUser.name}</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">Dettaglio completo di tutte le funzionalità AI nel periodo selezionato</p>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {loadingUserFeatures ? (
+                          <div className="p-6 space-y-3">
+                            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
+                                  <TableHead className="w-[240px]">Funzionalità</TableHead>
+                                  <TableHead className="w-[130px]">Categoria</TableHead>
+                                  <TableHead className="text-right">Token</TableHead>
+                                  <TableHead className="text-right">Costo</TableHead>
+                                  <TableHead className="text-right">Richieste</TableHead>
+                                  <TableHead className="w-[160px]">% del Totale</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {selectedUserFeaturesWithData.map((row, i) => {
+                                  const catColor = CATEGORY_COLORS[row.category] || CATEGORY_COLORS['Altro'];
+                                  const hasData = row.totalTokens > 0 || row.requestCount > 0;
+                                  const uid = `${row.category}::${row.label}`;
+                                  const isExpanded = expandedUserFeatures.has(uid);
+                                  const hasSubKeys = row.subKeys.length > 0;
+                                  return (
+                                    <React.Fragment key={`uf-${i}`}>
+                                      <TableRow
+                                        className={`${hasData ? '' : 'opacity-50'} cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50`}
+                                        onClick={() => toggleUserFeatureExpand(uid)}
+                                      >
+                                        <TableCell>
+                                          <div className="flex items-center gap-2.5">
+                                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+                                            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
+                                              <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
+                                            </div>
+                                            <span className="font-medium text-sm">{row.label}</span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <span className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: catColor }}>
+                                            {row.category}
+                                          </span>
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
+                                        <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                        <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
+                                        <TableCell>
+                                          {hasData ? (
+                                            <div className="flex items-center gap-2">
+                                              <Progress value={row.pct} className="h-1.5 flex-1" />
+                                              <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-xs text-slate-400">—</span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                      {isExpanded && row.subKeys.map((sk, j) => (
+                                        <TableRow key={`uf-${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
+                                          <TableCell className="pl-16">
+                                            <div className="flex items-center gap-2">
+                                              <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                              <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell />
+                                          <TableCell className="text-right font-mono text-xs text-slate-500">{formatTokens(sk.totalTokens)}</TableCell>
+                                          <TableCell className="text-right font-mono text-xs text-slate-500">{formatCost(sk.totalCost)}</TableCell>
+                                          <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
+                                          <TableCell />
+                                        </TableRow>
+                                      ))}
+                                      {isExpanded && !hasSubKeys && !FEATURE_GUIDE[row.label] && (
+                                        <TableRow className="bg-slate-50/40 dark:bg-gray-800/20">
+                                          <TableCell colSpan={6} className="pl-16">
+                                            <span className="text-xs text-slate-400 italic">Nessun utilizzo registrato nel periodo selezionato</span>
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                      {isExpanded && FEATURE_GUIDE[row.label] && (
+                                        <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
+                                          <TableCell colSpan={6} className="pl-16">
+                                            <div className="flex gap-6 text-xs py-1">
+                                              <div><span className="font-medium text-slate-600">Dove:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].dove}</span></div>
+                                              <div><span className="font-medium text-slate-600">Come testare:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].comeTesta}</span></div>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base font-semibold">Consumo per Utente</CardTitle>
+                      <p className="text-xs text-slate-500 mt-1">Clicca su un utente per vedere il dettaglio completo delle funzionalità</p>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {loadingClient ? (
+                        <div className="p-6 space-y-3">
+                          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                        </div>
+                      ) : clientData.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
+                                <TableHead>Utente</TableHead>
+                                <TableHead className="w-[90px]">Tipo</TableHead>
+                                <TableHead>Funzione principale</TableHead>
+                                <TableHead className="text-right">Token</TableHead>
+                                <TableHead className="text-right">Costo</TableHead>
+                                <TableHead className="text-right">Richieste</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {clientData.map((row: any, i: number) => {
+                                const hasData = (row.totalTokens || 0) > 0;
+                                const userId = row.clientRole === 'consultant' ? 'self' : row.clientId;
+                                return (
                                   <TableRow
-                                    className={`${hasData ? '' : 'opacity-50'} ${hasData ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50' : ''}`}
-                                    onClick={() => hasData && userId && toggleUserExpand(userId)}
+                                    key={`user-${i}`}
+                                    className="cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50"
+                                    onClick={() => userId && selectUser(userId, row.clientName || 'Sconosciuto', row.clientRole)}
                                   >
                                     <TableCell className="font-medium">
                                       <div className="flex items-center gap-2">
-                                        {hasData ? (
-                                          isUserExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                        ) : (
-                                          <div className="w-3.5" />
-                                        )}
+                                        <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                         {row.clientName || "—"}
                                       </div>
                                     </TableCell>
@@ -712,40 +978,17 @@ export default function ConsultantAIUsagePage() {
                                     <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
                                     <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
                                   </TableRow>
-                                  {isUserExpanded && features && features.map((uf: any, j: number) => (
-                                    <TableRow key={`user-${i}-feat-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
-                                      <TableCell className="pl-12">
-                                        <div className="flex items-center gap-2">
-                                          <Code className="h-3 w-3 text-slate-400 shrink-0" />
-                                          <span className="text-xs text-slate-600 dark:text-slate-400">{getFeatureLabel(uf.feature)}</span>
-                                          <code className="text-[10px] font-mono text-slate-400">({uf.feature})</code>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell />
-                                      <TableCell />
-                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatTokens(uf.totalTokens)}</TableCell>
-                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatCost(uf.totalCost)}</TableCell>
-                                      <TableCell className="text-right text-xs text-slate-500">{uf.requestCount}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                  {isUserExpanded && !features && (
-                                    <TableRow key={`user-${i}-loading`}>
-                                      <TableCell colSpan={6} className="pl-12">
-                                        <Skeleton className="h-4 w-48" />
-                                      </TableCell>
-                                    </TableRow>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="p-8 text-center text-slate-400 text-sm">Nessun dato disponibile</div>
-                    )}
-                  </CardContent>
-                </Card>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center text-slate-400 text-sm">Nessun dato disponibile</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
 
