@@ -599,7 +599,7 @@ Cerca specificamente:
 Riassumi le informazioni trovate in modo strutturato.`;
 
   const response = await withRetry(async () => {
-    return await ai!.models.generateContent({
+    return await trackedGenerateContent(ai!, {
       model: GEMINI_3_MODEL,
       contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
       config: {
@@ -607,7 +607,7 @@ Riassumi le informazioni trovate in modo strutturato.`;
         maxOutputTokens: 8192,
         tools: [fileSearchTool],
       },
-    });
+    } as any, { consultantId: task.consultant_id, feature: 'ai-task-file-search', keySource: 'superadmin' });
   });
 
   const text = response.text || "";

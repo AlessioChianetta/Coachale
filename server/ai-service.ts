@@ -34,7 +34,7 @@ import {
   OperationAttemptContext,
   GeminiUsageMetadata,
 } from "./ai/retry-manager";
-import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch, getGeminiApiKeyForClassifier } from "./ai/provider-factory";
+import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch, getGeminiApiKeyForClassifier, trackedGenerateContent } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
 import { conversationContextBuilder } from "./services/conversation-memory";
 import { buildOnboardingAgentPrompt, OnboardingStatus } from "./prompts/onboarding-guide";
@@ -1288,7 +1288,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
-        return await ai.models.generateContent({
+        return await trackedGenerateContent(ai, {
           model: clientModel,
           contents: geminiMessages.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
@@ -1304,7 +1304,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
             }),
           },
           ...(fileSearchTool && { tools: [fileSearchTool] }),
-        });
+        } as any, { consultantId, feature: 'chat-text-response', keySource: 'superadmin' });
       },
       retryContext
     );
@@ -3056,10 +3056,11 @@ Esempi di buoni titoli:
 Titolo:`;
 
           console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
-          const clientTitleResult = await clientTitleGenai.models.generateContent({
+          const { trackedGenerateContent } = await import('./ai/provider-factory');
+          const clientTitleResult = await trackedGenerateContent(clientTitleGenai, {
             model: 'gemini-3-flash-preview',
             contents: clientTitlePrompt,
-          });
+          } as any, { consultantId: conversation.consultantId || '', feature: 'client-title-gen', keySource: 'superadmin' });
           
           const generatedClientTitle = clientTitleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
           
@@ -4237,10 +4238,11 @@ Esempi di buoni titoli:
 Titolo:`;
 
           console.log(`   🤖 [TITLE-GEN] Calling Gemini API...`);
-          const titleResult = await titleGenai.models.generateContent({
+          const { trackedGenerateContent: trackedGenTitle } = await import('./ai/provider-factory');
+          const titleResult = await trackedGenTitle(titleGenai, {
             model: 'gemini-3-flash-preview',
             contents: titlePrompt,
-          });
+          } as any, { consultantId: conversation.consultantId || '', feature: 'consultant-title-gen', keySource: 'superadmin' });
           
           const generatedConsultantTitle = titleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
           

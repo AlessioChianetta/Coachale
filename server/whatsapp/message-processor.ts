@@ -23,7 +23,7 @@ import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys, getAIProvider } from "../ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys, getAIProvider, trackedGenerateContent } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { fetchSystemDocumentsForWhatsApp } from "../services/system-prompt-documents-service";
@@ -1985,7 +1985,7 @@ Segui attentamente o tieni a memoria queste informazioni.
 
           const ai = new GoogleGenAI({ apiKey: currentProvider.apiKey });
 
-          response = await ai.models.generateContent({
+          response = await trackedGenerateContent(ai, {
             model: studioModel,
             contents: [
               ...geminiMessages,
@@ -1999,7 +1999,7 @@ Segui attentamente o tieni a memoria queste informazioni.
               ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
               ...(fileSearchTool && { tools: [fileSearchTool] }),
             },
-          });
+          } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
         }
 
         endTime = Date.now();
@@ -2214,11 +2214,11 @@ Segui attentamente o tieni a memoria queste informazioni.
         } else {
           const { model: rm } = getModelWithThinking('Google AI Studio');
           const retryAi = new GoogleGenAI({ apiKey: retryProvider.apiKey });
-          retryResponse = await retryAi.models.generateContent({
+          retryResponse = await trackedGenerateContent(retryAi, {
             model: rm,
             contents: [...geminiMessages, { role: "user", parts: [{ text: retryPrompt }] }],
             config: { systemInstruction: systemPrompt },
-          });
+          } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
         }
         let retryText = '';
         try {
@@ -2837,10 +2837,10 @@ LEAD: grazie per l'appuntamento, a presto!
                   }
 
                   const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
-                  extractionResponse = await extractionAi.models.generateContent({
+                  extractionResponse = await trackedGenerateContent(extractionAi, {
                     model: GEMINI_3_MODEL,
                     contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-                  });
+                  } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
                 }
 
                 console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);

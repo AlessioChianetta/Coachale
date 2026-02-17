@@ -127,20 +127,19 @@ export async function generateSpeech({
 
     if (consultantId) {
       const usage = result.response.usageMetadata;
-      const inputTokens = usage?.promptTokenCount || Math.ceil(text.length / 4);
-      const outputTokens = usage?.candidatesTokenCount || 0;
-      const totalTokens = usage?.totalTokenCount || (inputTokens + outputTokens);
-      tokenTracker.track({
-        consultantId,
-        clientId: clientId || undefined,
-        model: 'gemini-2.5-flash-tts',
-        feature: 'tts',
-        requestType: 'generate',
-        inputTokens,
-        outputTokens,
-        totalTokens,
-        durationMs: ttsDurationMs,
-      }).catch(e => console.error('[TTS TokenTracker] Error:', e));
+      if (usage && (usage.promptTokenCount || usage.candidatesTokenCount || usage.totalTokenCount)) {
+        tokenTracker.track({
+          consultantId,
+          clientId: clientId || undefined,
+          model: 'gemini-2.5-flash-tts',
+          feature: 'tts',
+          requestType: 'generate',
+          inputTokens: usage.promptTokenCount || 0,
+          outputTokens: usage.candidatesTokenCount || 0,
+          totalTokens: usage.totalTokenCount || 0,
+          durationMs: ttsDurationMs,
+        }).catch(e => console.error('[TTS TokenTracker] Error:', e));
+      }
     }
     
     // Convert raw PCM to WAV format with proper headers

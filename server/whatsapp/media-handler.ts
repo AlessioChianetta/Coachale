@@ -4,7 +4,7 @@ import path from "path";
 import sharp from "sharp";
 import { GoogleGenAI } from "@google/genai";
 import { VertexAI } from "@google-cloud/vertexai";
-import { GEMINI_3_MODEL, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
+import { GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, trackedGenerateContent } from "../ai/provider-factory";
 import { PDFParse } from "pdf-parse";
 import { db } from "../db";
 import { whatsappMessages, whatsappMediaFiles, consultantWhatsappConfig } from "../../shared/schema";
@@ -91,22 +91,23 @@ export async function processMedia(
   localPath: string,
   mimeType: string,
   apiKey: string,
-  vertexCredentials?: VertexAICredentials
+  vertexCredentials?: VertexAICredentials,
+  consultantId?: string
 ): Promise<MediaProcessingResult> {
   const result: MediaProcessingResult = {};
 
   try {
     if (mimeType.startsWith("image/")) {
       console.log("🖼️ Processing image with AI Vision...");
-      result.aiAnalysis = await processImageWithVision(localPath, apiKey, mimeType);
+      result.aiAnalysis = await processImageWithVision(localPath, apiKey, mimeType, consultantId);
       result.extractedText = await extractTextFromImage(localPath);
     } else if (mimeType === "application/pdf" || mimeType.includes("pdf")) {
       console.log("📄 Processing PDF document...");
       result.extractedText = await extractTextFromPDF(localPath);
-      result.aiAnalysis = await analyzeDocumentText(result.extractedText, apiKey);
+      result.aiAnalysis = await analyzeDocumentText(result.extractedText, apiKey, consultantId);
     } else if (mimeType.startsWith("audio/")) {
       console.log("🎤 Processing audio file...");
-      const audioResult = await transcribeAudio(localPath, apiKey, mimeType, vertexCredentials);
+      const audioResult = await transcribeAudio(localPath, apiKey, mimeType, vertexCredentials, consultantId);
       result.audioTranscript = audioResult.transcript;
       result.audioDuration = audioResult.duration;
     } else {
@@ -126,13 +127,13 @@ export async function processMedia(
 async function processImageWithVision(
   imagePath: string,
   apiKey: string,
-  mimeType: string
+  mimeType: string,
+  consultantId?: string
 ): Promise<string> {
   try {
     let imageBuffer = await fs.readFile(imagePath);
     let finalMimeType = mimeType;
 
-    // Convert all images to JPEG for consistent Gemini processing
     if (mimeType.startsWith("image/")) {
       try {
         imageBuffer = await sharp(imageBuffer)
@@ -148,7 +149,7 @@ async function processImageWithVision(
     const base64Image = imageBuffer.toString("base64");
     const ai = new GoogleGenAI({ apiKey });
 
-    const response = await ai.models.generateContent({
+    const response = await trackedGenerateContent(ai, {
       model: GEMINI_3_MODEL,
       contents: [
         {
@@ -173,7 +174,7 @@ Rispondi in italiano, sii specifico e conciso.`,
           ],
         },
       ],
-    });
+    } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-image-analysis', keySource: 'superadmin' });
 
     const analysis = response.text || "Impossibile analizzare l'immagine.";
     console.log(`✅ AI Vision analysis complete (${analysis.length} chars)`);
@@ -222,7 +223,7 @@ async function extractTextFromPDF(pdfPath: string): Promise<string> {
 /**
  * Analyze document text with AI
  */
-async function analyzeDocumentText(text: string, apiKey: string): Promise<string> {
+async function analyzeDocumentText(text: string, apiKey: string, consultantId?: string): Promise<string> {
   if (!text || text.length < 50) {
     return "Documento troppo breve per analisi.";
   }
@@ -230,7 +231,7 @@ async function analyzeDocumentText(text: string, apiKey: string): Promise<string
   try {
     const ai = new GoogleGenAI({ apiKey });
 
-    const response = await ai.models.generateContent({
+    const response = await trackedGenerateContent(ai, {
       model: GEMINI_3_MODEL,
       config: {
         systemInstruction: `Sei un assistente AI specializzato in analisi documenti.
@@ -252,7 +253,7 @@ Rispondi in italiano, sii conciso e strutturato.`,
           ],
         },
       ],
-    });
+    } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-document-analysis', keySource: 'superadmin' });
 
     const analysis = response.text || "Impossibile analizzare il documento.";
     console.log(`✅ Document analysis complete (${analysis.length} chars)`);
@@ -272,7 +273,8 @@ async function transcribeAudio(
   audioPath: string,
   apiKey: string,
   mimeType: string,
-  vertexCredentials?: VertexAICredentials
+  vertexCredentials?: VertexAICredentials,
+  consultantId?: string
 ): Promise<{ transcript: string; duration?: number }> {
   const transcriptionStart = Date.now();
   const MAX_RETRIES = 3;
@@ -343,7 +345,7 @@ async function transcribeAudio(
         // Fallback to Google AI Studio
         const ai = new GoogleGenAI({ apiKey });
 
-        const response = await ai.models.generateContent({
+        const response = await trackedGenerateContent(ai, {
           model: GEMINI_3_MODEL,
           contents: [
             {
@@ -361,7 +363,7 @@ async function transcribeAudio(
               ],
             },
           ],
-        });
+        } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-audio-transcription', keySource: 'superadmin' });
 
         transcript = response.text || "Impossibile trascrivere l'audio.";
       }
@@ -511,7 +513,8 @@ export async function handleIncomingMedia(
       downloadResult.localPath,
       downloadResult.mimeType,
       apiKey,
-      vertexCredentials
+      vertexCredentials,
+      consultantId
     );
 
     // Save to whatsapp_media_files table

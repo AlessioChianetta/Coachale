@@ -19,7 +19,7 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
-import { GEMINI_3_MODEL, getSuperAdminGeminiKeys } from '../ai/provider-factory';
+import { GEMINI_3_MODEL, getSuperAdminGeminiKeys, trackedGenerateContent } from '../ai/provider-factory';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -875,7 +875,7 @@ export async function transcribeAudioWithGemini(
           const { GoogleGenAI } = await import('@google/genai');
           const genAI = new GoogleGenAI({ apiKey });
           
-          const response = await genAI.models.generateContent({
+          const response = await trackedGenerateContent(genAI, {
             model: GEMINI_3_MODEL,
             contents: [{
               role: 'user',
@@ -891,7 +891,7 @@ export async function transcribeAudioWithGemini(
                 },
               ],
             }],
-          });
+          } as any, { consultantId: 'system', feature: 'document-processing', keySource: 'env' });
           
           transcription = response.text?.trim() || '';
         }

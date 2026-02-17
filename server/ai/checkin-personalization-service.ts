@@ -12,7 +12,7 @@
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { getRawGoogleGenAIForFileSearch, getModelWithThinking } from "./provider-factory";
+import { getRawGoogleGenAIForFileSearch, getModelWithThinking, trackedGenerateContent } from "./provider-factory";
 import { fileSearchService } from "./file-search-service";
 import { buildUserContext, UserContext } from "../ai-context-builder";
 
@@ -459,9 +459,7 @@ export async function generateCheckinAiMessage(
     console.log(`[CHECKIN-AI] Generating message for ${context.clientName} using ${metadata.name}`);
     console.log(`[CHECKIN-AI]   Mode: ${useFileSearchMode ? 'FILE_SEARCH' : 'FALLBACK'}`);
 
-    // Use ai.models.generateContent directly (like ai-service.ts)
-    // This returns response.text as a property, not a method
-    const response = await ai.models.generateContent({
+    const response = await trackedGenerateContent(ai, {
       model,
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
       config: {
@@ -470,7 +468,7 @@ export async function generateCheckinAiMessage(
         maxOutputTokens: 10000,
         ...(fileSearchTool && { tools: [fileSearchTool] }),
       },
-    });
+    } as any, { consultantId: context.consultantId, feature: 'checkin-personalization', keySource: 'superadmin' });
 
     // Extract text from response - response.text is a property (not a method)
     const aiMessage = response.text?.trim() || '';
