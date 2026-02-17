@@ -107,6 +107,8 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'onboarding': { label: 'Onboarding', category: 'Sistema', icon: 'BookOpen' },
   'prospect-simulator': { label: 'Simulatore Prospect', category: 'Comunicazione', icon: 'Target' },
   'public-chat': { label: 'Chat Pubblica', category: 'Comunicazione', icon: 'MessageSquare' },
+  'whatsapp-templates': { label: 'Template WhatsApp', category: 'Comunicazione', icon: 'MessageSquare' },
+  'whatsapp-instructions': { label: 'Istruzioni Agente', category: 'Comunicazione', icon: 'MessageSquare' },
   'sales-agent': { label: 'Sales Agent', category: 'Comunicazione', icon: 'Target' },
   'sales-reports': { label: 'Report Vendite', category: 'Content Studio', icon: 'BarChart3' },
   'script-builder': { label: 'Script Builder', category: 'Content Studio', icon: 'PenLine' },
@@ -216,10 +218,14 @@ const ALL_SIDEBAR_FEATURES: SidebarFeature[] = (() => {
 })();
 
 function getFeatureLabel(feature: string): string {
+  if (feature.startsWith('public-chat:')) return 'Chat Pubblica';
+  if (feature.startsWith('whatsapp-agent:')) return 'Dipendenti WhatsApp';
   return FEATURE_MAP[feature]?.label || feature;
 }
 
 function getFeatureCategory(feature: string): string {
+  if (feature.startsWith('public-chat:')) return 'Comunicazione';
+  if (feature.startsWith('whatsapp-agent:')) return 'Comunicazione';
   return FEATURE_MAP[feature]?.category || 'Altro';
 }
 
@@ -240,7 +246,16 @@ const SUBKEY_LABELS: Record<string, string> = {
 };
 
 function getSubKeyLabel(key: string): string {
-  return SUBKEY_LABELS[key] || key;
+  if (SUBKEY_LABELS[key]) return SUBKEY_LABELS[key];
+  if (key.startsWith('public-chat:')) {
+    const agentName = key.replace('public-chat:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `🌐 ${agentName}`;
+  }
+  if (key.startsWith('whatsapp-agent:')) {
+    const agentName = key.replace('whatsapp-agent:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `📱 ${agentName}`;
+  }
+  return key;
 }
 
 function formatTokens(n: number): string {

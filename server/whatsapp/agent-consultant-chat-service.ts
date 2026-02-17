@@ -385,7 +385,8 @@ export async function* processConsultantAgentMessage(
   pendingModification?: PendingModificationContext,
   bookingContext?: BookingContext,
   managerPreferences?: ManagerPreferences,
-  goldMemory?: GoldMemoryContext
+  goldMemory?: GoldMemoryContext,
+  featureOverride?: string
 ): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -673,7 +674,9 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
     // Step 6: Get AI provider (Vertex AI)
     console.log('\n🔌 [STEP 6] Getting AI provider...');
     const aiProvider = await getAIProvider(consultantId, consultantId);
-    aiProvider.setFeature?.('whatsapp-agent');
+    const _agentSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const _featureKey = featureOverride ? `${featureOverride}:${_agentSlug}` : `whatsapp-agent:${_agentSlug}`;
+    aiProvider.setFeature?.(_featureKey);
     console.log(`✅ AI Provider obtained: ${aiProvider.source} (${aiProvider.metadata.provider})`);
 
     // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
@@ -942,7 +945,8 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
 export async function generateConversationTitle(
   firstMessage: string,
   consultantId: string,
-  aiResponse?: string
+  aiResponse?: string,
+  agentName?: string
 ): Promise<string> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🏷️  [TITLE GENERATION] Creating conversation title');
@@ -956,7 +960,8 @@ export async function generateConversationTitle(
     // Get AI provider
     console.log('🔌 Getting AI provider...');
     const aiProvider = await getAIProvider(consultantId, consultantId);
-    aiProvider.setFeature?.('whatsapp-agent');
+    const _titleSlug = (agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    aiProvider.setFeature?.(`whatsapp-agent:${_titleSlug}`);
     console.log(`✅ AI Provider: ${aiProvider.source}`);
 
     // Generate title

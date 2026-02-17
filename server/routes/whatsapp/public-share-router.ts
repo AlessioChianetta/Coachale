@@ -1520,7 +1520,8 @@ router.post(
             
             // ACCUMULATOR PATTERN: Always proceed with intent extraction (no pre-check skip)
             const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-            aiProvider.setFeature?.('whatsapp-agent');
+            const _bookingSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            aiProvider.setFeature?.(`public-chat:${_bookingSlug}`);
             console.log(`   ✅ [ACCUMULATOR] Always proceeding with intent extraction (no pre-check skip)`);
               
               // Recupera cronologia conversazione (ultimi 15 messaggi)
@@ -2044,7 +2045,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             pendingModification,
             bookingContextForAI,
             managerPreferences,
-            goldMemoryCtx
+            goldMemoryCtx,
+            'public-chat'
           )) {
             // Handle different event types from the generator
             if (event.type === 'promptBreakdown') {
@@ -2081,7 +2083,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             try {
               // Get AI provider for TTS
               const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-              aiProvider.setFeature?.('whatsapp-agent');
+              const _ttsSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+              aiProvider.setFeature?.(`public-chat:${_ttsSlug}`);
               
               if (!aiProvider.vertexClient) {
                 console.warn('⚠️ [TTS] No VertexAI client available - falling back to text-only');
@@ -2197,7 +2200,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 
                 // ACCUMULATOR PATTERN: Always proceed with extraction (no pre-check skip)
                 const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-                aiProvider.setFeature?.('whatsapp-agent');
+                const _bookSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                aiProvider.setFeature?.(`public-chat:${_bookSlug}`);
                 console.log(`   ✅ [ACCUMULATOR] Always proceeding with new booking analysis (no pre-check skip)`);
                   
                 // Recupera cronologia conversazione (ultimi 15 messaggi)
@@ -2716,7 +2720,8 @@ router.post(
       // 3. Get AI provider (Vertex AI)
       console.log('\n🔌 [STEP 3] Getting Vertex AI provider...');
       const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-      aiProvider.setFeature?.('whatsapp-agent');
+      const _audioSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      aiProvider.setFeature?.(`public-chat:${_audioSlug}`);
       console.log(`✅ Provider: ${aiProvider.source}`);
       
       // 4. Transcribe audio with Vertex AI
@@ -2801,7 +2806,12 @@ router.post(
       for await (const chunk of agentService.processConsultantAgentMessage(
         agentConfig.consultantId,
         conversation.id,
-        transcription
+        transcription,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'public-chat'
       )) {
         fullResponse += chunk;
         chunkCount++;

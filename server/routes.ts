@@ -20376,7 +20376,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           console.log(`   🤖 AI response: "${fullResponse.substring(0, 100)}${fullResponse.length > 100 ? '...' : ''}"`);
           try {
             // Pass both user message and AI response for better title generation
-            const title = await generateConversationTitle(content, consultantId, fullResponse);
+            const title = await generateConversationTitle(content, consultantId, fullResponse, agentConfig?.agentName);
             console.log(`✅ [STREAMING-ENDPOINT] Title generated: "${title}"`);
             
             const updated = await storage.updateConsultantAgentConversationTitle(conversationId, title, consultantId);

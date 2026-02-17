@@ -223,7 +223,7 @@ router.post(
 
       // Get AI provider for this consultant
       const aiProvider = await getAIProvider(consultantId);
-      aiProvider.setFeature?.('whatsapp-agent');
+      aiProvider.setFeature?.('whatsapp-templates');
       if (!aiProvider.client) {
         return res.status(500).json({
           success: false,
@@ -1851,7 +1851,7 @@ router.post(
       // Get AI provider
       const { getAIProvider, getModelWithThinking } = await import("../../ai/provider-factory");
       const provider = await getAIProvider(consultantId);
-      provider.setFeature?.('whatsapp-agent');
+      provider.setFeature?.('whatsapp-templates');
 
       if (!provider) {
         return res.status(500).json({

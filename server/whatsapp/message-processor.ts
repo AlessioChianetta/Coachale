@@ -3266,7 +3266,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
               
               // Get AI provider for booking extraction (aligned with public-share-router.ts)
               const bookingAiProvider = await getAIProvider(conversation.consultantId, conversation.consultantId);
-              bookingAiProvider.setFeature?.('whatsapp-agent');
+              const _wpBookSlug = (consultantConfig?.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+              bookingAiProvider.setFeature?.(`whatsapp-agent:${_wpBookSlug}`);
               
               // Estrai dati booking dalla conversazione usando il servizio centralizzato
               // ACCUMULATOR PATTERN: Passa conversationId per accumulare dati progressivamente

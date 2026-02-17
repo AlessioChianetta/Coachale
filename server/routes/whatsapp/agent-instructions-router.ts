@@ -472,7 +472,7 @@ router.post(
 
       const { getAIProvider, getModelWithThinking } = await import("../../ai/provider-factory");
       const providerResult = await getAIProvider(consultantId, consultantId);
-      providerResult.setFeature?.('whatsapp-agent');
+      providerResult.setFeature?.('whatsapp-instructions');
 
       if (!providerResult || !providerResult.client) {
         return res.status(500).json({
@@ -870,7 +870,7 @@ async function enhanceInstructionsWithAI(
   
   // Get AI provider (Vertex AI first, then fallback to Gemini)
   const providerResult = await getAIProvider(consultantId, consultantId);
-  providerResult.setFeature?.('whatsapp-agent');
+  providerResult.setFeature?.('whatsapp-instructions');
   
   if (!providerResult || !providerResult.client) {
     throw new Error("AI provider not available. Please configure your AI settings.");
