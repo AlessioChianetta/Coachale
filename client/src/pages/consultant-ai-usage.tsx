@@ -445,71 +445,82 @@ export default function ConsultantAIUsagePage() {
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                {isMobile && (
-                  <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700">
-                    <Menu className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                  </button>
-                )}
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Costi AI</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Monitora i costi e l'utilizzo delle API AI</p>
-                </div>
-              </div>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-auto min-w-[200px] justify-start text-left font-normal gap-2">
-                    <CalendarIcon className="h-4 w-4 text-slate-500" />
-                    <span className="text-sm">{dateLabel}</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
-                  <div className="flex">
-                    <div className="border-r p-3 space-y-1 min-w-[150px]">
-                      <p className="text-xs font-medium text-slate-500 mb-2 px-2">Periodo</p>
-                      {[
-                        { label: "Oggi", fn: () => { const t = new Date(); applyPreset("Oggi", startOfDay(t), t); } },
-                        { label: "Ieri", fn: () => { const y = subDays(new Date(), 1); applyPreset("Ieri", startOfDay(y), y); } },
-                        { label: "Ultimi 7 giorni", fn: () => applyPreset("Ultimi 7 giorni", subDays(new Date(), 6), new Date()) },
-                        { label: "Ultimi 14 giorni", fn: () => applyPreset("Ultimi 14 giorni", subDays(new Date(), 13), new Date()) },
-                        { label: "Ultimi 30 giorni", fn: () => applyPreset("Ultimi 30 giorni", subDays(new Date(), 29), new Date()) },
-                        { label: "Questo mese", fn: () => applyPreset("Questo mese", startOfMonth(new Date()), new Date()) },
-                        { label: "Mese scorso", fn: () => { const pm = subMonths(new Date(), 1); applyPreset("Mese scorso", startOfMonth(pm), new Date(pm.getFullYear(), pm.getMonth() + 1, 0)); } },
-                        { label: "Ultimi 3 mesi", fn: () => applyPreset("Ultimi 3 mesi", subMonths(new Date(), 3), new Date()) },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={preset.fn}
-                          className={`block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-                            presetLabel === preset.label
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 p-6 shadow-lg">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0djJoLTJ2LTJoMnptMCA0djJoLTJ2LTJoMnptLTQtNHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bS00LTR2MmgtMnYtMmgyem0wIDR2MmgtMnYtMmgyem0tNC00djJoLTJ2LTJoMnptMCA0djJoLTJ2LTJoMnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+              <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+              <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {isMobile && (
+                    <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-white/10">
+                      <Menu className="h-5 w-5 text-white/80" />
+                    </button>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-white" />
                     </div>
-                    <div className="p-3">
-                      <CalendarComponent
-                        mode="range"
-                        selected={dateRange}
-                        onSelect={(range) => {
-                          setDateRange(range);
-                          setPresetLabel("Personalizzato");
-                          if (range?.from && range?.to) {
-                            setCalendarOpen(false);
-                          }
-                        }}
-                        numberOfMonths={2}
-                        locale={it}
-                        disabled={{ after: new Date() }}
-                      />
+                    <div>
+                      <h1 className="text-xl font-bold text-white tracking-tight">Costi AI</h1>
+                      <p className="text-xs text-white/60">Monitora consumi e spese delle API AI</p>
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </div>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="secondary" className="bg-white/15 hover:bg-white/25 border-0 text-white backdrop-blur-sm gap-2 shadow-none">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span className="text-sm font-medium">{dateLabel}</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
+                    <div className="flex">
+                      <div className="border-r p-3 space-y-1 min-w-[150px]">
+                        <p className="text-xs font-medium text-slate-500 mb-2 px-2">Periodo</p>
+                        {[
+                          { label: "Oggi", fn: () => { const t = new Date(); applyPreset("Oggi", startOfDay(t), t); } },
+                          { label: "Ieri", fn: () => { const y = subDays(new Date(), 1); applyPreset("Ieri", startOfDay(y), y); } },
+                          { label: "Ultimi 7 giorni", fn: () => applyPreset("Ultimi 7 giorni", subDays(new Date(), 6), new Date()) },
+                          { label: "Ultimi 14 giorni", fn: () => applyPreset("Ultimi 14 giorni", subDays(new Date(), 13), new Date()) },
+                          { label: "Ultimi 30 giorni", fn: () => applyPreset("Ultimi 30 giorni", subDays(new Date(), 29), new Date()) },
+                          { label: "Questo mese", fn: () => applyPreset("Questo mese", startOfMonth(new Date()), new Date()) },
+                          { label: "Mese scorso", fn: () => { const pm = subMonths(new Date(), 1); applyPreset("Mese scorso", startOfMonth(pm), new Date(pm.getFullYear(), pm.getMonth() + 1, 0)); } },
+                          { label: "Ultimi 3 mesi", fn: () => applyPreset("Ultimi 3 mesi", subMonths(new Date(), 3), new Date()) },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            onClick={preset.fn}
+                            className={`block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
+                              presetLabel === preset.label
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="p-3">
+                        <CalendarComponent
+                          mode="range"
+                          selected={dateRange}
+                          onSelect={(range) => {
+                            setDateRange(range);
+                            setPresetLabel("Personalizzato");
+                            if (range?.from && range?.to) {
+                              setCalendarOpen(false);
+                            }
+                          }}
+                          numberOfMonths={2}
+                          locale={it}
+                          disabled={{ after: new Date() }}
+                        />
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
