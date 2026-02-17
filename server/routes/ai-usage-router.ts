@@ -623,12 +623,12 @@ router.post("/pricing/recalculate", authenticateToken, async (req: AuthRequest, 
             + (cached_tokens::numeric / 1000000.0) * ${pricing.cachedInput}
           )::text,
           output_cost = (
-            (output_tokens::numeric / 1000000.0) * ${pricing.output}
+            ((output_tokens + thinking_tokens)::numeric / 1000000.0) * ${pricing.output}
           )::text,
           total_cost = (
             (GREATEST(0, input_tokens - cached_tokens)::numeric / 1000000.0) * ${pricing.input}
             + (cached_tokens::numeric / 1000000.0) * ${pricing.cachedInput}
-            + (output_tokens::numeric / 1000000.0) * ${pricing.output}
+            + ((output_tokens + thinking_tokens)::numeric / 1000000.0) * ${pricing.output}
           )::text,
           cache_savings = (
             (cached_tokens::numeric / 1000000.0) * (${pricing.input} - ${pricing.cachedInput})

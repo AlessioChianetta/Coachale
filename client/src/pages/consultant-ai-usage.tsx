@@ -1053,7 +1053,7 @@ export default function ConsultantAIUsagePage() {
                                                 {formatTokens(mb.inputTokens + mb.outputTokens)}
                                               </span>
                                               {mb.thinkingTokens > 0 && (
-                                                <span className="text-purple-400 text-[10px]" title="Token di ragionamento (gratuiti)">
+                                                <span className="text-purple-400 text-[10px]" title="Token di ragionamento (fatturati come output)">
                                                   +{formatTokens(mb.thinkingTokens)} think
                                                 </span>
                                               )}

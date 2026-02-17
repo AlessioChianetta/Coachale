@@ -87,13 +87,13 @@ async function resolveClientRole(clientId: string): Promise<string | null> {
   }
 }
 
-export function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number): {
+export function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number, thinkingTokens: number = 0): {
   inputCost: number; outputCost: number; cacheSavings: number; totalCost: number;
 } {
   const pricing = PRICING[model] || DEFAULT_PRICING;
   const nonCachedInput = Math.max(0, inputTokens - cachedTokens);
   const inputCost = (nonCachedInput / 1_000_000) * pricing.input + (cachedTokens / 1_000_000) * pricing.cachedInput;
-  const outputCost = (outputTokens / 1_000_000) * pricing.output;
+  const outputCost = ((outputTokens + thinkingTokens) / 1_000_000) * pricing.output;
   const cacheSavings = (cachedTokens / 1_000_000) * (pricing.input - pricing.cachedInput);
   const totalCost = inputCost + outputCost;
   return { inputCost, outputCost, cacheSavings, totalCost };
@@ -136,7 +136,7 @@ class TokenTracker {
         return;
       }
 
-      const costs = calcCost(params.model, inputTokens, outputTokens, cachedTokens);
+      const costs = calcCost(params.model, inputTokens, outputTokens, cachedTokens, thinkingTokens);
 
       let clientRole: string | null = params.callerRole || null;
       if (!clientRole) {
