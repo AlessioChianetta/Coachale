@@ -1304,7 +1304,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
             }),
           },
           ...(fileSearchTool && { tools: [fileSearchTool] }),
-        } as any, { consultantId, feature: 'chat-text-response', keySource: 'superadmin' });
+        } as any, { consultantId, clientId, feature: 'chat-text-response', keySource: 'superadmin' });
       },
       retryContext
     );
@@ -2923,6 +2923,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         totalTokens: clientUsageMetadata.totalTokenCount || 0,
         thinkingTokens: clientUsageMetadata.thoughtsTokenCount || 0,
         durationMs: geminiCallTime,
+        callerRole: 'client',
       }).catch(() => {});
     } else {
       console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CLIENT]`);
@@ -3060,7 +3061,7 @@ Titolo:`;
           const clientTitleResult = await trackedGenerateContent(clientTitleGenai, {
             model: 'gemini-3-flash-preview',
             contents: clientTitlePrompt,
-          } as any, { consultantId: conversation.consultantId || '', feature: 'client-title-gen', keySource: 'superadmin' });
+          } as any, { consultantId: conversation.consultantId || conversation.userId || clientId, feature: 'client-title-gen', keySource: 'superadmin' });
           
           const generatedClientTitle = clientTitleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
           
@@ -4142,6 +4143,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         totalTokens: consultantUsageMetadata.totalTokenCount || 0,
         thinkingTokens: consultantUsageMetadata.thoughtsTokenCount || 0,
         durationMs: geminiCallTime,
+        callerRole: 'consultant',
       }).catch(() => {});
     } else {
       console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CONSULTANT]`);
@@ -4242,7 +4244,7 @@ Titolo:`;
           const titleResult = await trackedGenTitle(titleGenai, {
             model: 'gemini-3-flash-preview',
             contents: titlePrompt,
-          } as any, { consultantId: conversation.consultantId || '', feature: 'consultant-title-gen', keySource: 'superadmin' });
+          } as any, { consultantId: conversation.consultantId || consultantId, feature: 'consultant-title-gen', keySource: 'superadmin' });
           
           const generatedConsultantTitle = titleResult.text?.trim().replace(/^["']|["']$/g, '').substring(0, 50) || 'Conversazione';
           

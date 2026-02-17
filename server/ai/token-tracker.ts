@@ -37,6 +37,7 @@ export interface TrackUsageParams {
   error?: boolean;
   hasTools?: boolean;
   hasFileSearch?: boolean;
+  callerRole?: 'client' | 'consultant';
 }
 
 interface BufferEntry {
@@ -137,9 +138,25 @@ class TokenTracker {
 
       const costs = calcCost(params.model, inputTokens, outputTokens, cachedTokens);
 
-      let clientRole: string | null = null;
-      if (params.clientId) {
-        clientRole = await resolveClientRole(params.clientId);
+      let clientRole: string | null = params.callerRole || null;
+      if (!clientRole) {
+        const clientFeatures = ['chat-assistant', 'client-title-gen', 'data-analysis', 'client-chat', 'chat-text-response'];
+        const consultantFeatures = ['consultant-chat', 'consultant-title-gen', 'ai-task-scheduler', 
+          'ai-task-executor', 'ai-task-file-search', 'checkin-personalization', 'whatsapp-agent-response',
+          'whatsapp-image-analysis', 'whatsapp-document-analysis', 'whatsapp-audio-transcription', 
+          'whatsapp-sticker-analysis', 'tts', 'live-session', 'ai-autonomy-generate', 'ai-autonomy-task',
+          'ai-autonomy-decision', 'document-processing', 'advisage', 'youtube-processing',
+          'content-studio', 'email-generation', 'followup-decision', 'sales-report', 'onboarding'];
+        
+        if (clientFeatures.some(f => params.feature.startsWith(f))) {
+          clientRole = 'client';
+        } else if (consultantFeatures.some(f => params.feature.startsWith(f))) {
+          clientRole = 'consultant';
+        } else if (params.clientId && params.clientId !== params.consultantId) {
+          clientRole = 'client';
+        } else {
+          clientRole = 'consultant';
+        }
       }
 
       const entry: BufferEntry = {

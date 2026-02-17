@@ -24,6 +24,7 @@ export interface TrackingContext {
   clientId?: string;
   keySource: string;
   feature: string;
+  callerRole?: 'client' | 'consultant';
 }
 
 /**
@@ -253,6 +254,7 @@ class VertexAIClientAdapter implements GeminiClient {
           hasTools: !!(params.tools && params.tools.length > 0),
           hasFileSearch: false,
           error: false,
+          callerRole: this.trackingContext.callerRole,
         }).catch(e => console.error('[TokenTracker] vertex track error:', e));
       }
     }
@@ -400,6 +402,7 @@ class VertexAIClientAdapter implements GeminiClient {
             hasTools: !!(params.tools && params.tools.length > 0),
             hasFileSearch: false,
             error: false,
+            callerRole: trackingCtx.callerRole,
           }).catch(e => console.error('[TokenTracker] vertex stream track error:', e));
         }
       }
@@ -460,6 +463,7 @@ class GeminiClientAdapter implements GeminiClient {
             hasTools: !!(params.tools && params.tools.length > 0),
             hasFileSearch: false,
             error: false,
+            callerRole: this.trackingContext.callerRole,
           }).catch(e => console.error('[TokenTracker] track error:', e));
         }
       }
@@ -572,6 +576,7 @@ class GeminiClientAdapter implements GeminiClient {
             hasTools: !!(params.tools && params.tools.length > 0),
             hasFileSearch: false,
             error: false,
+            callerRole: trackingCtx.callerRole,
           }).catch(e => console.error('[TokenTracker] stream track error:', e));
         }
       }
@@ -1927,7 +1932,7 @@ export async function trackedGenerateContent(
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     config?: any;
   },
-  context: { consultantId: string; clientId?: string; feature: string; keySource?: string }
+  context: { consultantId: string; clientId?: string; feature: string; keySource?: string; callerRole?: 'client' | 'consultant' }
 ): Promise<any> {
   const start = Date.now();
   let error = false;
@@ -1951,6 +1956,7 @@ export async function trackedGenerateContent(
         hasTools: false,
         hasFileSearch: false,
         error: false,
+        callerRole: context.callerRole,
       }).catch(e => console.error('[TokenTracker] trackedGenerateContent error:', e));
     }
     return result;
@@ -1966,6 +1972,7 @@ export async function trackedGenerateContent(
       outputTokens: 0,
       durationMs: Date.now() - start,
       error: true,
+      callerRole: context.callerRole,
     }).catch(e => console.error('[TokenTracker] trackedGenerateContent error:', e));
     throw err;
   }

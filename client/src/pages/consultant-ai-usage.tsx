@@ -211,8 +211,8 @@ export default function ConsultantAIUsagePage() {
                               <TableRow key={i}>
                                 <TableCell className="font-medium">{row.name || row.clientName || "—"}</TableCell>
                                 <TableCell>
-                                  <Badge variant={row.role === "consultant" ? "default" : "secondary"}>
-                                    {row.role === "consultant" ? "Consulente" : "Cliente"}
+                                  <Badge variant={row.clientRole === "consultant" ? "default" : "secondary"}>
+                                    {row.clientRole === "consultant" ? "Consulente" : "Cliente"}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-mono text-sm">{formatTokens(row.totalTokens || 0)}</TableCell>

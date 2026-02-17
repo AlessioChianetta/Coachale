@@ -135,7 +135,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
     const result = await db.execute(sql`
       SELECT
         t.client_id AS "clientId",
-        u.first_name || ' ' || u.last_name AS "clientName",
+        COALESCE(u.first_name || ' ' || u.last_name, cu.first_name || ' ' || cu.last_name) AS "userName",
         t.client_role AS "clientRole",
         COALESCE(SUM(t.total_tokens), 0)::text AS "totalTokens",
         COALESCE(SUM(t.total_cost::numeric), 0)::text AS "totalCost",
@@ -152,17 +152,18 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         ) AS "topFeature"
       FROM ai_token_usage t
       LEFT JOIN users u ON t.client_id = u.id
+      LEFT JOIN users cu ON t.consultant_id = cu.id
       WHERE t.consultant_id = ${consultantId}
         AND t.created_at >= ${start}
         AND t.created_at <= ${end}
-      GROUP BY t.client_id, u.first_name, u.last_name, t.client_role
+      GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name, t.client_role
       ORDER BY SUM(t.total_cost::numeric) DESC
     `);
 
     res.json((result.rows as any[]).map(r => ({
       clientId: r.clientId,
-      clientName: r.clientId ? (r.clientName || "Unknown") : "Azioni proprie",
-      clientRole: r.clientRole,
+      clientName: r.userName || "Sconosciuto",
+      clientRole: r.clientRole || (r.clientId ? 'client' : 'consultant'),
       totalTokens: parseInt(r.totalTokens) || 0,
       totalCost: parseFloat(r.totalCost) || 0,
       requestCount: parseInt(r.requestCount) || 0,
