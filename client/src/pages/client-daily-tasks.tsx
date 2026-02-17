@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import Sidebar from "@/components/sidebar";
 import TaskCalendar from "@/components/task-calendar";
 import DailyReflectionForm from "@/components/daily-reflection-form";
+import SalesReportTab from "@/components/sales-report-tab";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,7 +12,8 @@ import type { DailyTask, DailyReflection } from "@shared/schema";
 import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { usePageContext } from "@/hooks/use-page-context";
 import { Button } from "@/components/ui/button";
-import { Menu, CheckSquare, HelpCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Menu, CheckSquare, HelpCircle, BarChart3 } from "lucide-react";
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { driverConfig } from '@/lib/tour/driver-config';
@@ -295,7 +297,6 @@ export default function ClientDailyTasks() {
           </div>
 
           <div className="p-4 md:p-6">
-            {/* Enhanced Hero Section */}
             <div className="mb-6 lg:mb-8 relative overflow-hidden rounded-2xl">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 opacity-10"></div>
               <div className="relative bg-gradient-to-br from-background/95 to-muted/50 backdrop-blur-sm border border-border/50 p-6 md:p-8">
@@ -320,50 +321,69 @@ export default function ClientDailyTasks() {
                       Organizza le tue attività quotidiane e rifletti sui tuoi progressi
                     </p>
                   </div>
-
-                  <div className="flex flex-col gap-2 min-w-[200px]">
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Task Oggi</span>
-                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                        {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd")).length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <span className="text-sm font-medium text-green-700 dark:text-green-300">Completate</span>
-                      <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                        {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd") && t.completed).length}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6 max-w-[1400px] mx-auto">
-              <div className="w-full">
-                <TaskCalendar
-                  tasks={tasks}
-                  reflections={weekReflections}
-                  onAddTask={handleAddTask}
-                  onToggleTask={handleToggleTask}
-                  onDeleteTask={handleDeleteTask}
-                  onEditTask={handleEditTask}
-                  onDateSelect={setSelectedDate}
-                  selectedDate={selectedDate}
-                  currentWeek={currentWeek}
-                  onWeekChange={setCurrentWeek}
-                />
-              </div>
+            <Tabs defaultValue="tasks" className="max-w-[1400px] mx-auto">
+              <TabsList className="grid grid-cols-2 w-full max-w-md mb-6">
+                <TabsTrigger value="tasks" className="gap-2">
+                  <CheckSquare className="w-4 h-4" />
+                  Task & Riflessioni
+                </TabsTrigger>
+                <TabsTrigger value="sales" className="gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Report Vendite
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="w-full" data-tour="reflections-section">
-                <DailyReflectionForm
-                  reflection={reflection || undefined}
-                  onSave={handleSaveReflection}
-                  onDelete={handleDeleteReflection}
-                  selectedDate={selectedDate}
-                />
-              </div>
-            </div>
+              <TabsContent value="tasks">
+                <div className="flex flex-col gap-2 mb-6 max-w-[200px]">
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Task Oggi</span>
+                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd")).length}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Completate</span>
+                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                      {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd") && t.completed).length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="w-full">
+                    <TaskCalendar
+                      tasks={tasks}
+                      reflections={weekReflections}
+                      onAddTask={handleAddTask}
+                      onToggleTask={handleToggleTask}
+                      onDeleteTask={handleDeleteTask}
+                      onEditTask={handleEditTask}
+                      onDateSelect={setSelectedDate}
+                      selectedDate={selectedDate}
+                      currentWeek={currentWeek}
+                      onWeekChange={setCurrentWeek}
+                    />
+                  </div>
+
+                  <div className="w-full" data-tour="reflections-section">
+                    <DailyReflectionForm
+                      reflection={reflection || undefined}
+                      onSave={handleSaveReflection}
+                      onDelete={handleDeleteReflection}
+                      selectedDate={selectedDate}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="sales">
+                <SalesReportTab selectedDate={selectedDate} onDateChange={setSelectedDate} />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

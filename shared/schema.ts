@@ -1396,6 +1396,36 @@ export const insertDailyReflectionSchema = createInsertSchema(dailyReflections).
   doBetter: z.string().optional().nullable(),
 });
 
+export const dailySalesReports = pgTable("daily_sales_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  date: date("date").notNull(),
+  calls: integer("calls").default(0).notNull(),
+  discoBooked: integer("disco_booked").default(0).notNull(),
+  discoScheduled: integer("disco_scheduled").default(0).notNull(),
+  discoShowed: integer("disco_showed").default(0).notNull(),
+  demoBooked: integer("demo_booked").default(0).notNull(),
+  demoScheduled: integer("demo_scheduled").default(0).notNull(),
+  demoShowed: integer("demo_showed").default(0).notNull(),
+  depositsAmount: numeric("deposits_amount", { precision: 10, scale: 2 }).default("0"),
+  contractsClosed: integer("contracts_closed").default(0).notNull(),
+  contractsAmount: numeric("contracts_amount", { precision: 10, scale: 2 }).default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueUserDate: unique().on(table.userId, table.date),
+  }
+});
+
+export const insertDailySalesReportSchema = createInsertSchema(dailySalesReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Consultation Tasks insert schema
 export const insertConsultationTaskSchema = createInsertSchema(consultationTasks).omit({
   id: true,
@@ -2465,6 +2495,8 @@ export type DailyTask = typeof dailyTasks.$inferSelect;
 export type InsertDailyTask = z.infer<typeof insertDailyTaskSchema>;
 export type DailyReflection = typeof dailyReflections.$inferSelect;
 export type InsertDailyReflection = z.infer<typeof insertDailyReflectionSchema>;
+export type DailySalesReport = typeof dailySalesReports.$inferSelect;
+export type InsertDailySalesReport = z.infer<typeof insertDailySalesReportSchema>;
 
 // Consultation Tasks types
 export type ConsultationTask = typeof consultationTasks.$inferSelect;

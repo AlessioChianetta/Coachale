@@ -65,6 +65,7 @@ import financeSettingsRouter from "./routes/finance-settings";
 import consultationTasksRouter from "./routes/consultation-tasks";
 import consultantPersonalTasksRouter from "./routes/consultant-personal-tasks";
 import clientStateRouter from "./routes/client-state";
+import salesReportsRouter from "./routes/sales-reports";
 import automatedEmailsRouter from "./routes/automated-emails";
 import momentumRouter from "./routes/momentum";
 import proactiveLeadsRouter from "./routes/proactive-leads";
@@ -13653,6 +13654,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Client State Tracking routes
   app.use("/api", clientStateRouter);
+
+  // Sales Reports routes
+  app.use("/api", salesReportsRouter);
 
   // Automated Emails routes
   app.use("/api", automatedEmailsRouter);
