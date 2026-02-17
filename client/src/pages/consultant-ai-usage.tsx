@@ -16,7 +16,7 @@ import {
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
   BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
-  ArrowLeft
+  ArrowLeft, Calendar
 } from "lucide-react";
 import {
   AreaChart,
@@ -192,6 +192,7 @@ export default function ConsultantAIUsagePage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [period, setPeriod] = useState("month");
+  const [granularity, setGranularity] = useState("day");
   const [activeTab, setActiveTab] = useState("panoramica");
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
@@ -236,8 +237,8 @@ export default function ConsultantAIUsagePage() {
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery({
-    queryKey: ["/api/ai-usage/timeline", period],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/timeline?period=${period}`),
+    queryKey: ["/api/ai-usage/timeline", period, granularity],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/timeline?period=${period}&granularity=${granularity}`),
   });
 
   const { data: selectedUserFeatures, isLoading: loadingUserFeatures } = useQuery({
@@ -470,7 +471,30 @@ export default function ConsultantAIUsagePage() {
               <TabsContent value="panoramica" className="mt-4 space-y-6">
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-semibold">Trend Giornaliero</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base font-semibold">
+                        {granularity === 'day' ? 'Trend Giornaliero' : granularity === 'week' ? 'Trend Settimanale' : 'Trend Mensile'}
+                      </CardTitle>
+                      <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-gray-700 rounded-lg p-0.5">
+                        {([
+                          { value: 'day', label: 'Giorno' },
+                          { value: 'week', label: 'Settimana' },
+                          { value: 'month', label: 'Mese' },
+                        ] as const).map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setGranularity(opt.value)}
+                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                              granularity === opt.value
+                                ? 'bg-white dark:bg-gray-600 text-slate-900 dark:text-white shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {loadingTimeline ? (
@@ -489,7 +513,19 @@ export default function ConsultantAIUsagePage() {
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v: string) => {
+                            if (granularity === 'month') {
+                              const parts = v.split('-');
+                              const months = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+                              return months[parseInt(parts[1]) - 1] + ' ' + parts[0].slice(2);
+                            }
+                            if (granularity === 'week') {
+                              const d = new Date(v);
+                              return d.getDate() + '/' + (d.getMonth() + 1);
+                            }
+                            const d = new Date(v);
+                            return d.getDate() + '/' + (d.getMonth() + 1);
+                          }} />
                           <YAxis
                             yAxisId="left"
                             tick={{ fontSize: 11, fill: '#94a3b8' }}
@@ -512,7 +548,15 @@ export default function ConsultantAIUsagePage() {
                               if (name === "Costo") return ["$" + value.toFixed(4), "Costo"];
                               return [formatTokens(value), "Token"];
                             }}
-                            labelFormatter={(label) => `${label}`}
+                            labelFormatter={(label: string) => {
+                              if (granularity === 'week') return `Sett. dal ${label}`;
+                              if (granularity === 'month') {
+                                const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+                                const parts = label.split('-');
+                                return months[parseInt(parts[1]) - 1] + ' ' + parts[0];
+                              }
+                              return label;
+                            }}
                             contentStyle={{ background: "white", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: 13 }}
                           />
                           <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: 12 }} />

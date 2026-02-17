@@ -337,6 +337,34 @@ router.get("/timeline", authenticateToken, async (req: AuthRequest, res: Respons
         GROUP BY to_char(created_at, 'YYYY-MM-DD HH24:00')
         ORDER BY to_char(created_at, 'YYYY-MM-DD HH24:00') ASC
       `);
+    } else if (granularity === "week") {
+      result = await db.execute(sql`
+        SELECT
+          to_char(date_trunc('week', created_at), 'YYYY-MM-DD') AS "date",
+          COALESCE(SUM(total_tokens), 0)::text AS "totalTokens",
+          COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
+          COUNT(*)::text AS "requestCount"
+        FROM ai_token_usage
+        WHERE consultant_id = ${consultantId}
+          AND created_at >= ${start}
+          AND created_at <= ${end}
+        GROUP BY date_trunc('week', created_at)
+        ORDER BY date_trunc('week', created_at) ASC
+      `);
+    } else if (granularity === "month") {
+      result = await db.execute(sql`
+        SELECT
+          to_char(date_trunc('month', created_at), 'YYYY-MM') AS "date",
+          COALESCE(SUM(total_tokens), 0)::text AS "totalTokens",
+          COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
+          COUNT(*)::text AS "requestCount"
+        FROM ai_token_usage
+        WHERE consultant_id = ${consultantId}
+          AND created_at >= ${start}
+          AND created_at <= ${end}
+        GROUP BY date_trunc('month', created_at)
+        ORDER BY date_trunc('month', created_at) ASC
+      `);
     } else {
       result = await db.execute(sql`
         SELECT
