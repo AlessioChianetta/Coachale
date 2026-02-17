@@ -1933,8 +1933,23 @@ export async function quickGenerate(params: {
 
   provider.cleanup?.();
 
+  let text = '';
+  try {
+    text = result.response.text();
+  } catch (e) {
+    // text() can throw on thinking models - extract from candidates
+  }
+  
+  if (!text && result.response.candidates?.length) {
+    const parts = result.response.candidates[0]?.content?.parts || [];
+    text = parts
+      .filter((p: any) => p.text && !p.thought)
+      .map((p: any) => p.text)
+      .join('');
+  }
+
   return {
-    text: result.response.text(),
+    text,
     usageMetadata: (result as any).usageMetadata || (result as any).response?.usageMetadata,
     candidates: result.response.candidates,
   };

@@ -5800,6 +5800,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/dashboard/insights", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const clients = await storage.getClientsByConsultant(consultantId);
+      const assignments = await storage.getAssignmentsByConsultant(consultantId);
+      const consultations = await storage.getConsultationsByConsultant(consultantId);
+      
+      const pendingExercises = assignments.filter(a => a.status === "pending" || a.status === "returned");
+      const completedExercises = assignments.filter(a => a.status === "completed");
+      const upcomingConsultations = consultations
+        .filter(c => new Date(c.scheduledAt) > new Date())
+        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+        .slice(0, 5);
+
+      const today = new Date();
+      const dayName = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'][today.getDay()];
+      const monthName = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'][today.getMonth()];
+
+      const dataContext = `
+DATA DEL CONSULENTE (${dayName} ${today.getDate()} ${monthName} ${today.getFullYear()}):
+- Nome consulente: ${req.user!.firstName || 'Consulente'}
+- Clienti attivi totali: ${clients.length}
+- Esercizi in attesa di revisione: ${pendingExercises.length}
+- Esercizi completati: ${completedExercises.length} su ${assignments.length} totali
+- Prossime consulenze: ${upcomingConsultations.length > 0 ? upcomingConsultations.map(c => {
+  const d = new Date(c.scheduledAt);
+  return `${d.getDate()}/${d.getMonth()+1} ore ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+}).join(', ') : 'nessuna in programma'}
+- Clienti recenti (ultimi 5): ${clients.slice(0, 5).map((c: any) => `${c.firstName} ${c.lastName}`).join(', ') || 'nessuno'}
+`;
+
+      const prompt = `Sei l'assistente AI di un consulente finanziario italiano. Genera un briefing giornaliero CONCISO e AZIONABILE.
+
+${dataContext}
+
+RISPONDI SOLO con un JSON valido nel seguente formato:
+{
+  "summary": "Una frase di briefing giornaliero personalizzata (max 30 parole)",
+  "highlights": ["punto chiave 1", "punto chiave 2", "punto chiave 3"],
+  "priorities": [
+    {"title": "azione prioritaria", "reason": "perché è importante", "type": "exercise|client|appointment|general"}
+  ]
+}
+
+REGOLE:
+- Massimo 3 highlights e 3 priorities
+- Sii specifico con numeri reali
+- Tono professionale ma amichevole
+- Se non ci sono cose urgenti, suggerisci azioni proattive
+- NON inventare dati, usa SOLO quelli forniti`;
+
+      const { quickGenerate } = await import("./ai/provider-factory");
+      
+      const response = await quickGenerate({
+        consultantId,
+        feature: 'dashboard-insights',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 800,
+        }
+      });
+
+      const rawText = response.text || '';
+      console.log(`[Dashboard Insights] Raw AI response (${rawText.length} chars):`, rawText.substring(0, 500));
+      
+      let jsonText = rawText.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error(`[Dashboard Insights] No JSON found in response`);
+        return res.json({ summary: '', highlights: [], priorities: [], generatedAt: new Date().toISOString() });
+      }
+
+      try {
+        const insights = JSON.parse(jsonMatch[0]);
+        insights.generatedAt = new Date().toISOString();
+        res.json(insights);
+      } catch (parseErr: any) {
+        console.error(`[Dashboard Insights] JSON parse error:`, parseErr.message);
+        console.error(`[Dashboard Insights] Attempted to parse:`, jsonMatch[0].substring(0, 300));
+        res.json({ summary: '', highlights: [], priorities: [], generatedAt: new Date().toISOString() });
+      }
+    } catch (error: any) {
+      console.error('[Dashboard Insights] Error:', error.message);
+      res.json({ summary: '', highlights: [], priorities: [], generatedAt: new Date().toISOString() });
+    }
+  });
+
   app.get("/api/stats/client", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
     try {
       const assignments = await storage.getAssignmentsByClient(req.user!.id);

@@ -48,7 +48,8 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'consultant-chat': { label: 'AI Assistant', category: 'Principale', icon: 'Sparkles' },
   'chat-text-response': { label: 'AI Assistant', category: 'Principale', icon: 'Sparkles' },
   'consultant-title-gen': { label: 'AI Assistant', category: 'Principale', icon: 'Sparkles' },
-  'discovery-rec': { label: 'Dashboard', category: 'Principale', icon: 'Home' },
+  'discovery-rec': { label: 'Discovery REC', category: 'Comunicazione', icon: 'FileSearch' },
+  'dashboard-insights': { label: 'Dashboard', category: 'Principale', icon: 'Home' },
   'data-analysis': { label: 'Analisi Dati', category: 'Lavoro Quotidiano', icon: 'BarChart3' },
   'personal-tasks': { label: 'Task', category: 'Lavoro Quotidiano', icon: 'ListTodo' },
   'checkin-personalization': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
@@ -91,7 +92,8 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
 
 const FEATURE_GUIDE: Record<string, { dove: string; comeTesta: string }> = {
   'AI Assistant': { dove: 'Sidebar → Chat AI (pagina principale)', comeTesta: 'Apri la chat AI e fai una domanda qualsiasi al tuo assistente' },
-  'Dashboard': { dove: 'Sidebar → Home', comeTesta: 'Vai nella dashboard, le raccomandazioni AI si generano automaticamente' },
+  'Dashboard': { dove: 'Sidebar → Home', comeTesta: 'Apri la dashboard, clicca "Genera Briefing AI" per ottenere suggerimenti' },
+  'Discovery REC': { dove: 'Durante chiamate di vendita', comeTesta: 'Effettua una discovery call con il sales agent AI' },
   'Analisi Dati': { dove: 'Sidebar → Analisi Dati', comeTesta: 'Carica un file Excel/CSV e fai domande sui dati' },
   'Task': { dove: 'Sidebar → Task', comeTesta: 'Crea un task e usa la generazione AI del contenuto' },
   'Email Journey': { dove: 'Sidebar → Email Journey', comeTesta: 'Configura un check-in settimanale per un cliente' },

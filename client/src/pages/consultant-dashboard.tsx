@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { 
   Users, 
@@ -14,17 +14,10 @@ import {
   Phone,
   Sparkles,
   Target,
-  GraduationCap,
-  BookOpen,
-  Settings,
-  Bell,
-  Search,
   ArrowRight,
   AlertCircle,
   Clock,
   FileText,
-  Bot,
-  FileSearch,
   Flame,
   ChevronRight,
   TrendingUp,
@@ -52,16 +45,6 @@ interface AttentionItem {
   urgency: "high" | "medium" | "low";
   actionUrl: string;
   timeAgo?: string;
-}
-
-interface NavigationSection {
-  name: string;
-  href: string;
-  icon: React.ComponentType<any>;
-  color: string;
-  bgColor: string;
-  count?: number;
-  badge?: string;
 }
 
 interface KPICard {
@@ -125,6 +108,24 @@ export default function ConsultantDashboard() {
       if (!response.ok) return { activeClients: 0, completedExercises: 0, completionRate: 0, todayConsultations: 0 };
       return response.json();
     },
+  });
+
+  const { data: aiInsights, isLoading: loadingInsights, refetch: refetchInsights } = useQuery<{
+    summary: string;
+    highlights: string[];
+    priorities: Array<{ title: string; reason: string; type: string }>;
+    generatedAt: string;
+  }>({
+    queryKey: ["/api/dashboard/insights"],
+    queryFn: async () => {
+      const response = await fetch("/api/dashboard/insights", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed");
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
   });
 
   const getGreeting = () => {
@@ -261,83 +262,6 @@ export default function ConsultantDashboard() {
     return items.slice(0, 5);
   }, [pendingExercises, highPriorityClients, appointments]);
 
-  const navigationSections: NavigationSection[] = [
-    { 
-      name: "AI Assistant", 
-      href: "/consultant/ai-assistant", 
-      icon: Sparkles, 
-      color: "text-fuchsia-500",
-      bgColor: "bg-fuchsia-500/10 hover:bg-fuchsia-500/20",
-      badge: "AI"
-    },
-    { 
-      name: "Clienti", 
-      href: "/consultant/clients", 
-      icon: Users, 
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10 hover:bg-blue-500/20",
-      count: clients.length
-    },
-    { 
-      name: "Calendario", 
-      href: "/consultant/appointments", 
-      icon: Calendar, 
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10 hover:bg-orange-500/20",
-    },
-    { 
-      name: "Email Journey", 
-      href: "/consultant/ai-config", 
-      icon: Mail, 
-      color: "text-emerald-500",
-      bgColor: "bg-emerald-500/10 hover:bg-emerald-500/20",
-    },
-    { 
-      name: "Lead Hub", 
-      href: "/consultant/lead-hub", 
-      icon: Target, 
-      color: "text-red-500",
-      bgColor: "bg-red-500/10 hover:bg-red-500/20",
-      badge: "HUB"
-    },
-    { 
-      name: "Agent Setup", 
-      href: "/consultant/whatsapp", 
-      icon: Bot, 
-      color: "text-green-500",
-      bgColor: "bg-green-500/10 hover:bg-green-500/20",
-    },
-    { 
-      name: "Formazione", 
-      href: "/consultant/university", 
-      icon: GraduationCap, 
-      color: "text-amber-500",
-      bgColor: "bg-amber-500/10 hover:bg-amber-500/20",
-    },
-    { 
-      name: "Knowledge Base", 
-      href: "/consultant/knowledge-documents", 
-      icon: BookOpen, 
-      color: "text-indigo-500",
-      bgColor: "bg-indigo-500/10 hover:bg-indigo-500/20",
-    },
-    { 
-      name: "File Search", 
-      href: "/consultant/file-search-analytics", 
-      icon: FileSearch, 
-      color: "text-cyan-500",
-      bgColor: "bg-cyan-500/10 hover:bg-cyan-500/20",
-      badge: "RAG"
-    },
-    { 
-      name: "Impostazioni", 
-      href: "/consultant/api-keys-unified", 
-      icon: Settings, 
-      color: "text-gray-500",
-      bgColor: "bg-gray-500/10 hover:bg-gray-500/20",
-    },
-  ];
-
   const quickActions = [
     { 
       name: "Chatta con AI", 
@@ -367,9 +291,17 @@ export default function ConsultantDashboard() {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case "high": return "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400";
-      case "medium": return "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400";
-      default: return "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400";
+      case "high": return "border-l-[#FF7675]";
+      case "medium": return "border-l-[#FDCB6E]";
+      default: return "border-l-blue-400";
+    }
+  };
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case "high": return "bg-[#FF7675]/10 text-[#FF7675] border-[#FF7675]/20";
+      case "medium": return "bg-[#FDCB6E]/10 text-[#FDCB6E] border-[#FDCB6E]/20";
+      default: return "bg-blue-500/10 text-blue-500 border-blue-500/20";
     }
   };
 
@@ -391,8 +323,87 @@ export default function ConsultantDashboard() {
     }
   };
 
+  const kpiGlowColors = [
+    "hover:shadow-blue-500/20 hover:border-blue-500/30",
+    "hover:shadow-[#FDCB6E]/20 hover:border-[#FDCB6E]/30",
+    "hover:shadow-[#00B894]/20 hover:border-[#00B894]/30",
+    "hover:shadow-[#FF7675]/20 hover:border-[#FF7675]/30",
+  ];
+
+  const sparklinePoints = useMemo(() => {
+    const base = exerciseProgress.completed || 3;
+    return [
+      Math.max(1, base - 2),
+      Math.max(1, base - 1),
+      Math.max(2, base),
+      Math.max(1, base - 1),
+      Math.max(3, base + 1),
+      Math.max(2, base + 2),
+      Math.max(4, base + 1),
+    ];
+  }, [exerciseProgress.completed]);
+
+  const sparklinePath = useMemo(() => {
+    const max = Math.max(...sparklinePoints, 1);
+    const width = 120;
+    const height = 40;
+    const padding = 4;
+    const points = sparklinePoints.map((val, i) => {
+      const x = padding + (i / (sparklinePoints.length - 1)) * (width - padding * 2);
+      const y = height - padding - ((val / max) * (height - padding * 2));
+      return `${x},${y}`;
+    });
+    return `M ${points.join(" L ")}`;
+  }, [sparklinePoints]);
+
+  const userInitials = useMemo(() => {
+    const first = user?.firstName?.[0] || '';
+    const last = user?.lastName?.[0] || '';
+    return (first + last).toUpperCase() || 'C';
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20" data-testid="consultant-dashboard">
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+        @keyframes sparkle {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        .animate-fadeInUp {
+          animation: fadeInUp 0.5s ease-out forwards;
+        }
+        .animate-fadeInUp-1 { animation: fadeInUp 0.5s ease-out 0.05s forwards; opacity: 0; }
+        .animate-fadeInUp-2 { animation: fadeInUp 0.5s ease-out 0.1s forwards; opacity: 0; }
+        .animate-fadeInUp-3 { animation: fadeInUp 0.5s ease-out 0.15s forwards; opacity: 0; }
+        .animate-fadeInUp-4 { animation: fadeInUp 0.5s ease-out 0.2s forwards; opacity: 0; }
+        .animate-fadeInUp-5 { animation: fadeInUp 0.5s ease-out 0.25s forwards; opacity: 0; }
+        .animate-fadeInUp-6 { animation: fadeInUp 0.5s ease-out 0.3s forwards; opacity: 0; }
+        .animate-fadeInUp-7 { animation: fadeInUp 0.5s ease-out 0.35s forwards; opacity: 0; }
+        .shimmer-bg {
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+          background-size: 200% 100%;
+          animation: shimmer 3s ease-in-out infinite;
+        }
+        .kpi-hover {
+          transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .kpi-hover:hover {
+          transform: translateY(-4px);
+        }
+      `}</style>
+
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
         <Sidebar 
@@ -405,251 +416,227 @@ export default function ConsultantDashboard() {
         />
 
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">👋</span>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            {/* Hero Section - Glassmorphism */}
+            <div className="animate-fadeInUp relative overflow-hidden rounded-2xl p-6 sm:p-8"
+              style={{
+                background: 'linear-gradient(135deg, rgba(108,92,231,0.08) 0%, rgba(0,184,148,0.06) 50%, rgba(253,203,110,0.04) 100%)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <div className="absolute inset-0 shimmer-bg pointer-events-none" style={{ opacity: 0.5 }} />
+              <div className="relative flex items-center gap-4 sm:gap-6">
+                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-[#6C5CE7]/30 ring-offset-2 ring-offset-background shadow-lg">
+                  <AvatarFallback
+                    className="text-lg sm:text-xl font-bold"
+                    style={{ background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)', color: '#fff' }}
+                  >
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">
                     {getGreeting()}, {user?.firstName || 'Consulente'}
                   </h1>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground/60 text-sm mt-1">
                     Ecco cosa succede oggi nel tuo business
                   </p>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="relative"
-                  onClick={() => setLocation("/consultant/ai-config")}
-                >
-                  <Bell className="h-5 w-5" />
-                  {attentionItems.length > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
-                      {attentionItems.length}
-                    </span>
-                  )}
-                </Button>
-                <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-                  <AvatarImage src={user?.avatar || undefined} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white font-semibold">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00B894]/10 border border-[#00B894]/20">
+                  <TrendingUp className="h-3.5 w-3.5 text-[#00B894]" />
+                  <span className="text-xs font-medium text-[#00B894]">↑ +12% rispetto a ieri</span>
+                </div>
               </div>
             </div>
 
-            {/* Referral Banner */}
-            <button
-              onClick={() => setLocation("/consultant/referrals")}
-              className="w-full group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500 opacity-90 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 flex items-center justify-between text-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-white/20">
-                    <Gift className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Invita un Amico</p>
-                    <p className="text-sm text-white/80">Guadagna bonus per ogni cliente portato</p>
-                  </div>
-                </div>
-                <ArrowRight className="h-5 w-5" />
-              </div>
-            </button>
-
-            {/* KPI Header Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* KPI Cards */}
+            <div className="animate-fadeInUp-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
               {kpiCards.map((kpi, index) => (
                 <Card 
                   key={index}
                   className={cn(
-                    "relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]",
-                    `bg-gradient-to-br ${kpi.bgGradient}`
+                    "kpi-hover relative overflow-hidden border border-transparent shadow-md cursor-default",
+                    `bg-gradient-to-br ${kpi.bgGradient}`,
+                    kpiGlowColors[index]
                   )}
+                  style={{ borderRadius: '16px' }}
                 >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">{kpi.title}</p>
-                        <p className="text-2xl sm:text-3xl font-bold tracking-tight">{kpi.value}</p>
+                  <CardContent className="p-5 sm:p-6">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">{kpi.title}</p>
+                        <div className="p-2 rounded-xl bg-background/60 backdrop-blur-sm shadow-sm">
+                          <kpi.icon className={cn("h-4 w-4", kpi.color)} />
+                        </div>
                       </div>
-                      <div className={cn(
-                        "p-2 sm:p-3 rounded-xl bg-background/50 backdrop-blur-sm shadow-sm",
-                      )}>
-                        <kpi.icon className={cn("h-5 w-5 sm:h-6 sm:w-6", kpi.color)} />
-                      </div>
+                      <p className={cn(
+                        "text-4xl sm:text-5xl font-bold tracking-tight",
+                        index === 3 && "animate-pulse"
+                      )} style={index === 3 ? { animationDuration: '3s' } : undefined}>
+                        {kpi.value}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            {/* Search/AI Bar */}
-            <div className="relative group">
-              <div 
-                className="w-full cursor-pointer"
-                onClick={() => setLocation("/consultant/ai-assistant")}
-              >
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/20 via-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative bg-card border border-border/50 rounded-2xl p-4 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30">
-                    <p className="text-base sm:text-lg text-muted-foreground mb-2">
-                      Cosa vuoi fare oggi?
-                    </p>
-                    <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3 border border-border/50">
-                      <Search className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-muted-foreground flex-1">Cerca o chiedi all'AI...</span>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded-lg border">
-                        <Sparkles className="h-3 w-3 text-fuchsia-500" />
-                        <span>AI</span>
-                      </div>
+            {/* AI Daily Briefing */}
+            <div className="animate-fadeInUp-2 relative overflow-hidden rounded-2xl shadow-xl"
+              style={{
+                background: 'linear-gradient(135deg, #6C5CE7 0%, #a29bfe 40%, #6C5CE7 70%, #fd79a8 100%)',
+              }}
+            >
+              <div className="absolute inset-0 shimmer-bg pointer-events-none" />
+              <div className="absolute top-3 right-4 opacity-20">
+                <Sparkles className="h-24 w-24 text-white" style={{ animation: 'sparkle 4s ease-in-out infinite' }} />
+              </div>
+              <div className="relative p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white">Briefing AI Giornaliero</h2>
+                      <p className="text-white/50 text-xs">Analisi intelligente della tua giornata</p>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div>
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Azioni Rapide
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {quickActions.map((action, index) => (
-                  <button
-                    key={index}
-                    onClick={action.onClick}
-                    className="group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  <Button
+                    size="sm"
+                    className="bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm gap-2 rounded-xl"
+                    onClick={() => refetchInsights()}
+                    disabled={loadingInsights}
                   >
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-br opacity-90 group-hover:opacity-100 transition-opacity",
-                      action.gradient
-                    )} />
-                    <div className="relative z-10 text-white">
-                      <action.icon className="h-6 w-6 mb-2" />
-                      <p className="font-medium text-sm">{action.name}</p>
+                    <RotateCcw className={cn("h-4 w-4", loadingInsights && "animate-spin")} />
+                    <span className="hidden sm:inline">Genera Briefing</span>
+                  </Button>
+                </div>
+
+                {loadingInsights ? (
+                  <div className="space-y-3">
+                    <div className="h-4 bg-white/20 rounded-full animate-pulse w-4/5" />
+                    <div className="h-4 bg-white/15 rounded-full animate-pulse w-3/5" />
+                    <div className="h-4 bg-white/10 rounded-full animate-pulse w-2/5" />
+                    <div className="flex gap-2 mt-4">
+                      <div className="h-7 w-24 bg-white/15 rounded-full animate-pulse" />
+                      <div className="h-7 w-32 bg-white/15 rounded-full animate-pulse" />
+                      <div className="h-7 w-20 bg-white/15 rounded-full animate-pulse" />
                     </div>
-                  </button>
-                ))}
+                  </div>
+                ) : aiInsights?.summary ? (
+                  <div className="space-y-4">
+                    <p className="text-white/90 text-sm sm:text-base leading-relaxed max-w-3xl">{aiInsights.summary}</p>
+                    {aiInsights.highlights?.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {aiInsights.highlights.map((h, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/12 text-white/90 text-xs backdrop-blur-sm border border-white/10">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00B894]" />
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center py-4 gap-3">
+                    <div className="p-3 rounded-2xl bg-white/10">
+                      <Sparkles className="h-8 w-8 text-white/60" />
+                    </div>
+                    <p className="text-white/50 text-sm">Clicca "Genera Briefing" per il tuo riepilogo AI</p>
+                  </div>
+                )}
               </div>
+
+              {aiInsights?.priorities && aiInsights.priorities.length > 0 && (
+                <div className="bg-background/95 backdrop-blur-sm p-5 sm:p-6 space-y-3 border-t border-border/50">
+                  <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">Priorità del giorno</p>
+                  {aiInsights.priorities.map((p, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className={cn("mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0",
+                        i === 0 ? "bg-[#FF7675]" : i === 1 ? "bg-[#FDCB6E]" : "bg-[#6C5CE7]"
+                      )}>
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold">{p.title}</p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">{p.reason}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Requires Attention */}
-            {attentionItems.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Flame className="h-5 w-5 text-orange-500" />
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    Richiede Attenzione
-                  </h2>
-                  <Badge variant="secondary" className="text-xs">
-                    {attentionItems.length}
-                  </Badge>
-                </div>
-                <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent">
-                  <CardContent className="p-4 space-y-2">
-                    {attentionItems.map((item) => {
+            {/* Attention Items + Appointments (2 cols) */}
+            <div className="animate-fadeInUp-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Requires Attention */}
+              <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
+                <CardHeader className="pb-3 pt-5 px-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-[#FF7675]/10">
+                      <Flame className="h-4 w-4 text-[#FF7675]" />
+                    </div>
+                    <CardTitle className="text-base font-bold">Richiede Attenzione</CardTitle>
+                    {attentionItems.length > 0 && (
+                      <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF7675]/10 text-[#FF7675] border-[#FF7675]/20 hover:bg-[#FF7675]/15">{attentionItems.length}</Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="px-5 pb-5 space-y-2">
+                  {attentionItems.length > 0 ? (
+                    attentionItems.map((item) => {
                       const IconComponent = getTypeIcon(item.type);
                       return (
                         <button
                           key={item.id}
                           onClick={() => setLocation(item.actionUrl)}
                           className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:scale-[1.01] text-left",
+                            "w-full flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 text-left border-l-[3px] border-0 shadow-sm hover:shadow-md",
                             getUrgencyColor(item.urgency)
                           )}
                         >
-                          <div className="p-2 rounded-lg bg-background/50">
-                            <IconComponent className="h-4 w-4" />
+                          <div className="p-2 rounded-lg bg-muted/50 shrink-0">
+                            <IconComponent className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{item.title}</p>
-                            <p className="text-xs opacity-80 truncate">{item.description}</p>
+                            <p className="font-bold text-sm truncate">{item.title}</p>
+                            <p className="text-xs text-muted-foreground/60 truncate">{item.description}</p>
                           </div>
                           {item.timeAgo && (
-                            <span className="text-xs opacity-60 whitespace-nowrap">{item.timeAgo}</span>
+                            <span className="text-[10px] text-muted-foreground/40 whitespace-nowrap">{item.timeAgo}</span>
                           )}
-                          <ChevronRight className="h-4 w-4 opacity-50" />
+                          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 rounded-full shrink-0", getUrgencyBadge(item.urgency))}>
+                            {item.urgency === 'high' ? 'Urgente' : item.urgency === 'medium' ? 'Medio' : 'Basso'}
+                          </Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
                         </button>
                       );
-                    })}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Operational Panels Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Recent Clients */}
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500/5 to-transparent">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-blue-500" />
-                      Attività Recente
-                    </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs"
-                      onClick={() => setLocation("/consultant/clients")}
-                    >
-                      Vedi tutti
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recentClients.length > 0 ? (
-                    recentClients.map((client: any) => (
-                      <div 
-                        key={client.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors cursor-pointer"
-                        onClick={() => setLocation(`/consultant/clients`)}
-                      >
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-blue-500/10 text-blue-600 text-sm font-medium">
-                            {client.firstName?.[0]}{client.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {client.firstName} {client.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {client.email}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    ))
+                    })
                   ) : (
-                    <div className="text-center py-6 text-muted-foreground text-sm">
-                      Nessun cliente recente
+                    <div className="text-center py-8 text-muted-foreground/60 text-sm">
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-[#00B894]/40" />
+                      Nessun elemento richiede attenzione
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Upcoming Appointments */}
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-500/5 to-transparent">
-                <CardHeader className="pb-3">
+              <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
+                <CardHeader className="pb-3 pt-5 px-5">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-emerald-500" />
-                      Prossimi Appuntamenti
-                    </CardTitle>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-[#00B894]/10">
+                        <Calendar className="h-4 w-4 text-[#00B894]" />
+                      </div>
+                      <CardTitle className="text-base font-bold">Prossimi Appuntamenti</CardTitle>
+                    </div>
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-xs"
+                      className="text-xs text-muted-foreground/60 hover:text-foreground"
                       onClick={() => setLocation("/consultant/appointments")}
                     >
                       Vedi tutti
@@ -657,128 +644,226 @@ export default function ConsultantDashboard() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="px-5 pb-5 space-y-2">
                   {upcomingAppointments.length > 0 ? (
                     upcomingAppointments.map((apt: any) => (
                       <div 
                         key={apt.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors cursor-pointer"
+                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md border-l-[3px] border-l-[#00B894]"
                         onClick={() => setLocation("/consultant/appointments")}
                       >
-                        <div className="p-2 rounded-lg bg-emerald-500/10">
-                          <Clock className="h-4 w-4 text-emerald-600" />
+                        <div className="p-2 rounded-lg bg-[#00B894]/10 shrink-0">
+                          <Clock className="h-4 w-4 text-[#00B894]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
+                          <p className="text-sm font-bold truncate">
                             {apt.title || apt.clientName || "Appuntamento"}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground/60">
                             {formatAppointmentTime(apt)}
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-6 text-muted-foreground text-sm">
+                    <div className="text-center py-8 text-muted-foreground/60 text-sm">
+                      <Calendar className="h-8 w-8 mx-auto mb-2 text-[#00B894]/30" />
                       Nessun appuntamento in programma
                     </div>
                   )}
                 </CardContent>
               </Card>
-
-              {/* Exercise Trends */}
-              <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500/5 to-transparent">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-purple-500" />
-                      Trend Esercizi
-                    </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs"
-                      onClick={() => setLocation("/consultant/exercises")}
-                    >
-                      Dettagli
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Completamento</span>
-                      <span className="font-semibold">{exerciseProgress.percentage}%</span>
-                    </div>
-                    <Progress value={exerciseProgress.percentage} className="h-2" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl bg-emerald-500/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        <span className="text-xs text-muted-foreground">Completati</span>
-                      </div>
-                      <p className="text-xl font-bold text-emerald-600">{exerciseProgress.completed}</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-amber-500/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <RotateCcw className="h-4 w-4 text-amber-600" />
-                        <span className="text-xs text-muted-foreground">In Attesa</span>
-                      </div>
-                      <p className="text-xl font-bold text-amber-600">{exerciseProgress.pending}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-center pt-2">
-                    <p className="text-xs text-muted-foreground">
-                      Totale: <span className="font-medium">{exerciseProgress.total}</span> esercizi assegnati
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Navigation Sections Grid */}
-            <div>
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Tutte le Sezioni
+            {/* Quick Actions */}
+            <div className="animate-fadeInUp-4">
+              <h2 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest mb-4">
+                Azioni Rapide
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {navigationSections.map((section, index) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {quickActions.map((action, index) => (
                   <button
                     key={index}
-                    onClick={() => setLocation(section.href)}
-                    className={cn(
-                      "group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-xl border border-border/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]",
-                      section.bgColor
-                    )}
+                    onClick={action.onClick}
+                    className="group relative overflow-hidden rounded-2xl p-5 sm:p-6 text-center transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] backdrop-blur-sm"
+                    style={{
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(108,92,231,0.25)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                    }}
                   >
                     <div className={cn(
-                      "p-3 rounded-xl mb-2 transition-transform duration-300 group-hover:scale-110",
-                      section.bgColor.replace("hover:", "")
-                    )}>
-                      <section.icon className={cn("h-6 w-6", section.color)} />
+                      "absolute inset-0 bg-gradient-to-br opacity-90 group-hover:opacity-100 transition-opacity",
+                      action.gradient
+                    )} />
+                    <div className="relative z-10 text-white flex flex-col items-center gap-2.5">
+                      <action.icon className="h-7 w-7 sm:h-8 sm:w-8" />
+                      <p className="font-bold text-sm">{action.name}</p>
                     </div>
-                    <span className="text-sm font-medium text-center">{section.name}</span>
-                    {section.count !== undefined && (
-                      <Badge variant="secondary" className="mt-1.5 text-xs">
-                        {section.count}
-                      </Badge>
-                    )}
-                    {section.badge && (
-                      <Badge className="mt-1.5 text-xs bg-gradient-to-r from-primary to-primary/80">
-                        {section.badge}
-                      </Badge>
-                    )}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Footer spacer */}
+            {/* Recent Clients */}
+            <Card className="animate-fadeInUp-5 border-0 shadow-md rounded-2xl overflow-hidden">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-blue-500/10">
+                      <Activity className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <CardTitle className="text-base font-bold">Clienti Recenti</CardTitle>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs text-muted-foreground/60 hover:text-foreground"
+                    onClick={() => setLocation("/consultant/clients")}
+                  >
+                    Vedi tutti
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {recentClients.length > 0 ? (
+                    recentClients.map((client: any) => (
+                      <div 
+                        key={client.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                        onClick={() => setLocation(`/consultant/clients`)}
+                      >
+                        <Avatar className="h-10 w-10 shadow-sm">
+                          <AvatarFallback className="text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)', color: '#fff' }}>
+                            {client.firstName?.[0]}{client.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold truncate">
+                            {client.firstName} {client.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground/60 truncate">
+                            {client.email}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-8 text-muted-foreground/60 text-sm">
+                      Nessun cliente recente
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Exercise Trends with Sparkline */}
+            <Card className="animate-fadeInUp-6 border-0 shadow-md rounded-2xl overflow-hidden">
+              <CardHeader className="pb-3 pt-5 px-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-[#6C5CE7]/10">
+                      <TrendingUp className="h-4 w-4 text-[#6C5CE7]" />
+                    </div>
+                    <CardTitle className="text-base font-bold">Trend Esercizi</CardTitle>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs text-muted-foreground/60 hover:text-foreground"
+                    onClick={() => setLocation("/consultant/exercises")}
+                  >
+                    Dettagli
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="flex items-center gap-6 sm:gap-8">
+                  <div className="flex-1">
+                    <div className="flex items-end gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-1">Completamento</p>
+                        <p className="text-3xl font-bold" style={{ color: '#6C5CE7' }}>{exerciseProgress.percentage}%</p>
+                      </div>
+                      <svg width="120" height="40" viewBox="0 0 120 40" className="mb-1">
+                        <defs>
+                          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#6C5CE7" stopOpacity="0.3" />
+                            <stop offset="100%" stopColor="#6C5CE7" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d={sparklinePath + ` L 116,40 L 4,40 Z`}
+                          fill="url(#sparkGrad)"
+                        />
+                        <path
+                          d={sparklinePath}
+                          fill="none"
+                          stroke="#6C5CE7"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {sparklinePoints.map((val, i) => {
+                          const max = Math.max(...sparklinePoints, 1);
+                          const x = 4 + (i / (sparklinePoints.length - 1)) * 112;
+                          const y = 40 - 4 - ((val / max) * 32);
+                          return i === sparklinePoints.length - 1 ? (
+                            <circle key={i} cx={x} cy={y} r="3" fill="#6C5CE7" stroke="white" strokeWidth="1.5" />
+                          ) : null;
+                        })}
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="flex gap-5">
+                    <div className="text-center">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <CheckCircle className="h-3.5 w-3.5 text-[#00B894]" />
+                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Completati</span>
+                      </div>
+                      <p className="text-2xl font-bold text-[#00B894]">{exerciseProgress.completed}</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <RotateCcw className="h-3.5 w-3.5 text-[#FDCB6E]" />
+                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">In Attesa</span>
+                      </div>
+                      <p className="text-2xl font-bold text-[#FDCB6E]">{exerciseProgress.pending}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Referral Link */}
+            <button
+              onClick={() => setLocation("/consultant/referrals")}
+              className="animate-fadeInUp-7 w-full group flex items-center justify-between p-4 rounded-2xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
+              style={{
+                background: 'linear-gradient(135deg, rgba(253,121,168,0.08) 0%, rgba(255,118,117,0.06) 50%, rgba(253,203,110,0.04) 100%)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-pink-500/10">
+                  <Gift className="h-5 w-5 text-pink-500" />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-bold block">Invita un Amico</span>
+                  <span className="text-xs text-muted-foreground/60">Guadagna bonus per ogni cliente portato</span>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-pink-500 transition-all" />
+            </button>
+
             <div className="h-8" />
           </div>
         </div>

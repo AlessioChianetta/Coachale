@@ -1,0 +1,195 @@
+1️⃣ Hero Section più forte (prima impressione)
+Problema attuale
+
+La parte “Buon pomeriggio, Alessio” è corretta ma visivamente piatta.
+
+Miglioramento
+
+Aggiungi foto profilo circolare
+
+Inserisci trend indicator (↑ +12% rispetto a ieri)
+
+Usa un background soft glassmorphism
+
+Esempio:
+
+Sfondo con gradiente molto leggero (grigio → bianco)
+
+Ombra morbida
+
+Blur leggero dietro al “Briefing AI”
+
+👉 Rendi il box “Briefing AI” più centrale e con:
+
+Animazione shimmer lenta
+
+CTA più evidente (es. “Genera briefing”)
+
+2️⃣ KPI Cards più moderne
+
+Attualmente sono buone, ma sembrano “flat”.
+
+Come migliorarle:
+🔹 Aggiungi micro-indicatori
+
+Freccia verde/rossa con % di variazione
+
+Mini grafico sparkline dentro la card
+
+🔹 Gerarchia migliore
+
+Numero molto grande (48–56px)
+Label più piccola e leggera
+
+🔹 Effetto hover
+
+Sollevamento leggero (translateY -4px)
+
+Ombra più profonda
+
+Bordo glow leggero nel colore della card
+
+3️⃣ Riduci la sensazione “box su box”
+
+Ora hai tanti contenitori separati.
+Per un look più moderno:
+
+Aumenta spaziatura verticale
+
+Usa meno bordi
+
+Sostituisci i bordi con:
+
+Ombre morbide
+
+Separazioni invisibili tramite spazio
+
+Il minimal moderno usa spazio, non linee.
+
+4️⃣ Sezione “Richiede Attenzione” più dinamica
+
+Attualmente è troppo rossa e statica.
+
+Migliorala così:
+
+Mantieni rosso solo per lo stato
+
+Card bianche con bordo sinistro colorato
+
+Aggiungi badge stato più elegante (pill)
+
+Esempio:
+
+| 🔴 In Attesa | Luca – Configurazione Conti |
+| 12/09/2025 | → |
+
+Molto più leggibile e meno “alert overload”.
+
+5️⃣ Rendi le Azioni Rapide più premium
+
+Ora sono belle ma molto “app 2020”.
+
+Per modernizzarle:
+
+Aggiungi icona grande + label sotto
+
+Effetto gradiente più soft
+
+Hover con glow animato
+
+Micro animazione al click (scale 0.97)
+
+Oppure rendile:
+
+Rounded 2xl
+
+Leggermente traslucide
+
+Con blur (stile Notion + Linear)
+
+6️⃣ Inserisci una Sidebar moderna (se non esiste)
+
+Una sidebar minimal con:
+
+Icone outline
+
+Indicatore attivo con pill laterale
+
+Hover state molto pulito
+
+Stile:
+
+Linear
+
+Stripe Dashboard
+
+Framer
+
+7️⃣ Tipografia più forte = design immediatamente premium
+
+Usa:
+
+Inter / Geist / SF Pro
+
+Titoli bold 600–700
+
+Testo secondario con opacity 60%
+
+Aumenta contrasto tra:
+
+Titolo
+
+Sottotitolo
+
+Metadati
+
+8️⃣ Introduci Motion Design (fondamentale nel 2026)
+
+Micro-animazioni leggere:
+
+Fade + slide all’ingresso
+
+Skeleton loader per KPI
+
+Pulsazione lenta su “Lead Prioritari”
+
+La motion dà percezione di qualità.
+
+9️⃣ Trend Esercizi: trasformalo in vero grafico
+
+Invece della semplice barra:
+
+Inserisci un mini grafico lineare
+
+Mostra confronto settimana/mese
+
+Tooltip al passaggio mouse
+
+Questo aumenta la sensazione “analytics tool”.
+
+🔥 10️⃣ Aggiungi una sezione “Insight AI”
+
+Subito sotto KPI:
+
+💡 Oggi hai 12 lead caldi non contattati da 3 giorni.
+Ti suggerisco di chiamare Marco prima delle 16:00.
+
+Questo trasforma la dashboard da statica a intelligente.
+
+Palette consigliata più moderna
+
+Invece dei colori attuali, puoi usare:
+
+Primary: #6C5CE7
+
+Accent: #00B894
+
+Warning: #FDCB6E
+
+Danger: #FF7675
+
+Background: #F8FAFC
+
+Oppure vai full minimal:
+
+Grigio + 1 solo colore accent
