@@ -2905,10 +2905,19 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         console.log(`   - Cached tokens: ${clientUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
       }
     } else {
-      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]`);
+      const estInput = systemPromptTokens + userMessageTokens + historyTokens;
+      const estOutput = estimateTokens(accumulatedMessage);
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available - using estimates [CLIENT]`);
+      console.log(`   - Estimated input tokens: ${estInput.toLocaleString()}`);
+      console.log(`   - Estimated output tokens: ${estOutput.toLocaleString()}`);
+      console.log(`   - Estimated total tokens: ${(estInput + estOutput).toLocaleString()}`);
     }
 
     // Track token usage for client chat
+    const estimatedInputTokens = systemPromptTokens + userMessageTokens + historyTokens;
+    const estimatedOutputTokens = estimateTokens(accumulatedMessage);
+    const estimatedThinkingTokens = accumulatedThinking ? estimateTokens(accumulatedThinking) : 0;
+
     tokenTracker.track({
       consultantId,
       clientId,
@@ -2916,11 +2925,11 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       feature: 'client-chat',
       requestType: 'stream',
       keySource: providerMetadata.name || 'unknown',
-      inputTokens: clientUsageMetadata?.promptTokenCount || Math.ceil((accumulatedMessage.length + (accumulatedThinking?.length || 0)) * 0.3),
-      outputTokens: clientUsageMetadata?.candidatesTokenCount || Math.ceil(accumulatedMessage.length * 0.3),
+      inputTokens: clientUsageMetadata?.promptTokenCount || estimatedInputTokens,
+      outputTokens: clientUsageMetadata?.candidatesTokenCount || estimatedOutputTokens,
       cachedTokens: clientUsageMetadata?.cachedContentTokenCount || 0,
-      totalTokens: clientUsageMetadata?.totalTokenCount || Math.ceil((accumulatedMessage.length * 0.6)),
-      thinkingTokens: accumulatedThinking ? Math.ceil(accumulatedThinking.length * 0.3) : 0,
+      totalTokens: clientUsageMetadata?.totalTokenCount || (estimatedInputTokens + estimatedOutputTokens + estimatedThinkingTokens),
+      thinkingTokens: clientUsageMetadata ? 0 : estimatedThinkingTokens,
       durationMs: geminiCallTime,
     }).catch(() => {});
 
@@ -4120,21 +4129,30 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         console.log(`   - Cached tokens: ${consultantUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
       }
     } else {
-      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CONSULTANT]`);
+      const estInput = systemPromptTokens + userMessageTokens + historyTokens;
+      const estOutput = estimateTokens(accumulatedMessage);
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available - using estimates [CONSULTANT]`);
+      console.log(`   - Estimated input tokens: ${estInput.toLocaleString()}`);
+      console.log(`   - Estimated output tokens: ${estOutput.toLocaleString()}`);
+      console.log(`   - Estimated total tokens: ${(estInput + estOutput).toLocaleString()}`);
     }
 
     // Track token usage for consultant chat
+    const estimatedInputTokens = systemPromptTokens + userMessageTokens + historyTokens;
+    const estimatedOutputTokens = estimateTokens(accumulatedMessage);
+    const estimatedThinkingTokens = accumulatedThinking ? estimateTokens(accumulatedThinking) : 0;
+
     tokenTracker.track({
       consultantId,
       model: consultantDynamicConfig.model,
       feature: 'consultant-chat',
       requestType: 'stream',
       keySource: providerMetadata.name || 'unknown',
-      inputTokens: consultantUsageMetadata?.promptTokenCount || Math.ceil((accumulatedMessage.length + (accumulatedThinking?.length || 0)) * 0.3),
-      outputTokens: consultantUsageMetadata?.candidatesTokenCount || Math.ceil(accumulatedMessage.length * 0.3),
+      inputTokens: consultantUsageMetadata?.promptTokenCount || estimatedInputTokens,
+      outputTokens: consultantUsageMetadata?.candidatesTokenCount || estimatedOutputTokens,
       cachedTokens: consultantUsageMetadata?.cachedContentTokenCount || 0,
-      totalTokens: consultantUsageMetadata?.totalTokenCount || Math.ceil((accumulatedMessage.length * 0.6)),
-      thinkingTokens: accumulatedThinking ? Math.ceil(accumulatedThinking.length * 0.3) : 0,
+      totalTokens: consultantUsageMetadata?.totalTokenCount || (estimatedInputTokens + estimatedOutputTokens + estimatedThinkingTokens),
+      thinkingTokens: consultantUsageMetadata ? 0 : estimatedThinkingTokens,
       durationMs: geminiCallTime,
     }).catch(() => {});
 
