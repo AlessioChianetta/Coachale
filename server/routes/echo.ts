@@ -640,7 +640,7 @@ router.post("/extract-tasks", async (req: any, res) => {
     // Use AI to extract tasks from transcript
     const { getAIProvider, getModelWithThinking } = await import("../ai/provider-factory");
     const aiProvider = await getAIProvider(consultantId, consultantId);
-    aiProvider.setFeature?.('echo');
+    aiProvider.setFeature?.('consultation-tasks');
 
     const prompt = `Analizza la seguente trascrizione di una consulenza e identifica TUTTE le azioni concrete, compiti e follow-up discussi.
 

@@ -52,6 +52,7 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'dashboard-insights': { label: 'Dashboard', category: 'Principale', icon: 'Home' },
   'data-analysis': { label: 'Analisi Dati', category: 'Lavoro Quotidiano', icon: 'BarChart3' },
   'personal-tasks': { label: 'Task', category: 'Lavoro Quotidiano', icon: 'ListTodo' },
+  'consultation-tasks': { label: 'Task', category: 'Lavoro Quotidiano', icon: 'ListTodo' },
   'checkin-personalization': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
   'email-automated': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
   'email-generator': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
