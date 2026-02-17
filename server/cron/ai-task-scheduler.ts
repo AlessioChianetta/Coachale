@@ -1935,21 +1935,28 @@ FORMATO JSON quando è un task nuovo (come prima):
       if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
       cleaned = cleaned.trim();
 
+      const escapeNewlinesInStrings = (text: string): string => {
+        return text.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+          return match.replace(/\r\n/g, '\\n').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+        });
+      };
+
       try {
         parsed = JSON.parse(cleaned);
       } catch (e1) {
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            parsed = JSON.parse(jsonMatch[0]);
-          } catch {
+        try {
+          const preFixed = escapeNewlinesInStrings(cleaned);
+          parsed = JSON.parse(preFixed);
+        } catch {
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
             try {
-              const fixed = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
-              parsed = JSON.parse(fixed);
+              const repaired = escapeNewlinesInStrings(jsonMatch[0]);
+              parsed = JSON.parse(repaired);
             } catch {
               try {
-                const repaired = jsonMatch[0].replace(/[\n\r]/g, '\\n').replace(/\t/g, '\\t');
-                parsed = JSON.parse(repaired);
+                const fixed = escapeNewlinesInStrings(jsonMatch[0]).replace(/,\s*([}\]])/g, '$1');
+                parsed = JSON.parse(fixed);
               } catch {
                 console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
                 console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
@@ -1958,23 +1965,23 @@ FORMATO JSON quando è un task nuovo (come prima):
                 continue;
               }
             }
-          }
-        } else {
-          const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
-          if (arrayMatch) {
-            try {
-              const arr = JSON.parse(arrayMatch[0]);
-              parsed = { tasks: Array.isArray(arr) ? arr : [] };
-            } catch {
-              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse array response`);
+          } else {
+            const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              try {
+                const arr = JSON.parse(arrayMatch[0]);
+                parsed = { tasks: Array.isArray(arr) ? arr : [] };
+              } catch {
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse array response`);
+                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+                continue;
+              }
+            } else {
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] No JSON found in response (length: ${responseText.length}, firstCharCode: ${responseText.charCodeAt(0)})`);
               console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+              console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
               continue;
             }
-          } else {
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] No JSON found in response (length: ${responseText.length}, firstCharCode: ${responseText.charCodeAt(0)})`);
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
-            console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
-            continue;
           }
         }
       }
