@@ -1,0 +1,54 @@
+Uncaught Error: Invariant failed: Specifying a(n) yAxisId requires a corresponding yAxisId on the targeted graphical component Line
+    at invariant (recharts.js?v=1b6b45cf:13992:9)
+    at recharts.js?v=1b6b45cf:29929:74
+    at Array.reduce (<anonymous>)
+    at recharts.js?v=1b6b45cf:29925:36
+    at Array.forEach (<anonymous>)
+    at getFormatItems2 (recharts.js?v=1b6b45cf:29914:20)
+    at updateStateOfAxisMapsOffsetAndStackGroups2 (recharts.js?v=1b6b45cf:30022:35)
+    at recharts.js?v=1b6b45cf:30992:10
+    at applyDerivedStateFromProps (chunk-RPCDYKBN.js?v=1b6b45cf:13432:30)
+    at mountClassInstance (chunk-RPCDYKBN.js?v=1b6b45cf:13802:13)Understand this error
+injected.js:37 The above error occurred in the <LineChart> component:
+
+    at CategoricalChartWrapper2 (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/recharts.js?v=1b6b45cf:30041:7)
+    at CategoricalChart2
+    at div
+    at https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/recharts.js?v=1b6b45cf:8500:21
+    at div
+    at _c9 (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at main
+    at div
+    at div
+    at ConsultantAIUsagePage (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/pages/consultant-ai-usage.tsx:59:20)
+    at AuthGuard (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b6b45cf:226:16)
+    at Switch (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b6b45cf:283:17)
+    at Suspense
+    at Router (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/App.tsx?v=U0uwINTwj68-mdG6hrki7:322:35)
+    at Provider (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=1b6b45cf:44:15)
+    at TooltipProvider (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1b6b45cf:158:5)
+    at TourProvider (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1b6b45cf:3096:3)
+    at V (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=1b6b45cf:44:25)
+    at J (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=1b6b45cf:42:18)
+    at App (https://527b39d1-ec17-4c92-b8bb-482de818de3b-00-2rgq69ppnblrj.picard.replit.dev/src/App.tsx?v=U0uwINTwj68-mdG6hrki7:2033:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-RPCDYKBN.js?v=1b6b45cf:19413 Uncaught Error: Invariant failed: Specifying a(n) yAxisId requires a corresponding yAxisId on the targeted graphical component Line
+    at invariant (recharts.js?v=1b6b45cf:13992:9)
+    at recharts.js?v=1b6b45cf:29929:74
+    at Array.reduce (<anonymous>)
+    at recharts.js?v=1b6b45cf:29925:36
+    at Array.forEach (<anonymous>)
+    at getFormatItems2 (recharts.js?v=1b6b45cf:29914:20)
+    at updateStateOfAxisMapsOffsetAndStackGroups2 (recharts.js?v=1b6b45cf:30022:35)
+    at recharts.js?v=1b6b45cf:30992:10
+    at applyDerivedStateFromProps (chunk-RPCDYKBN.js?v=1b6b45cf:13432:30)
+    at mountClassInstance (chunk-RPCDYKBN.js?v=1b6b45cf:13802:13)Understand this error

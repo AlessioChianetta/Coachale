@@ -170,7 +170,7 @@ export default function ConsultantAIUsagePage() {
                         contentStyle={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px" }}
                       />
                       <Line type="monotone" dataKey="cost" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Costo" />
-                      <Line type="monotone" dataKey="tokens" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Token" yAxisId="right" hide />
+                      <Line type="monotone" dataKey="tokens" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Token" hide />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
