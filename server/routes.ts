@@ -5859,7 +5859,8 @@ REGOLE:
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 800,
+          maxOutputTokens: 2048,
+          thinkingConfig: { thinkingBudget: 0 },
         }
       });
 
