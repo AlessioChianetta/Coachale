@@ -605,8 +605,7 @@ router.post("/consultant/ai-email/test-generate", authenticateToken, requireRole
 
     // Generate tracking pixel URL
     const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
-    const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+    const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
     console.log(`🔍 [TRACKING PIXEL] Test email - Email Log ID: ${emailLog.id}`);
     console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
@@ -1154,8 +1153,7 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
 
     // Generate tracking pixel URL and enhance HTML
     const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("../services/email-html-wrapper");
-    const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
-    const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+    const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
     console.log(`🔍 [TRACKING PIXEL] Draft approval send - Email Log ID: ${emailLog.id}`);
     console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);

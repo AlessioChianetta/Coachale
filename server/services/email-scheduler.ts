@@ -356,8 +356,7 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
           });
           
           const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("./email-html-wrapper");
-          const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
-          const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+          const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
           const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
           console.log(`🔍 [TRACKING PIXEL] Draft auto-send - Email Log ID: ${emailLog.id}`);
           console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
@@ -696,8 +695,7 @@ async function sendAutomatedEmailToClient(client: {
       
       // Generate tracking pixel and enhance email body
       const { generateTrackingPixelUrl, enhanceEmailTypography } = await import("./email-html-wrapper");
-      const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
-      const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
+      const baseUrl = process.env.EMAIL_BASE_URL || (() => { const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || ''; return rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000'; })();
       const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
       console.log(`🔍 [TRACKING PIXEL] Auto-generated email - Email Log ID: ${emailLog.id}`);
       console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);

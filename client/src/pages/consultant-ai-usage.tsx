@@ -53,6 +53,8 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'data-analysis': { label: 'Analisi Dati', category: 'Lavoro Quotidiano', icon: 'BarChart3' },
   'personal-tasks': { label: 'Task', category: 'Lavoro Quotidiano', icon: 'ListTodo' },
   'checkin-personalization': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
+  'email-automated': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
+  'email-generator': { label: 'Email Journey', category: 'Lavoro Quotidiano', icon: 'Sparkles' },
   'whatsapp-agent-response': { label: 'Dipendenti WhatsApp', category: 'Comunicazione', icon: 'MessageSquare' },
   'whatsapp-agent': { label: 'Dipendenti WhatsApp', category: 'Comunicazione', icon: 'MessageSquare' },
   'whatsapp-image-analysis': { label: 'Dipendenti WhatsApp', category: 'Comunicazione', icon: 'MessageSquare' },
