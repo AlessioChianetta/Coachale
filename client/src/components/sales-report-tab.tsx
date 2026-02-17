@@ -634,7 +634,7 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
               </Button>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" className="text-base font-semibold capitalize hover:bg-muted/50 px-2 h-auto py-1">
+                  <Button variant="outline" className="text-base font-semibold capitalize px-3 h-auto py-1.5">
                     {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })}
                   </Button>
                 </PopoverTrigger>
