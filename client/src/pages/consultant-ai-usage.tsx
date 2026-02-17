@@ -677,7 +677,7 @@ export default function ConsultantAIUsagePage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {clientData.map((row: any, i: number) => {
+                            {clientData.filter((row: any) => (row.totalTokens || 0) > 0 || row.clientRole === 'consultant').map((row: any, i: number) => {
                               const hasData = (row.totalTokens || 0) > 0;
                               const userId = row.clientRole === 'consultant' ? 'self' : row.clientId;
                               const isUserExpanded = userId && expandedUsers.has(userId);
