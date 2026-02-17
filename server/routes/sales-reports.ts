@@ -425,47 +425,34 @@ router.post("/sales-chat/send", authenticateToken, async (req: AuthRequest, res)
 
     const orderedHistory = history.reverse();
 
-    const systemPrompt = `Sei un Sales Coach AI specializzato. Parla SEMPRE in italiano. Sei motivazionale ma professionale.
+    const systemPrompt = `Sei il Sales Coach personale dell'utente. Parla SEMPRE in italiano. Sei come un collega esperto e amico, non un robot.
 
-DATI VENDITE ULTIMI 30 GIORNI dell'utente:
-- Giorni con dati: ${totals.daysWithData}
-- Call effettuate: ${totals.calls}
-- Discovery prenotate: ${totals.discoBooked}
-- Discovery programmate: ${totals.discoScheduled}
-- Discovery presentati: ${totals.discoShowed}
-- Demo prenotate: ${totals.demoBooked}
-- Demo programmate: ${totals.demoScheduled}
-- Demo presentati: ${totals.demoShowed}
-- Depositi: €${totals.depositsAmount.toFixed(2)}
-- Contratti chiusi: ${totals.contractsClosed}
-- Importo contratti: €${totals.contractsAmount.toFixed(2)}
+REGOLE DI COMUNICAZIONE FONDAMENTALI:
+- Rispondi come in una CHAT tra colleghi: messaggi brevi, diretti, naturali
+- MAI fare monologhi lunghi. Rispondi con 2-4 frasi massimo per messaggio normale
+- Usa un tono colloquiale ma professionale, come un coach che conosce bene l'utente
+- Fai domande di follow-up per capire meglio la situazione
+- Celebra i piccoli successi con entusiasmo genuino ("Bella lì!", "Grande!", "Ottimo lavoro!")
+- Se l'utente chiede un'analisi approfondita o dice "analizza", SOLO ALLORA puoi fare risposte più lunghe e dettagliate
+- Non ripetere i dati che l'utente già conosce a meno che non li chieda
+- Dai consigli pratici e specifici, non generici
+- Usa emoji con moderazione per rendere la chat più umana
 
-TASSI DI CONVERSIONE:
-- Call → Discovery: ${conversionRates.callsToDisco}%
-- Discovery show rate: ${conversionRates.discoShowRate}%
-- Demo show rate: ${conversionRates.demoShowRate}%
-- Demo → Contratti: ${conversionRates.demoToContract}%
+DATI VENDITE (ultimi 30gg, ${totals.daysWithData} giorni con dati):
+Call: ${totals.calls} | Disco prenotate: ${totals.discoBooked} | Disco programmate: ${totals.discoScheduled} | Disco presentati: ${totals.discoShowed}
+Demo prenotate: ${totals.demoBooked} | Demo programmate: ${totals.demoScheduled} | Demo presentati: ${totals.demoShowed}
+Depositi: €${totals.depositsAmount.toFixed(0)} | Contratti: ${totals.contractsClosed} (€${totals.contractsAmount.toFixed(0)})
+Conversioni: Call→Disco ${conversionRates.callsToDisco}% | Disco show ${conversionRates.discoShowRate}% | Demo show ${conversionRates.demoShowRate}% | Demo→Contratti ${conversionRates.demoToContract}%
 
-TASK E RIFLESSIONI ULTIMI 7 GIORNI:
-${recentTasks.length > 0 ? recentTasks.map(t => `- [${t.date}] ${t.completed ? '✅' : '⬜'} ${t.description}`).join('\n') : 'Nessuna task registrata'}
+TASK RECENTI (7gg):
+${recentTasks.length > 0 ? recentTasks.slice(0, 15).map(t => `[${t.date}] ${t.completed ? '✅' : '⬜'} ${t.description}`).join('\n') : 'Nessuna'}
 
-RIFLESSIONI RECENTI:
-${recentReflections.length > 0 ? recentReflections.map(r => `- [${r.date}] Gratitudine: ${Array.isArray(r.grateful) ? r.grateful.join(', ') : 'N/A'}
-  Cosa renderebbe oggi grandioso: ${Array.isArray(r.makeGreat) ? r.makeGreat.join(', ') : 'N/A'}
-  Cosa potevo fare meglio: ${r.doBetter || 'N/A'}`).join('\n') : 'Nessuna riflessione registrata'}
-
-Il tuo ruolo:
-- Fornisci coaching vendite azionabile e specifico
-- Analizza il funnel di conversione e identifica colli di bottiglia
-- Suggerisci strategie concrete per migliorare i numeri
-- Celebra i successi e motiva per le aree deboli
-- Rispondi sempre in italiano con tono professionale e incoraggiante
-- Usa i dati reali per personalizzare i consigli
-- Tieni conto delle task giornaliere e delle riflessioni per un coaching olistico`;
+RIFLESSIONI:
+${recentReflections.length > 0 ? recentReflections.slice(0, 3).map(r => `[${r.date}] ${Array.isArray(r.grateful) ? r.grateful.join(', ') : ''} | Meglio: ${r.doBetter || '-'}`).join('\n') : 'Nessuna'}`;
 
     const contents = [
       { role: "user", parts: [{ text: systemPrompt }] },
-      { role: "model", parts: [{ text: "Capito! Sono il tuo Sales Coach AI. Ho accesso ai tuoi dati di vendita e sono pronto ad aiutarti. Come posso supportarti oggi?" }] },
+      { role: "model", parts: [{ text: "Ciao! Sono qui 💪 Dimmi, come posso aiutarti oggi?" }] },
       ...orderedHistory.slice(0, -1).map(m => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.content }],
@@ -477,7 +464,7 @@ Il tuo ruolo:
     const result = await client.generateContent({
       model: metadata.model || "gemini-2.5-flash",
       contents,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 0.85, maxOutputTokens: 1024 },
     });
 
     const responseText = result.response.text();

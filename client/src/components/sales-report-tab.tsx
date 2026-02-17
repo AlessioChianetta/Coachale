@@ -53,8 +53,6 @@ interface ChatMessage {
 interface SalesReportTabProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
-  chatOpen: boolean;
-  setChatOpen: (open: boolean) => void;
 }
 
 const emptyReport = {
@@ -493,7 +491,7 @@ export function SalesChatPanel({ onClose, getAiRange }: { onClose: () => void; g
   );
 }
 
-export default function SalesReportTab({ selectedDate, onDateChange, chatOpen, setChatOpen }: SalesReportTabProps) {
+export default function SalesReportTab({ selectedDate, onDateChange }: SalesReportTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [view, setView] = useState("day");
@@ -626,122 +624,124 @@ export default function SalesReportTab({ selectedDate, onDateChange, chatOpen, s
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="day" className="space-y-4 mt-4">
+        <TabsContent value="day" className="space-y-5 mt-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => onDateChange(addDays(selectedDate, -1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onDateChange(addDays(selectedDate, -1))}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-base font-semibold capitalize">
                 {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })}
               </h2>
-              <Button variant="outline" size="icon" onClick={() => onDateChange(addDays(selectedDate, 1))}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onDateChange(addDays(selectedDate, 1))}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hasChanges} className="gap-2">
-              {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salva
+            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hasChanges} size="sm" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md">
+              {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              Salva Report
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-blue-500" />
-                  Chiamate & Discovery
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Call effettuate</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.calls} onChange={e => updateField("calls", parseInt(e.target.value) || 0)} />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-200/20 dark:bg-blue-400/5 rounded-full -mr-6 -mt-6" />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                  <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Disco Prenotate</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.discoBooked} onChange={e => updateField("discoBooked", parseInt(e.target.value) || 0)} />
+                <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">Prospecting</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-blue-700/70 dark:text-blue-300/70 mb-1 block">Call effettuate</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-blue-200 dark:border-blue-800 text-right font-medium" value={formData.calls} onChange={e => updateField("calls", parseInt(e.target.value) || 0)} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <label className="text-xs text-blue-700/70 dark:text-blue-300/70 mb-1 block">Disco Prenotate</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-blue-200 dark:border-blue-800 text-right font-medium" value={formData.discoBooked} onChange={e => updateField("discoBooked", parseInt(e.target.value) || 0)} />
+                </div>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="w-4 h-4 text-green-500" />
-                  Discovery del Giorno
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Disco Programmate</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.discoScheduled} onChange={e => updateField("discoScheduled", parseInt(e.target.value) || 0)} />
+            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/20 dark:to-green-950/20 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-200/20 dark:bg-emerald-400/5 rounded-full -mr-6 -mt-6" />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg">
+                  <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Presentati</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.discoShowed} onChange={e => updateField("discoShowed", parseInt(e.target.value) || 0)} />
+                <span className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Discovery</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-emerald-700/70 dark:text-emerald-300/70 mb-1 block">Programmate</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-emerald-200 dark:border-emerald-800 text-right font-medium" value={formData.discoScheduled} onChange={e => updateField("discoScheduled", parseInt(e.target.value) || 0)} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Demo Prenotate</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.demoBooked} onChange={e => updateField("demoBooked", parseInt(e.target.value) || 0)} />
+                <div>
+                  <label className="text-xs text-emerald-700/70 dark:text-emerald-300/70 mb-1 block">Presentati</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-emerald-200 dark:border-emerald-800 text-right font-medium" value={formData.discoShowed} onChange={e => updateField("discoShowed", parseInt(e.target.value) || 0)} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <label className="text-xs text-emerald-700/70 dark:text-emerald-300/70 mb-1 block">Demo Prenotate</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-emerald-200 dark:border-emerald-800 text-right font-medium" value={formData.demoBooked} onChange={e => updateField("demoBooked", parseInt(e.target.value) || 0)} />
+                </div>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-purple-500" />
-                  Demo del Giorno
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Demo Programmate</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.demoScheduled} onChange={e => updateField("demoScheduled", parseInt(e.target.value) || 0)} />
+            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-200/20 dark:bg-purple-400/5 rounded-full -mr-6 -mt-6" />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                  <CalendarDays className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Presentati</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.demoShowed} onChange={e => updateField("demoShowed", parseInt(e.target.value) || 0)} />
+                <span className="text-sm font-semibold text-purple-900 dark:text-purple-200">Demo</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-purple-700/70 dark:text-purple-300/70 mb-1 block">Programmate</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-purple-200 dark:border-purple-800 text-right font-medium" value={formData.demoScheduled} onChange={e => updateField("demoScheduled", parseInt(e.target.value) || 0)} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <label className="text-xs text-purple-700/70 dark:text-purple-300/70 mb-1 block">Presentati</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-purple-200 dark:border-purple-800 text-right font-medium" value={formData.demoShowed} onChange={e => updateField("demoShowed", parseInt(e.target.value) || 0)} />
+                </div>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-amber-500" />
-                  Risultati
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Depositi (€)</Label>
-                  <Input type="number" min={0} step="0.01" className="w-28 text-right" value={formData.depositsAmount} onChange={e => updateField("depositsAmount", e.target.value)} />
+            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-amber-200/20 dark:bg-amber-400/5 rounded-full -mr-6 -mt-6" />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
+                  <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Contratti Chiusi</Label>
-                  <Input type="number" min={0} className="w-24 text-right" value={formData.contractsClosed} onChange={e => updateField("contractsClosed", parseInt(e.target.value) || 0)} />
+                <span className="text-sm font-semibold text-amber-900 dark:text-amber-200">Risultati</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-amber-700/70 dark:text-amber-300/70 mb-1 block">Depositi (€)</label>
+                  <Input type="number" min={0} step="0.01" className="h-9 bg-white/80 dark:bg-gray-900/50 border-amber-200 dark:border-amber-800 text-right font-medium" value={formData.depositsAmount} onChange={e => updateField("depositsAmount", e.target.value)} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Importo Contratti (€)</Label>
-                  <Input type="number" min={0} step="0.01" className="w-28 text-right" value={formData.contractsAmount} onChange={e => updateField("contractsAmount", e.target.value)} />
+                <div>
+                  <label className="text-xs text-amber-700/70 dark:text-amber-300/70 mb-1 block">Contratti Chiusi</label>
+                  <Input type="number" min={0} className="h-9 bg-white/80 dark:bg-gray-900/50 border-amber-200 dark:border-amber-800 text-right font-medium" value={formData.contractsClosed} onChange={e => updateField("contractsClosed", parseInt(e.target.value) || 0)} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <label className="text-xs text-amber-700/70 dark:text-amber-300/70 mb-1 block">Importo Contratti (€)</label>
+                  <Input type="number" min={0} step="0.01" className="h-9 bg-white/80 dark:bg-gray-900/50 border-amber-200 dark:border-amber-800 text-right font-medium" value={formData.contractsAmount} onChange={e => updateField("contractsAmount", e.target.value)} />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="w-4 h-4 text-gray-500" />
-                Note
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea placeholder="Note sul giorno, motivi, riflessioni..." value={formData.notes} onChange={e => updateField("notes", e.target.value)} rows={3} />
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/20 dark:to-slate-950/20 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">Note & Riflessioni</span>
+            </div>
+            <Textarea placeholder="Come è andata oggi? Appunti, riflessioni, strategie per domani..." value={formData.notes} onChange={e => updateField("notes", e.target.value)} rows={3} className="bg-white/80 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 resize-none" />
+          </div>
         </TabsContent>
 
         <TabsContent value="week" className="space-y-4 mt-4">
@@ -784,21 +784,6 @@ export default function SalesReportTab({ selectedDate, onDateChange, chatOpen, s
           <SalesGoalsSection monthReports={currentMonthReports} monthDate={new Date()} dailyReports={dayReport ? [dayReport] : []} selectedDate={selectedDate} />
         </TabsContent>
       </Tabs>
-
-      <Card className="border-dashed">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Bot className="w-4 h-4 text-violet-500" />
-              Sales Coach AI
-            </CardTitle>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setChatOpen(true)}>
-              <MessageCircle className="w-3.5 h-3.5" />
-              Chatta con il Coach
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
     </div>
   );
 }

@@ -13,7 +13,7 @@ import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { usePageContext } from "@/hooks/use-page-context";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Menu, CheckSquare, HelpCircle, BarChart3 } from "lucide-react";
+import { Menu, CheckSquare, HelpCircle, BarChart3, MessageCircle, Bot } from "lucide-react";
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { driverConfig } from '@/lib/tour/driver-config';
@@ -330,6 +330,14 @@ export default function ClientDailyTasks() {
                           {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd") && t.completed).length}
                         </span>
                       </div>
+                      <button
+                        onClick={() => setChatOpen(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-950/50 transition-colors cursor-pointer"
+                      >
+                        <Bot className="w-3.5 h-3.5 text-violet-500" />
+                        <span className="text-xs font-medium text-violet-700 dark:text-violet-300">Coach AI</span>
+                        <MessageCircle className="w-3.5 h-3.5 text-violet-400" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -376,7 +384,7 @@ export default function ClientDailyTasks() {
                 </TabsContent>
 
                 <TabsContent value="sales">
-                  <SalesReportTab selectedDate={selectedDate} onDateChange={setSelectedDate} chatOpen={chatOpen} setChatOpen={setChatOpen} />
+                  <SalesReportTab selectedDate={selectedDate} onDateChange={setSelectedDate} />
                 </TabsContent>
               </Tabs>
             </div>
