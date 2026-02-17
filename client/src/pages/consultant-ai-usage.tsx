@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
@@ -21,7 +21,7 @@ import {
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
   BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
-  ArrowLeft, CalendarIcon, Menu
+  ArrowLeft, CalendarIcon, Menu, RefreshCw
 } from "lucide-react";
 import {
   AreaChart,
@@ -283,8 +283,10 @@ function FeatureIcon({ name, className, style }: { name: string; className?: str
 }
 
 export default function ConsultantAIUsagePage() {
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
     to: new Date(),
@@ -305,6 +307,17 @@ export default function ConsultantAIUsagePage() {
     setDateRange({ from, to });
     setPresetLabel(label);
     setCalendarOpen(false);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && key.startsWith('/api/ai-usage');
+      },
+    });
+    setTimeout(() => setIsRefreshing(false), 800);
   };
 
   const dateLabel = useMemo(() => {
@@ -555,6 +568,17 @@ export default function ConsultantAIUsagePage() {
                     </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="bg-white/15 hover:bg-white/25 border-0 text-white backdrop-blur-sm shadow-none h-9 w-9"
+                    title="Aggiorna dati"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </Button>
                 <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="secondary" className="bg-white/15 hover:bg-white/25 border-0 text-white backdrop-blur-sm gap-2 shadow-none">
@@ -609,6 +633,7 @@ export default function ConsultantAIUsagePage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                </div>
               </div>
             </div>
 
