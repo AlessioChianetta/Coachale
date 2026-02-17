@@ -10324,3 +10324,64 @@ export const aiTaskBlocks = pgTable("ai_task_blocks", {
 
 export type AITaskBlock = typeof aiTaskBlocks.$inferSelect;
 export type InsertAITaskBlock = typeof aiTaskBlocks.$inferInsert;
+
+export const aiTokenUsage = pgTable("ai_token_usage", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  clientId: varchar("client_id"),
+  clientRole: text("client_role"),
+  keySource: text("key_source").notNull().default("unknown"),
+  model: text("model").notNull(),
+  feature: text("feature").notNull().default("unknown"),
+  requestType: text("request_type").notNull().default("generate"),
+  thinkingLevel: text("thinking_level"),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  cachedTokens: integer("cached_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  thinkingTokens: integer("thinking_tokens").notNull().default(0),
+  inputCost: numeric("input_cost", { precision: 10, scale: 6 }).notNull().default("0"),
+  outputCost: numeric("output_cost", { precision: 10, scale: 6 }).notNull().default("0"),
+  cacheSavings: numeric("cache_savings", { precision: 10, scale: 6 }).notNull().default("0"),
+  totalCost: numeric("total_cost", { precision: 10, scale: 6 }).notNull().default("0"),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  hasFileSearch: boolean("has_file_search").default(false),
+  hasTools: boolean("has_tools").default(false),
+  error: boolean("error").default(false),
+  durationMs: integer("duration_ms"),
+}, (table) => ({
+  consultantIdx: index("idx_token_usage_consultant").on(table.consultantId),
+  clientIdx: index("idx_token_usage_client").on(table.clientId),
+  createdIdx: index("idx_token_usage_created").on(table.createdAt),
+  featureIdx: index("idx_token_usage_feature").on(table.feature),
+  modelIdx: index("idx_token_usage_model").on(table.model),
+  consultantDtIdx: index("idx_token_usage_consultant_dt").on(table.consultantId, table.createdAt),
+}));
+
+export type AITokenUsage = typeof aiTokenUsage.$inferSelect;
+export type InsertAITokenUsage = typeof aiTokenUsage.$inferInsert;
+
+export const aiTokenUsageDaily = pgTable("ai_token_usage_daily", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  clientId: varchar("client_id"),
+  clientRole: text("client_role"),
+  model: text("model").notNull(),
+  feature: text("feature").notNull(),
+  date: date("date").notNull(),
+  requestCount: integer("request_count").notNull().default(0),
+  totalInputTokens: integer("total_input_tokens").notNull().default(0),
+  totalOutputTokens: integer("total_output_tokens").notNull().default(0),
+  totalCachedTokens: integer("total_cached_tokens").notNull().default(0),
+  totalThinkingTokens: integer("total_thinking_tokens").notNull().default(0),
+  totalCost: numeric("total_cost", { precision: 10, scale: 6 }).notNull().default("0"),
+  avgDurationMs: integer("avg_duration_ms"),
+  errorCount: integer("error_count").notNull().default(0),
+}, (table) => ({
+  consultantDateIdx: index("idx_daily_consultant").on(table.consultantId, table.date),
+  clientDateIdx: index("idx_daily_client").on(table.clientId, table.date),
+  uniqueEntry: unique().on(table.consultantId, table.clientId, table.model, table.feature, table.date),
+}));
+
+export type AITokenUsageDaily = typeof aiTokenUsageDaily.$inferSelect;
+export type InsertAITokenUsageDaily = typeof aiTokenUsageDaily.$inferInsert;

@@ -567,6 +567,7 @@ router.post("/enhance-instructions", authenticateToken, async (req: AuthRequest,
     if (!providerResult || !providerResult.client) {
       return res.status(503).json({ error: "AI non disponibile. Configura le impostazioni AI." });
     }
+    providerResult.setFeature?.('chat-assistant');
 
     console.log(`✅ [AI ENHANCEMENT] Using provider: ${providerResult.metadata.name}`);
     console.log(`   - Enhancement mode: ${mode}`);
@@ -701,6 +702,7 @@ router.get("/agent/:agentId/suggestions", authenticateToken, async (req: AuthReq
       const defaultSuggestions = getDefaultSuggestions();
       return res.json({ suggestions: defaultSuggestions, source: "default" });
     }
+    providerResult.setFeature?.('chat-assistant');
 
     // Build a COMPACT context for suggestions (not the full WhatsApp sales prompt)
     const buildSuggestionsContext = () => {

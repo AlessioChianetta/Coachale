@@ -14,9 +14,17 @@ import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
 import { decrypt } from "../encryption";
 import { rateLimitedGeminiCall } from "./gemini-rate-limiter";
+import { tokenTracker, TrackUsageParams } from "./token-tracker";
 import fs from "fs";
 import path from "path";
 import os from "os";
+
+export interface TrackingContext {
+  consultantId: string;
+  clientId?: string;
+  keySource: string;
+  feature: string;
+}
 
 /**
  * Gemini Model Configuration
@@ -184,9 +192,14 @@ export interface GeminiClient {
 class VertexAIClientAdapter implements GeminiClient {
   private currentModelName: string;
   public vertexAI?: VertexAI;
+  public trackingContext: TrackingContext | null = null;
 
   constructor(private model: GenerativeModel, modelName: string = 'gemini-2.5-flash') {
     this.currentModelName = modelName;
+  }
+
+  setTrackingContext(ctx: TrackingContext) {
+    this.trackingContext = ctx;
   }
 
   async generateContent(params: {
@@ -197,6 +210,7 @@ class VertexAIClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
+    const startTime = Date.now();
     const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
     const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
@@ -219,6 +233,29 @@ class VertexAIClientAdapter implements GeminiClient {
       }),
       { context: `VertexAI.generateContent(${params.model || this.currentModelName})` }
     );
+
+    if (this.trackingContext) {
+      const usage = (result as any).response?.usageMetadata || (result as any).usageMetadata;
+      if (usage) {
+        tokenTracker.track({
+          consultantId: this.trackingContext.consultantId,
+          clientId: this.trackingContext.clientId,
+          model: params.model || this.currentModelName,
+          feature: this.trackingContext.feature || 'unknown',
+          requestType: 'generate',
+          keySource: this.trackingContext.keySource,
+          inputTokens: usage.promptTokenCount || 0,
+          outputTokens: usage.candidatesTokenCount || 0,
+          cachedTokens: usage.cachedContentTokenCount || 0,
+          thinkingTokens: usage.thoughtsTokenCount || 0,
+          totalTokens: usage.totalTokenCount || 0,
+          durationMs: Date.now() - startTime,
+          hasTools: !!(params.tools && params.tools.length > 0),
+          hasFileSearch: false,
+          error: false,
+        }).catch(e => console.error('[TokenTracker] vertex track error:', e));
+      }
+    }
 
     // Store candidates for function call extraction
     const candidates = result.response?.candidates;
@@ -299,6 +336,9 @@ class VertexAIClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<AsyncIterable<GeminiStreamChunk>> {
+    const startTime = Date.now();
+    const trackingCtx = this.trackingContext;
+    const modelName = params.model || this.currentModelName;
     const { systemInstruction: legacySystemInstruction, ...restConfig } = params.generationConfig || {};
     const finalSystemInstruction = params.systemInstruction || legacySystemInstruction;
 
@@ -319,12 +359,16 @@ class VertexAIClientAdapter implements GeminiClient {
         ...(params.tools && { tools: params.tools }),
         ...(params.toolConfig && { toolConfig: params.toolConfig }),
       }),
-      { context: `VertexAI.generateContentStream(${params.model || this.currentModelName})` }
+      { context: `VertexAI.generateContentStream(${modelName})` }
     );
 
     return {
       async *[Symbol.asyncIterator]() {
+        let lastUsageMetadata: any = null;
         for await (const chunk of streamResult.stream) {
+          if ((chunk as any).usageMetadata) {
+            lastUsageMetadata = (chunk as any).usageMetadata;
+          }
           const candidates = chunk.candidates?.map((c: any) => ({
             content: {
               parts: c.content?.parts?.map((p: any) => ({
@@ -338,6 +382,26 @@ class VertexAIClientAdapter implements GeminiClient {
           
           yield { text, candidates };
         }
+
+        if (trackingCtx && lastUsageMetadata) {
+          tokenTracker.track({
+            consultantId: trackingCtx.consultantId,
+            clientId: trackingCtx.clientId,
+            model: modelName,
+            feature: trackingCtx.feature || 'unknown',
+            requestType: 'stream',
+            keySource: trackingCtx.keySource,
+            inputTokens: lastUsageMetadata.promptTokenCount || 0,
+            outputTokens: lastUsageMetadata.candidatesTokenCount || 0,
+            cachedTokens: lastUsageMetadata.cachedContentTokenCount || 0,
+            thinkingTokens: lastUsageMetadata.thoughtsTokenCount || 0,
+            totalTokens: lastUsageMetadata.totalTokenCount || 0,
+            durationMs: Date.now() - startTime,
+            hasTools: !!(params.tools && params.tools.length > 0),
+            hasFileSearch: false,
+            error: false,
+          }).catch(e => console.error('[TokenTracker] vertex stream track error:', e));
+        }
       }
     };
   }
@@ -348,7 +412,13 @@ class VertexAIClientAdapter implements GeminiClient {
  * Translates the GoogleGenAI API to match the expected interface
  */
 class GeminiClientAdapter implements GeminiClient {
+  public trackingContext: TrackingContext | null = null;
+
   constructor(private ai: GoogleGenAI) { }
+
+  setTrackingContext(ctx: TrackingContext) {
+    this.trackingContext = ctx;
+  }
 
   async generateContent(params: {
     model: string;
@@ -358,7 +428,7 @@ class GeminiClientAdapter implements GeminiClient {
     systemInstruction?: { role: string; parts: Array<{ text: string }> };
     toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<{ response: { text: () => string; candidates?: any[] } }> {
-    // Wrap with rate limiter (semaphore + retry on 503)
+    const startTime = Date.now();
     return rateLimitedGeminiCall(async () => {
       const result = await this.ai.models.generateContent({
         model: params.model,
@@ -370,6 +440,29 @@ class GeminiClientAdapter implements GeminiClient {
           ...(params.toolConfig && { toolConfig: params.toolConfig }),
         },
       });
+
+      if (this.trackingContext) {
+        const usage = (result as any).usageMetadata || (result as any).response?.usageMetadata;
+        if (usage) {
+          tokenTracker.track({
+            consultantId: this.trackingContext.consultantId,
+            clientId: this.trackingContext.clientId,
+            model: params.model,
+            feature: this.trackingContext.feature || 'unknown',
+            requestType: 'generate',
+            keySource: this.trackingContext.keySource,
+            inputTokens: usage.promptTokenCount || usage.inputTokens || 0,
+            outputTokens: usage.candidatesTokenCount || usage.outputTokens || 0,
+            cachedTokens: usage.cachedContentTokenCount || usage.cachedTokens || 0,
+            thinkingTokens: usage.thoughtsTokenCount || usage.thinkingTokens || 0,
+            totalTokens: usage.totalTokenCount || usage.totalTokens || 0,
+            durationMs: Date.now() - startTime,
+            hasTools: !!(params.tools && params.tools.length > 0),
+            hasFileSearch: false,
+            error: false,
+          }).catch(e => console.error('[TokenTracker] track error:', e));
+        }
+      }
 
       const candidates = (result as any).candidates || (result as any).response?.candidates;
 
@@ -404,9 +497,12 @@ class GeminiClientAdapter implements GeminiClient {
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
     tools?: any[];
+    systemInstruction?: { role: string; parts: Array<{ text: string }> };
+    toolConfig?: { functionCallingConfig?: { mode?: string; allowedFunctionNames?: string[] } };
   }): Promise<AsyncIterable<GeminiStreamChunk>> {
-    // For streaming, we use rate limiter for the initial connection only
-    // The stream iteration happens outside the semaphore to avoid holding it too long
+    const startTime = Date.now();
+    const trackingCtx = this.trackingContext;
+
     const streamGenerator = await rateLimitedGeminiCall(
       () => this.ai.models.generateContentStream({
         model: params.model,
@@ -421,7 +517,12 @@ class GeminiClientAdapter implements GeminiClient {
 
     return {
       async *[Symbol.asyncIterator]() {
+        let lastUsageMetadata: any = null;
         for await (const chunk of streamGenerator) {
+          if ((chunk as any).usageMetadata) {
+            lastUsageMetadata = (chunk as any).usageMetadata;
+          }
+
           const thinking = (chunk as any).thoughtSummary;
           
           const candidates = (chunk as any).candidates?.map((c: any) => ({
@@ -453,6 +554,26 @@ class GeminiClientAdapter implements GeminiClient {
 
           yield { text, thinking, candidates: finalCandidates };
         }
+
+        if (trackingCtx && lastUsageMetadata) {
+          tokenTracker.track({
+            consultantId: trackingCtx.consultantId,
+            clientId: trackingCtx.clientId,
+            model: params.model,
+            feature: trackingCtx.feature || 'unknown',
+            requestType: 'stream',
+            keySource: trackingCtx.keySource,
+            inputTokens: lastUsageMetadata.promptTokenCount || lastUsageMetadata.inputTokens || 0,
+            outputTokens: lastUsageMetadata.candidatesTokenCount || lastUsageMetadata.outputTokens || 0,
+            cachedTokens: lastUsageMetadata.cachedContentTokenCount || lastUsageMetadata.cachedTokens || 0,
+            thinkingTokens: lastUsageMetadata.thoughtsTokenCount || lastUsageMetadata.thinkingTokens || 0,
+            totalTokens: lastUsageMetadata.totalTokenCount || lastUsageMetadata.totalTokens || 0,
+            durationMs: Date.now() - startTime,
+            hasTools: !!(params.tools && params.tools.length > 0),
+            hasFileSearch: false,
+            error: false,
+          }).catch(e => console.error('[TokenTracker] stream track error:', e));
+        }
       }
     };
   }
@@ -467,6 +588,7 @@ export interface AiProviderResult {
   metadata: AiProviderMetadata;
   source: AiProviderSource;
   cleanup?: () => Promise<void>;
+  setFeature?: (feature: string) => void;
 }
 
 /**
@@ -1207,6 +1329,38 @@ export async function getGoogleAIStudioKeyForLive(
  * @returns AI provider result with client, metadata, source, and optional cleanup
  */
 export async function getAIProvider(
+  clientId: string,
+  consultantId?: string
+): Promise<AiProviderResult> {
+  const result = await getAIProviderInternal(clientId, consultantId);
+
+  const effectiveConsultantId = consultantId || clientId;
+  const effectiveClientId = clientId !== effectiveConsultantId ? clientId : undefined;
+  let keySource = 'env';
+  if (result.source === 'superadmin') keySource = 'superadmin';
+  else if (result.source === 'google') keySource = 'user';
+  else if (result.source === 'client') keySource = 'user';
+  else if (result.source === 'admin') keySource = 'superadmin';
+
+  if ((result.client as any).setTrackingContext) {
+    (result.client as any).setTrackingContext({
+      consultantId: effectiveConsultantId,
+      clientId: effectiveClientId,
+      keySource,
+      feature: 'unknown',
+    });
+  }
+
+  result.setFeature = (feature: string) => {
+    if ((result.client as any).trackingContext) {
+      (result.client as any).trackingContext.feature = feature;
+    }
+  };
+
+  return result;
+}
+
+async function getAIProviderInternal(
   clientId: string,
   consultantId?: string
 ): Promise<AiProviderResult> {
