@@ -552,7 +552,7 @@ export default function ConsultantAIAssistant() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} isCollapsed={mainSidebarCollapsed} onCollapsedChange={setMainSidebarCollapsed} />
 
@@ -598,31 +598,28 @@ export default function ConsultantAIAssistant() {
 
           <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
             {/* Agent Selection Header */}
-            <div className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 px-4 py-3 flex-shrink-0">
+            <div className="border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm px-4 py-3 flex-shrink-0">
               <div className="flex items-center justify-between max-w-4xl mx-auto">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Agente:</span>
-                  </div>
+                  <Bot className="h-5 w-5 text-[#6C5CE7] dark:text-[#8B7CF7]" />
                   <Select
                     value={selectedAgentId || "base"}
                     onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
                   >
-                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-slate-800 border-slate-200/70 dark:border-slate-700">
                       <SelectValue placeholder="Seleziona agente" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="base">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-cyan-500" />
+                          <Sparkles className="h-4 w-4 text-[#6C5CE7]" />
                           <span>Assistente Base</span>
                         </div>
                       </SelectItem>
                       {availableAgents.map((agent) => (
                         <SelectItem key={agent.id} value={agent.id}>
                           <div className="flex items-center gap-2">
-                            <Bot className="h-4 w-4 text-teal-500" />
+                            <Bot className="h-4 w-4 text-[#6C5CE7]" />
                             <span>{agent.name}</span>
                             {agent.businessName && (
                               <span className="text-xs text-muted-foreground">({agent.businessName})</span>
@@ -632,23 +629,17 @@ export default function ConsultantAIAssistant() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedAgentId && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-                      L'AI userà il contesto dell'agente selezionato
-                    </span>
-                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => syncContextMutation.mutate()}
                     disabled={syncContextMutation.isPending}
-                    className="text-slate-600 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400"
-                    title="Sincronizza contesto AI (conversazioni, metriche lead)"
+                    className="h-8 w-8 text-slate-500 hover:text-[#6C5CE7] dark:text-slate-400 dark:hover:text-[#8B7CF7]"
+                    title="Sincronizza contesto AI"
                   >
                     <RefreshCw className={cn("h-4 w-4", syncContextMutation.isPending && "animate-spin")} />
-                    <span className="ml-1 hidden sm:inline text-xs">Sync</span>
                   </Button>
                   <ConversationMemoryPopover />
                   <AIPreferencesSheet />
@@ -671,7 +662,7 @@ export default function ConsultantAIAssistant() {
               )}
             </div>
             
-            <div className="pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0">
+            <div className="pt-4 px-4 pb-4 flex-shrink-0">
               <div className="max-w-4xl mx-auto space-y-3">
                 {isRetrying && (
                   <Alert className="border-orange-300 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-700">

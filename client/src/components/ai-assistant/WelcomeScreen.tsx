@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, MessageSquare, Lightbulb, BookOpen, Target, TrendingUp, Bot, LucideIcon, Loader2 } from "lucide-react";
+import { Sparkles, MessageSquare, Lightbulb, BookOpen, Target, TrendingUp, Bot, LucideIcon, Loader2, ArrowRight, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgentInfoSection } from "./AgentInfoSection";
 import { useQuery } from "@tanstack/react-query";
@@ -43,25 +43,25 @@ const consultantSuggestions = [
     icon: Target,
     label: "Panoramica cliente",
     prompt: "Dammi una panoramica completa del cliente selezionato",
-    gradient: "from-cyan-500 to-teal-500",
+    gradient: "from-[#6C5CE7] to-[#8B7CF7]",
   },
   {
     icon: BookOpen,
     label: "Progressi esercizi",
     prompt: "Mostrami i progressi degli esercizi di questo cliente",
-    gradient: "from-teal-500 to-emerald-500",
+    gradient: "from-[#8B7CF7] to-[#A78BFA]",
   },
   {
     icon: MessageSquare,
     label: "Prepara consulenza",
     prompt: "Aiutami a preparare la prossima consulenza con questo cliente",
-    gradient: "from-slate-500 to-cyan-500",
+    gradient: "from-[#5B4CD6] to-[#6C5CE7]",
   },
   {
     icon: Lightbulb,
     label: "Suggerimenti azioni",
     prompt: "Quali azioni dovrei intraprendere con i miei clienti questa settimana?",
-    gradient: "from-cyan-600 to-teal-600",
+    gradient: "from-[#7C6DF7] to-[#6C5CE7]",
   },
 ];
 
@@ -70,25 +70,25 @@ const clientSuggestions = [
     icon: Target,
     label: "I miei obiettivi",
     prompt: "Mostrami un riepilogo dei miei obiettivi e progressi",
-    gradient: "from-cyan-500 to-teal-500",
+    gradient: "from-[#6C5CE7] to-[#8B7CF7]",
   },
   {
     icon: BookOpen,
     label: "Cosa studiare oggi",
     prompt: "Quale lezione dovrei studiare oggi?",
-    gradient: "from-teal-500 to-emerald-500",
+    gradient: "from-[#8B7CF7] to-[#A78BFA]",
   },
   {
     icon: TrendingUp,
     label: "I miei progressi",
     prompt: "Analizza i miei progressi nelle ultime settimane",
-    gradient: "from-slate-500 to-cyan-500",
+    gradient: "from-[#5B4CD6] to-[#6C5CE7]",
   },
   {
     icon: Lightbulb,
     label: "Esercizi pendenti",
     prompt: "Quali esercizi ho ancora da completare?",
-    gradient: "from-cyan-600 to-teal-600",
+    gradient: "from-[#7C6DF7] to-[#6C5CE7]",
   },
 ];
 
@@ -113,13 +113,12 @@ export function WelcomeScreen({
       return data.suggestions as SuggestionFromAPI[];
     },
     enabled: !!agentId,
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    staleTime: 1000 * 60 * 60,
     retry: 1,
   });
 
   const defaultSuggestions = variant === "consultant" ? consultantSuggestions : clientSuggestions;
   
-  // Use API suggestions if available, otherwise use default
   const suggestions = apiSuggestions && apiSuggestions.length > 0
     ? apiSuggestions.map(s => ({
         icon: iconMap[s.icon] || Target,
@@ -148,9 +147,9 @@ export function WelcomeScreen({
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.5 }}
-          className="relative mb-6"
+          className="relative mb-8"
         >
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#6C5CE7] via-[#7C6DF7] to-[#8B7CF7] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/25">
             <motion.div
               animate={{ 
                 rotate: [0, 5, -5, 0],
@@ -169,7 +168,7 @@ export function WelcomeScreen({
             </motion.div>
           </div>
           <motion.div
-            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center"
+            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#00B894] flex items-center justify-center"
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ repeat: Infinity, duration: 2 }}
           >
@@ -181,7 +180,7 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-2xl md:text-3xl font-semibold text-slate-800 dark:text-slate-100 mb-2 text-center"
+          className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2 text-center"
         >
           {getGreeting()}{userName ? `, ${userName}` : ""}!
         </motion.h1>
@@ -190,16 +189,25 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-base md:text-lg text-slate-500 dark:text-slate-400 mb-6 text-center"
+          className="text-base md:text-lg text-slate-500/60 dark:text-slate-400/60 mb-3 text-center"
         >
           {agentName ? (
-            <>Sono <span className="font-medium text-cyan-600 dark:text-cyan-400">{agentName}</span>, come posso aiutarti oggi?</>
+            <>Sono <span className="font-medium text-[#6C5CE7] dark:text-[#8B7CF7]">{agentName}</span>, il tuo copilota AI per il business</>
           ) : (
-            "Come posso aiutarti oggi?"
+            "Il tuo copilota AI per il business"
           )}
         </motion.p>
 
-        {/* Agent Info Section */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35, duration: 0.5 }}
+          className="flex items-center gap-2 mb-8"
+        >
+          <Activity className="w-3 h-3 text-[#00B894]" />
+          <span className="text-xs text-slate-400 dark:text-slate-500">Assistente attivo · Tutti i sistemi sincronizzati</span>
+        </motion.div>
+
         {agentInfo && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -222,10 +230,9 @@ export function WelcomeScreen({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl"
         >
           {suggestionsLoading && agentId ? (
-            // Loading skeleton with shimmer effect
             <>
               {[0, 1, 2, 3].map((i) => (
                 <motion.div
@@ -234,15 +241,15 @@ export function WelcomeScreen({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
                   className={cn(
-                    "flex items-center gap-3 p-4 rounded-xl",
+                    "flex flex-col items-center gap-3 p-5 rounded-xl",
                     "bg-white dark:bg-slate-800/50",
                     "border border-slate-200 dark:border-slate-700/50"
                   )}
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                    <div className="h-3 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse" />
+                  <div className="space-y-2 w-full">
+                    <div className="h-4 w-24 mx-auto bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    <div className="h-3 w-32 mx-auto bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                   </div>
                 </motion.div>
               ))}
@@ -265,44 +272,58 @@ export function WelcomeScreen({
                 transition={{ delay: 0.5 + index * 0.1, duration: 0.3 }}
                 onClick={() => !disabled && onSuggestionClick(suggestion.prompt)}
                 disabled={disabled}
+                whileHover={{ y: -3 }}
                 className={cn(
-                  "group relative flex items-center gap-3 p-4 rounded-xl",
+                  "group relative flex flex-col items-start gap-3 p-5 rounded-xl",
                   "bg-white dark:bg-slate-800/50",
                   "border border-slate-200 dark:border-slate-700/50",
-                  "hover:border-cyan-300 dark:hover:border-cyan-600/50",
-                  "hover:shadow-md hover:shadow-cyan-500/5",
+                  "hover:border-[#6C5CE7]/40 dark:hover:border-[#6C5CE7]/40",
+                  "hover:shadow-lg hover:shadow-[#6C5CE7]/5",
                   "transition-all duration-200",
                   "text-left",
                   disabled && "opacity-50 cursor-not-allowed"
                 )}
               >
                 <div className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-lg",
+                  "w-12 h-12 rounded-xl",
                   "bg-gradient-to-br",
                   suggestion.gradient,
                   "flex items-center justify-center",
                   "group-hover:scale-105 transition-transform duration-200"
                 )}>
-                  <suggestion.icon className="w-5 h-5 text-white" />
+                  <suggestion.icon className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block truncate">
+                <div className="flex-1 min-w-0 w-full">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-1">
                     {suggestion.label}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">
+                  <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-2 leading-relaxed">
                     {suggestion.prompt}
                   </span>
                 </div>
+                <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 absolute top-5 right-4 group-hover:text-[#6C5CE7] transition-colors duration-200" />
               </motion.button>
             ))
           )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.85, duration: 0.5 }}
+          className="mt-8 flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#6C5CE7]/5 dark:bg-[#6C5CE7]/10 border border-[#6C5CE7]/10 dark:border-[#6C5CE7]/20"
+        >
+          <Lightbulb className="w-4 h-4 text-[#6C5CE7] dark:text-[#8B7CF7] flex-shrink-0" />
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Suggerimento: Chiedi un'analisi dei clienti inattivi per riattivare il tuo business
+          </span>
         </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9, duration: 0.5 }}
-          className="mt-8 text-xs text-slate-400 dark:text-slate-500 text-center"
+          className="mt-4 text-xs text-slate-400/60 dark:text-slate-500/60 text-center"
         >
           Scrivi un messaggio o scegli uno dei suggerimenti sopra
         </motion.p>

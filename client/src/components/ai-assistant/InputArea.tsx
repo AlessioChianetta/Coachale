@@ -197,20 +197,20 @@ export function InputArea({
         </div>
       )}
 
-      <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 focus-within:border-slate-300 dark:focus-within:border-slate-600 focus-within:bg-white dark:focus-within:bg-slate-800">
+      <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200/70 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all duration-300 focus-within:border-[#6C5CE7]/40 dark:focus-within:border-[#6C5CE7]/40 focus-within:shadow-[#6C5CE7]/10 focus-within:bg-white dark:focus-within:bg-slate-800">
         <div className="px-4 pt-3 pb-2">
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isProcessing ? "Sto elaborando..." : "Chiedi qualcosa..."}
+            placeholder={isProcessing ? "Sto elaborando..." : "Descrivi il risultato che vuoi ottenere..."}
             disabled={disabled}
-            className="resize-none min-h-[44px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-base placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
+            className="resize-none min-h-[56px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-base placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
             rows={1}
           />
         </div>
 
-        <div className="flex items-center justify-between px-3 pb-3 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+        <div className="flex items-center justify-between px-3 pb-3 pt-1">
           <div className="flex items-center gap-1">
             <Popover open={showAttachMenu} onOpenChange={setShowAttachMenu}>
               <PopoverTrigger asChild>
@@ -327,7 +327,7 @@ export function InputArea({
               onClick={handleSend}
               disabled={(!message.trim() && attachedFiles.length === 0) || cannotSend}
               size="sm"
-              className="h-8 w-8 p-0 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 disabled:bg-slate-200 dark:disabled:bg-slate-700 transition-all"
+              className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-[#6C5CE7] to-[#8B7CF7] hover:from-[#5B4CD6] hover:to-[#7A6BE6] disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
             >
               {isProcessing ? (
                 <div className="flex gap-0.5">
@@ -336,7 +336,7 @@ export function InputArea({
                   <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
               ) : (
-                <Send className="h-4 w-4 text-white dark:text-slate-900" />
+                <Send className="h-4 w-4 text-white" />
               )}
             </Button>
           </div>
