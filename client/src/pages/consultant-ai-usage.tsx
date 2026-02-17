@@ -15,7 +15,7 @@ import {
   DollarSign, Zap, Hash, TrendingUp, BarChart3, Users,
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
-  BookOpen, HelpCircle, LayoutGrid
+  BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code
 } from "lucide-react";
 import {
   AreaChart,
@@ -168,6 +168,16 @@ export default function ConsultantAIUsagePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [period, setPeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("panoramica");
+  const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
+
+  const toggleFeatureExpand = (uid: string) => {
+    setExpandedFeatures(prev => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["/api/ai-usage/summary", period],
@@ -196,6 +206,7 @@ export default function ConsultantAIUsagePage() {
 
   const allFeaturesWithData = useMemo(() => {
     const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number }>();
+    const keyBreakdown = new Map<string, { key: string; totalTokens: number; totalCost: number; requestCount: number }[]>();
     const knownUids = new Set<string>();
     const unknownFeatures: SidebarFeature[] = [];
 
@@ -208,6 +219,15 @@ export default function ConsultantAIUsagePage() {
       existing.totalCost += f.totalCost || 0;
       existing.requestCount += f.requestCount || 0;
       featureMap.set(uid, existing);
+
+      const breakdown = keyBreakdown.get(uid) || [];
+      breakdown.push({
+        key: f.feature,
+        totalTokens: f.totalTokens || 0,
+        totalCost: f.totalCost || 0,
+        requestCount: f.requestCount || 0,
+      });
+      keyBreakdown.set(uid, breakdown);
 
       if (!FEATURE_MAP[f.feature]) {
         if (!knownUids.has(uid)) {
@@ -228,10 +248,12 @@ export default function ConsultantAIUsagePage() {
     return allFeatures.map(sf => {
       const uid = `${sf.category}::${sf.label}`;
       const data = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      const keys = keyBreakdown.get(uid) || [];
       return {
         ...sf,
         ...data,
         pct: totalTokens > 0 ? (data.totalTokens / totalTokens) * 100 : 0,
+        subKeys: keys.sort((a, b) => b.totalTokens - a.totalTokens),
       };
     });
   }, [featureData]);
@@ -492,38 +514,67 @@ export default function ConsultantAIUsagePage() {
                             {allFeaturesWithData.map((row, i) => {
                               const catColor = CATEGORY_COLORS[row.category] || CATEGORY_COLORS['Altro'];
                               const hasData = row.totalTokens > 0 || row.requestCount > 0;
+                              const uid = `${row.category}::${row.label}`;
+                              const isExpanded = expandedFeatures.has(uid);
+                              const hasSubKeys = row.subKeys.length > 0;
                               return (
-                                <TableRow key={i} className={hasData ? '' : 'opacity-50'}>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
-                                        <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
+                                <>
+                                  <TableRow
+                                    key={i}
+                                    className={`${hasData ? '' : 'opacity-50'} ${hasSubKeys ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50' : ''}`}
+                                    onClick={() => hasSubKeys && toggleFeatureExpand(uid)}
+                                  >
+                                    <TableCell>
+                                      <div className="flex items-center gap-2.5">
+                                        {hasSubKeys ? (
+                                          isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                        ) : (
+                                          <div className="w-3.5" />
+                                        )}
+                                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
+                                          <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
+                                        </div>
+                                        <span className="font-medium text-sm">{row.label}</span>
                                       </div>
-                                      <span className="font-medium text-sm">{row.label}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <span
-                                      className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
-                                      style={{ backgroundColor: catColor }}
-                                    >
-                                      {row.category}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
-                                  <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
-                                  <TableCell>
-                                    {hasData ? (
-                                      <div className="flex items-center gap-2">
-                                        <Progress value={row.pct} className="h-1.5 flex-1" />
-                                        <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs text-slate-400">—</span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span
+                                        className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
+                                        style={{ backgroundColor: catColor }}
+                                      >
+                                        {row.category}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                    <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
+                                    <TableCell>
+                                      {hasData ? (
+                                        <div className="flex items-center gap-2">
+                                          <Progress value={row.pct} className="h-1.5 flex-1" />
+                                          <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs text-slate-400">—</span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && row.subKeys.map((sk, j) => (
+                                    <TableRow key={`${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
+                                      <TableCell className="pl-16">
+                                        <div className="flex items-center gap-2">
+                                          <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                          <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell />
+                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatTokens(sk.totalTokens)}</TableCell>
+                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatCost(sk.totalCost)}</TableCell>
+                                      <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
+                                      <TableCell />
+                                    </TableRow>
+                                  ))}
+                                </>
                               );
                             })}
                           </TableBody>
