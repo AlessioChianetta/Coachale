@@ -2905,33 +2905,28 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         console.log(`   - Cached tokens: ${clientUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
       }
     } else {
-      const estInput = systemPromptTokens + userMessageTokens + historyTokens;
-      const estOutput = estimateTokens(accumulatedMessage);
-      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available - using estimates [CLIENT]`);
-      console.log(`   - Estimated input tokens: ${estInput.toLocaleString()}`);
-      console.log(`   - Estimated output tokens: ${estOutput.toLocaleString()}`);
-      console.log(`   - Estimated total tokens: ${(estInput + estOutput).toLocaleString()}`);
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]`);
     }
 
-    // Track token usage for client chat
-    const estimatedInputTokens = systemPromptTokens + userMessageTokens + historyTokens;
-    const estimatedOutputTokens = estimateTokens(accumulatedMessage);
-    const estimatedThinkingTokens = accumulatedThinking ? estimateTokens(accumulatedThinking) : 0;
-
-    tokenTracker.track({
-      consultantId,
-      clientId,
-      model: dynamicConfig.model,
-      feature: 'client-chat',
-      requestType: 'stream',
-      keySource: providerMetadata.name || 'unknown',
-      inputTokens: clientUsageMetadata?.promptTokenCount || estimatedInputTokens,
-      outputTokens: clientUsageMetadata?.candidatesTokenCount || estimatedOutputTokens,
-      cachedTokens: clientUsageMetadata?.cachedContentTokenCount || 0,
-      totalTokens: clientUsageMetadata?.totalTokenCount || (estimatedInputTokens + estimatedOutputTokens + estimatedThinkingTokens),
-      thinkingTokens: clientUsageMetadata ? 0 : estimatedThinkingTokens,
-      durationMs: geminiCallTime,
-    }).catch(() => {});
+    // Track token usage for client chat (only real data from Gemini, no fallback)
+    if (clientUsageMetadata) {
+      tokenTracker.track({
+        consultantId,
+        clientId,
+        model: dynamicConfig.model,
+        feature: 'client-chat',
+        requestType: 'stream',
+        keySource: providerMetadata.name || 'unknown',
+        inputTokens: clientUsageMetadata.promptTokenCount || 0,
+        outputTokens: clientUsageMetadata.candidatesTokenCount || 0,
+        cachedTokens: clientUsageMetadata.cachedContentTokenCount || 0,
+        totalTokens: clientUsageMetadata.totalTokenCount || 0,
+        thinkingTokens: clientUsageMetadata.thoughtsTokenCount || 0,
+        durationMs: geminiCallTime,
+      }).catch(() => {});
+    } else {
+      console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CLIENT]`);
+    }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 
@@ -4129,32 +4124,27 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         console.log(`   - Cached tokens: ${consultantUsageMetadata.cachedContentTokenCount.toLocaleString()}`);
       }
     } else {
-      const estInput = systemPromptTokens + userMessageTokens + historyTokens;
-      const estOutput = estimateTokens(accumulatedMessage);
-      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available - using estimates [CONSULTANT]`);
-      console.log(`   - Estimated input tokens: ${estInput.toLocaleString()}`);
-      console.log(`   - Estimated output tokens: ${estOutput.toLocaleString()}`);
-      console.log(`   - Estimated total tokens: ${(estInput + estOutput).toLocaleString()}`);
+      console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CONSULTANT]`);
     }
 
-    // Track token usage for consultant chat
-    const estimatedInputTokens = systemPromptTokens + userMessageTokens + historyTokens;
-    const estimatedOutputTokens = estimateTokens(accumulatedMessage);
-    const estimatedThinkingTokens = accumulatedThinking ? estimateTokens(accumulatedThinking) : 0;
-
-    tokenTracker.track({
-      consultantId,
-      model: consultantDynamicConfig.model,
-      feature: 'consultant-chat',
-      requestType: 'stream',
-      keySource: providerMetadata.name || 'unknown',
-      inputTokens: consultantUsageMetadata?.promptTokenCount || estimatedInputTokens,
-      outputTokens: consultantUsageMetadata?.candidatesTokenCount || estimatedOutputTokens,
-      cachedTokens: consultantUsageMetadata?.cachedContentTokenCount || 0,
-      totalTokens: consultantUsageMetadata?.totalTokenCount || (estimatedInputTokens + estimatedOutputTokens + estimatedThinkingTokens),
-      thinkingTokens: consultantUsageMetadata ? 0 : estimatedThinkingTokens,
-      durationMs: geminiCallTime,
-    }).catch(() => {});
+    // Track token usage for consultant chat (only real data from Gemini, no fallback)
+    if (consultantUsageMetadata) {
+      tokenTracker.track({
+        consultantId,
+        model: consultantDynamicConfig.model,
+        feature: 'consultant-chat',
+        requestType: 'stream',
+        keySource: providerMetadata.name || 'unknown',
+        inputTokens: consultantUsageMetadata.promptTokenCount || 0,
+        outputTokens: consultantUsageMetadata.candidatesTokenCount || 0,
+        cachedTokens: consultantUsageMetadata.cachedContentTokenCount || 0,
+        totalTokens: consultantUsageMetadata.totalTokenCount || 0,
+        thinkingTokens: consultantUsageMetadata.thoughtsTokenCount || 0,
+        durationMs: geminiCallTime,
+      }).catch(() => {});
+    } else {
+      console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CONSULTANT]`);
+    }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 

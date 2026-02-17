@@ -380,7 +380,7 @@ class VertexAIClientAdapter implements GeminiClient {
           
           const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
           
-          yield { text, candidates };
+          yield { text, candidates, usageMetadata: (chunk as any).usageMetadata };
         }
 
         if (trackingCtx && lastUsageMetadata) {
@@ -552,7 +552,7 @@ class GeminiClientAdapter implements GeminiClient {
             content: { parts: chunkParts }
           }] : undefined);
 
-          yield { text, thinking, candidates: finalCandidates };
+          yield { text, thinking, candidates: finalCandidates, usageMetadata: (chunk as any).usageMetadata };
         }
 
         if (trackingCtx && lastUsageMetadata) {
