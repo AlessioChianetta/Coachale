@@ -217,6 +217,42 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
   }
 });
 
+router.get("/by-client/:clientId/features", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    const { period, from, to } = req.query as { period?: string; from?: string; to?: string };
+    const { start, end } = getDateRange(period, from, to);
+
+    const isSelf = clientId === 'self';
+    
+    const result = await db.execute(sql`
+      SELECT
+        feature,
+        COALESCE(SUM(total_tokens), 0)::text AS "totalTokens",
+        COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
+        COUNT(*)::text AS "requestCount"
+      FROM ai_token_usage
+      WHERE consultant_id = ${consultantId}
+        AND created_at >= ${start}
+        AND created_at <= ${end}
+        AND ${isSelf ? sql`(client_id IS NULL OR client_id = ${consultantId})` : sql`client_id = ${clientId}`}
+      GROUP BY feature
+      ORDER BY SUM(total_cost::numeric) DESC
+    `);
+
+    res.json((result.rows as any[]).map(r => ({
+      feature: r.feature,
+      totalTokens: parseInt(r.totalTokens) || 0,
+      totalCost: parseFloat(r.totalCost) || 0,
+      requestCount: parseInt(r.requestCount) || 0,
+    })));
+  } catch (error) {
+    console.error("[AI Usage] Error fetching user features:", error);
+    res.status(500).json({ error: "Failed to fetch user feature breakdown" });
+  }
+});
+
 router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
@@ -243,7 +279,13 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
         CASE WHEN COUNT(*) > 0
           THEN ROUND(SUM(total_tokens)::numeric / COUNT(*), 0)::text
           ELSE '0'
-        END AS "avgTokensPerRequest"
+        END AS "avgTokensPerRequest",
+        COALESCE(SUM(CASE WHEN client_id IS NULL THEN total_tokens ELSE 0 END), 0)::text AS "consultantTokens",
+        COALESCE(SUM(CASE WHEN client_id IS NULL THEN total_cost::numeric ELSE 0 END), 0)::text AS "consultantCost",
+        COALESCE(SUM(CASE WHEN client_id IS NULL THEN 1 ELSE 0 END), 0)::text AS "consultantRequests",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN total_tokens ELSE 0 END), 0)::text AS "clientTokens",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN total_cost::numeric ELSE 0 END), 0)::text AS "clientCost",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN 1 ELSE 0 END), 0)::text AS "clientRequests"
       FROM ai_token_usage
       WHERE consultant_id = ${consultantId}
         AND created_at >= ${start}
@@ -259,6 +301,12 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
       requestCount: parseInt(r.requestCount) || 0,
       percentOfTotal: parseFloat(r.percentOfTotal) || 0,
       avgTokensPerRequest: parseInt(r.avgTokensPerRequest) || 0,
+      consultantTokens: parseInt(r.consultantTokens) || 0,
+      consultantCost: parseFloat(r.consultantCost) || 0,
+      consultantRequests: parseInt(r.consultantRequests) || 0,
+      clientTokens: parseInt(r.clientTokens) || 0,
+      clientCost: parseFloat(r.clientCost) || 0,
+      clientRequests: parseInt(r.clientRequests) || 0,
     })));
   } catch (error) {
     console.error("[AI Usage] Error fetching by-feature:", error);

@@ -10,7 +10,7 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getToken } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   DollarSign, Zap, Hash, TrendingUp, BarChart3, Users,
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
@@ -81,6 +81,30 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'client-state': { label: 'Dashboard Cliente', category: 'Cliente', icon: 'Home' },
   'youtube-service': { label: 'Corsi YouTube', category: 'Sistema', icon: 'BookOpen' },
   'unknown': { label: 'Non classificato', category: 'Sistema', icon: 'HelpCircle' },
+};
+
+const FEATURE_GUIDE: Record<string, { dove: string; comeTesta: string }> = {
+  'AI Assistant': { dove: 'Sidebar → Chat AI (pagina principale)', comeTesta: 'Apri la chat AI e fai una domanda qualsiasi al tuo assistente' },
+  'Dashboard': { dove: 'Sidebar → Home', comeTesta: 'Vai nella dashboard, le raccomandazioni AI si generano automaticamente' },
+  'Analisi Dati': { dove: 'Sidebar → Analisi Dati', comeTesta: 'Carica un file Excel/CSV e fai domande sui dati' },
+  'Task': { dove: 'Sidebar → Task', comeTesta: 'Crea un task e usa la generazione AI del contenuto' },
+  'Email Journey': { dove: 'Sidebar → Email Journey', comeTesta: 'Configura un check-in settimanale per un cliente' },
+  'Dipendenti WhatsApp': { dove: 'Sidebar → Dipendenti → WhatsApp', comeTesta: 'Invia un messaggio WhatsApp a un agente configurato' },
+  'Chiamate Voice': { dove: 'Sidebar → Dipendenti → Alessia (Voice)', comeTesta: 'Avvia una chiamata AI o ricevi una chiamata in entrata' },
+  'AI Autonomo': { dove: 'Sidebar → Dipendenti → Impostazioni Autonomia', comeTesta: 'Attiva un dipendente AI e aspetta che esegua task autonomi' },
+  'HUB Lead': { dove: 'Sidebar → HUB Lead', comeTesta: 'Importa un lead e lascia che l\'AI analizzi i dati' },
+  'AdVisage AI': { dove: 'Sidebar → Content Studio → AdVisage', comeTesta: 'Analizza una creatività pubblicitaria con l\'AI' },
+  'Idee Contenuti': { dove: 'Sidebar → Content Studio → Idee', comeTesta: 'Genera idee per contenuti social con l\'AI' },
+  'Contenuti': { dove: 'Sidebar → Content Studio → Crea', comeTesta: 'Genera un post copy, una variazione o una campagna' },
+  'Brand Assets': { dove: 'Sidebar → Content Studio → Brand', comeTesta: 'Genera la voce del brand con l\'AI' },
+  'Memoria & Documenti': { dove: 'Sidebar → Cervello AI → Memoria', comeTesta: 'La memoria si popola automaticamente dalle conversazioni AI' },
+  'File Search': { dove: 'Sidebar → Cervello AI → Knowledge Base', comeTesta: 'Carica un documento nella Knowledge Base e cerca con l\'AI' },
+  'Consulenze AI': { dove: 'Durante una consulenza attiva', comeTesta: 'Avvia una consulenza e l\'AI classifica automaticamente gli intenti' },
+  'Live Consultation': { dove: 'Sidebar → Consulenze → Sessione Live', comeTesta: 'Avvia una sessione di consulenza live con un cliente' },
+  'Chat AI (Cliente)': { dove: 'Il cliente accede dalla sua dashboard', comeTesta: 'Accedi come cliente e usa la chat AI dalla dashboard' },
+  'Dashboard Cliente': { dove: 'Dashboard del cliente', comeTesta: 'Il cliente vede la sua dashboard con stato e suggerimenti AI' },
+  'Corsi YouTube': { dove: 'Sidebar → Corsi YouTube', comeTesta: 'Importa un video YouTube e genera un corso con l\'AI' },
+  'Non classificato': { dove: 'Sistema interno', comeTesta: 'Chiamate di sistema non associate a una funzionalità specifica' },
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -158,9 +182,9 @@ async function fetchWithAuth(url: string) {
   return res.json();
 }
 
-function FeatureIcon({ name, className }: { name: string; className?: string }) {
+function FeatureIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const Icon = ICON_MAP[name] || HelpCircle;
-  return <Icon className={className} />;
+  return <Icon className={className} style={style} />;
 }
 
 export default function ConsultantAIUsagePage() {
@@ -169,6 +193,27 @@ export default function ConsultantAIUsagePage() {
   const [period, setPeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("panoramica");
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  const [userFeatures, setUserFeatures] = useState<Record<string, any[]>>({});
+
+  const toggleUserExpand = async (userId: string) => {
+    setExpandedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) { next.delete(userId); }
+      else { next.add(userId); }
+      return next;
+    });
+    if (!userFeatures[userId]) {
+      const token = getToken();
+      const res = await fetch(`/api/ai-usage/by-client/${userId}/features?period=${period}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserFeatures(prev => ({ ...prev, [userId]: data }));
+      }
+    }
+  };
 
   const toggleFeatureExpand = (uid: string) => {
     setExpandedFeatures(prev => {
@@ -205,7 +250,7 @@ export default function ConsultantAIUsagePage() {
   const featureData = byFeature?.data || byFeature || [];
 
   const allFeaturesWithData = useMemo(() => {
-    const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number }>();
+    const featureMap = new Map<string, { totalTokens: number; totalCost: number; requestCount: number; consultantTokens: number; consultantCost: number; consultantRequests: number; clientTokens: number; clientCost: number; clientRequests: number }>();
     const keyBreakdown = new Map<string, { key: string; totalTokens: number; totalCost: number; requestCount: number }[]>();
     const knownUids = new Set<string>();
     const unknownFeatures: SidebarFeature[] = [];
@@ -214,10 +259,16 @@ export default function ConsultantAIUsagePage() {
       const label = getFeatureLabel(f.feature);
       const cat = getFeatureCategory(f.feature);
       const uid = `${cat}::${label}`;
-      const existing = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      const existing = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0, consultantTokens: 0, consultantCost: 0, consultantRequests: 0, clientTokens: 0, clientCost: 0, clientRequests: 0 };
       existing.totalTokens += f.totalTokens || 0;
       existing.totalCost += f.totalCost || 0;
       existing.requestCount += f.requestCount || 0;
+      existing.consultantTokens += f.consultantTokens || 0;
+      existing.consultantCost += f.consultantCost || 0;
+      existing.consultantRequests += f.consultantRequests || 0;
+      existing.clientTokens += f.clientTokens || 0;
+      existing.clientCost += f.clientCost || 0;
+      existing.clientRequests += f.clientRequests || 0;
       featureMap.set(uid, existing);
 
       const breakdown = keyBreakdown.get(uid) || [];
@@ -247,7 +298,7 @@ export default function ConsultantAIUsagePage() {
 
     return allFeatures.map(sf => {
       const uid = `${sf.category}::${sf.label}`;
-      const data = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0 };
+      const data = featureMap.get(uid) || { totalTokens: 0, totalCost: 0, requestCount: 0, consultantTokens: 0, consultantCost: 0, consultantRequests: 0, clientTokens: 0, clientCost: 0, clientRequests: 0 };
       const keys = keyBreakdown.get(uid) || [];
       return {
         ...sf,
@@ -502,12 +553,14 @@ export default function ConsultantAIUsagePage() {
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
-                              <TableHead className="w-[240px]">Funzionalità</TableHead>
-                              <TableHead className="w-[140px]">Categoria</TableHead>
-                              <TableHead className="text-right w-[100px]">Token</TableHead>
-                              <TableHead className="text-right w-[100px]">Costo</TableHead>
-                              <TableHead className="text-right w-[80px]">Richieste</TableHead>
-                              <TableHead className="w-[180px]">% del Totale</TableHead>
+                              <TableHead className="w-[220px]">Funzionalità</TableHead>
+                              <TableHead className="w-[120px]">Categoria</TableHead>
+                              <TableHead className="text-right">Token (Tu)</TableHead>
+                              <TableHead className="text-right">Costo (Tu)</TableHead>
+                              <TableHead className="text-right">Token (Clienti)</TableHead>
+                              <TableHead className="text-right">Costo (Clienti)</TableHead>
+                              <TableHead className="text-right">Totale</TableHead>
+                              <TableHead className="w-[150px]">%</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -518,9 +571,8 @@ export default function ConsultantAIUsagePage() {
                               const isExpanded = expandedFeatures.has(uid);
                               const hasSubKeys = row.subKeys.length > 0;
                               return (
-                                <>
+                                <React.Fragment key={`feat-${i}`}>
                                   <TableRow
-                                    key={i}
                                     className={`${hasData ? '' : 'opacity-50'} ${hasSubKeys ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50' : ''}`}
                                     onClick={() => hasSubKeys && toggleFeatureExpand(uid)}
                                   >
@@ -545,8 +597,10 @@ export default function ConsultantAIUsagePage() {
                                         {row.category}
                                       </span>
                                     </TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.consultantTokens) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.consultantCost) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.clientTokens) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.clientCost) : '—'}</TableCell>
                                     <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
                                     <TableCell>
                                       {hasData ? (
@@ -568,13 +622,23 @@ export default function ConsultantAIUsagePage() {
                                         </div>
                                       </TableCell>
                                       <TableCell />
-                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatTokens(sk.totalTokens)}</TableCell>
-                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatCost(sk.totalCost)}</TableCell>
+                                      <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatTokens(sk.totalTokens)}</TableCell>
+                                      <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatCost(sk.totalCost)}</TableCell>
                                       <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
                                       <TableCell />
                                     </TableRow>
                                   ))}
-                                </>
+                                  {isExpanded && FEATURE_GUIDE[row.label] && (
+                                    <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
+                                      <TableCell colSpan={8} className="pl-16">
+                                        <div className="flex gap-6 text-xs py-1">
+                                          <div><span className="font-medium text-slate-600">Dove:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].dove}</span></div>
+                                          <div><span className="font-medium text-slate-600">Come testare:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].comeTesta}</span></div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </TableBody>
@@ -612,23 +676,63 @@ export default function ConsultantAIUsagePage() {
                           <TableBody>
                             {clientData.map((row: any, i: number) => {
                               const hasData = (row.totalTokens || 0) > 0;
+                              const userId = row.clientRole === 'consultant' ? 'self' : row.clientId;
+                              const isUserExpanded = userId && expandedUsers.has(userId);
+                              const features = userId ? userFeatures[userId] : null;
                               return (
-                                <TableRow key={i} className={hasData ? '' : 'opacity-50'}>
-                                  <TableCell className="font-medium">{row.clientName || "—"}</TableCell>
-                                  <TableCell>
-                                    {row.clientRole === "consultant" ? (
-                                      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
-                                    ) : (
-                                      <Badge variant="secondary" className="text-xs">Cliente</Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                                    {row.topFeature ? getFeatureLabel(row.topFeature) : "—"}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
-                                  <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
-                                  <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
-                                </TableRow>
+                                <React.Fragment key={`user-${i}`}>
+                                  <TableRow
+                                    className={`${hasData ? '' : 'opacity-50'} ${hasData ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50' : ''}`}
+                                    onClick={() => hasData && userId && toggleUserExpand(userId)}
+                                  >
+                                    <TableCell className="font-medium">
+                                      <div className="flex items-center gap-2">
+                                        {hasData ? (
+                                          isUserExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                        ) : (
+                                          <div className="w-3.5" />
+                                        )}
+                                        {row.clientName || "—"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {row.clientRole === "consultant" ? (
+                                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
+                                      ) : (
+                                        <Badge variant="secondary" className="text-xs">Cliente</Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                                      {row.topFeature ? getFeatureLabel(row.topFeature) : "—"}
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
+                                    <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
+                                  </TableRow>
+                                  {isUserExpanded && features && features.map((uf: any, j: number) => (
+                                    <TableRow key={`user-${i}-feat-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
+                                      <TableCell className="pl-12">
+                                        <div className="flex items-center gap-2">
+                                          <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                          <span className="text-xs text-slate-600 dark:text-slate-400">{getFeatureLabel(uf.feature)}</span>
+                                          <code className="text-[10px] font-mono text-slate-400">({uf.feature})</code>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell />
+                                      <TableCell />
+                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatTokens(uf.totalTokens)}</TableCell>
+                                      <TableCell className="text-right font-mono text-xs text-slate-500">{formatCost(uf.totalCost)}</TableCell>
+                                      <TableCell className="text-right text-xs text-slate-500">{uf.requestCount}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                  {isUserExpanded && !features && (
+                                    <TableRow key={`user-${i}-loading`}>
+                                      <TableCell colSpan={6} className="pl-12">
+                                        <Skeleton className="h-4 w-48" />
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </TableBody>
