@@ -67,6 +67,14 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'task-executor': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'ai-task-file-search': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'ai-task-scheduler': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-alessia': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-millie': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-echo': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-nova': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-stella': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-iris': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-marco': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
+  'ai-task-personalizza': { label: 'AI Autonomo', category: 'Comunicazione', icon: 'Bot' },
   'lead-import': { label: 'HUB Lead', category: 'Comunicazione', icon: 'Target' },
   'advisage': { label: 'AdVisage AI', category: 'Content Studio', icon: 'Zap' },
   'advisage-analyze': { label: 'AdVisage AI', category: 'Content Studio', icon: 'Zap' },
@@ -213,6 +221,26 @@ function getFeatureLabel(feature: string): string {
 
 function getFeatureCategory(feature: string): string {
   return FEATURE_MAP[feature]?.category || 'Altro';
+}
+
+const SUBKEY_LABELS: Record<string, string> = {
+  'ai-task-alessia': '👩‍💼 Alessia',
+  'ai-task-millie': '👩‍💻 Millie',
+  'ai-task-echo': '🔊 Echo',
+  'ai-task-nova': '⭐ Nova',
+  'ai-task-stella': '✨ Stella',
+  'ai-task-iris': '🌈 Iris',
+  'ai-task-marco': '👨‍💼 Marco',
+  'ai-task-personalizza': '🎨 Personalizza',
+  'ai-task-scheduler': '🗓️ Pianificatore',
+  'ai-task-executor': '⚙️ Esecutore',
+  'ai-task-file-search': '🔍 File Search',
+  'decision-engine': '🧠 Decision Engine',
+  'task-executor': '⚙️ Esecutore (legacy)',
+};
+
+function getSubKeyLabel(key: string): string {
+  return SUBKEY_LABELS[key] || key;
 }
 
 function formatTokens(n: number): string {
@@ -869,8 +897,14 @@ export default function ConsultantAIUsagePage() {
                                     <TableRow key={`${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
                                       <TableCell className="pl-16">
                                         <div className="flex items-center gap-2">
-                                          <Code className="h-3 w-3 text-slate-400 shrink-0" />
-                                          <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                          {SUBKEY_LABELS[sk.key] ? (
+                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
+                                          ) : (
+                                            <>
+                                              <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                              <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                            </>
+                                          )}
                                         </div>
                                       </TableCell>
                                       <TableCell />
@@ -1067,8 +1101,14 @@ export default function ConsultantAIUsagePage() {
                                         <TableRow key={`uf-${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
                                           <TableCell className="pl-16">
                                             <div className="flex items-center gap-2">
-                                              <Code className="h-3 w-3 text-slate-400 shrink-0" />
-                                              <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                              {SUBKEY_LABELS[sk.key] ? (
+                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
+                                              ) : (
+                                                <>
+                                                  <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                                  <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                                </>
+                                              )}
                                             </div>
                                           </TableCell>
                                           <TableCell />

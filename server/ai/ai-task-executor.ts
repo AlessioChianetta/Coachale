@@ -52,13 +52,14 @@ interface ResolvedProvider {
   providerName: string;
 }
 
-async function resolveProviderForTask(consultantId: string): Promise<ResolvedProvider> {
+async function resolveProviderForTask(consultantId: string, aiRole?: string | null): Promise<ResolvedProvider> {
+  const featureKey = aiRole ? `ai-task-${aiRole}` : 'ai-task-executor';
   try {
     const provider = await getAIProvider(consultantId, consultantId);
-    provider.setFeature?.('ai-task-executor');
+    provider.setFeature?.(featureKey);
     const providerName = provider.metadata?.name || 'Unknown';
     const model = getModelForProviderName(providerName);
-    console.log(`${LOG_PREFIX} Provider resolved: ${providerName} (source: ${provider.source}, model: ${model})`);
+    console.log(`${LOG_PREFIX} Provider resolved: ${providerName} (source: ${provider.source}, model: ${model}, feature: ${featureKey})`);
     return { client: provider.client, model, providerName };
   } catch (err: any) {
     console.warn(`${LOG_PREFIX} Provider resolution failed: ${err.message}, using fallback`);
@@ -74,7 +75,7 @@ async function resolveProviderForTask(consultantId: string): Promise<ResolvedPro
             ...params.generationConfig,
             ...(params.tools && { tools: params.tools }),
           },
-        }, { consultantId, feature: 'task-executor', keySource: 'classifier' });
+        }, { consultantId, feature: featureKey, keySource: 'classifier' });
         const text = typeof result.text === 'function' ? result.text() : (result as any).text || '';
         return { response: { text: () => text, candidates: [] } };
       },
@@ -693,7 +694,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "key_topics": ["argomento chiave 1", "argomento 2", ...]
 }`;
 
-  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} analyze_patterns using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
@@ -811,7 +812,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", "passo successivo 3", "passo successivo 4"]
 }`;
 
-  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} generate_report using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
@@ -908,7 +909,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "call_topic_summary": "brief summary of what this call is about"
 }`;
 
-  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} prepare_call using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
@@ -1440,7 +1441,7 @@ async function handleSendEmail(
 
   if (!emailBody) {
     try {
-      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 ${agentContextSection || ''}
@@ -1598,7 +1599,7 @@ async function handleSendWhatsapp(
 
   if (!messageText) {
     try {
-      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${resolvedName || 'il cliente'}.
 ${agentContextSection || ''}
@@ -1685,7 +1686,7 @@ async function handleWebSearch(
   if (searchQuery.length > 100) {
     console.log(`${LOG_PREFIX} Search query too long (${searchQuery.length} chars), generating focused queries with Gemini`);
     try {
-      const { client: queryGenClient, model: queryModel, providerName: queryProvider } = await resolveProviderForTask(task.consultant_id);
+      const { client: queryGenClient, model: queryModel, providerName: queryProvider } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       console.log(`${LOG_PREFIX} web_search query generation using ${queryProvider}`);
       const keyTopics = analysisData.key_topics || [];
       const queryGenPrompt = `Based on the following task context, generate 2-3 concise, focused web search queries (each max 10 words) that would find the most relevant information. Return ONLY the queries, one per line.
@@ -1743,7 +1744,7 @@ IMPORTANTE: Riporta SOLO informazioni che trovi realmente dalla ricerca. NON inv
 
 Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
 
-  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id);
+  const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} web_search using ${providerName} (${resolvedModel})`);
 
   const response = await withRetry(async () => {
