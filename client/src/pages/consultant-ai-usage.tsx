@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getToken } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,7 +21,7 @@ import {
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
   BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
-  ArrowLeft, CalendarIcon
+  ArrowLeft, CalendarIcon, Menu
 } from "lucide-react";
 import {
   AreaChart,
@@ -441,16 +440,22 @@ export default function ConsultantAIUsagePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
-      <Navbar onMenuClick={() => setSidebarOpen(true)} />
       <div className="flex">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Costi AI</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Monitora i costi e l'utilizzo delle API AI</p>
+              <div className="flex items-center gap-3">
+                {isMobile && (
+                  <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700">
+                    <Menu className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  </button>
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Costi AI</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Monitora i costi e l'utilizzo delle API AI</p>
+                </div>
               </div>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
