@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, subWeeks, addMonths, subMonths, getDay } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, subWeeks, addMonths, subMonths, getDay, isToday } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -630,12 +632,30 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onDateChange(addDays(selectedDate, -1))}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <h2 className="text-base font-semibold capitalize">
-                {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })}
-              </h2>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="text-base font-semibold capitalize hover:bg-muted/50 px-2 h-auto py-1">
+                    {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && onDateChange(date)}
+                    locale={it}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onDateChange(addDays(selectedDate, 1))}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
+              {!isToday(selectedDate) && (
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => onDateChange(new Date())}>
+                  Oggi
+                </Button>
+              )}
             </div>
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hasChanges} size="sm" className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md">
               {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
