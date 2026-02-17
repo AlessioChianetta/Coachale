@@ -14,6 +14,7 @@ import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
 import { buildConsultantContext, detectConsultantIntent, ConsultantContext, ConsultantIntent } from "./consultant-context-builder";
 import { consultantGuides, formatGuidesForPrompt } from "./consultant-guides";
 import { trackDocumentUsage, trackApiUsage, trackClientDocumentUsage, trackClientApiUsage } from "./services/knowledge-searcher";
+import { tokenTracker } from "./ai/token-tracker";
 import { extractUrls, scrapeMultipleUrls, isGoogleSheetsUrl, scrapeGoogleDoc } from "./web-scraper";
 import {
   getCachedExercise,
@@ -2907,6 +2908,22 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]`);
     }
 
+    // Track token usage for client chat
+    tokenTracker.track({
+      consultantId,
+      clientId,
+      model: dynamicConfig.model,
+      feature: 'client-chat',
+      requestType: 'stream',
+      keySource: providerMetadata.name || 'unknown',
+      inputTokens: clientUsageMetadata?.promptTokenCount || Math.ceil((accumulatedMessage.length + (accumulatedThinking?.length || 0)) * 0.3),
+      outputTokens: clientUsageMetadata?.candidatesTokenCount || Math.ceil(accumulatedMessage.length * 0.3),
+      cachedTokens: clientUsageMetadata?.cachedContentTokenCount || 0,
+      totalTokens: clientUsageMetadata?.totalTokenCount || Math.ceil((accumulatedMessage.length * 0.6)),
+      thinkingTokens: accumulatedThinking ? Math.ceil(accumulatedThinking.length * 0.3) : 0,
+      durationMs: geminiCallTime,
+    }).catch(() => {});
+
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 
     // Extract suggested actions before saving
@@ -3003,7 +3020,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         // Get API key: first try SuperAdmin keys, then fallback to env
         let clientTitleGeminiApiKey: string | null = null;
         
-        const { getSuperAdminGeminiKeys } = await import('./super-admin-gemini');
+        const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
         const clientSuperAdminKeys = await getSuperAdminGeminiKeys();
         if (clientSuperAdminKeys && clientSuperAdminKeys.enabled && clientSuperAdminKeys.keys.length > 0) {
           clientTitleGeminiApiKey = clientSuperAdminKeys.keys[0];
@@ -4106,6 +4123,21 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CONSULTANT]`);
     }
 
+    // Track token usage for consultant chat
+    tokenTracker.track({
+      consultantId,
+      model: consultantDynamicConfig.model,
+      feature: 'consultant-chat',
+      requestType: 'stream',
+      keySource: providerMetadata.name || 'unknown',
+      inputTokens: consultantUsageMetadata?.promptTokenCount || Math.ceil((accumulatedMessage.length + (accumulatedThinking?.length || 0)) * 0.3),
+      outputTokens: consultantUsageMetadata?.candidatesTokenCount || Math.ceil(accumulatedMessage.length * 0.3),
+      cachedTokens: consultantUsageMetadata?.cachedContentTokenCount || 0,
+      totalTokens: consultantUsageMetadata?.totalTokenCount || Math.ceil((accumulatedMessage.length * 0.6)),
+      thinkingTokens: accumulatedThinking ? Math.ceil(accumulatedThinking.length * 0.3) : 0,
+      durationMs: geminiCallTime,
+    }).catch(() => {});
+
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
 
     // Save assistant message with completed status
@@ -4165,7 +4197,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         // Get API key: first try SuperAdmin keys, then fallback to env
         let titleGeminiApiKey: string | null = null;
         
-        const { getSuperAdminGeminiKeys } = await import('./super-admin-gemini');
+        const { getSuperAdminGeminiKeys } = await import('./ai/provider-factory');
         const superAdminKeys = await getSuperAdminGeminiKeys();
         if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
           titleGeminiApiKey = superAdminKeys.keys[0];
