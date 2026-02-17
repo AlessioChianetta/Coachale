@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, subWeeks, addMonths, subMonths, getDay } from "date-fns";
 import { it } from "date-fns/locale";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
-import { Phone, CalendarDays, Users, DollarSign, TrendingUp, Bot, Loader2, ChevronLeft, ChevronRight, Save, BarChart3, FileText, Target, ChevronDown, Send, Trash2, User, Sparkles } from "lucide-react";
+import { Phone, CalendarDays, Users, DollarSign, TrendingUp, Bot, Loader2, ChevronLeft, ChevronRight, Save, BarChart3, FileText, Target, ChevronDown, Send, Trash2, User, Sparkles, MessageCircle, X } from "lucide-react";
 
 interface SalesReport {
   id: string;
@@ -241,7 +242,7 @@ const CHAT_SUGGESTIONS = [
   "Quali sono i miei punti deboli?",
 ];
 
-function SalesChatSection({ getAiRange }: { getAiRange: () => { startDate: string; endDate: string } }) {
+function SalesChatPanel({ open, onClose, getAiRange }: { open: boolean; onClose: () => void; getAiRange: () => { startDate: string; endDate: string } }) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -274,8 +275,10 @@ function SalesChatSection({ getAiRange }: { getAiRange: () => { startDate: strin
   }, [scrollToBottom]);
 
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    if (open) {
+      fetchMessages();
+    }
+  }, [open, fetchMessages]);
 
   const sendMessage = async (text?: string) => {
     const messageText = (text || input).trim();
@@ -350,30 +353,52 @@ function SalesChatSection({ getAiRange }: { getAiRange: () => { startDate: strin
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="sales-chat-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={onClose}
+          />
+          <motion.div
+            key="sales-chat-panel"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed inset-y-0 right-0 w-full md:w-[480px] z-50 bg-background shadow-xl flex flex-col"
+          >
+        <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-violet-500/10 to-transparent">
+          <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
             <Bot className="w-4 h-4 text-violet-500" />
-            Sales Coach AI
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleAnalyze} disabled={sending}>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm">Sales Coach AI</h3>
+            <p className="text-xs text-muted-foreground">Chat diretta</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleAnalyze} disabled={sending}>
               <BarChart3 className="w-3.5 h-3.5" />
-              Analizza Performance
+              Analizza
             </Button>
             {messages.length > 0 && (
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearChat} title="Cancella chat">
                 <Trash2 className="h-4 w-4 text-muted-foreground" />
               </Button>
             )}
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
+
         <div
           ref={scrollRef}
-          className="h-[400px] overflow-y-auto px-4 py-3 space-y-3 border-t"
+          className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
         >
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -484,8 +509,10 @@ function SalesChatSection({ getAiRange }: { getAiRange: () => { startDate: strin
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -497,6 +524,8 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
   const [hasChanges, setHasChanges] = useState(false);
   const [weekDate, setWeekDate] = useState(new Date());
   const [monthDate, setMonthDate] = useState(new Date());
+  const [chatOpen, setChatOpen] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const weekStart = format(startOfWeek(weekDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
@@ -600,10 +629,27 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
     return { startDate: ws, endDate: we };
   }, [view, weekStart, weekEnd, monthStart, monthEnd, selectedDate]);
 
+  const aiMutation = useMutation({
+    mutationFn: async () => {
+      const range = getAiRange();
+      const res = await fetch("/api/sales-reports/ai-analyze", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(range),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: (data) => setAiAnalysis(data.analysis),
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile analizzare le performance", variant: "destructive" });
+    },
+  });
+
   return (
     <div className="space-y-6">
       <Tabs value={view} onValueChange={setView}>
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
+        <TabsList className="grid grid-cols-4 w-full max-w-lg">
           <TabsTrigger value="day" className="gap-2">
             <CalendarDays className="w-4 h-4" />
             Giorno
@@ -615,6 +661,10 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
           <TabsTrigger value="month" className="gap-2">
             <TrendingUp className="w-4 h-4" />
             Mese
+          </TabsTrigger>
+          <TabsTrigger value="goals" className="gap-2">
+            <Target className="w-4 h-4" />
+            Obiettivi
           </TabsTrigger>
         </TabsList>
 
@@ -771,11 +821,39 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
 
           <MonthlyTable reports={monthReports} monthDate={monthDate} />
         </TabsContent>
+
+        <TabsContent value="goals" className="space-y-4 mt-4">
+          <SalesGoalsSection monthReports={currentMonthReports} monthDate={new Date()} dailyReports={dayReport ? [dayReport] : []} selectedDate={selectedDate} />
+        </TabsContent>
       </Tabs>
 
-      <SalesGoalsSection monthReports={currentMonthReports} monthDate={new Date()} dailyReports={dayReport ? [dayReport] : []} selectedDate={selectedDate} />
+      <Card className="border-dashed">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="w-4 h-4 text-violet-500" />
+              Sales Coach AI
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => aiMutation.mutate()} disabled={aiMutation.isPending}>
+                {aiMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+                Analizza Performance
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setChatOpen(true)}>
+                <MessageCircle className="w-3.5 h-3.5" />
+                Chatta con il Coach
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        {aiAnalysis && (
+          <CardContent>
+            <SafeMarkdown content={aiAnalysis} />
+          </CardContent>
+        )}
+      </Card>
 
-      <SalesChatSection getAiRange={getAiRange} />
+      <SalesChatPanel open={chatOpen} onClose={() => setChatOpen(false)} getAiRange={getAiRange} />
     </div>
   );
 }
