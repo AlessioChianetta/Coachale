@@ -1,0 +1,103 @@
+Ecco come puoi strutturare la soluzione per monitorare token, costi e clienti in tempo reale senza dover riscrivere i tuoi 40 file.
+
+La Soluzione: Usa un LLM Gateway (Middleware)
+Invece di chiamare direttamente l'API di Google Gemini da ogni punto del tuo software, fai passare tutte le chiamate attraverso un "intermediario" (Proxy).
+
+Come funziona:
+
+Il tuo software invia la richiesta al Gateway.
+
+Il Gateway registra i metadati (chi fa la chiamata, timestamp).
+
+Il Gateway inoltra la richiesta a Google Gemini.
+
+Gemini risponde al Gateway.
+
+Il Gateway legge la risposta, estrae usage_metadata (input/output tokens), calcola il costo e lo salva in un database.
+
+Il Gateway restituisce la risposta al tuo software come se nulla fosse successo.
+
+I Tool Consigliati
+Non c'è bisogno di costruirlo da zero. Esistono piattaforme open-source e SaaS perfette per questo:
+
+Helicone: Molto popolare, open source, facilissimo da integrare.
+
+Langfuse: Ottimo per l'observability e il tracing, open source.
+
+Portkey: Offre funzionalità avanzate di routing.
+
+Ti consiglio Helicone o Langfuse per iniziare, poiché hanno un setup quasi istantaneo.
+
+Step Pratici per l'Implementazione
+Ecco come farlo con il minimo rischio ("Low-code change"):
+
+1. Centralizzare la Configurazione (L'unica modifica necessaria)
+Anche se le chiamate sono in 40 file diversi, spero che tu stia usando una variabile d'ambiente (es. .env) per la tua API Key o per l'URL di base.
+
+Se usi l'SDK di Google Generative AI o chiamate REST, di solito puntano a:
+https://generativelanguage.googleapis.com
+
+Devi solo cambiare l'indirizzo base (Base URL) per puntare al Gateway.
+
+Esempio con Helicone:
+
+Invece di inizializzare il client standard, modifichi solo la base URL. Se usi Node.js, Python o curl, la logica è simile:
+
+JavaScript
+// Esempio concettuale (Node.js / JS SDK)
+
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// TRUCCO: Molti SDK permettono di sovrascrivere il 'baseUrl' o 'transport'.
+// Se il tuo SDK non lo permette facilmente, puoi usare un "Custom HTTP Client" 
+// che punta a: https://gateway.helicone.ai
+Nota: Se il tuo codice è molto vecchio o usa l'SDK standard in modo rigido, potresti dover modificare l'inizializzazione del client in quei file. Ma è una modifica sicura: cambi solo dove va la richiesta, non la logica.
+
+2. Tracciare i Costi dei Clienti (User Tracking)
+Per sapere quanto spende il cliente X, devi passare un identificativo.
+
+Il Gateway intercetta gli Header HTTP. Anche senza toccare il prompt o la logica, puoi aggiungere un header alla richiesta.
+
+Dovrai cercare nel tuo codice dove fai la chiamata e aggiungere un header custom:
+
+Header: Helicone-User-Id (o Langfuse-User-Id)
+
+Valore: ID_DEL_TUO_CLIENTE (es. client_123)
+
+Esempio di Header:
+
+JSON
+{
+  "Content-Type": "application/json",
+  "Helicone-Auth": "Bearer <HELICONE_API_KEY>",
+  "Helicone-User-Id": "cliente_mario_rossi" 
+}
+In questo modo, nella dashboard di Helicone/Langfuse vedrai:
+
+Totale Costo: $5.00
+
+Cliente Mario Rossi: $0.50
+
+Cliente Azienda B: $4.50
+
+3. Il Calcolo dei Token e Costi (Automatico)
+Gemini restituisce sempre un oggetto usageMetadata nella risposta JSON:
+
+JSON
+"usageMetadata": {
+  "promptTokenCount": 10,
+  "candidatesTokenCount": 50,
+  "totalTokenCount": 60
+}
+Il Gateway cattura questi numeri automaticamente e applica il listino prezzi che tu imposti (o che rileva automaticamente per i modelli noti come Gemini Flash). Non devi scrivere codice per fare calcoli.
+
+Riepilogo del Piano d'Azione
+Scegli un Gateway: Crea un account gratuito su Helicone o Langfuse (o installali on-premise se vuoi privacy totale).
+
+Routing: Modifica la BASE_URL delle tue chiamate API nel tuo software per passare attraverso il gateway.
+
+Identificazione: Inietta l'ID del cliente negli header delle richieste HTTP.
+
+Dashboard: Apri la dashboard del gateway e vedrai i grafici in tempo reale di spesa e utilizzo.
