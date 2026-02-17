@@ -151,11 +151,11 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         SELECT
           t.client_id AS client_id,
           CASE 
-            WHEN t.client_id IS NULL THEN cu.first_name || ' ' || cu.last_name
+            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
             ELSE u.first_name || ' ' || u.last_name
           END AS user_name,
           CASE 
-            WHEN t.client_id IS NULL THEN 'consultant'
+            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
             ELSE 'client'
           END AS client_role,
           COALESCE(SUM(t.total_tokens), 0) AS total_tokens,
@@ -166,7 +166,10 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
            WHERE t2.consultant_id = ${consultantId}
              AND t2.created_at >= ${start}
              AND t2.created_at <= ${end}
-             AND ((t2.client_id IS NULL AND t.client_id IS NULL) OR t2.client_id = t.client_id)
+             AND (
+               ((t2.client_id IS NULL OR t2.client_id = '' OR t2.client_id = t2.consultant_id) AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id))
+               OR t2.client_id = t.client_id
+             )
            GROUP BY feature
            ORDER BY COUNT(*) DESC
            LIMIT 1
@@ -177,7 +180,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         WHERE t.consultant_id = ${consultantId}
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
-          AND (t.client_id IS NULL OR u.is_active = true)
+          AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true)
         GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name
       ),
       active_clients AS (
@@ -252,7 +255,7 @@ router.get("/by-client/:clientId/features", authenticateToken, async (req: AuthR
       WHERE consultant_id = ${consultantId}
         AND created_at >= ${start}
         AND created_at <= ${end}
-        AND ${isSelf ? sql`(client_id IS NULL OR client_id = ${consultantId})` : sql`client_id = ${clientId}`}
+        AND ${isSelf ? sql`(client_id IS NULL OR client_id = '' OR client_id = ${consultantId})` : sql`client_id = ${clientId}`}
       GROUP BY feature
       ORDER BY SUM(total_cost::numeric) DESC
     `);
@@ -296,12 +299,12 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
           THEN ROUND(SUM(total_tokens)::numeric / COUNT(*), 0)::text
           ELSE '0'
         END AS "avgTokensPerRequest",
-        COALESCE(SUM(CASE WHEN client_id IS NULL THEN total_tokens ELSE 0 END), 0)::text AS "consultantTokens",
-        COALESCE(SUM(CASE WHEN client_id IS NULL THEN total_cost::numeric ELSE 0 END), 0)::text AS "consultantCost",
-        COALESCE(SUM(CASE WHEN client_id IS NULL THEN 1 ELSE 0 END), 0)::text AS "consultantRequests",
-        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN total_tokens ELSE 0 END), 0)::text AS "clientTokens",
-        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN total_cost::numeric ELSE 0 END), 0)::text AS "clientCost",
-        COALESCE(SUM(CASE WHEN client_id IS NOT NULL THEN 1 ELSE 0 END), 0)::text AS "clientRequests"
+        COALESCE(SUM(CASE WHEN client_id IS NULL OR client_id = '' OR client_id = consultant_id THEN total_tokens ELSE 0 END), 0)::text AS "consultantTokens",
+        COALESCE(SUM(CASE WHEN client_id IS NULL OR client_id = '' OR client_id = consultant_id THEN total_cost::numeric ELSE 0 END), 0)::text AS "consultantCost",
+        COALESCE(SUM(CASE WHEN client_id IS NULL OR client_id = '' OR client_id = consultant_id THEN 1 ELSE 0 END), 0)::text AS "consultantRequests",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL AND client_id != '' AND client_id != consultant_id THEN total_tokens ELSE 0 END), 0)::text AS "clientTokens",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL AND client_id != '' AND client_id != consultant_id THEN total_cost::numeric ELSE 0 END), 0)::text AS "clientCost",
+        COALESCE(SUM(CASE WHEN client_id IS NOT NULL AND client_id != '' AND client_id != consultant_id THEN 1 ELSE 0 END), 0)::text AS "clientRequests"
       FROM ai_token_usage
       WHERE consultant_id = ${consultantId}
         AND created_at >= ${start}
