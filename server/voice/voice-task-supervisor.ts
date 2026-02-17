@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { GeminiClient } from "../ai/provider-factory";
+import { tokenTracker } from "../ai/token-tracker";
 
 export interface TaskConversationMessage {
   role: 'user' | 'assistant';
@@ -206,6 +207,20 @@ export class VoiceTaskSupervisor {
       });
 
       const response = await Promise.race([llmPromise, timeoutPromise]);
+
+      const usageMeta = response.usageMetadata || (response as any).response?.usageMetadata;
+      if (usageMeta) {
+        tokenTracker.track({
+          consultantId: this.consultantId,
+          model: VoiceTaskSupervisor.MODEL,
+          feature: 'voice-call',
+          requestType: 'generate',
+          inputTokens: usageMeta.promptTokenCount || 0,
+          outputTokens: usageMeta.candidatesTokenCount || 0,
+          cachedTokens: usageMeta.cachedContentTokenCount || 0,
+          totalTokens: usageMeta.totalTokenCount || 0,
+        }).catch(e => console.error('[TokenTracker] track error:', e));
+      }
 
       let text = '';
       try {

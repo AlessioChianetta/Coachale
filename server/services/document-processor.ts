@@ -20,6 +20,7 @@ import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
 import { GEMINI_3_MODEL, getSuperAdminGeminiKeys, trackedGenerateContent } from '../ai/provider-factory';
+import { tokenTracker } from '../ai/token-tracker';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -201,6 +202,20 @@ export async function extractTextFromPDFWithGemini(fileUri: string): Promise<str
         text: 'Extract all text content from this PDF document. Return only the extracted text without any additional commentary, formatting instructions, or markdown. Preserve the original structure and line breaks where appropriate.',
       },
     ]);
+
+    const usageMeta = result.response?.usageMetadata;
+    if (usageMeta) {
+      tokenTracker.track({
+        consultantId: 'system',
+        model: 'gemini-2.0-flash',
+        feature: 'document-processing',
+        requestType: 'generate',
+        inputTokens: usageMeta.promptTokenCount || 0,
+        outputTokens: usageMeta.candidatesTokenCount || 0,
+        cachedTokens: usageMeta.cachedContentTokenCount || 0,
+        totalTokens: usageMeta.totalTokenCount || 0,
+      }).catch(e => console.error('[TokenTracker] track error:', e));
+    }
     
     const extractedText = result.response.text().trim();
     
@@ -863,6 +878,20 @@ export async function transcribeAudioWithGemini(
               ],
             }],
           });
+
+          const usageMetaVertex = result.response?.usageMetadata;
+          if (usageMetaVertex) {
+            tokenTracker.track({
+              consultantId: 'system',
+              model: 'gemini-2.5-flash-lite',
+              feature: 'document-processing',
+              requestType: 'generate',
+              inputTokens: usageMetaVertex.promptTokenCount || 0,
+              outputTokens: usageMetaVertex.candidatesTokenCount || 0,
+              cachedTokens: usageMetaVertex.cachedContentTokenCount || 0,
+              totalTokens: usageMetaVertex.totalTokenCount || 0,
+            }).catch(e => console.error('[TokenTracker] track error:', e));
+          }
           
           const candidate = result.response?.candidates?.[0];
           transcription = candidate?.content?.parts?.[0]?.text?.trim() || '';

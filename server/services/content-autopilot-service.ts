@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { eq, and, gte, lt } from "drizzle-orm";
 import * as schema from "@shared/schema";
+import { tokenTracker } from "../ai/token-tracker";
 import { generateContentIdeas } from "./content-ai-service";
 import { analyzeAndGenerateImage, AdvisageSettings } from "./advisage-server-service";
 import { PublerService } from "./publer-service";

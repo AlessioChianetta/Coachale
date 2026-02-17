@@ -2,6 +2,7 @@ import { GoogleGenAI, Modality, Session } from '@google/genai';
 import { buildSystemPrompt } from '../ai-prompts';
 import { EventEmitter } from 'events';
 import { voiceConfig } from './config';
+import { tokenTracker } from '../ai/token-tracker';
 
 interface LiveServerMessage {
   serverContent?: {
@@ -183,6 +184,19 @@ Sii energico come sempre. NON essere formale. NON fare subito pitch commerciali.
         }
 
         if (message.serverContent.turnComplete) {
+          const usageMeta = (message as any).usageMetadata || (message as any).serverContent?.usageMetadata;
+          if (usageMeta && this.context) {
+            tokenTracker.track({
+              consultantId: this.context.consultantId,
+              model: this.config.model,
+              feature: 'voice-call',
+              requestType: 'live',
+              inputTokens: usageMeta.promptTokenCount || 0,
+              outputTokens: usageMeta.candidatesTokenCount || 0,
+              cachedTokens: usageMeta.cachedContentTokenCount || 0,
+              totalTokens: usageMeta.totalTokenCount || 0,
+            }).catch(e => console.error('[TokenTracker] track error:', e));
+          }
           this.emit('turnComplete');
         }
       }

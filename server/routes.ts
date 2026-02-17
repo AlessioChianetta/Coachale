@@ -7934,7 +7934,7 @@ REGOLE:
       
       const { getAIProvider } = await import("./ai/provider-factory");
       const providerResult = await getAIProvider(req.user!.id);
-      providerResult.setFeature?.('unknown');
+      providerResult.setFeature?.('library-suggest-modules');
       
       if (!providerResult.client) {
         // Fallback: genera nomi generici
@@ -8047,7 +8047,7 @@ Rispondi SOLO con un JSON array di stringhe, senza altri testi:
         try {
           const { getAIProvider } = await import("./ai/provider-factory");
           const providerResult = await getAIProvider(consultantId);
-          providerResult.setFeature?.('unknown');
+          providerResult.setFeature?.('library-auto-assign');
           
           const sanitizeText = (text: string): string => {
             if (!text) return '';
@@ -8269,7 +8269,7 @@ Rispondi SOLO con JSON: {"1":"A","2":"B",...}`;
       
       const { getAIProvider } = await import("./ai/provider-factory");
       const providerResult = await getAIProvider(req.user!.id);
-      providerResult.setFeature?.('unknown');
+      providerResult.setFeature?.('library-auto-assign');
       
       if (!providerResult.client) {
         const moduleCount = modules.length;
@@ -12274,7 +12274,7 @@ Rispondi con JSON: {"1":"A","2":"B",...} dove il numero è la lezione e la lette
       
       // Get AI provider for the consultant
       const aiProvider = await getAIProvider(consultantId, consultantId);
-      aiProvider.setFeature?.('unknown');
+      aiProvider.setFeature?.('lead-hub-assistant');
       
       if (!aiProvider.client) {
         return res.status(500).json({ 
@@ -20297,7 +20297,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           try {
             // Get AI provider for TTS
             const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-            aiProvider.setFeature?.('unknown');
+            aiProvider.setFeature?.('agent-chat-tts');
             
             if (!aiProvider.vertexClient) {
               console.warn('⚠️ [TTS] No VertexAI client available - falling back to text-only');
@@ -20531,7 +20531,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         // 2. Get AI provider (Vertex AI)
         console.log('\n🔌 [STEP 2] Getting Vertex AI provider...');
         const aiProvider = await getAIProvider(consultantId, consultantId);
-        aiProvider.setFeature?.('unknown');
+        aiProvider.setFeature?.('agent-chat-audio');
         console.log(`✅ Provider: ${aiProvider.source}`);
 
         // 3. Transcribe audio with Vertex AI

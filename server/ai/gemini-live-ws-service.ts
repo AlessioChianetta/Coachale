@@ -7495,7 +7495,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               if (bookingSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
-                    const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    setFeature?.('voice-call');
                     try {
                       const bookingMessages: BookingMessage[] = conversationMessages
                         .filter(m => !m.transcript.includes('[SYSTEM_INSTRUCTION') && !m.transcript.includes('[TASK_CREATED]') && !m.transcript.includes('[TASK_MODIFIED]') && !m.transcript.includes('[TASK_CANCELLED]') && !m.transcript.includes('[BOOKING_CREATED]') && !m.transcript.includes('[BOOKING_FAILED]') && !m.transcript.includes('[TASK_NOT_FOUND]') && !m.transcript.includes('[TASK_LIST]'))
@@ -7554,7 +7555,8 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               if (taskSupervisor && isPhoneCall && hasNewUserInput) {
                 (async () => {
                   try {
-                    const { client: aiClient, cleanup } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    const { client: aiClient, cleanup, setFeature } = await getAIProvider(userId || 'voice_anonymous', consultantId!);
+                    setFeature?.('voice-call');
                     try {
                       const taskMessages: TaskConversationMessage[] = conversationMessages
                         .filter(m => !m.transcript.includes('[SYSTEM_INSTRUCTION') && !m.transcript.includes('[TASK_CREATED]') && !m.transcript.includes('[TASK_MODIFIED]') && !m.transcript.includes('[TASK_CANCELLED]') && !m.transcript.includes('[BOOKING_CREATED]') && !m.transcript.includes('[BOOKING_FAILED]') && !m.transcript.includes('[TASK_NOT_FOUND]') && !m.transcript.includes('[TASK_LIST]'))

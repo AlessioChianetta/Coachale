@@ -13,6 +13,7 @@ import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { getRawGoogleGenAIForFileSearch, getModelWithThinking, trackedGenerateContent } from "./provider-factory";
+import { tokenTracker } from "./token-tracker";
 import { fileSearchService } from "./file-search-service";
 import { buildUserContext, UserContext } from "../ai-context-builder";
 

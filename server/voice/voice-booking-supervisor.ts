@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { executeConsultationTool } from "../ai/consultation-tool-executor";
 import { createBookingRecord, createGoogleCalendarBooking, processFullBooking } from "../booking/booking-service";
 import { getAIProvider, GeminiClient } from "../ai/provider-factory";
+import { tokenTracker } from "../ai/token-tracker";
 
 export interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -170,6 +171,21 @@ export class VoiceBookingSupervisor {
       });
 
       const response = await Promise.race([llmPromise, timeoutPromise]);
+
+      const usageMeta = response.usageMetadata || (response as any).response?.usageMetadata;
+      if (usageMeta) {
+        tokenTracker.track({
+          consultantId: this.consultantId,
+          clientId: this.clientId,
+          model: VoiceBookingSupervisor.MODEL,
+          feature: 'voice-call',
+          requestType: 'generate',
+          inputTokens: usageMeta.promptTokenCount || 0,
+          outputTokens: usageMeta.candidatesTokenCount || 0,
+          cachedTokens: usageMeta.cachedContentTokenCount || 0,
+          totalTokens: usageMeta.totalTokenCount || 0,
+        }).catch(e => console.error('[TokenTracker] track error:', e));
+      }
 
       let text = '';
       try {

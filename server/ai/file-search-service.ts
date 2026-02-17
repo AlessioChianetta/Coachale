@@ -23,6 +23,7 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { getSuperAdminGeminiKeys } from "./provider-factory";
+import { tokenTracker } from "./token-tracker";
 
 export interface ChunkingConfig {
   maxTokensPerChunk: number;

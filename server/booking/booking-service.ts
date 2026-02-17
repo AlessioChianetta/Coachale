@@ -3,6 +3,7 @@ import { appointmentBookings, consultantAvailabilitySettings, users, bookingExtr
 import { eq, and, or, isNull, sql, desc, gte, isNotNull } from "drizzle-orm";
 import { createGoogleCalendarEvent, listEvents, checkGoogleCalendarEventExists } from "../google-calendar-service";
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
+import { tokenTracker } from "../ai/token-tracker";
 import { sendEmail } from "../services/email-scheduler";
 import twilio from "twilio";
 
@@ -783,6 +784,21 @@ export async function extractBookingDataFromConversation(
         thinkingConfig: { thinkingBudget: 1024 },
       },
     });
+
+    const usageMeta = (response as any)?.usageMetadata || (response as any)?.response?.usageMetadata;
+    if (usageMeta) {
+      tokenTracker.track({
+        consultantId: accumulatorOptions?.consultantId || 'system',
+        clientId: '',
+        model,
+        feature: 'voice-call',
+        requestType: 'generate',
+        inputTokens: usageMeta.promptTokenCount || 0,
+        outputTokens: usageMeta.candidatesTokenCount || 0,
+        cachedTokens: usageMeta.cachedContentTokenCount || 0,
+        totalTokens: usageMeta.totalTokenCount || 0,
+      }).catch(e => console.error('[TokenTracker] track error:', e));
+    }
 
     let responseText = "";
     try {

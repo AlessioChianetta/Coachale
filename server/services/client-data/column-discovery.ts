@@ -3,6 +3,7 @@ import { consultantColumnMappings } from "../../../shared/schema";
 import { eq, and, ilike, sql } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { getSuperAdminGeminiKeys, trackedGenerateContent } from "../../ai/provider-factory";
+import { tokenTracker } from "../../ai/token-tracker";
 import type { DistributedSample, ColumnProfile } from "./column-profiler";
 import { profileColumn } from "./column-profiler";
 

@@ -7,6 +7,7 @@ import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
 import { FileSearchSyncService } from "../file-search-sync-service";
+import { tokenTracker } from "../../ai/token-tracker";
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
@@ -299,6 +300,20 @@ ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
       },
     });
 
+    const usageMeta = result.usageMetadata || (result as any).response?.usageMetadata;
+    if (usageMeta) {
+      tokenTracker.track({
+        consultantId,
+        model,
+        feature: 'email-hub-ai',
+        requestType: 'generate',
+        inputTokens: usageMeta.promptTokenCount || 0,
+        outputTokens: usageMeta.candidatesTokenCount || 0,
+        cachedTokens: usageMeta.cachedContentTokenCount || 0,
+        totalTokens: usageMeta.totalTokenCount || 0,
+      }).catch(e => console.error('[TokenTracker] track error:', e));
+    }
+
     const responseText = result.response.text();
     const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
@@ -393,6 +408,20 @@ ${threadContext}
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
+
+    const usageMetaDraft = result.usageMetadata || (result as any).response?.usageMetadata;
+    if (usageMetaDraft) {
+      tokenTracker.track({
+        consultantId,
+        model,
+        feature: 'email-hub-ai',
+        requestType: 'generate',
+        inputTokens: usageMetaDraft.promptTokenCount || 0,
+        outputTokens: usageMetaDraft.candidatesTokenCount || 0,
+        cachedTokens: usageMetaDraft.cachedContentTokenCount || 0,
+        totalTokens: usageMetaDraft.totalTokenCount || 0,
+      }).catch(e => console.error('[TokenTracker] track error:', e));
+    }
 
     const responseText = result.response.text();
     let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -510,6 +539,20 @@ ${threadContext}
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
+
+    const usageMetaStructured = result.usageMetadata || (result as any).response?.usageMetadata;
+    if (usageMetaStructured) {
+      tokenTracker.track({
+        consultantId,
+        model,
+        feature: 'email-hub-ai',
+        requestType: 'generate',
+        inputTokens: usageMetaStructured.promptTokenCount || 0,
+        outputTokens: usageMetaStructured.candidatesTokenCount || 0,
+        cachedTokens: usageMetaStructured.cachedContentTokenCount || 0,
+        totalTokens: usageMetaStructured.totalTokenCount || 0,
+      }).catch(e => console.error('[TokenTracker] track error:', e));
+    }
 
     // Parse citations from File Search response
     let documentCitations: string[] = [];

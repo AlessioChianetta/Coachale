@@ -38,6 +38,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { GoogleGenAI } from "@google/genai";
 import { getSuperAdminGeminiKeys, GEMINI_LEGACY_MODEL, trackedGenerateContent } from "../ai/provider-factory";
+import { tokenTracker } from "../ai/token-tracker";
 
 const execAsync = promisify(exec);
 

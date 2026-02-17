@@ -1,4 +1,5 @@
 import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
+import { tokenTracker } from "../ai/token-tracker";
 
 const DUPLICATE_ACTION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minuti
 
@@ -144,6 +145,21 @@ Rispondi SOLO: SÌ oppure NO`;
           ...(useThinking && { thinkingConfig: { thinkingLevel } }),
         },
       });
+
+      const usageMeta = (response as any)?.usageMetadata || (response as any)?.response?.usageMetadata;
+      if (usageMeta) {
+        tokenTracker.track({
+          consultantId: 'system',
+          clientId: '',
+          model,
+          feature: 'voice-call',
+          requestType: 'generate',
+          inputTokens: usageMeta.promptTokenCount || 0,
+          outputTokens: usageMeta.candidatesTokenCount || 0,
+          cachedTokens: usageMeta.cachedContentTokenCount || 0,
+          totalTokens: usageMeta.totalTokenCount || 0,
+        }).catch(e => console.error('[TokenTracker] track error:', e));
+      }
       
       const answer = extractResponseText(response).trim().toUpperCase();
       const shouldAnalyze = answer.includes('SÌ') || answer.includes('SI') || answer === 'YES';

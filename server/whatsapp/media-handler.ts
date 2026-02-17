@@ -9,6 +9,7 @@ import { PDFParse } from "pdf-parse";
 import { db } from "../db";
 import { whatsappMessages, whatsappMediaFiles, consultantWhatsappConfig } from "../../shared/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { tokenTracker } from "../ai/token-tracker";
 
 const STORAGE_PATH = path.join(process.cwd(), "storage", "whatsapp", "media");
 
@@ -337,6 +338,20 @@ async function transcribeAudio(
             },
           ],
         });
+
+        const usageMeta = result.response?.usageMetadata;
+        if (usageMeta) {
+          tokenTracker.track({
+            consultantId: consultantId || 'system',
+            model: 'gemini-2.5-flash-lite',
+            feature: 'whatsapp-agent',
+            requestType: 'generate',
+            inputTokens: usageMeta.promptTokenCount || 0,
+            outputTokens: usageMeta.candidatesTokenCount || 0,
+            cachedTokens: usageMeta.cachedContentTokenCount || 0,
+            totalTokens: usageMeta.totalTokenCount || 0,
+          }).catch(e => console.error('[TokenTracker] track error:', e));
+        }
 
         // Extract text from Vertex AI response
         const candidate = result.response?.candidates?.[0];

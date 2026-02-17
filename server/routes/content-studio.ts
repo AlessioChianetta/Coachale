@@ -1992,7 +1992,8 @@ router.post("/ai/suggest-levels", authenticateToken, requireRole("consultant"), 
       return res.status(400).json({ error: "Fornisci almeno topic, target audience o brand voice" });
     }
     
-    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-suggest-levels");
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "content-suggest-levels");
+    setFeature?.('content-suggest-levels');
     const { model } = getModelWithThinking(metadata?.name);
     
     // Build brand voice context if available
@@ -2123,7 +2124,8 @@ router.post("/ai/suggest-niche-target", authenticateToken, requireRole("consulta
       return res.status(400).json({ success: false, error: "Brand Voice data richiesto" });
     }
     
-    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "content-suggest-niche");
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "content-suggest-niche");
+    setFeature?.('content-suggest-niche');
     const { model } = getModelWithThinking(metadata?.name);
     
     // Build brand voice context
@@ -2839,7 +2841,8 @@ router.post("/generate-brand-voice", authenticateToken, requireRole("consultant"
     
     console.log(`🤖 [BRAND-VOICE-AI] Generating brand voice for consultant ${consultantId}`);
     
-    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "brand-voice-generator");
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "brand-voice-generator");
+    setFeature?.('brand-voice-generator');
     const { model } = getModelWithThinking(metadata?.name);
     
     const prompt = `Sei un esperto di brand strategy e copywriting. Devi creare una Brand Voice completa basata sulle risposte dell'utente.
@@ -3192,7 +3195,8 @@ router.post("/advisage/analyze", authenticateToken, requireRole("consultant"), a
     const consultantId = req.user!.id;
     const validated = advisageAnalysisSchema.parse(req.body);
     
-    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, consultantId);
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, consultantId);
+    setFeature?.('advisage-analyze');
     const modelConfig = getModelWithThinking(metadata.name);
     
     const brandInfo = validated.brandColor 
@@ -3789,7 +3793,8 @@ router.get("/topics/suggest", authenticateToken, requireRole("consultant"), asyn
     
     const businessContext = brandAsset?.nicheDescription || niche || "business generico";
     
-    const { trackedGenerateContent, metadata } = await getAIProvider(consultantId, "topic-suggest");
+    const { trackedGenerateContent, metadata, setFeature } = await getAIProvider(consultantId, "topic-suggest");
+    setFeature?.('topic-suggest');
     const { model } = getModelWithThinking(metadata?.name);
     
     const prompt = `Sei un esperto di content marketing. Genera ${count} argomenti/topic per creare contenuti social per un business nel settore: "${businessContext}".

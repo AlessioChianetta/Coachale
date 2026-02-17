@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "./provider-factory";
+import { tokenTracker } from "./token-tracker";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
