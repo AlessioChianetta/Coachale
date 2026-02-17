@@ -7,7 +7,7 @@ import { searchKnowledgeBase } from "./email-knowledge-service";
 import { createTicketFromEmail, getTicketSettings } from "./ticket-webhook-service";
 import { FileSearchService, fileSearchService } from "../../ai/file-search-service";
 import { FileSearchSyncService } from "../file-search-sync-service";
-import { tokenTracker } from "../../ai/token-tracker";
+
 
 export interface EmailClassification {
   intent: "question" | "complaint" | "request" | "follow-up" | "spam" | "thank-you" | "information" | "other";
