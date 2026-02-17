@@ -7,23 +7,37 @@ const router = Router();
 
 function getDateRange(period?: string, from?: string, to?: string): { start: Date; end: Date } {
   const now = new Date();
-  const end = to ? new Date(to) : now;
 
   let start: Date;
+  let end: Date;
+
   switch (period) {
     case "today":
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = now;
+      break;
+    case "day":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = now;
       break;
     case "week":
       start = new Date(now);
       start.setDate(start.getDate() - 7);
+      end = now;
       break;
     case "custom":
       start = from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1);
+      if (to) {
+        end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        end = now;
+      }
       break;
     case "month":
     default:
       start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
       break;
   }
 

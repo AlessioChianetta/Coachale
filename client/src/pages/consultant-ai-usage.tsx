@@ -1,22 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getToken } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React, { useState, useMemo } from "react";
+import { format, startOfDay, startOfWeek, startOfMonth, subDays, subMonths } from "date-fns";
+import { it } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 import {
   DollarSign, Zap, Hash, TrendingUp, BarChart3, Users,
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
   BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
-  ArrowLeft, Calendar
+  ArrowLeft, CalendarIcon
 } from "lucide-react";
 import {
   AreaChart,
@@ -191,9 +197,35 @@ function FeatureIcon({ name, className, style }: { name: string; className?: str
 export default function ConsultantAIUsagePage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [period, setPeriod] = useState("month");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: new Date(),
+  });
+  const [presetLabel, setPresetLabel] = useState("Questo mese");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [granularity, setGranularity] = useState("day");
   const [activeTab, setActiveTab] = useState("panoramica");
+
+  const dateQueryParams = useMemo(() => {
+    if (!dateRange?.from) return "period=month";
+    const from = format(dateRange.from, "yyyy-MM-dd");
+    const to = dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : from;
+    return `period=custom&from=${from}&to=${to}`;
+  }, [dateRange]);
+
+  const applyPreset = (label: string, from: Date, to: Date) => {
+    setDateRange({ from, to });
+    setPresetLabel(label);
+    setCalendarOpen(false);
+  };
+
+  const dateLabel = useMemo(() => {
+    if (!dateRange?.from) return presetLabel;
+    if (presetLabel && presetLabel !== "Personalizzato") return presetLabel;
+    const fromStr = format(dateRange.from, "d MMM", { locale: it });
+    const toStr = dateRange.to ? format(dateRange.to, "d MMM yyyy", { locale: it }) : fromStr;
+    return `${fromStr} – ${toStr}`;
+  }, [dateRange, presetLabel]);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
   const [expandedUserFeatures, setExpandedUserFeatures] = useState<Set<string>>(new Set());
@@ -222,28 +254,28 @@ export default function ConsultantAIUsagePage() {
   };
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
-    queryKey: ["/api/ai-usage/summary", period],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/summary?period=${period}`),
+    queryKey: ["/api/ai-usage/summary", dateQueryParams],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/summary?${dateQueryParams}`),
   });
 
   const { data: byClient, isLoading: loadingClient } = useQuery({
-    queryKey: ["/api/ai-usage/by-client", period],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/by-client?period=${period}`),
+    queryKey: ["/api/ai-usage/by-client", dateQueryParams],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/by-client?${dateQueryParams}`),
   });
 
   const { data: byFeature, isLoading: loadingFeature } = useQuery({
-    queryKey: ["/api/ai-usage/by-feature", period],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/by-feature?period=${period}`),
+    queryKey: ["/api/ai-usage/by-feature", dateQueryParams],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/by-feature?${dateQueryParams}`),
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery({
-    queryKey: ["/api/ai-usage/timeline", period, granularity],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/timeline?period=${period}&granularity=${granularity}`),
+    queryKey: ["/api/ai-usage/timeline", dateQueryParams, granularity],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/timeline?${dateQueryParams}&granularity=${granularity}`),
   });
 
   const { data: selectedUserFeatures, isLoading: loadingUserFeatures } = useQuery({
-    queryKey: ["/api/ai-usage/by-client", selectedUser?.id, "features", period],
-    queryFn: () => fetchWithAuth(`/api/ai-usage/by-client/${selectedUser!.id}/features?period=${period}`),
+    queryKey: ["/api/ai-usage/by-client", selectedUser?.id, "features", dateQueryParams],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/by-client/${selectedUser!.id}/features?${dateQueryParams}`),
     enabled: !!selectedUser,
   });
 
@@ -420,16 +452,59 @@ export default function ConsultantAIUsagePage() {
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Costi AI</h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Monitora i costi e l'utilizzo delle API AI</p>
               </div>
-              <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="day">Oggi</SelectItem>
-                  <SelectItem value="week">Settimana</SelectItem>
-                  <SelectItem value="month">Mese</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-auto min-w-[200px] justify-start text-left font-normal gap-2">
+                    <CalendarIcon className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm">{dateLabel}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
+                  <div className="flex">
+                    <div className="border-r p-3 space-y-1 min-w-[150px]">
+                      <p className="text-xs font-medium text-slate-500 mb-2 px-2">Periodo</p>
+                      {[
+                        { label: "Oggi", fn: () => { const t = new Date(); applyPreset("Oggi", startOfDay(t), t); } },
+                        { label: "Ieri", fn: () => { const y = subDays(new Date(), 1); applyPreset("Ieri", startOfDay(y), y); } },
+                        { label: "Ultimi 7 giorni", fn: () => applyPreset("Ultimi 7 giorni", subDays(new Date(), 6), new Date()) },
+                        { label: "Ultimi 14 giorni", fn: () => applyPreset("Ultimi 14 giorni", subDays(new Date(), 13), new Date()) },
+                        { label: "Ultimi 30 giorni", fn: () => applyPreset("Ultimi 30 giorni", subDays(new Date(), 29), new Date()) },
+                        { label: "Questo mese", fn: () => applyPreset("Questo mese", startOfMonth(new Date()), new Date()) },
+                        { label: "Mese scorso", fn: () => { const pm = subMonths(new Date(), 1); applyPreset("Mese scorso", startOfMonth(pm), new Date(pm.getFullYear(), pm.getMonth() + 1, 0)); } },
+                        { label: "Ultimi 3 mesi", fn: () => applyPreset("Ultimi 3 mesi", subMonths(new Date(), 3), new Date()) },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={preset.fn}
+                          className={`block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
+                            presetLabel === preset.label
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-3">
+                      <CalendarComponent
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={(range) => {
+                          setDateRange(range);
+                          setPresetLabel("Personalizzato");
+                          if (range?.from && range?.to) {
+                            setCalendarOpen(false);
+                          }
+                        }}
+                        numberOfMonths={2}
+                        locale={it}
+                        disabled={{ after: new Date() }}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
