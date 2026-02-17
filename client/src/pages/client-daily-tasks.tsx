@@ -4,7 +4,7 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import Sidebar from "@/components/sidebar";
 import TaskCalendar from "@/components/task-calendar";
 import DailyReflectionForm from "@/components/daily-reflection-form";
-import SalesReportTab from "@/components/sales-report-tab";
+import SalesReportTab, { SalesChatPanel } from "@/components/sales-report-tab";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -26,6 +26,7 @@ export default function ClientDailyTasks() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isTourActive, setIsTourActive] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -267,124 +268,132 @@ export default function ClientDailyTasks() {
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Integrated Header with Menu Button */}
-          <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 md:px-8 py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSidebarOpen(true)}
-                  className="h-11 w-11 min-h-[44px] min-w-[44px] hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-                    <CheckSquare className="h-5 w-5 text-white" />
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+              <div className="px-4 md:px-8 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSidebarOpen(true)}
+                    className="h-11 w-11 min-h-[44px] min-w-[44px] hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+                      <CheckSquare className="h-5 w-5 text-white" />
+                    </div>
+                    <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">
+                      Il Mio Percorso
+                    </h1>
                   </div>
-                  <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">
-                    Task & Riflessioni
-                  </h1>
                 </div>
+                <Button variant="outline" size="sm" onClick={startDailyTasksTour} className="gap-2">
+                  <HelpCircle className="h-4 w-4" />
+                  <span className="hidden md:inline">Guida</span>
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={startDailyTasksTour} className="gap-2">
-                <HelpCircle className="h-4 w-4" />
-                <span className="hidden md:inline">Guida</span>
-              </Button>
             </div>
-          </div>
 
-          <div className="p-4 md:p-6">
-            <div className="mb-6 lg:mb-8 relative overflow-hidden rounded-2xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 opacity-10"></div>
-              <div className="relative bg-gradient-to-br from-background/95 to-muted/50 backdrop-blur-sm border border-border/50 p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+            <div className="p-4 md:p-6">
+              <div className="mb-6 lg:mb-8 relative overflow-hidden rounded-2xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 opacity-10"></div>
+                <div className="relative bg-gradient-to-br from-background/95 to-muted/50 backdrop-blur-sm border border-border/50 p-5 md:p-6">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                        <CheckSquare className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl md:text-3xl font-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent">
-                          Task & Riflessioni Giornaliere
+                        <h1 className="text-xl md:text-2xl font-heading font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent">
+                          Il Mio Percorso Quotidiano
                         </h1>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
                     </div>
-                    <p className="text-muted-foreground text-base">
-                      Organizza le tue attività quotidiane e rifletti sui tuoi progressi
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <CheckSquare className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Task</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400 ml-1">
+                          {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd")).length}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                        <CheckSquare className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-xs font-medium text-green-700 dark:text-green-300">Fatte</span>
+                        <span className="text-lg font-bold text-green-600 dark:text-green-400 ml-1">
+                          {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd") && t.completed).length}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <Tabs defaultValue="tasks" className="max-w-[1400px] mx-auto">
+                <TabsList className="grid grid-cols-2 w-full max-w-md mb-6">
+                  <TabsTrigger value="tasks" className="gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    Task & Riflessioni
+                  </TabsTrigger>
+                  <TabsTrigger value="sales" className="gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Report Vendite
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="tasks">
+                  <div className="space-y-6">
+                    <div className="w-full">
+                      <TaskCalendar
+                        tasks={tasks}
+                        reflections={weekReflections}
+                        onAddTask={handleAddTask}
+                        onToggleTask={handleToggleTask}
+                        onDeleteTask={handleDeleteTask}
+                        onEditTask={handleEditTask}
+                        onDateSelect={setSelectedDate}
+                        selectedDate={selectedDate}
+                        currentWeek={currentWeek}
+                        onWeekChange={setCurrentWeek}
+                      />
+                    </div>
+
+                    <div className="w-full" data-tour="reflections-section">
+                      <DailyReflectionForm
+                        reflection={reflection || undefined}
+                        onSave={handleSaveReflection}
+                        onDelete={handleDeleteReflection}
+                        selectedDate={selectedDate}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="sales">
+                  <SalesReportTab selectedDate={selectedDate} onDateChange={setSelectedDate} chatOpen={chatOpen} setChatOpen={setChatOpen} />
+                </TabsContent>
+              </Tabs>
             </div>
-
-            <Tabs defaultValue="tasks" className="max-w-[1400px] mx-auto">
-              <TabsList className="grid grid-cols-2 w-full max-w-md mb-6">
-                <TabsTrigger value="tasks" className="gap-2">
-                  <CheckSquare className="w-4 h-4" />
-                  Task & Riflessioni
-                </TabsTrigger>
-                <TabsTrigger value="sales" className="gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Report Vendite
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="tasks">
-                <div className="flex flex-col gap-2 mb-6 max-w-[200px]">
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Task Oggi</span>
-                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd")).length}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <span className="text-sm font-medium text-green-700 dark:text-green-300">Completate</span>
-                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                      {tasks.filter(t => t.date === format(selectedDate, "yyyy-MM-dd") && t.completed).length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="w-full">
-                    <TaskCalendar
-                      tasks={tasks}
-                      reflections={weekReflections}
-                      onAddTask={handleAddTask}
-                      onToggleTask={handleToggleTask}
-                      onDeleteTask={handleDeleteTask}
-                      onEditTask={handleEditTask}
-                      onDateSelect={setSelectedDate}
-                      selectedDate={selectedDate}
-                      currentWeek={currentWeek}
-                      onWeekChange={setCurrentWeek}
-                    />
-                  </div>
-
-                  <div className="w-full" data-tour="reflections-section">
-                    <DailyReflectionForm
-                      reflection={reflection || undefined}
-                      onSave={handleSaveReflection}
-                      onDelete={handleDeleteReflection}
-                      selectedDate={selectedDate}
-                    />
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="sales">
-                <SalesReportTab selectedDate={selectedDate} onDateChange={setSelectedDate} />
-              </TabsContent>
-            </Tabs>
           </div>
+
+          {chatOpen && (
+            <div className="w-full md:w-[420px] lg:w-[480px] shrink-0 border-l bg-background h-full overflow-hidden">
+              <SalesChatPanel
+                onClose={() => setChatOpen(false)}
+                getAiRange={() => {
+                  const ws = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+                  const we = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+                  return { startDate: ws, endDate: we };
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 

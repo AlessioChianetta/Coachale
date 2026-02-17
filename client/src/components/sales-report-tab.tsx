@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, subWeeks, addMonths, subMonths, getDay } from "date-fns";
 import { it } from "date-fns/locale";
-import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +53,8 @@ interface ChatMessage {
 interface SalesReportTabProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
+  chatOpen: boolean;
+  setChatOpen: (open: boolean) => void;
 }
 
 const emptyReport = {
@@ -242,8 +243,7 @@ const CHAT_SUGGESTIONS = [
   "Quali sono i miei punti deboli?",
 ];
 
-function SalesChatPanel({ open, onClose, getAiRange }: { open: boolean; onClose: () => void; getAiRange: () => { startDate: string; endDate: string } }) {
-  const { toast } = useToast();
+export function SalesChatPanel({ onClose, getAiRange }: { onClose: () => void; getAiRange: () => { startDate: string; endDate: string } }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -275,10 +275,8 @@ function SalesChatPanel({ open, onClose, getAiRange }: { open: boolean; onClose:
   }, [scrollToBottom]);
 
   useEffect(() => {
-    if (open) {
-      fetchMessages();
-    }
-  }, [open, fetchMessages]);
+    fetchMessages();
+  }, [fetchMessages]);
 
   const sendMessage = async (text?: string) => {
     const messageText = (text || input).trim();
@@ -353,25 +351,7 @@ function SalesChatPanel({ open, onClose, getAiRange }: { open: boolean; onClose:
   };
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            key="sales-chat-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={onClose}
-          />
-          <motion.div
-            key="sales-chat-panel"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-y-0 right-0 w-full md:w-[480px] z-50 bg-background shadow-xl flex flex-col"
-          >
+    <div className="w-full h-full flex flex-col border-l bg-background">
         <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-violet-500/10 to-transparent">
           <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
             <Bot className="w-4 h-4 text-violet-500" />
@@ -509,14 +489,11 @@ function SalesChatPanel({ open, onClose, getAiRange }: { open: boolean; onClose:
             </Button>
           </div>
         </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    </div>
   );
 }
 
-export default function SalesReportTab({ selectedDate, onDateChange }: SalesReportTabProps) {
+export default function SalesReportTab({ selectedDate, onDateChange, chatOpen, setChatOpen }: SalesReportTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [view, setView] = useState("day");
@@ -524,8 +501,6 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
   const [hasChanges, setHasChanges] = useState(false);
   const [weekDate, setWeekDate] = useState(new Date());
   const [monthDate, setMonthDate] = useState(new Date());
-  const [chatOpen, setChatOpen] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const weekStart = format(startOfWeek(weekDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
@@ -628,23 +603,6 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
     const we = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
     return { startDate: ws, endDate: we };
   }, [view, weekStart, weekEnd, monthStart, monthEnd, selectedDate]);
-
-  const aiMutation = useMutation({
-    mutationFn: async () => {
-      const range = getAiRange();
-      const res = await fetch("/api/sales-reports/ai-analyze", {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(range),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    onSuccess: (data) => setAiAnalysis(data.analysis),
-    onError: () => {
-      toast({ title: "Errore", description: "Impossibile analizzare le performance", variant: "destructive" });
-    },
-  });
 
   return (
     <div className="space-y-6">
@@ -834,26 +792,13 @@ export default function SalesReportTab({ selectedDate, onDateChange }: SalesRepo
               <Bot className="w-4 h-4 text-violet-500" />
               Sales Coach AI
             </CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => aiMutation.mutate()} disabled={aiMutation.isPending}>
-                {aiMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
-                Analizza Performance
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => setChatOpen(true)}>
-                <MessageCircle className="w-3.5 h-3.5" />
-                Chatta con il Coach
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setChatOpen(true)}>
+              <MessageCircle className="w-3.5 h-3.5" />
+              Chatta con il Coach
+            </Button>
           </div>
         </CardHeader>
-        {aiAnalysis && (
-          <CardContent>
-            <SafeMarkdown content={aiAnalysis} />
-          </CardContent>
-        )}
       </Card>
-
-      <SalesChatPanel open={chatOpen} onClose={() => setChatOpen(false)} getAiRange={getAiRange} />
     </div>
   );
 }

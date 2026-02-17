@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { dailySalesReports, salesGoals, salesChatMessages } from "@shared/schema";
+import { dailySalesReports, salesGoals, salesChatMessages, dailyTasks, dailyReflections } from "@shared/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { getAIProvider } from "../ai/provider-factory";
 
@@ -390,6 +390,32 @@ router.post("/sales-chat/send", authenticateToken, async (req: AuthRequest, res)
       demoToContract: totals.demoShowed > 0 ? ((totals.contractsClosed / totals.demoShowed) * 100).toFixed(1) : "0",
     };
 
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentTasks = await db
+      .select()
+      .from(dailyTasks)
+      .where(
+        and(
+          eq(dailyTasks.clientId, userId),
+          gte(dailyTasks.date, sevenDaysAgo.toISOString().split('T')[0])
+        )
+      )
+      .orderBy(desc(dailyTasks.date))
+      .limit(50);
+
+    const recentReflections = await db
+      .select()
+      .from(dailyReflections)
+      .where(
+        and(
+          eq(dailyReflections.clientId, userId),
+          gte(dailyReflections.date, sevenDaysAgo.toISOString().split('T')[0])
+        )
+      )
+      .orderBy(desc(dailyReflections.date))
+      .limit(7);
+
     const history = await db
       .select()
       .from(salesChatMessages)
@@ -420,13 +446,22 @@ TASSI DI CONVERSIONE:
 - Demo show rate: ${conversionRates.demoShowRate}%
 - Demo → Contratti: ${conversionRates.demoToContract}%
 
+TASK E RIFLESSIONI ULTIMI 7 GIORNI:
+${recentTasks.length > 0 ? recentTasks.map(t => `- [${t.date}] ${t.completed ? '✅' : '⬜'} ${t.description}`).join('\n') : 'Nessuna task registrata'}
+
+RIFLESSIONI RECENTI:
+${recentReflections.length > 0 ? recentReflections.map(r => `- [${r.date}] Gratitudine: ${Array.isArray(r.grateful) ? r.grateful.join(', ') : 'N/A'}
+  Cosa renderebbe oggi grandioso: ${Array.isArray(r.makeGreat) ? r.makeGreat.join(', ') : 'N/A'}
+  Cosa potevo fare meglio: ${r.doBetter || 'N/A'}`).join('\n') : 'Nessuna riflessione registrata'}
+
 Il tuo ruolo:
 - Fornisci coaching vendite azionabile e specifico
 - Analizza il funnel di conversione e identifica colli di bottiglia
 - Suggerisci strategie concrete per migliorare i numeri
 - Celebra i successi e motiva per le aree deboli
 - Rispondi sempre in italiano con tono professionale e incoraggiante
-- Usa i dati reali per personalizzare i consigli`;
+- Usa i dati reali per personalizzare i consigli
+- Tieni conto delle task giornaliere e delle riflessioni per un coaching olistico`;
 
     const contents = [
       { role: "user", parts: [{ text: systemPrompt }] },
