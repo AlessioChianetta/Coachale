@@ -359,6 +359,9 @@ async function getClientsForEmail(consultantId: string): Promise<Array<{ id: str
           const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
           const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
           const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+          console.log(`🔍 [TRACKING PIXEL] Draft auto-send - Email Log ID: ${emailLog.id}`);
+          console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+          console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
           const htmlWithTracking = enhanceEmailTypography(todayDraft.body, trackingPixelUrl);
           
           await sendEmail({
@@ -696,6 +699,9 @@ async function sendAutomatedEmailToClient(client: {
       const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
       const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
       const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+      console.log(`🔍 [TRACKING PIXEL] Auto-generated email - Email Log ID: ${emailLog.id}`);
+      console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+      console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
       const htmlWithTracking = enhanceEmailTypography(emailContent.body, trackingPixelUrl);
       
       // Send email with tracking pixel

@@ -17,12 +17,22 @@ router.get("/email-tracking/:trackingId/:emailLogId", async (req, res) => {
   try {
     const { trackingId, emailLogId } = req.params;
 
+    console.log(`🔍 [EMAIL TRACKING] ══════════════════════════════════════`);
+    console.log(`🔍 [EMAIL TRACKING] Pixel request received!`);
+    console.log(`🔍 [EMAIL TRACKING] Email Log ID: ${emailLogId}`);
+    console.log(`🔍 [EMAIL TRACKING] Tracking ID: ${trackingId}`);
+    console.log(`🔍 [EMAIL TRACKING] User-Agent: ${req.headers['user-agent']}`);
+    console.log(`🔍 [EMAIL TRACKING] IP: ${req.ip || req.connection?.remoteAddress}`);
+    console.log(`🔍 [EMAIL TRACKING] Referer: ${req.headers['referer'] || 'none'}`);
+
     // Validate tracking ID to prevent unauthorized tracking
     const { validateTrackingId } = await import("../services/email-html-wrapper");
 
-    if (!validateTrackingId(trackingId, emailLogId)) {
+    const isValid = validateTrackingId(trackingId, emailLogId);
+    console.log(`🔍 [EMAIL TRACKING] Tracking ID valid: ${isValid}`);
+
+    if (!isValid) {
       console.warn(`⚠️  [EMAIL TRACKING] Invalid tracking ID for email: ${emailLogId}`);
-      // Still return pixel to not break email rendering
       const pixel = Buffer.from(
         'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
         'base64'
@@ -31,15 +41,34 @@ router.get("/email-tracking/:trackingId/:emailLogId", async (req, res) => {
       return res.end(pixel);
     }
 
+    const [existingLog] = await db
+      .select({ id: automatedEmailsLog.id, openedAt: automatedEmailsLog.openedAt, subject: automatedEmailsLog.subject, clientId: automatedEmailsLog.clientId })
+      .from(automatedEmailsLog)
+      .where(eq(automatedEmailsLog.id, emailLogId))
+      .limit(1);
+
+    console.log(`🔍 [EMAIL TRACKING] Existing log found: ${!!existingLog}`);
+    if (existingLog) {
+      console.log(`🔍 [EMAIL TRACKING] Subject: ${existingLog.subject}`);
+      console.log(`🔍 [EMAIL TRACKING] Client ID: ${existingLog.clientId}`);
+      console.log(`🔍 [EMAIL TRACKING] Already opened: ${!!existingLog.openedAt}`);
+      if (existingLog.openedAt) {
+        console.log(`🔍 [EMAIL TRACKING] Previously opened at: ${existingLog.openedAt}`);
+      }
+    } else {
+      console.warn(`⚠️  [EMAIL TRACKING] No email log found with ID: ${emailLogId}`);
+    }
+
     console.log(`📧 [EMAIL TRACKING] Email opened - Log ID: ${emailLogId}`);
 
     // Update openedAt timestamp if not already set
-    await db
+    const updateResult = await db
       .update(automatedEmailsLog)
       .set({ openedAt: sql`COALESCE(opened_at, now())` }) // Only set if null
       .where(eq(automatedEmailsLog.id, emailLogId));
 
     console.log(`✅ [EMAIL TRACKING] Updated openedAt for email log: ${emailLogId}`);
+    console.log(`🔍 [EMAIL TRACKING] ══════════════════════════════════════`);
 
     // Return 1x1 transparent GIF pixel
     const pixel = Buffer.from(
@@ -579,6 +608,9 @@ router.post("/consultant/ai-email/test-generate", authenticateToken, requireRole
     const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
     const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+    console.log(`🔍 [TRACKING PIXEL] Test email - Email Log ID: ${emailLog.id}`);
+    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+    console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
 
     // Add test banner with tracking pixel
     const testBanner = `
@@ -1125,6 +1157,9 @@ router.post("/consultant/email-drafts/:id/approve", authenticateToken, requireRo
     const rawDomain = process.env.REPLIT_DOMAINS?.split(',')[0] || '';
     const baseUrl = rawDomain ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`) : 'http://localhost:5000';
     const trackingPixelUrl = generateTrackingPixelUrl(emailLog.id, baseUrl);
+    console.log(`🔍 [TRACKING PIXEL] Draft approval send - Email Log ID: ${emailLog.id}`);
+    console.log(`🔍 [TRACKING PIXEL] Base URL used: ${baseUrl}`);
+    console.log(`🔍 [TRACKING PIXEL] Full pixel URL: ${trackingPixelUrl}`);
     const htmlWithTracking = enhanceEmailTypography(draft.body, trackingPixelUrl);
 
     // Send email with tracking pixel
