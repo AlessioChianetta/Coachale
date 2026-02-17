@@ -181,7 +181,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
           AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true)
-        GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name
+        GROUP BY t.client_id, t.consultant_id, u.first_name, u.last_name, cu.first_name, cu.last_name
       ),
       active_clients AS (
         SELECT
