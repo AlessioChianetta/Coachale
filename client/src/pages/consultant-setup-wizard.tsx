@@ -146,18 +146,16 @@ interface OnboardingStatus {
 }
 
 const statusConfig = {
-  pending: { icon: Circle, color: "text-gray-400", bg: "bg-gray-100", badgeBg: "bg-gray-200", label: "Non configurato" },
-  configured: { icon: Clock, color: "text-blue-500", bg: "bg-blue-100", badgeBg: "bg-blue-200", label: "In corso" },
-  verified: { icon: CheckCircle2, color: "text-green-500", bg: "bg-green-100", badgeBg: "bg-green-200", label: "Verificato" },
-  error: { icon: XCircle, color: "text-red-500", bg: "bg-red-100", badgeBg: "bg-red-200", label: "Errore" },
-  skipped: { icon: Circle, color: "text-gray-400", bg: "bg-gray-100", badgeBg: "bg-gray-200", label: "Saltato" },
+  pending: { icon: Circle, color: "text-slate-400", bg: "bg-slate-100", badgeBg: "bg-slate-100", label: "Non configurato" },
+  configured: { icon: Clock, color: "text-indigo-500", bg: "bg-indigo-50", badgeBg: "bg-indigo-100", label: "In corso" },
+  verified: { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50", badgeBg: "bg-emerald-100", label: "Verificato" },
+  error: { icon: XCircle, color: "text-red-500", bg: "bg-red-50", badgeBg: "bg-red-100", label: "Errore" },
+  skipped: { icon: Circle, color: "text-slate-400", bg: "bg-slate-100", badgeBg: "bg-slate-100", label: "Saltato" },
 };
 
 function StatusBadge({ status }: { status: StepStatus }) {
   const config = statusConfig[status];
   const Icon = config.icon;
-  
-  const isPulsing = status === "configured";
   
   return (
     <motion.div
@@ -167,14 +165,9 @@ function StatusBadge({ status }: { status: StepStatus }) {
     >
       <Badge 
         variant="outline" 
-        className={`${config.bg} ${config.color} border-0 ${isPulsing ? 'animate-pulse' : ''}`}
+        className={`${config.badgeBg} ${config.color} border-0 text-xs font-normal`}
       >
-        <motion.span
-          animate={isPulsing ? { scale: [1, 1.2, 1] } : {}}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          <Icon className="h-3 w-3 mr-1" />
-        </motion.span>
+        <Icon className="h-3 w-3 mr-1" />
         {config.label}
       </Badge>
     </motion.div>
@@ -182,45 +175,19 @@ function StatusBadge({ status }: { status: StepStatus }) {
 }
 
 function StepNumberBadge({ number, status }: { number: number; status: StepStatus }) {
-  const bgColor = status === "verified" ? "bg-gradient-to-br from-green-400 to-emerald-600" : status === "configured" ? "bg-gradient-to-br from-blue-400 to-indigo-600" : "bg-gradient-to-br from-gray-300 to-gray-400";
-  const textColor = status === "pending" ? "text-gray-600" : "text-white";
+  const bgColor = status === "verified" ? "bg-emerald-500" : status === "configured" ? "bg-indigo-500" : "bg-slate-300";
+  const textColor = status === "pending" ? "text-slate-600" : "text-white";
   
   return (
-    <motion.div 
-      className={`w-6 h-6 rounded-full ${bgColor} ${textColor} flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-md`}
-      initial={{ scale: 0.8 }}
-      animate={{ 
-        scale: status === "verified" ? [1, 1.2, 1] : 1,
-        rotate: status === "verified" ? [0, 10, -10, 0] : 0
-      }}
-      transition={{ 
-        duration: status === "verified" ? 0.5 : 0.2,
-        ease: "easeOut"
-      }}
+    <div 
+      className={`w-7 h-7 rounded-full ${bgColor} ${textColor} flex items-center justify-center text-xs font-bold flex-shrink-0`}
     >
-      <AnimatePresence mode="wait">
-        {status === "verified" ? (
-          <motion.div
-            key="check"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          >
-            <Check className="h-3 w-3" />
-          </motion.div>
-        ) : (
-          <motion.span
-            key="number"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {number}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {status === "verified" ? (
+        <Check className="h-3.5 w-3.5" />
+      ) : (
+        <span>{number}</span>
+      )}
+    </div>
   );
 }
 
@@ -237,64 +204,42 @@ function StepCard({
 
   return (
     <motion.div
-      className={`cursor-pointer p-3 rounded-lg border ${
+      className={`cursor-pointer px-3 py-2.5 rounded-xl transition-all ${
         isActive
-          ? "border-emerald-500 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 shadow-md"
-          : "border-transparent hover:bg-gray-50 dark:hover:bg-slate-800"
+          ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800"
+          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
       }`}
       onClick={onClick}
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      whileHover={{ 
-        scale: 1.02, 
-        x: 4,
-        transition: { duration: 0.2 }
-      }}
+      whileHover={{ x: 2 }}
       whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3 }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <StepNumberBadge number={step.stepNumber} status={step.status} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-medium text-sm truncate">{step.title}</h3>
-            {step.count !== undefined && step.count > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              >
-                <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
-                  {step.count} {step.countLabel}
-                </Badge>
-              </motion.div>
-            )}
-          </div>
+          <h3 className="font-medium text-sm truncate text-slate-700 dark:text-slate-300">{step.title}</h3>
         </div>
-        <motion.div 
-          className={`p-1.5 rounded-lg ${config.bg} shadow-sm`}
-          whileHover={{ rotate: 5, scale: 1.1 }}
-          transition={{ type: "spring", stiffness: 400 }}
-        >
-          <div className={config.color}>{step.icon}</div>
-        </motion.div>
+        {step.count !== undefined && step.count > 0 && (
+          <span className="text-xs text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+            {step.count}
+          </span>
+        )}
       </div>
     </motion.div>
   );
 }
 
 const phaseGradients = {
-  infrastructure: "from-blue-500 via-cyan-500 to-teal-500",
-  whatsapp_agents: "from-green-500 via-emerald-500 to-teal-500",
-  content: "from-purple-500 via-violet-500 to-indigo-500",
-  advanced: "from-orange-500 via-amber-500 to-yellow-500",
+  infrastructure: "from-indigo-500 to-violet-500",
+  whatsapp_agents: "from-indigo-500 to-violet-500",
+  content: "from-indigo-500 to-violet-500",
+  advanced: "from-indigo-500 to-violet-500",
 };
 
 const phaseBgGradients = {
-  infrastructure: "from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30",
-  whatsapp_agents: "from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30",
-  content: "from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30",
-  advanced: "from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30",
+  infrastructure: "",
+  whatsapp_agents: "",
+  content: "",
+  advanced: "",
 };
 
 function PhaseSection({
@@ -321,8 +266,8 @@ function PhaseSection({
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-3">
       <CollapsibleTrigger className="w-full">
         <motion.div 
-          className={`flex items-center justify-between p-3 rounded-xl bg-gradient-to-r ${bgGradient} border border-gray-200 dark:border-gray-700 shadow-sm`}
-          whileHover={{ scale: 1.01, y: -1 }}
+          className={`flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700`}
+          whileHover={{ scale: 1.01 }}
           transition={{ type: "spring", stiffness: 400 }}
         >
           <div className="flex items-center gap-2">
@@ -345,7 +290,7 @@ function PhaseSection({
           </div>
           <div className="flex items-center gap-3">
             <motion.span 
-              className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/80 dark:bg-gray-800/80 shadow-sm"
+              className="text-xs text-slate-600 font-medium"
               key={completedCount}
               initial={{ scale: 1.3 }}
               animate={{ scale: 1 }}
@@ -353,7 +298,7 @@ function PhaseSection({
             >
               {completedCount}/{totalCount}
             </motion.span>
-            <div className="w-20 h-2 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden shadow-inner">
+            <div className="w-20 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <motion.div 
                 className={`h-full bg-gradient-to-r ${gradient} rounded-full`}
                 initial={{ width: 0 }}
@@ -366,7 +311,7 @@ function PhaseSection({
       </CollapsibleTrigger>
       <CollapsibleContent>
         <motion.div 
-          className="mt-2 space-y-1 pl-3"
+          className="mt-2 space-y-0.5 pl-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
@@ -419,7 +364,7 @@ const triggerMiniConfetti = () => {
     particleCount: 50,
     spread: 60,
     origin: { y: 0.6 },
-    colors: ['#10b981', '#14b8a6', '#06b6d4', '#3b82f6'],
+    colors: ['#6C5CE7', '#8B7CF7', '#A78BFA', '#3B82F6'],
     ticks: 100,
     gravity: 1.2,
     scalar: 0.8,
@@ -1013,7 +958,7 @@ export default function ConsultantSetupWizard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
       </div>
     );
   }
@@ -1030,39 +975,16 @@ export default function ConsultantSetupWizard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 dark:from-emerald-500/20 dark:via-teal-500/20 dark:to-cyan-500/20" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-200/30 via-transparent to-transparent dark:from-purple-500/10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-transparent dark:from-indigo-500/20 dark:via-violet-500/10 dark:to-transparent" />
             
             <div className="relative flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <motion.div 
-                  className="relative p-3 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-2xl shadow-lg shadow-emerald-500/30"
-                  animate={{ 
-                    y: [0, -4, 0],
-                    rotate: [0, 5, -5, 0]
-                  }}
-                  transition={{ 
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <Rocket className="h-7 w-7 text-white" />
-                  <motion.div
-                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-b from-orange-400 to-red-500 rounded-full blur-sm"
-                    animate={{
-                      opacity: [0.5, 1, 0.5],
-                      scale: [0.8, 1.2, 0.8],
-                    }}
-                    transition={{
-                      duration: 0.8,
-                      repeat: Infinity,
-                    }}
-                  />
-                </motion.div>
+                <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-lg">
+                  <Rocket className="h-6 w-6 text-white" />
+                </div>
                 <div>
                   <motion.h1 
-                    className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent"
+                    className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
@@ -1075,7 +997,7 @@ export default function ConsultantSetupWizard() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
                   >
-                    Completa tutti i 23 step per sbloccare le funzionalità complete ✨
+                    {completedSteps >= totalSteps ? "Piattaforma completata! 🎉" : `Mancano solo ${totalSteps - completedSteps} step per completare la piattaforma`}
                   </motion.p>
                 </div>
                 <Button
@@ -1087,6 +1009,10 @@ export default function ConsultantSetupWizard() {
                   <Bot className="h-4 w-4" />
                   {isOnboardingMode ? "Onboarding Attivo" : "Assistente Onboarding"}
                 </Button>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Produzione</span>
+                </div>
               </div>
               <motion.div 
                 className="flex items-center gap-6"
@@ -1096,7 +1022,7 @@ export default function ConsultantSetupWizard() {
               >
                 <div className="text-right">
                   <motion.div 
-                    className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent"
+                    className="text-3xl font-bold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent"
                     key={progressPercent}
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
@@ -1107,9 +1033,10 @@ export default function ConsultantSetupWizard() {
                   <div className="text-xs text-muted-foreground">
                     <motion.span
                       key={completedSteps}
-                      initial={{ color: '#10b981' }}
-                      animate={{ color: 'inherit' }}
+                      initial={{ opacity: 0.6 }}
+                      animate={{ opacity: 1 }}
                       transition={{ duration: 0.5 }}
+                      className="text-indigo-600 dark:text-indigo-400 font-medium"
                     >
                       {completedSteps}/{totalSteps}
                     </motion.span> step completati
@@ -1122,7 +1049,7 @@ export default function ConsultantSetupWizard() {
                       cy="32"
                       r="28"
                       stroke="currentColor"
-                      strokeWidth="4"
+                      strokeWidth="3"
                       fill="none"
                       className="text-gray-200 dark:text-gray-700"
                     />
@@ -1131,7 +1058,7 @@ export default function ConsultantSetupWizard() {
                       cy="32"
                       r="28"
                       stroke="url(#progressGradient)"
-                      strokeWidth="4"
+                      strokeWidth="3"
                       fill="none"
                       strokeLinecap="round"
                       initial={{ strokeDasharray: "0 176" }}
@@ -1140,9 +1067,9 @@ export default function ConsultantSetupWizard() {
                     />
                     <defs>
                       <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="50%" stopColor="#14b8a6" />
-                        <stop offset="100%" stopColor="#06b6d4" />
+                        <stop offset="0%" stopColor="#6C5CE7" />
+                        <stop offset="50%" stopColor="#8B7CF7" />
+                        <stop offset="100%" stopColor="#A78BFA" />
                       </linearGradient>
                     </defs>
                   </svg>
@@ -1163,11 +1090,8 @@ export default function ConsultantSetupWizard() {
 
           <div className={`flex-1 grid gap-0 overflow-hidden min-h-0 ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
             <aside className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}>
-              <div className="p-4 border-b">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Fasi di Configurazione
-                </h2>
+              <div className="px-4 pt-4 pb-2">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Configurazione</span>
               </div>
               <ScrollArea className="flex-1 p-4">
                 {phases.map((phase, index) => (
@@ -1183,7 +1107,7 @@ export default function ConsultantSetupWizard() {
             </aside>
 
             <section className={`${isOnboardingMode ? 'col-span-5' : 'col-span-8'} overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300`}>
-              <div className="p-6">
+              <div className="p-8">
                 <AnimatePresence mode="wait">
                   {activeStepData && (
                     <motion.div
@@ -1193,21 +1117,18 @@ export default function ConsultantSetupWizard() {
                       exit={{ opacity: 0, y: -20, scale: 0.98 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-full" />
+                      <Card className="shadow-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
                         <CardHeader className="pb-4 relative">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
                               <StepNumberBadge number={activeStepData.stepNumber} status={activeStepData.status} />
-                              <motion.div 
-                                className={`p-3 rounded-xl ${statusConfig[activeStepData.status].bg} shadow-md`}
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                transition={{ type: "spring", stiffness: 400 }}
+                              <div 
+                                className={`p-3 rounded-xl ${statusConfig[activeStepData.status].bg} shadow-sm`}
                               >
                                 <div className={statusConfig[activeStepData.status].color}>
                                   {activeStepData.icon}
                                 </div>
-                              </motion.div>
+                              </div>
                               <div>
                                 <CardTitle className="text-xl">{activeStepData.title}</CardTitle>
                                 <CardDescription>{activeStepData.description}</CardDescription>
@@ -1239,36 +1160,36 @@ export default function ConsultantSetupWizard() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                               >
-                                <Alert className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-800">
-                                  <motion.div
-                                    animate={{ rotate: [0, 10, -10, 0] }}
-                                    transition={{ duration: 0.5, delay: 0.2 }}
-                                  >
-                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                  </motion.div>
-                                  <AlertDescription className="text-green-800 dark:text-green-200">
-                                    <span className="flex items-center gap-2">
-                                      Configurazione verificata e funzionante! 
-                                      <motion.span
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        transition={{ delay: 0.3, type: "spring" }}
-                                      >
-                                        🎉
-                                      </motion.span>
-                                    </span>
-                                    {activeStepData.testedAt && (
-                                      <span className="block text-xs mt-1">
-                                        Ultimo test: {new Date(activeStepData.testedAt).toLocaleString('it-IT')}
-                                      </span>
-                                    )}
-                                    {activeStepData.count !== undefined && activeStepData.count > 0 && (
-                                      <span className="block text-xs mt-1">
-                                        Hai {activeStepData.count} {activeStepData.countLabel}
-                                      </span>
-                                    )}
-                                  </AlertDescription>
-                                </Alert>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                    <div>
+                                      <p className="text-xs text-slate-500">Stato</p>
+                                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Attivo</p>
+                                    </div>
+                                  </div>
+                                  {activeStepData.testedAt && (
+                                    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                                      <Clock className="h-4 w-4 text-slate-400" />
+                                      <div>
+                                        <p className="text-xs text-slate-500">Ultimo test</p>
+                                        <p className="text-sm font-medium">{new Date(activeStepData.testedAt).toLocaleDateString('it-IT')}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                                    <Sparkles className="h-4 w-4 text-indigo-400" />
+                                    <div>
+                                      <p className="text-xs text-slate-500">Performance</p>
+                                      <p className="text-sm font-medium">OK</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                {activeStepData.count !== undefined && activeStepData.count > 0 && (
+                                  <p className="text-xs text-slate-500 mt-2">
+                                    Hai {activeStepData.count} {activeStepData.countLabel}
+                                  </p>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -1291,7 +1212,8 @@ export default function ConsultantSetupWizard() {
                             <Button
                               onClick={() => handleTest(activeStepData.id, activeStepData.testEndpoint)}
                               disabled={testingStep === activeStepData.id}
-                              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                              variant="outline"
+                              className="w-full border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
                             >
                               {testingStep === activeStepData.id ? (
                                 <>
@@ -1308,8 +1230,8 @@ export default function ConsultantSetupWizard() {
                           )}
 
                           <Button 
-                            variant="outline"
-                            className="w-full border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-900/30"
+                            variant="ghost"
+                            className="w-full border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
                             onClick={() => {
                               const stepMessages: Record<string, string> = {
                                 vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
@@ -1355,7 +1277,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "vertex_ai" && (
                         <>
-                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Sparkles className="h-4 w-4 text-blue-600" />
                               Come ottenere le credenziali Vertex AI
@@ -1375,7 +1297,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "smtp" && (
                         <>
-                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Mail className="h-4 w-4 text-blue-600" />
                               Configurazione SMTP Comune
@@ -1392,7 +1314,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "google_calendar" && (
                         <>
-                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               Collegamento Google Calendar agli Agenti
@@ -1414,7 +1336,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "twilio_config" && (
                         <>
-                          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Phone className="h-4 w-4 text-blue-600" />
                               Configurazione Twilio + WhatsApp
@@ -1435,7 +1357,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "instagram_dm" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Instagram className="h-4 w-4 text-pink-600" />
                             Come Collegare Instagram Business
@@ -1465,7 +1387,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "approved_template" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-green-600" />
                             Come Creare e Far Approvare un Template WhatsApp
@@ -1492,7 +1414,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_campaign" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Rocket className="h-4 w-4 text-purple-600" />
                             Come Creare la Tua Prima Campagna Marketing
@@ -1527,7 +1449,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "stripe_connect" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-indigo-600" />
                             Come Collegare Stripe per Ricevere Pagamenti
@@ -1556,7 +1478,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "email_journey" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailPlus className="h-4 w-4 text-cyan-600" />
                             Come Configurare l'Email Journey per i Clienti
@@ -1587,7 +1509,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "nurturing_emails" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailPlus className="h-4 w-4 text-orange-600" />
                             Email Nurturing 365: Un Anno di Email Automatiche
@@ -1616,7 +1538,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "email_hub" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Inbox className="h-4 w-4 text-teal-600" />
                             Email Hub: La Tua Casella Email Intelligente
@@ -1652,7 +1574,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "voice_calls" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Phone className="h-4 w-4 text-emerald-600" />
                             Chiamate Voice con Alessia AI
@@ -1677,7 +1599,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "ai_autonomo" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Bot className="h-4 w-4 text-purple-600" />
                             AI Autonomo: I Tuoi Dipendenti AI
@@ -1713,7 +1635,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "whatsapp_ai" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-blue-600" />
                             Credenziali AI per WhatsApp
@@ -1731,7 +1653,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "inbound_agent" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ArrowDownToLine className="h-4 w-4 text-blue-600" />
                             Agente Inbound
@@ -1749,7 +1671,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "outbound_agent" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ArrowUpFromLine className="h-4 w-4 text-blue-600" />
                             Agente Outbound
@@ -1767,7 +1689,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "consultative_agent" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Briefcase className="h-4 w-4 text-blue-600" />
                             Agente Consulenziale
@@ -1785,7 +1707,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "public_agent_link" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <LinkIcon className="h-4 w-4 text-blue-600" />
                             Link Pubblico Agente
@@ -1803,7 +1725,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "ai_ideas" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Lightbulb className="h-4 w-4 text-blue-600" />
                             Idee AI Generate
@@ -1822,7 +1744,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "whatsapp_template" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-blue-600" />
                             Template WhatsApp
@@ -1840,7 +1762,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_course" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <BookOpen className="h-4 w-4 text-blue-600" />
                             Crea il Tuo Primo Corso
@@ -1858,7 +1780,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_exercise" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ClipboardList className="h-4 w-4 text-blue-600" />
                             Crea il Tuo Primo Esercizio
@@ -1876,7 +1798,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "knowledge_base" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <FileText className="h-4 w-4 text-blue-600" />
                             Base di Conoscenza AI
@@ -1895,7 +1817,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_summary_email" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailCheck className="h-4 w-4 text-blue-600" />
                             Email Riassuntiva Post-Consulenza
@@ -1914,7 +1836,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "video_meeting" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Video className="h-4 w-4 text-blue-600" />
                             Server TURN con Metered.ca
@@ -1932,7 +1854,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "lead_import" && (
-                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <UserPlus className="h-4 w-4 text-blue-600" />
                             Import Lead Automatico
@@ -1965,9 +1887,9 @@ export default function ConsultantSetupWizard() {
                   transition={{ duration: 0.3 }}
                   className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
                 >
-                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
+                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
                     <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-violet-600" />
+                      <Bot className="h-4 w-4 text-indigo-600" />
                       <span className="font-semibold text-sm">Assistente Onboarding</span>
                     </div>
                     <Button
