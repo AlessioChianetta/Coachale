@@ -573,16 +573,12 @@ export default function ConsultantAIUsagePage() {
                               return (
                                 <React.Fragment key={`feat-${i}`}>
                                   <TableRow
-                                    className={`${hasData ? '' : 'opacity-50'} ${hasSubKeys ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50' : ''}`}
-                                    onClick={() => hasSubKeys && toggleFeatureExpand(uid)}
+                                    className={`${hasData ? '' : 'opacity-50'} cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50`}
+                                    onClick={() => toggleFeatureExpand(uid)}
                                   >
                                     <TableCell>
                                       <div className="flex items-center gap-2.5">
-                                        {hasSubKeys ? (
-                                          isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                        ) : (
-                                          <div className="w-3.5" />
-                                        )}
+                                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
                                         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
                                           <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
                                         </div>
@@ -628,6 +624,13 @@ export default function ConsultantAIUsagePage() {
                                       <TableCell />
                                     </TableRow>
                                   ))}
+                                  {isExpanded && !hasSubKeys && !FEATURE_GUIDE[row.label] && (
+                                    <TableRow className="bg-slate-50/40 dark:bg-gray-800/20">
+                                      <TableCell colSpan={8} className="pl-16">
+                                        <span className="text-xs text-slate-400 italic">Nessun utilizzo registrato nel periodo selezionato</span>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
                                   {isExpanded && FEATURE_GUIDE[row.label] && (
                                     <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
                                       <TableCell colSpan={8} className="pl-16">
