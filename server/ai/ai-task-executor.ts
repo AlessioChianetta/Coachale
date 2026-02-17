@@ -55,6 +55,7 @@ interface ResolvedProvider {
 async function resolveProviderForTask(consultantId: string): Promise<ResolvedProvider> {
   try {
     const provider = await getAIProvider(consultantId, consultantId);
+    provider.setFeature?.('ai-task-executor');
     const providerName = provider.metadata?.name || 'Unknown';
     const model = getModelForProviderName(providerName);
     console.log(`${LOG_PREFIX} Provider resolved: ${providerName} (source: ${provider.source}, model: ${model})`);

@@ -1499,6 +1499,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   try {
     const provider = await getAIProvider(consultantId, consultantId);
+    provider.setFeature?.('ai-task-scheduler');
     aiClient = provider.client;
     providerName = provider.metadata?.name || 'Unknown';
     providerModel = getModelForProviderName(providerName);
