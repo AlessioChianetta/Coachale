@@ -289,6 +289,9 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
       SELECT
         feature,
         COALESCE(SUM(total_tokens), 0)::text AS "totalTokens",
+        COALESCE(SUM(input_tokens), 0)::text AS "inputTokens",
+        COALESCE(SUM(output_tokens), 0)::text AS "outputTokens",
+        COALESCE(SUM(thinking_tokens), 0)::text AS "thinkingTokens",
         COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
         COUNT(*)::text AS "requestCount",
         CASE WHEN (SELECT grand_total FROM totals) > 0
@@ -313,9 +316,45 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
       ORDER BY SUM(total_cost::numeric) DESC
     `);
 
+    const modelBreakdown = await db.execute(sql`
+      SELECT
+        feature,
+        model,
+        COALESCE(SUM(input_tokens), 0)::text AS "inputTokens",
+        COALESCE(SUM(output_tokens), 0)::text AS "outputTokens",
+        COALESCE(SUM(thinking_tokens), 0)::text AS "thinkingTokens",
+        COALESCE(SUM(total_tokens), 0)::text AS "totalTokens",
+        COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
+        COUNT(*)::text AS "requestCount"
+      FROM ai_token_usage
+      WHERE consultant_id = ${consultantId}
+        AND created_at >= ${start}
+        AND created_at <= ${end}
+      GROUP BY feature, model
+      ORDER BY feature, SUM(total_cost::numeric) DESC
+    `);
+
+    const modelMap: Record<string, any[]> = {};
+    for (const r of modelBreakdown.rows as any[]) {
+      const key = r.feature;
+      if (!modelMap[key]) modelMap[key] = [];
+      modelMap[key].push({
+        model: r.model,
+        inputTokens: parseInt(r.inputTokens) || 0,
+        outputTokens: parseInt(r.outputTokens) || 0,
+        thinkingTokens: parseInt(r.thinkingTokens) || 0,
+        totalTokens: parseInt(r.totalTokens) || 0,
+        totalCost: parseFloat(r.totalCost) || 0,
+        requestCount: parseInt(r.requestCount) || 0,
+      });
+    }
+
     res.json((result.rows as any[]).map(r => ({
       feature: r.feature,
       totalTokens: parseInt(r.totalTokens) || 0,
+      inputTokens: parseInt(r.inputTokens) || 0,
+      outputTokens: parseInt(r.outputTokens) || 0,
+      thinkingTokens: parseInt(r.thinkingTokens) || 0,
       totalCost: parseFloat(r.totalCost) || 0,
       requestCount: parseInt(r.requestCount) || 0,
       percentOfTotal: parseFloat(r.percentOfTotal) || 0,
@@ -326,6 +365,7 @@ router.get("/by-feature", authenticateToken, async (req: AuthRequest, res: Respo
       clientTokens: parseInt(r.clientTokens) || 0,
       clientCost: parseFloat(r.clientCost) || 0,
       clientRequests: parseInt(r.clientRequests) || 0,
+      modelBreakdown: modelMap[r.feature] || [],
     })));
   } catch (error) {
     console.error("[AI Usage] Error fetching by-feature:", error);
@@ -517,6 +557,94 @@ router.get("/platform-summary", authenticateToken, requireRole("super_admin"), a
   } catch (error) {
     console.error("[AI Usage] Error fetching platform-summary:", error);
     res.status(500).json({ error: "Failed to fetch platform summary" });
+  }
+});
+
+router.get("/pricing", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { PRICING, DEFAULT_PRICING } = await import("../ai/token-tracker");
+    
+    const modelsResult = await db.execute(sql`
+      SELECT DISTINCT model, COUNT(*)::text AS "requestCount",
+        COALESCE(SUM(total_tokens), 0)::text AS "totalTokens"
+      FROM ai_token_usage
+      WHERE consultant_id = ${req.user!.id}
+      GROUP BY model
+      ORDER BY model
+    `);
+    
+    const usedModels = (modelsResult.rows as any[]).map(r => ({
+      model: r.model,
+      requestCount: parseInt(r.requestCount) || 0,
+      totalTokens: parseInt(r.totalTokens) || 0,
+    }));
+    
+    res.json({
+      pricing: PRICING,
+      defaultPricing: DEFAULT_PRICING,
+      usedModels,
+    });
+  } catch (error) {
+    console.error("[AI Usage] Error fetching pricing:", error);
+    res.status(500).json({ error: "Failed to fetch pricing" });
+  }
+});
+
+router.post("/pricing/recalculate", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { applyRetroactively, customPricing } = req.body as {
+      applyRetroactively: boolean;
+      customPricing?: Record<string, { input: number; output: number; cachedInput: number }>;
+    };
+    
+    const { PRICING, DEFAULT_PRICING } = await import("../ai/token-tracker");
+    const pricingToUse = customPricing || PRICING;
+    
+    if (!applyRetroactively) {
+      return res.json({ message: "Pricing will apply to future records only", updated: 0 });
+    }
+    
+    const modelsResult = await db.execute(sql`
+      SELECT DISTINCT model FROM ai_token_usage WHERE consultant_id = ${consultantId}
+    `);
+    
+    let totalUpdated = 0;
+    
+    for (const row of modelsResult.rows as any[]) {
+      const modelName = row.model;
+      const pricing = pricingToUse[modelName] || DEFAULT_PRICING;
+      
+      const result = await db.execute(sql`
+        UPDATE ai_token_usage
+        SET
+          input_cost = (
+            (GREATEST(0, input_tokens - cached_tokens)::numeric / 1000000.0) * ${pricing.input}
+            + (cached_tokens::numeric / 1000000.0) * ${pricing.cachedInput}
+          )::text,
+          output_cost = (
+            (output_tokens::numeric / 1000000.0) * ${pricing.output}
+          )::text,
+          total_cost = (
+            (GREATEST(0, input_tokens - cached_tokens)::numeric / 1000000.0) * ${pricing.input}
+            + (cached_tokens::numeric / 1000000.0) * ${pricing.cachedInput}
+            + (output_tokens::numeric / 1000000.0) * ${pricing.output}
+          )::text,
+          cache_savings = (
+            (cached_tokens::numeric / 1000000.0) * (${pricing.input} - ${pricing.cachedInput})
+          )::text
+        WHERE consultant_id = ${consultantId}
+          AND model = ${modelName}
+      `);
+      
+      totalUpdated += (result as any).rowCount || 0;
+    }
+    
+    console.log(`[AI Usage] Recalculated costs for ${totalUpdated} records for consultant ${consultantId}`);
+    res.json({ message: `Recalculated ${totalUpdated} records`, updated: totalUpdated });
+  } catch (error) {
+    console.error("[AI Usage] Error recalculating pricing:", error);
+    res.status(500).json({ error: "Failed to recalculate pricing" });
   }
 });
 

@@ -93,7 +93,7 @@ const FEATURE_MAP: Record<string, { label: string; category: string; icon: strin
   'document-processing': { label: 'File Search', category: 'Cervello AI', icon: 'FileSearch' },
   'intent-classifier': { label: 'Consulenze AI', category: 'AI Avanzato', icon: 'Sparkles' },
   'objection-detector': { label: 'Consulenze AI', category: 'AI Avanzato', icon: 'Sparkles' },
-  'live-session': { label: 'Live Consultation', category: 'AI Avanzato', icon: 'Video' },
+  'live-session': { label: 'Chiamate Voice', category: 'Comunicazione', icon: 'Phone' },
   'client-chat': { label: 'Chat AI (Cliente)', category: 'Cliente', icon: 'Sparkles' },
   'client-title-gen': { label: 'Chat AI (Cliente)', category: 'Cliente', icon: 'Sparkles' },
   'client-state': { label: 'Dashboard Cliente', category: 'Cliente', icon: 'Home' },
@@ -220,12 +220,16 @@ const ALL_SIDEBAR_FEATURES: SidebarFeature[] = (() => {
 function getFeatureLabel(feature: string): string {
   if (feature.startsWith('public-chat:')) return 'Chat Pubblica';
   if (feature.startsWith('whatsapp-agent:')) return 'Dipendenti WhatsApp';
+  if (feature.startsWith('voice-call:')) return 'Chiamate Voice';
+  if (feature.startsWith('tts:')) return 'Chiamate Voice';
   return FEATURE_MAP[feature]?.label || feature;
 }
 
 function getFeatureCategory(feature: string): string {
   if (feature.startsWith('public-chat:')) return 'Comunicazione';
   if (feature.startsWith('whatsapp-agent:')) return 'Comunicazione';
+  if (feature.startsWith('voice-call:')) return 'Comunicazione';
+  if (feature.startsWith('tts:')) return 'Comunicazione';
   return FEATURE_MAP[feature]?.category || 'Altro';
 }
 
@@ -243,6 +247,7 @@ const SUBKEY_LABELS: Record<string, string> = {
   'ai-task-file-search': '🔍 File Search',
   'decision-engine': '🧠 Decision Engine',
   'task-executor': '⚙️ Esecutore (legacy)',
+  'live-session': '📞 Sessione Live',
 };
 
 function getSubKeyLabel(key: string): string {
@@ -254,6 +259,14 @@ function getSubKeyLabel(key: string): string {
   if (key.startsWith('whatsapp-agent:')) {
     const agentName = key.replace('whatsapp-agent:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return `📱 ${agentName}`;
+  }
+  if (key.startsWith('voice-call:')) {
+    const agentName = key.replace('voice-call:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `📞 ${agentName}`;
+  }
+  if (key.startsWith('tts:')) {
+    const agentName = key.replace('tts:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `🔊 ${agentName}`;
   }
   return key;
 }
@@ -295,6 +308,10 @@ export default function ConsultantAIUsagePage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [granularity, setGranularity] = useState("day");
   const [activeTab, setActiveTab] = useState("panoramica");
+  const [editingPricing, setEditingPricing] = useState<Record<string, { input: number; output: number; cachedInput: number }>>({});
+  const [recalculating, setRecalculating] = useState(false);
+  const [applyRetroactively, setApplyRetroactively] = useState(true);
+  const [pricingSaved, setPricingSaved] = useState(false);
 
   const dateQueryParams = useMemo(() => {
     if (!dateRange?.from) return "period=month";
@@ -318,6 +335,54 @@ export default function ConsultantAIUsagePage() {
       },
     });
     setTimeout(() => setIsRefreshing(false), 800);
+  };
+
+  const handlePricingUpdate = (model: string, field: 'input' | 'output' | 'cachedInput', value: string) => {
+    const numVal = parseFloat(value);
+    if (isNaN(numVal) || numVal < 0) return;
+    setEditingPricing(prev => ({
+      ...prev,
+      [model]: {
+        ...((pricingData?.pricing || {})[model] || { input: 0, output: 0, cachedInput: 0 }),
+        ...prev[model],
+        [field]: numVal,
+      },
+    }));
+    setPricingSaved(false);
+  };
+
+  const handleRecalculate = async () => {
+    setRecalculating(true);
+    try {
+      const token = getToken();
+      const pricingToSend = Object.keys(editingPricing).length > 0 ? currentPricing : undefined;
+      const res = await fetch('/api/ai-usage/pricing/recalculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ 
+          applyRetroactively,
+          customPricing: pricingToSend,
+        }),
+      });
+      if (!res.ok) throw new Error('Errore nel ricalcolo');
+      const result = await res.json();
+      setPricingSaved(true);
+      setEditingPricing({});
+      await queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/ai-usage');
+        },
+      });
+      setTimeout(() => setPricingSaved(false), 3000);
+    } catch (e) {
+      console.error('Recalculate error:', e);
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   const dateLabel = useMemo(() => {
@@ -379,6 +444,17 @@ export default function ConsultantAIUsagePage() {
     queryFn: () => fetchWithAuth(`/api/ai-usage/by-client/${selectedUser!.id}/features?${dateQueryParams}`),
     enabled: !!selectedUser,
   });
+
+  const { data: pricingData, isLoading: loadingPricing, refetch: refetchPricing } = useQuery({
+    queryKey: ["/api/ai-usage/pricing"],
+    queryFn: () => fetchWithAuth(`/api/ai-usage/pricing`),
+    enabled: activeTab === 'prezzi',
+  });
+
+  const currentPricing = useMemo(() => {
+    const serverPricing = pricingData?.pricing || {};
+    return { ...serverPricing, ...editingPricing };
+  }, [pricingData, editingPricing]);
 
   const stats = summary?.data || summary || {};
   const timelineData = timeline?.data || timeline || [];
@@ -486,6 +562,10 @@ export default function ConsultantAIUsagePage() {
         totalTokens: f.totalTokens || 0,
         totalCost: f.totalCost || 0,
         requestCount: f.requestCount || 0,
+        inputTokens: f.inputTokens || 0,
+        outputTokens: f.outputTokens || 0,
+        thinkingTokens: f.thinkingTokens || 0,
+        modelBreakdown: f.modelBreakdown || [],
       });
       keyBreakdown.set(uid, breakdown);
 
@@ -670,6 +750,10 @@ export default function ConsultantAIUsagePage() {
                 <TabsTrigger value="utenti" className="gap-1.5">
                   <Users className="h-4 w-4" />
                   Per Utente
+                </TabsTrigger>
+                <TabsTrigger value="prezzi" className="gap-1.5">
+                  <DollarSign className="h-4 w-4" />
+                  Prezzi
                 </TabsTrigger>
               </TabsList>
 
@@ -933,26 +1017,54 @@ export default function ConsultantAIUsagePage() {
                                       )}
                                     </TableCell>
                                   </TableRow>
-                                  {isExpanded && row.subKeys.map((sk, j) => (
-                                    <TableRow key={`${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
-                                      <TableCell className="pl-16">
-                                        <div className="flex items-center gap-2">
-                                          {SUBKEY_LABELS[sk.key] ? (
-                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
-                                          ) : (
-                                            <>
-                                              <Code className="h-3 w-3 text-slate-400 shrink-0" />
-                                              <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
-                                            </>
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell />
-                                      <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatTokens(sk.totalTokens)}</TableCell>
-                                      <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatCost(sk.totalCost)}</TableCell>
-                                      <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
-                                      <TableCell />
-                                    </TableRow>
+                                  {isExpanded && row.subKeys.map((sk: any, j: number) => (
+                                    <React.Fragment key={`${i}-sub-${j}`}>
+                                      <TableRow className="bg-slate-50/60 dark:bg-gray-800/30">
+                                        <TableCell className="pl-16">
+                                          <div className="flex items-center gap-2">
+                                            {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') ? (
+                                              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
+                                            ) : (
+                                              <>
+                                                <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                                <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                              </>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell />
+                                        <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatTokens(sk.totalTokens)}</TableCell>
+                                        <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatCost(sk.totalCost)}</TableCell>
+                                        <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
+                                        <TableCell />
+                                      </TableRow>
+                                      {sk.modelBreakdown && sk.modelBreakdown.length > 0 && sk.modelBreakdown.map((mb: any, k: number) => (
+                                        <TableRow key={`${i}-sub-${j}-model-${k}`} className="bg-slate-50/30 dark:bg-gray-800/15">
+                                          <TableCell className="pl-24">
+                                            <div className="flex items-center gap-1.5">
+                                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                                              <code className="text-[11px] font-mono text-slate-400">{mb.model}</code>
+                                            </div>
+                                          </TableCell>
+                                          <TableCell />
+                                          <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>
+                                            <span className="flex items-center justify-end gap-1.5">
+                                              <span className="text-slate-500" title="Token fatturabili (input + output)">
+                                                {formatTokens(mb.inputTokens + mb.outputTokens)}
+                                              </span>
+                                              {mb.thinkingTokens > 0 && (
+                                                <span className="text-purple-400 text-[10px]" title="Token di ragionamento (gratuiti)">
+                                                  +{formatTokens(mb.thinkingTokens)} think
+                                                </span>
+                                              )}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>{formatCost(mb.totalCost)}</TableCell>
+                                          <TableCell className="text-right text-[11px] text-slate-400">{mb.requestCount}</TableCell>
+                                          <TableCell />
+                                        </TableRow>
+                                      ))}
+                                    </React.Fragment>
                                   ))}
                                   {isExpanded && !hasSubKeys && !FEATURE_GUIDE[row.label] && (
                                     <TableRow className="bg-slate-50/40 dark:bg-gray-800/20">
@@ -1249,6 +1361,140 @@ export default function ConsultantAIUsagePage() {
                       )}
                     </CardContent>
                   </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="prezzi" className="mt-4 space-y-4">
+                <Card className="border-0 shadow-sm">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base font-semibold">Prezzi Modelli AI</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">Modifica i prezzi per milione di token per ogni modello Gemini. I costi vengono ricalcolati automaticamente.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={applyRetroactively}
+                            onChange={(e) => setApplyRetroactively(e.target.checked)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          Applica retroattivamente
+                        </label>
+                        <Button
+                          onClick={handleRecalculate}
+                          disabled={recalculating}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                          size="sm"
+                        >
+                          {recalculating ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : pricingSaved ? (
+                            <span>Salvato</span>
+                          ) : (
+                            <span>Ricalcola Costi</span>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {loadingPricing ? (
+                      <div className="p-6 space-y-3">
+                        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
+                              <TableHead className="w-[280px]">Modello</TableHead>
+                              <TableHead className="text-right w-[140px]">Input ($/1M tok)</TableHead>
+                              <TableHead className="text-right w-[140px]">Output ($/1M tok)</TableHead>
+                              <TableHead className="text-right w-[140px]">Cache ($/1M tok)</TableHead>
+                              <TableHead className="text-right w-[100px]">Richieste</TableHead>
+                              <TableHead className="text-right w-[100px]">Token</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {Object.entries(currentPricing)
+                              .sort(([a], [b]) => a.localeCompare(b))
+                              .map(([model, prices]: [string, any]) => {
+                                const usage = (pricingData?.usedModels || []).find((m: any) => m.model === model);
+                                const isEdited = editingPricing[model] !== undefined;
+                                return (
+                                  <TableRow key={model} className={isEdited ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs font-mono text-slate-700 dark:text-slate-300">{model}</code>
+                                        {isEdited && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">modificato</span>}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={prices.input}
+                                        onChange={(e) => handlePricingUpdate(model, 'input', e.target.value)}
+                                        className="w-24 text-right text-sm font-mono px-2 py-1 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={prices.output}
+                                        onChange={(e) => handlePricingUpdate(model, 'output', e.target.value)}
+                                        className="w-24 text-right text-sm font-mono px-2 py-1 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <input
+                                        type="number"
+                                        step="0.001"
+                                        min="0"
+                                        value={prices.cachedInput}
+                                        onChange={(e) => handlePricingUpdate(model, 'cachedInput', e.target.value)}
+                                        className="w-24 text-right text-sm font-mono px-2 py-1 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-xs text-slate-500">
+                                      {usage ? usage.requestCount : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-xs text-slate-500">
+                                      {usage ? formatTokens(usage.totalTokens) : '—'}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {applyRetroactively && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="text-xs text-amber-800 dark:text-amber-200">
+                      <p className="font-medium">Ricalcolo retroattivo attivo</p>
+                      <p className="mt-0.5 text-amber-700 dark:text-amber-300">Cliccando "Ricalcola Costi", tutti i costi storici nel database verranno ricalcolati con i nuovi prezzi. Questo aggiorna anche i dati nelle altre schede.</p>
+                    </div>
+                  </div>
+                )}
+
+                {!applyRetroactively && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div className="text-xs text-blue-800 dark:text-blue-200">
+                      <p className="font-medium">Solo modifiche future</p>
+                      <p className="mt-0.5 text-blue-700 dark:text-blue-300">I nuovi prezzi verranno applicati solo alle future richieste AI. I costi storici rimarranno invariati.</p>
+                    </div>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>

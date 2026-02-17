@@ -1775,6 +1775,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let conversationSaved = false;
     let currentAiConversationId: string | null = null; // For sales_agent/consultation_invite modes
     let savedMessageTimestamps = new Set<string>(); // Track already-saved message timestamps to avoid duplicates
+    let voiceAgentName: string | null = null;
     
     // Accumulatori per trascrizioni in tempo reale
     let currentUserTranscript = '';
@@ -2610,11 +2611,13 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         let agent;
         if (mode === 'sales_agent') {
           agent = await storage.getClientSalesAgentByShareToken(shareToken!);
+          voiceAgentName = agent?.agentName || agent?.name || null;
         } else {
           // consultation_invite mode: load agent from invite
           const invite = await storage.getConsultationInviteByToken(inviteToken!);
           if (invite) {
             agent = await storage.getClientSalesAgentById(invite.agentId);
+            voiceAgentName = agent?.agentName || agent?.name || null;
           }
         }
         
@@ -3859,6 +3862,7 @@ ${historyContent}
             
             if (agentResult.rows.length > 0) {
               const agent = agentResult.rows[0] as any;
+              voiceAgentName = agent.agent_name || agent.name || null;
               
               // Build comprehensive prompt with Brand Voice data
               let brandVoicePrompt = '';
@@ -8635,7 +8639,7 @@ ${compactFeedback}
             consultantId,
             clientId: userId || undefined,
             model: liveModelId || 'gemini-live-2.5-flash-native-audio',
-            feature: 'live-session',
+            feature: voiceAgentName ? `voice-call:${voiceAgentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'voice-call',
             requestType: 'live',
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,

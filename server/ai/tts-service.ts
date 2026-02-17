@@ -15,6 +15,7 @@ interface TTSConfig {
   location: string;
   consultantId?: string;
   clientId?: string;
+  agentName?: string;
 }
 
 /**
@@ -66,7 +67,8 @@ export async function generateSpeech({
   projectId,
   location,
   consultantId,
-  clientId
+  clientId,
+  agentName
 }: TTSConfig): Promise<Buffer> {
   
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -132,7 +134,7 @@ export async function generateSpeech({
           consultantId,
           clientId: clientId || undefined,
           model: 'gemini-2.5-flash-tts',
-          feature: 'tts',
+          feature: agentName ? `tts:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'tts',
           requestType: 'generate',
           inputTokens: usage.promptTokenCount || 0,
           outputTokens: usage.candidatesTokenCount || 0,

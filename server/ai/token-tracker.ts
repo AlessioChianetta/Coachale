@@ -2,14 +2,14 @@ import { db } from "../db";
 import { aiTokenUsage, users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 
-const PRICING: Record<string, { input: number; output: number; cachedInput: number }> = {
+export const PRICING: Record<string, { input: number; output: number; cachedInput: number }> = {
   'gemini-3-flash-preview': { input: 0.50, output: 3.00, cachedInput: 0.05 },
   'gemini-3-pro-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
   'gemini-3-pro-image-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
   'gemini-2.5-flash-tts': { input: 0.30, output: 2.50, cachedInput: 0.03 },
   'gemini-2.5-pro-tts': { input: 1.25, output: 10.00, cachedInput: 0.125 },
-  'gemini-2.5-flash-native-audio-preview-12-2025': { input: 1.00, output: 3.00, cachedInput: 0.10 },
-  'gemini-live-2.5-flash-native-audio': { input: 1.00, output: 3.00, cachedInput: 0.10 },
+  'gemini-2.5-flash-native-audio-preview-12-2025': { input: 3.00, output: 12.00, cachedInput: 0.30 },
+  'gemini-live-2.5-flash-native-audio': { input: 3.00, output: 12.00, cachedInput: 0.30 },
   'gemini-2.5-flash': { input: 0.30, output: 2.50, cachedInput: 0.03 },
   'gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cachedInput: 0.01 },
   'gemini-2.0-flash-lite': { input: 0.10, output: 0.40, cachedInput: 0.01 },
@@ -18,7 +18,7 @@ const PRICING: Record<string, { input: number; output: number; cachedInput: numb
   'gemini-2.5-flash-preview-09-2025': { input: 0.30, output: 2.50, cachedInput: 0.03 },
 };
 
-const DEFAULT_PRICING = { input: 0.50, output: 3.00, cachedInput: 0.05 };
+export const DEFAULT_PRICING = { input: 0.50, output: 3.00, cachedInput: 0.05 };
 
 export interface TrackUsageParams {
   consultantId: string;
@@ -87,7 +87,7 @@ async function resolveClientRole(clientId: string): Promise<string | null> {
   }
 }
 
-function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number): {
+export function calcCost(model: string, inputTokens: number, outputTokens: number, cachedTokens: number): {
   inputCost: number; outputCost: number; cacheSavings: number; totalCost: number;
 } {
   const pricing = PRICING[model] || DEFAULT_PRICING;
@@ -144,7 +144,7 @@ class TokenTracker {
         const consultantFeatures = ['consultant-chat', 'consultant-title-gen', 'ai-task-scheduler', 
           'ai-task-executor', 'ai-task-file-search', 'checkin-personalization', 'whatsapp-agent-response',
           'whatsapp-image-analysis', 'whatsapp-document-analysis', 'whatsapp-audio-transcription', 
-          'whatsapp-sticker-analysis', 'tts', 'live-session', 'ai-autonomy-generate', 'ai-autonomy-task',
+          'whatsapp-sticker-analysis', 'tts', 'live-session', 'voice-call', 'public-chat', 'ai-autonomy-generate', 'ai-autonomy-task',
           'ai-autonomy-decision', 'document-processing', 'advisage', 'youtube-processing',
           'content-studio', 'email-generation', 'followup-decision', 'sales-report', 'onboarding'];
         
