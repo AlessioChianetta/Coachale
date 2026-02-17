@@ -163,6 +163,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         WHERE t.consultant_id = ${consultantId}
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
+          AND (t.client_id IS NULL OR u.is_active = true)
         GROUP BY t.client_id, u.first_name, u.last_name, cu.first_name, cu.last_name
       ),
       active_clients AS (
@@ -173,6 +174,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         FROM users ac
         WHERE ac.consultant_id = ${consultantId}
           AND ac.role IN ('client', 'consultant')
+          AND ac.is_active = true
           AND ac.id NOT IN (SELECT ud.client_id FROM usage_data ud WHERE ud.client_id IS NOT NULL)
       )
       SELECT * FROM (
