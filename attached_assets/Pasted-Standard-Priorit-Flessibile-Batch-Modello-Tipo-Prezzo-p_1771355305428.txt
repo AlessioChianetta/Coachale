@@ -1,0 +1,92 @@
+Standard
+Priorità
+Flessibile/Batch
+Modello	Tipo	Prezzo (per 1 M di token) <= 200.000 token di input	Prezzo (per 1 M di token) > 200.000 token di input	Prezzo (per 1 M di token) <= 200.000 token di input memorizzati nella cache	Prezzo (per 1 milione di token) > 200.000 token di input memorizzati nella cache
+Anteprima di Gemini 3 Pro
+Input (testo, immagine, video, audio)	2 $	4 $	0,2 $	0,4 $
+Output di testo (risposta e ragionamento)	12 $	$ 18	N/D	N/D
+Output di immagini**	120 $	N/D	N/D	N/D
+Anteprima di Gemini 3 Flash
+Input (testo, immagine, video)	0,5 $	0,5 $	$ 0,05	$ 0,05
+Input (audio)	1 $	1 $	0,1 $	0,1 $
+Output di testo (risposta e ragionamento)	3 $	3 $	N/D	N/D
+Funzionalità	Prezzi
+Grounding con la Ricerca Google e grounding web per le aziende	Include 5000 query di ricerca al mese senza costi, aggregate su tutti i modelli Gemini 3.
+
+Le query di ricerca che superano questi limiti vengono fatturate a 14$per 1000 query di ricerca. Una richiesta inviata da un cliente a Gemini può generare una o più query alla Ricerca Google (o Web Grounding for Enterprise). Ti verrà addebitato il costo di ogni singola query di ricerca eseguita. La fatturazione inizierà il 5 gennaio 2026.
+
+I token di input forniti da Grounding with Google Search o Web Grounding for Enterprise non vengono addebitati.
+
+Contatta il team dedicato al tuo account se hai bisogno di più di 1 milione di prompt basati a terra al giorno.
+Grounding con Google Maps	Include 5000 query di ricerca al mese senza costi, aggregate su tutti i modelli Gemini 3.
+
+Le query Maps che superano questi limiti vengono fatturate a 14$per 1000 query. Una richiesta inviata da un cliente a Gemini può generare una o più query a Google Maps. Ti verrà addebitato un costo per ogni singola query eseguita. La fatturazione inizierà il 5 gennaio 2026
+
+I token di input forniti da Google Maps non vengono addebitati.
+Grounding con i tuoi dati	2,50 $ per 1000 prompt.
+* Se il contesto di input di una query è più lungo di 200.000 token, tutti i token (input e output) vengono addebitati alle tariffe per contesto lungo.
+** Un'immagine di output 1K (1024x1024) e 2K (2048x2048) consuma 1120 token di output immagine, equivalenti a 0,134 $per immagine generata. Un'immagine 4K (4096x4096) consuma 2000 token di output immagine, equivalenti a 0,24 $per immagine generata.
+
+Gemini 2.5
+Standard
+Priorità
+Flessibile/Batch
+Modello	Tipo	Prezzo (per 1 M di token) <= 200.000 token di input	Prezzo (per 1 M di token) > 200.000 token di input	Prezzo (per 1 M di token) <= 200.000 token di input memorizzati nella cache	Prezzo (per 1 milione di token) > 200.000 token di input memorizzati nella cache
+Gemini 2.5 Pro
+Input (testo, immagine, video, audio)	$ 1,25	2,5 $	0,125 $	0,250 $
+Output di testo (risposta e ragionamento)	10 $	15 $	N/D	N/D
+Gemini 2.5 Pro
+Uso del computer - Anteprima
+Input (testo, immagine, video, audio)	$ 1,25	2,5 $	N/D	N/D
+Output di testo (risposta e ragionamento)	$ 10,00	15,00 $	N/D	N/D
+
+
+Gemini 2.5
+Flash
+Input (testo, immagine, video)	$ 0,30	$ 0,30	0,030 $	0,030 $
+Input audio	1 $	1 $	$0,100	$0,100
+Output di testo (risposta e ragionamento)	$ 2,50	$ 2,50	N/D	N/D
+Output immagine***	30 $	30 $	N/D	N/D
+
+
+
+
+API Gemini 2.5 Flash Live
+1 milione di token di testo di input	0,5 $	0,5 $	N/D	N/D
+1 milione di token audio di input	3 $	3 $	N/D	N/D
+1 Mln di token video/immagine di input	3 $	3 $	N/D	N/D
+1 Mln di token di testo di output	2 $	2 $	N/D	N/D
+1 Mln di token audio di output	12 $	12 $	N/D	N/D
+
+
+
+Gemini 2.5 Flash Lite
+Input (testo, immagine, video)	0,1 $	0,1 $	$ 0,010	$ 0,010
+Input audio	$ 0,3	$ 0,3	0,030 $	0,030 $
+Output di testo (risposta e ragionamento)	0,4 $	0,4 $	N/D	N/D
+Funzionalità	Prezzi
+
+
+Grounding con la Ricerca Google	Gemini 2.0 Flash, 2.5 Flash e 2.5 Flash-Lite includono un totale di 1500 prompt basati a terra al giorno senza costi aggiuntivi. Gemini 2.5 Pro include 10.000 prompt basati al giorno senza costi aggiuntivi.
+
+I prompt basati su dati che superano questi limiti vengono fatturati a 35$per 1000 prompt basati su dati.
+
+Un prompt basato su dati è una richiesta inviata a Gemini che esegue una o più query nella Ricerca Google&ast;&ast;. Anche se vengono inviate più query di ricerca alla Ricerca Google, viene addebitato un solo costo per un prompt basato su dati.
+
+Contatta il team dedicato al tuo account se hai bisogno di più di 1 milione di prompt basati al giorno.
+
+Grounding web per aziende	45$per 1000 prompt ancorati. Un prompt basato su dati è una richiesta inviata a Gemini che esegue una o più query su Web Grounding per le aziende.** Anche se vengono inviate più query di ricerca alla Ricerca Google, viene addebitato un solo costo per un prompt basato su dati.
+
+Contatta il team dedicato al tuo account se hai bisogno di più di 1 milione di prompt basati a terra al giorno.
+Grounding con i tuoi dati	2,5 $ per 1000 richieste.
+Grounding con Google Maps	25$per 1000 prompt basati su dati.
+
+Un prompt basato su dati concreti è una richiesta inviata a Gemini che esegue almeno 1 query su Google Maps.
+* Se il contesto di input di una query è più lungo di 200.000 token, tutti i token (input e output) vengono addebitati alle tariffe per contesto lungo.
+** Il grounding con la Ricerca Google e il grounding web per le aziende vengono fatturati solo quando un prompt restituisce correttamente risultati web (ovvero risultati contenenti almeno un URL di supporto per il grounding dal web). Le tariffe di utilizzo del modello Gemini vengono applicate separatamente.
+*** Un'immagine 1024x1024 consuma 1290 token. Il conteggio dei token per immagine varia in base alla risoluzione dell'immagine. Per maggiori informazioni su come calcolare i token, puoi consultare la nostra documentazione.
+**** La fatturazione dell'utilizzo del computer utilizza lo SKU Gemini 2.5 Pro per separare i costi di utilizzo del computer e applicare i tag di fatturazione. Scopri di più qui.
+
+Spiegazione della fatturazione della finestra di contesto della sessione LiveAPI: ti vengono addebitati i costi per ogni turno per tutti i token presenti nella finestra di contesto della sessione. La finestra di contesto della sessione include nuovi token (turno corrente) + tutti i token accumulati dai turni precedenti. Ciò significa che i token dei turni precedenti vengono rielaborati e presi in considerazione in ogni nuovo turno, fino alla dimensione della finestra di contesto configurata. Un "turno" è costituito da un input utente'utente e dalla risposta del modello.
+Modalità audio proattiva: quando è abilitata, i token di input vengono addebitati mentre LiveAPI è in ascolto. I token di output vengono addebitati solo quando l'API risponde.
+Quando è abilitata la trascrizione da audio a testo, tutti i token di testo generati per la trascrizione vengono addebitati alla tariffa di output dei token di testo.
