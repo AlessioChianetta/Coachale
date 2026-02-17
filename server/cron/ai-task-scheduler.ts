@@ -1529,6 +1529,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       return 0;
     }
     const genAI = new GoogleGenAI({ apiKey });
+    const fallbackTrackingFeature = { current: 'ai-task-scheduler' };
     aiClient = {
       generateContent: async (params: any) => {
         const result = await trackedGenerateContent(genAI, {
@@ -1537,11 +1538,12 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
           config: {
             ...params.generationConfig,
           },
-        }, { consultantId, feature: 'task-executor', keySource: 'classifier' });
+        }, { consultantId, feature: fallbackTrackingFeature.current, keySource: 'classifier' });
         const text = typeof result.text === 'function' ? result.text() : (result as any).text;
         return { response: { text: () => text || '', candidates: [] } };
       },
       generateContentStream: async () => { throw new Error('Not supported'); },
+      _fallbackTrackingFeature: fallbackTrackingFeature,
     } as any;
   }
 
@@ -1866,6 +1868,14 @@ FORMATO JSON quando è un task nuovo (come prima):
       }
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Calling Gemini (${providerName}, ${providerModel})...`);
+
+      const roleFeature = `ai-task-${role.id}`;
+      if ((aiClient as any)?.trackingContext) {
+        (aiClient as any).trackingContext.feature = roleFeature;
+      }
+      if ((aiClient as any)?._fallbackTrackingFeature) {
+        (aiClient as any)._fallbackTrackingFeature.current = roleFeature;
+      }
 
       try {
         await logActivity(consultantId, {
