@@ -1702,6 +1702,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('chat-assistant');
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available
@@ -3892,6 +3893,7 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('chat-assistant');
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available

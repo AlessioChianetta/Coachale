@@ -1722,7 +1722,7 @@ export function getCacheStats(): {
  */
 export async function getGoogleAIStudioClientForFileSearch(
   userId: string
-): Promise<{ client: GeminiClient; metadata: AiProviderMetadata } | null> {
+): Promise<{ client: GeminiClient; metadata: AiProviderMetadata; setFeature?: (feature: string) => void } | null> {
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)`);
   console.log(`${'═'.repeat(70)}`);
@@ -1733,18 +1733,35 @@ export async function getGoogleAIStudioClientForFileSearch(
   
   try {
     // Priority 1: Environment API key (GEMINI_API_KEY)
+    const setupTracking = (client: GeminiClientAdapter, keySource: string) => {
+      client.setTrackingContext({
+        consultantId: userId,
+        clientId: undefined,
+        keySource,
+        feature: 'unknown',
+      });
+      const setFeature = (feature: string) => {
+        if (client.trackingContext) {
+          client.trackingContext.feature = feature;
+        }
+      };
+      return setFeature;
+    };
+
     const envApiKey = process.env.GEMINI_API_KEY;
     if (envApiKey) {
       console.log(`✅ Using GEMINI_API_KEY from environment for File Search`);
       
       const ai = new GoogleGenAI({ apiKey: envApiKey });
       const client = new GeminiClientAdapter(ai);
+      const setFeature = setupTracking(client, 'env');
       
       return {
         client,
         metadata: {
           name: "Google AI Studio",
         },
+        setFeature,
       };
     }
     
@@ -1770,12 +1787,14 @@ export async function getGoogleAIStudioClientForFileSearch(
         
         const ai = new GoogleGenAI({ apiKey });
         const client = new GeminiClientAdapter(ai);
+        const setFeature = setupTracking(client, 'superadmin');
         
         return {
           client,
           metadata: {
             name: "Google AI Studio",
           },
+          setFeature,
         };
       }
     }
@@ -1796,12 +1815,14 @@ export async function getGoogleAIStudioClientForFileSearch(
     
     const ai = new GoogleGenAI({ apiKey });
     const client = new GeminiClientAdapter(ai);
+    const setFeature = setupTracking(client, 'user');
 
     return {
       client,
       metadata: {
         name: "Google AI Studio",
       },
+      setFeature,
     };
   } catch (error: any) {
     console.error(`❌ Failed to create Google AI Studio client for File Search:`, error.message);

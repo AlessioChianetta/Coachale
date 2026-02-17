@@ -284,6 +284,7 @@ ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
   if (!studioClient) {
     throw new Error("Google AI Studio non disponibile per la classificazione email");
   }
+  studioClient.setFeature?.('email-hub-ai');
   const model = GEMINI_3_MODEL;
   console.log(`[EMAIL-AI] Classification using ${model} (Google AI Studio)`);
 
@@ -299,20 +300,6 @@ ${email.bodyText || email.bodyHtml || "(Nessun contenuto)"}
         maxOutputTokens: 1024,
       },
     });
-
-    const usageMeta = result.usageMetadata || (result as any).response?.usageMetadata;
-    if (usageMeta) {
-      tokenTracker.track({
-        consultantId,
-        model,
-        feature: 'email-hub-ai',
-        requestType: 'generate',
-        inputTokens: usageMeta.promptTokenCount || 0,
-        outputTokens: usageMeta.candidatesTokenCount || 0,
-        cachedTokens: usageMeta.cachedContentTokenCount || 0,
-        totalTokens: usageMeta.totalTokenCount || 0,
-      }).catch(e => console.error('[TokenTracker] track error:', e));
-    }
 
     const responseText = result.response.text();
     const cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -384,6 +371,7 @@ ${threadContext}
   if (!studioClient) {
     throw new Error("Google AI Studio non disponibile per la generazione bozze email");
   }
+  studioClient.setFeature?.('email-hub-ai');
   const model = GEMINI_3_MODEL;
   console.log(`[EMAIL-AI] Draft generation using ${model} (Google AI Studio)`);
 
@@ -408,20 +396,6 @@ ${threadContext}
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
-
-    const usageMetaDraft = result.usageMetadata || (result as any).response?.usageMetadata;
-    if (usageMetaDraft) {
-      tokenTracker.track({
-        consultantId,
-        model,
-        feature: 'email-hub-ai',
-        requestType: 'generate',
-        inputTokens: usageMetaDraft.promptTokenCount || 0,
-        outputTokens: usageMetaDraft.candidatesTokenCount || 0,
-        cachedTokens: usageMetaDraft.cachedContentTokenCount || 0,
-        totalTokens: usageMetaDraft.totalTokenCount || 0,
-      }).catch(e => console.error('[TokenTracker] track error:', e));
-    }
 
     const responseText = result.response.text();
     let cleanedResponse = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -515,6 +489,7 @@ ${threadContext}
   if (!studioClient) {
     throw new Error("Google AI Studio non disponibile per la generazione risposta strutturata");
   }
+  studioClient.setFeature?.('email-hub-ai');
   const model = GEMINI_3_MODEL;
   console.log(`[EMAIL-AI] Structured response generation using ${model} (Google AI Studio)`);
 
@@ -539,20 +514,6 @@ ${threadContext}
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
-
-    const usageMetaStructured = result.usageMetadata || (result as any).response?.usageMetadata;
-    if (usageMetaStructured) {
-      tokenTracker.track({
-        consultantId,
-        model,
-        feature: 'email-hub-ai',
-        requestType: 'generate',
-        inputTokens: usageMetaStructured.promptTokenCount || 0,
-        outputTokens: usageMetaStructured.candidatesTokenCount || 0,
-        cachedTokens: usageMetaStructured.cachedContentTokenCount || 0,
-        totalTokens: usageMetaStructured.totalTokenCount || 0,
-      }).catch(e => console.error('[TokenTracker] track error:', e));
-    }
 
     // Parse citations from File Search response
     let documentCitations: string[] = [];

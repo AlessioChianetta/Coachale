@@ -664,6 +664,7 @@ export async function generateMotivationalEmail(
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('email-automated');
         // Build File Search tool ONLY after confirming Google AI Studio is active
         fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
         console.log(`✅ AI provider selected: ${providerMetadata.name} (File Search enabled with ${fileSearchStoreNames.length} stores)`);
@@ -1483,6 +1484,7 @@ export async function generateConsultationSummaryEmail(
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('email-automated');
         // Build File Search tool ONLY after confirming Google AI Studio is active
         fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
         console.log(`✅ AI provider selected: ${providerMetadata.name} (File Search enabled with ${fileSearchStoreNames.length} stores)`);
