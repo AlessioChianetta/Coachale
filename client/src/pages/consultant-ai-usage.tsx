@@ -508,7 +508,7 @@ export default function ConsultantAIUsagePage() {
                           onSelect={(range) => {
                             setDateRange(range);
                             setPresetLabel("Personalizzato");
-                            if (range?.from && range?.to) {
+                            if (range?.from && range?.to && range.from.getTime() !== range.to.getTime()) {
                               setCalendarOpen(false);
                             }
                           }}
