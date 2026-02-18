@@ -1,0 +1,221 @@
+tatus: waiting_approval).
+🧠 [AUTONOMOUS-GEN] [Personalizza] Frequency not reached (30min configured, last run 27min ago, next in ~3min), skipping
+🧠 [AUTONOMOUS-GEN] Total: 0 tasks  created across 8 roles for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🧠 [AUTONOMOUS-GEN] Completed. Total tasks generated: 0
+🔓 [CronLock] Released lock for "ai-autonomous-generation"
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+2:00:46 PM [express] GET /api/user/profile 200 in 33ms
+2:00:47 PM [express] GET /api/auth/my-profiles 304 in 407ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+2:00:47 PM [express] GET /api/ai-assistant/preferences 200 in 412ms :: {"writingStyle":"eccentric","…
+2:00:47 PM [express] GET /api/consultant/ai/daily-summaries 200 in 504ms :: {"dailySummaries":[{"id"…
+2:00:47 PM [express] GET /api/ai-assistant/consultant/agents-for-assistant 304 in 317ms :: []
+2:00:48 PM [express] GET /api/ai/active-provider 304 in 1165ms :: {"provider":"Google AI Studio","so…
+2:00:48 PM [express] GET /api/consultant/ai/conversations 200 in 1202ms :: [{"id":"d83b270e-d499-496…
+🚀 [API] /api/consultant/ai/chat received - isOnboardingMode: undefined, hasOnboardingStatuses: false
+📝 [User Preferences] Applying preferences - Style: eccentric, Length: comprehensive
+🧠 [Memory Context] Daily summaries: 10 days, 8034 chars, ~2009 tokens
+🧠 [Conversation Memory] Loaded daily summaries: 20 conversations across multiple days
+🧠 [Conversation Memory] Loaded 5 recent detailed conversations
+
+======================================================================
+🧑‍💼 CONSULTANT AI ASSISTANT - New Chat Message
+======================================================================
+Consultant ID: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Message: mi spieghi tutto a 360 gradi
+======================================================================
+
+🧹 Cache cleanup: removed 1 expired entries
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+🔍 [Intent Detection] Detected intent from message: general
+🔑 [Cache Key] Using cache key: 0c73bbe5-51e1-4108-866b-6be7a52fce3b-general
+🔄 Building fresh consultant context (intent: general)
+🔍 [DEBUG] Query flags: {
+  shouldLoadClients: true,
+  shouldLoadExercises: true,
+  shouldLoadClientData: true,
+  shouldLoadEmail: true,
+  shouldLoadWhatsApp: true,
+  shouldLoadCalendar: true,
+  shouldLoadConsultations: true,
+  shouldLoadEmailDetailed: false,
+  shouldLoadWhatsAppDetailed: true,
+  shouldLoadAIAgents: false,
+  shouldLoadLeads: true,
+  shouldLoadCampaigns: true,
+  shouldLoadApiSettings: true,
+  shouldLoadWhatsAppConfig: true
+}
+🔍 [Q1] Fetching consultant info...
+🔍 [Q2] Fetching all clients...
+🔍 [Q3] Fetching pending exercise reviews...
+🔍 [Q4] Fetching recently created exercises...
+🔍 [Q5] Fetching exercise stats...
+🔍 [Q6] Fetching email drafts...
+🔍 [Q7] Fetching scheduler logs...
+🔍 [Q8] Fetching WhatsApp leads...
+🔍 [Q9] Fetching WhatsApp conversations...
+🔍 [Q10] Fetching upcoming appointments...
+🔍 [Q11] Fetching today appointments...
+🔍 [Q12] Fetching all consultations...
+🔍 [Q13] Fetching consultation tasks...
+🔍 [Q13a] Fetching client goals...
+🔍 [Q13b] Fetching client state tracking data (latest per client)...
+🔍 [Q14] Fetching SMTP settings...
+🔍 [Q15] Fetching email journey templates...
+🔍 [Q16] Fetching WhatsApp custom templates...
+🔍 [Q17] Fetching library documents...
+🔍 [Q18] Fetching exercise feedback...
+🔍 [Q19] Fetching university year assignments with detailed structure...
+🔍 [Q20] Fetching exercise templates...
+🔍 [Q21] Fetching university templates...
+🔍 [Q27] Fetching detailed WhatsApp conversations (last 24h)...
+🔍 [Q28] Fetching recent WhatsApp messages (last 24h)...
+🔍 [Q29] Fetching WhatsApp agent configs...
+🔍 [Q40] Fetching proactive leads (last 24h)...
+🔍 [Q41] Fetching lead stats by status...
+🔍 [Q42] Fetching lead stats by category...
+🔍 [Q43] Fetching lead stats by campaign...
+🔍 [Q44] Fetching marketing campaigns with agent names...
+🔍 [Q44] Building query with leftJoin...
+🔍 [Q45] Fetching campaign analytics (last 30 days)...
+🔍 [Q46] Fetching external API configs...
+🔍 [Q46] Building query with leftJoin...
+🔍 [Q47] Fetching external lead import logs (last 30 days)...
+🔍 [Q48] Fetching WhatsApp/Twilio configuration (FULL)...
+🔍 [Q49] Fetching WhatsApp custom templates with versions...
+🔍 [Q50] Fetching WhatsApp template assignments...
+🔍 [Q51] Fetching Twilio WhatsApp templates from Content API...
+🔍 [Q52] Fetching calendar settings...
+✅ [Q1] Consultant info fetched
+✅ [Q5] Exercise stats fetched
+✅ [Q4] Recently created exercises fetched: 50
+✅ [Q2] All clients fetched: 29
+✅ [Q3] Pending exercise reviews fetched: 37
+✅ [Q21] University templates fetched: 4
+✅ [Q27] Detailed WhatsApp conversations fetched (24h): 2
+✅ [Q28] Recent WhatsApp messages fetched (24h): 16
+✅ [Q29] WhatsApp agent configs fetched: 5
+✅ [Q19] University year assignments raw data fetched: 1128 rows
+✅ [Q40] Proactive leads fetched (24h): 0
+✅ [Q41] Lead stats by status fetched: 2 statuses
+✅ [Q42] Lead stats by category fetched: 4 categories
+✅ [Q43] Lead stats by campaign fetched: 3 campaigns
+✅ [Q20] Exercise templates fetched: 84
+✅ [Q44] Marketing campaigns fetched: 3
+✅ [Q46] External API configs fetched: 1
+✅ [Q47] External lead import logs fetched: 0
+✅ [Q48] WhatsApp/Twilio configuration (FULL) fetched: 1 record(s)
+✅ [Q45] Campaign analytics fetched: 0 records
+✅ [Q50] WhatsApp template assignments fetched: 0
+✅ [Q52] Calendar settings fetched: Found
+✅ [Q9] WhatsApp conversations fetched: 20
+✅ [Q8] WhatsApp leads fetched: 8
+✅ [Q11] Today appointments fetched: 0
+✅ [Q10] Upcoming appointments fetched: 0
+✅ [Q16] WhatsApp custom templates fetched: 50
+✅ [Q13] Consultation tasks fetched: 29
+✅ [Q18] Exercise feedback fetched: 10
+✅ [Q49] WhatsApp custom templates fetched: 65
+✅ [Q12] All consultations fetched: 30
+✅ [Q17] Library documents fetched: 20
+✅ [Q13b] Client state tracking fetched (unique clients): 26
+✅ [Q15] Email journey templates fetched: 31
+✅ [Q14] SMTP settings fetched: 1
+✅ [Q13a] Client goals fetched: 0
+✅ [Q7] Scheduler logs fetched: 1
+✅ [Q6] Email drafts fetched: 1188
+✅ [Q51] Twilio WhatsApp templates fetched: 27 from 5 agent(s)
+📧 [EMAIL MAPPING] Created email mapping for 88 consultations
+🔐 [WhatsApp Config] Populated with masked credentials (Account SID: NULL, Auth Token: NULL)
+📚 [Knowledge Base] Loading ALL knowledge content for consultant (no filtering)...
+[PUBLER POLLING] Running scheduled post status sync...
+📚 [Knowledge Base] Loaded 4 documents and 0 APIs for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [Knowledge Base] Loaded ALL content: 4 documents, 0 API sources
+
+📊 Token Usage Breakdown (Intent: general):
+   Dashboard: 27 tokens
+   Clients (29 clients): 2,305 tokens
+   Exercises: 4,323 tokens
+   Email Marketing: 590 tokens
+   WhatsApp Leads: 1,059 tokens
+   Calendar: 627 tokens
+   Consultations: 490 tokens
+   Consultation Tasks: 1,019 tokens
+   Client Goals: 19 tokens
+   Client States (26 states): 7,971 tokens
+   SMTP Configuration: 0 tokens
+   Email Templates: 0 tokens
+   WhatsApp Templates: 0 tokens
+   Library Documents: 0 tokens
+   Exercise Feedback: 2,795 tokens
+   University: 43,945 tokens
+   Exercise Templates: 13,460 tokens
+   💬 WhatsApp (Detailed): 2,275 tokens
+   🎯 Lead Management: 167 tokens
+   📊 Campaign Marketing: 581 tokens
+   🔌 API Settings: 189 tokens
+   📱 WhatsApp Config: 244 tokens
+   📝 WhatsApp Templates (Detailed): 7,816 tokens
+   🔗 WhatsApp Template Assignments: 1 tokens
+   📲 Twilio WhatsApp Templates: 4,781 tokens
+   📅 Calendar Settings: 184 tokens
+   📚 Knowledge Base: 25,929 tokens
+   Base (prompts + metadata): 5,052 tokens
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 TOTAL ESTIMATED: 125,849 tokens
+
+✅ Built and cached consultant context (intent: general)
+⏱️  [TIMING] Consultant context building: 2357ms
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🧹 [Consultant Cache] Cleaned up 1 expired entries
+[PUBLER SYNC] Synced 2 consultants, updated 0 posts
+[PUBLER POLLING] Sync complete: 2 consultants, 0 posts updated
+⏱️  [TIMING] Consultant prompt building: 14ms
+
+📊 Token Usage Estimation:
+  - System Prompt: ~103,333 tokens
+  - 🧠 Conversation Memory: ~2,185 tokens (included in System Prompt)
+  - User Message: ~7 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~103,340 tokens
+
+✅ [FileSearch] Store name valid: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CONSULTANT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/knowledge-base-consulente-juw371zchi3s
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👤 Knowledge Base Consulente (490 documenti):
+      🎓 Lezioni: 217
+      🏋️ Esercizi: 178
+      📖 Libreria: 86
+      🧠 Knowledge Base: 4
+      📄 dynamic_context: 3
+      📄 system_prompt_document: 1
+      📄 consultant_guide: 1
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   📉 System prompt ridotto grazie a File Search
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CONSULTANT STREAMING]
+[AI] Provider: Google AI Studio, User-selected: YES
+🛠️  [TOOLS] Consultant chat: codeExecution=YES, fileSearch=YES
+🔄 AI stream attempt 1/6...
+🔒 [Semaphore] Acquired slot (1/3 in use)
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping...
+🔓 [Semaphore] Released slot (0/3 in use)
