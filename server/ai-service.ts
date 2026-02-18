@@ -4002,24 +4002,89 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const memoryContextTokens = conversationMemoryContext ? estimateTokens(conversationMemoryContext) : 0;
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
 
-    console.log(`\n📊 Token Usage Estimation:`);
-    console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
-    if (memoryContextTokens > 0) {
-      console.log(`  - 🧠 Conversation Memory: ~${memoryContextTokens.toLocaleString()} tokens (included in System Prompt)`);
-    }
-    console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
-    console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
-    console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     if (hasConsultantFileSearch) {
       const fullPromptEstimate = 125000;
       const savedTokens = fullPromptEstimate - systemPromptTokens;
       const savingPercentage = Math.round((savedTokens / fullPromptEstimate) * 100);
-      console.log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-      console.log(`  📉 File Search Token Savings:`);
-      console.log(`    - Full prompt (senza File Search): ~${fullPromptEstimate.toLocaleString()} tokens`);
-      console.log(`    - System prompt attuale: ~${systemPromptTokens.toLocaleString()} tokens`);
-      console.log(`    - Token risparmiati: ~${savedTokens.toLocaleString()} tokens (-${savingPercentage}%)`);
-      console.log(`    - File Search documents: ${consultantFileSearchBreakdown.reduce((sum: number, s: any) => sum + s.totalDocs, 0)} documenti indicizzati`);
+      const basePromptTokens = systemPromptTokens - memoryContextTokens;
+      const totalFileSearchDocs = consultantFileSearchBreakdown.reduce((sum: number, s: any) => sum + s.totalDocs, 0);
+
+      console.log(`\n${'━'.repeat(70)}`);
+      console.log(`📊 BREAKDOWN COMPLETO: SYSTEM PROMPT vs FILE SEARCH`);
+      console.log(`${'━'.repeat(70)}`);
+      
+      console.log(`\n📋 NEL SYSTEM PROMPT (~${systemPromptTokens.toLocaleString()} token):`);
+      console.log(`   ┌──────────────────────────────────────────────────────┐`);
+      console.log(`   │ ⏰ Data/Ora corrente                                │`);
+      console.log(`   │ 👤 Info consulente (nome, email, ruolo)             │`);
+      console.log(`   │ 📊 Dashboard snapshot (solo conteggi):             │`);
+      console.log(`   │    - 👥 Clienti totali: ${String(consultantContext.dashboard.totalClients).padEnd(28)}│`);
+      console.log(`   │    - ✅ Clienti attivi (30gg): ${String(consultantContext.dashboard.activeClients).padEnd(22)}│`);
+      console.log(`   │    - 📝 Esercizi da revisionare: ${String(consultantContext.dashboard.pendingReviews).padEnd(19)}│`);
+      console.log(`   │    - 📅 Appuntamenti programmati: ${String(consultantContext.dashboard.upcomingAppointments).padEnd(18)}│`);
+      console.log(`   │    - 🔔 Appuntamenti oggi: ${String(consultantContext.dashboard.todayAppointments).padEnd(24)}│`);
+      console.log(`   │    - 🆕 Lead nuovi (24h): ${String(consultantContext.dashboard.newLeads24h ?? 0).padEnd(25)}│`);
+      console.log(`   │    - 💬 WhatsApp non letti: ${String(consultantContext.dashboard.unreadWhatsApp ?? 0).padEnd(23)}│`);
+      console.log(`   │    - ✉️  Email draft pendenti: ${String(consultantContext.dashboard.pendingEmailDrafts ?? 0).padEnd(21)}│`);
+      console.log(`   │    - 📆 Appuntamenti settimana: ${String(consultantContext.dashboard.thisWeekAppointments ?? 0).padEnd(20)}│`);
+      console.log(`   │ 🔍 Istruzioni File Search (guida uso documenti)    │`);
+      if (consultantContext.knowledgeBase?.summary) {
+        console.log(`   │ 📚 Knowledge Base istruzioni custom                │`);
+      }
+      if (memoryContextTokens > 0) {
+        console.log(`   │ 🧠 Conversation Memory (~${memoryContextTokens.toLocaleString()} token)${' '.repeat(Math.max(0, 23 - memoryContextTokens.toLocaleString().length))}│`);
+      }
+      if (consultantContext.pageContext) {
+        console.log(`   │ 📍 Contesto pagina: ${(consultantContext.pageContext.pageType || '').substring(0, 31).padEnd(31)}│`);
+      }
+      console.log(`   └──────────────────────────────────────────────────────┘`);
+      console.log(`   📏 Prompt base: ~${basePromptTokens.toLocaleString()} token + Memory: ~${memoryContextTokens.toLocaleString()} token`);
+
+      console.log(`\n🔍 NEL FILE SEARCH (${totalFileSearchDocs} documenti indicizzati):`);
+      console.log(`   ┌──────────────────────────────────────────────────────┐`);
+      for (const store of consultantFileSearchBreakdown) {
+        const sortedCats = Object.entries(store.categories).sort((a: any, b: any) => b[1] - a[1]);
+        for (const [cat, catCount] of sortedCats) {
+          const LABELS: Record<string, string> = {
+            'lesson': '🎓 Lezioni (università)',
+            'exercise': '🏋️ Esercizi (università)',
+            'library': '📖 Libreria documenti',
+            'operational_context': '⚙️ Dati operativi (auto-sync)',
+            'knowledge_base': '🧠 Knowledge Base custom',
+            'dynamic_context': '📄 Contesto dinamico',
+            'system_prompt_document': '📋 System prompt document',
+            'consultant_guide': '📖 Guida Piattaforma',
+          };
+          const label = LABELS[cat] || `📄 ${cat}`;
+          console.log(`   │  ${label.padEnd(42)} ${String(catCount).padStart(4)} doc │`);
+        }
+      }
+      console.log(`   └──────────────────────────────────────────────────────┘`);
+      console.log(`   📦 Store: ${consultantFileSearchStoreNames.join(', ')}`);
+
+      console.log(`\n📉 CONFRONTO TOKEN:`);
+      console.log(`   ┌──────────────────────────────────────────────────────┐`);
+      console.log(`   │ Senza File Search (RAG classico): ~${fullPromptEstimate.toLocaleString().padStart(7)} token  │`);
+      console.log(`   │ Con File Search (attuale):        ~${systemPromptTokens.toLocaleString().padStart(7)} token  │`);
+      console.log(`   │ Token risparmiati:                ~${savedTokens.toLocaleString().padStart(7)} token  │`);
+      console.log(`   │ Riduzione:                              -${savingPercentage}%  │`);
+      console.log(`   └──────────────────────────────────────────────────────┘`);
+
+      console.log(`\n📨 INPUT TOTALE PER QUESTA RICHIESTA:`);
+      console.log(`   - System Prompt: ~${systemPromptTokens.toLocaleString()} token`);
+      console.log(`   - User Message: ~${userMessageTokens.toLocaleString()} token`);
+      console.log(`   - Conversation History: ~${historyTokens.toLocaleString()} token`);
+      console.log(`   - Totale stimato: ~${totalEstimatedTokens.toLocaleString()} token`);
+      console.log(`${'━'.repeat(70)}`);
+    } else {
+      console.log(`\n📊 Token Usage Estimation:`);
+      console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
+      if (memoryContextTokens > 0) {
+        console.log(`  - 🧠 Conversation Memory: ~${memoryContextTokens.toLocaleString()} tokens (included in System Prompt)`);
+      }
+      console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
+      console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
+      console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     }
     console.log('');
 
