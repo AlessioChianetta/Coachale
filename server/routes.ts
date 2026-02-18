@@ -13515,6 +13515,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       delete profileData.createdAt;
       delete profileData.updatedAt;
 
+      // Parse numeric fields
+      if (profileData.yearsOfExperience !== undefined) {
+        const parsed = parseInt(profileData.yearsOfExperience, 10);
+        profileData.yearsOfExperience = isNaN(parsed) ? null : parsed;
+      }
+
       // Check if profile exists
       const [existing] = await db.select({ id: schema.consultantDetailedProfiles.id })
         .from(schema.consultantDetailedProfiles)

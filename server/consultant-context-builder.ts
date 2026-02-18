@@ -48,6 +48,7 @@ import {
   aiScheduledTasks,
   aiAssistantPreferences,
   consultantPersonalTasks,
+  consultantDetailedProfiles,
 } from "../shared/schema";
 import { eq, and, desc, gte, sql, inArray, count, asc } from "drizzle-orm";
 import twilio from "twilio";
@@ -1074,6 +1075,41 @@ export interface ConsultantContext {
     pendingConsultantTasks: Array<{ title: string; description: string | null; dueDate: string | null; priority: string; category: string; completed: boolean }>;
     aiPreferences: { writingStyle: string; responseLength: string; customInstructions: string | null; preferredModel: string; thinkingLevel: string } | null;
     activeIntegrations: { whatsappActive: boolean; emailConfigured: boolean; calendarConnected: boolean; telephonyActive: boolean };
+    detailedProfile: {
+      professionalTitle: string | null;
+      tagline: string | null;
+      bio: string | null;
+      yearsOfExperience: number | null;
+      certifications: string | null;
+      education: string | null;
+      languagesSpoken: string | null;
+      businessName: string | null;
+      businessType: string | null;
+      vatNumber: string | null;
+      businessAddress: string | null;
+      websiteUrl: string | null;
+      linkedinUrl: string | null;
+      instagramUrl: string | null;
+      servicesOffered: string | null;
+      specializations: string | null;
+      methodology: string | null;
+      toolsUsed: string | null;
+      idealClientDescription: string | null;
+      industriesServed: string | null;
+      clientAgeRange: string | null;
+      geographicFocus: string | null;
+      consultationStyle: string | null;
+      initialProcess: string | null;
+      sessionDuration: string | null;
+      followUpApproach: string | null;
+      coreValues: string | null;
+      missionStatement: string | null;
+      visionStatement: string | null;
+      uniqueSellingProposition: string | null;
+      toneOfVoice: string | null;
+      additionalContext: string | null;
+      topicsToAvoid: string | null;
+    } | null;
   };
 }
 
@@ -1187,6 +1223,7 @@ async function buildLightweightContext(
     aiPreferencesResult,
     whatsappConfigResult,
     smtpConfigResult,
+    detailedProfileResult,
   ] = await Promise.all([
     db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
       .from(users)
@@ -1293,6 +1330,11 @@ async function buildLightweightContext(
       .from(consultantSmtpSettings)
       .where(eq(consultantSmtpSettings.consultantId, consultantId))
       .limit(1),
+
+    db.select()
+      .from(consultantDetailedProfiles)
+      .where(eq(consultantDetailedProfiles.consultantId, consultantId))
+      .limit(1),
   ]);
 
   const lightweightExtra = {
@@ -1348,6 +1390,41 @@ async function buildLightweightContext(
       calendarConnected: todayAppointments > 0 || upcomingAppointments > 0,
       telephonyActive: false,
     },
+    detailedProfile: detailedProfileResult[0] ? {
+      professionalTitle: detailedProfileResult[0].professionalTitle,
+      tagline: detailedProfileResult[0].tagline,
+      bio: detailedProfileResult[0].bio,
+      yearsOfExperience: detailedProfileResult[0].yearsOfExperience,
+      certifications: detailedProfileResult[0].certifications,
+      education: detailedProfileResult[0].education,
+      languagesSpoken: detailedProfileResult[0].languagesSpoken,
+      businessName: detailedProfileResult[0].businessName,
+      businessType: detailedProfileResult[0].businessType,
+      vatNumber: detailedProfileResult[0].vatNumber,
+      businessAddress: detailedProfileResult[0].businessAddress,
+      websiteUrl: detailedProfileResult[0].websiteUrl,
+      linkedinUrl: detailedProfileResult[0].linkedinUrl,
+      instagramUrl: detailedProfileResult[0].instagramUrl,
+      servicesOffered: detailedProfileResult[0].servicesOffered,
+      specializations: detailedProfileResult[0].specializations,
+      methodology: detailedProfileResult[0].methodology,
+      toolsUsed: detailedProfileResult[0].toolsUsed,
+      idealClientDescription: detailedProfileResult[0].idealClientDescription,
+      industriesServed: detailedProfileResult[0].industriesServed,
+      clientAgeRange: detailedProfileResult[0].clientAgeRange,
+      geographicFocus: detailedProfileResult[0].geographicFocus,
+      consultationStyle: detailedProfileResult[0].consultationStyle,
+      initialProcess: detailedProfileResult[0].initialProcess,
+      sessionDuration: detailedProfileResult[0].sessionDuration,
+      followUpApproach: detailedProfileResult[0].followUpApproach,
+      coreValues: detailedProfileResult[0].coreValues,
+      missionStatement: detailedProfileResult[0].missionStatement,
+      visionStatement: detailedProfileResult[0].visionStatement,
+      uniqueSellingProposition: detailedProfileResult[0].uniqueSellingProposition,
+      toneOfVoice: detailedProfileResult[0].toneOfVoice,
+      additionalContext: detailedProfileResult[0].additionalContext,
+      topicsToAvoid: detailedProfileResult[0].topicsToAvoid,
+    } : null,
   };
 
   const pageContextData = pageContext ? {

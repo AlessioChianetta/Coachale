@@ -4064,6 +4064,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (consultantContext.lightweightExtra?.activeIntegrations) {
         console.log(`   │ 🔌 Integrazioni attive (WA, Email, Cal, Tel)     │`);
       }
+      if (consultantContext.lightweightExtra?.detailedProfile) {
+        console.log(`   │ 📋 Profilo dettagliato consulente: SI              │`);
+      }
       console.log(`   └──────────────────────────────────────────────────────┘`);
       console.log(`   📏 Prompt base: ~${basePromptTokens.toLocaleString()} token + Memory: ~${memoryContextTokens.toLocaleString()} token`);
 
@@ -4528,6 +4531,41 @@ Informazioni sul Consulente:
 - Email: ${context.consultant.email}
 - Ruolo: ${context.consultant.role}
 
+${context.lightweightExtra?.detailedProfile ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROFILO DETTAGLIATO DEL CONSULENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.detailedProfile.professionalTitle ? `Titolo: ${context.lightweightExtra.detailedProfile.professionalTitle}` : ''}
+${context.lightweightExtra.detailedProfile.tagline ? `Tagline: ${context.lightweightExtra.detailedProfile.tagline}` : ''}
+${context.lightweightExtra.detailedProfile.bio ? `Bio: ${context.lightweightExtra.detailedProfile.bio}` : ''}
+${context.lightweightExtra.detailedProfile.yearsOfExperience ? `Anni di esperienza: ${context.lightweightExtra.detailedProfile.yearsOfExperience}` : ''}
+${context.lightweightExtra.detailedProfile.certifications ? `Certificazioni: ${context.lightweightExtra.detailedProfile.certifications}` : ''}
+${context.lightweightExtra.detailedProfile.education ? `Formazione: ${context.lightweightExtra.detailedProfile.education}` : ''}
+${context.lightweightExtra.detailedProfile.languagesSpoken ? `Lingue: ${context.lightweightExtra.detailedProfile.languagesSpoken}` : ''}
+${context.lightweightExtra.detailedProfile.businessName ? `\nAttività: ${context.lightweightExtra.detailedProfile.businessName}${context.lightweightExtra.detailedProfile.businessType ? ` (${context.lightweightExtra.detailedProfile.businessType})` : ''}` : ''}
+${context.lightweightExtra.detailedProfile.businessAddress ? `Sede: ${context.lightweightExtra.detailedProfile.businessAddress}` : ''}
+${context.lightweightExtra.detailedProfile.websiteUrl ? `Sito web: ${context.lightweightExtra.detailedProfile.websiteUrl}` : ''}
+${context.lightweightExtra.detailedProfile.servicesOffered ? `Servizi: ${context.lightweightExtra.detailedProfile.servicesOffered}` : ''}
+${context.lightweightExtra.detailedProfile.specializations ? `Specializzazioni: ${context.lightweightExtra.detailedProfile.specializations}` : ''}
+${context.lightweightExtra.detailedProfile.methodology ? `Metodologia: ${context.lightweightExtra.detailedProfile.methodology}` : ''}
+${context.lightweightExtra.detailedProfile.toolsUsed ? `Strumenti: ${context.lightweightExtra.detailedProfile.toolsUsed}` : ''}
+${context.lightweightExtra.detailedProfile.idealClientDescription ? `\nCliente ideale: ${context.lightweightExtra.detailedProfile.idealClientDescription}` : ''}
+${context.lightweightExtra.detailedProfile.industriesServed ? `Settori: ${context.lightweightExtra.detailedProfile.industriesServed}` : ''}
+${context.lightweightExtra.detailedProfile.clientAgeRange ? `Fascia età target: ${context.lightweightExtra.detailedProfile.clientAgeRange}` : ''}
+${context.lightweightExtra.detailedProfile.geographicFocus ? `Focus geografico: ${context.lightweightExtra.detailedProfile.geographicFocus}` : ''}
+${context.lightweightExtra.detailedProfile.consultationStyle ? `Stile consulenza: ${context.lightweightExtra.detailedProfile.consultationStyle}` : ''}
+${context.lightweightExtra.detailedProfile.initialProcess ? `Processo iniziale: ${context.lightweightExtra.detailedProfile.initialProcess}` : ''}
+${context.lightweightExtra.detailedProfile.sessionDuration ? `Durata sessioni: ${context.lightweightExtra.detailedProfile.sessionDuration}` : ''}
+${context.lightweightExtra.detailedProfile.followUpApproach ? `Approccio follow-up: ${context.lightweightExtra.detailedProfile.followUpApproach}` : ''}
+${context.lightweightExtra.detailedProfile.coreValues ? `\nValori: ${context.lightweightExtra.detailedProfile.coreValues}` : ''}
+${context.lightweightExtra.detailedProfile.missionStatement ? `Mission: ${context.lightweightExtra.detailedProfile.missionStatement}` : ''}
+${context.lightweightExtra.detailedProfile.visionStatement ? `Vision: ${context.lightweightExtra.detailedProfile.visionStatement}` : ''}
+${context.lightweightExtra.detailedProfile.uniqueSellingProposition ? `Proposta unica: ${context.lightweightExtra.detailedProfile.uniqueSellingProposition}` : ''}
+${context.lightweightExtra.detailedProfile.toneOfVoice ? `\n⚙️ Tono di voce preferito: ${context.lightweightExtra.detailedProfile.toneOfVoice}` : ''}
+${context.lightweightExtra.detailedProfile.additionalContext ? `📝 Contesto aggiuntivo: ${context.lightweightExtra.detailedProfile.additionalContext}` : ''}
+${context.lightweightExtra.detailedProfile.topicsToAvoid ? `🚫 Argomenti da evitare: ${context.lightweightExtra.detailedProfile.topicsToAvoid}` : ''}
+` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 SNAPSHOT DASHBOARD
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
