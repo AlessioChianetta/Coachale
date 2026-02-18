@@ -794,22 +794,54 @@ async function handleGenerateReport(
   const prompt = `${reportIdentity}
 ${agentContextSection || ''}
 
-CLASSIFICAZIONE DOCUMENTO - Analizza l'istruzione del task e classifica il tipo di documento da generare:
-- "contract": Accordi, contratti, termini e condizioni, NDA, lettere di incarico → Usa articoli/commi, linguaggio legale formale, spazi firma
-- "market_research": Ricerche di mercato, analisi competitiva, benchmark → Executive summary, dati/statistiche, grafici testuali, fonti
-- "guide": Guide pratiche, ricette, tutorial, procedure operative → Step numerati, prerequisiti, note, consigli pratici
-- "strategic_report": Report strategici, business plan, piani d'azione → Sommario esecutivo, analisi SWOT, KPI, timeline
-- "dossier": Dossier informativi, brief, schede tecniche → Sezioni tematiche strutturate, riferimenti, allegati
-- "brief": Brief creativi, brief di progetto, specifiche → Obiettivi, target, deliverables, vincoli, timeline
-- "analysis": Analisi generiche, valutazioni, audit → Metodologia, risultati, conclusioni, raccomandazioni
+CLASSIFICAZIONE DOCUMENTO - Analizza ATTENTAMENTE l'istruzione del task. Scegli il tipo CORRETTO in base al CONTENUTO richiesto, NON alle parole chiave superficiali:
+- "contract": SOLO se si richiede esplicitamente un CONTRATTO, accordo legale, NDA, termini e condizioni, lettera di incarico. Deve avere natura GIURIDICA VINCOLANTE.
+- "market_research": Ricerche di mercato, analisi competitiva, benchmark di settore, analisi trend → Executive summary, dati/statistiche, grafici testuali, fonti
+- "guide": Guide pratiche, scalette, tutorial, percorsi formativi, procedure operative, programmi di formazione, academy, onboarding → Step numerati, prerequisiti, note, consigli pratici
+- "strategic_report": Report strategici, business plan, piani d'azione, roadmap, strategie di crescita → Sommario esecutivo, analisi SWOT, KPI, timeline
+- "dossier": Dossier informativi, schede tecniche, profili dettagliati → Sezioni tematiche strutturate, riferimenti, allegati
+- "brief": Brief creativi, brief di progetto, specifiche di progetto → Obiettivi, target, deliverables, vincoli, timeline
+- "analysis": Analisi generiche, valutazioni, audit, assessment → Metodologia, risultati, conclusioni, raccomandazioni
 
-IMPORTANTE per il campo "formal_document":
-- Se il tipo è "contract": usa body items con type="article", numbering formale (Art. 1, Art. 2...), linguaggio giuridico italiano, includi SEMPRE signature_block nel footer con spazi per firma di entrambe le parti
-- Se il tipo è "market_research": usa body items con type="section", includi dati numerici concreti, percentuali, fonti citate
-- Se il tipo è "guide": usa body items con type="step", numbering sequenziale, istruzioni chiare e concrete
-- Se il tipo è "strategic_report": usa type="section" con analisi approfondite, KPI misurabili, timeline
-- Per TUTTI i tipi: il formal_document deve essere un documento PROFESSIONALE, COMPLETO e AUTONOMO (leggibile senza il riepilogo)
-- Il "summary" è per il consulente (dashboard), il "formal_document" è il deliverable da consegnare al cliente
+⚠️ ATTENZIONE alla classificazione: Se il task chiede di "progettare una struttura", "creare una scaletta", "definire un percorso" → è una "guide" o "strategic_report", NON un "contract". Un contratto è SOLO un documento legale con obblighi vincolanti tra parti. Se il task menziona "partner" o "accordo" ma chiede di progettare contenuti/strutture, NON è un contratto.
+
+REGOLE SPECIFICHE PER IL formal_document in base al tipo:
+
+1. "contract" (SOLO documenti legali vincolanti):
+   - Body: type="article", numerazione Art. 1, Art. 2..., linguaggio giuridico italiano
+   - Footer: OBBLIGATORIO signatures con spazi firma di entrambe le parti
+   - Footer: OBBLIGATORIO location_date per luogo e data firma
+
+2. "market_research":
+   - Body: type="section", ALMENO 8 sezioni con dati numerici concreti, percentuali, fonti citate
+   - Ogni sezione: minimo 600 caratteri di contenuto con cifre e statistiche reali
+   - NO firme nel footer (non è un contratto)
+
+3. "guide" (include scalette, percorsi formativi, academy, programmi di onboarding):
+   - Body: type="step" per passi sequenziali, type="section" per moduli tematici
+   - Ogni step/sezione: minimo 600 caratteri con istruzioni DETTAGLIATE, concrete e operative
+   - Per ogni modulo formativo: includi obiettivi di apprendimento, contenuti specifici, deliverables, durata, materiali necessari
+   - Usa subsections per sotto-argomenti di ogni modulo
+   - NO firme nel footer (non è un contratto)
+
+4. "strategic_report":
+   - Body: type="section" con analisi approfondite, KPI misurabili, timeline
+   - Ogni sezione: minimo 600 caratteri con metriche concrete, previsioni, scenari
+   - NO firme nel footer (non è un contratto)
+
+5. "dossier", "brief", "analysis":
+   - Body: type="section" con contenuti tematici strutturati
+   - Ogni sezione: minimo 500 caratteri di contenuto dettagliato
+   - NO firme nel footer (non è un contratto)
+
+REGOLA CRITICA SUL FORMAL_DOCUMENT:
+- Il formal_document è il DELIVERABLE FINALE da consegnare al cliente/partner
+- Deve essere COMPLETO, AUTONOMO e leggibile senza il riepilogo
+- Deve avere ALMENO 8-12 body items per un documento professionale
+- OGNI body item deve avere contenuto di ALMENO 500-800 caratteri
+- Il documento totale deve essere ALMENO 5-8 pagine quando stampato
+- Il "summary" (sections, key_findings) è per il consulente (dashboard), il "formal_document" è il PDF professionale per il destinatario
+- Le firme nel footer vanno inserite SOLO per documenti tipo "contract". Per tutti gli altri tipi, usa footer.notes per note/disclaimer generali
 
 REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. USA SEMPRE I DATI REALI E SPECIFICI estratti dai documenti privati: numeri, percentuali, nomi, date, importi concreti. NON usare MAI riferimenti generici come "[CONSULENZA PRIVATA]" o "[DOCUMENTO]" - integra i dati direttamente nel testo con cifre e fatti reali. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo con dati concreti, non di un riassunto generico.
 
@@ -865,36 +897,42 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     "type": "contract|market_research|guide|strategic_report|dossier|brief|analysis",
     "header": {
       "title": "Titolo formale del documento",
-      "subtitle": "Sottotitolo opzionale",
-      "parties": ["Parte 1 (es. Fornitore: Nome)", "Parte 2 (es. Cliente: Nome)"],
+      "subtitle": "Sottotitolo descrittivo del contenuto",
+      "parties": ["Solo per contract - Parte 1", "Solo per contract - Parte 2"],
       "date": "Data del documento",
-      "reference_number": "Ref opzionale"
+      "reference": "Riferimento documento (opzionale)"
     },
     "body": [
       {
-        "type": "article|section|step|paragraph|table|signature_block|disclaimer",
+        "type": "article (SOLO per contract) | section (per tutti gli altri) | step (per guide)",
         "number": "1",
-        "title": "Titolo articolo/sezione",
-        "content": "Contenuto completo e dettagliato",
+        "title": "Titolo della sezione/articolo/step (OBBLIGATORIO)",
+        "content": "Contenuto DETTAGLIATO e COMPLETO - MINIMO 500-800 caratteri per item. Deve essere esaustivo, professionale, con dati concreti. NON riassumere, NON abbreviare. Scrivi come se fosse un documento professionale a pagamento.",
         "subsections": [
           {
             "number": "1.1",
-            "title": "Sotto-sezione opzionale",
-            "content": "Contenuto sotto-sezione"
+            "title": "Sotto-sezione (usa per dettagli aggiuntivi)",
+            "content": "Contenuto dettagliato della sotto-sezione - almeno 200 caratteri"
           }
         ]
       }
     ],
     "footer": {
-      "signatures": [
-        {"role": "Il Fornitore", "name": "Nome Fornitore", "line": true},
-        {"role": "Il Cliente", "name": "Nome Cliente", "line": true}
-      ],
-      "notes": "Note legali, disclaimers, o informazioni aggiuntive",
-      "location_date": "Luogo e data per firma"
+      "signatures": "SOLO PER type=contract - Array di firme: [{role, name, line: true}]. Per TUTTI gli altri tipi: NON includere signatures o impostare a []",
+      "notes": "Note informative, disclaimer, copyright, confidenzialità - SEMPRE presente per tutti i tipi",
+      "location_date": "SOLO per contract - Luogo e data per firma"
     }
   }
-}`;
+}
+
+⚠️ REGOLA TASSATIVA SUL NUMERO DI BODY ITEMS:
+- Il formal_document.body DEVE contenere ALMENO 8 items per qualsiasi tipo di documento
+- Per guide/academy/percorsi formativi: ALMENO 10-15 items (1 per ogni modulo + sotto-argomenti)
+- Per strategic_report: ALMENO 10 items (executive summary + analisi + piano + metriche)
+- Per market_research: ALMENO 10 items (overview + dati + analisi + conclusioni)
+- Se il task chiede N elementi specifici (es. "5 video tutorial"), OGNI elemento deve essere un body item con ALMENO 3-4 subsections ciascuno che dettaglino il contenuto
+- RICORDA: Il cliente PAGA per questo documento. Un documento di 1-2 pagine è INACCETTABILE. Il target è 5-10 pagine di contenuto professionale.
+- Le firme (signatures) nel footer vanno incluse ESCLUSIVAMENTE quando document_type è "contract". Per guide, strategic_report, market_research, brief, dossier, analysis: footer.signatures DEVE essere un array vuoto [] o non presente.`;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} generate_report using ${providerName} (${resolvedModel})`);
@@ -903,7 +941,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await client.generateContent({
       model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 32768 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 65536 },
     });
   });
 
@@ -913,7 +951,17 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.formal_document && parsed.formal_document.type !== 'contract' && parsed.document_type !== 'contract') {
+        if (parsed.formal_document.footer?.signatures && parsed.formal_document.footer.signatures.length > 0) {
+          console.log(`${LOG_PREFIX} Removing signatures from non-contract document (type: ${parsed.formal_document.type || parsed.document_type})`);
+          parsed.formal_document.footer.signatures = [];
+        }
+        if (parsed.formal_document.footer?.location_date) {
+          delete parsed.formal_document.footer.location_date;
+        }
+      }
+      return parsed;
     }
   } catch (parseError: any) {
     console.warn(`${LOG_PREFIX} Failed to parse report JSON, returning raw text`);
@@ -1498,7 +1546,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      margins: { top: 50, bottom: 60, left: 55, right: 55 },
       bufferPages: true,
     });
     const chunks: Buffer[] = [];
@@ -1507,115 +1555,174 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
     doc.on('error', reject);
 
     const pageWidth = doc.page.width;
+    const contentWidth = pageWidth - 110;
     const header = formalDoc.header || {};
     const body = formalDoc.body || [];
     const footer = formalDoc.footer || {};
+    const docType = formalDoc.type || reportData.document_type || 'analysis';
+
+    const DARK_BLUE = '#1a2744';
+    const ACCENT_BLUE = '#2d4a7c';
+    const TEXT_PRIMARY = '#222222';
+    const TEXT_SECONDARY = '#444444';
+    const TEXT_MUTED = '#666666';
+    const BORDER_LIGHT = '#d0d0d0';
+
+    const checkPageBreak = (needed: number = 80) => {
+      if (doc.y > doc.page.height - doc.page.margins.bottom - needed) {
+        doc.addPage();
+      }
+    };
 
     doc.save();
-    doc.rect(0, 0, pageWidth, 100).fill('#1a2744');
+    doc.rect(0, 0, pageWidth, 110).fill(DARK_BLUE);
     doc.restore();
 
-    doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold')
-      .text(header.title || reportData.title || 'Documento', 50, 25, { align: 'center', width: pageWidth - 100 });
+    const headerTitle = header.title || reportData.title || 'Documento';
+    doc.fillColor('#ffffff').fontSize(22).font('Helvetica-Bold')
+      .text(headerTitle, 55, 20, { align: 'center', width: contentWidth });
+
+    const titleBottom = doc.y;
     if (header.subtitle) {
-      doc.fillColor('#cccccc').fontSize(11).font('Helvetica')
-        .text(header.subtitle, 50, 55, { align: 'center', width: pageWidth - 100 });
+      doc.fillColor('#b0c4de').fontSize(11).font('Helvetica')
+        .text(header.subtitle, 55, Math.min(titleBottom + 5, 60), { align: 'center', width: contentWidth });
     }
 
-    doc.y = 115;
+    if (header.date) {
+      doc.fillColor('#8899aa').fontSize(9).font('Helvetica')
+        .text(header.date, 55, 92, { align: 'center', width: contentWidth });
+    }
+
+    doc.y = 125;
 
     if (header.reference_number || header.reference) {
-      doc.fillColor('#666666').fontSize(9).font('Helvetica')
+      doc.fillColor(TEXT_MUTED).fontSize(9).font('Helvetica')
         .text(`Rif: ${header.reference_number || header.reference}`, { align: 'right' });
     }
-    if (header.date) {
-      doc.fillColor('#666666').fontSize(9).font('Helvetica')
-        .text(`Data: ${header.date}`, { align: 'right' });
-    }
+
     if (header.parties && Array.isArray(header.parties) && header.parties.length > 0) {
-      doc.moveDown(0.5);
-      doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('Parti:');
+      doc.moveDown(0.3);
+      doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica-Bold').text('Parti coinvolte:');
       for (const party of header.parties) {
-        doc.fillColor('#333333').fontSize(9).font('Helvetica').text(`• ${party}`, { indent: 10 });
+        doc.fillColor(TEXT_SECONDARY).fontSize(9.5).font('Helvetica').text(`  •  ${party}`);
       }
     }
-    doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#1a2744').lineWidth(1).stroke();
+
+    doc.moveDown(0.8);
+    doc.moveTo(55, doc.y).lineTo(pageWidth - 55, doc.y).strokeColor(DARK_BLUE).lineWidth(1.5).stroke();
     doc.moveDown(1);
 
-    for (const item of body) {
-      if (doc.y > 700) doc.addPage();
+    for (let idx = 0; idx < body.length; idx++) {
+      const item = body[idx];
+      checkPageBreak(100);
 
       const itemType = item.type || 'paragraph';
-      const itemNumber = item.number || '';
+      const itemNumber = item.number || `${idx + 1}`;
       const itemTitle = item.title || '';
       const itemContent = item.content || '';
 
       if (itemType === 'article') {
-        doc.fillColor('#1a2744').fontSize(13).font('Helvetica-Bold')
-          .text(`Art. ${itemNumber} - ${itemTitle}`, { align: 'left' });
-      } else if (itemType === 'section') {
-        doc.fillColor('#1a2744').fontSize(12).font('Helvetica-Bold')
-          .text(`${itemNumber}. ${itemTitle}`, { align: 'left' });
+        doc.fillColor(DARK_BLUE).fontSize(13).font('Helvetica-Bold')
+          .text(`Art. ${itemNumber} — ${itemTitle}`, 55, doc.y, { width: contentWidth });
+        doc.moveDown(0.2);
+        doc.moveTo(55, doc.y).lineTo(200, doc.y).strokeColor(ACCENT_BLUE).lineWidth(0.5).stroke();
       } else if (itemType === 'step') {
-        doc.fillColor('#1a2744').fontSize(12).font('Helvetica-Bold')
-          .text(`Step ${itemNumber}: ${itemTitle}`, { align: 'left' });
+        doc.save();
+        const stepY = doc.y;
+        doc.rect(55, stepY, 30, 22).fill(DARK_BLUE);
+        doc.fillColor('#ffffff').fontSize(11).font('Helvetica-Bold')
+          .text(itemNumber, 55, stepY + 5, { width: 30, align: 'center' });
+        doc.restore();
+        doc.fillColor(DARK_BLUE).fontSize(12).font('Helvetica-Bold')
+          .text(itemTitle, 95, stepY + 3, { width: contentWidth - 40 });
+        doc.y = Math.max(doc.y, stepY + 26);
+      } else {
+        const sectionPrefix = itemNumber ? `${itemNumber}. ` : '';
+        doc.fillColor(DARK_BLUE).fontSize(12).font('Helvetica-Bold')
+          .text(`${sectionPrefix}${itemTitle}`, 55, doc.y, { width: contentWidth });
+        doc.moveDown(0.2);
+        doc.moveTo(55, doc.y).lineTo(180, doc.y).strokeColor(BORDER_LIGHT).lineWidth(0.5).stroke();
       }
 
       if (itemContent) {
+        doc.moveDown(0.4);
+        checkPageBreak(60);
+        doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica')
+          .text(itemContent, 55, doc.y, { width: contentWidth, align: 'justify', lineGap: 3.5 });
+      }
+
+      if (item.items && Array.isArray(item.items)) {
         doc.moveDown(0.3);
-        doc.fillColor('#333333').fontSize(10).font('Helvetica')
-          .text(itemContent, { align: 'justify', lineGap: 3 });
+        for (const listItem of item.items) {
+          checkPageBreak(30);
+          const bulletText = typeof listItem === 'string' ? listItem : (listItem.content || listItem.text || JSON.stringify(listItem));
+          doc.fillColor(TEXT_SECONDARY).fontSize(9.5).font('Helvetica')
+            .text(`  •  ${bulletText}`, 65, doc.y, { width: contentWidth - 20, lineGap: 2 });
+        }
       }
 
       if (item.subsections && Array.isArray(item.subsections)) {
         for (const sub of item.subsections) {
-          doc.moveDown(0.3);
+          doc.moveDown(0.4);
+          checkPageBreak(50);
           if (sub.title) {
-            doc.fillColor('#444444').fontSize(10).font('Helvetica-Bold')
-              .text(sub.title, { indent: 20 });
+            const subPrefix = sub.number ? `${sub.number}  ` : '';
+            doc.fillColor(ACCENT_BLUE).fontSize(10).font('Helvetica-Bold')
+              .text(`${subPrefix}${sub.title}`, 70, doc.y, { width: contentWidth - 25 });
           }
           if (sub.content) {
-            doc.fillColor('#555555').fontSize(9).font('Helvetica')
-              .text(sub.content, { indent: 20, align: 'justify', lineGap: 2 });
+            doc.moveDown(0.2);
+            doc.fillColor(TEXT_SECONDARY).fontSize(9.5).font('Helvetica')
+              .text(sub.content, 70, doc.y, { width: contentWidth - 25, align: 'justify', lineGap: 2.5 });
+          }
+          if (sub.items && Array.isArray(sub.items)) {
+            doc.moveDown(0.2);
+            for (const si of sub.items) {
+              checkPageBreak(25);
+              const siText = typeof si === 'string' ? si : (si.content || si.text || '');
+              doc.fillColor(TEXT_MUTED).fontSize(9).font('Helvetica')
+                .text(`    ◦  ${siText}`, 80, doc.y, { width: contentWidth - 35, lineGap: 2 });
+            }
           }
         }
       }
 
-      doc.moveDown(1);
+      doc.moveDown(1.2);
     }
 
     if (footer.notes) {
-      if (doc.y > 650) doc.addPage();
+      checkPageBreak(80);
       doc.moveDown(1);
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      doc.moveTo(55, doc.y).lineTo(pageWidth - 55, doc.y).strokeColor(BORDER_LIGHT).lineWidth(0.5).stroke();
       doc.moveDown(0.5);
-      doc.fillColor('#888888').fontSize(8).font('Helvetica-Oblique')
-        .text(footer.notes, { align: 'left', lineGap: 2 });
+      doc.fillColor(TEXT_MUTED).fontSize(8).font('Helvetica-Oblique')
+        .text(footer.notes, 55, doc.y, { width: contentWidth, align: 'left', lineGap: 2 });
       doc.moveDown(1);
     }
 
-    if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0) {
-      if (doc.y > 600) doc.addPage();
+    if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0 && docType === 'contract') {
+      checkPageBreak(120);
+      doc.moveDown(1.5);
+      doc.fillColor(DARK_BLUE).fontSize(11).font('Helvetica-Bold').text('FIRME', { align: 'center' });
       doc.moveDown(1);
 
       const sigWidth = 200;
-      const sigSpacing = (pageWidth - 100 - sigWidth * Math.min(footer.signatures.length, 2)) / Math.max(footer.signatures.length - 1, 1);
+      const sigSpacing = (contentWidth - sigWidth * Math.min(footer.signatures.length, 2)) / Math.max(footer.signatures.length - 1, 1);
 
       for (let i = 0; i < footer.signatures.length; i++) {
         const sig = footer.signatures[i];
         if (i > 0 && i % 2 === 0) {
           doc.moveDown(3);
         }
-        const xPos = 50 + (i % 2) * (sigWidth + sigSpacing);
+        const xPos = 55 + (i % 2) * (sigWidth + sigSpacing);
         const yPos = doc.y;
 
-        doc.fillColor('#333333').fontSize(9).font('Helvetica-Bold')
+        doc.fillColor(TEXT_PRIMARY).fontSize(9).font('Helvetica-Bold')
           .text(sig.role || '', xPos, yPos, { width: sigWidth });
         doc.moveDown(2);
-        doc.moveTo(xPos, doc.y).lineTo(xPos + sigWidth - 20, doc.y).strokeColor('#333333').lineWidth(0.5).stroke();
+        doc.moveTo(xPos, doc.y).lineTo(xPos + sigWidth - 20, doc.y).strokeColor(TEXT_PRIMARY).lineWidth(0.5).stroke();
         doc.moveDown(0.3);
-        doc.fillColor('#666666').fontSize(8).font('Helvetica')
+        doc.fillColor(TEXT_MUTED).fontSize(8).font('Helvetica')
           .text(sig.name || '', xPos, doc.y, { width: sigWidth });
         if (i % 2 === 0 && i + 1 < footer.signatures.length) {
           doc.y = yPos;
@@ -1623,17 +1730,22 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
       }
     }
 
-    if (footer.location_date) {
+    if (footer.location_date && docType === 'contract') {
       doc.moveDown(2);
-      doc.fillColor('#666666').fontSize(9).font('Helvetica')
+      doc.fillColor(TEXT_MUTED).fontSize(9).font('Helvetica')
         .text(footer.location_date, { align: 'right' });
     }
 
     const pages = doc.bufferedPageRange();
     for (let i = pages.start; i < pages.start + pages.count; i++) {
       doc.switchToPage(i);
-      doc.fillColor('#999999').fontSize(8).font('Helvetica')
-        .text(`Pagina ${i + 1} di ${pages.count}`, 50, doc.page.height - 30, { align: 'center', width: pageWidth - 100 });
+      doc.save();
+      doc.rect(0, doc.page.height - 40, pageWidth, 40).fill('#f5f5f5');
+      doc.restore();
+      doc.fillColor(TEXT_MUTED).fontSize(7.5).font('Helvetica')
+        .text(`${headerTitle}`, 55, doc.page.height - 32, { width: contentWidth * 0.6, align: 'left' });
+      doc.fillColor('#999999').fontSize(7.5).font('Helvetica')
+        .text(`Pagina ${i + 1} di ${pages.count}`, 55, doc.page.height - 32, { width: contentWidth, align: 'right' });
     }
 
     doc.end();
