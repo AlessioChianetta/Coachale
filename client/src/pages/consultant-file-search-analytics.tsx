@@ -4835,6 +4835,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           />
                         </div>
                       </div>
+                      <div className="pt-4 border-t mt-4">
+                        <Button
+                          variant="outline"
+                          className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                          onClick={() => syncSingleMutation.mutate({ type: 'operational_context', id: 'all' })}
+                          disabled={syncSingleMutation.isPending || !(settings?.operationalSyncEnabled)}
+                        >
+                          {syncSingleMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Sincronizza Contesto Operativo Ora
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="border-t pt-6">

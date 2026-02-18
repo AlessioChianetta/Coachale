@@ -850,7 +850,19 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncAssignedLibrary,
       autoSyncAssignedUniversity,
       autoSyncEmailAccounts,
-      autoSyncSystemPromptDocs
+      autoSyncSystemPromptDocs,
+      operationalSyncEnabled,
+      operationalSyncIntervalMinutes,
+      autoSyncOperationalClients,
+      autoSyncOperationalClientStates,
+      autoSyncOperationalWhatsappTemplates,
+      autoSyncOperationalTwilioTemplates,
+      autoSyncOperationalConfig,
+      autoSyncOperationalEmail,
+      autoSyncOperationalCampaigns,
+      autoSyncOperationalCalendar,
+      autoSyncOperationalExercisesPending,
+      autoSyncOperationalConsultations
     } = req.body;
     
     const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
@@ -887,6 +899,20 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncAssignedUniversity === 'boolean') updateData.autoSyncAssignedUniversity = autoSyncAssignedUniversity;
     if (typeof autoSyncEmailAccounts === 'boolean') updateData.autoSyncEmailAccounts = autoSyncEmailAccounts;
     if (typeof autoSyncSystemPromptDocs === 'boolean') updateData.autoSyncSystemPromptDocs = autoSyncSystemPromptDocs;
+    if (typeof operationalSyncEnabled === 'boolean') updateData.operationalSyncEnabled = operationalSyncEnabled;
+    if (typeof operationalSyncIntervalMinutes === 'number' && operationalSyncIntervalMinutes >= 15) {
+      updateData.operationalSyncIntervalMinutes = operationalSyncIntervalMinutes;
+    }
+    if (typeof autoSyncOperationalClients === 'boolean') updateData.autoSyncOperationalClients = autoSyncOperationalClients;
+    if (typeof autoSyncOperationalClientStates === 'boolean') updateData.autoSyncOperationalClientStates = autoSyncOperationalClientStates;
+    if (typeof autoSyncOperationalWhatsappTemplates === 'boolean') updateData.autoSyncOperationalWhatsappTemplates = autoSyncOperationalWhatsappTemplates;
+    if (typeof autoSyncOperationalTwilioTemplates === 'boolean') updateData.autoSyncOperationalTwilioTemplates = autoSyncOperationalTwilioTemplates;
+    if (typeof autoSyncOperationalConfig === 'boolean') updateData.autoSyncOperationalConfig = autoSyncOperationalConfig;
+    if (typeof autoSyncOperationalEmail === 'boolean') updateData.autoSyncOperationalEmail = autoSyncOperationalEmail;
+    if (typeof autoSyncOperationalCampaigns === 'boolean') updateData.autoSyncOperationalCampaigns = autoSyncOperationalCampaigns;
+    if (typeof autoSyncOperationalCalendar === 'boolean') updateData.autoSyncOperationalCalendar = autoSyncOperationalCalendar;
+    if (typeof autoSyncOperationalExercisesPending === 'boolean') updateData.autoSyncOperationalExercisesPending = autoSyncOperationalExercisesPending;
+    if (typeof autoSyncOperationalConsultations === 'boolean') updateData.autoSyncOperationalConsultations = autoSyncOperationalConsultations;
     
     const [updated] = await db
       .update(fileSearchSettings)
