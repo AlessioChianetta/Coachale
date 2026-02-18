@@ -174,19 +174,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           COALESCE(SUM(t.total_cost::numeric), 0) AS total_cost,
           COUNT(*) AS request_count,
           MAX(t.created_at)::text AS last_used,
-          (SELECT feature FROM ai_token_usage t2
-           WHERE (t2.consultant_id = ${consultantId} OR t2.consultant_id IN (SELECT id FROM sub_consultant_ids))
-             AND t2.created_at >= ${start}
-             AND t2.created_at <= ${end}
-             AND (
-               ((t2.client_id IS NULL OR t2.client_id = '' OR t2.client_id = t2.consultant_id) AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id))
-               OR t2.client_id = t.client_id
-               OR t2.consultant_id = t.consultant_id
-             )
-           GROUP BY feature
-           ORDER BY COUNT(*) DESC
-           LIMIT 1
-          ) AS top_feature
+          (array_agg(t.feature ORDER BY t.total_cost::numeric DESC NULLS LAST))[1] AS top_feature
         FROM ai_token_usage t
         LEFT JOIN users u ON t.client_id = u.id
         LEFT JOIN users cu ON t.consultant_id = cu.id
