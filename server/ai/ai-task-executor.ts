@@ -9,6 +9,7 @@ import { fileSearchService } from "./file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
+const _agentDocsLoggedPerTask = new Set<string>();
 
 export interface AITaskInfo {
   id: string;
@@ -105,6 +106,7 @@ export interface AgentDocuments {
 }
 
 export async function loadAgentDocuments(consultantId: string, agentId: string, taskId: string): Promise<AgentDocuments> {
+  const cacheKey = `${taskId}_${agentId}`;
   const result: AgentDocuments = { systemPromptDocs: [], fileSearchStoreNames: [], fileSearchDocTitles: [] };
 
   try {
@@ -179,17 +181,20 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
       }
     }
 
-    await logActivity(consultantId, {
-      event_type: "agent_documents_loaded",
-      title: `📚 ${agentId}: ${result.systemPromptDocs.length} doc in memoria, ${result.fileSearchDocTitles.length} doc in ricerca`,
-      description: [
-        ...result.systemPromptDocs.map(d => `📄 "${d.title}" (${d.source === 'system_prompt_document' ? 'Doc Sistema' : 'Knowledge Base'}) → System Prompt`),
-        ...result.fileSearchDocTitles.map(t => `🔍 "${t}" → File Search/RAG`),
-      ].join('\n') || 'Nessun documento assegnato',
-      icon: "📚",
-      severity: "info",
-      task_id: taskId,
-    });
+    if (!_agentDocsLoggedPerTask.has(cacheKey)) {
+      _agentDocsLoggedPerTask.add(cacheKey);
+      await logActivity(consultantId, {
+        event_type: "agent_documents_loaded",
+        title: `📚 ${agentId}: ${result.systemPromptDocs.length} doc in memoria, ${result.fileSearchDocTitles.length} doc in ricerca`,
+        description: [
+          ...result.systemPromptDocs.map(d => `📄 "${d.title}" (${d.source === 'system_prompt_document' ? 'Doc Sistema' : 'Knowledge Base'}) → System Prompt`),
+          ...result.fileSearchDocTitles.map(t => `🔍 "${t}" → File Search/RAG`),
+        ].join('\n') || 'Nessun documento assegnato',
+        icon: "📚",
+        severity: "info",
+        task_id: taskId,
+      });
+    }
 
   } catch (err: any) {
     console.error(`⚠️ [AGENT-DOCS] [${agentId?.toUpperCase()}] Failed to load documents: ${err.message}`);
@@ -1417,10 +1422,20 @@ async function handleSendEmail(
   const clientData = previousResults.fetch_client_data || {};
   const reportData = previousResults.generate_report || {};
   const analysisData = previousResults.analyze_patterns || {};
-  const contactEmail = clientData.contact?.email;
+  let contactEmail = clientData.contact?.email;
 
   if (!contactEmail) {
-    return { status: "skipped", reason: "Nessun indirizzo email disponibile per il contatto" };
+    const consultantEmailResult = await db.execute(sql`
+      SELECT email FROM users WHERE id = ${task.consultant_id} LIMIT 1
+    `);
+    if (consultantEmailResult.rows.length > 0) {
+      contactEmail = (consultantEmailResult.rows[0] as any).email;
+      console.log(`${LOG_PREFIX} No contact email, using consultant email: ${contactEmail}`);
+    }
+  }
+
+  if (!contactEmail) {
+    return { status: "skipped", reason: "Nessun indirizzo email disponibile per il contatto né per il consulente" };
   }
 
   const smtpResult = await db.execute(sql`
