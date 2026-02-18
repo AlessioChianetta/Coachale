@@ -1109,7 +1109,7 @@ async function buildLightweightContext(
     db.select({ count: count() }).from(clientStateTracking)
       .where(and(
         eq(clientStateTracking.consultantId, consultantId),
-        gte(clientStateTracking.updatedAt, thirtyDaysAgo)
+        gte(clientStateTracking.lastUpdated, thirtyDaysAgo)
       )),
     db.select({ count: count() }).from(exerciseAssignments)
       .where(and(
