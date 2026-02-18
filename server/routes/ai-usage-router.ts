@@ -154,12 +154,12 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           AND is_active = true
           AND id != ${consultantId}
       ),
-      usage_data AS (
+      base_rows AS (
         SELECT
           CASE
             WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN t.consultant_id
             ELSE t.client_id
-          END AS client_id,
+          END AS derived_client_id,
           CASE 
             WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
@@ -170,11 +170,10 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
             ELSE 'client'
           END AS client_role,
-          COALESCE(SUM(t.total_tokens), 0) AS total_tokens,
-          COALESCE(SUM(t.total_cost::numeric), 0) AS total_cost,
-          COUNT(*) AS request_count,
-          MAX(t.created_at)::text AS last_used,
-          (array_agg(t.feature ORDER BY t.total_cost::numeric DESC NULLS LAST))[1] AS top_feature
+          t.total_tokens,
+          t.total_cost::numeric AS total_cost,
+          t.created_at,
+          t.feature
         FROM ai_token_usage t
         LEFT JOIN users u ON t.client_id = u.id
         LEFT JOIN users cu ON t.consultant_id = cu.id
@@ -183,21 +182,19 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
           AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true)
-        GROUP BY
-          CASE
-            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN t.consultant_id
-            ELSE t.client_id
-          END,
-          CASE 
-            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
-            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
-            ELSE u.first_name || ' ' || u.last_name
-          END,
-          CASE 
-            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN 'sub_consultant'
-            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
-            ELSE 'client'
-          END
+      ),
+      usage_data AS (
+        SELECT
+          derived_client_id AS client_id,
+          user_name,
+          client_role,
+          COALESCE(SUM(total_tokens), 0) AS total_tokens,
+          COALESCE(SUM(total_cost), 0) AS total_cost,
+          COUNT(*) AS request_count,
+          MAX(created_at)::text AS last_used,
+          (array_agg(feature ORDER BY total_cost DESC NULLS LAST))[1] AS top_feature
+        FROM base_rows
+        GROUP BY derived_client_id, user_name, client_role
       ),
       active_clients AS (
         SELECT
