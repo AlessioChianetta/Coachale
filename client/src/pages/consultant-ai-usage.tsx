@@ -264,6 +264,10 @@ function getSubKeyLabel(key: string): string {
     const agentName = key.replace('whatsapp-agent:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return `📱 ${agentName}`;
   }
+  if (key.startsWith('instagram-agent:')) {
+    const agentName = key.replace('instagram-agent:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `📸 ${agentName}`;
+  }
   if (key.startsWith('voice-call:')) {
     const agentName = key.replace('voice-call:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return `📞 ${agentName}`;
@@ -1119,7 +1123,7 @@ export default function ConsultantAIUsagePage() {
                                             <TableRow className="bg-slate-50/60 dark:bg-gray-800/30">
                                               <TableCell className="pl-20">
                                                 <div className="flex items-center gap-2">
-                                                  {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') || sk.key.startsWith('agent-chat:') || sk.key.startsWith('agent-chat-summary:') ? (
+                                                  {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('instagram-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') || sk.key.startsWith('agent-chat:') || sk.key.startsWith('agent-chat-summary:') ? (
                                                     <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
                                                   ) : (
                                                     <>
@@ -1346,7 +1350,7 @@ export default function ConsultantAIUsagePage() {
                                         <TableRow key={`uf-${i}-sub-${j}`} className="bg-slate-50/60 dark:bg-gray-800/30">
                                           <TableCell className="pl-16">
                                             <div className="flex items-center gap-2">
-                                              {SUBKEY_LABELS[sk.key] ? (
+                                              {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('instagram-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') || sk.key.startsWith('agent-chat:') || sk.key.startsWith('agent-chat-summary:') ? (
                                                 <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
                                               ) : (
                                                 <>

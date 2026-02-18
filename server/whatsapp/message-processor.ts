@@ -1921,6 +1921,10 @@ Segui attentamente o tieni a memoria queste informazioni.
       console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);
     }
 
+    // Compute agent slug for tracking (same pattern used in booking extraction)
+    const _wpAgentSlug = (consultantConfig?.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const _wpAgentFeature = `whatsapp-agent:${_wpAgentSlug}`;
+
     // Retry logic with exponential backoff and API key rotation
     const maxRetries = 3;
     let lastError: any;
@@ -1999,7 +2003,7 @@ Segui attentamente o tieni a memoria queste informazioni.
               ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
               ...(fileSearchTool && { tools: [fileSearchTool] }),
             },
-          } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
+          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio' });
         }
 
         endTime = Date.now();
@@ -2218,7 +2222,7 @@ Segui attentamente o tieni a memoria queste informazioni.
             model: rm,
             contents: [...geminiMessages, { role: "user", parts: [{ text: retryPrompt }] }],
             config: { systemInstruction: systemPrompt },
-          } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
+          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio' });
         }
         let retryText = '';
         try {
@@ -2840,7 +2844,7 @@ LEAD: grazie per l'appuntamento, a presto!
                   extractionResponse = await trackedGenerateContent(extractionAi, {
                     model: GEMINI_3_MODEL,
                     contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-                  } as any, { consultantId: conversation.consultantId, feature: 'whatsapp-agent-response', keySource: 'studio' });
+                  } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio' });
                 }
 
                 console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);

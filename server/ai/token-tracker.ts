@@ -143,6 +143,7 @@ class TokenTracker {
         const clientFeatures = ['chat-assistant', 'client-title-gen', 'data-analysis', 'client-chat', 'chat-text-response'];
         const consultantFeatures = ['consultant-chat', 'consultant-title-gen', 'ai-task-scheduler', 
           'ai-task-executor', 'ai-task-file-search', 'checkin-personalization', 'whatsapp-agent-response',
+          'whatsapp-agent:', 'instagram-agent:', 'instagram-agent',
           'whatsapp-image-analysis', 'whatsapp-document-analysis', 'whatsapp-audio-transcription', 
           'whatsapp-sticker-analysis', 'tts', 'live-session', 'voice-call', 'public-chat', 'ai-autonomy-generate', 'ai-autonomy-task',
           'ai-autonomy-decision', 'document-processing', 'advisage', 'youtube-processing',
