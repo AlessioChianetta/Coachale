@@ -6,6 +6,8 @@ import { db } from '../db';
 import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports, emailAccounts, emailAccountKnowledgeItems, departments } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
+import { syncDynamicDocuments } from '../ai/dynamic-context-documents';
+import type { OperationalSettings } from '../ai/dynamic-context-documents';
 
 const sseTokenStore = new Map<string, { consultantId: string; expiresAt: number }>();
 
@@ -293,10 +295,44 @@ router.post('/sync-all', authenticateToken, requireRole('consultant'), async (re
   try {
     const userId = req.user!.id;
     const result = await fileSearchSyncService.syncAllContentForConsultant(userId);
+
+    let operationalSynced = 0;
+    try {
+      const [settings] = await db
+        .select()
+        .from(fileSearchSettings)
+        .where(eq(fileSearchSettings.consultantId, userId))
+        .limit(1);
+
+      if (settings?.operationalSyncEnabled) {
+        const operationalSettings: OperationalSettings = {
+          clients: true,
+          clientStates: true,
+          whatsappTemplates: true,
+          twilioTemplates: true,
+          config: true,
+          email: true,
+          campaigns: true,
+          calendar: true,
+          exercisesPending: true,
+          consultations: true,
+        };
+        const opResult = await syncDynamicDocuments(userId, operationalSettings);
+        operationalSynced = opResult.totalDocuments;
+        await db.update(fileSearchSettings)
+          .set({ lastOperationalSyncAt: new Date() })
+          .where(eq(fileSearchSettings.consultantId, userId));
+        console.log(`[FileSearch API] Operational context synced: ${operationalSynced} documents`);
+      }
+    } catch (opError: any) {
+      console.error(`[FileSearch API] Operational sync error (non-blocking): ${opError.message}`);
+    }
+
     res.json({
       success: true,
       ...result,
-      message: `Sincronizzazione COMPLETA. Library: ${result.library.synced}/${result.library.total}, Knowledge Base: ${result.knowledgeBase.synced}/${result.knowledgeBase.total}, Exercises: ${result.exercises.synced}/${result.exercises.total}, University: ${result.university.synced}/${result.university.total}, Consultations: ${result.consultations.synced}/${result.consultations.total}`,
+      operationalSynced,
+      message: `Sincronizzazione COMPLETA. Library: ${result.library.synced}/${result.library.total}, Knowledge Base: ${result.knowledgeBase.synced}/${result.knowledgeBase.total}, Exercises: ${result.exercises.synced}/${result.exercises.total}, University: ${result.university.synced}/${result.university.total}, Consultations: ${result.consultations.synced}/${result.consultations.total}${operationalSynced > 0 ? `, Operativi: ${operationalSynced}` : ''}`,
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error syncing all:', error);
@@ -2498,6 +2534,38 @@ router.post('/reset-and-resync', authenticateToken, requireRole('consultant'), a
     console.log(`\n📍 PHASE 2: Syncing all content...`);
     
     const syncResult = await fileSearchSyncService.syncAllContentForConsultant(consultantId);
+
+    let operationalSynced = 0;
+    try {
+      const [settings] = await db
+        .select()
+        .from(fileSearchSettings)
+        .where(eq(fileSearchSettings.consultantId, consultantId))
+        .limit(1);
+
+      if (settings?.operationalSyncEnabled) {
+        const operationalSettings: OperationalSettings = {
+          clients: true,
+          clientStates: true,
+          whatsappTemplates: true,
+          twilioTemplates: true,
+          config: true,
+          email: true,
+          campaigns: true,
+          calendar: true,
+          exercisesPending: true,
+          consultations: true,
+        };
+        const opResult = await syncDynamicDocuments(consultantId, operationalSettings);
+        operationalSynced = opResult.totalDocuments;
+        await db.update(fileSearchSettings)
+          .set({ lastOperationalSyncAt: new Date() })
+          .where(eq(fileSearchSettings.consultantId, consultantId));
+        console.log(`[FileSearch Reset] Operational context synced: ${operationalSynced} documents`);
+      }
+    } catch (opError: any) {
+      console.error(`[FileSearch Reset] Operational sync error (non-blocking): ${opError.message}`);
+    }
     
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`✅ [FileSearch] RESET AND RESYNC COMPLETE!`);
@@ -2513,6 +2581,7 @@ router.post('/reset-and-resync', authenticateToken, requireRole('consultant'), a
         totalDeleted: consultantDocsDeleted + clientDocsDeleted,
       },
       syncPhase: syncResult,
+      operationalSynced,
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error in reset-and-resync:', error);
