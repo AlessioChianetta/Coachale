@@ -586,31 +586,62 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       });
       
       if (!decision.should_execute) {
-        console.log(`🛑 [AI-SCHEDULER] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
+        const isError = decision.reasoning.toLowerCase().includes('errore') || 
+                        decision.reasoning.toLowerCase().includes('error') || 
+                        decision.confidence === 0;
         
-        await db.execute(sql`
-          UPDATE ai_scheduled_tasks 
-          SET status = 'completed',
-              ai_reasoning = ${decision.reasoning},
-              ai_confidence = ${decision.confidence},
-              result_summary = ${`AI ha deciso di non eseguire: ${decision.reasoning.substring(0, 200)}`},
-              result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ decision: 'skip', reasoning: decision.reasoning })}::jsonb,
-              completed_at = NOW(),
-              updated_at = NOW()
-          WHERE id = ${task.id}
-        `);
-        
-        await logActivity(task.consultant_id, {
-          event_type: 'decision_made',
-          title: `Task non necessario: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-          description: decision.reasoning.substring(0, 300),
-          icon: 'brain',
-          severity: 'info',
-          task_id: task.id,
-          contact_name: task.contact_name,
-          contact_id: task.contact_id,
-          event_data: { confidence: decision.confidence }
-        });
+        if (isError) {
+          console.log(`❌ [AI-SCHEDULER] Decision Engine ERROR for task ${task.id}: ${decision.reasoning}`);
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'failed',
+                ai_reasoning = ${decision.reasoning},
+                ai_confidence = ${decision.confidence},
+                result_summary = ${`Errore: ${decision.reasoning.substring(0, 200)}`},
+                error_message = ${decision.reasoning.substring(0, 500)},
+                result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ decision: 'error', reasoning: decision.reasoning })}::jsonb,
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+          
+          await logActivity(task.consultant_id, {
+            event_type: 'task_error',
+            title: `Task fallito: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+            description: decision.reasoning.substring(0, 300),
+            icon: '❌',
+            severity: 'error',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+            event_data: { confidence: decision.confidence }
+          });
+        } else {
+          console.log(`🛑 [AI-SCHEDULER] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'completed',
+                ai_reasoning = ${decision.reasoning},
+                ai_confidence = ${decision.confidence},
+                result_summary = ${`AI ha deciso di non eseguire: ${decision.reasoning.substring(0, 200)}`},
+                result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ decision: 'skip', reasoning: decision.reasoning })}::jsonb,
+                completed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+          
+          await logActivity(task.consultant_id, {
+            event_type: 'decision_made',
+            title: `Task non necessario: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
+            description: decision.reasoning.substring(0, 300),
+            icon: 'brain',
+            severity: 'info',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+            event_data: { confidence: decision.confidence }
+          });
+        }
         return;
       }
       
