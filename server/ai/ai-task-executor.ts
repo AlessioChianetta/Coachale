@@ -459,7 +459,29 @@ async function handleFetchClientData(
     console.warn(`${LOG_PREFIX} Failed to fetch follow-up tasks: ${err.message}`);
   }
 
-  console.log(`${LOG_PREFIX} Client data fetched: contact=${contactData ? "found" : "not found"}, recent_tasks=${recentTasks.length}, follow_ups=${followUpTasks.length}`);
+  if (!contactData) {
+    const consultantResult = await db.execute(sql`
+      SELECT id, first_name, last_name, email, phone_number, role
+      FROM users
+      WHERE id = ${task.consultant_id}
+      LIMIT 1
+    `);
+    if (consultantResult.rows.length > 0) {
+      const row = consultantResult.rows[0] as any;
+      contactData = {
+        id: row.id,
+        first_name: row.first_name,
+        last_name: row.last_name,
+        email: row.email,
+        phone_number: row.phone_number || task.contact_phone,
+        role: row.role,
+        is_consultant_self: true,
+      };
+      console.log(`${LOG_PREFIX} No contact found, using consultant data: ${row.first_name} ${row.last_name} (${row.email})`);
+    }
+  }
+
+  console.log(`${LOG_PREFIX} Client data fetched: contact=${contactData ? "found" : "not found"}, email=${contactData?.email || 'N/A'}, recent_tasks=${recentTasks.length}, follow_ups=${followUpTasks.length}`);
 
   return {
     contact: contactData || {
