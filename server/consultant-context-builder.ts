@@ -1125,7 +1125,7 @@ async function buildLightweightContext(
       .where(and(
         eq(calendarEvents.userId, consultantId),
         gte(calendarEvents.start, startOfToday),
-        gte(endOfToday, calendarEvents.start)
+        sql`${calendarEvents.start} < ${endOfToday}`
       )),
     db.select({ count: count() }).from(proactiveLeads)
       .where(and(

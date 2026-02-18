@@ -4814,6 +4814,16 @@ export class FileSearchSyncService {
       university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }>; outdated: Array<{ id: string; title: string; lessonTitle: string; indexedAt: Date | null; sourceUpdatedAt: Date | null }> };
       consultantGuide: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null }> };
       dynamicContext: { total: number; indexed: number; missing: Array<{ id: string; title: string }>; outdated: Array<{ id: string; title: string; indexedAt: Date | null }> };
+      opClients: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opClientStates: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opWhatsappTemplates: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opTwilioTemplates: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opConfig: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opEmail: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opCampaigns: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opCalendar: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opExercisesPending: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
+      opConsultations: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> };
     };
     clients: Array<{
       clientId: string;
@@ -4972,6 +4982,7 @@ export class FileSearchSyncService {
     const indexedUniversityMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     const indexedGuideMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     const indexedDynamicContextMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
+    const indexedOperationalMap = new Map<string, { indexedAt: Date | null; contentHash: string | null }>();
     
     for (const doc of indexedDocs) {
       if (!doc.sourceId) continue;
@@ -4983,6 +4994,10 @@ export class FileSearchSyncService {
         case 'university_lesson': indexedUniversityMap.set(doc.sourceId, entry); break;
         case 'consultant_guide': indexedGuideMap.set(doc.sourceId, entry); break;
         case 'dynamic_context': indexedDynamicContextMap.set(doc.sourceId, entry); break;
+        case 'operational_context': {
+          if (doc.sourceId) indexedOperationalMap.set(doc.sourceId, entry);
+          break;
+        }
       }
     }
     
@@ -5093,6 +5108,40 @@ export class FileSearchSyncService {
       }
     }
     const dynamicContextResult = { total: 3, indexed: dynamicContextIndexed, missing: dynamicContextMissing, outdated: dynamicContextOutdated };
+
+    const operationalDocDefs = [
+      { sourceIdPrefix: 'operational_clients_', key: 'opClients', title: 'Panoramica Clienti' },
+      { sourceIdPrefix: 'operational_clientstates_', key: 'opClientStates', title: 'Stati dei Clienti' },
+      { sourceIdPrefix: 'operational_whatsapptemplates_', key: 'opWhatsappTemplates', title: 'Template WhatsApp' },
+      { sourceIdPrefix: 'operational_twiliotemplates_', key: 'opTwilioTemplates', title: 'Template Twilio' },
+      { sourceIdPrefix: 'operational_config_', key: 'opConfig', title: 'Configurazione' },
+      { sourceIdPrefix: 'operational_email_', key: 'opEmail', title: 'Email Marketing' },
+      { sourceIdPrefix: 'operational_campaigns_', key: 'opCampaigns', title: 'Campagne Marketing' },
+      { sourceIdPrefix: 'operational_calendar_', key: 'opCalendar', title: 'Calendario' },
+      { sourceIdPrefix: 'operational_exercisespending_', key: 'opExercisesPending', title: 'Esercizi in Attesa' },
+      { sourceIdPrefix: 'operational_consultations_', key: 'opConsultations', title: 'Consulenze Recenti' },
+    ];
+
+    const operationalResults: Record<string, { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> }> = {};
+    
+    for (const def of operationalDocDefs) {
+      const matchingDocs: Array<{ id: string; title: string; status: string; indexedAt: Date | null }> = [];
+      for (const [sourceId, entry] of indexedOperationalMap.entries()) {
+        if (sourceId.startsWith(def.sourceIdPrefix)) {
+          matchingDocs.push({
+            id: sourceId,
+            title: def.title,
+            status: 'indexed',
+            indexedAt: entry.indexedAt,
+          });
+        }
+      }
+      operationalResults[def.key] = {
+        total: 1,
+        indexed: matchingDocs.length > 0 ? 1 : 0,
+        documents: matchingDocs,
+      };
+    }
     
     console.log(`📊 [Audit] Phase 3 complete in ${Date.now() - phase3Start}ms`);
 
@@ -5956,6 +6005,7 @@ export class FileSearchSyncService {
         university: universityResult,
         consultantGuide: consultantGuideResult,
         dynamicContext: dynamicContextResult,
+        ...operationalResults,
       },
       clients: clientsAudit,
       departments: departmentsAudit,
