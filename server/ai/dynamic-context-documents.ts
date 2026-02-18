@@ -1761,227 +1761,50 @@ export async function syncDynamicDocuments(consultantId: string, operationalSett
     console.error(`❌ [DynamicDocs] AI limitations error:`, error.message);
   }
 
-  if (operationalSettings?.clients) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating clients overview document...`);
-      const doc = await generateClientsOverviewDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Panoramica Clienti (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_clients_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.clientsOverview = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Clients overview: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.clientsOverview = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Clients overview error:`, error.message);
+  if (operationalSettings) {
+    const operationalGenerators: Array<{
+      key: keyof SyncResult;
+      label: string;
+      displayName: string;
+      sourceIdPrefix: string;
+      generator: () => Promise<string>;
+    }> = [
+      { key: 'clientsOverview', label: 'Clients overview', displayName: 'Panoramica Clienti (Auto-generato)', sourceIdPrefix: 'operational_clients_', generator: () => generateClientsOverviewDocument(consultantId) },
+      { key: 'clientStates', label: 'Client states', displayName: 'Stati dei Clienti (Auto-generato)', sourceIdPrefix: 'operational_clientstates_', generator: () => generateClientStatesDocument(consultantId) },
+      { key: 'whatsappTemplates', label: 'WhatsApp templates', displayName: 'Template WhatsApp (Auto-generato)', sourceIdPrefix: 'operational_whatsapptemplates_', generator: () => generateWhatsappTemplatesDocument(consultantId) },
+      { key: 'twilioTemplates', label: 'Twilio templates', displayName: 'Template Twilio (Auto-generato)', sourceIdPrefix: 'operational_twiliotemplates_', generator: () => generateTwilioTemplatesDocument(consultantId) },
+      { key: 'consultantConfig', label: 'Consultant config', displayName: 'Configurazione Consulente (Auto-generato)', sourceIdPrefix: 'operational_config_', generator: () => generateConsultantConfigDocument(consultantId) },
+      { key: 'emailMarketing', label: 'Email marketing', displayName: 'Email Marketing (Auto-generato)', sourceIdPrefix: 'operational_email_', generator: () => generateEmailMarketingDocument(consultantId) },
+      { key: 'campaigns', label: 'Campaigns', displayName: 'Campagne Marketing (Auto-generato)', sourceIdPrefix: 'operational_campaigns_', generator: () => generateCampaignsDocument(consultantId) },
+      { key: 'calendar', label: 'Calendar', displayName: 'Calendario (Auto-generato)', sourceIdPrefix: 'operational_calendar_', generator: () => generateCalendarDocument(consultantId) },
+      { key: 'exercisesPending', label: 'Exercises pending', displayName: 'Esercizi in Attesa (Auto-generato)', sourceIdPrefix: 'operational_exercisespending_', generator: () => generateExercisesPendingDocument(consultantId) },
+      { key: 'consultationsDoc', label: 'Consultations', displayName: 'Consulenze Recenti (Auto-generato)', sourceIdPrefix: 'operational_consultations_', generator: () => generateConsultationsDocument(consultantId) },
+    ];
+
+    for (const { key, label, displayName, sourceIdPrefix, generator } of operationalGenerators) {
+      try {
+        console.log(`📄 [DynamicDocs] Generating ${label} document...`);
+        const doc = await generator();
+        const result = await fileSearchService.uploadDocumentFromContent({
+          content: doc,
+          displayName,
+          storeId,
+          sourceType: "operational_context",
+          sourceId: `${sourceIdPrefix}${consultantId}`,
+          userId: consultantId,
+          skipHashCheck: true,
+        });
+        (results as any)[key] = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
+        if (result.success) results.totalDocuments++;
+        console.log(`📄 [DynamicDocs] ${label}: ${result.success ? "✅" : "❌"}`);
+      } catch (error: any) {
+        (results as any)[key] = { success: false, error: error.message };
+        console.error(`❌ [DynamicDocs] ${label} error:`, error.message);
+      }
     }
   }
 
-  if (operationalSettings?.clientStates) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating client states document...`);
-      const doc = await generateClientStatesDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Stati dei Clienti (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_clientstates_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.clientStates = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Client states: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.clientStates = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Client states error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.whatsappTemplates) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating WhatsApp templates document...`);
-      const doc = await generateWhatsappTemplatesDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Template WhatsApp (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_whatsapptemplates_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.whatsappTemplates = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] WhatsApp templates: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.whatsappTemplates = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] WhatsApp templates error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.twilioTemplates) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating Twilio templates document...`);
-      const doc = await generateTwilioTemplatesDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Template Twilio (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_twiliotemplates_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.twilioTemplates = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Twilio templates: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.twilioTemplates = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Twilio templates error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.config) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating consultant config document...`);
-      const doc = await generateConsultantConfigDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Configurazione Consulente (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_config_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.consultantConfig = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Consultant config: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.consultantConfig = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Consultant config error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.email) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating email marketing document...`);
-      const doc = await generateEmailMarketingDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Email Marketing (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_email_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.emailMarketing = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Email marketing: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.emailMarketing = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Email marketing error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.campaigns) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating campaigns document...`);
-      const doc = await generateCampaignsDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Campagne Marketing (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_campaigns_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.campaigns = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Campaigns: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.campaigns = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Campaigns error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.calendar) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating calendar document...`);
-      const doc = await generateCalendarDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Calendario (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_calendar_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.calendar = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Calendar: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.calendar = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Calendar error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.exercisesPending) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating exercises pending document...`);
-      const doc = await generateExercisesPendingDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Esercizi in Attesa (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_exercisespending_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.exercisesPending = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Exercises pending: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.exercisesPending = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Exercises pending error:`, error.message);
-    }
-  }
-
-  if (operationalSettings?.consultations) {
-    try {
-      console.log(`📄 [DynamicDocs] Generating consultations document...`);
-      const doc = await generateConsultationsDocument(consultantId);
-      const result = await fileSearchService.uploadDocumentFromContent({
-        content: doc,
-        displayName: "Consulenze Recenti (Auto-generato)",
-        storeId,
-        sourceType: "operational_context",
-        sourceId: `operational_consultations_${consultantId}`,
-        userId: consultantId,
-        skipHashCheck: true,
-      });
-      results.consultationsDoc = { success: result.success, documentId: result.fileId, error: result.error, tokensEstimate: estimateTokens(doc) };
-      if (result.success) results.totalDocuments++;
-      console.log(`📄 [DynamicDocs] Consultations: ${result.success ? "✅" : "❌"}`);
-    } catch (error: any) {
-      results.consultationsDoc = { success: false, error: error.message };
-      console.error(`❌ [DynamicDocs] Consultations error:`, error.message);
-    }
-  }
-
-  const totalPossible = 3 + Object.values(operationalSettings || {}).filter(Boolean).length;
+  const totalPossible = 3 + (operationalSettings ? 10 : 0);
   console.log(`📄 [DynamicDocs] Sync complete: ${results.totalDocuments}/${totalPossible} documents synced`);
   return results;
 }

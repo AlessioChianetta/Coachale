@@ -90,16 +90,16 @@ async function runDynamicContextSync() {
         let operationalSettings: OperationalSettings | undefined;
         if (settings?.operationalSyncEnabled) {
           operationalSettings = {
-            clients: settings.autoSyncOperationalClients,
-            clientStates: settings.autoSyncOperationalClientStates,
-            whatsappTemplates: settings.autoSyncOperationalWhatsappTemplates,
-            twilioTemplates: settings.autoSyncOperationalTwilioTemplates,
-            config: settings.autoSyncOperationalConfig,
-            email: settings.autoSyncOperationalEmail,
-            campaigns: settings.autoSyncOperationalCampaigns,
-            calendar: settings.autoSyncOperationalCalendar,
-            exercisesPending: settings.autoSyncOperationalExercisesPending,
-            consultations: settings.autoSyncOperationalConsultations,
+            clients: true,
+            clientStates: true,
+            whatsappTemplates: true,
+            twilioTemplates: true,
+            config: true,
+            email: true,
+            campaigns: true,
+            calendar: true,
+            exercisesPending: true,
+            consultations: true,
           };
         }
 
@@ -164,16 +164,16 @@ export async function manualTriggerDynamicContextSync(consultantId?: string) {
     let operationalSettings: OperationalSettings | undefined;
     if (settings?.operationalSyncEnabled) {
       operationalSettings = {
-        clients: settings.autoSyncOperationalClients,
-        clientStates: settings.autoSyncOperationalClientStates,
-        whatsappTemplates: settings.autoSyncOperationalWhatsappTemplates,
-        twilioTemplates: settings.autoSyncOperationalTwilioTemplates,
-        config: settings.autoSyncOperationalConfig,
-        email: settings.autoSyncOperationalEmail,
-        campaigns: settings.autoSyncOperationalCampaigns,
-        calendar: settings.autoSyncOperationalCalendar,
-        exercisesPending: settings.autoSyncOperationalExercisesPending,
-        consultations: settings.autoSyncOperationalConsultations,
+        clients: true,
+        clientStates: true,
+        whatsappTemplates: true,
+        twilioTemplates: true,
+        config: true,
+        email: true,
+        campaigns: true,
+        calendar: true,
+        exercisesPending: true,
+        consultations: true,
       };
     }
 

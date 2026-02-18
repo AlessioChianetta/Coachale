@@ -4009,7 +4009,19 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
-    console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens\n`);
+    console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
+    if (hasConsultantFileSearch) {
+      const fullPromptEstimate = 125000;
+      const savedTokens = fullPromptEstimate - systemPromptTokens;
+      const savingPercentage = Math.round((savedTokens / fullPromptEstimate) * 100);
+      console.log(`  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`  📉 File Search Token Savings:`);
+      console.log(`    - Full prompt (senza File Search): ~${fullPromptEstimate.toLocaleString()} tokens`);
+      console.log(`    - System prompt attuale: ~${systemPromptTokens.toLocaleString()} tokens`);
+      console.log(`    - Token risparmiati: ~${savedTokens.toLocaleString()} tokens (-${savingPercentage}%)`);
+      console.log(`    - File Search documents: ${consultantFileSearchBreakdown.reduce((sum: number, s: any) => sum + s.totalDocs, 0)} documenti indicizzati`);
+    }
+    console.log('');
 
     // Prepare messages for Gemini
     const geminiMessages = [
@@ -4434,6 +4446,10 @@ Informazioni sul Consulente:
 - 📝 Esercizi da revisionare: ${context.dashboard.pendingReviews}
 - 📅 Appuntamenti in programma: ${context.dashboard.upcomingAppointments}
 - 🔔 Appuntamenti oggi: ${context.dashboard.todayAppointments}
+- 🆕 Lead nuovi (ultime 24h): ${context.dashboard.newLeads24h ?? 0}
+- 💬 Messaggi WhatsApp non letti: ${context.dashboard.unreadWhatsApp ?? 0}
+- ✉️ Email draft pendenti: ${context.dashboard.pendingEmailDrafts ?? 0}
+- 📆 Appuntamenti questa settimana: ${context.dashboard.thisWeekAppointments ?? 0}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔍 MODALITÀ FILE SEARCH ATTIVA

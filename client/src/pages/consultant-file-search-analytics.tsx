@@ -4714,125 +4714,26 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         </p>
                       </div>
 
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>👥 Clienti</Label>
-                            <p className="text-sm text-gray-500">Lista clienti con statistiche e progresso</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalClients ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalClients', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>🎯 Stato Clienti</Label>
-                            <p className="text-sm text-gray-500">Stato attuale, ideale, ostacoli e motivazioni</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalClientStates ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalClientStates', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>💬 Template WhatsApp</Label>
-                            <p className="text-sm text-gray-500">Template messaggi e configurazione agenti</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalWhatsappTemplates ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalWhatsappTemplates', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>📱 Template Twilio</Label>
-                            <p className="text-sm text-gray-500">Template contenuti Twilio</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalTwilioTemplates ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalTwilioTemplates', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>⚙️ Configurazione</Label>
-                            <p className="text-sm text-gray-500">SMTP, calendario, API esterne</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalConfig ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalConfig', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>📧 Email Marketing</Label>
-                            <p className="text-sm text-gray-500">Bozze, scheduler, journey templates</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalEmail ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalEmail', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>📢 Campagne</Label>
-                            <p className="text-sm text-gray-500">Campagne marketing e analytics</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalCampaigns ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalCampaigns', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>📅 Calendario</Label>
-                            <p className="text-sm text-gray-500">Appuntamenti e impostazioni calendario</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalCalendar ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalCalendar', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>📝 Esercizi Pendenti</Label>
-                            <p className="text-sm text-gray-500">Esercizi da revisionare e feedback</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalExercisesPending ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalExercisesPending', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <Label>🗓️ Consulenze</Label>
-                            <p className="text-sm text-gray-500">Storico consulenze e task</p>
-                          </div>
-                          <Switch
-                            checked={settings?.autoSyncOperationalConsultations ?? false}
-                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalConsultations', checked)}
-                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
-                          />
+                      <div className="space-y-2 mt-4">
+                        <p className="text-sm font-medium text-gray-700">Dati sincronizzati automaticamente:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {[
+                            { icon: '👥', label: 'Clienti con dettagli e statistiche' },
+                            { icon: '🎯', label: 'Stato clienti (attuale, ideale, ostacoli)' },
+                            { icon: '💬', label: 'Template WhatsApp e configurazione agenti' },
+                            { icon: '📱', label: 'Template Twilio' },
+                            { icon: '⚙️', label: 'Configurazione (SMTP, API, calendario)' },
+                            { icon: '📧', label: 'Email marketing e journey templates' },
+                            { icon: '📢', label: 'Campagne marketing e analytics' },
+                            { icon: '📅', label: 'Calendario e appuntamenti' },
+                            { icon: '📝', label: 'Esercizi pendenti e feedback' },
+                            { icon: '🗓️', label: 'Consulenze e task' },
+                          ].map(({ icon, label }) => (
+                            <div key={label} className="flex items-center gap-2 text-sm text-gray-600 p-2 bg-gray-50 rounded">
+                              <span>{icon}</span>
+                              <span>{label}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <div className="pt-4 border-t mt-4">

@@ -411,6 +411,10 @@ export interface ConsultantContext {
     pendingReviews: number;
     upcomingAppointments: number;
     todayAppointments: number;
+    newLeads24h?: number;
+    unreadWhatsApp?: number;
+    pendingEmailDrafts?: number;
+    thisWeekAppointments?: number;
   };
   clients: {
     all: Array<{
@@ -1086,12 +1090,19 @@ async function buildLightweightContext(
     .where(eq(users.id, consultantId))
     .limit(1);
 
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const endOfWeek = new Date(startOfToday.getTime() + 7 * 24 * 60 * 60 * 1000);
+
   const [
     [totalClientsResult],
     [activeClientsResult],
     [pendingReviewsResult],
     [upcomingAppointmentsResult],
     [todayAppointmentsResult],
+    [newLeads24hResult],
+    [unreadWhatsAppResult],
+    [pendingEmailDraftsResult],
+    [thisWeekAppointmentsResult],
   ] = await Promise.all([
     db.select({ count: count() }).from(users)
       .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client'))),
@@ -1116,6 +1127,27 @@ async function buildLightweightContext(
         gte(calendarEvents.start, startOfToday),
         gte(endOfToday, calendarEvents.start)
       )),
+    db.select({ count: count() }).from(proactiveLeads)
+      .where(and(
+        eq(proactiveLeads.consultantId, consultantId),
+        gte(proactiveLeads.createdAt, twentyFourHoursAgo)
+      )),
+    db.select({ count: sql<number>`cast(coalesce(sum(${whatsappConversations.unreadByConsultant}), 0) as int)` }).from(whatsappConversations)
+      .where(and(
+        eq(whatsappConversations.consultantId, consultantId),
+        eq(whatsappConversations.isActive, true)
+      )),
+    db.select({ count: count() }).from(emailDrafts)
+      .where(and(
+        eq(emailDrafts.consultantId, consultantId),
+        eq(emailDrafts.status, 'pending')
+      )),
+    db.select({ count: count() }).from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, consultantId),
+        gte(calendarEvents.start, startOfToday),
+        sql`${calendarEvents.start} < ${endOfWeek}`
+      )),
   ]);
 
   const totalClients = totalClientsResult?.count ?? 0;
@@ -1123,6 +1155,10 @@ async function buildLightweightContext(
   const pendingReviews = pendingReviewsResult?.count ?? 0;
   const upcomingAppointments = upcomingAppointmentsResult?.count ?? 0;
   const todayAppointments = todayAppointmentsResult?.count ?? 0;
+  const newLeads24h = newLeads24hResult?.count ?? 0;
+  const unreadWhatsApp = unreadWhatsAppResult?.count ?? 0;
+  const pendingEmailDrafts = pendingEmailDraftsResult?.count ?? 0;
+  const thisWeekAppointments = thisWeekAppointmentsResult?.count ?? 0;
 
   const pageContextData = pageContext ? {
     pageType: pageContext.pageType,
@@ -1150,6 +1186,10 @@ async function buildLightweightContext(
       pendingReviews,
       upcomingAppointments,
       todayAppointments,
+      newLeads24h,
+      unreadWhatsApp,
+      pendingEmailDrafts,
+      thisWeekAppointments,
     },
     clients: { all: [] },
     exercises: {
