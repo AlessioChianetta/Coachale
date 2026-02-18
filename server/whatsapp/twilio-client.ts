@@ -215,17 +215,16 @@ export async function sendWhatsAppMessage(
     console.log(`📤 ${isDryRun ? '[DRY RUN] Would send' : 'Sending'} WhatsApp message with template: ${options.contentSid}`);
     
     if (isDryRun) {
-      // DRY RUN: Log what would be sent
-      console.log('📋 Template Details:');
+      console.log('📋 [DRY RUN] Template Details:');
       console.log(`   From: ${formattedFrom}`);
       console.log(`   To: ${formattedTo}`);
       console.log(`   Template SID: ${options.contentSid}`);
       console.log(`   Variables: ${JSON.stringify(options.contentVariables, null, 2)}`);
+      console.log(`   MediaUrl: ${options.mediaUrl || 'NESSUNO'}`);
       console.log(`   Message Text (fallback): ${messageText.substring(0, 200)}${messageText.length > 200 ? '...' : ''}`);
       
-      // Generate fake SID for testing
       const fakeSid = `DRY_RUN_TEMPLATE_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      console.log(`✅ [DRY RUN] Simulated template message: ${fakeSid}`);
+      console.log(`✅ [DRY RUN] Simulated template message: ${fakeSid}${options.mediaUrl ? ' (con PDF allegato simulato)' : ''}`);
       
       // Update database as normal (for testing flow)
       if (messageId) {
@@ -270,17 +269,36 @@ export async function sendWhatsAppMessage(
         contentVariables: options.contentVariables ? JSON.stringify(options.contentVariables) : undefined,
       };
 
+      console.log(`\n📤 ──────────────────────────────────────────────────────`);
+      console.log(`📤 [TWILIO] Preparazione payload template WhatsApp`);
+      console.log(`📤 [TWILIO]   From: ${formattedFrom}`);
+      console.log(`📤 [TWILIO]   To: ${formattedTo}`);
+      console.log(`📤 [TWILIO]   ContentSid: ${options.contentSid}`);
+      console.log(`📤 [TWILIO]   ContentVariables: ${options.contentVariables ? JSON.stringify(options.contentVariables) : 'N/A'}`);
+
       if (options.mediaUrl) {
         const absUrl = options.mediaUrl.startsWith('http')
           ? options.mediaUrl
           : `https://${(process.env.REPLIT_DOMAINS || '').split(',')[0].trim()}${options.mediaUrl}`;
         templatePayload.mediaUrl = [absUrl];
-        console.log(`📎 Attaching PDF to template message: ${absUrl}`);
+        console.log(`📎 [TWILIO]   MediaUrl: ${absUrl}`);
+        console.log(`📎 [TWILIO]   NOTA: Twilio scaricherà il PDF da questo URL e lo allegherà al messaggio WhatsApp`);
+      } else {
+        console.log(`📤 [TWILIO]   MediaUrl: NESSUNO (nessun allegato)`);
       }
+
+      console.log(`📤 [TWILIO] Payload finale: ${JSON.stringify(templatePayload, null, 2)}`);
+      console.log(`📤 [TWILIO] Invio a Twilio API...`);
 
       const message = await client!.messages.create(templatePayload);
 
-      console.log(`✅ Sent template message: ${message.sid}${options.mediaUrl ? ' (with PDF)' : ''}`);
+      console.log(`✅ [TWILIO] Risposta Twilio ricevuta!`);
+      console.log(`   📋 SID: ${message.sid}`);
+      console.log(`   📊 Status: ${message.status}`);
+      console.log(`   💰 Price: ${message.price || 'N/A'}`);
+      console.log(`   ⚠️ ErrorCode: ${message.errorCode || 'NESSUNO'}`);
+      console.log(`   ⚠️ ErrorMessage: ${message.errorMessage || 'NESSUNO'}`);
+      console.log(`📤 ──────────────────────────────────────────────────────\n`);
 
       // Update database
       if (messageId) {
@@ -320,9 +338,25 @@ export async function sendWhatsAppMessage(
 
       return message.sid;
     } catch (error: any) {
-      console.error(`❌ Template message failed: ${error.message}`);
+      console.error(`\n❌ ──────────────────────────────────────────────────────`);
+      console.error(`❌ [TWILIO] Template message FALLITO`);
+      console.error(`❌ [TWILIO]   Errore: ${error.message}`);
+      console.error(`❌ [TWILIO]   Codice: ${error.code || 'N/A'}`);
+      console.error(`❌ [TWILIO]   Status: ${error.status || 'N/A'}`);
+      console.error(`❌ [TWILIO]   MoreInfo: ${error.moreInfo || 'N/A'}`);
+      console.error(`❌ [TWILIO]   MediaUrl inviato: ${options.mediaUrl || 'NESSUNO'}`);
+      console.error(`❌ [TWILIO]   ContentSid: ${options.contentSid}`);
+      if (error.code === 63016) {
+        console.error(`❌ [TWILIO]   DIAGNOSI 63016: Fuori dalla finestra di conversazione WhatsApp.`);
+        console.error(`❌ [TWILIO]   Il template potrebbe non supportare allegati media, oppure la finestra 24h non è aperta.`);
+        console.error(`❌ [TWILIO]   Suggerimento: verificare che il template Twilio abbia un header di tipo "DOCUMENT" se si vogliono allegare PDF.`);
+      }
+      if (error.code === 21611) {
+        console.error(`❌ [TWILIO]   DIAGNOSI 21611: Media URL non raggiungibile da Twilio.`);
+        console.error(`❌ [TWILIO]   Verificare che l'URL sia pubblicamente accessibile: ${options.mediaUrl}`);
+      }
+      console.error(`❌ ──────────────────────────────────────────────────────\n`);
       
-      // Check if it's a "Channel not found" error (From number not configured in Twilio)
       if (error.message?.includes('Channel with the specified From address') || error.code === 21608) {
         console.error(`\n❌ ═══════════════════════════════════════════════════════════`);
         console.error(`❌ TWILIO ERROR: Numero WhatsApp Business non trovato`);

@@ -2203,15 +2203,32 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
     const { sendWhatsAppMessage } = await import('../whatsapp/twilio-client');
     const agentOpts = task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {};
 
+    console.log(`\n📱 ═══════════════════════════════════════════════════════════`);
+    console.log(`📱 ${LOG_PREFIX} [WHATSAPP SEND] Inizio invio WhatsApp`);
+    console.log(`📱 ═══════════════════════════════════════════════════════════`);
+    console.log(`📱 ${LOG_PREFIX} Destinatario: ${resolvedPhone} (${resolvedName || 'N/A'})`);
+    console.log(`📱 ${LOG_PREFIX} Template configurato: ${selectedTemplateId || 'NESSUNO (testo libero)'}`);
+    console.log(`📱 ${LOG_PREFIX} Variabili template: ${contentVariables ? JSON.stringify(contentVariables) : 'N/A'}`);
+    console.log(`📱 ${LOG_PREFIX} Testo messaggio (${messageText.length} chars): "${messageText.substring(0, 150)}..."`);
+    console.log(`📱 ${LOG_PREFIX} Report disponibile: ${reportData?.title ? `SÌ - "${reportData.title}"` : 'NO'}`);
+    console.log(`📱 ${LOG_PREFIX} Formal document: ${reportData?.formal_document?.body ? 'SÌ' : 'NO'}`);
+    console.log(`📱 ${LOG_PREFIX} Agent config ID: ${task.whatsapp_config_id || 'auto-detect'}`);
+
     let pdfMediaUrl: string | null = null;
     let pdfCount = 0;
+    let pdfType = '';
 
     if (reportData && reportData.title) {
+      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Inizio generazione PDF per allegato WhatsApp...`);
       const crypto = await import('crypto');
       const fs = await import('fs/promises');
       const pathMod = await import('path');
       const rawDomain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
       const domain = rawDomain.split(',')[0].trim();
+      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Dominio per URL pubblico: "${domain}"`);
+      if (!domain) {
+        console.error(`❌ ${LOG_PREFIX} [PDF PREP] ERRORE CRITICO: Nessun dominio disponibile (REPLIT_DOMAINS e REPLIT_DEV_DOMAIN vuoti). Twilio non potrà scaricare il PDF!`);
+      }
       const tmpDir = '/tmp/wa-media';
       await fs.mkdir(tmpDir, { recursive: true });
 
@@ -2220,8 +2237,14 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
         const filePath = pathMod.join(tmpDir, `${token}.pdf`);
         await fs.writeFile(filePath, buffer);
         const url = `https://${domain}/api/temp-media/${token}`;
-        console.log(`${LOG_PREFIX} ${label} PDF saved: ${buffer.length} bytes, URL: ${url}`);
-        setTimeout(async () => { try { await fs.unlink(filePath); } catch {} }, 10 * 60 * 1000);
+        const stat = await fs.stat(filePath);
+        console.log(`📎 ${LOG_PREFIX} [PDF PREP] ${label} PDF salvato su disco:`);
+        console.log(`   📁 Path: ${filePath}`);
+        console.log(`   📏 Size buffer: ${buffer.length} bytes`);
+        console.log(`   📏 Size file: ${stat.size} bytes`);
+        console.log(`   🔗 URL pubblico: ${url}`);
+        console.log(`   ⏰ Auto-cleanup: 10 minuti`);
+        setTimeout(async () => { try { await fs.unlink(filePath); console.log(`🧹 ${LOG_PREFIX} Cleaned up temp PDF: ${filePath}`); } catch {} }, 10 * 60 * 1000);
         return url;
       };
 
@@ -2230,50 +2253,80 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
 
       try {
         if (hasFormalDoc) {
+          console.log(`📎 ${LOG_PREFIX} [PDF PREP] Generazione PDF documento formale (formal_document.body items: ${reportData.formal_document.body?.length || 0})...`);
           const formalPdf = await generateFormalDocumentPdfBuffer(reportData.formal_document, reportData, task);
           pdfMediaUrl = await saveTempPdf(formalPdf, 'Documento formale');
+          pdfType = 'formal_document';
           pdfCount++;
         } else {
+          console.log(`📎 ${LOG_PREFIX} [PDF PREP] Generazione PDF riepilogo (sections: ${reportData.sections?.length || 0})...`);
           const summaryPdf = await generatePdfBuffer(reportData, analysisData, task);
           pdfMediaUrl = await saveTempPdf(summaryPdf, 'Riepilogo');
+          pdfType = 'summary';
           pdfCount++;
         }
+        console.log(`✅ ${LOG_PREFIX} [PDF PREP] PDF pronto per allegato WhatsApp: ${pdfMediaUrl}`);
       } catch (pdfErr: any) {
-        console.error(`${LOG_PREFIX} PDF generation for WhatsApp failed: ${pdfErr.message}`);
+        console.error(`❌ ${LOG_PREFIX} [PDF PREP] FALLITO: ${pdfErr.message}`);
+        console.error(`   Stack: ${pdfErr.stack?.substring(0, 300)}`);
       }
+    } else {
+      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Nessun report da allegare (reportData.title assente)`);
     }
 
     let messageSid: string;
 
+    console.log(`\n📤 ${LOG_PREFIX} [TWILIO CALL] Preparazione chiamata Twilio API...`);
+    console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Modalità: ${selectedTemplateId ? 'TEMPLATE' : 'TESTO LIBERO'}`);
+    console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] PDF allegato: ${pdfMediaUrl ? `SÌ (${pdfType})` : 'NO'}`);
+
     if (selectedTemplateId) {
+      const sendOpts = {
+        ...agentOpts,
+        contentSid: selectedTemplateId,
+        ...(contentVariables ? { contentVariables } : {}),
+        ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}),
+      };
+      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Opzioni invio template: ${JSON.stringify({ contentSid: sendOpts.contentSid, hasVariables: !!sendOpts.contentVariables, hasMediaUrl: !!sendOpts.mediaUrl, mediaUrl: sendOpts.mediaUrl || 'N/A', agentConfigId: sendOpts.agentConfigId || 'auto' })}`);
+
       messageSid = await sendWhatsAppMessage(
         task.consultant_id,
         resolvedPhone,
         messageText,
         undefined,
-        {
-          ...agentOpts,
-          contentSid: selectedTemplateId,
-          ...(contentVariables ? { contentVariables } : {}),
-          ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}),
-        },
+        sendOpts,
       );
-      console.log(`✅ ${LOG_PREFIX} Template WhatsApp inviato: ${messageSid}${pdfMediaUrl ? ' (con PDF allegato)' : ''}`);
+      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Template WhatsApp inviato con successo!`);
+      console.log(`   📋 SID: ${messageSid}`);
+      console.log(`   📎 PDF allegato: ${pdfMediaUrl ? 'SÌ' : 'NO'}`);
     } else {
+      const sendOpts = { ...agentOpts, ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}) };
+      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Opzioni invio testo libero: ${JSON.stringify({ hasMediaUrl: !!sendOpts.mediaUrl, mediaUrl: sendOpts.mediaUrl || 'N/A', agentConfigId: sendOpts.agentConfigId || 'auto' })}`);
+
       messageSid = await sendWhatsAppMessage(
         task.consultant_id,
         resolvedPhone,
         messageText,
         undefined,
-        { ...agentOpts, ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}) },
+        sendOpts,
       );
-      console.log(`✅ ${LOG_PREFIX} Messaggio WhatsApp a corpo libero inviato: ${messageSid}${pdfMediaUrl ? ' (con PDF allegato)' : ''}`);
+      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Messaggio testo libero inviato con successo!`);
+      console.log(`   📋 SID: ${messageSid}`);
+      console.log(`   📎 PDF allegato: ${pdfMediaUrl ? 'SÌ' : 'NO'}`);
     }
+
+    console.log(`📱 ═══════════════════════════════════════════════════════════`);
+    console.log(`📱 ${LOG_PREFIX} [WHATSAPP SEND] COMPLETATO`);
+    console.log(`📱   SID: ${messageSid}`);
+    console.log(`📱   Destinatario: ${resolvedPhone}`);
+    console.log(`📱   Template: ${selectedTemplateId || 'nessuno'}`);
+    console.log(`📱   PDF: ${pdfCount > 0 ? `SÌ (${pdfType})` : 'NO'}`);
+    console.log(`📱 ═══════════════════════════════════════════════════════════\n`);
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_sent",
       title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
-      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${pdfCount > 0 ? ' | PDF allegato' : ''}`,
+      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${pdfCount > 0 ? ` | PDF ${pdfType} allegato` : ''}`,
       icon: "💬",
       severity: "info",
       task_id: task.id,
@@ -2289,14 +2342,24 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
       template_used: selectedTemplateId || 'plain_text',
       variables_filled: contentVariables ? Object.keys(contentVariables).length : 0,
       pdf_attached: pdfCount > 0,
+      pdf_type: pdfType || undefined,
     };
   } catch (error: any) {
-    console.error(`${LOG_PREFIX} WhatsApp send failed:`, error.message);
+    console.error(`\n❌ ═══════════════════════════════════════════════════════════`);
+    console.error(`❌ ${LOG_PREFIX} [WHATSAPP SEND] FALLITO`);
+    console.error(`❌ ═══════════════════════════════════════════════════════════`);
+    console.error(`❌ ${LOG_PREFIX} Errore: ${error.message}`);
+    console.error(`❌ ${LOG_PREFIX} Codice Twilio: ${error.code || 'N/A'}`);
+    console.error(`❌ ${LOG_PREFIX} Status: ${error.status || 'N/A'}`);
+    console.error(`❌ ${LOG_PREFIX} Destinatario: ${resolvedPhone} (${resolvedName || 'N/A'})`);
+    console.error(`❌ ${LOG_PREFIX} Template: ${selectedTemplateId || 'nessuno'}`);
+    console.error(`❌ ${LOG_PREFIX} Stack: ${error.stack?.substring(0, 400)}`);
+    console.error(`❌ ═══════════════════════════════════════════════════════════\n`);
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_failed",
       title: `WhatsApp fallito per ${task.contact_name || task.contact_phone}`,
-      description: error.message,
+      description: `${error.message}${error.code ? ` (codice: ${error.code})` : ''}`,
       icon: "❌",
       severity: "error",
       task_id: task.id,
@@ -2307,6 +2370,7 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
     return {
       status: "failed",
       error: error.message,
+      error_code: error.code || undefined,
       target_phone: task.contact_phone,
     };
   }

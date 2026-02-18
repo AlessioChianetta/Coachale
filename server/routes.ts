@@ -21823,9 +21823,22 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   }, 5000);
 
   app.get('/api/temp-media/:token', async (req: any, res: any) => {
+    const requestTime = new Date().toISOString();
+    const { token } = req.params;
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const remoteIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+
+    console.log(`\n📥 ══════════════════════════════════════════════════`);
+    console.log(`📥 [TEMP-MEDIA] Richiesta download PDF`);
+    console.log(`📥 [TEMP-MEDIA]   Token: ${token}`);
+    console.log(`📥 [TEMP-MEDIA]   Timestamp: ${requestTime}`);
+    console.log(`📥 [TEMP-MEDIA]   User-Agent: ${userAgent.substring(0, 100)}`);
+    console.log(`📥 [TEMP-MEDIA]   IP: ${remoteIp}`);
+    console.log(`📥 [TEMP-MEDIA]   Probabile chiamante: ${userAgent.includes('Twilio') || userAgent.includes('twilio') ? 'TWILIO ✅' : 'ALTRO'}`);
+
     try {
-      const { token } = req.params;
       if (!/^[a-f0-9]{32}$/.test(token)) {
+        console.error(`❌ [TEMP-MEDIA] Token non valido: ${token}`);
         return res.status(400).json({ error: 'Invalid token' });
       }
 
@@ -21835,7 +21848,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
       try {
         await fsMod.access(filePath);
+        const stat = await fsMod.stat(filePath);
+        console.log(`📥 [TEMP-MEDIA]   File trovato: ${filePath} (${stat.size} bytes)`);
       } catch {
+        console.error(`❌ [TEMP-MEDIA] File NON trovato o scaduto: ${filePath}`);
+        const dir = await fsMod.readdir('/tmp/wa-media').catch(() => []);
+        console.log(`📥 [TEMP-MEDIA]   File in /tmp/wa-media: ${dir.length} (${dir.join(', ')})`);
         return res.status(404).json({ error: 'File not found or expired' });
       }
 
@@ -21843,9 +21861,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="report.pdf"`);
       res.setHeader('Content-Length', fileBuffer.length);
+      console.log(`✅ [TEMP-MEDIA] PDF servito con successo: ${fileBuffer.length} bytes`);
+      console.log(`📥 ══════════════════════════════════════════════════\n`);
       res.send(fileBuffer);
     } catch (error: any) {
-      console.error('[TEMP-MEDIA] Error serving file:', error.message);
+      console.error(`❌ [TEMP-MEDIA] Errore: ${error.message}`);
+      console.error(`   Stack: ${error.stack?.substring(0, 200)}`);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
