@@ -15,7 +15,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
-  Plus, ChevronUp, ChevronLeft, ChevronRight, BookOpen, Sparkles,
+  Plus, ChevronUp, ChevronLeft, ChevronRight, ChevronDown, BookOpen, Sparkles,
   Loader2, Clock, CheckCircle, XCircle, User, ListTodo, TrendingUp,
   Target, Play, Trash2, Brain, Cog, Activity, Timer, Minus,
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
@@ -2377,25 +2377,35 @@ function DashboardTab({
                 </div>
 
                 {(task.ai_reasoning || (task.execution_plan && task.execution_plan.length > 0) || sortedActivity.length > 0) && (
-                  <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Cog className="h-5 w-5 text-muted-foreground" />
+                  <div className="rounded-2xl border border-border/60 shadow-sm bg-card/80 backdrop-blur-sm p-6 space-y-5">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Cog className={cn("h-5 w-5 text-muted-foreground", task.status === 'in_progress' && "animate-[spin_3s_linear_infinite]")} />
                       Processo AI
                     </h3>
 
                     {task.ai_reasoning && (
-                      <details className="group">
-                        <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-muted/50 transition-colors">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                          <Sparkles className="h-4 w-4 text-purple-500" />
-                          <span className="text-[15px] font-medium text-purple-700 dark:text-purple-300">Ragionamento AI</span>
-                        </summary>
-                        <div className="mt-2 ml-6 rounded-xl border border-purple-200 dark:border-purple-800/50 bg-purple-50/50 dark:bg-purple-950/20 p-4">
-                          <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">
-                            {task.ai_reasoning}
-                          </p>
+                      <div className={cn(
+                        "rounded-xl p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/20 transition-all",
+                        task.status === 'in_progress'
+                          ? "border border-purple-300/70 dark:border-purple-600/50 shadow-[0_0_15px_-3px_rgba(147,51,234,0.15)] animate-[pulse_3s_ease-in-out_infinite]"
+                          : "border border-purple-200/60 dark:border-purple-700/40"
+                      )}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-purple-500" />
+                            <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">Ragionamento AI</span>
+                          </div>
+                          {task.status === 'in_progress' && (
+                            <div className="flex items-center gap-1.5 text-purple-500">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="text-[11px] font-medium">Analizzando...</span>
+                            </div>
+                          )}
                         </div>
-                      </details>
+                        <p className="text-[13px] leading-[1.85] tracking-wide text-purple-800 dark:text-purple-200 whitespace-pre-wrap">
+                          {task.ai_reasoning}
+                        </p>
+                      </div>
                     )}
 
                     {task.execution_plan && task.execution_plan.length > 0 && (
@@ -2459,44 +2469,64 @@ function DashboardTab({
                     )}
 
                     {sortedActivity.length > 0 && (
-                      <details className="group">
-                        <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-muted/50 transition-colors">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
                           <Activity className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-[15px] font-medium">Registro Attività</span>
-                          <span className="text-xs text-muted-foreground ml-1">({sortedActivity.length})</span>
-                        </summary>
-                        <div className="mt-3 ml-6 space-y-1.5">
-                          {(showAllActivity ? sortedActivity : sortedActivity.slice(0, 3)).map((act) => (
-                            <div key={act.id} className="flex items-start gap-3 px-3 py-2 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
-                              <div className={cn(
-                                "mt-0.5 p-1 rounded-full shrink-0",
-                                act.severity === "error" ? "bg-red-50 text-red-500 dark:bg-red-950/30" :
-                                act.severity === "warning" ? "bg-amber-50 text-amber-500 dark:bg-amber-950/30" :
-                                act.severity === "success" ? "bg-emerald-50 text-emerald-500 dark:bg-emerald-950/30" :
-                                "bg-primary/10 text-primary"
-                              )}>
-                                {getActivityIcon(act.icon)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{act.title}</p>
-                                <p className="text-xs text-muted-foreground">{act.description}</p>
-                              </div>
-                              <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap mt-0.5">
-                                {formatTime(act.created_at)}
-                              </span>
-                            </div>
-                          ))}
-                          {sortedActivity.length > 3 && !showAllActivity && (
-                            <button
-                              onClick={() => setShowAllActivity(true)}
-                              className="w-full text-center py-2 text-xs text-primary hover:text-primary/80 font-medium"
-                            >
-                              Mostra tutto ({sortedActivity.length})
-                            </button>
-                          )}
+                          <span className="text-sm font-semibold">Registro Attività</span>
+                          <span className="text-xs text-muted-foreground">({sortedActivity.length})</span>
                         </div>
-                      </details>
+                        <div className="relative ml-1">
+                          {(showAllActivity ? sortedActivity : sortedActivity.slice(0, 3)).map((act, actIdx) => {
+                            const displayedItems = showAllActivity ? sortedActivity : sortedActivity.slice(0, 3);
+                            const isLastDisplayed = actIdx === displayedItems.length - 1;
+                            const hasMore = !showAllActivity && sortedActivity.length > 3;
+                            const isFirst = actIdx === 0;
+
+                            return (
+                              <div key={act.id} className="flex items-start gap-3 relative">
+                                <div className="flex flex-col items-center shrink-0">
+                                  <div className={cn(
+                                    "w-2.5 h-2.5 rounded-full mt-1.5 z-10 shrink-0",
+                                    act.severity === "error" ? "bg-red-500" :
+                                    act.severity === "warning" ? "bg-amber-500" :
+                                    act.severity === "success" ? "bg-emerald-500" :
+                                    "bg-primary",
+                                    isFirst && task.status === 'in_progress' && "animate-pulse ring-4 ring-primary/20"
+                                  )} />
+                                  {!isLastDisplayed && (
+                                    <div className="w-px flex-1 min-h-[24px] border-l-2 border-border/50" />
+                                  )}
+                                </div>
+                                <div className={cn(
+                                  "flex-1 min-w-0 pb-4",
+                                  isLastDisplayed && hasMore && "relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-8 after:bg-gradient-to-t after:from-card/80 after:to-transparent after:pointer-events-none"
+                                )}>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium">{act.title}</p>
+                                      {act.description && (
+                                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{act.description}</p>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] font-medium text-muted-foreground shrink-0 whitespace-nowrap mt-0.5">
+                                      {getRelativeTime(act.created_at)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {sortedActivity.length > 3 && !showAllActivity && (
+                          <button
+                            onClick={() => setShowAllActivity(true)}
+                            className="flex items-center gap-1 mx-auto mt-1 text-xs text-primary/80 hover:text-primary font-medium transition-colors"
+                          >
+                            <span>Mostra tutto ({sortedActivity.length})</span>
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
