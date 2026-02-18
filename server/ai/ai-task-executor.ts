@@ -460,24 +460,30 @@ async function handleFetchClientData(
   }
 
   if (!contactData) {
-    const consultantResult = await db.execute(sql`
-      SELECT id, first_name, last_name, email, phone_number, role
-      FROM users
-      WHERE id = ${task.consultant_id}
-      LIMIT 1
-    `);
+    const [consultantResult, autonomyResult] = await Promise.all([
+      db.execute(sql`
+        SELECT id, first_name, last_name, email, phone_number, role
+        FROM users WHERE id = ${task.consultant_id} LIMIT 1
+      `),
+      db.execute(sql`
+        SELECT consultant_phone, consultant_email, consultant_whatsapp
+        FROM ai_autonomy_settings WHERE consultant_id = ${task.consultant_id} LIMIT 1
+      `),
+    ]);
     if (consultantResult.rows.length > 0) {
       const row = consultantResult.rows[0] as any;
+      const autonomy = autonomyResult.rows[0] as any || {};
       contactData = {
         id: row.id,
         first_name: row.first_name,
         last_name: row.last_name,
-        email: row.email,
-        phone_number: row.phone_number || task.contact_phone,
+        email: autonomy.consultant_email || row.email,
+        phone_number: autonomy.consultant_phone || row.phone_number || task.contact_phone,
+        whatsapp: autonomy.consultant_whatsapp || autonomy.consultant_phone || row.phone_number,
         role: row.role,
         is_consultant_self: true,
       };
-      console.log(`${LOG_PREFIX} No contact found, using consultant data: ${row.first_name} ${row.last_name} (${row.email})`);
+      console.log(`${LOG_PREFIX} No contact found, using consultant data: ${row.first_name} ${row.last_name} (email: ${contactData.email}, phone: ${contactData.phone_number}, whatsapp: ${contactData.whatsapp})`);
     }
   }
 
