@@ -3,6 +3,8 @@ import { db } from '../db';
 import { fileSearchSettings } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { FileSearchSyncService } from '../services/file-search-sync-service';
+import { syncDynamicDocuments } from '../ai/dynamic-context-documents';
+import type { OperationalSettings } from '../ai/dynamic-context-documents';
 
 let schedulerTask: cron.ScheduledTask | null = null;
 
@@ -65,13 +67,39 @@ async function runScheduledSync() {
         console.log(`\n   🔄 Starting scheduled sync for consultant: ${settings.consultantId}`);
         
         const result = await FileSearchSyncService.syncAllDocumentsForConsultant(settings.consultantId);
+
+        let operationalSynced = 0;
+        if (settings.operationalSyncEnabled) {
+          try {
+            const operationalSettings: OperationalSettings = {
+              clients: true,
+              clientStates: true,
+              whatsappTemplates: true,
+              twilioTemplates: true,
+              config: true,
+              email: true,
+              campaigns: true,
+              calendar: true,
+              exercisesPending: true,
+              consultations: true,
+            };
+            const opResult = await syncDynamicDocuments(settings.consultantId, operationalSettings);
+            operationalSynced = opResult.totalDocuments;
+            await db.update(fileSearchSettings)
+              .set({ lastOperationalSyncAt: new Date() })
+              .where(eq(fileSearchSettings.consultantId, settings.consultantId));
+            console.log(`      📊 Operational context synced: ${operationalSynced} documents`);
+          } catch (opError: any) {
+            console.error(`      ⚠️ Operational sync error (non-blocking): ${opError.message}`);
+          }
+        }
         
         await db.update(fileSearchSettings)
           .set({ lastScheduledSync: new Date() })
           .where(eq(fileSearchSettings.consultantId, settings.consultantId));
 
         console.log(`   ✅ Scheduled sync completed for ${settings.consultantId}`);
-        console.log(`      Synced: ${result.totalSynced}, Updated: ${result.totalUpdated}, Skipped: ${result.totalSkipped}, Failed: ${result.totalFailed}`);
+        console.log(`      Synced: ${result.totalSynced}, Updated: ${result.totalUpdated}, Skipped: ${result.totalSkipped}, Failed: ${result.totalFailed}${operationalSynced > 0 ? `, Operational: ${operationalSynced}` : ''}`);
       } catch (error: any) {
         console.error(`   ❌ Scheduled sync failed for ${settings.consultantId}:`, error.message);
       }
