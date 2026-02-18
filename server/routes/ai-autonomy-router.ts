@@ -989,6 +989,69 @@ router.get("/tasks/:id", authenticateToken, requireAnyRole(["consultant", "super
   }
 });
 
+router.get("/employee-profile/:roleId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+
+    const [statsResult, recentTasksResult, activityResult, docsResult] = await Promise.all([
+      db.execute(sql`
+        SELECT 
+          COUNT(*)::int as total,
+          COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+          COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
+          COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
+          COUNT(*) FILTER (WHERE status = 'waiting_input')::int as waiting_input,
+          ROUND(AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60) FILTER (WHERE status = 'completed'), 1) as avg_minutes,
+          COUNT(*) FILTER (WHERE task_category = 'outreach')::int as outreach_count,
+          COUNT(*) FILTER (WHERE task_category = 'followup')::int as followup_count,
+          COUNT(*) FILTER (WHERE task_category = 'analysis')::int as analysis_count,
+          COUNT(*) FILTER (WHERE task_category = 'monitoring')::int as monitoring_count,
+          COUNT(*) FILTER (WHERE task_category = 'preparation')::int as preparation_count,
+          COUNT(*) FILTER (WHERE task_category = 'reminder')::int as reminder_count
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND ai_role = ${roleId} AND task_type = 'ai_task' AND status != 'cancelled'
+      `),
+      db.execute(sql`
+        SELECT id, status, task_category, contact_name, ai_instruction, created_at, updated_at, result_data, execution_mode
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND ai_role = ${roleId} AND task_type = 'ai_task' AND status != 'cancelled'
+        ORDER BY created_at DESC
+        LIMIT 20
+      `),
+      db.execute(sql`
+        SELECT id, event_type, title, description, icon, severity, created_at, contact_name
+        FROM ai_activity_log
+        WHERE consultant_id = ${consultantId} AND ai_role = ${roleId}
+        ORDER BY created_at DESC
+        LIMIT 30
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM ai_scheduled_tasks
+        WHERE consultant_id = ${consultantId} AND ai_role = ${roleId} AND task_type = 'ai_task' AND status = 'completed'
+          AND result_data::text LIKE '%formal_document%'
+      `),
+    ]);
+
+    const stats = statsResult.rows[0] || {};
+    const total = (stats as any).total || 0;
+    const completed = (stats as any).completed || 0;
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return res.json({
+      stats: { ...stats, success_rate: successRate },
+      recent_tasks: recentTasksResult.rows,
+      activity: activityResult.rows,
+      documents_generated: (docsResult.rows[0] as any)?.count || 0,
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching employee profile:", error);
+    return res.status(500).json({ error: "Failed to fetch employee profile" });
+  }
+});
+
 router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

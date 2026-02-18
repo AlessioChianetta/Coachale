@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -805,6 +806,7 @@ function SettingsTab({
   chatOpenRoleId,
   setChatOpenRoleId,
 }: SettingsTabProps) {
+  const [, navigate] = useLocation();
   const [showArchDetails, setShowArchDetails] = useState(true);
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
@@ -2378,6 +2380,17 @@ function SettingsTab({
                                 </Badge>
                               ))}
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/consultant/ai-autonomy/employee/${role.id}`);
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
                             <Switch
                               checked={role.enabled}
                               disabled={togglingRole === role.id}

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,6 +101,7 @@ function DashboardTab({
   tasksUrl,
   onOpenChatWithTask,
 }: DashboardTabProps) {
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
@@ -1589,11 +1591,19 @@ function DashboardTab({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={cn("font-semibold text-sm", accentText)}>
+                      <span
+                        className={cn("font-semibold text-sm cursor-pointer hover:underline", accentText)}
+                        onClick={() => role !== '__manual__' && navigate(`/consultant/ai-autonomy/employee/${role}`)}
+                      >
                         {role === '__manual__' ? 'Task Manuali' : role.charAt(0).toUpperCase() + role.slice(1)}
                       </span>
                       {profile && (
                         <span className="text-xs text-muted-foreground">{profile.role}</span>
+                      )}
+                      {role !== '__manual__' && (
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => navigate(`/consultant/ai-autonomy/employee/${role}`)}>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                        </Button>
                       )}
                     </div>
                   </div>
