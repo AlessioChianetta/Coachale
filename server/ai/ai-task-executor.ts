@@ -794,13 +794,13 @@ async function handleGenerateReport(
   const prompt = `${reportIdentity}
 ${agentContextSection || ''}
 
-REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. Cita SEMPRE i documenti privati con il tag [CONSULENZA PRIVATA] e le date quando disponibili. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo, non di un riassunto.
+REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. USA SEMPRE I DATI REALI E SPECIFICI estratti dai documenti privati: numeri, percentuali, nomi, date, importi concreti. NON usare MAI riferimenti generici come "[CONSULENZA PRIVATA]" o "[DOCUMENTO]" - integra i dati direttamente nel testo con cifre e fatti reali. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo con dati concreti, non di un riassunto generico.
 
 ${_step.params?.custom_sections && Array.isArray(_step.params.custom_sections) && _step.params.custom_sections.length > 0
   ? `STRUTTURA PERSONALIZZATA - Usa ESATTAMENTE queste sezioni:
 ${_step.params.custom_sections.map((s: string, i: number) => `${i+1}. ${s}`).join('\n')}
 
-ATTENZIONE: Anche con struttura personalizzata, OGNI sezione deve essere scritta con la STESSA profondità e lunghezza di un report standard. Minimo 500 caratteri per sezione con dati specifici, citazioni dai documenti privati, e analisi dettagliata. NON fare riassunti brevi.`
+ATTENZIONE: Anche con struttura personalizzata, OGNI sezione deve essere scritta con la STESSA profondità e lunghezza di un report standard. Minimo 500 caratteri per sezione con DATI REALI SPECIFICI (numeri, importi, percentuali, date concrete) estratti dai documenti. NON usare mai tag generici come [CONSULENZA PRIVATA]. NON fare riassunti brevi.`
   : `STRUTTURA DEL REPORT - Includi TUTTE le seguenti sezioni:
 1. Panoramica Cliente - Background completo, situazione attuale, contesto (minimo 500 caratteri)
 2. Analisi della Situazione - Dettagli approfonditi su cosa emerge dai dati (minimo 500 caratteri)
@@ -831,7 +831,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "sections": [
     {
       "heading": "Titolo sezione",
-      "content": "Contenuto DETTAGLIATO della sezione (MINIMO 500 caratteri per sezione, con citazioni [CONSULENZA PRIVATA] e date specifiche)"
+      "content": "Contenuto DETTAGLIATO della sezione (MINIMO 500 caratteri per sezione, con DATI REALI: numeri, importi, percentuali, date specifiche estratte dai documenti)"
     }
   ],
   "key_findings": ["risultato chiave dettagliato 1 (almeno 80 caratteri)", "risultato chiave 2", "risultato chiave 3", "risultato chiave 4", "risultato chiave 5"],
