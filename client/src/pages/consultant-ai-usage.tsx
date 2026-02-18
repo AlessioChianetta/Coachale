@@ -405,6 +405,7 @@ export default function ConsultantAIUsagePage() {
     return `${fromStr} – ${toStr}`;
   }, [dateRange, presetLabel]);
   const [expandedFeatures, setExpandedFeatures] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
   const [expandedUserFeatures, setExpandedUserFeatures] = useState<Set<string>>(new Set());
 
@@ -427,6 +428,15 @@ export default function ConsultantAIUsagePage() {
       const next = new Set(prev);
       if (next.has(uid)) next.delete(uid);
       else next.add(uid);
+      return next;
+    });
+  };
+
+  const toggleCategoryExpand = (category: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
       return next;
     });
   };
@@ -609,6 +619,60 @@ export default function ConsultantAIUsagePage() {
       };
     });
   }, [featureData]);
+
+  const groupedFeatures = useMemo(() => {
+    const groups: { category: string; features: typeof allFeaturesWithData; totals: { consultantTokens: number; consultantCost: number; clientTokens: number; clientCost: number; requestCount: number; totalTokens: number; totalCost: number; pct: number } }[] = [];
+
+    const byCategory = new Map<string, typeof allFeaturesWithData>();
+    allFeaturesWithData.forEach(f => {
+      const list = byCategory.get(f.category) || [];
+      list.push(f);
+      byCategory.set(f.category, list);
+    });
+
+    const grandTotal = allFeaturesWithData.reduce((s, f) => s + f.totalTokens, 0) || 1;
+
+    CATEGORY_ORDER.forEach(cat => {
+      const features = byCategory.get(cat) || [];
+      const hasAnyData = features.some(f => f.totalTokens > 0 || f.requestCount > 0);
+      if (!hasAnyData) return;
+
+      const totals = features.reduce((acc, f) => ({
+        consultantTokens: acc.consultantTokens + (f.consultantTokens || 0),
+        consultantCost: acc.consultantCost + (f.consultantCost || 0),
+        clientTokens: acc.clientTokens + (f.clientTokens || 0),
+        clientCost: acc.clientCost + (f.clientCost || 0),
+        requestCount: acc.requestCount + (f.requestCount || 0),
+        totalTokens: acc.totalTokens + (f.totalTokens || 0),
+        totalCost: acc.totalCost + (f.totalCost || 0),
+        pct: 0,
+      }), { consultantTokens: 0, consultantCost: 0, clientTokens: 0, clientCost: 0, requestCount: 0, totalTokens: 0, totalCost: 0, pct: 0 });
+      totals.pct = (totals.totalTokens / grandTotal) * 100;
+
+      groups.push({ category: cat, features, totals });
+    });
+
+    byCategory.forEach((features, cat) => {
+      if (!CATEGORY_ORDER.includes(cat)) {
+        const hasAnyData = features.some(f => f.totalTokens > 0 || f.requestCount > 0);
+        if (!hasAnyData) return;
+        const totals = features.reduce((acc, f) => ({
+          consultantTokens: acc.consultantTokens + (f.consultantTokens || 0),
+          consultantCost: acc.consultantCost + (f.consultantCost || 0),
+          clientTokens: acc.clientTokens + (f.clientTokens || 0),
+          clientCost: acc.clientCost + (f.clientCost || 0),
+          requestCount: acc.requestCount + (f.requestCount || 0),
+          totalTokens: acc.totalTokens + (f.totalTokens || 0),
+          totalCost: acc.totalCost + (f.totalCost || 0),
+          pct: 0,
+        }), { consultantTokens: 0, consultantCost: 0, clientTokens: 0, clientCost: 0, requestCount: 0, totalTokens: 0, totalCost: 0, pct: 0 });
+        totals.pct = (totals.totalTokens / grandTotal) * 100;
+        groups.push({ category: cat, features, totals });
+      }
+    });
+
+    return groups;
+  }, [allFeaturesWithData]);
 
   const categoryData = useMemo(() => {
     const catMap = new Map<string, { category: string; totalCost: number; totalTokens: number; requestCount: number }>();
@@ -984,117 +1048,140 @@ export default function ConsultantAIUsagePage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {allFeaturesWithData.map((row, i) => {
-                              const catColor = CATEGORY_COLORS[row.category] || CATEGORY_COLORS['Altro'];
-                              const hasData = row.totalTokens > 0 || row.requestCount > 0;
-                              const uid = `${row.category}::${row.label}`;
-                              const isExpanded = expandedFeatures.has(uid);
-                              const hasSubKeys = row.subKeys.length > 0;
+                            {groupedFeatures.map((group) => {
+                              const catColor = CATEGORY_COLORS[group.category] || CATEGORY_COLORS['Altro'];
+                              const isCatExpanded = expandedCategories.has(group.category);
+                              const featuresWithData = group.features.filter(f => f.totalTokens > 0 || f.requestCount > 0);
+                              const featCount = featuresWithData.length;
+
                               return (
-                                <React.Fragment key={`feat-${i}`}>
+                                <React.Fragment key={`cat-${group.category}`}>
                                   <TableRow
-                                    className={`${hasData ? '' : 'opacity-50'} cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50`}
-                                    onClick={() => toggleFeatureExpand(uid)}
+                                    className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-gray-700/50 bg-slate-50/80 dark:bg-gray-800/60 border-t-2"
+                                    style={{ borderTopColor: catColor + '40' }}
+                                    onClick={() => toggleCategoryExpand(group.category)}
                                   >
                                     <TableCell>
                                       <div className="flex items-center gap-2.5">
-                                        {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
-                                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
-                                          <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
-                                        </div>
-                                        <span className="font-medium text-sm">{row.label}</span>
+                                        {isCatExpanded ? <ChevronDown className="h-4 w-4 shrink-0" style={{ color: catColor }} /> : <ChevronRight className="h-4 w-4 shrink-0" style={{ color: catColor }} />}
+                                        <span
+                                          className="inline-block text-xs px-2.5 py-1 rounded-full font-semibold text-white"
+                                          style={{ backgroundColor: catColor }}
+                                        >
+                                          {group.category}
+                                        </span>
+                                        <span className="text-xs text-slate-400 ml-1">{featCount} funzionalità</span>
                                       </div>
                                     </TableCell>
+                                    <TableCell />
+                                    <TableCell className="text-right font-mono text-sm font-semibold">{formatTokens(group.totals.consultantTokens)}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCost(group.totals.consultantCost)}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm font-semibold">{formatTokens(group.totals.clientTokens)}</TableCell>
+                                    <TableCell className="text-right font-mono text-sm font-semibold">{formatCost(group.totals.clientCost)}</TableCell>
+                                    <TableCell className="text-right text-sm font-semibold">{group.totals.requestCount}</TableCell>
                                     <TableCell>
-                                      <span
-                                        className="inline-block text-[11px] px-2 py-0.5 rounded-full font-medium text-white"
-                                        style={{ backgroundColor: catColor }}
-                                      >
-                                        {row.category}
-                                      </span>
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.consultantTokens) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.consultantCost) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.clientTokens) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.clientCost) : '—'}</TableCell>
-                                    <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
-                                    <TableCell>
-                                      {hasData ? (
-                                        <div className="flex items-center gap-2">
-                                          <Progress value={row.pct} className="h-1.5 flex-1" />
-                                          <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-xs text-slate-400">—</span>
-                                      )}
+                                      <div className="flex items-center gap-2">
+                                        <Progress value={group.totals.pct} className="h-1.5 flex-1" />
+                                        <span className="text-xs text-slate-500 w-12 text-right font-mono">{group.totals.pct.toFixed(1)}%</span>
+                                      </div>
                                     </TableCell>
                                   </TableRow>
-                                  {isExpanded && row.subKeys.map((sk: any, j: number) => (
-                                    <React.Fragment key={`${i}-sub-${j}`}>
-                                      <TableRow className="bg-slate-50/60 dark:bg-gray-800/30">
-                                        <TableCell className="pl-16">
-                                          <div className="flex items-center gap-2">
-                                            {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') ? (
-                                              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
-                                            ) : (
-                                              <>
-                                                <Code className="h-3 w-3 text-slate-400 shrink-0" />
-                                                <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
-                                              </>
-                                            )}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell />
-                                        <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatTokens(sk.totalTokens)}</TableCell>
-                                        <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatCost(sk.totalCost)}</TableCell>
-                                        <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
-                                        <TableCell />
-                                      </TableRow>
-                                      {sk.modelBreakdown && sk.modelBreakdown.length > 0 && sk.modelBreakdown.map((mb: any, k: number) => (
-                                        <TableRow key={`${i}-sub-${j}-model-${k}`} className="bg-slate-50/30 dark:bg-gray-800/15">
-                                          <TableCell className="pl-24">
-                                            <div className="flex items-center gap-1.5">
-                                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                                              <code className="text-[11px] font-mono text-slate-400">{mb.model}</code>
+
+                                  {isCatExpanded && group.features.map((row, i) => {
+                                    const hasData = row.totalTokens > 0 || row.requestCount > 0;
+                                    if (!hasData) return null;
+                                    const uid = `${row.category}::${row.label}`;
+                                    const isExpanded = expandedFeatures.has(uid);
+                                    return (
+                                      <React.Fragment key={`feat-${group.category}-${i}`}>
+                                        <TableRow
+                                          className="cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50"
+                                          onClick={() => toggleFeatureExpand(uid)}
+                                        >
+                                          <TableCell className="pl-10">
+                                            <div className="flex items-center gap-2.5">
+                                              {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+                                              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: catColor + '18' }}>
+                                                <FeatureIcon name={row.icon} className="h-3.5 w-3.5" style={{ color: catColor }} />
+                                              </div>
+                                              <span className="font-medium text-sm">{row.label}</span>
                                             </div>
                                           </TableCell>
                                           <TableCell />
-                                          <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>
-                                            <span className="flex items-center justify-end gap-1.5">
-                                              <span className="text-slate-500" title="Token fatturabili (input + output)">
-                                                {formatTokens(mb.inputTokens + mb.outputTokens)}
-                                              </span>
-                                              {mb.thinkingTokens > 0 && (
-                                                <span className="text-purple-400 text-[10px]" title="Token di ragionamento (fatturati come output)">
-                                                  +{formatTokens(mb.thinkingTokens)} think
-                                                </span>
-                                              )}
-                                            </span>
+                                          <TableCell className="text-right font-mono text-sm">{formatTokens(row.consultantTokens)}</TableCell>
+                                          <TableCell className="text-right font-mono text-sm">{formatCost(row.consultantCost)}</TableCell>
+                                          <TableCell className="text-right font-mono text-sm">{formatTokens(row.clientTokens)}</TableCell>
+                                          <TableCell className="text-right font-mono text-sm">{formatCost(row.clientCost)}</TableCell>
+                                          <TableCell className="text-right text-sm">{row.requestCount}</TableCell>
+                                          <TableCell>
+                                            <div className="flex items-center gap-2">
+                                              <Progress value={row.pct} className="h-1.5 flex-1" />
+                                              <span className="text-xs text-slate-500 w-12 text-right font-mono">{row.pct.toFixed(1)}%</span>
+                                            </div>
                                           </TableCell>
-                                          <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>{formatCost(mb.totalCost)}</TableCell>
-                                          <TableCell className="text-right text-[11px] text-slate-400">{mb.requestCount}</TableCell>
-                                          <TableCell />
                                         </TableRow>
-                                      ))}
-                                    </React.Fragment>
-                                  ))}
-                                  {isExpanded && !hasSubKeys && !FEATURE_GUIDE[row.label] && (
-                                    <TableRow className="bg-slate-50/40 dark:bg-gray-800/20">
-                                      <TableCell colSpan={8} className="pl-16">
-                                        <span className="text-xs text-slate-400 italic">Nessun utilizzo registrato nel periodo selezionato</span>
-                                      </TableCell>
-                                    </TableRow>
-                                  )}
-                                  {isExpanded && FEATURE_GUIDE[row.label] && (
-                                    <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
-                                      <TableCell colSpan={8} className="pl-16">
-                                        <div className="flex gap-6 text-xs py-1">
-                                          <div><span className="font-medium text-slate-600">Dove:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].dove}</span></div>
-                                          <div><span className="font-medium text-slate-600">Come testare:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].comeTesta}</span></div>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  )}
+                                        {isExpanded && row.subKeys.map((sk: any, j: number) => (
+                                          <React.Fragment key={`${group.category}-${i}-sub-${j}`}>
+                                            <TableRow className="bg-slate-50/60 dark:bg-gray-800/30">
+                                              <TableCell className="pl-20">
+                                                <div className="flex items-center gap-2">
+                                                  {SUBKEY_LABELS[sk.key] || sk.key.startsWith('public-chat:') || sk.key.startsWith('whatsapp-agent:') || sk.key.startsWith('voice-call:') || sk.key.startsWith('tts:') || sk.key.startsWith('agent-chat:') || sk.key.startsWith('agent-chat-summary:') ? (
+                                                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{getSubKeyLabel(sk.key)}</span>
+                                                  ) : (
+                                                    <>
+                                                      <Code className="h-3 w-3 text-slate-400 shrink-0" />
+                                                      <code className="text-xs font-mono text-slate-500 dark:text-slate-400">{sk.key}</code>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </TableCell>
+                                              <TableCell />
+                                              <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatTokens(sk.totalTokens)}</TableCell>
+                                              <TableCell className="text-right font-mono text-xs text-slate-500" colSpan={2}>{formatCost(sk.totalCost)}</TableCell>
+                                              <TableCell className="text-right text-xs text-slate-500">{sk.requestCount}</TableCell>
+                                              <TableCell />
+                                            </TableRow>
+                                            {sk.modelBreakdown && sk.modelBreakdown.length > 0 && sk.modelBreakdown.map((mb: any, k: number) => (
+                                              <TableRow key={`${group.category}-${i}-sub-${j}-model-${k}`} className="bg-slate-50/30 dark:bg-gray-800/15">
+                                                <TableCell className="pl-28">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                                                    <code className="text-[11px] font-mono text-slate-400">{mb.model}</code>
+                                                  </div>
+                                                </TableCell>
+                                                <TableCell />
+                                                <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>
+                                                  <span className="flex items-center justify-end gap-1.5">
+                                                    <span className="text-slate-500" title="Token fatturabili (input + output)">
+                                                      {formatTokens(mb.inputTokens + mb.outputTokens)}
+                                                    </span>
+                                                    {mb.thinkingTokens > 0 && (
+                                                      <span className="text-purple-400 text-[10px]" title="Token di ragionamento (fatturati come output)">
+                                                        +{formatTokens(mb.thinkingTokens)} think
+                                                      </span>
+                                                    )}
+                                                  </span>
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono text-[11px] text-slate-400" colSpan={2}>{formatCost(mb.totalCost)}</TableCell>
+                                                <TableCell className="text-right text-[11px] text-slate-400">{mb.requestCount}</TableCell>
+                                                <TableCell />
+                                              </TableRow>
+                                            ))}
+                                          </React.Fragment>
+                                        ))}
+                                        {isExpanded && FEATURE_GUIDE[row.label] && (
+                                          <TableRow className="bg-blue-50/50 dark:bg-blue-900/10">
+                                            <TableCell colSpan={8} className="pl-20">
+                                              <div className="flex gap-6 text-xs py-1">
+                                                <div><span className="font-medium text-slate-600">Dove:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].dove}</span></div>
+                                                <div><span className="font-medium text-slate-600">Come testare:</span> <span className="text-slate-500">{FEATURE_GUIDE[row.label].comeTesta}</span></div>
+                                              </div>
+                                            </TableCell>
+                                          </TableRow>
+                                        )}
+                                      </React.Fragment>
+                                    );
+                                  })}
                                 </React.Fragment>
                               );
                             })}
