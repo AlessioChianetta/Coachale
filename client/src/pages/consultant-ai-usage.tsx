@@ -634,9 +634,6 @@ export default function ConsultantAIUsagePage() {
 
     CATEGORY_ORDER.forEach(cat => {
       const features = byCategory.get(cat) || [];
-      const hasAnyData = features.some(f => f.totalTokens > 0 || f.requestCount > 0);
-      if (!hasAnyData) return;
-
       const totals = features.reduce((acc, f) => ({
         consultantTokens: acc.consultantTokens + (f.consultantTokens || 0),
         consultantCost: acc.consultantCost + (f.consultantCost || 0),
@@ -654,8 +651,6 @@ export default function ConsultantAIUsagePage() {
 
     byCategory.forEach((features, cat) => {
       if (!CATEGORY_ORDER.includes(cat)) {
-        const hasAnyData = features.some(f => f.totalTokens > 0 || f.requestCount > 0);
-        if (!hasAnyData) return;
         const totals = features.reduce((acc, f) => ({
           consultantTokens: acc.consultantTokens + (f.consultantTokens || 0),
           consultantCost: acc.consultantCost + (f.consultantCost || 0),
@@ -1052,7 +1047,7 @@ export default function ConsultantAIUsagePage() {
                               const catColor = CATEGORY_COLORS[group.category] || CATEGORY_COLORS['Altro'];
                               const isCatExpanded = expandedCategories.has(group.category);
                               const featuresWithData = group.features.filter(f => f.totalTokens > 0 || f.requestCount > 0);
-                              const featCount = featuresWithData.length;
+                              const featCount = group.features.length;
 
                               return (
                                 <React.Fragment key={`cat-${group.category}`}>
@@ -1089,13 +1084,12 @@ export default function ConsultantAIUsagePage() {
 
                                   {isCatExpanded && group.features.map((row, i) => {
                                     const hasData = row.totalTokens > 0 || row.requestCount > 0;
-                                    if (!hasData) return null;
                                     const uid = `${row.category}::${row.label}`;
                                     const isExpanded = expandedFeatures.has(uid);
                                     return (
                                       <React.Fragment key={`feat-${group.category}-${i}`}>
                                         <TableRow
-                                          className="cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50"
+                                          className={`${hasData ? '' : 'opacity-50'} cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50`}
                                           onClick={() => toggleFeatureExpand(uid)}
                                         >
                                           <TableCell className="pl-10">
