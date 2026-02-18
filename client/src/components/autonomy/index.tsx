@@ -460,6 +460,7 @@ export default function ConsultantAIAutonomyPage() {
       return res.json();
     },
     enabled: activeTab === "dashboard",
+    refetchInterval: 15000,
   });
 
   const { data: tasksData, isLoading: loadingTasks } = useQuery<TasksResponse>({
@@ -470,6 +471,11 @@ export default function ConsultantAIAutonomyPage() {
       return res.json();
     },
     enabled: activeTab === "dashboard",
+    refetchInterval: (query) => {
+      const data = query.state.data as TasksResponse | undefined;
+      const hasInProgress = data?.tasks?.some(t => t.status === 'in_progress');
+      return hasInProgress ? 8000 : 30000;
+    },
   });
 
   const { data: taskDetailData, isLoading: loadingTaskDetail } = useQuery<TaskDetailResponse>({
@@ -499,6 +505,8 @@ export default function ConsultantAIAutonomyPage() {
       toast({ title: "Esecuzione avviata", description: "Alessia sta lavorando sul task..." });
       queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${selectedTaskId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
     },
     onError: () => {
       toast({ title: "Errore", description: "Impossibile avviare l'esecuzione", variant: "destructive" });

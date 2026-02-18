@@ -128,6 +128,11 @@ function DashboardTab({
   const [selectedMergeIds, setSelectedMergeIds] = React.useState<Set<string>>(new Set());
   const [isMerging, setIsMerging] = React.useState(false);
   const [executiveView, setExecutiveView] = React.useState(false);
+  const [showAllActivity, setShowAllActivity] = React.useState(false);
+
+  React.useEffect(() => {
+    setShowAllActivity(false);
+  }, [selectedTaskId]);
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -547,8 +552,8 @@ function DashboardTab({
 
   const [showCompletedSection, setShowCompletedSection] = React.useState(false);
 
-  const { groupedTasks, completedTasks } = useMemo(() => {
-    if (!tasksData?.tasks) return { groupedTasks: [], completedTasks: [] };
+  const { groupedTasks, recentCompletedTasks, olderCompletedTasks } = useMemo(() => {
+    if (!tasksData?.tasks) return { groupedTasks: [], recentCompletedTasks: [], olderCompletedTasks: [] };
     const topLevelTasks = tasksData.tasks.filter(t => !t.parent_task_id);
     const filteredTasks = dashboardRoleFilter === 'all'
       ? topLevelTasks
@@ -559,6 +564,19 @@ function DashboardTab({
     const isAllTab = dashboardStatusFilter === 'all';
     const activeTasks = isAllTab ? filteredTasks.filter(t => t.status !== 'completed') : filteredTasks;
     const completed = isAllTab ? filteredTasks.filter(t => t.status === 'completed') : [];
+
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+    const recent: typeof completed = [];
+    const older: typeof completed = [];
+    completed.forEach(task => {
+      const taskTime = new Date(task.completed_at || task.created_at).getTime();
+      if (taskTime >= twentyFourHoursAgo) {
+        recent.push(task);
+      } else {
+        older.push(task);
+      }
+    });
 
     const groups: Record<string, typeof activeTasks> = {};
     activeTasks.forEach(task => {
@@ -573,7 +591,8 @@ function DashboardTab({
     });
     return {
       groupedTasks: roleOrder.map(role => ({ role, tasks: groups[role] })),
-      completedTasks: completed,
+      recentCompletedTasks: recent,
+      olderCompletedTasks: older,
     };
   }, [tasksData?.tasks, dashboardRoleFilter, dashboardStatusFilter]);
 
@@ -2020,7 +2039,76 @@ function DashboardTab({
         </div>
       )}
 
-      {completedTasks.length > 0 && dashboardStatusFilter === 'all' && (
+      {recentCompletedTasks.length > 0 && dashboardStatusFilter === 'all' && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 px-2 py-2 mb-2">
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              Completati di recente ({recentCompletedTasks.length})
+            </span>
+          </div>
+          <div className="space-y-2">
+            {recentCompletedTasks.map((task) => (
+              <Card key={task.id} className="border-l-4 border-l-emerald-400 border rounded-lg shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity bg-muted/20 border-border/40 cursor-pointer" onClick={() => setSelectedTaskId(task.id)}>
+                <CardContent className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        {task.ai_role && (
+                          <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", getRoleBadge(task.ai_role))}>
+                            {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                          </Badge>
+                        )}
+                        {task.contact_name && (
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            {task.contact_name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1">
+                        {task.ai_instruction}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                        {task.completed_at && (
+                          <span className="flex items-center gap-0.5">
+                            <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
+                            {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                        <span>{getRelativeTime(task.created_at)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {task.ai_role && onOpenChatWithTask && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1 h-7 px-2 text-[10px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                          onClick={(e) => { e.stopPropagation(); handleOpenChatAboutTask(task, 'Cosa hai fatto?'); }}
+                        >
+                          <MessageSquare className="h-3 w-3" />
+                          Cosa hai fatto?
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 h-7 px-2 text-[10px] text-muted-foreground"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {olderCompletedTasks.length > 0 && dashboardStatusFilter === 'all' && (
         <div className="mt-4">
           <button
             onClick={() => setShowCompletedSection(!showCompletedSection)}
@@ -2028,13 +2116,13 @@ function DashboardTab({
           >
             <CheckCircle className="h-4 w-4 text-emerald-500" />
             <span className="text-sm font-medium text-muted-foreground">
-              Completati ({completedTasks.length})
+              Completati ({olderCompletedTasks.length})
             </span>
             <ChevronRight className={cn("h-4 w-4 text-muted-foreground ml-auto transition-transform", showCompletedSection && "rotate-90")} />
           </button>
           {showCompletedSection && (
             <div className="mt-2 space-y-2 pl-2">
-              {completedTasks.map((task) => (
+              {olderCompletedTasks.map((task) => (
                 <Card key={task.id} className="border rounded-lg shadow-sm overflow-hidden opacity-70 hover:opacity-100 transition-opacity bg-muted/20 border-border/40">
                   <CardContent className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={(e) => toggleTaskExpand(task.id, e)}>
@@ -2126,7 +2214,7 @@ function DashboardTab({
       )}
 
       <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
           {loadingTaskDetail ? (
             <div className="flex items-center justify-center py-20">
               <DialogHeader className="sr-only"><DialogTitle>Caricamento task</DialogTitle><DialogDescription>Caricamento dettagli task in corso</DialogDescription></DialogHeader>
@@ -2167,44 +2255,19 @@ function DashboardTab({
               : 30;
 
             return (
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-6 max-w-[1000px] mx-auto">
                 <DialogHeader className="sr-only">
                   <DialogTitle>Deep Research</DialogTitle>
                   <DialogDescription>Dettaglio task e risultati deep research</DialogDescription>
                 </DialogHeader>
 
-                <div className="rounded-xl border border-border shadow-sm bg-card p-6 space-y-4">
+                <div className="rounded-xl border border-border shadow-sm bg-card p-6 space-y-5">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
-                        <Brain className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h2 className="text-lg font-semibold text-foreground">Deep Research</h2>
-                          <span className={cn(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                            task.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400" :
-                            task.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
-                            task.status === 'in_progress' ? "bg-primary/10 text-primary border-primary/20" :
-                            task.status === 'paused' ? "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400" :
-                            task.status === 'waiting_approval' ? "bg-primary/10 text-primary border-primary/20" :
-                            "bg-muted text-muted-foreground border-border"
-                          )}>
-                            {task.status === 'completed' ? '✅ Completato' :
-                             task.status === 'failed' ? '❌ Fallito' :
-                             task.status === 'in_progress' ? '⚡ In esecuzione' :
-                             task.status === 'paused' ? '⏸️ In pausa' :
-                             task.status === 'deferred' ? '🔄 Rimandato' :
-                             task.status === 'scheduled' ? '📅 Programmato' :
-                             task.status === 'waiting_approval' ? '⏳ In attesa di approvazione' :
-                             task.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed" title={task.ai_instruction}>
-                          {task.ai_instruction.length > 200 ? task.ai_instruction.slice(0, 200) + '...' : task.ai_instruction}
-                        </p>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-xl font-bold text-foreground mb-2">Deep Research</h2>
+                      <p className="text-sm text-muted-foreground leading-[1.8]">
+                        {task.ai_instruction}
+                      </p>
                     </div>
                     {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
                       <Button
@@ -2219,39 +2282,79 @@ function DashboardTab({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                      task.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                      task.status === 'failed' ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
+                      task.status === 'in_progress' ? "bg-primary/10 text-primary border-primary/20" :
+                      task.status === 'paused' ? "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400" :
+                      task.status === 'waiting_approval' ? "bg-primary/10 text-primary border-primary/20" :
+                      "bg-muted text-muted-foreground border-border"
+                    )}>
+                      {task.status === 'completed' ? '✅ Completato' :
+                       task.status === 'failed' ? '❌ Fallito' :
+                       task.status === 'in_progress' ? '⚡ In esecuzione' :
+                       task.status === 'paused' ? '⏸️ In pausa' :
+                       task.status === 'deferred' ? '🔄 Rimandato' :
+                       task.status === 'scheduled' ? '📅 Programmato' :
+                       task.status === 'waiting_approval' ? '⏳ In attesa di approvazione' :
+                       task.status}
+                    </span>
+                    <Separator orientation="vertical" className="h-4" />
                     {getCategoryBadge(task.task_category)}
                     {task.contact_name && (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
-                        <User className="h-3 w-3" /> {task.contact_name}
-                      </span>
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <User className="h-3 w-3" /> {task.contact_name}
+                        </span>
+                      </>
                     )}
                     {task.ai_role && (
-                      <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0.5", getRoleBadge(task.ai_role))}>
-                        {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
-                      </Badge>
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0.5", getRoleBadge(task.ai_role))}>
+                          {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
+                        </Badge>
+                      </>
                     )}
                     {executionDuration && (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
-                        <Timer className="h-3 w-3" /> {executionDuration}
-                      </span>
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Timer className="h-3 w-3" /> {executionDuration}
+                        </span>
+                      </>
                     )}
                     {task.ai_confidence != null && (
-                      <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-muted/80 rounded-full px-2.5 py-1 border border-border">
-                        <Target className="h-3 w-3" />
-                        <span>{Math.round(task.ai_confidence * 100)}%</span>
-                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all",
-                              task.ai_confidence >= 0.8 ? "bg-emerald-500" :
-                              task.ai_confidence >= 0.5 ? "bg-amber-500" :
-                              "bg-red-500"
-                            )}
-                            style={{ width: `${Math.round(task.ai_confidence * 100)}%` }}
-                          />
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                          <Target className="h-3 w-3" />
+                          <span>{Math.round(task.ai_confidence * 100)}%</span>
+                          <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                task.ai_confidence >= 0.8 ? "bg-emerald-500" :
+                                task.ai_confidence >= 0.5 ? "bg-amber-500" :
+                                "bg-red-500"
+                              )}
+                              style={{ width: `${Math.round(task.ai_confidence * 100)}%` }}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      </>
+                    )}
+                    {task.status === 'completed' && task.completed_at && (
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          <CheckCircle className="h-3 w-3" />
+                          {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </>
                     )}
                   </div>
 
@@ -2364,7 +2467,7 @@ function DashboardTab({
                           <span className="text-xs text-muted-foreground ml-1">({sortedActivity.length})</span>
                         </summary>
                         <div className="mt-3 ml-6 space-y-1.5">
-                          {sortedActivity.map((act) => (
+                          {(showAllActivity ? sortedActivity : sortedActivity.slice(0, 3)).map((act) => (
                             <div key={act.id} className="flex items-start gap-3 px-3 py-2 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
                               <div className={cn(
                                 "mt-0.5 p-1 rounded-full shrink-0",
@@ -2384,6 +2487,14 @@ function DashboardTab({
                               </span>
                             </div>
                           ))}
+                          {sortedActivity.length > 3 && !showAllActivity && (
+                            <button
+                              onClick={() => setShowAllActivity(true)}
+                              className="w-full text-center py-2 text-xs text-primary hover:text-primary/80 font-medium"
+                            >
+                              Mostra tutto ({sortedActivity.length})
+                            </button>
+                          )}
                         </div>
                       </details>
                     )}
@@ -2391,15 +2502,10 @@ function DashboardTab({
                 )}
 
                 <div className="rounded-xl border border-border shadow-sm bg-card p-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    Risultati Analisi
-                  </h3>
-
                   {task.result_summary && task.status !== 'in_progress' && (
-                    <div className="mb-5 rounded-xl bg-primary/5 border border-primary/10 p-4">
-                      <p className="text-[15px] font-medium text-foreground mb-1">Riepilogo</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{task.result_summary}</p>
+                    <div className="mb-6 rounded-xl bg-muted/40 border border-border p-5">
+                      <p className="text-sm font-semibold text-foreground mb-2">Riepilogo</p>
+                      <p className="text-[15px] text-muted-foreground leading-[1.8]">{task.result_summary}</p>
                     </div>
                   )}
 
