@@ -252,6 +252,13 @@ const SUBKEY_LABELS: Record<string, string> = {
   'decision-engine': '🧠 Decision Engine',
   'task-executor': '⚙️ Esecutore (legacy)',
   'live-session': '📞 Sessione Live',
+  'whatsapp-agent-response': '📱 Risposta WhatsApp (generico)',
+  'whatsapp-agent': '📱 WhatsApp Agent (generico)',
+  'whatsapp-audio-transcription': '🎤 Trascrizione Audio (generico)',
+  'whatsapp-image-analysis': '🖼️ Analisi Immagine (generico)',
+  'whatsapp-document-analysis': '📄 Analisi Documento (generico)',
+  'whatsapp-sticker-analysis': '😀 Analisi Sticker',
+  'instagram-agent': '📸 Instagram Agent (generico)',
 };
 
 function getSubKeyLabel(key: string): string {
