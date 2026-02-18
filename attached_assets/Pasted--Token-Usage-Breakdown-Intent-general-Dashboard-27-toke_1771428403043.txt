@@ -1,0 +1,69 @@
+📊 Token Usage Breakdown (Intent: general):
+   Dashboard: 27 tokens
+   Clients (29 clients): 2,305 tokens
+   Exercises: 4,323 tokens
+   Email Marketing: 590 tokens
+   WhatsApp Leads: 1,059 tokens
+   Calendar: 627 tokens
+   Consultations: 490 tokens
+   Consultation Tasks: 1,019 tokens
+   Client Goals: 19 tokens
+   Client States (26 states): 7,971 tokens
+   SMTP Configuration: 0 tokens
+   Email Templates: 0 tokens
+   WhatsApp Templates: 0 tokens
+   Library Documents: 0 tokens
+   Exercise Feedback: 2,795 tokens
+   University: 43,945 tokens
+   Exercise Templates: 13,460 tokens
+   💬 WhatsApp (Detailed): 2,275 tokens
+   🎯 Lead Management: 167 tokens
+   📊 Campaign Marketing: 581 tokens
+   🔌 API Settings: 189 tokens
+   📱 WhatsApp Config: 244 tokens
+   📝 WhatsApp Templates (Detailed): 7,816 tokens
+   🔗 WhatsApp Template Assignments: 1 tokens
+   📲 Twilio WhatsApp Templates: 4,781 tokens
+   📅 Calendar Settings: 184 tokens
+   📚 Knowledge Base: 25,929 tokens
+   Base (prompts + metadata): 5,052 tokens
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 TOTAL ESTIMATED: 125,849 tokens
+
+✅ Built and cached consultant context (intent: general)
+⏱️  [TIMING] Consultant context building: 2357ms
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🧹 [Consultant Cache] Cleaned up 1 expired entries
+[PUBLER SYNC] Synced 2 consultants, updated 0 posts
+[PUBLER POLLING] Sync complete: 2 consultants, 0 posts updated
+⏱️  [TIMING] Consultant prompt building: 14ms
+
+📊 Token Usage Estimation:
+  - System Prompt: ~103,333 tokens
+  - 🧠 Conversation Memory: ~2,185 tokens (included in System Prompt)
+  - User Message: ~7 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~103,340 tokens
+
+✅ [FileSearch] Store name valid: fileSearchStores/knowledge-base-consulente-juw371zchi3s
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CONSULTANT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 1
+      1. fileSearchStores/knowledge-base-consulente-juw371zchi3s
+
+   📊 BREAKDOWN DOCUMENTI PER STORE:
+
+   👤 Knowledge Base Consulente (490 documenti):
+      🎓 Lezioni: 217
+      🏋️ Esercizi: 178
+      📖 Libreria: 86
+      🧠 Knowledge Base: 4
+      📄 dynamic_context: 3
+      📄 system_prompt_document: 1
+      📄 consultant_guide: 1
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   📉 System prompt ridotto grazie a File Search
+═══════════════════════════════════════════════════
