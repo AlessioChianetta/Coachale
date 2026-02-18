@@ -1492,6 +1492,154 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
   });
 }
 
+async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, task: AITaskInfo): Promise<Buffer> {
+  const PDFDocument = (await import('pdfkit')).default;
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      bufferPages: true,
+    });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const pageWidth = doc.page.width;
+    const header = formalDoc.header || {};
+    const body = formalDoc.body || [];
+    const footer = formalDoc.footer || {};
+
+    doc.save();
+    doc.rect(0, 0, pageWidth, 100).fill('#1a2744');
+    doc.restore();
+
+    doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold')
+      .text(header.title || reportData.title || 'Documento', 50, 25, { align: 'center', width: pageWidth - 100 });
+    if (header.subtitle) {
+      doc.fillColor('#cccccc').fontSize(11).font('Helvetica')
+        .text(header.subtitle, 50, 55, { align: 'center', width: pageWidth - 100 });
+    }
+
+    doc.y = 115;
+
+    if (header.reference_number || header.reference) {
+      doc.fillColor('#666666').fontSize(9).font('Helvetica')
+        .text(`Rif: ${header.reference_number || header.reference}`, { align: 'right' });
+    }
+    if (header.date) {
+      doc.fillColor('#666666').fontSize(9).font('Helvetica')
+        .text(`Data: ${header.date}`, { align: 'right' });
+    }
+    if (header.parties && Array.isArray(header.parties) && header.parties.length > 0) {
+      doc.moveDown(0.5);
+      doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('Parti:');
+      for (const party of header.parties) {
+        doc.fillColor('#333333').fontSize(9).font('Helvetica').text(`• ${party}`, { indent: 10 });
+      }
+    }
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#1a2744').lineWidth(1).stroke();
+    doc.moveDown(1);
+
+    for (const item of body) {
+      if (doc.y > 700) doc.addPage();
+
+      const itemType = item.type || 'paragraph';
+      const itemNumber = item.number || '';
+      const itemTitle = item.title || '';
+      const itemContent = item.content || '';
+
+      if (itemType === 'article') {
+        doc.fillColor('#1a2744').fontSize(13).font('Helvetica-Bold')
+          .text(`Art. ${itemNumber} - ${itemTitle}`, { align: 'left' });
+      } else if (itemType === 'section') {
+        doc.fillColor('#1a2744').fontSize(12).font('Helvetica-Bold')
+          .text(`${itemNumber}. ${itemTitle}`, { align: 'left' });
+      } else if (itemType === 'step') {
+        doc.fillColor('#1a2744').fontSize(12).font('Helvetica-Bold')
+          .text(`Step ${itemNumber}: ${itemTitle}`, { align: 'left' });
+      }
+
+      if (itemContent) {
+        doc.moveDown(0.3);
+        doc.fillColor('#333333').fontSize(10).font('Helvetica')
+          .text(itemContent, { align: 'justify', lineGap: 3 });
+      }
+
+      if (item.subsections && Array.isArray(item.subsections)) {
+        for (const sub of item.subsections) {
+          doc.moveDown(0.3);
+          if (sub.title) {
+            doc.fillColor('#444444').fontSize(10).font('Helvetica-Bold')
+              .text(sub.title, { indent: 20 });
+          }
+          if (sub.content) {
+            doc.fillColor('#555555').fontSize(9).font('Helvetica')
+              .text(sub.content, { indent: 20, align: 'justify', lineGap: 2 });
+          }
+        }
+      }
+
+      doc.moveDown(1);
+    }
+
+    if (footer.notes) {
+      if (doc.y > 650) doc.addPage();
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      doc.moveDown(0.5);
+      doc.fillColor('#888888').fontSize(8).font('Helvetica-Oblique')
+        .text(footer.notes, { align: 'left', lineGap: 2 });
+      doc.moveDown(1);
+    }
+
+    if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0) {
+      if (doc.y > 600) doc.addPage();
+      doc.moveDown(1);
+
+      const sigWidth = 200;
+      const sigSpacing = (pageWidth - 100 - sigWidth * Math.min(footer.signatures.length, 2)) / Math.max(footer.signatures.length - 1, 1);
+
+      for (let i = 0; i < footer.signatures.length; i++) {
+        const sig = footer.signatures[i];
+        if (i > 0 && i % 2 === 0) {
+          doc.moveDown(3);
+        }
+        const xPos = 50 + (i % 2) * (sigWidth + sigSpacing);
+        const yPos = doc.y;
+
+        doc.fillColor('#333333').fontSize(9).font('Helvetica-Bold')
+          .text(sig.role || '', xPos, yPos, { width: sigWidth });
+        doc.moveDown(2);
+        doc.moveTo(xPos, doc.y).lineTo(xPos + sigWidth - 20, doc.y).strokeColor('#333333').lineWidth(0.5).stroke();
+        doc.moveDown(0.3);
+        doc.fillColor('#666666').fontSize(8).font('Helvetica')
+          .text(sig.name || '', xPos, doc.y, { width: sigWidth });
+        if (i % 2 === 0 && i + 1 < footer.signatures.length) {
+          doc.y = yPos;
+        }
+      }
+    }
+
+    if (footer.location_date) {
+      doc.moveDown(2);
+      doc.fillColor('#666666').fontSize(9).font('Helvetica')
+        .text(footer.location_date, { align: 'right' });
+    }
+
+    const pages = doc.bufferedPageRange();
+    for (let i = pages.start; i < pages.start + pages.count; i++) {
+      doc.switchToPage(i);
+      doc.fillColor('#999999').fontSize(8).font('Helvetica')
+        .text(`Pagina ${i + 1} di ${pages.count}`, 50, doc.page.height - 30, { align: 'center', width: pageWidth - 100 });
+    }
+
+    doc.end();
+  });
+}
+
 async function handleSendEmail(
   task: AITaskInfo,
   _step: ExecutionStep,
@@ -1561,23 +1709,39 @@ REGOLE IMPORTANTI:
     }
   }
 
+  const hasFormalDoc = !!(reportData.formal_document?.body);
   const htmlBody = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <p>${emailBody.replace(/\n/g, '</p><p>')}</p>
-    ${reportData.title ? '<p><em>In allegato trova il report dettagliato.</em></p>' : ''}
+    ${reportData.title ? `<p><em>In allegato ${hasFormalDoc ? 'trova i report dettagliati' : 'trova il report dettagliato'}.</em></p>` : ''}
   </div>`;
 
   let attachments: any[] = [];
   if (reportData && reportData.title) {
+    const safeName = (task.contact_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_');
     try {
-      const pdfBuffer = await generatePdfBuffer(reportData, analysisData, task);
+      const summaryPdf = await generatePdfBuffer(reportData, analysisData, task);
       attachments.push({
-        filename: `report_${(task.contact_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-        content: pdfBuffer,
+        filename: `riepilogo_${safeName}.pdf`,
+        content: summaryPdf,
         contentType: 'application/pdf',
       });
-      console.log(`${LOG_PREFIX} PDF generated: ${pdfBuffer.length} bytes`);
+      console.log(`${LOG_PREFIX} Summary PDF generated: ${summaryPdf.length} bytes`);
     } catch (pdfErr: any) {
-      console.error(`${LOG_PREFIX} PDF generation failed, skipping attachment: ${pdfErr.message}`);
+      console.error(`${LOG_PREFIX} Summary PDF generation failed: ${pdfErr.message}`);
+    }
+
+    if (hasFormalDoc) {
+      try {
+        const formalPdf = await generateFormalDocumentPdfBuffer(reportData.formal_document, reportData, task);
+        attachments.push({
+          filename: `documento_${safeName}.pdf`,
+          content: formalPdf,
+          contentType: 'application/pdf',
+        });
+        console.log(`${LOG_PREFIX} Formal document PDF generated: ${formalPdf.length} bytes`);
+      } catch (formalErr: any) {
+        console.error(`${LOG_PREFIX} Formal document PDF generation failed: ${formalErr.message}`);
+      }
     }
   }
 
@@ -1603,11 +1767,12 @@ REGOLE IMPORTANTI:
     }
 
     const sendResult = await transporter.sendMail(mailOptions);
+    console.log(`${LOG_PREFIX} ✅ Email sent successfully via SMTP. MessageId: ${sendResult.messageId}, To: ${contactEmail}, Attachments: ${attachments.length}`);
 
     await logActivity(task.consultant_id, {
       event_type: "email_sent",
       title: `Email inviata a ${task.contact_name || contactEmail}`,
-      description: `Oggetto: "${emailSubject}". ${attachments.length > 0 ? 'Report allegato.' : 'Senza allegati.'}`,
+      description: `Oggetto: "${emailSubject}". ${attachments.length > 0 ? `${attachments.length} PDF allegat${attachments.length === 1 ? 'o' : 'i'}.` : 'Senza allegati.'}`,
       icon: "📧",
       severity: "info",
       task_id: task.id,
@@ -1621,6 +1786,7 @@ REGOLE IMPORTANTI:
       recipient: contactEmail,
       subject: emailSubject,
       has_attachment: attachments.length > 0,
+      attachment_count: attachments.length,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Email send failed:`, error.message);

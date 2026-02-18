@@ -32,7 +32,7 @@ import { TASK_LIBRARY, TASK_CATEGORIES, EMPTY_NEW_TASK, AI_ROLE_PROFILES } from 
 import {
   getTaskStatusBadge, getCategoryBadge, getPriorityIndicator,
   getActivityIcon, getRelativeTime, getStepActionLabel,
-  getRoleBadgeClass, generateTaskPDF, tryParseJSON, renderFormattedText
+  getRoleBadgeClass, generateTaskPDF, generateSummaryPDF, taskHasFormalDocument, tryParseJSON, renderFormattedText
 } from "./utils";
 import DeepResearchResults from "./DeepResearchResults";
 
@@ -2420,31 +2420,6 @@ function DashboardTab({
                       Processo AI
                     </h3>
 
-                    {task.ai_reasoning && (
-                      <div className={cn(
-                        "rounded-xl p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/20 transition-all",
-                        task.status === 'in_progress'
-                          ? "border border-purple-300/70 dark:border-purple-600/50 shadow-[0_0_15px_-3px_rgba(147,51,234,0.15)] animate-[pulse_3s_ease-in-out_infinite]"
-                          : "border border-purple-200/60 dark:border-purple-700/40"
-                      )}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Brain className="h-4 w-4 text-purple-500" />
-                            <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">Ragionamento AI</span>
-                          </div>
-                          {task.status === 'in_progress' && (
-                            <div className="flex items-center gap-1.5 text-purple-500">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span className="text-[11px] font-medium">Analizzando...</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-[13px] leading-[1.85] tracking-wide text-purple-800 dark:text-purple-200 whitespace-pre-wrap">
-                          {task.ai_reasoning}
-                        </p>
-                      </div>
-                    )}
-
                     {task.execution_plan && task.execution_plan.length > 0 && (
                       <details className="group">
                         <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-muted/50 transition-colors">
@@ -2563,6 +2538,31 @@ function DashboardTab({
                             <ChevronDown className="h-3.5 w-3.5" />
                           </button>
                         )}
+                      </div>
+                    )}
+
+                    {task.ai_reasoning && (
+                      <div className={cn(
+                        "rounded-xl p-4 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/20 transition-all",
+                        task.status === 'in_progress'
+                          ? "border border-purple-300/70 dark:border-purple-600/50 shadow-[0_0_15px_-3px_rgba(147,51,234,0.15)] animate-[pulse_3s_ease-in-out_infinite]"
+                          : "border border-purple-200/60 dark:border-purple-700/40"
+                      )}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-purple-500" />
+                            <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">Ragionamento AI</span>
+                          </div>
+                          {task.status === 'in_progress' && (
+                            <div className="flex items-center gap-1.5 text-purple-500">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="text-[11px] font-medium">Analizzando...</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[13px] leading-[1.85] tracking-wide text-purple-800 dark:text-purple-200 whitespace-pre-wrap">
+                          {task.ai_reasoning}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -2812,13 +2812,32 @@ function DashboardTab({
                         Rigenera Analisi
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      onClick={() => generateTaskPDF(task)}
-                    >
-                      <Save className="h-4 w-4 mr-1.5" />
-                      Scarica PDF
-                    </Button>
+                    {taskHasFormalDocument(task) ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => generateSummaryPDF(task)}
+                        >
+                          <Save className="h-4 w-4 mr-1.5" />
+                          Scarica Riepilogo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => generateTaskPDF(task)}
+                        >
+                          <FileText className="h-4 w-4 mr-1.5" />
+                          Scarica Documento
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => generateTaskPDF(task)}
+                      >
+                        <Save className="h-4 w-4 mr-1.5" />
+                        Scarica PDF
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

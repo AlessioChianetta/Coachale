@@ -809,3 +809,164 @@ export async function generateTaskPDF(task: AITask) {
   const prefix = getFilePrefix(docType);
   doc.save(`${prefix}${safeName}_${fileDate}.pdf`);
 }
+
+export function taskHasFormalDocument(task: AITask): boolean {
+  const parsedResults = parseTaskResults(task);
+  const report = parsedResults.generate_report;
+  return !!(report?.formal_document?.body);
+}
+
+export async function generateSummaryPDF(task: AITask) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginLeft = 22;
+  const marginRight = 22;
+  const marginBottom = 25;
+  const contentWidth = pageWidth - marginLeft - marginRight;
+  let y = 20;
+
+  const parsedResults = parseTaskResults(task);
+  const report = parsedResults.generate_report;
+  const contactName = task.contact_name || '';
+  const dateStr = task.completed_at
+    ? new Date(task.completed_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+  const title = report?.title || task.ai_instruction || 'Riepilogo AI';
+
+  const checkPageBreak = (neededHeight: number) => {
+    if (y + neededHeight > pageHeight - marginBottom) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  const addText = (text: string, fontSize: number, options?: {
+    bold?: boolean; italic?: boolean; color?: [number, number, number];
+    maxWidth?: number; lineHeight?: number; x?: number;
+  }) => {
+    const cleaned = cleanBoldMarkers(text);
+    doc.setFontSize(fontSize);
+    const fontStyle = options?.bold && options?.italic ? 'bolditalic' : options?.bold ? 'bold' : options?.italic ? 'italic' : 'normal';
+    doc.setFont('helvetica', fontStyle);
+    if (options?.color) doc.setTextColor(...options.color);
+    else doc.setTextColor(40, 40, 40);
+    const xPos = options?.x || marginLeft;
+    const w = options?.maxWidth || (contentWidth - (xPos - marginLeft));
+    const lines = doc.splitTextToSize(cleaned, w);
+    const lh = options?.lineHeight || 5;
+    for (const line of lines) {
+      checkPageBreak(lh);
+      doc.text(line, xPos, y);
+      y += lh;
+    }
+  };
+
+  const addSpacer = (h: number) => { y += h; };
+
+  const titleLines = doc.splitTextToSize(cleanBoldMarkers(title), contentWidth - 40);
+  const headerHeight = Math.max(40, 18 + titleLines.length * 8);
+  doc.setFillColor(20, 30, 50);
+  doc.rect(0, 0, pageWidth, headerHeight, 'F');
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  let titleY = 16;
+  for (const line of titleLines) {
+    doc.text(line, marginLeft, titleY);
+    titleY += 8;
+  }
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 185, 200);
+  doc.text(`Riepilogo  |  ${contactName || 'N/A'}  |  ${dateStr}`, marginLeft, titleY);
+  doc.setFontSize(9);
+  doc.text(dateStr, pageWidth - marginRight, 16, { align: 'right' });
+  y = headerHeight + 10;
+
+  if (report && typeof report === 'object') {
+    if (report.summary) {
+      checkPageBreak(20);
+      doc.setFillColor(245, 245, 248);
+      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(report.summary), contentWidth - 10);
+      const boxH = summaryLines.length * 5 + 14;
+      doc.rect(marginLeft - 2, y - 3, contentWidth + 4, boxH, 'F');
+      addText('Riepilogo Esecutivo', 13, { bold: true, color: [30, 30, 30] });
+      addSpacer(3);
+      addText(report.summary, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+      addSpacer(8);
+    }
+    if (report.sections && Array.isArray(report.sections)) {
+      for (const section of report.sections) {
+        checkPageBreak(15);
+        doc.setFillColor(20, 80, 160);
+        doc.rect(marginLeft - 1, y - 4, 1, 7, 'F');
+        addText(cleanBoldMarkers(section.heading || ''), 13, { bold: true, color: [30, 30, 30], x: marginLeft + 3 });
+        addSpacer(3);
+        if (section.content) {
+          addText(section.content, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+        }
+        addSpacer(6);
+      }
+    }
+    if (report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0) {
+      checkPageBreak(15);
+      addText('Risultati Chiave', 13, { bold: true, color: [30, 100, 30] });
+      addSpacer(3);
+      for (const finding of report.key_findings) {
+        checkPageBreak(8);
+        doc.setFillColor(40, 160, 60);
+        doc.circle(marginLeft + 1.5, y - 1.5, 1, 'F');
+        addText(typeof finding === 'string' ? finding : JSON.stringify(finding), 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 6 });
+        addSpacer(2);
+      }
+      addSpacer(5);
+    }
+    if (report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
+      checkPageBreak(15);
+      addText('Raccomandazioni', 13, { bold: true, color: [30, 30, 130] });
+      addSpacer(3);
+      for (const rec of report.recommendations) {
+        checkPageBreak(12);
+        const priorityLabel = rec.priority === 'high' ? '[ALTA] ' : rec.priority === 'medium' ? '[MEDIA] ' : '[BASSA] ';
+        const recAction = typeof rec === 'string' ? rec : (rec.action || JSON.stringify(rec));
+        addText(`${priorityLabel}${cleanBoldMarkers(recAction)}`, 10.5, { bold: true, color: [40, 40, 40], lineHeight: 5 });
+        if (typeof rec === 'object' && rec.rationale) {
+          addText(rec.rationale, 9.5, { color: [100, 100, 100], lineHeight: 4.5 });
+        }
+        addSpacer(3);
+      }
+      addSpacer(5);
+    }
+    if (report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0) {
+      checkPageBreak(15);
+      addText('Prossimi Passi', 13, { bold: true, color: [30, 80, 130] });
+      addSpacer(3);
+      report.next_steps.forEach((step: string, i: number) => {
+        checkPageBreak(8);
+        addText(`${i + 1}. ${step}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
+        addSpacer(2);
+      });
+      addSpacer(5);
+    }
+  }
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150, 150, 150);
+    doc.text('Riservato e Confidenziale', marginLeft, pageHeight - 8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Pagina ${i} di ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text(dateStr, pageWidth - marginRight, pageHeight - 8, { align: 'right' });
+  }
+
+  const safeName = (contactName || 'task').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const fileDate = task.completed_at
+    ? new Date(task.completed_at).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+  doc.save(`riepilogo_${safeName}_${fileDate}.pdf`);
+}
