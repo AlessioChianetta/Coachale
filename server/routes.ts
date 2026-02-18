@@ -21822,6 +21822,34 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     });
   }, 5000);
 
+  app.get('/api/temp-media/:token', async (req: any, res: any) => {
+    try {
+      const { token } = req.params;
+      if (!/^[a-f0-9]{32}$/.test(token)) {
+        return res.status(400).json({ error: 'Invalid token' });
+      }
+
+      const pathMod = await import('path');
+      const fsMod = await import('fs/promises');
+      const filePath = pathMod.join('/tmp/wa-media', `${token}.pdf`);
+
+      try {
+        await fsMod.access(filePath);
+      } catch {
+        return res.status(404).json({ error: 'File not found or expired' });
+      }
+
+      const fileBuffer = await fsMod.readFile(filePath);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="report.pdf"`);
+      res.setHeader('Content-Length', fileBuffer.length);
+      res.send(fileBuffer);
+    } catch (error: any) {
+      console.error('[TEMP-MEDIA] Error serving file:', error.message);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

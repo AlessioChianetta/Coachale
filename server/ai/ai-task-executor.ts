@@ -1655,7 +1655,105 @@ async function handleSendWhatsapp(
     console.warn(`${LOG_PREFIX} Errore nel recupero template WhatsApp:`, err.message);
   }
 
+  let templateVariableCount = 0;
+  let templateBodyText = '';
+  if (selectedTemplateId) {
+    try {
+      const whatsappConfigResult = await db.execute(sql`
+        SELECT twilio_account_sid, twilio_auth_token FROM consultant_whatsapp_config
+        WHERE consultant_id::text = ${task.consultant_id}::text AND is_active = true
+        ${task.whatsapp_config_id ? sql`AND id::text = ${task.whatsapp_config_id}::text` : sql``}
+        LIMIT 1
+      `);
+      const waCfg = whatsappConfigResult.rows[0] as any;
+      if (waCfg?.twilio_account_sid && waCfg?.twilio_auth_token) {
+        const twilio = (await import('twilio')).default;
+        const twilioClient = twilio(waCfg.twilio_account_sid, waCfg.twilio_auth_token);
+        const content = await twilioClient.content.v1.contents(selectedTemplateId).fetch();
+
+        if (content.variables && typeof content.variables === 'object') {
+          templateVariableCount = Object.keys(content.variables).length;
+        }
+
+        const whatsappTemplate = (content.types as any)?.['twilio/whatsapp']?.template;
+        if (whatsappTemplate?.components) {
+          const bodyComponent = whatsappTemplate.components.find((comp: any) => comp.type === 'BODY');
+          templateBodyText = bodyComponent?.text || '';
+        }
+        if (!templateBodyText) {
+          templateBodyText = (content.types as any)?.['twilio/text']?.body || '';
+        }
+
+        console.log(`📋 ${LOG_PREFIX} Template ${selectedTemplateId}: ${templateVariableCount} variabili, body: "${templateBodyText.substring(0, 80)}..."`);
+      }
+    } catch (tplErr: any) {
+      console.warn(`${LOG_PREFIX} Errore nel recupero struttura template: ${tplErr.message}`);
+      console.warn(`⚠️ ${LOG_PREFIX} Template verrà inviato senza variabili personalizzate (Twilio userà i valori di default)`);
+    }
+  }
+
   let messageText = _step.params?.message_summary || "";
+
+  let contentVariables: Record<string, string> | undefined;
+
+  if (selectedTemplateId && templateVariableCount > 0) {
+    try {
+      const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
+      console.log(`${LOG_PREFIX} Generating template variables using ${providerName}`);
+
+      const variablePrompt = `Devi generare i valori per le variabili di un template WhatsApp.
+
+Template: "${templateBodyText}"
+Numero variabili: ${templateVariableCount}
+
+Contesto cliente:
+- Nome: ${resolvedName || 'Cliente'}
+- Istruzione: ${task.ai_instruction}
+${task.additional_context ? `- Contesto aggiuntivo: ${task.additional_context}` : ''}
+${agentContextSection || ''}
+${reportData.title ? `- Report preparato: "${reportData.title}"` : ''}
+${reportData.summary ? `- Riepilogo report: ${reportData.summary.substring(0, 200)}` : ''}
+
+REGOLE:
+- La variabile {{1}} è SEMPRE il nome del cliente: "${resolvedName || 'Cliente'}"
+- Le altre variabili ({{2}}, {{3}}, ecc.) sono messaggi brevi e personalizzati basati sul contesto
+- ${reportData.title ? 'C\'è un report che verrà allegato come PDF nella chat. Menziona che troverà il report allegato qui in chat.' : 'Non menzionare report o email.'}
+- Ogni variabile deve essere BREVE (massimo 1-2 frasi)
+- NON usare newline (\\n) nei valori
+- Sii professionale e cordiale
+
+Rispondi SOLO con un JSON valido nel formato:
+${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 ? '{"1": "valore", "2": "valore"}' : `{${Array.from({length: templateVariableCount}, (_, i) => `"${i+1}": "valore"`).join(', ')}}`}`;
+
+      const resp = await withRetry(() => client.generateContent({
+        model: resolvedModel,
+        contents: [{ role: "user", parts: [{ text: variablePrompt }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
+      }));
+
+      const responseText = resp.response.text() || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        contentVariables = {};
+        contentVariables['1'] = resolvedName || 'Cliente';
+        for (let i = 2; i <= templateVariableCount; i++) {
+          const val = parsed[String(i)] || parsed[i];
+          if (val) {
+            contentVariables[String(i)] = String(val).replace(/[\n\r\t]/g, ' ').trim();
+          }
+        }
+        console.log(`✅ ${LOG_PREFIX} Template variables generated: ${JSON.stringify(contentVariables)}`);
+      }
+    } catch (varErr: any) {
+      console.warn(`${LOG_PREFIX} Failed to generate template variables: ${varErr.message}`);
+      contentVariables = { '1': resolvedName || 'Cliente' };
+      if (templateVariableCount >= 2) {
+        contentVariables['2'] = task.ai_instruction?.substring(0, 100) || 'la contatto per aggiornarla';
+      }
+      console.log(`⚠️ ${LOG_PREFIX} Using fallback variables: ${JSON.stringify(contentVariables)}`);
+    }
+  }
 
   if (!messageText) {
     try {
@@ -1665,9 +1763,9 @@ async function handleSendWhatsapp(
 ${agentContextSection || ''}
 Contesto: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
-${reportData.title ? `Report preparato: "${reportData.title}"` : ''}
+${reportData.title ? `Report preparato: "${reportData.title}" - verrà allegato come PDF nella chat WhatsApp.` : ''}
 ${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
-NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report, menziona che lo riceverà via email.`;
+NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title ? ' Menziona che troverà il report allegato qui in chat.' : ''}`;
 
       const resp = await withRetry(() => client.generateContent({
         model: resolvedModel,
@@ -1690,13 +1788,14 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
       {
         ...(task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {}),
         ...(selectedTemplateId ? { contentSid: selectedTemplateId } : {}),
+        ...(contentVariables ? { contentVariables } : {}),
       },
     );
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_sent",
       title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
-      description: `Messaggio: "${messageText.substring(0, 100)}..."`,
+      description: `Messaggio: "${messageText.substring(0, 100)}..."${contentVariables ? ` | Variabili: ${Object.keys(contentVariables).length}` : ''}`,
       icon: "💬",
       severity: "info",
       task_id: task.id,
@@ -1704,12 +1803,61 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
       contact_id: task.contact_id,
     });
 
+    let pdfAttached = false;
+    if (reportData && reportData.title) {
+      try {
+        const analysisData = previousResults.analyze_patterns || {};
+        const pdfBuffer = await generatePdfBuffer(reportData, analysisData, task);
+        console.log(`${LOG_PREFIX} PDF generated for WhatsApp: ${pdfBuffer.length} bytes`);
+
+        const crypto = await import('crypto');
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const token = crypto.randomBytes(16).toString('hex');
+        const tmpDir = '/tmp/wa-media';
+        await fs.mkdir(tmpDir, { recursive: true });
+        const filePath = path.join(tmpDir, `${token}.pdf`);
+        await fs.writeFile(filePath, pdfBuffer);
+
+        const rawDomain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
+        const domain = rawDomain.split(',')[0].trim();
+        const mediaUrl = `https://${domain}/api/temp-media/${token}`;
+        console.log(`${LOG_PREFIX} PDF saved at ${filePath}, accessible at ${mediaUrl}`);
+
+        setTimeout(async () => {
+          try {
+            await fs.unlink(filePath);
+            console.log(`🧹 ${LOG_PREFIX} Cleaned up temp PDF: ${filePath}`);
+          } catch {}
+        }, 10 * 60 * 1000);
+
+        const pdfMessageText = `📄 In allegato il report: "${reportData.title}"`;
+        const pdfMessageSid = await sendWhatsAppMessage(
+          task.consultant_id,
+          resolvedPhone,
+          pdfMessageText,
+          undefined,
+          {
+            ...(task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {}),
+            mediaUrl: mediaUrl,
+          },
+        );
+
+        pdfAttached = true;
+        console.log(`✅ ${LOG_PREFIX} PDF allegato inviato come secondo messaggio: ${pdfMessageSid}`);
+      } catch (pdfErr: any) {
+        console.error(`${LOG_PREFIX} PDF WhatsApp attachment failed: ${pdfErr.message}`);
+      }
+    }
+
     return {
       status: "sent",
       message_sid: messageSid,
       target_phone: resolvedPhone,
       message_preview: messageText.substring(0, 100),
       template_used: selectedTemplateId || 'plain_text',
+      variables_filled: contentVariables ? Object.keys(contentVariables).length : 0,
+      pdf_attached: pdfAttached,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} WhatsApp send failed:`, error.message);
