@@ -1563,19 +1563,38 @@ export default function SystemDocumentsSection() {
 
             {doc.injection_mode === 'file_search' && (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                {doc.file_search_stores && doc.file_search_stores.length > 0 ? (
-                  doc.file_search_stores.map((store, idx) => (
-                    <span key={idx} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <Database className="h-2.5 w-2.5" />
-                      {store.storeName || store.storeOwnerId}
-                      {store.documentStatus === 'indexed' ? (
-                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
-                      ) : (
-                        <Clock className="h-2.5 w-2.5 text-amber-500" />
+                {doc.file_search_stores && doc.file_search_stores.length > 0 ? (() => {
+                  const consultantStores = doc.file_search_stores!.filter(s => s.storeOwnerType !== 'client');
+                  const clientStores = doc.file_search_stores!.filter(s => s.storeOwnerType === 'client');
+                  const indexedCount = doc.file_search_stores!.filter(s => s.documentStatus === 'indexed').length;
+                  const totalCount = doc.file_search_stores!.length;
+                  return (
+                    <>
+                      {consultantStores.map((store, idx) => (
+                        <span key={`c-${idx}`} className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Database className="h-2.5 w-2.5" />
+                          {store.storeName || store.storeOwnerId}
+                          {store.documentStatus === 'indexed' ? (
+                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                          ) : (
+                            <Clock className="h-2.5 w-2.5 text-amber-500" />
+                          )}
+                        </span>
+                      ))}
+                      {clientStores.length > 0 && (
+                        <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Database className="h-2.5 w-2.5" />
+                          {clientStores.length} Private Store clienti
+                          {indexedCount === totalCount ? (
+                            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                          ) : (
+                            <span className="text-amber-600">{indexedCount}/{totalCount}</span>
+                          )}
+                        </span>
                       )}
-                    </span>
-                  ))
-                ) : (
+                    </>
+                  );
+                })() : (
                   <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                     <AlertCircle className="h-2.5 w-2.5" />
                     Non sincronizzato in nessuno store

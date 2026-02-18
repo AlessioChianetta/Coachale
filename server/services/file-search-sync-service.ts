@@ -1634,7 +1634,8 @@ export class FileSearchSyncService {
       let synced = 0, skipped = 0, failed = 0;
       try {
         const spDocsResult = await db.execute(
-          sql`SELECT id, title, target_client_assistant, target_whatsapp_agents, target_autonomous_agents
+          sql`SELECT id, title, target_client_assistant, target_whatsapp_agents, target_autonomous_agents,
+                     target_client_mode, target_client_ids, target_department_ids
               FROM system_prompt_documents
               WHERE consultant_id = ${consultantId}
                 AND is_active = true
