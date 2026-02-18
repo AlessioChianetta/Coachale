@@ -1764,13 +1764,19 @@ async function handleSendEmail(
   let contactEmail = clientData.contact?.email;
 
   if (!contactEmail) {
-    const consultantEmailResult = await db.execute(sql`
-      SELECT email FROM users WHERE id = ${task.consultant_id} LIMIT 1
-    `);
-    if (consultantEmailResult.rows.length > 0) {
-      contactEmail = (consultantEmailResult.rows[0] as any).email;
-      console.log(`${LOG_PREFIX} No contact email, using consultant email: ${contactEmail}`);
-    }
+    const [autonomyResult, userResult] = await Promise.all([
+      db.execute(sql`
+        SELECT consultant_email FROM ai_autonomy_settings
+        WHERE consultant_id = ${task.consultant_id} LIMIT 1
+      `),
+      db.execute(sql`
+        SELECT email FROM users WHERE id = ${task.consultant_id} LIMIT 1
+      `),
+    ]);
+    const autonomyEmail = (autonomyResult.rows[0] as any)?.consultant_email;
+    const userEmail = (userResult.rows[0] as any)?.email;
+    contactEmail = autonomyEmail || userEmail;
+    console.log(`${LOG_PREFIX} No contact email, using ${autonomyEmail ? 'autonomy settings' : 'account'} email: ${contactEmail}`);
   }
 
   if (!contactEmail) {
