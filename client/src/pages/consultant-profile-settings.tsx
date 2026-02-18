@@ -66,7 +66,7 @@ interface DetailedProfileData {
   toolsUsed: string;
   idealClientDescription: string;
   industriesServed: string;
-  targetAgeRange: string;
+  clientAgeRange: string;
   geographicFocus: string;
   consultationStyle: string;
   initialProcess: string;
@@ -102,7 +102,7 @@ const defaultDetailedData: DetailedProfileData = {
   toolsUsed: "",
   idealClientDescription: "",
   industriesServed: "",
-  targetAgeRange: "",
+  clientAgeRange: "",
   geographicFocus: "",
   consultationStyle: "",
   initialProcess: "",
@@ -188,7 +188,7 @@ export default function ConsultantProfileSettingsPage() {
         toolsUsed: detailedProfile.toolsUsed || "",
         idealClientDescription: detailedProfile.idealClientDescription || "",
         industriesServed: detailedProfile.industriesServed || "",
-        targetAgeRange: detailedProfile.targetAgeRange || "",
+        clientAgeRange: detailedProfile.clientAgeRange || "",
         geographicFocus: detailedProfile.geographicFocus || "",
         consultationStyle: detailedProfile.consultationStyle || "",
         initialProcess: detailedProfile.initialProcess || "",
@@ -809,8 +809,8 @@ export default function ConsultantProfileSettingsPage() {
                       <Label className="text-sm font-semibold">Fascia di Età Target</Label>
                       <Input
                         placeholder="30-60 anni"
-                        value={detailedFormData.targetAgeRange}
-                        onChange={(e) => handleDetailedChange("targetAgeRange", e.target.value)}
+                        value={detailedFormData.clientAgeRange}
+                        onChange={(e) => handleDetailedChange("clientAgeRange", e.target.value)}
                         className="h-11"
                       />
                     </div>
