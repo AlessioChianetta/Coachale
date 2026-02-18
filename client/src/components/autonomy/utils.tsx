@@ -358,9 +358,12 @@ export async function generateTaskPDF(task: AITask) {
       checkPageBreak(20);
 
       if (idx > 0) {
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(marginLeft, y, pageWidth - marginRight, y);
+        doc.setDrawColor(20, 80, 160);
+        doc.setLineWidth(0.4);
+        doc.line(marginLeft, y, marginLeft + contentWidth * 0.4, y);
+        doc.setDrawColor(180, 200, 230);
+        doc.setLineWidth(0.2);
+        doc.line(marginLeft + contentWidth * 0.4, y, pageWidth - marginRight, y);
         addSpacer(6);
       }
 
@@ -375,13 +378,17 @@ export async function generateTaskPDF(task: AITask) {
         if (item.subsections && Array.isArray(item.subsections)) {
           for (const sub of item.subsections) {
             checkPageBreak(12);
+            const subStartY = y - 4;
             const subTitle = `${sub.number || ''} ${cleanBoldMarkers(sub.title || '')}`.trim();
-            addText(subTitle, 11, { bold: true, color: [40, 50, 80], x: marginLeft + 5 });
+            addText(subTitle, 11, { bold: true, color: [40, 50, 80], x: marginLeft + 7 });
             addSpacer(2);
             if (sub.content) {
-              addText(sub.content, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 5 });
+              addText(sub.content, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 7 });
               addSpacer(3);
             }
+            doc.setDrawColor(100, 140, 200);
+            doc.setLineWidth(0.6);
+            doc.line(marginLeft + 4, subStartY, marginLeft + 4, y - 2);
           }
         }
       } else {
@@ -437,12 +444,14 @@ export async function generateTaskPDF(task: AITask) {
     if (fd.executive_summary) {
       checkPageBreak(25);
       doc.setFillColor(235, 242, 255);
-      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(fd.executive_summary), contentWidth - 10);
+      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(fd.executive_summary), contentWidth - 14);
       const boxH = summaryLines.length * 5 + 14;
       doc.rect(marginLeft - 2, y - 3, contentWidth + 4, boxH, 'F');
-      addText('Executive Summary', 12, { bold: true, color: [20, 50, 130] });
+      doc.setFillColor(20, 80, 160);
+      doc.rect(marginLeft - 2, y - 3, 2.5, boxH, 'F');
+      addText('Executive Summary', 12, { bold: true, color: [20, 50, 130], x: marginLeft + 4 });
       addSpacer(3);
-      addText(fd.executive_summary, 10.5, { color: [40, 40, 40], lineHeight: 5 });
+      addText(fd.executive_summary, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 4 });
       addSpacer(8);
     }
 
@@ -494,28 +503,36 @@ export async function generateTaskPDF(task: AITask) {
     }
 
     const body = fd.body || [];
+    let prevStepEndY = 0;
     body.forEach((item: any, idx: number) => {
       checkPageBreak(20);
       const stepNum = item.number || idx + 1;
 
+      if (idx > 0) {
+        doc.setDrawColor(180, 200, 230);
+        doc.setLineWidth(0.3);
+        doc.line(marginLeft + 4, prevStepEndY, marginLeft + 4, y - 6);
+      }
+
       doc.setFillColor(20, 80, 160);
-      doc.circle(marginLeft + 4, y - 1, 4, 'F');
-      doc.setFontSize(9);
+      doc.circle(marginLeft + 4, y - 1, 5, 'F');
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text(String(stepNum), marginLeft + 4, y + 0.5, { align: 'center' });
+      doc.text(String(stepNum), marginLeft + 4, y + 0.8, { align: 'center' });
 
       const stepTitle = cleanBoldMarkers(item.title || '');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 30, 30);
-      doc.text(stepTitle, marginLeft + 12, y);
+      doc.text(stepTitle, marginLeft + 13, y);
       addSpacer(7);
 
       if (item.content) {
-        addText(item.content, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 12 });
+        addText(item.content, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 13 });
         addSpacer(3);
       }
+      prevStepEndY = y;
       addSpacer(5);
     });
 
@@ -538,12 +555,14 @@ export async function generateTaskPDF(task: AITask) {
     if (fd.summary) {
       checkPageBreak(20);
       doc.setFillColor(245, 245, 248);
-      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(fd.summary), contentWidth - 10);
+      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(fd.summary), contentWidth - 14);
       const boxH = summaryLines.length * 5 + 14;
       doc.rect(marginLeft - 2, y - 3, contentWidth + 4, boxH, 'F');
-      addText('Riepilogo', 13, { bold: true, color: [30, 30, 30] });
+      doc.setFillColor(20, 80, 160);
+      doc.rect(marginLeft - 2, y - 3, 2.5, boxH, 'F');
+      addText('Riepilogo', 13, { bold: true, color: [30, 30, 30], x: marginLeft + 4 });
       addSpacer(3);
-      addText(fd.summary, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+      addText(fd.summary, 10.5, { color: [60, 60, 60], lineHeight: 5, x: marginLeft + 4 });
       addSpacer(8);
     }
 
@@ -551,6 +570,13 @@ export async function generateTaskPDF(task: AITask) {
     const body = fd.body || [];
     body.forEach((item: any, idx: number) => {
       checkPageBreak(15);
+
+      if (idx % 2 === 0) {
+        const itemLines = item.content ? doc.splitTextToSize(cleanBoldMarkers(item.content), contentWidth - 4) : [];
+        const bgH = itemLines.length * 5 + 20;
+        doc.setFillColor(248, 248, 250);
+        doc.rect(marginLeft - 2, y - 5, contentWidth + 4, bgH, 'F');
+      }
 
       if (!isDossierLike) {
         doc.setFillColor(20, 80, 160);
@@ -567,6 +593,15 @@ export async function generateTaskPDF(task: AITask) {
         addText(item.content, 10.5, { color: [40, 40, 40], lineHeight: 5 });
         addSpacer(3);
       }
+
+      if (idx < body.length - 1) {
+        doc.setDrawColor(20, 80, 160);
+        doc.setLineWidth(0.3);
+        doc.line(marginLeft, y + 2, marginLeft + contentWidth * 0.3, y + 2);
+        doc.setDrawColor(200, 210, 230);
+        doc.setLineWidth(0.15);
+        doc.line(marginLeft + contentWidth * 0.3, y + 2, pageWidth - marginRight, y + 2);
+      }
       addSpacer(5);
     });
 
@@ -575,12 +610,21 @@ export async function generateTaskPDF(task: AITask) {
       addText('Risultati Chiave', 13, { bold: true, color: [30, 100, 30] });
       addSpacer(3);
       for (const finding of fd.key_findings) {
-        checkPageBreak(8);
+        checkPageBreak(14);
         const findingText = typeof finding === 'string' ? finding : (finding.text || JSON.stringify(finding));
-        doc.setFillColor(40, 160, 60);
-        doc.circle(marginLeft + 1.5, y - 1.5, 1, 'F');
-        addText(findingText, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 6 });
-        addSpacer(2);
+        const findingLines = doc.splitTextToSize(cleanBoldMarkers(findingText), contentWidth - 16);
+        const cardH = findingLines.length * 5 + 8;
+        doc.setFillColor(240, 255, 240);
+        doc.rect(marginLeft, y - 4, contentWidth, cardH, 'F');
+        doc.setDrawColor(60, 180, 80);
+        doc.setLineWidth(0.4);
+        doc.rect(marginLeft, y - 4, contentWidth, cardH, 'S');
+        doc.setDrawColor(40, 160, 60);
+        doc.setLineWidth(0.5);
+        doc.line(marginLeft + 3, y - 0.5, marginLeft + 5, y + 1.5);
+        doc.line(marginLeft + 5, y + 1.5, marginLeft + 8, y - 2);
+        addText(findingText, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 12 });
+        addSpacer(4);
       }
       addSpacer(5);
     }
@@ -590,11 +634,30 @@ export async function generateTaskPDF(task: AITask) {
       addText('Raccomandazioni', 13, { bold: true, color: [30, 30, 130] });
       addSpacer(3);
       fd.recommendations.forEach((rec: any, i: number) => {
-        checkPageBreak(12);
+        checkPageBreak(16);
         const recText = typeof rec === 'string' ? rec : (rec.action || rec.text || JSON.stringify(rec));
         const priority = typeof rec === 'object' ? rec.priority : '';
-        const badge = priority === 'high' ? '[ALTA] ' : priority === 'medium' ? '[MEDIA] ' : priority === 'low' ? '[BASSA] ' : '';
-        addText(`${i + 1}. ${badge}${cleanBoldMarkers(recText)}`, 10.5, { bold: !!badge, color: [40, 40, 40], lineHeight: 5 });
+        if (priority) {
+          const pillW = 18;
+          const pillH = 5;
+          const pillX = marginLeft;
+          const pillY = y - 3.5;
+          if (priority === 'high') {
+            doc.setFillColor(220, 40, 40);
+          } else if (priority === 'medium') {
+            doc.setFillColor(230, 160, 30);
+          } else {
+            doc.setFillColor(40, 170, 70);
+          }
+          doc.rect(pillX, pillY, pillW, pillH, 'F');
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          const pillLabel = priority === 'high' ? 'ALTA' : priority === 'medium' ? 'MEDIA' : 'BASSA';
+          doc.text(pillLabel, pillX + pillW / 2, pillY + 3.5, { align: 'center' });
+          addSpacer(4);
+        }
+        addText(`${i + 1}. ${cleanBoldMarkers(recText)}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
         if (typeof rec === 'object' && rec.rationale) {
           addText(rec.rationale, 9.5, { color: [100, 100, 100], lineHeight: 4.5 });
         }
@@ -610,7 +673,10 @@ export async function generateTaskPDF(task: AITask) {
       fd.next_steps.forEach((step: any, i: number) => {
         checkPageBreak(8);
         const stepText = typeof step === 'string' ? step : (step.text || step.action || JSON.stringify(step));
-        addText(`☐ ${cleanBoldMarkers(stepText)}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
+        doc.setDrawColor(80, 120, 180);
+        doc.setLineWidth(0.4);
+        doc.rect(marginLeft + 1, y - 3, 3.5, 3.5, 'S');
+        addText(cleanBoldMarkers(stepText), 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 7 });
         addSpacer(2);
       });
       addSpacer(5);
@@ -625,23 +691,40 @@ export async function generateTaskPDF(task: AITask) {
       if (rep.summary) {
         checkPageBreak(20);
         doc.setFillColor(245, 245, 248);
-        const summaryLines = doc.splitTextToSize(cleanBoldMarkers(rep.summary), contentWidth - 10);
+        const summaryLines = doc.splitTextToSize(cleanBoldMarkers(rep.summary), contentWidth - 14);
         const boxH = summaryLines.length * 5 + 14;
         doc.rect(marginLeft - 2, y - 3, contentWidth + 4, boxH, 'F');
-        addText('Riepilogo', 13, { bold: true, color: [30, 30, 30] });
+        doc.setFillColor(20, 80, 160);
+        doc.rect(marginLeft - 2, y - 3, 2.5, boxH, 'F');
+        addText('Riepilogo', 13, { bold: true, color: [30, 30, 30], x: marginLeft + 4 });
         addSpacer(3);
-        addText(rep.summary, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+        addText(rep.summary, 10.5, { color: [60, 60, 60], lineHeight: 5, x: marginLeft + 4 });
         addSpacer(8);
       }
       if (rep.sections && Array.isArray(rep.sections)) {
-        for (const section of rep.sections) {
+        for (let secIdx = 0; secIdx < rep.sections.length; secIdx++) {
+          const section = rep.sections[secIdx];
           checkPageBreak(15);
+          if (secIdx % 2 === 0) {
+            const secContentLines = section.content ? doc.splitTextToSize(cleanBoldMarkers(section.content), contentWidth - 4) : [];
+            const secBgH = secContentLines.length * 5 + 18;
+            doc.setFillColor(248, 248, 250);
+            doc.rect(marginLeft - 2, y - 5, contentWidth + 4, secBgH, 'F');
+          }
           doc.setFillColor(20, 80, 160);
           doc.rect(marginLeft - 1, y - 4, 1, 7, 'F');
           addText(cleanBoldMarkers(section.heading || ''), 13, { bold: true, color: [30, 30, 30], x: marginLeft + 3 });
           addSpacer(3);
           if (section.content) {
             addText(section.content, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+          }
+          if (secIdx < rep.sections.length - 1) {
+            doc.setDrawColor(20, 80, 160);
+            doc.setLineWidth(0.3);
+            doc.line(marginLeft, y + 2, marginLeft + contentWidth * 0.3, y + 2);
+            doc.setDrawColor(200, 210, 230);
+            doc.setLineWidth(0.15);
+            doc.line(marginLeft + contentWidth * 0.3, y + 2, pageWidth - marginRight, y + 2);
           }
           addSpacer(6);
         }
@@ -651,11 +734,21 @@ export async function generateTaskPDF(task: AITask) {
         addText('Risultati Chiave', 13, { bold: true, color: [30, 100, 30] });
         addSpacer(3);
         for (const finding of rep.key_findings) {
-          checkPageBreak(8);
-          doc.setFillColor(40, 160, 60);
-          doc.circle(marginLeft + 1.5, y - 1.5, 1, 'F');
-          addText(typeof finding === 'string' ? finding : JSON.stringify(finding), 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 6 });
-          addSpacer(2);
+          checkPageBreak(14);
+          const fText = typeof finding === 'string' ? finding : JSON.stringify(finding);
+          const fLines = doc.splitTextToSize(cleanBoldMarkers(fText), contentWidth - 16);
+          const fCardH = fLines.length * 5 + 8;
+          doc.setFillColor(240, 255, 240);
+          doc.rect(marginLeft, y - 4, contentWidth, fCardH, 'F');
+          doc.setDrawColor(60, 180, 80);
+          doc.setLineWidth(0.4);
+          doc.rect(marginLeft, y - 4, contentWidth, fCardH, 'S');
+          doc.setDrawColor(40, 160, 60);
+          doc.setLineWidth(0.5);
+          doc.line(marginLeft + 3, y - 0.5, marginLeft + 5, y + 1.5);
+          doc.line(marginLeft + 5, y + 1.5, marginLeft + 8, y - 2);
+          addText(fText, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 12 });
+          addSpacer(4);
         }
         addSpacer(5);
       }
@@ -663,11 +756,26 @@ export async function generateTaskPDF(task: AITask) {
         checkPageBreak(15);
         addText('Raccomandazioni', 13, { bold: true, color: [30, 30, 130] });
         addSpacer(3);
-        for (const rec of rep.recommendations) {
-          checkPageBreak(12);
-          const priorityLabel = rec.priority === 'high' ? '[ALTA] ' : rec.priority === 'medium' ? '[MEDIA] ' : '[BASSA] ';
+        for (let ri = 0; ri < rep.recommendations.length; ri++) {
+          const rec = rep.recommendations[ri];
+          checkPageBreak(16);
+          const recPriority = typeof rec === 'object' ? rec.priority : '';
+          if (recPriority) {
+            const pW = 18; const pH = 5;
+            const pX = marginLeft; const pY = y - 3.5;
+            if (recPriority === 'high') doc.setFillColor(220, 40, 40);
+            else if (recPriority === 'medium') doc.setFillColor(230, 160, 30);
+            else doc.setFillColor(40, 170, 70);
+            doc.rect(pX, pY, pW, pH, 'F');
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            const pLabel = recPriority === 'high' ? 'ALTA' : recPriority === 'medium' ? 'MEDIA' : 'BASSA';
+            doc.text(pLabel, pX + pW / 2, pY + 3.5, { align: 'center' });
+            addSpacer(4);
+          }
           const recAction = typeof rec === 'string' ? rec : (rec.action || JSON.stringify(rec));
-          addText(`${priorityLabel}${cleanBoldMarkers(recAction)}`, 10.5, { bold: true, color: [40, 40, 40], lineHeight: 5 });
+          addText(`${ri + 1}. ${cleanBoldMarkers(recAction)}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
           if (typeof rec === 'object' && rec.rationale) {
             addText(rec.rationale, 9.5, { color: [100, 100, 100], lineHeight: 4.5 });
           }
@@ -681,7 +789,10 @@ export async function generateTaskPDF(task: AITask) {
         addSpacer(3);
         rep.next_steps.forEach((step: string, i: number) => {
           checkPageBreak(8);
-          addText(`${i + 1}. ${step}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
+          doc.setDrawColor(80, 120, 180);
+          doc.setLineWidth(0.4);
+          doc.rect(marginLeft + 1, y - 3, 3.5, 3.5, 'S');
+          addText(step, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 7 });
           addSpacer(2);
         });
         addSpacer(5);
@@ -790,7 +901,7 @@ export async function generateTaskPDF(task: AITask) {
         renderReport(formalDoc);
         break;
     }
-    if (formalDoc.footer?.signatures) {
+    if (formalDoc.footer?.signatures && docType === 'contract') {
       renderSignatures(formalDoc.footer);
     }
     if (formalDoc.footer?.notes) {
@@ -889,17 +1000,26 @@ export async function generateSummaryPDF(task: AITask) {
     if (report.summary) {
       checkPageBreak(20);
       doc.setFillColor(245, 245, 248);
-      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(report.summary), contentWidth - 10);
+      const summaryLines = doc.splitTextToSize(cleanBoldMarkers(report.summary), contentWidth - 14);
       const boxH = summaryLines.length * 5 + 14;
       doc.rect(marginLeft - 2, y - 3, contentWidth + 4, boxH, 'F');
-      addText('Riepilogo Esecutivo', 13, { bold: true, color: [30, 30, 30] });
+      doc.setFillColor(20, 80, 160);
+      doc.rect(marginLeft - 2, y - 3, 2.5, boxH, 'F');
+      addText('Riepilogo Esecutivo', 13, { bold: true, color: [30, 30, 30], x: marginLeft + 4 });
       addSpacer(3);
-      addText(report.summary, 10.5, { color: [60, 60, 60], lineHeight: 5 });
+      addText(report.summary, 10.5, { color: [60, 60, 60], lineHeight: 5, x: marginLeft + 4 });
       addSpacer(8);
     }
     if (report.sections && Array.isArray(report.sections)) {
-      for (const section of report.sections) {
+      for (let sIdx = 0; sIdx < report.sections.length; sIdx++) {
+        const section = report.sections[sIdx];
         checkPageBreak(15);
+        if (sIdx % 2 === 0) {
+          const sLines = section.content ? doc.splitTextToSize(cleanBoldMarkers(section.content), contentWidth - 4) : [];
+          const sBgH = sLines.length * 5 + 18;
+          doc.setFillColor(248, 248, 250);
+          doc.rect(marginLeft - 2, y - 5, contentWidth + 4, sBgH, 'F');
+        }
         doc.setFillColor(20, 80, 160);
         doc.rect(marginLeft - 1, y - 4, 1, 7, 'F');
         addText(cleanBoldMarkers(section.heading || ''), 13, { bold: true, color: [30, 30, 30], x: marginLeft + 3 });
@@ -915,11 +1035,21 @@ export async function generateSummaryPDF(task: AITask) {
       addText('Risultati Chiave', 13, { bold: true, color: [30, 100, 30] });
       addSpacer(3);
       for (const finding of report.key_findings) {
-        checkPageBreak(8);
-        doc.setFillColor(40, 160, 60);
-        doc.circle(marginLeft + 1.5, y - 1.5, 1, 'F');
-        addText(typeof finding === 'string' ? finding : JSON.stringify(finding), 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 6 });
-        addSpacer(2);
+        checkPageBreak(14);
+        const sfText = typeof finding === 'string' ? finding : JSON.stringify(finding);
+        const sfLines = doc.splitTextToSize(cleanBoldMarkers(sfText), contentWidth - 16);
+        const sfCardH = sfLines.length * 5 + 8;
+        doc.setFillColor(240, 255, 240);
+        doc.rect(marginLeft, y - 4, contentWidth, sfCardH, 'F');
+        doc.setDrawColor(60, 180, 80);
+        doc.setLineWidth(0.4);
+        doc.rect(marginLeft, y - 4, contentWidth, sfCardH, 'S');
+        doc.setDrawColor(40, 160, 60);
+        doc.setLineWidth(0.5);
+        doc.line(marginLeft + 3, y - 0.5, marginLeft + 5, y + 1.5);
+        doc.line(marginLeft + 5, y + 1.5, marginLeft + 8, y - 2);
+        addText(sfText, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 12 });
+        addSpacer(4);
       }
       addSpacer(5);
     }
@@ -927,11 +1057,26 @@ export async function generateSummaryPDF(task: AITask) {
       checkPageBreak(15);
       addText('Raccomandazioni', 13, { bold: true, color: [30, 30, 130] });
       addSpacer(3);
-      for (const rec of report.recommendations) {
-        checkPageBreak(12);
-        const priorityLabel = rec.priority === 'high' ? '[ALTA] ' : rec.priority === 'medium' ? '[MEDIA] ' : '[BASSA] ';
+      for (let ri = 0; ri < report.recommendations.length; ri++) {
+        const rec = report.recommendations[ri];
+        checkPageBreak(16);
+        const srPriority = typeof rec === 'object' ? rec.priority : '';
+        if (srPriority) {
+          const srW = 18; const srH = 5;
+          const srX = marginLeft; const srY = y - 3.5;
+          if (srPriority === 'high') doc.setFillColor(220, 40, 40);
+          else if (srPriority === 'medium') doc.setFillColor(230, 160, 30);
+          else doc.setFillColor(40, 170, 70);
+          doc.rect(srX, srY, srW, srH, 'F');
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          const srLabel = srPriority === 'high' ? 'ALTA' : srPriority === 'medium' ? 'MEDIA' : 'BASSA';
+          doc.text(srLabel, srX + srW / 2, srY + 3.5, { align: 'center' });
+          addSpacer(4);
+        }
         const recAction = typeof rec === 'string' ? rec : (rec.action || JSON.stringify(rec));
-        addText(`${priorityLabel}${cleanBoldMarkers(recAction)}`, 10.5, { bold: true, color: [40, 40, 40], lineHeight: 5 });
+        addText(`${ri + 1}. ${cleanBoldMarkers(recAction)}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
         if (typeof rec === 'object' && rec.rationale) {
           addText(rec.rationale, 9.5, { color: [100, 100, 100], lineHeight: 4.5 });
         }
@@ -945,7 +1090,10 @@ export async function generateSummaryPDF(task: AITask) {
       addSpacer(3);
       report.next_steps.forEach((step: string, i: number) => {
         checkPageBreak(8);
-        addText(`${i + 1}. ${step}`, 10.5, { color: [40, 40, 40], lineHeight: 5 });
+        doc.setDrawColor(80, 120, 180);
+        doc.setLineWidth(0.4);
+        doc.rect(marginLeft + 1, y - 3, 3.5, 3.5, 'S');
+        addText(step, 10.5, { color: [40, 40, 40], lineHeight: 5, x: marginLeft + 7 });
         addSpacer(2);
       });
       addSpacer(5);

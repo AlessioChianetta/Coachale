@@ -1466,58 +1466,123 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
+    const drawTwoToneDivider = (y: number) => {
+      const dividerMid = 50 + (545 - 50) * 0.4;
+      doc.save();
+      doc.moveTo(50, y).lineTo(dividerMid, y).strokeColor('#1450A0').lineWidth(1.5).stroke();
+      doc.moveTo(dividerMid, y).lineTo(545, y).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+      doc.restore();
+    };
+
     doc.fontSize(18).font('Helvetica-Bold').text(report.title || 'Report AI', { align: 'center' });
     doc.moveDown(0.3);
     doc.fontSize(10).font('Helvetica').fillColor('#666666')
       .text(`Cliente: ${task.contact_name || 'N/A'}  |  Data: ${new Date().toLocaleDateString('it-IT')}`, { align: 'center' });
     doc.moveDown(0.5);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+    drawTwoToneDivider(doc.y);
     doc.moveDown(1);
 
     if (report.summary) {
+      const summaryY = doc.y;
+      doc.save();
+      doc.rect(50, summaryY - 2, 8.5, 0).fill(20, 80, 160);
+      const summaryText = report.summary;
       doc.fillColor('#333333').fontSize(9).font('Helvetica-Oblique')
-        .text(report.summary, { align: 'justify' });
+        .text(summaryText, 65, summaryY, { width: 480, align: 'justify' });
+      const summaryEndY = doc.y;
+      doc.rect(50, summaryY - 2, 8.5, summaryEndY - summaryY + 4).fill(20, 80, 160);
+      doc.restore();
+      doc.y = summaryEndY;
       doc.moveDown(1);
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#eeeeee').stroke();
+      drawTwoToneDivider(doc.y);
       doc.moveDown(1);
     }
 
     if (report.sections && Array.isArray(report.sections)) {
       report.sections.forEach((section: any, idx: number) => {
         if (doc.y > 700) doc.addPage();
+        const isAlt = idx % 2 === 1;
+        if (isAlt) {
+          doc.save();
+          doc.rect(45, doc.y - 5, 510, 0).fill('#f7f7f7');
+        }
+        const sectionStartY = doc.y;
         doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold')
           .text(`${idx + 1}. ${section.heading}`, { align: 'left' });
         doc.moveDown(0.5);
         doc.fillColor('#333333').fontSize(10).font('Helvetica')
           .text(section.content, { align: 'justify', lineGap: 3 });
-        doc.moveDown(1.2);
+        if (isAlt) {
+          const sectionH = doc.y - sectionStartY + 10;
+          doc.rect(45, sectionStartY - 5, 510, sectionH).fill('#f7f7f7');
+          doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold')
+            .text(`${idx + 1}. ${section.heading}`, 50, sectionStartY, { align: 'left' });
+          doc.moveDown(0.5);
+          doc.fillColor('#333333').fontSize(10).font('Helvetica')
+            .text(section.content, 50, undefined as any, { align: 'justify', lineGap: 3 });
+          doc.restore();
+        }
+        doc.moveDown(0.6);
+        if (idx < report.sections.length - 1) {
+          drawTwoToneDivider(doc.y);
+        }
+        doc.moveDown(0.6);
       });
     }
 
     if (report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0) {
       if (doc.y > 650) doc.addPage();
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      drawTwoToneDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Risultati Chiave');
       doc.moveDown(0.5);
       for (const f of report.key_findings) {
-        doc.fillColor('#333333').fontSize(10).font('Helvetica').text(`•  ${f}`, { indent: 10, lineGap: 2 });
-        doc.moveDown(0.4);
+        if (doc.y > 720) doc.addPage();
+        const cardY = doc.y;
+        doc.save();
+        const textHeight = doc.heightOfString(f, { width: 445, fontSize: 10 });
+        const cardH = Math.max(textHeight + 14, 28);
+        doc.rect(60, cardY, 485, cardH).lineWidth(0.5).fillAndStroke('#F0FFF0', '#8BC48B');
+        doc.fillColor('#2E7D32').fontSize(10).font('Helvetica-Bold')
+          .text('✓', 66, cardY + 5, { width: 14 });
+        doc.fillColor('#333333').fontSize(10).font('Helvetica')
+          .text(f, 82, cardY + 5, { width: 455, lineGap: 2 });
+        doc.restore();
+        doc.y = cardY + cardH + 6;
       }
       doc.moveDown(0.8);
     }
 
     if (report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
       if (doc.y > 650) doc.addPage();
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      drawTwoToneDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Raccomandazioni');
       doc.moveDown(0.5);
       for (const r of report.recommendations) {
-        const priority = r.priority === 'high' ? '[ALTA]' : r.priority === 'medium' ? '[MEDIA]' : '[BASSA]';
-        doc.fillColor('#1a1a1a').fontSize(10).font('Helvetica-Bold').text(`${priority} ${r.action}`, { indent: 10 });
+        if (doc.y > 700) doc.addPage();
+        const recY = doc.y;
+        doc.save();
+        let badgeColor: [number, number, number];
+        let badgeText: string;
+        let badgeW: number;
+        if (r.priority === 'high') {
+          badgeColor = [220, 40, 40]; badgeText = 'ALTA'; badgeW = 38;
+        } else if (r.priority === 'medium') {
+          badgeColor = [230, 160, 30]; badgeText = 'MEDIA'; badgeW = 42;
+        } else {
+          badgeColor = [40, 170, 70]; badgeText = 'BASSA'; badgeW = 44;
+        }
+        doc.roundedRect(60, recY, badgeW, 15, 3).fill(badgeColor[0], badgeColor[1], badgeColor[2]);
+        doc.fillColor('#ffffff').fontSize(7).font('Helvetica-Bold')
+          .text(badgeText, 60, recY + 3, { width: badgeW, align: 'center' });
+        doc.restore();
+        doc.fillColor('#1a1a1a').fontSize(10).font('Helvetica-Bold')
+          .text(r.action, 60 + badgeW + 8, recY + 1, { width: 485 - badgeW - 8 });
         if (r.rationale) {
-          doc.fillColor('#555555').fontSize(9).font('Helvetica').text(`→ ${r.rationale}`, { indent: 20, lineGap: 2 });
+          doc.moveDown(0.2);
+          doc.fillColor('#555555').fontSize(9).font('Helvetica')
+            .text(`→ ${r.rationale}`, 68 + badgeW, undefined as any, { width: 477 - badgeW, lineGap: 2 });
         }
         doc.moveDown(0.5);
       }
@@ -1526,12 +1591,18 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
 
     if (report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0) {
       if (doc.y > 650) doc.addPage();
-      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+      drawTwoToneDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Prossimi Passi');
       doc.moveDown(0.5);
       report.next_steps.forEach((s: string, i: number) => {
-        doc.fillColor('#333333').fontSize(10).font('Helvetica').text(`${i + 1}. ${s}`, { indent: 10, lineGap: 2 });
+        if (doc.y > 720) doc.addPage();
+        const stepY = doc.y;
+        doc.save();
+        doc.rect(60, stepY, 11, 11).lineWidth(0.8).strokeColor('#1450A0').stroke();
+        doc.restore();
+        doc.fillColor('#333333').fontSize(10).font('Helvetica')
+          .text(s, 78, stepY, { width: 467, lineGap: 2 });
         doc.moveDown(0.4);
       });
     }
@@ -1574,6 +1645,14 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
       }
     };
 
+    const drawTwoToneDivider = (y: number) => {
+      const dividerMid = 55 + contentWidth * 0.4;
+      doc.save();
+      doc.moveTo(55, y).lineTo(dividerMid, y).strokeColor(DARK_BLUE).lineWidth(1.5).stroke();
+      doc.moveTo(dividerMid, y).lineTo(pageWidth - 55, y).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+      doc.restore();
+    };
+
     doc.save();
     doc.rect(0, 0, pageWidth, 110).fill(DARK_BLUE);
     doc.restore();
@@ -1612,6 +1691,8 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
     doc.moveTo(55, doc.y).lineTo(pageWidth - 55, doc.y).strokeColor(DARK_BLUE).lineWidth(1.5).stroke();
     doc.moveDown(1);
 
+    let lastStepBottomY = -1;
+
     for (let idx = 0; idx < body.length; idx++) {
       const item = body[idx];
       checkPageBreak(100);
@@ -1627,8 +1708,13 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
         doc.moveDown(0.2);
         doc.moveTo(55, doc.y).lineTo(200, doc.y).strokeColor(ACCENT_BLUE).lineWidth(0.5).stroke();
       } else if (itemType === 'step') {
-        doc.save();
         const stepY = doc.y;
+        if (lastStepBottomY > 0 && lastStepBottomY < stepY) {
+          doc.save();
+          doc.moveTo(70, lastStepBottomY).lineTo(70, stepY).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+          doc.restore();
+        }
+        doc.save();
         doc.rect(55, stepY, 30, 22).fill(DARK_BLUE);
         doc.fillColor('#ffffff').fontSize(11).font('Helvetica-Bold')
           .text(itemNumber, 55, stepY + 5, { width: 30, align: 'center' });
@@ -1636,7 +1722,9 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
         doc.fillColor(DARK_BLUE).fontSize(12).font('Helvetica-Bold')
           .text(itemTitle, 95, stepY + 3, { width: contentWidth - 40 });
         doc.y = Math.max(doc.y, stepY + 26);
+        lastStepBottomY = doc.y;
       } else {
+        lastStepBottomY = -1;
         const sectionPrefix = itemNumber ? `${itemNumber}. ` : '';
         doc.fillColor(DARK_BLUE).fontSize(12).font('Helvetica-Bold')
           .text(`${sectionPrefix}${itemTitle}`, 55, doc.y, { width: contentWidth });
@@ -1654,10 +1742,17 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
       if (item.items && Array.isArray(item.items)) {
         doc.moveDown(0.3);
         for (const listItem of item.items) {
-          checkPageBreak(30);
+          checkPageBreak(35);
           const bulletText = typeof listItem === 'string' ? listItem : (listItem.content || listItem.text || JSON.stringify(listItem));
+          const cardY = doc.y;
+          doc.save();
+          const cardTextH = doc.heightOfString(bulletText, { width: contentWidth - 40, fontSize: 9.5 });
+          const cardH = Math.max(cardTextH + 10, 22);
+          doc.rect(65, cardY, contentWidth - 20, cardH).lineWidth(0.5).fillAndStroke('#FAFAFA', '#D0D8E8');
           doc.fillColor(TEXT_SECONDARY).fontSize(9.5).font('Helvetica')
-            .text(`  •  ${bulletText}`, 65, doc.y, { width: contentWidth - 20, lineGap: 2 });
+            .text(bulletText, 72, cardY + 5, { width: contentWidth - 34, lineGap: 2 });
+          doc.restore();
+          doc.y = cardY + cardH + 4;
         }
       }
 
@@ -1665,15 +1760,16 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
         for (const sub of item.subsections) {
           doc.moveDown(0.4);
           checkPageBreak(50);
+          const subStartY = doc.y;
           if (sub.title) {
             const subPrefix = sub.number ? `${sub.number}  ` : '';
             doc.fillColor(ACCENT_BLUE).fontSize(10).font('Helvetica-Bold')
-              .text(`${subPrefix}${sub.title}`, 70, doc.y, { width: contentWidth - 25 });
+              .text(`${subPrefix}${sub.title}`, 75, doc.y, { width: contentWidth - 30 });
           }
           if (sub.content) {
             doc.moveDown(0.2);
             doc.fillColor(TEXT_SECONDARY).fontSize(9.5).font('Helvetica')
-              .text(sub.content, 70, doc.y, { width: contentWidth - 25, align: 'justify', lineGap: 2.5 });
+              .text(sub.content, 75, doc.y, { width: contentWidth - 30, align: 'justify', lineGap: 2.5 });
           }
           if (sub.items && Array.isArray(sub.items)) {
             doc.moveDown(0.2);
@@ -1684,10 +1780,18 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
                 .text(`    ◦  ${siText}`, 80, doc.y, { width: contentWidth - 35, lineGap: 2 });
             }
           }
+          const subEndY = doc.y;
+          doc.save();
+          doc.moveTo(68, subStartY).lineTo(68, subEndY).strokeColor(ACCENT_BLUE).lineWidth(1.5).stroke();
+          doc.restore();
         }
       }
 
-      doc.moveDown(1.2);
+      doc.moveDown(0.6);
+      if (idx < body.length - 1) {
+        drawTwoToneDivider(doc.y);
+      }
+      doc.moveDown(0.6);
     }
 
     if (footer.notes) {
@@ -1695,14 +1799,22 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
       doc.moveDown(1);
       doc.moveTo(55, doc.y).lineTo(pageWidth - 55, doc.y).strokeColor(BORDER_LIGHT).lineWidth(0.5).stroke();
       doc.moveDown(0.5);
+      const notesY = doc.y;
       doc.fillColor(TEXT_MUTED).fontSize(8).font('Helvetica-Oblique')
-        .text(footer.notes, 55, doc.y, { width: contentWidth, align: 'left', lineGap: 2 });
+        .text(footer.notes, 68, notesY, { width: contentWidth - 13, align: 'left', lineGap: 2 });
+      const notesEndY = doc.y;
+      doc.save();
+      doc.rect(55, notesY - 2, 6, notesEndY - notesY + 4).fill(ACCENT_BLUE);
+      doc.restore();
+      doc.y = notesEndY;
       doc.moveDown(1);
     }
 
     if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0 && docType === 'contract') {
       checkPageBreak(120);
       doc.moveDown(1.5);
+      drawTwoToneDivider(doc.y);
+      doc.moveDown(0.8);
       doc.fillColor(DARK_BLUE).fontSize(11).font('Helvetica-Bold').text('FIRME', { align: 'center' });
       doc.moveDown(1);
 
