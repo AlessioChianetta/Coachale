@@ -811,7 +811,7 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id, preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, agent_config_id } = req.body;
+    const { ai_instruction, task_category, priority, contact_name, contact_phone, client_id, preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, agent_config_id, execution_mode } = req.body;
 
     if (!ai_instruction || typeof ai_instruction !== "string" || !ai_instruction.trim()) {
       return res.status(400).json({ error: "ai_instruction is required" });
@@ -848,11 +848,11 @@ router.post("/tasks", authenticateToken, requireAnyRole(["consultant", "super_ad
       INSERT INTO ai_scheduled_tasks (
         id, consultant_id, task_type, task_category, ai_instruction, status,
         scheduled_at, timezone, origin_type, priority, contact_name, contact_phone, contact_id,
-        preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, whatsapp_config_id
+        preferred_channel, tone, urgency, scheduled_datetime, objective, additional_context, voice_template_suggestion, language, whatsapp_config_id, execution_mode
       ) VALUES (
         ${taskId}, ${consultantId}, 'ai_task', ${task_category}, ${ai_instruction.trim()}, 'scheduled',
         NOW(), 'Europe/Rome', 'manual', ${taskPriority}, ${contact_name || null}, ${sanitizedPhone || ''}, ${client_id || null},
-        ${preferred_channel || null}, ${tone || null}, ${urgency || 'normal'}, ${scheduled_datetime ? new Date(scheduled_datetime) : null}, ${objective || null}, ${additional_context || null}, ${voice_template_suggestion || null}, ${language || 'it'}, ${agent_config_id || null}
+        ${preferred_channel || null}, ${tone || null}, ${urgency || 'normal'}, ${scheduled_datetime ? new Date(scheduled_datetime) : null}, ${objective || null}, ${additional_context || null}, ${voice_template_suggestion || null}, ${language || 'it'}, ${agent_config_id || null}, ${execution_mode === 'assisted' ? 'assisted' : 'autonomous'}
       )
       RETURNING *
     `);
@@ -887,7 +887,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
       if (statusFilter === 'active') {
         conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
       } else if (statusFilter === 'paused') {
-        conditions.push(sql`status IN ('paused', 'draft')`);
+        conditions.push(sql`status IN ('paused', 'draft', 'waiting_input')`);
       } else if (statusFilter === 'cancelled') {
         conditions.push(sql`status = 'cancelled'`);
       } else {
@@ -1003,7 +1003,7 @@ router.get("/tasks-stats", authenticateToken, requireAnyRole(["consultant", "sup
           COUNT(*) FILTER (WHERE status IN ('scheduled', 'in_progress', 'approved'))::int as active,
           COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
           COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
-          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval', 'deferred'))::int as pending,
+          COUNT(*) FILTER (WHERE status IN ('paused', 'draft', 'waiting_approval', 'deferred', 'waiting_input'))::int as pending,
           COUNT(*) FILTER (WHERE status = 'waiting_approval')::int as waiting_approval,
           COUNT(*) FILTER (WHERE status = 'scheduled')::int as scheduled,
           COUNT(*) FILTER (WHERE status = 'in_progress')::int as in_progress,
@@ -1204,6 +1204,72 @@ router.delete("/chat/history", authenticateToken, requireAnyRole(["consultant", 
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error clearing chat history:", error);
     return res.status(500).json({ error: "Failed to clear chat history" });
+  }
+});
+
+router.post("/tasks/:taskId/resume", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const { taskId } = req.params;
+    const { consultant_feedback } = req.body;
+
+    if (!consultant_feedback?.trim()) {
+      return res.status(400).json({ error: 'Feedback is required' });
+    }
+
+    const taskResult = await db.execute(sql`
+      SELECT * FROM ai_scheduled_tasks 
+      WHERE id = ${taskId} AND consultant_id::text = ${consultantId}::text AND status = 'waiting_input'
+    `);
+
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Task not found or not waiting for input' });
+    }
+
+    const task = taskResult.rows[0] as any;
+    const interactionHistory = Array.isArray(task.interaction_history) ? task.interaction_history : [];
+    const pausedAtStep = task.result_data?.paused_at_step || 0;
+
+    interactionHistory.push({
+      step: pausedAtStep,
+      feedback: consultant_feedback,
+      timestamp: new Date().toISOString()
+    });
+
+    const updatedContext = [
+      task.additional_context || '',
+      `\n\n[FEEDBACK CONSULENTE dopo step ${pausedAtStep}]: ${consultant_feedback}`
+    ].join('');
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'scheduled',
+          scheduled_at = NOW(),
+          interaction_history = ${JSON.stringify(interactionHistory)}::jsonb,
+          additional_context = ${updatedContext},
+          result_summary = ${'Ripresa esecuzione con il tuo feedback...'},
+          updated_at = NOW()
+      WHERE id = ${taskId}
+    `);
+
+    await logActivity(consultantId, {
+      event_type: 'task_resumed',
+      title: 'Task ripreso con il tuo input',
+      description: `Feedback: "${consultant_feedback.substring(0, 200)}"`,
+      icon: '▶️',
+      severity: 'info',
+      task_id: taskId,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+    });
+
+    res.json({ success: true, message: 'Task resumed' });
+  } catch (error: any) {
+    console.error('Error resuming task:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

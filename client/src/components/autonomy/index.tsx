@@ -473,8 +473,8 @@ export default function ConsultantAIAutonomyPage() {
     enabled: activeTab === "dashboard",
     refetchInterval: (query) => {
       const data = query.state.data as TasksResponse | undefined;
-      const hasInProgress = data?.tasks?.some(t => t.status === 'in_progress');
-      return hasInProgress ? 8000 : 30000;
+      const hasInProgress = data?.tasks?.some(t => t.status === 'in_progress' || t.status === 'waiting_input');
+      return hasInProgress ? 3000 : 20000;
     },
   });
 
@@ -488,7 +488,8 @@ export default function ConsultantAIAutonomyPage() {
     enabled: !!selectedTaskId,
     refetchInterval: (query) => {
       const data = query.state.data as TaskDetailResponse | undefined;
-      return data?.task?.status === 'in_progress' ? 2000 : false;
+      const st = data?.task?.status;
+      return (st === 'in_progress' || st === 'waiting_input') ? 2000 : false;
     },
   });
 

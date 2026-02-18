@@ -1037,6 +1037,43 @@ function DashboardTab({
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Modalità Esecuzione</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={newTask.execution_mode === 'autonomous' ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn(
+                        "flex-1 gap-2",
+                        newTask.execution_mode === 'autonomous' && "bg-gradient-to-r from-purple-600 to-indigo-600"
+                      )}
+                      onClick={() => setNewTask(prev => ({ ...prev, execution_mode: 'autonomous' }))}
+                    >
+                      <Zap className="h-4 w-4" />
+                      Automatica
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={newTask.execution_mode === 'assisted' ? 'default' : 'outline'}
+                      size="sm"
+                      className={cn(
+                        "flex-1 gap-2",
+                        newTask.execution_mode === 'assisted' && "bg-gradient-to-r from-amber-500 to-orange-500"
+                      )}
+                      onClick={() => setNewTask(prev => ({ ...prev, execution_mode: 'assisted' }))}
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Assistita
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {newTask.execution_mode === 'assisted' 
+                      ? "L'AI si fermerà dopo ogni step per ricevere le tue indicazioni prima di continuare."
+                      : "L'AI eseguirà tutti gli step autonomamente senza interruzioni."}
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-3 pt-2">
                   <Button
                     onClick={onCreateTask}
@@ -2537,6 +2574,83 @@ function DashboardTab({
                       <p className="text-sm font-semibold text-foreground mb-2">Riepilogo</p>
                       <p className="text-[15px] text-muted-foreground leading-[1.8]">{task.result_summary}</p>
                     </div>
+                  )}
+
+                  {taskDetailData?.task?.status === 'waiting_input' && (
+                    <Card className="border-amber-300 dark:border-amber-600 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 mb-6">
+                      <CardContent className="pt-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                            <UserCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-amber-800 dark:text-amber-200">In attesa del tuo input</h4>
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              Rivedi i risultati qui sopra e fornisci indicazioni per i prossimi step
+                            </p>
+                          </div>
+                        </div>
+                        <Textarea
+                          id="assisted-feedback"
+                          placeholder="Es: Concentrati di più sull'aspetto finanziario... / Approfondisci il punto 3... / Va bene, continua così..."
+                          className="min-h-[80px] border-amber-200 dark:border-amber-700 focus:border-amber-400"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white gap-2"
+                            onClick={async () => {
+                              const textarea = document.getElementById('assisted-feedback') as HTMLTextAreaElement;
+                              const feedback = textarea?.value?.trim();
+                              if (!feedback) {
+                                toast({ title: "Inserisci il tuo feedback", variant: "destructive" });
+                                return;
+                              }
+                              try {
+                                const res = await fetch(`/api/ai-autonomy/tasks/${taskDetailData.task.id}/resume`, {
+                                  method: 'POST',
+                                  headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ consultant_feedback: feedback })
+                                });
+                                if (!res.ok) throw new Error('Failed to resume');
+                                toast({ title: "Task ripreso!", description: "L'AI continuerà con le tue indicazioni." });
+                                textarea.value = '';
+                                queryClient.invalidateQueries({ queryKey: ['/api/ai-autonomy/tasks'] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${taskDetailData.task.id}`] });
+                              } catch (err) {
+                                toast({ title: "Errore", description: "Impossibile riprendere il task", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Play className="h-4 w-4" />
+                            Continua Esecuzione
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/ai-autonomy/tasks/${taskDetailData.task.id}/resume`, {
+                                  method: 'POST',
+                                  headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ consultant_feedback: 'Procedi come ritieni meglio, senza modifiche.' })
+                                });
+                                if (!res.ok) throw new Error('Failed');
+                                toast({ title: "Task ripreso!", description: "L'AI continuerà autonomamente." });
+                                queryClient.invalidateQueries({ queryKey: ['/api/ai-autonomy/tasks'] });
+                                queryClient.invalidateQueries({ queryKey: [`/api/ai-autonomy/tasks/${taskDetailData.task.id}`] });
+                              } catch (err) {
+                                toast({ title: "Errore", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Zap className="h-4 w-4" />
+                            Continua Senza Modifiche
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
 
                   {hasResults ? (

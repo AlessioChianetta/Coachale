@@ -794,6 +794,23 @@ async function handleGenerateReport(
   const prompt = `${reportIdentity}
 ${agentContextSection || ''}
 
+CLASSIFICAZIONE DOCUMENTO - Analizza l'istruzione del task e classifica il tipo di documento da generare:
+- "contract": Accordi, contratti, termini e condizioni, NDA, lettere di incarico → Usa articoli/commi, linguaggio legale formale, spazi firma
+- "market_research": Ricerche di mercato, analisi competitiva, benchmark → Executive summary, dati/statistiche, grafici testuali, fonti
+- "guide": Guide pratiche, ricette, tutorial, procedure operative → Step numerati, prerequisiti, note, consigli pratici
+- "strategic_report": Report strategici, business plan, piani d'azione → Sommario esecutivo, analisi SWOT, KPI, timeline
+- "dossier": Dossier informativi, brief, schede tecniche → Sezioni tematiche strutturate, riferimenti, allegati
+- "brief": Brief creativi, brief di progetto, specifiche → Obiettivi, target, deliverables, vincoli, timeline
+- "analysis": Analisi generiche, valutazioni, audit → Metodologia, risultati, conclusioni, raccomandazioni
+
+IMPORTANTE per il campo "formal_document":
+- Se il tipo è "contract": usa body items con type="article", numbering formale (Art. 1, Art. 2...), linguaggio giuridico italiano, includi SEMPRE signature_block nel footer con spazi per firma di entrambe le parti
+- Se il tipo è "market_research": usa body items con type="section", includi dati numerici concreti, percentuali, fonti citate
+- Se il tipo è "guide": usa body items con type="step", numbering sequenziale, istruzioni chiare e concrete
+- Se il tipo è "strategic_report": usa type="section" con analisi approfondite, KPI misurabili, timeline
+- Per TUTTI i tipi: il formal_document deve essere un documento PROFESSIONALE, COMPLETO e AUTONOMO (leggibile senza il riepilogo)
+- Il "summary" è per il consulente (dashboard), il "formal_document" è il deliverable da consegnare al cliente
+
 REGOLA FONDAMENTALE: Il report deve essere ESAUSTIVO e LUNGO. Ogni sezione deve contenere ALMENO 500 caratteri di contenuto ricco e dettagliato. USA SEMPRE I DATI REALI E SPECIFICI estratti dai documenti privati: numeri, percentuali, nomi, date, importi concreti. NON usare MAI riferimenti generici come "[CONSULENZA PRIVATA]" o "[DOCUMENTO]" - integra i dati direttamente nel testo con cifre e fatti reali. NON abbreviare MAI il contenuto - il consulente ha bisogno di un dossier completo con dati concreti, non di un riassunto generico.
 
 ${_step.params?.custom_sections && Array.isArray(_step.params.custom_sections) && _step.params.custom_sections.length > 0
@@ -842,7 +859,41 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
       "rationale": "motivazione dettagliata basata sui dati e citazioni"
     }
   ],
-  "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", "passo successivo 3", "passo successivo 4"]
+  "next_steps": ["passo successivo concreto 1 con timeline", "passo successivo 2", "passo successivo 3", "passo successivo 4"],
+  "document_type": "contract|market_research|guide|strategic_report|dossier|brief|analysis",
+  "formal_document": {
+    "type": "contract|market_research|guide|strategic_report|dossier|brief|analysis",
+    "header": {
+      "title": "Titolo formale del documento",
+      "subtitle": "Sottotitolo opzionale",
+      "parties": ["Parte 1 (es. Fornitore: Nome)", "Parte 2 (es. Cliente: Nome)"],
+      "date": "Data del documento",
+      "reference_number": "Ref opzionale"
+    },
+    "body": [
+      {
+        "type": "article|section|step|paragraph|table|signature_block|disclaimer",
+        "number": "1",
+        "title": "Titolo articolo/sezione",
+        "content": "Contenuto completo e dettagliato",
+        "subsections": [
+          {
+            "number": "1.1",
+            "title": "Sotto-sezione opzionale",
+            "content": "Contenuto sotto-sezione"
+          }
+        ]
+      }
+    ],
+    "footer": {
+      "signatures": [
+        {"role": "Il Fornitore", "name": "Nome Fornitore", "line": true},
+        {"role": "Il Cliente", "name": "Nome Cliente", "line": true}
+      ],
+      "notes": "Note legali, disclaimers, o informazioni aggiuntive",
+      "location_date": "Luogo e data per firma"
+    }
+  }
 }`;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
@@ -852,7 +903,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await client.generateContent({
       model: resolvedModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 32768 },
     });
   });
 

@@ -545,9 +545,14 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
   console.log(`   📋 result_data=${JSON.stringify(task.result_data)}`);
   
   try {
+    const taskMeta = await db.execute(sql`
+      SELECT execution_mode FROM ai_scheduled_tasks WHERE id = ${task.id}
+    `);
+    const executionMode = (taskMeta.rows[0] as any)?.execution_mode || 'autonomous';
+
     const skipGuardrails = task.result_data && typeof task.result_data === 'object' && (task.result_data as any).skip_guardrails === true;
     
-    console.log(`🤖 [AI-SCHEDULER] STEP 4a: skip_guardrails=${skipGuardrails}, ai_role=${task.ai_role}`);
+    console.log(`🤖 [AI-SCHEDULER] STEP 4a: skip_guardrails=${skipGuardrails}, ai_role=${task.ai_role}, execution_mode=${executionMode}`);
     
     if (skipGuardrails) {
       console.log(`🔓 [AI-SCHEDULER] STEP 4a: Using canExecuteManually (skips working hours + autonomy level)`);
@@ -806,7 +811,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
     let completedSteps = 0;
     let failedStep: string | null = null;
     
-    for (let i = 0; i < totalSteps; i++) {
+    let startStepIndex = 0;
+    const existingResults = task.result_data?.results || {};
+    if (Object.keys(existingResults).length > 0 && task.result_data?.paused_at_step) {
+      startStepIndex = task.result_data.paused_at_step;
+      Object.assign(allResults, existingResults);
+      completedSteps = startStepIndex;
+      console.log(`▶️ [AI-SCHEDULER] ASSISTED MODE RESUME: Continuing from step ${startStepIndex + 1}/${totalSteps}`);
+    }
+
+    for (let i = startStepIndex; i < totalSteps; i++) {
       const step = executionPlan[i];
       const stepName = step.action || `step_${i + 1}`;
       
@@ -842,6 +856,32 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         completedSteps++;
         
         console.log(`✅ [AI-SCHEDULER] Step ${i + 1}/${totalSteps} completed in ${stepResult.duration_ms}ms`);
+
+        if (executionMode === 'assisted' && i < totalSteps - 1) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks 
+            SET status = 'waiting_input',
+                execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
+                result_data = COALESCE(result_data, '{}'::jsonb) || ${JSON.stringify({ steps_completed: completedSteps, total_steps: totalSteps, results: allResults, paused_at_step: i + 1 })}::jsonb,
+                result_summary = ${'In attesa del tuo input dopo lo step ' + (i + 1) + '/' + totalSteps + ': ' + stepName},
+                updated_at = NOW()
+            WHERE id = ${task.id}
+          `);
+          
+          await logActivity(task.consultant_id, {
+            event_type: 'task_waiting_input',
+            title: 'In attesa del tuo input',
+            description: `Step ${i + 1}/${totalSteps} (${stepName}) completato. Rivedi i risultati e fornisci indicazioni per continuare.`,
+            icon: '⏸️',
+            severity: 'warning',
+            task_id: task.id,
+            contact_name: task.contact_name,
+            contact_id: task.contact_id,
+          });
+          
+          console.log(`⏸️ [AI-SCHEDULER] ASSISTED MODE: Task ${task.id} paused after step ${i + 1}/${totalSteps}, waiting for consultant input`);
+          return;
+        }
       } else {
         executionPlan[i] = { ...executionPlan[i], status: 'failed' };
         failedStep = stepName;

@@ -393,4 +393,5 @@ export const EMPTY_NEW_TASK: NewTaskData = {
   additional_context: "",
   voice_template_suggestion: "",
   language: "it",
+  execution_mode: "autonomous",
 };

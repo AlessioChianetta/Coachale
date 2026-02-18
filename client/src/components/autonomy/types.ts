@@ -135,6 +135,7 @@ export interface AITask {
   original_scheduled_at?: string;
   additional_context?: string;
   whatsapp_config_id?: string;
+  execution_mode?: string;
   parent_task_id?: string;
 }
 
@@ -253,6 +254,7 @@ export interface NewTaskData {
   additional_context: string;
   voice_template_suggestion: string;
   language: string;
+  execution_mode: string;
 }
 
 export interface TaskLibraryItem {
