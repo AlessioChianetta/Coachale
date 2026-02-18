@@ -222,6 +222,8 @@ function getFeatureLabel(feature: string): string {
   if (feature.startsWith('whatsapp-agent:')) return 'Dipendenti WhatsApp';
   if (feature.startsWith('voice-call:')) return 'Chiamate Voice';
   if (feature.startsWith('tts:')) return 'Chiamate Voice';
+  if (feature.startsWith('agent-chat:')) return 'Chat Dipendenti';
+  if (feature.startsWith('agent-chat-summary:')) return 'Chat Dipendenti';
   return FEATURE_MAP[feature]?.label || feature;
 }
 
@@ -230,6 +232,8 @@ function getFeatureCategory(feature: string): string {
   if (feature.startsWith('whatsapp-agent:')) return 'Comunicazione';
   if (feature.startsWith('voice-call:')) return 'Comunicazione';
   if (feature.startsWith('tts:')) return 'Comunicazione';
+  if (feature.startsWith('agent-chat:')) return 'Comunicazione';
+  if (feature.startsWith('agent-chat-summary:')) return 'Comunicazione';
   return FEATURE_MAP[feature]?.category || 'Altro';
 }
 
@@ -267,6 +271,14 @@ function getSubKeyLabel(key: string): string {
   if (key.startsWith('tts:')) {
     const agentName = key.replace('tts:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return `🔊 ${agentName}`;
+  }
+  if (key.startsWith('agent-chat:')) {
+    const agentName = key.replace('agent-chat:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `💬 ${agentName}`;
+  }
+  if (key.startsWith('agent-chat-summary:')) {
+    const agentName = key.replace('agent-chat-summary:', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `📋 ${agentName} (Riassunto)`;
   }
   return key;
 }

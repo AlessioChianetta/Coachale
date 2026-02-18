@@ -2760,6 +2760,55 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
       }
     }
 
+    try {
+      const autonomousRole = AI_ROLES[roleId];
+      if (autonomousRole?.fetchRoleData) {
+        const clientIdsResult = await db.execute(sql`
+          SELECT id::text FROM users WHERE consultant_id = ${consultantId}::text AND is_active = true LIMIT 50
+        `);
+        const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
+        const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
+        
+        if (roleData && Object.keys(roleData).length > 0) {
+          let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE (dal tuo database):\n';
+          for (const [key, value] of Object.entries(roleData)) {
+            if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
+            const jsonStr = JSON.stringify(value, null, 0);
+            if (jsonStr.length > 3000) {
+              roleDataSection += `${key}: ${jsonStr.substring(0, 3000)}...(troncato)\n`;
+            } else {
+              roleDataSection += `${key}: ${jsonStr}\n`;
+            }
+          }
+          roleDataSection += '\nUsa questi dati per rispondere in modo PRECISO e CONTESTUALIZZATO. Non inventare numeri — riferisci quelli reali.\n';
+          systemPrompt += roleDataSection;
+        }
+      }
+    } catch (roleDataErr: any) {
+      console.warn(`[AGENT-CHAT] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
+    }
+
+    try {
+      const { fetchSystemDocumentsForAgent } = await import("../services/system-prompt-documents-service");
+      const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, roleId);
+      if (agentSystemDocs) {
+        systemPrompt += '\n' + agentSystemDocs + '\n';
+      }
+    } catch (sysDocErr: any) {
+      console.warn(`[AGENT-CHAT] Error fetching system docs for ${roleId}: ${sysDocErr.message}`);
+    }
+
+    try {
+      const { fetchAgentContext, buildAgentContextSection } = await import("../cron/ai-autonomous-roles");
+      const agentCtxFull = await fetchAgentContext(consultantId, roleId);
+      const ctxSection = buildAgentContextSection(agentCtxFull, roleName);
+      if (ctxSection) {
+        systemPrompt += '\n' + ctxSection + '\n';
+      }
+    } catch (ctxErr: any) {
+      console.warn(`[AGENT-CHAT] Error fetching agent context for ${roleId}: ${ctxErr.message}`);
+    }
+
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
 2. Usa paragrafi separati (lascia una riga vuota tra concetti diversi)
@@ -2803,7 +2852,7 @@ Esempio di flusso corretto:
 
       try {
         const provider = await getAIProvider(consultantId, consultantId);
-        provider.setFeature?.('decision-engine');
+        provider.setFeature?.(`agent-chat:${roleId}`);
         aiClient = provider.client;
         const providerName = provider.metadata?.name || '';
         const { getModelForProviderName } = await import("../ai/provider-factory");
@@ -2835,16 +2884,16 @@ Esempio di flusso corretto:
             temperature: 0.7,
             maxOutputTokens: 2048,
           },
-        } as any, { consultantId, feature: 'decision-engine' });
+        } as any, { consultantId, feature: `agent-chat:${roleId}` });
       } else {
-        response = await aiClient.generateContent({
+        response = await trackedGenerateContent(aiClient, {
           model: providerModel,
           contents: chatContents,
-          generationConfig: {
+          config: {
             temperature: 0.7,
             maxOutputTokens: 2048,
           },
-        });
+        }, { consultantId, feature: `agent-chat:${roleId}` });
       }
 
       aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
@@ -3014,11 +3063,20 @@ Scrivi il riassunto in italiano, in terza persona, max 500 parole.
 CONVERSAZIONE DA RIASSUMERE:
 ${summaryInput}`;
 
-          const summaryResult = await capturedAiClient.generateContent({
-            model: capturedModel,
-            contents: [{ role: 'user' as const, parts: [{ text: summaryPrompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
-          });
+          let summaryResult: any;
+          if (capturedAiClient.models?.generateContent) {
+            summaryResult = await trackedGenerateContent(capturedAiClient, {
+              model: capturedModel,
+              contents: [{ role: 'user' as const, parts: [{ text: summaryPrompt }] }],
+              config: { temperature: 0.3, maxOutputTokens: 800 },
+            }, { consultantId: capturedConsultantId, feature: `agent-chat-summary:${capturedRoleId}` });
+          } else {
+            summaryResult = await capturedAiClient.generateContent({
+              model: capturedModel,
+              contents: [{ role: 'user' as const, parts: [{ text: summaryPrompt }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
+            });
+          }
 
           const summaryText = summaryResult.text?.() || summaryResult.response?.text?.() || '';
           if (summaryText && summaryText.length > 50) {
