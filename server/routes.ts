@@ -50,7 +50,8 @@ import {
   insertTemplateTrimesterSchema,
   insertTemplateModuleSchema,
   insertTemplateLessonSchema,
-  insertUserBadgeSchema
+  insertUserBadgeSchema,
+  consultantDetailedProfiles
 } from "@shared/schema";
 import path from "path";
 import fs from "fs";
@@ -13482,6 +13483,64 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     } catch (error: any) {
       console.error("Error updating consultant profile:", error);
       res.status(500).json({ message: error.message || "Failed to update profile" });
+    }
+  });
+
+  // ========================================
+  // CONSULTANT DETAILED PROFILE ROUTES
+  // ========================================
+
+  app.get("/api/consultant/detailed-profile", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const [profile] = await db.select()
+        .from(schema.consultantDetailedProfiles)
+        .where(eq(schema.consultantDetailedProfiles.consultantId, req.user!.id))
+        .limit(1);
+      
+      res.json(profile || null);
+    } catch (error: any) {
+      console.error("Error fetching detailed profile:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch detailed profile" });
+    }
+  });
+
+  app.post("/api/consultant/detailed-profile", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const profileData = req.body;
+      
+      // Remove fields that shouldn't be set by client
+      delete profileData.id;
+      delete profileData.consultantId;
+      delete profileData.createdAt;
+      delete profileData.updatedAt;
+
+      // Check if profile exists
+      const [existing] = await db.select({ id: schema.consultantDetailedProfiles.id })
+        .from(schema.consultantDetailedProfiles)
+        .where(eq(schema.consultantDetailedProfiles.consultantId, consultantId))
+        .limit(1);
+
+      if (existing) {
+        // Update
+        await db.update(schema.consultantDetailedProfiles)
+          .set({ ...profileData, updatedAt: new Date() })
+          .where(eq(schema.consultantDetailedProfiles.consultantId, consultantId));
+      } else {
+        // Insert
+        await db.insert(schema.consultantDetailedProfiles)
+          .values({ ...profileData, consultantId });
+      }
+
+      const [updated] = await db.select()
+        .from(schema.consultantDetailedProfiles)
+        .where(eq(schema.consultantDetailedProfiles.consultantId, consultantId))
+        .limit(1);
+
+      res.json({ message: "Detailed profile saved successfully", profile: updated });
+    } catch (error: any) {
+      console.error("Error saving detailed profile:", error);
+      res.status(500).json({ message: error.message || "Failed to save detailed profile" });
     }
   });
 

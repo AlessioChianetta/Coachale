@@ -3515,6 +3515,64 @@ export const proposedAppointmentSlots = pgTable("proposed_appointment_slots", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const consultantDetailedProfiles = pgTable("consultant_detailed_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Chi Sei (Who You Are)
+  professionalTitle: text("professional_title"),
+  tagline: text("tagline"),
+  bio: text("bio"),
+  yearsOfExperience: integer("years_of_experience"),
+  certifications: text("certifications"),
+  education: text("education"),
+  languagesSpoken: text("languages_spoken"),
+  
+  // La Tua Attività (Your Business)
+  businessName: text("business_name"),
+  businessType: text("business_type"),
+  vatNumber: text("vat_number"),
+  businessAddress: text("business_address"),
+  websiteUrl: text("website_url"),
+  linkedinUrl: text("linkedin_url"),
+  instagramUrl: text("instagram_url"),
+  
+  // Cosa Fai (What You Do)
+  servicesOffered: text("services_offered"),
+  specializations: text("specializations"),
+  methodology: text("methodology"),
+  toolsUsed: text("tools_used"),
+  
+  // Il Tuo Target (Your Target Audience)
+  idealClientDescription: text("ideal_client_description"),
+  industriesServed: text("industries_served"),
+  clientAgeRange: text("client_age_range"),
+  geographicFocus: text("geographic_focus"),
+  
+  // Il Tuo Approccio (Your Approach)
+  consultationStyle: text("consultation_style"),
+  initialProcess: text("initial_process"),
+  sessionDuration: text("session_duration"),
+  followUpApproach: text("follow_up_approach"),
+  
+  // Valori e Visione (Values & Vision)
+  coreValues: text("core_values"),
+  missionStatement: text("mission_statement"),
+  visionStatement: text("vision_statement"),
+  uniqueSellingProposition: text("unique_selling_proposition"),
+  
+  // Contesto Aggiuntivo per AI
+  additionalContext: text("additional_context"),
+  toneOfVoice: text("tone_of_voice"),
+  topicsToAvoid: text("topics_to_avoid"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantDetailedProfile = typeof consultantDetailedProfiles.$inferSelect;
+export type InsertConsultantDetailedProfile = typeof consultantDetailedProfiles.$inferInsert;
+
 // WhatsApp schema validators
 export const insertConsultantWhatsappConfigSchema = createInsertSchema(consultantWhatsappConfig).omit({
   id: true,
