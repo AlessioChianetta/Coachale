@@ -2,7 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "./provider-factory";
 import { tokenTracker } from "./token-tracker";
 import { db } from "../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
+import { consultantDetailedProfiles } from "@shared/schema";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { getRoleById, fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 
@@ -520,6 +521,66 @@ export async function buildTaskContext(task: {
   };
 }
 
+function buildDetailedProfileSection(dp: any): string {
+  if (!dp) return '';
+
+  const fields: Array<{ label: string; key: string }> = [
+    { label: 'Titolo', key: 'professionalTitle' },
+    { label: 'Tagline', key: 'tagline' },
+    { label: 'Bio', key: 'bio' },
+    { label: 'Anni di esperienza', key: 'yearsOfExperience' },
+    { label: 'Certificazioni', key: 'certifications' },
+    { label: 'Formazione', key: 'education' },
+    { label: 'Lingue parlate', key: 'languagesSpoken' },
+    { label: 'Business', key: 'businessName' },
+    { label: 'Tipo business', key: 'businessType' },
+    { label: 'P.IVA', key: 'vatNumber' },
+    { label: 'Indirizzo', key: 'businessAddress' },
+    { label: 'Sito web', key: 'websiteUrl' },
+    { label: 'LinkedIn', key: 'linkedinUrl' },
+    { label: 'Instagram', key: 'instagramUrl' },
+    { label: 'Servizi', key: 'servicesOffered' },
+    { label: 'Specializzazioni', key: 'specializations' },
+    { label: 'Metodologia', key: 'methodology' },
+    { label: 'Strumenti', key: 'toolsUsed' },
+    { label: 'Cliente ideale', key: 'idealClientDescription' },
+    { label: 'Settori', key: 'industriesServed' },
+    { label: 'Fascia età clienti', key: 'clientAgeRange' },
+    { label: 'Focus geografico', key: 'geographicFocus' },
+    { label: 'Stile consulenza', key: 'consultationStyle' },
+    { label: 'Processo iniziale', key: 'initialProcess' },
+    { label: 'Durata sessione', key: 'sessionDuration' },
+    { label: 'Approccio follow-up', key: 'followUpApproach' },
+    { label: 'Valori', key: 'coreValues' },
+    { label: 'Mission', key: 'missionStatement' },
+    { label: 'Vision', key: 'visionStatement' },
+    { label: 'USP', key: 'uniqueSellingProposition' },
+    { label: '⚙️ Tono di voce', key: 'toneOfVoice' },
+    { label: '📝 Contesto aggiuntivo', key: 'additionalContext' },
+    { label: '🚫 Argomenti da evitare', key: 'topicsToAvoid' },
+  ];
+
+  const lines: string[] = [];
+  for (const f of fields) {
+    const val = dp[f.key];
+    if (val !== null && val !== undefined && val !== '') {
+      const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      if (strVal.trim()) {
+        lines.push(`${f.label}: ${strVal}`);
+      }
+    }
+  }
+
+  if (lines.length === 0) return '';
+
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROFILO DETTAGLIATO DEL CONSULENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${lines.join('\n')}
+`;
+}
+
 export async function buildRolePersonality(consultantId: string, roleId: string): Promise<string | null> {
   try {
     const role = getRoleById(roleId);
@@ -554,6 +615,18 @@ export async function buildRolePersonality(consultantId: string, roleId: string)
 
     if (ctxSection) {
       personality += ctxSection + '\n\n';
+    }
+
+    try {
+      const detailedProfileResult = await db.select().from(consultantDetailedProfiles).where(eq(consultantDetailedProfiles.consultantId, consultantId));
+      const dp = detailedProfileResult[0];
+      const profileSection = buildDetailedProfileSection(dp);
+      if (profileSection) {
+        personality += profileSection + '\n';
+        console.log(`${LOG_PREFIX} Added detailed profile to personality (${profileSection.length} chars)`);
+      }
+    } catch (dpErr: any) {
+      console.warn(`${LOG_PREFIX} Failed to load detailed profile: ${dpErr.message}`);
     }
 
     console.log(`${LOG_PREFIX} Built personality for ${role.name} (${roleId}), length=${personality.length}`);

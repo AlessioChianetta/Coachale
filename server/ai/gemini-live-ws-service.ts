@@ -8,7 +8,7 @@ import {
   bufferToBase64 
 } from './audio-converter';
 import { db } from '../db';
-import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings, voiceCalls, consultantWhatsappConfig, proactiveLeads } from '@shared/schema';
+import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts, consultantAvailabilitySettings, voiceCalls, consultantWhatsappConfig, proactiveLeads, consultantDetailedProfiles } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
@@ -142,6 +142,66 @@ async function buildBrandVoiceFromAgent(agentId: string): Promise<string> {
     console.error('Error building brand voice:', err);
     return '';
   }
+}
+
+function buildDetailedProfileSection(dp: any): string {
+  if (!dp) return '';
+
+  const fields: Array<{ label: string; key: string }> = [
+    { label: 'Titolo', key: 'professionalTitle' },
+    { label: 'Tagline', key: 'tagline' },
+    { label: 'Bio', key: 'bio' },
+    { label: 'Anni di esperienza', key: 'yearsOfExperience' },
+    { label: 'Certificazioni', key: 'certifications' },
+    { label: 'Formazione', key: 'education' },
+    { label: 'Lingue parlate', key: 'languagesSpoken' },
+    { label: 'Business', key: 'businessName' },
+    { label: 'Tipo business', key: 'businessType' },
+    { label: 'P.IVA', key: 'vatNumber' },
+    { label: 'Indirizzo', key: 'businessAddress' },
+    { label: 'Sito web', key: 'websiteUrl' },
+    { label: 'LinkedIn', key: 'linkedinUrl' },
+    { label: 'Instagram', key: 'instagramUrl' },
+    { label: 'Servizi', key: 'servicesOffered' },
+    { label: 'Specializzazioni', key: 'specializations' },
+    { label: 'Metodologia', key: 'methodology' },
+    { label: 'Strumenti', key: 'toolsUsed' },
+    { label: 'Cliente ideale', key: 'idealClientDescription' },
+    { label: 'Settori', key: 'industriesServed' },
+    { label: 'Fascia età clienti', key: 'clientAgeRange' },
+    { label: 'Focus geografico', key: 'geographicFocus' },
+    { label: 'Stile consulenza', key: 'consultationStyle' },
+    { label: 'Processo iniziale', key: 'initialProcess' },
+    { label: 'Durata sessione', key: 'sessionDuration' },
+    { label: 'Approccio follow-up', key: 'followUpApproach' },
+    { label: 'Valori', key: 'coreValues' },
+    { label: 'Mission', key: 'missionStatement' },
+    { label: 'Vision', key: 'visionStatement' },
+    { label: 'USP', key: 'uniqueSellingProposition' },
+    { label: '⚙️ Tono di voce', key: 'toneOfVoice' },
+    { label: '📝 Contesto aggiuntivo', key: 'additionalContext' },
+    { label: '🚫 Argomenti da evitare', key: 'topicsToAvoid' },
+  ];
+
+  const lines: string[] = [];
+  for (const f of fields) {
+    const val = dp[f.key];
+    if (val !== null && val !== undefined && val !== '') {
+      const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      if (strVal.trim()) {
+        lines.push(`${f.label}: ${strVal}`);
+      }
+    }
+  }
+
+  if (lines.length === 0) return '';
+
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROFILO DETTAGLIATO DEL CONSULENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${lines.join('\n')}
+`;
 }
 
 /**
@@ -3071,6 +3131,20 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         }
         console.log(`⚡ [PHONE SERVICE] Non-client parallel queries launched in ${Date.now() - _ncParallelStart}ms (consultant resolved, settings+history running)`)
         
+        let consultantDetailedProfileSection = '';
+        if (consultantId) {
+          try {
+            const detailedProfileResult = await db.select().from(consultantDetailedProfiles).where(eq(consultantDetailedProfiles.consultantId, consultantId));
+            const dp = detailedProfileResult[0];
+            consultantDetailedProfileSection = buildDetailedProfileSection(dp);
+            if (consultantDetailedProfileSection) {
+              console.log(`📋 [${connectionId}] Detailed profile loaded (${consultantDetailedProfileSection.length} chars)`);
+            }
+          } catch (dpErr: any) {
+            console.warn(`⚠️ [${connectionId}] Failed to load detailed profile: ${dpErr.message}`);
+          }
+        }
+        
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // ⚡ PROACTIVE LEAD DATA - Await lead lookup (used by BOTH instruction and non-instruction paths)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3348,7 +3422,7 @@ Presentati brevemente e poi vai dritto all'istruzione.
             console.log(`⏱️ [NC-LATENCY] brandVoice resolved (instruction path): +${_ncLatency.brandVoiceResolvedTime - _ncParallelStart}ms`);
           }
           
-          // Build prompt with: VOICE DIRECTIVES FIRST + BRAND VOICE + IDENTITY + INSTRUCTION + GREETING + CALL HISTORY
+          // Build prompt with: VOICE DIRECTIVES FIRST + BRAND VOICE + IDENTITY + DETAILED PROFILE + INSTRUCTION + GREETING + CALL HISTORY
           systemInstruction = `${voiceDirectivesSection}
 ${outboundInstructionBrandVoiceSection ? '\n' + outboundInstructionBrandVoiceSection + '\n' : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3357,6 +3431,7 @@ ${outboundInstructionBrandVoiceSection ? '\n' + outboundInstructionBrandVoiceSec
 
 Sei Alessia, l'assistente AI di ${consultantName}${consultantBusinessName ? ` (${consultantBusinessName})` : ''}.
 Stai chiamando per conto del consulente.
+${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO COMPITO PER QUESTA CHIAMATA - VAI DRITTO AL PUNTO!
@@ -4095,11 +4170,11 @@ Quando si parla di prenotare un appuntamento:
           callerContactSection += '\n';
         }
         
-        // Combine: Voice Directives + Direction Context + Brand Voice + Caller Data + Current Time + Content Prompt + Previous Call Context
+        // Combine: Voice Directives + Direction Context + Brand Voice + Detailed Profile + Caller Data + Current Time + Content Prompt + Previous Call Context
         systemInstruction = `${finalVoiceDirectives}
 
 ${directionContext}
-${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${callerContactSection}
+${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
 ${contentPrompt}`;
@@ -4179,6 +4254,7 @@ ${contentPrompt}`;
           
           // Get consultant name for the prompt
           let clientConsultantName = 'il consulente';
+          let clientDetailedProfileSection = '';
           if (consultantId) {
             try {
               const consultantInfoStart = Date.now();
@@ -4190,6 +4266,15 @@ ${contentPrompt}`;
               }
             } catch (err) {
               console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+            }
+            try {
+              const dpResult = await db.select().from(consultantDetailedProfiles).where(eq(consultantDetailedProfiles.consultantId, consultantId));
+              clientDetailedProfileSection = buildDetailedProfileSection(dpResult[0]);
+              if (clientDetailedProfileSection) {
+                console.log(`📋 [${connectionId}] Client path: detailed profile loaded (${clientDetailedProfileSection.length} chars)`);
+              }
+            } catch (dpErr: any) {
+              console.warn(`⚠️ [${connectionId}] Failed to load detailed profile for client path: ${dpErr.message}`);
             }
           }
           
@@ -4428,7 +4513,7 @@ ${historyContent}
 
 Sei Alessia, l'assistente AI di ${clientConsultantName}.
 Stai chiamando ${clientName}, un CLIENTE REGISTRATO che già conosci!
-
+${clientDetailedProfileSection ? '\n' + clientDetailedProfileSection : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO COMPITO PER QUESTA CHIAMATA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4510,6 +4595,7 @@ ${clientInstructionCallHistory}
           
           // Get consultant info for the prompt
           let inboundConsultantName = 'il consulente';
+          let inboundDetailedProfileSection = '';
           if (consultantId) {
             try {
               const inboundConsultantInfoStart = Date.now();
@@ -4521,6 +4607,15 @@ ${clientInstructionCallHistory}
               }
             } catch (err) {
               console.warn(`⚠️ [${connectionId}] Could not fetch consultant info:`, err);
+            }
+            try {
+              const dpResult = await db.select().from(consultantDetailedProfiles).where(eq(consultantDetailedProfiles.consultantId, consultantId));
+              inboundDetailedProfileSection = buildDetailedProfileSection(dpResult[0]);
+              if (inboundDetailedProfileSection) {
+                console.log(`📋 [${connectionId}] Inbound path: detailed profile loaded (${inboundDetailedProfileSection.length} chars)`);
+              }
+            } catch (dpErr: any) {
+              console.warn(`⚠️ [${connectionId}] Failed to load detailed profile for inbound path: ${dpErr.message}`);
             }
           }
           
@@ -4746,7 +4841,7 @@ Data e ora: ${italianTime} (Italia)
 Tipo chiamata: INBOUND (${inboundClientName} ti sta chiamando)
 Cliente: ${inboundClientName} (CLIENTE REGISTRATO ✅)
 Consulente: ${inboundConsultantName}
-
+${inboundDetailedProfileSection ? '\n' + inboundDetailedProfileSection : ''}
 ${greetingSection}${inboundCallHistory}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📚 IL TUO SYSTEM PROMPT COMPLETO (Live-Consultation)
