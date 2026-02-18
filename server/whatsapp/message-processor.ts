@@ -874,7 +874,8 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           conversation.consultantId,
           apiKey,
           conversation.agentConfigId || undefined,
-          vertexCreds
+          vertexCreds,
+          consultantConfig?.agentName
         );
       }
     }

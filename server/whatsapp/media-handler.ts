@@ -93,22 +93,23 @@ export async function processMedia(
   mimeType: string,
   apiKey: string,
   vertexCredentials?: VertexAICredentials,
-  consultantId?: string
+  consultantId?: string,
+  agentName?: string
 ): Promise<MediaProcessingResult> {
   const result: MediaProcessingResult = {};
 
   try {
     if (mimeType.startsWith("image/")) {
       console.log("🖼️ Processing image with AI Vision...");
-      result.aiAnalysis = await processImageWithVision(localPath, apiKey, mimeType, consultantId);
+      result.aiAnalysis = await processImageWithVision(localPath, apiKey, mimeType, consultantId, agentName);
       result.extractedText = await extractTextFromImage(localPath);
     } else if (mimeType === "application/pdf" || mimeType.includes("pdf")) {
       console.log("📄 Processing PDF document...");
       result.extractedText = await extractTextFromPDF(localPath);
-      result.aiAnalysis = await analyzeDocumentText(result.extractedText, apiKey, consultantId);
+      result.aiAnalysis = await analyzeDocumentText(result.extractedText, apiKey, consultantId, agentName);
     } else if (mimeType.startsWith("audio/")) {
       console.log("🎤 Processing audio file...");
-      const audioResult = await transcribeAudio(localPath, apiKey, mimeType, vertexCredentials, consultantId);
+      const audioResult = await transcribeAudio(localPath, apiKey, mimeType, vertexCredentials, consultantId, agentName);
       result.audioTranscript = audioResult.transcript;
       result.audioDuration = audioResult.duration;
     } else {
@@ -129,7 +130,8 @@ async function processImageWithVision(
   imagePath: string,
   apiKey: string,
   mimeType: string,
-  consultantId?: string
+  consultantId?: string,
+  agentName?: string
 ): Promise<string> {
   try {
     let imageBuffer = await fs.readFile(imagePath);
@@ -175,7 +177,7 @@ Rispondi in italiano, sii specifico e conciso.`,
           ],
         },
       ],
-    } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-image-analysis', keySource: 'superadmin' });
+    } as any, { consultantId: consultantId || 'system', feature: agentName ? `whatsapp-image-analysis:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'whatsapp-image-analysis', keySource: 'superadmin' });
 
     const analysis = response.text || "Impossibile analizzare l'immagine.";
     console.log(`✅ AI Vision analysis complete (${analysis.length} chars)`);
@@ -224,7 +226,7 @@ async function extractTextFromPDF(pdfPath: string): Promise<string> {
 /**
  * Analyze document text with AI
  */
-async function analyzeDocumentText(text: string, apiKey: string, consultantId?: string): Promise<string> {
+async function analyzeDocumentText(text: string, apiKey: string, consultantId?: string, agentName?: string): Promise<string> {
   if (!text || text.length < 50) {
     return "Documento troppo breve per analisi.";
   }
@@ -254,7 +256,7 @@ Rispondi in italiano, sii conciso e strutturato.`,
           ],
         },
       ],
-    } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-document-analysis', keySource: 'superadmin' });
+    } as any, { consultantId: consultantId || 'system', feature: agentName ? `whatsapp-document-analysis:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'whatsapp-document-analysis', keySource: 'superadmin' });
 
     const analysis = response.text || "Impossibile analizzare il documento.";
     console.log(`✅ Document analysis complete (${analysis.length} chars)`);
@@ -275,7 +277,8 @@ async function transcribeAudio(
   apiKey: string,
   mimeType: string,
   vertexCredentials?: VertexAICredentials,
-  consultantId?: string
+  consultantId?: string,
+  agentName?: string
 ): Promise<{ transcript: string; duration?: number }> {
   const transcriptionStart = Date.now();
   const MAX_RETRIES = 3;
@@ -344,7 +347,7 @@ async function transcribeAudio(
           tokenTracker.track({
             consultantId: consultantId || 'system',
             model: 'gemini-2.5-flash-lite',
-            feature: 'whatsapp-agent',
+            feature: agentName ? `whatsapp-audio-transcription:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'whatsapp-audio-transcription',
             requestType: 'generate',
             inputTokens: usageMeta.promptTokenCount || 0,
             outputTokens: usageMeta.candidatesTokenCount || 0,
@@ -378,7 +381,7 @@ async function transcribeAudio(
               ],
             },
           ],
-        } as any, { consultantId: consultantId || 'system', feature: 'whatsapp-audio-transcription', keySource: 'superadmin' });
+        } as any, { consultantId: consultantId || 'system', feature: agentName ? `whatsapp-audio-transcription:${agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : 'whatsapp-audio-transcription', keySource: 'superadmin' });
 
         transcript = response.text || "Impossibile trascrivere l'audio.";
       }
@@ -449,7 +452,8 @@ export async function handleIncomingMedia(
   consultantId: string,
   apiKey: string,
   configId?: string,
-  vertexCredentials?: VertexAICredentials
+  vertexCredentials?: VertexAICredentials,
+  agentName?: string
 ): Promise<void> {
   const mediaProcessingStart = Date.now();
   try {
@@ -524,12 +528,14 @@ export async function handleIncomingMedia(
       );
     }
 
+    const resolvedAgentName = agentName || config?.agentName;
     const processingResult = await processMedia(
       downloadResult.localPath,
       downloadResult.mimeType,
       apiKey,
       vertexCredentials,
-      consultantId
+      consultantId,
+      resolvedAgentName
     );
 
     // Save to whatsapp_media_files table
