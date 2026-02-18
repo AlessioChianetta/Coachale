@@ -263,14 +263,24 @@ export async function sendWhatsAppMessage(
     }
     
     try {
-      const message = await client!.messages.create({
+      const templatePayload: any = {
         from: formattedFrom,
         to: formattedTo,
         contentSid: options.contentSid,
         contentVariables: options.contentVariables ? JSON.stringify(options.contentVariables) : undefined,
-      });
+      };
 
-      console.log(`✅ Sent template message: ${message.sid}`);
+      if (options.mediaUrl) {
+        const absUrl = options.mediaUrl.startsWith('http')
+          ? options.mediaUrl
+          : `https://${(process.env.REPLIT_DOMAINS || '').split(',')[0].trim()}${options.mediaUrl}`;
+        templatePayload.mediaUrl = [absUrl];
+        console.log(`📎 Attaching PDF to template message: ${absUrl}`);
+      }
+
+      const message = await client!.messages.create(templatePayload);
+
+      console.log(`✅ Sent template message: ${message.sid}${options.mediaUrl ? ' (with PDF)' : ''}`);
 
       // Update database
       if (messageId) {

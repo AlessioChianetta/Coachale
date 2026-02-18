@@ -2203,48 +2203,9 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
     const { sendWhatsAppMessage } = await import('../whatsapp/twilio-client');
     const agentOpts = task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {};
 
-    let templateSid: string | null = null;
-
-    if (selectedTemplateId) {
-      try {
-        templateSid = await sendWhatsAppMessage(
-          task.consultant_id,
-          resolvedPhone,
-          messageText,
-          undefined,
-          {
-            ...agentOpts,
-            contentSid: selectedTemplateId,
-            ...(contentVariables ? { contentVariables } : {}),
-          },
-        );
-        console.log(`✅ ${LOG_PREFIX} Template inviato per aprire finestra 24h: ${templateSid}`);
-      } catch (tplErr: any) {
-        console.warn(`${LOG_PREFIX} Template send failed, will send as plain text: ${tplErr.message}`);
-      }
-    }
-
-    const freeTextSid = await sendWhatsAppMessage(
-      task.consultant_id,
-      resolvedPhone,
-      messageText,
-      undefined,
-      agentOpts,
-    );
-    console.log(`✅ ${LOG_PREFIX} Messaggio AI a corpo libero inviato: ${freeTextSid}`);
-
-    await logActivity(task.consultant_id, {
-      event_type: "whatsapp_sent",
-      title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
-      description: `Messaggio: "${messageText.substring(0, 100)}..."${templateSid ? ' (template + corpo libero)' : ' (corpo libero)'}`,
-      icon: "💬",
-      severity: "info",
-      task_id: task.id,
-      contact_name: resolvedName,
-      contact_id: task.contact_id,
-    });
-
+    let pdfMediaUrl: string | null = null;
     let pdfCount = 0;
+
     if (reportData && reportData.title) {
       const crypto = await import('crypto');
       const fs = await import('fs/promises');
@@ -2268,47 +2229,66 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
       const hasFormalDoc = !!(reportData.formal_document?.body);
 
       try {
-        const summaryPdf = await generatePdfBuffer(reportData, analysisData, task);
-        const summaryUrl = await saveTempPdf(summaryPdf, 'Riepilogo');
-        await sendWhatsAppMessage(
-          task.consultant_id, resolvedPhone,
-          `📊 Riepilogo: "${reportData.title}"`,
-          undefined,
-          { ...agentOpts, mediaUrl: summaryUrl },
-        );
-        pdfCount++;
-        console.log(`✅ ${LOG_PREFIX} PDF riepilogo inviato su WhatsApp`);
-      } catch (pdfErr: any) {
-        console.error(`${LOG_PREFIX} Riepilogo PDF WhatsApp failed: ${pdfErr.message}`);
-      }
-
-      if (hasFormalDoc) {
-        try {
+        if (hasFormalDoc) {
           const formalPdf = await generateFormalDocumentPdfBuffer(reportData.formal_document, reportData, task);
-          const formalUrl = await saveTempPdf(formalPdf, 'Documento formale');
-          await sendWhatsAppMessage(
-            task.consultant_id, resolvedPhone,
-            `📄 Documento: "${reportData.formal_document?.header?.title || reportData.title}"`,
-            undefined,
-            { ...agentOpts, mediaUrl: formalUrl },
-          );
+          pdfMediaUrl = await saveTempPdf(formalPdf, 'Documento formale');
           pdfCount++;
-          console.log(`✅ ${LOG_PREFIX} PDF documento formale inviato su WhatsApp`);
-        } catch (formalErr: any) {
-          console.error(`${LOG_PREFIX} Formal document PDF WhatsApp failed: ${formalErr.message}`);
+        } else {
+          const summaryPdf = await generatePdfBuffer(reportData, analysisData, task);
+          pdfMediaUrl = await saveTempPdf(summaryPdf, 'Riepilogo');
+          pdfCount++;
         }
+      } catch (pdfErr: any) {
+        console.error(`${LOG_PREFIX} PDF generation for WhatsApp failed: ${pdfErr.message}`);
       }
     }
 
+    let messageSid: string;
+
+    if (selectedTemplateId) {
+      messageSid = await sendWhatsAppMessage(
+        task.consultant_id,
+        resolvedPhone,
+        messageText,
+        undefined,
+        {
+          ...agentOpts,
+          contentSid: selectedTemplateId,
+          ...(contentVariables ? { contentVariables } : {}),
+          ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}),
+        },
+      );
+      console.log(`✅ ${LOG_PREFIX} Template WhatsApp inviato: ${messageSid}${pdfMediaUrl ? ' (con PDF allegato)' : ''}`);
+    } else {
+      messageSid = await sendWhatsAppMessage(
+        task.consultant_id,
+        resolvedPhone,
+        messageText,
+        undefined,
+        { ...agentOpts, ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}) },
+      );
+      console.log(`✅ ${LOG_PREFIX} Messaggio WhatsApp a corpo libero inviato: ${messageSid}${pdfMediaUrl ? ' (con PDF allegato)' : ''}`);
+    }
+
+    await logActivity(task.consultant_id, {
+      event_type: "whatsapp_sent",
+      title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
+      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${pdfCount > 0 ? ' | PDF allegato' : ''}`,
+      icon: "💬",
+      severity: "info",
+      task_id: task.id,
+      contact_name: resolvedName,
+      contact_id: task.contact_id,
+    });
+
     return {
       status: "sent",
-      message_sid: freeTextSid,
+      message_sid: messageSid,
       target_phone: resolvedPhone,
       message_preview: messageText.substring(0, 100),
-      template_used: templateSid ? selectedTemplateId || 'plain_text' : 'plain_text',
+      template_used: selectedTemplateId || 'plain_text',
       variables_filled: contentVariables ? Object.keys(contentVariables).length : 0,
       pdf_attached: pdfCount > 0,
-      pdf_count: pdfCount,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} WhatsApp send failed:`, error.message);
