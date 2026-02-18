@@ -2138,10 +2138,11 @@ ${reportData.summary ? `- Riepilogo report: ${reportData.summary.substring(0, 20
 REGOLE:
 - La variabile {{1}} è SEMPRE il nome del cliente: "${resolvedName || 'Cliente'}"
 - Le altre variabili ({{2}}, {{3}}, ecc.) sono messaggi brevi e personalizzati basati sul contesto
-- ${reportData.title ? 'C\'è un report che verrà allegato come PDF nella chat. Menziona che troverà il report allegato qui in chat.' : 'Non menzionare report o email.'}
+- ${reportData.title ? 'È stato preparato un documento/report che verrà inviato via EMAIL (non su WhatsApp). Menziona brevemente cosa è stato preparato e che lo troverà nella sua casella email.' : 'Non menzionare report o email.'}
 - Ogni variabile deve essere BREVE (massimo 1-2 frasi)
 - NON usare newline (\\n) nei valori
 - Sii professionale e cordiale
+- Spiega brevemente il MOTIVO del messaggio e cosa è stato fatto (basandoti sull'istruzione del task)
 
 Rispondi SOLO con un JSON valido nel formato:
 ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 ? '{"1": "valore", "2": "valore"}' : `{${Array.from({length: templateVariableCount}, (_, i) => `"${i+1}": "valore"`).join(', ')}}`}`;
@@ -2153,8 +2154,10 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
       }));
 
       const responseText = resp.response.text() || '';
+      console.log(`📋 ${LOG_PREFIX} [TEMPLATE VARS] Risposta Gemini raw (${responseText.length} chars): "${responseText.substring(0, 300)}"`);
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
+        console.log(`📋 ${LOG_PREFIX} [TEMPLATE VARS] JSON estratto: ${jsonMatch[0]}`);
         const parsed = JSON.parse(jsonMatch[0]);
         contentVariables = {};
         contentVariables['1'] = resolvedName || 'Cliente';
@@ -2162,17 +2165,39 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
           const val = parsed[String(i)] || parsed[i];
           if (val) {
             contentVariables[String(i)] = String(val).replace(/[\n\r\t]/g, ' ').trim();
+          } else {
+            console.warn(`⚠️ ${LOG_PREFIX} [TEMPLATE VARS] Variabile ${i} mancante nel JSON di Gemini, uso fallback`);
+            contentVariables[String(i)] = task.ai_instruction?.substring(0, 100) || 'la contatto per aggiornarla';
           }
         }
-        console.log(`✅ ${LOG_PREFIX} Template variables generated: ${JSON.stringify(contentVariables)}`);
+        console.log(`✅ ${LOG_PREFIX} [TEMPLATE VARS] Variabili finali: ${JSON.stringify(contentVariables)}`);
+      } else {
+        console.error(`❌ ${LOG_PREFIX} [TEMPLATE VARS] Nessun JSON trovato nella risposta Gemini! Risposta: "${responseText.substring(0, 200)}"`);
+        contentVariables = { '1': resolvedName || 'Cliente' };
+        if (templateVariableCount >= 2) {
+          contentVariables['2'] = task.ai_instruction?.substring(0, 100) || 'la contatto per aggiornarla';
+        }
+        console.log(`⚠️ ${LOG_PREFIX} [TEMPLATE VARS] Fallback variabili (no JSON): ${JSON.stringify(contentVariables)}`);
       }
     } catch (varErr: any) {
-      console.warn(`${LOG_PREFIX} Failed to generate template variables: ${varErr.message}`);
+      console.error(`❌ ${LOG_PREFIX} [TEMPLATE VARS] ECCEZIONE: ${varErr.message}`);
+      console.error(`   Stack: ${varErr.stack?.substring(0, 300)}`);
       contentVariables = { '1': resolvedName || 'Cliente' };
       if (templateVariableCount >= 2) {
         contentVariables['2'] = task.ai_instruction?.substring(0, 100) || 'la contatto per aggiornarla';
       }
-      console.log(`⚠️ ${LOG_PREFIX} Using fallback variables: ${JSON.stringify(contentVariables)}`);
+      console.log(`⚠️ ${LOG_PREFIX} [TEMPLATE VARS] Fallback variabili (eccezione): ${JSON.stringify(contentVariables)}`);
+    }
+  }
+  
+  if (selectedTemplateId && !contentVariables) {
+    console.error(`❌ ${LOG_PREFIX} [TEMPLATE VARS] ANOMALIA: template selezionato ma contentVariables è undefined! templateVariableCount=${templateVariableCount}`);
+    if (templateVariableCount > 0) {
+      contentVariables = { '1': resolvedName || 'Cliente' };
+      if (templateVariableCount >= 2) {
+        contentVariables['2'] = task.ai_instruction?.substring(0, 100) || 'la contatto per aggiornarla';
+      }
+      console.log(`🔧 ${LOG_PREFIX} [TEMPLATE VARS] Forzatura fallback: ${JSON.stringify(contentVariables)}`);
     }
   }
 
@@ -2180,18 +2205,29 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
-      const whatsappPrompt = `Scrivi un messaggio WhatsApp BREVE (massimo 2-3 frasi) e professionale per ${resolvedName || 'il cliente'}.
+      const whatsappPrompt = `Scrivi un messaggio WhatsApp informativo e professionale per ${resolvedName || 'il cliente'}.
 ${agentContextSection || ''}
-Contesto: ${task.ai_instruction}
-${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
-${reportData.title ? `Report preparato: "${reportData.title}" - verrà allegato come PDF nella chat WhatsApp.` : ''}
-${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 150)}` : ''}
-NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title ? ' Menziona che troverà il report allegato qui in chat.' : ''}`;
+
+ISTRUZIONE DEL TASK (cosa ti è stato chiesto di fare):
+${task.ai_instruction}
+${task.additional_context ? `\nCONTESTO AGGIUNTIVO:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
+
+${reportData.title ? `DOCUMENTO PREPARATO: "${reportData.title}"
+${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 300)}` : ''}
+Il documento è stato inviato via EMAIL (NON su WhatsApp).` : ''}
+
+REGOLE PER IL MESSAGGIO:
+- Spiega COSA hai fatto e PERCHÉ (basandoti sull'istruzione del task)
+- Se c'è un documento, menziona brevemente il contenuto e che lo troverà via email
+- Massimo 4-5 frasi, non di più
+- Sii diretto, cordiale e professionale
+- NON menzionare allegati WhatsApp o PDF in chat
+- NON usare asterischi per il grassetto`;
 
       const resp = await withRetry(() => client.generateContent({
         model: resolvedModel,
         contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 256 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 512 },
       }));
       messageText = resp.response.text() || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
     } catch (provErr: any) {
@@ -2214,80 +2250,21 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
     console.log(`📱 ${LOG_PREFIX} Formal document: ${reportData?.formal_document?.body ? 'SÌ' : 'NO'}`);
     console.log(`📱 ${LOG_PREFIX} Agent config ID: ${task.whatsapp_config_id || 'auto-detect'}`);
 
-    let pdfMediaUrl: string | null = null;
-    let pdfCount = 0;
-    let pdfType = '';
-
-    if (reportData && reportData.title) {
-      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Inizio generazione PDF per allegato WhatsApp...`);
-      const crypto = await import('crypto');
-      const fs = await import('fs/promises');
-      const pathMod = await import('path');
-      const rawDomain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
-      const domain = rawDomain.split(',')[0].trim();
-      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Dominio per URL pubblico: "${domain}"`);
-      if (!domain) {
-        console.error(`❌ ${LOG_PREFIX} [PDF PREP] ERRORE CRITICO: Nessun dominio disponibile (REPLIT_DOMAINS e REPLIT_DEV_DOMAIN vuoti). Twilio non potrà scaricare il PDF!`);
-      }
-      const tmpDir = '/tmp/wa-media';
-      await fs.mkdir(tmpDir, { recursive: true });
-
-      const saveTempPdf = async (buffer: Buffer, label: string): Promise<string> => {
-        const token = crypto.randomBytes(16).toString('hex');
-        const filePath = pathMod.join(tmpDir, `${token}.pdf`);
-        await fs.writeFile(filePath, buffer);
-        const url = `https://${domain}/api/temp-media/${token}`;
-        const stat = await fs.stat(filePath);
-        console.log(`📎 ${LOG_PREFIX} [PDF PREP] ${label} PDF salvato su disco:`);
-        console.log(`   📁 Path: ${filePath}`);
-        console.log(`   📏 Size buffer: ${buffer.length} bytes`);
-        console.log(`   📏 Size file: ${stat.size} bytes`);
-        console.log(`   🔗 URL pubblico: ${url}`);
-        console.log(`   ⏰ Auto-cleanup: 10 minuti`);
-        setTimeout(async () => { try { await fs.unlink(filePath); console.log(`🧹 ${LOG_PREFIX} Cleaned up temp PDF: ${filePath}`); } catch {} }, 10 * 60 * 1000);
-        return url;
-      };
-
-      const analysisData = previousResults.analyze_patterns || {};
-      const hasFormalDoc = !!(reportData.formal_document?.body);
-
-      try {
-        if (hasFormalDoc) {
-          console.log(`📎 ${LOG_PREFIX} [PDF PREP] Generazione PDF documento formale (formal_document.body items: ${reportData.formal_document.body?.length || 0})...`);
-          const formalPdf = await generateFormalDocumentPdfBuffer(reportData.formal_document, reportData, task);
-          pdfMediaUrl = await saveTempPdf(formalPdf, 'Documento formale');
-          pdfType = 'formal_document';
-          pdfCount++;
-        } else {
-          console.log(`📎 ${LOG_PREFIX} [PDF PREP] Generazione PDF riepilogo (sections: ${reportData.sections?.length || 0})...`);
-          const summaryPdf = await generatePdfBuffer(reportData, analysisData, task);
-          pdfMediaUrl = await saveTempPdf(summaryPdf, 'Riepilogo');
-          pdfType = 'summary';
-          pdfCount++;
-        }
-        console.log(`✅ ${LOG_PREFIX} [PDF PREP] PDF pronto per allegato WhatsApp: ${pdfMediaUrl}`);
-      } catch (pdfErr: any) {
-        console.error(`❌ ${LOG_PREFIX} [PDF PREP] FALLITO: ${pdfErr.message}`);
-        console.error(`   Stack: ${pdfErr.stack?.substring(0, 300)}`);
-      }
-    } else {
-      console.log(`📎 ${LOG_PREFIX} [PDF PREP] Nessun report da allegare (reportData.title assente)`);
-    }
-
     let messageSid: string;
 
+    const hasReport = !!(reportData && reportData.title);
     console.log(`\n📤 ${LOG_PREFIX} [TWILIO CALL] Preparazione chiamata Twilio API...`);
     console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Modalità: ${selectedTemplateId ? 'TEMPLATE' : 'TESTO LIBERO'}`);
-    console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] PDF allegato: ${pdfMediaUrl ? `SÌ (${pdfType})` : 'NO'}`);
+    console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Report presente: ${hasReport ? `SÌ - "${reportData.title}" (PDF inviato via email)` : 'NO'}`);
+    console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Variabili: ${contentVariables ? JSON.stringify(contentVariables) : 'N/A'}`);
 
     if (selectedTemplateId) {
       const sendOpts = {
         ...agentOpts,
         contentSid: selectedTemplateId,
         ...(contentVariables ? { contentVariables } : {}),
-        ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}),
       };
-      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Opzioni invio template: ${JSON.stringify({ contentSid: sendOpts.contentSid, hasVariables: !!sendOpts.contentVariables, hasMediaUrl: !!sendOpts.mediaUrl, mediaUrl: sendOpts.mediaUrl || 'N/A', agentConfigId: sendOpts.agentConfigId || 'auto' })}`);
+      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Payload template: ${JSON.stringify({ contentSid: sendOpts.contentSid, variabili: sendOpts.contentVariables || 'N/A', agentConfigId: sendOpts.agentConfigId || 'auto' })}`);
 
       messageSid = await sendWhatsAppMessage(
         task.consultant_id,
@@ -2296,37 +2273,33 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
         undefined,
         sendOpts,
       );
-      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Template WhatsApp inviato con successo!`);
-      console.log(`   📋 SID: ${messageSid}`);
-      console.log(`   📎 PDF allegato: ${pdfMediaUrl ? 'SÌ' : 'NO'}`);
+      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Template WhatsApp inviato: ${messageSid}`);
     } else {
-      const sendOpts = { ...agentOpts, ...(pdfMediaUrl ? { mediaUrl: pdfMediaUrl } : {}) };
-      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Opzioni invio testo libero: ${JSON.stringify({ hasMediaUrl: !!sendOpts.mediaUrl, mediaUrl: sendOpts.mediaUrl || 'N/A', agentConfigId: sendOpts.agentConfigId || 'auto' })}`);
+      console.log(`📤 ${LOG_PREFIX} [TWILIO CALL] Invio messaggio testo libero (${messageText.length} chars)`);
 
       messageSid = await sendWhatsAppMessage(
         task.consultant_id,
         resolvedPhone,
         messageText,
         undefined,
-        sendOpts,
+        agentOpts,
       );
-      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Messaggio testo libero inviato con successo!`);
-      console.log(`   📋 SID: ${messageSid}`);
-      console.log(`   📎 PDF allegato: ${pdfMediaUrl ? 'SÌ' : 'NO'}`);
+      console.log(`✅ ${LOG_PREFIX} [TWILIO CALL] Messaggio testo libero inviato: ${messageSid}`);
     }
 
     console.log(`📱 ═══════════════════════════════════════════════════════════`);
     console.log(`📱 ${LOG_PREFIX} [WHATSAPP SEND] COMPLETATO`);
     console.log(`📱   SID: ${messageSid}`);
-    console.log(`📱   Destinatario: ${resolvedPhone}`);
+    console.log(`📱   Destinatario: ${resolvedPhone} (${resolvedName || 'N/A'})`);
     console.log(`📱   Template: ${selectedTemplateId || 'nessuno'}`);
-    console.log(`📱   PDF: ${pdfCount > 0 ? `SÌ (${pdfType})` : 'NO'}`);
+    console.log(`📱   Variabili: ${contentVariables ? JSON.stringify(contentVariables) : 'nessuna'}`);
+    console.log(`📱   Report: ${hasReport ? 'SÌ (inviato via email)' : 'NO'}`);
     console.log(`📱 ═══════════════════════════════════════════════════════════\n`);
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_sent",
       title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
-      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${pdfCount > 0 ? ` | PDF ${pdfType} allegato` : ''}`,
+      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${hasReport ? ' | Documento inviato via email' : ''}`,
       icon: "💬",
       severity: "info",
       task_id: task.id,
@@ -2341,8 +2314,7 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale.${reportData.title
       message_preview: messageText.substring(0, 100),
       template_used: selectedTemplateId || 'plain_text',
       variables_filled: contentVariables ? Object.keys(contentVariables).length : 0,
-      pdf_attached: pdfCount > 0,
-      pdf_type: pdfType || undefined,
+      report_sent_via_email: hasReport,
     };
   } catch (error: any) {
     console.error(`\n❌ ═══════════════════════════════════════════════════════════`);
