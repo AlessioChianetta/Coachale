@@ -793,6 +793,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   let aiProviderResult: AiProviderResult;
   try {
     aiProviderResult = await getAIProvider(clientId, consultantId);
+    aiProviderResult.setFeature?.('client-chat', 'client');
   } catch (error: any) {
     if (error.message === "API_KEY_MISSING" || error.message.includes("No Gemini API key available")) {
       throw new Error("API Key Gemini mancante. Per favore, aggiungi la tua API Key personale nel profilo.");
@@ -1701,17 +1702,21 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('client-chat', 'client');
+        fileSearchProvider.setClientId?.(clientId);
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(clientId, consultantId);
+        aiProviderResult.setFeature?.('client-chat', 'client');
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(clientId, consultantId);
+      aiProviderResult.setFeature?.('client-chat', 'client');
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }
@@ -2905,25 +2910,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CLIENT]`);
     }
 
-    // Track token usage for client chat (only real data from Gemini, no fallback)
-    if (clientUsageMetadata) {
-      tokenTracker.track({
-        consultantId,
-        clientId,
-        model: dynamicConfig.model,
-        feature: 'client-chat',
-        requestType: 'stream',
-        keySource: providerMetadata.name || 'unknown',
-        inputTokens: clientUsageMetadata.promptTokenCount || 0,
-        outputTokens: clientUsageMetadata.candidatesTokenCount || 0,
-        cachedTokens: clientUsageMetadata.cachedContentTokenCount || 0,
-        totalTokens: clientUsageMetadata.totalTokenCount || 0,
-        thinkingTokens: clientUsageMetadata.thoughtsTokenCount || 0,
-        durationMs: geminiCallTime,
-        callerRole: 'client',
-      }).catch(() => {});
-    } else {
-      console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CLIENT]`);
+    if (!clientUsageMetadata) {
+      console.log(`⚠️  [TokenTracker] No real token data from Gemini [CLIENT] - provider auto-tracking may also be empty`);
     }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";
@@ -3889,17 +3877,20 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
+        fileSearchProvider.setFeature?.('consultant-chat', 'consultant');
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(consultantId, consultantId);
+        aiProviderResult.setFeature?.('consultant-chat', 'consultant');
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(consultantId, consultantId);
+      aiProviderResult.setFeature?.('consultant-chat', 'consultant');
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }
@@ -4124,24 +4115,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`\n⚠️  TOKEN USAGE: usageMetadata not available in streaming response [CONSULTANT]`);
     }
 
-    // Track token usage for consultant chat (only real data from Gemini, no fallback)
-    if (consultantUsageMetadata) {
-      tokenTracker.track({
-        consultantId,
-        model: consultantDynamicConfig.model,
-        feature: 'consultant-chat',
-        requestType: 'stream',
-        keySource: providerMetadata.name || 'unknown',
-        inputTokens: consultantUsageMetadata.promptTokenCount || 0,
-        outputTokens: consultantUsageMetadata.candidatesTokenCount || 0,
-        cachedTokens: consultantUsageMetadata.cachedContentTokenCount || 0,
-        totalTokens: consultantUsageMetadata.totalTokenCount || 0,
-        thinkingTokens: consultantUsageMetadata.thoughtsTokenCount || 0,
-        durationMs: geminiCallTime,
-        callerRole: 'consultant',
-      }).catch(() => {});
-    } else {
-      console.log(`⚠️  [TokenTracker] Skipping tracking - no real token data from Gemini [CONSULTANT]`);
+    if (!consultantUsageMetadata) {
+      console.log(`⚠️  [TokenTracker] No real token data from Gemini [CONSULTANT] - provider auto-tracking may also be empty`);
     }
 
     let assistantMessage = accumulatedMessage || "Mi dispiace, non sono riuscito a generare una risposta.";

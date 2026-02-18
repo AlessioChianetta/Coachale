@@ -593,7 +593,7 @@ export interface AiProviderResult {
   metadata: AiProviderMetadata;
   source: AiProviderSource;
   cleanup?: () => Promise<void>;
-  setFeature?: (feature: string) => void;
+  setFeature?: (feature: string, callerRole?: 'client' | 'consultant') => void;
   trackedGenerateContent: (
     params: any,
     context: { consultantId: string; clientId?: string; feature: string; callerRole?: 'client' | 'consultant' }
@@ -1360,9 +1360,12 @@ export async function getAIProvider(
     });
   }
 
-  result.setFeature = (feature: string) => {
+  result.setFeature = (feature: string, callerRole?: 'client' | 'consultant') => {
     if ((result.client as any).trackingContext) {
       (result.client as any).trackingContext.feature = feature;
+      if (callerRole) {
+        (result.client as any).trackingContext.callerRole = callerRole;
+      }
     }
   };
 
@@ -1722,7 +1725,7 @@ export function getCacheStats(): {
  */
 export async function getGoogleAIStudioClientForFileSearch(
   userId: string
-): Promise<{ client: GeminiClient; metadata: AiProviderMetadata; setFeature?: (feature: string) => void } | null> {
+): Promise<{ client: GeminiClient; metadata: AiProviderMetadata; setFeature?: (feature: string, callerRole?: 'client' | 'consultant') => void; setClientId?: (clientId: string) => void } | null> {
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)`);
   console.log(`${'═'.repeat(70)}`);
@@ -1740,12 +1743,20 @@ export async function getGoogleAIStudioClientForFileSearch(
         keySource,
         feature: 'unknown',
       });
-      const setFeature = (feature: string) => {
+      const setFeature = (feature: string, callerRole?: 'client' | 'consultant') => {
         if (client.trackingContext) {
           client.trackingContext.feature = feature;
+          if (callerRole) {
+            client.trackingContext.callerRole = callerRole;
+          }
         }
       };
-      return setFeature;
+      const setClientId = (clientId: string) => {
+        if (client.trackingContext) {
+          client.trackingContext.clientId = clientId;
+        }
+      };
+      return { setFeature, setClientId };
     };
 
     const envApiKey = process.env.GEMINI_API_KEY;
@@ -1754,7 +1765,7 @@ export async function getGoogleAIStudioClientForFileSearch(
       
       const ai = new GoogleGenAI({ apiKey: envApiKey });
       const client = new GeminiClientAdapter(ai);
-      const setFeature = setupTracking(client, 'env');
+      const { setFeature, setClientId } = setupTracking(client, 'env');
       
       return {
         client,
@@ -1762,6 +1773,7 @@ export async function getGoogleAIStudioClientForFileSearch(
           name: "Google AI Studio",
         },
         setFeature,
+        setClientId,
       };
     }
     
@@ -1787,7 +1799,7 @@ export async function getGoogleAIStudioClientForFileSearch(
         
         const ai = new GoogleGenAI({ apiKey });
         const client = new GeminiClientAdapter(ai);
-        const setFeature = setupTracking(client, 'superadmin');
+        const { setFeature, setClientId } = setupTracking(client, 'superadmin');
         
         return {
           client,
@@ -1795,6 +1807,7 @@ export async function getGoogleAIStudioClientForFileSearch(
             name: "Google AI Studio",
           },
           setFeature,
+          setClientId,
         };
       }
     }
@@ -1815,7 +1828,7 @@ export async function getGoogleAIStudioClientForFileSearch(
     
     const ai = new GoogleGenAI({ apiKey });
     const client = new GeminiClientAdapter(ai);
-    const setFeature = setupTracking(client, 'user');
+    const { setFeature, setClientId } = setupTracking(client, 'user');
 
     return {
       client,
@@ -1823,6 +1836,7 @@ export async function getGoogleAIStudioClientForFileSearch(
         name: "Google AI Studio",
       },
       setFeature,
+      setClientId,
     };
   } catch (error: any) {
     console.error(`❌ Failed to create Google AI Studio client for File Search:`, error.message);
