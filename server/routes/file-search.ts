@@ -6,8 +6,10 @@ import { db } from '../db';
 import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig, fileSearchSyncReports, emailAccounts, emailAccountKnowledgeItems, departments } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
-import { syncDynamicDocuments } from '../ai/dynamic-context-documents';
+import { syncDynamicDocuments, generateConversationHistoryDocument, generateLeadHubMetricsDocument, generateAILimitationsDocument, generateClientsOverviewDocument, generateClientStatesDocument, generateWhatsappTemplatesDocument, generateTwilioTemplatesDocument, generateConsultantConfigDocument, generateEmailMarketingDocument, generateCampaignsDocument, generateCalendarDocument, generateExercisesPendingDocument, generateConsultationsDocument } from '../ai/dynamic-context-documents';
 import type { OperationalSettings } from '../ai/dynamic-context-documents';
+import { libraryDocuments, consultantKnowledgeDocuments, exercises, universityLessons, consultations as consultationsTable } from '../../shared/schema';
+import { getGuideAsDocument } from '../consultant-guides';
 
 const sseTokenStore = new Map<string, { consultantId: string; expiresAt: number }>();
 
@@ -2893,6 +2895,207 @@ router.patch('/stores/consultant/dynamic-context-settings', authenticateToken, r
   } catch (error: any) {
     console.error('[FileSearch API] Error updating dynamic context settings:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/document/:id/content
+ * Retrieve the content of a file search document by regenerating it from source
+ */
+router.get('/document/:id/content', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+
+    const doc = await db.query.fileSearchDocuments.findFirst({
+      where: eq(fileSearchDocuments.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ success: false, error: 'Documento non trovato' });
+    }
+
+    if (doc.consultantId && doc.consultantId !== userId) {
+      return res.status(403).json({ success: false, error: 'Non autorizzato ad accedere a questo documento' });
+    }
+
+    if (!doc.consultantId) {
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, doc.storeId),
+      });
+      if (store && store.ownerId !== userId) {
+        let authorized = false;
+        if (store.ownerType === 'client') {
+          const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+          if (clientUser && clientUser.consultantId === userId) {
+            authorized = true;
+          }
+        }
+        if (!authorized) {
+          return res.status(403).json({ success: false, error: 'Non autorizzato ad accedere a questo documento' });
+        }
+      }
+    }
+
+    const consultantId = doc.consultantId || userId;
+    let content = '';
+
+    const sourceType = doc.sourceType;
+    const sourceId = doc.sourceId || '';
+    const displayName = doc.displayName || '';
+
+    if (sourceType === 'dynamic_context' || (sourceType as string).includes('operational_context')) {
+      if (sourceId.startsWith('operational_clients_')) {
+        content = await generateClientsOverviewDocument(consultantId);
+      } else if (sourceId.startsWith('operational_clientstates_')) {
+        content = await generateClientStatesDocument(consultantId);
+      } else if (sourceId.startsWith('operational_whatsapptemplates_')) {
+        content = await generateWhatsappTemplatesDocument(consultantId);
+      } else if (sourceId.startsWith('operational_twiliotemplates_')) {
+        content = await generateTwilioTemplatesDocument(consultantId);
+      } else if (sourceId.startsWith('operational_config_')) {
+        content = await generateConsultantConfigDocument(consultantId);
+      } else if (sourceId.startsWith('operational_email_')) {
+        content = await generateEmailMarketingDocument(consultantId);
+      } else if (sourceId.startsWith('operational_campaigns_')) {
+        content = await generateCampaignsDocument(consultantId);
+      } else if (sourceId.startsWith('operational_calendar_')) {
+        content = await generateCalendarDocument(consultantId);
+      } else if (sourceId.startsWith('operational_exercisespending_')) {
+        content = await generateExercisesPendingDocument(consultantId);
+      } else if (sourceId.startsWith('operational_consultations_')) {
+        content = await generateConsultationsDocument(consultantId);
+      } else if (displayName.includes('Conversazioni') || sourceId.includes('conversation')) {
+        content = await generateConversationHistoryDocument(consultantId);
+      } else if (displayName.includes('Lead Hub') || sourceId.includes('lead')) {
+        content = await generateLeadHubMetricsDocument(consultantId);
+      } else if (displayName.includes('Limitazioni') || sourceId.includes('limitations')) {
+        content = generateAILimitationsDocument();
+      } else {
+        content = `${displayName} - Documento di contesto dinamico (sourceId: ${sourceId})`;
+      }
+    } else if (sourceType === 'library') {
+      if (sourceId) {
+        const libDoc = await db.query.libraryDocuments.findFirst({
+          where: eq(libraryDocuments.id, sourceId),
+        });
+        if (libDoc) {
+          content = libDoc.content || `${libDoc.title}\n${libDoc.description || ''}`;
+        } else {
+          content = `Documento libreria non trovato (ID: ${sourceId})`;
+        }
+      } else {
+        content = `${displayName} - Documento libreria`;
+      }
+    } else if (sourceType === 'knowledge_base') {
+      if (sourceId) {
+        const kbDoc = await db.query.consultantKnowledgeDocuments.findFirst({
+          where: eq(consultantKnowledgeDocuments.id, sourceId),
+        });
+        if (kbDoc) {
+          content = kbDoc.extractedContent || kbDoc.contentSummary || kbDoc.title;
+        } else {
+          content = `Documento knowledge base non trovato (ID: ${sourceId})`;
+        }
+      } else {
+        content = `${displayName} - Documento knowledge base`;
+      }
+    } else if (sourceType === 'exercise') {
+      if (sourceId) {
+        const exercise = await db.query.exercises.findFirst({
+          where: eq(exercises.id, sourceId),
+        });
+        if (exercise) {
+          const parts: string[] = [];
+          parts.push(`# ${exercise.title}`);
+          parts.push(`Categoria: ${exercise.category}`);
+          parts.push(`Tipo: ${exercise.type}`);
+          if (exercise.description) {
+            parts.push(`\n## Descrizione\n${exercise.description}`);
+          }
+          if (exercise.instructions) {
+            parts.push(`\n## Istruzioni\n${exercise.instructions}`);
+          }
+          if (exercise.questions && Array.isArray(exercise.questions) && exercise.questions.length > 0) {
+            parts.push(`\n## Domande`);
+            exercise.questions.forEach((q: any, i: number) => {
+              parts.push(`\n### Domanda ${i + 1}: ${q.question || q.text || ''}`);
+              if (q.type) parts.push(`Tipo: ${q.type}`);
+              if (q.options && Array.isArray(q.options)) {
+                parts.push(`Opzioni: ${q.options.join(', ')}`);
+              }
+            });
+          }
+          if (exercise.workPlatform) {
+            parts.push(`\n## Piattaforma di lavoro\nURL: ${exercise.workPlatform}`);
+          }
+          content = parts.join('\n');
+        } else {
+          content = `Esercizio non trovato (ID: ${sourceId})`;
+        }
+      } else {
+        content = `${displayName} - Esercizio`;
+      }
+    } else if (sourceType === 'university_lesson') {
+      if (sourceId) {
+        const lesson = await db.query.universityLessons.findFirst({
+          where: eq(universityLessons.id, sourceId),
+        });
+        if (lesson) {
+          const parts: string[] = [];
+          parts.push(`# ${lesson.title}`);
+          if (lesson.description) parts.push(`\n${lesson.description}`);
+          if (lesson.resourceUrl) parts.push(`\nRisorsa: ${lesson.resourceUrl}`);
+          content = parts.join('\n');
+        } else {
+          content = `Lezione non trovata (ID: ${sourceId})`;
+        }
+      } else {
+        content = `${displayName} - Lezione universitaria`;
+      }
+    } else if (sourceType === 'consultation') {
+      if (sourceId) {
+        const consultation = await db.query.consultations.findFirst({
+          where: eq(consultationsTable.id, sourceId),
+        });
+        if (consultation) {
+          const parts: string[] = [];
+          parts.push(`# Consultazione - ${consultation.scheduledAt ? new Date(consultation.scheduledAt).toLocaleDateString('it-IT') : 'N/A'}`);
+          parts.push(`Stato: ${consultation.status}`);
+          parts.push(`Durata: ${consultation.duration} minuti`);
+          if (consultation.notes) parts.push(`\n## Note\n${consultation.notes}`);
+          if (consultation.transcript) parts.push(`\n## Trascrizione\n${consultation.transcript}`);
+          if (consultation.summaryEmail) parts.push(`\n## Riepilogo\n${consultation.summaryEmail}`);
+          content = parts.join('\n');
+        } else {
+          content = `Consultazione non trovata (ID: ${sourceId})`;
+        }
+      } else {
+        content = `${displayName} - Consultazione`;
+      }
+    } else if (sourceType === 'consultant_guide') {
+      try {
+        const guide = getGuideAsDocument();
+        content = guide.content;
+      } catch (guideError: any) {
+        console.error(`[FileSearch API] Error loading consultant guide:`, guideError.message);
+        content = 'Errore nel caricamento della guida piattaforma';
+      }
+    } else {
+      content = `${displayName} (tipo: ${sourceType})`;
+    }
+
+    console.log(`[FileSearch API] Document content retrieved: ${id} (${sourceType}, ${content.length} chars)`);
+
+    res.json({
+      success: true,
+      content,
+      displayName: doc.displayName,
+      sourceType: doc.sourceType,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error retrieving document content:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

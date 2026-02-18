@@ -688,6 +688,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
   
   const [cleaningOrphans, setCleaningOrphans] = useState(false);
   const [selectedStoreForOrphans, setSelectedStoreForOrphans] = useState<string | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<{id: string; displayName: string} | null>(null);
+  const [documentContent, setDocumentContent] = useState<string>('');
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   
   useEffect(() => {
     if (logContainerRef.current && shouldAutoScroll) {
@@ -708,6 +711,27 @@ export default function ConsultantFileSearchAnalyticsPage() {
     }
     };
   
+  const fetchDocumentContent = async (docId: string, displayName: string) => {
+    setViewingDocument({ id: docId, displayName });
+    setIsLoadingContent(true);
+    setDocumentContent('');
+    try {
+      const response = await fetch(`/api/file-search/document/${docId}/content`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDocumentContent(data.content);
+      } else {
+        setDocumentContent(`Errore: ${data.error || 'Impossibile caricare il contenuto'}`);
+      }
+    } catch (error: any) {
+      setDocumentContent(`Errore di rete: ${error.message}`);
+    } finally {
+      setIsLoadingContent(false);
+    }
+  };
+
   const addSyncLog = (type: SyncLogEntry['type'], message: string, extra?: Partial<SyncLogEntry>) => {
     setSyncLogs(prev => [...prev, {
       id: `${Date.now()}-${Math.random()}`,
@@ -2965,6 +2989,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -2990,6 +3021,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3015,6 +3053,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3040,6 +3085,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3065,6 +3117,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3090,6 +3149,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3115,6 +3181,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3140,6 +3213,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3165,6 +3245,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3190,6 +3277,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3215,6 +3309,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3240,6 +3341,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                              className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                              title="Visualizza contenuto"
+                                            >
+                                              <Eye className="h-3 w-3 text-blue-500" />
+                                            </button>
                                             <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                               {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                             </Badge>
@@ -3274,6 +3382,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                                   <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                                   <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                                    className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                                    title="Visualizza contenuto"
+                                                  >
+                                                    <Eye className="h-3 w-3 text-blue-500" />
+                                                  </button>
                                                   <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                     {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                                   </Badge>
@@ -3335,6 +3450,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                               <span className="truncate flex-1 text-gray-600" title={doc.displayName}>
                                                                 {doc.displayName.split(' > ').pop()}
                                                               </span>
+                                                              <button
+                                                                onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                                                className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                                                title="Visualizza contenuto"
+                                                              >
+                                                                <Eye className="h-2.5 w-2.5 text-blue-500" />
+                                                              </button>
                                                               <Badge className={`text-[10px] px-1 flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                                 {doc.status === 'indexed' ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
                                                               </Badge>
@@ -3378,6 +3500,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                                   <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                                   <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                                    className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                                    title="Visualizza contenuto"
+                                                  >
+                                                    <Eye className="h-3 w-3 text-blue-500" />
+                                                  </button>
                                                   <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                     {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                                   </Badge>
@@ -3415,6 +3544,13 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                 <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                                   <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                                   <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                                    className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                                    title="Visualizza contenuto"
+                                                  >
+                                                    <Eye className="h-3 w-3 text-blue-500" />
+                                                  </button>
                                                   <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                     {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                                   </Badge>
@@ -8544,6 +8680,31 @@ export default function ConsultantFileSearchAnalyticsPage() {
           </div>
         </main>
       </div>
+      <Dialog open={!!viewingDocument} onOpenChange={(open) => { if (!open) setViewingDocument(null); }}>
+        <DialogContent className="max-w-4xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              {viewingDocument?.displayName || 'Documento'}
+            </DialogTitle>
+            <DialogDescription>
+              Contenuto del documento indicizzato in File Search
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[65vh] mt-4">
+            {isLoadingContent ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <span className="ml-3 text-gray-500">Caricamento contenuto...</span>
+              </div>
+            ) : (
+              <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded-lg border leading-relaxed">
+                {documentContent || 'Nessun contenuto disponibile'}
+              </pre>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
