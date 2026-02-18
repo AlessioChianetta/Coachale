@@ -3900,7 +3900,8 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     const consultantContext: ConsultantContext = await buildConsultantContext(consultantId, { 
       message, 
       pageContext,
-      focusedDocument
+      focusedDocument,
+      fileSearchActive: hasConsultantFileSearch,
     });
     timings.contextBuildEnd = performance.now();
     contextBuildTime = Math.round(timings.contextBuildEnd - timings.contextBuildStart);
@@ -3969,6 +3970,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       console.log(`🚀 [Onboarding Mode] Building specialized onboarding assistant prompt`);
       const onboardingGuide = buildOnboardingAgentPrompt(onboardingStatuses);
       systemPrompt = onboardingGuide + '\n\n## Contesto Piattaforma\n' + buildConsultantSystemPrompt(consultantContext);
+    } else if (hasConsultantFileSearch) {
+      systemPrompt = buildLightweightConsultantSystemPrompt(consultantContext);
+      console.log(`⚡ [FileSearch] Using lightweight system prompt`);
     } else {
       systemPrompt = buildConsultantSystemPrompt(consultantContext);
     }
@@ -4372,6 +4376,76 @@ Titolo:`;
       await aiProviderResult.cleanup();
     }
   }
+}
+
+export function buildLightweightConsultantSystemPrompt(context: ConsultantContext): string {
+  const pageContextSection = context.pageContext && context.pageContext.contextNotes.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CONTESTO PAGINA CORRENTE - PRIORITÀ MASSIMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 Pagina attuale: ${context.pageContext.pageType}
+
+${context.pageContext.contextNotes.map(note => `📌 ${note}`).join('\n')}
+
+⚠️ ISTRUZIONI IMPORTANTI:
+- Quando l'utente chiede "in che sezione sono" o "dove mi trovo",
+  rispondi SEMPRE basandoti su queste informazioni contestuali.
+- Dai PRIORITÀ a questo contesto rispetto ai dati generali della dashboard.
+- Se l'utente fa una domanda vaga, interpreta la domanda nel contesto
+  della pagina corrente prima di dare una risposta generica.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : '';
+
+  const knowledgeInstructions = context.knowledgeBase?.summary ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 ISTRUZIONI KNOWLEDGE BASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.knowledgeBase.summary}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : '';
+
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ DATA E ORA CORRENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 Data di oggi: ${new Date(context.currentDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+🕐 Ora corrente: ${new Date(context.currentDateTime).toLocaleTimeString('it-IT')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${pageContextSection}
+Informazioni sul Consulente:
+- Nome: ${context.consultant.name}
+- Email: ${context.consultant.email}
+- Ruolo: ${context.consultant.role}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 SNAPSHOT DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- 👥 Clienti totali: ${context.dashboard.totalClients}
+- ✅ Clienti attivi (ultimi 30 giorni): ${context.dashboard.activeClients}
+- ⚠️ Clienti inattivi: ${context.dashboard.totalClients - context.dashboard.activeClients}
+- 📝 Esercizi da revisionare: ${context.dashboard.pendingReviews}
+- 📅 Appuntamenti in programma: ${context.dashboard.upcomingAppointments}
+- 🔔 Appuntamenti oggi: ${context.dashboard.todayAppointments}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 MODALITÀ FILE SEARCH ATTIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tutti i dati operativi dettagliati (clienti, esercizi, template, campagne, etc.) sono disponibili tramite File Search. Usa la ricerca semantica per trovare informazioni specifiche quando richiesto.
+
+Quando l'utente chiede dettagli su un cliente specifico, esercizi, consulenze, template, campagne o qualsiasi dato operativo, il sistema File Search cercherà automaticamente nei documenti indicizzati e ti fornirà le informazioni rilevanti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${knowledgeInstructions}`.trim();
 }
 
 export function buildConsultantSystemPrompt(context: ConsultantContext): string {

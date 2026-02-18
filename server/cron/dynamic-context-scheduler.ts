@@ -10,10 +10,11 @@
 
 import cron from 'node-cron';
 import { db } from '../db';
-import { users, fileSearchStores } from '../../shared/schema';
+import { users, fileSearchStores, fileSearchSettings } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 import { syncDynamicDocuments } from '../ai/dynamic-context-documents';
+import type { OperationalSettings } from '../ai/dynamic-context-documents';
 
 let schedulerTask: cron.ScheduledTask | null = null;
 
@@ -80,13 +81,42 @@ async function runDynamicContextSync() {
       consultantsProcessed++;
 
       try {
-        const result = await syncDynamicDocuments(consultantId);
+        const [settings] = await db
+          .select()
+          .from(fileSearchSettings)
+          .where(eq(fileSearchSettings.consultantId, consultantId))
+          .limit(1);
+
+        let operationalSettings: OperationalSettings | undefined;
+        if (settings?.operationalSyncEnabled) {
+          operationalSettings = {
+            clients: settings.autoSyncOperationalClients,
+            clientStates: settings.autoSyncOperationalClientStates,
+            whatsappTemplates: settings.autoSyncOperationalWhatsappTemplates,
+            twilioTemplates: settings.autoSyncOperationalTwilioTemplates,
+            config: settings.autoSyncOperationalConfig,
+            email: settings.autoSyncOperationalEmail,
+            campaigns: settings.autoSyncOperationalCampaigns,
+            calendar: settings.autoSyncOperationalCalendar,
+            exercisesPending: settings.autoSyncOperationalExercisesPending,
+            consultations: settings.autoSyncOperationalConsultations,
+          };
+        }
+
+        const result = await syncDynamicDocuments(consultantId, operationalSettings);
         
         if (result.totalDocuments > 0) {
           successCount++;
-          console.log(`      ✅ Synced ${result.totalDocuments}/3 documents`);
+          console.log(`      ✅ Synced ${result.totalDocuments} documents${operationalSettings ? ' (incl. operational)' : ''}`);
         } else {
           console.log(`      ⚠️ No documents synced (may be missing store or API key)`);
+        }
+
+        if (settings?.operationalSyncEnabled) {
+          await db
+            .update(fileSearchSettings)
+            .set({ lastOperationalSyncAt: new Date() })
+            .where(eq(fileSearchSettings.consultantId, consultantId));
         }
       } catch (error: any) {
         errorCount++;
@@ -124,7 +154,39 @@ export function stopDynamicContextScheduler() {
 export async function manualTriggerDynamicContextSync(consultantId?: string) {
   if (consultantId) {
     console.log(`📄 [DynamicContextScheduler] Manual sync for consultant ${consultantId.substring(0, 8)}...`);
-    return await syncDynamicDocuments(consultantId);
+    
+    const [settings] = await db
+      .select()
+      .from(fileSearchSettings)
+      .where(eq(fileSearchSettings.consultantId, consultantId))
+      .limit(1);
+
+    let operationalSettings: OperationalSettings | undefined;
+    if (settings?.operationalSyncEnabled) {
+      operationalSettings = {
+        clients: settings.autoSyncOperationalClients,
+        clientStates: settings.autoSyncOperationalClientStates,
+        whatsappTemplates: settings.autoSyncOperationalWhatsappTemplates,
+        twilioTemplates: settings.autoSyncOperationalTwilioTemplates,
+        config: settings.autoSyncOperationalConfig,
+        email: settings.autoSyncOperationalEmail,
+        campaigns: settings.autoSyncOperationalCampaigns,
+        calendar: settings.autoSyncOperationalCalendar,
+        exercisesPending: settings.autoSyncOperationalExercisesPending,
+        consultations: settings.autoSyncOperationalConsultations,
+      };
+    }
+
+    const result = await syncDynamicDocuments(consultantId, operationalSettings);
+    
+    if (settings?.operationalSyncEnabled) {
+      await db
+        .update(fileSearchSettings)
+        .set({ lastOperationalSyncAt: new Date() })
+        .where(eq(fileSearchSettings.consultantId, consultantId));
+    }
+    
+    return result;
   } else {
     console.log(`📄 [DynamicContextScheduler] Manual sync for all consultants...`);
     await runDynamicContextSync();

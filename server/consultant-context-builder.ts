@@ -1060,6 +1060,172 @@ export interface ConsultantContext {
 }
 
 // ========================================
+// LIGHTWEIGHT CONTEXT FOR FILE SEARCH MODE
+// ========================================
+
+async function buildLightweightContext(
+  consultantId: string,
+  pageContext?: ConsultantPageContext
+): Promise<ConsultantContext> {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  const [consultantInfo] = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, consultantId))
+    .limit(1);
+
+  const [
+    [totalClientsResult],
+    [activeClientsResult],
+    [pendingReviewsResult],
+    [upcomingAppointmentsResult],
+    [todayAppointmentsResult],
+  ] = await Promise.all([
+    db.select({ count: count() }).from(users)
+      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client'))),
+    db.select({ count: count() }).from(clientStateTracking)
+      .where(and(
+        eq(clientStateTracking.consultantId, consultantId),
+        gte(clientStateTracking.updatedAt, thirtyDaysAgo)
+      )),
+    db.select({ count: count() }).from(exerciseAssignments)
+      .where(and(
+        eq(exerciseAssignments.consultantId, consultantId),
+        inArray(exerciseAssignments.status, ['submitted', 'returned'])
+      )),
+    db.select({ count: count() }).from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, consultantId),
+        gte(calendarEvents.start, now)
+      )),
+    db.select({ count: count() }).from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, consultantId),
+        gte(calendarEvents.start, startOfToday),
+        gte(endOfToday, calendarEvents.start)
+      )),
+  ]);
+
+  const totalClients = totalClientsResult?.count ?? 0;
+  const activeClients = activeClientsResult?.count ?? 0;
+  const pendingReviews = pendingReviewsResult?.count ?? 0;
+  const upcomingAppointments = upcomingAppointmentsResult?.count ?? 0;
+  const todayAppointments = todayAppointmentsResult?.count ?? 0;
+
+  const pageContextData = pageContext ? {
+    pageType: pageContext.pageType,
+    contextNotes: [] as string[],
+  } : undefined;
+
+  if (pageContext && pageContextData) {
+    if (pageContext.stats) {
+      pageContextData.contextNotes.push(`Stats dalla pagina: ${JSON.stringify(pageContext.stats)}`);
+    }
+  }
+
+  return {
+    currentDate: today,
+    currentDateTime: now.toISOString(),
+    consultant: {
+      id: consultantInfo?.id || consultantId,
+      name: consultantInfo ? `${consultantInfo.firstName} ${consultantInfo.lastName}` : 'Consulente',
+      email: consultantInfo?.email || '',
+      role: consultantInfo?.role || 'consultant',
+    },
+    dashboard: {
+      totalClients,
+      activeClients,
+      pendingReviews,
+      upcomingAppointments,
+      todayAppointments,
+    },
+    clients: { all: [] },
+    exercises: {
+      pendingReviews: [],
+      recentlyCreated: [],
+      stats: { totalCreated: 0, totalAssigned: 0, awaitingReview: pendingReviews, completedThisWeek: 0 },
+    },
+    emailMarketing: {
+      automation: { enabled: false, schedulerActive: false, lastRun: null, nextRun: null },
+      recentDrafts: [],
+      stats: { totalSent: 0, sentThisWeek: 0, sentThisMonth: 0, pendingDrafts: 0 },
+    },
+    whatsappLeads: {
+      activeLeads: [],
+      recentConversations: [],
+      stats: { totalLeads: 0, qualifiedLeads: 0, appointmentsBooked: 0, activeConversations: 0 },
+    },
+    calendar: {
+      upcomingAppointments: [],
+      todayEvents: [],
+      stats: { totalUpcoming: upcomingAppointments, todayCount: todayAppointments, thisWeekCount: 0 },
+    },
+    consultations: {
+      upcoming: [],
+      recent: [],
+      stats: { total: 0, upcoming: 0, completed: 0, thisWeek: 0 },
+    },
+    consultationTasks: {
+      pending: [],
+      stats: { total: 0, pending: 0, completed: 0, overdue: 0 },
+    },
+    clientGoals: {
+      active: [],
+      stats: { total: 0, active: 0, completed: 0, avgProgress: 0 },
+    },
+    clientStates: {
+      all: [],
+      stats: { totalWithState: 0, totalWithoutState: 0 },
+    },
+    smtpConfiguration: {
+      configured: false,
+      fromEmail: null,
+      fromName: null,
+      automationEnabled: false,
+      emailTone: null,
+    },
+    emailTemplates: {
+      available: [],
+      stats: { total: 0, active: 0 },
+    },
+    whatsappTemplates: {
+      custom: [],
+      stats: { total: 0, active: 0 },
+    },
+    libraryDocuments: {
+      recent: [],
+      stats: { total: 0, published: 0, categories: 0 },
+    },
+    exerciseFeedback: {
+      recent: [],
+      stats: { total: 0, withFeedback: 0 },
+    },
+    university: {
+      templates: [],
+      yearAssignments: [],
+      stats: { totalTemplates: 0, activeTemplates: 0, totalAssignments: 0, avgProgress: 0, activeStudents: 0 },
+    },
+    exerciseTemplates: {
+      available: [],
+      stats: { total: 0, totalUsage: 0, byCategory: {} },
+    },
+    pageContext: pageContextData,
+  };
+}
+
+// ========================================
 // BUILD CONSULTANT CONTEXT
 // ========================================
 
@@ -1074,6 +1240,7 @@ export async function buildConsultantContext(
       title: string;
       category?: string;
     };
+    fileSearchActive?: boolean;
   }
 ): Promise<ConsultantContext> {
   let intent: ConsultantIntent = options?.intent || 'general';
@@ -1124,6 +1291,11 @@ export async function buildConsultantContext(
     const cacheAge = Math.round((Date.now() - cached.timestamp) / 1000);
     console.log(`✅ Using cached consultant context (intent: ${intent}, age: ${cacheAge}s)`);
     return cached.context;
+  }
+
+  if (options?.fileSearchActive) {
+    console.log(`⚡ [FileSearch Mode] Skipping heavy queries - using lightweight snapshot`);
+    return buildLightweightContext(consultantId, options?.pageContext);
   }
 
   console.log(`🔄 Building fresh consultant context (intent: ${intent})`);

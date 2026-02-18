@@ -130,6 +130,19 @@ interface FileSearchSettings {
   autoSyncAssignedUniversity: boolean;
   autoSyncExerciseExternalDocs: boolean;
   autoSyncEmailAccounts: boolean;
+  operationalSyncEnabled: boolean;
+  operationalSyncIntervalMinutes: number;
+  lastOperationalSyncAt: string | null;
+  autoSyncOperationalClients: boolean;
+  autoSyncOperationalClientStates: boolean;
+  autoSyncOperationalWhatsappTemplates: boolean;
+  autoSyncOperationalTwilioTemplates: boolean;
+  autoSyncOperationalConfig: boolean;
+  autoSyncOperationalEmail: boolean;
+  autoSyncOperationalCampaigns: boolean;
+  autoSyncOperationalCalendar: boolean;
+  autoSyncOperationalExercisesPending: boolean;
+  autoSyncOperationalConsultations: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -604,6 +617,16 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   email_journey: { label: 'Email Journey', icon: '📧', color: 'bg-purple-400' },
   consultant_guide: { label: 'Guide Consulente', icon: '📖', color: 'bg-indigo-400' },
   exercise_external_docs: { label: 'Documenti Esterni Esercizi', icon: '🔗', color: 'bg-orange-500' },
+  operational_clients: { label: 'Clienti', icon: '👥', color: 'bg-blue-600' },
+  operational_client_states: { label: 'Stato Clienti', icon: '🎯', color: 'bg-rose-600' },
+  operational_whatsapp_templates: { label: 'Template WhatsApp', icon: '💬', color: 'bg-green-600' },
+  operational_twilio_templates: { label: 'Template Twilio', icon: '📱', color: 'bg-cyan-600' },
+  operational_config: { label: 'Configurazione', icon: '⚙️', color: 'bg-gray-600' },
+  operational_email: { label: 'Email Marketing', icon: '📧', color: 'bg-purple-600' },
+  operational_campaigns: { label: 'Campagne', icon: '📢', color: 'bg-amber-600' },
+  operational_calendar: { label: 'Calendario', icon: '📅', color: 'bg-teal-600' },
+  operational_exercises_pending: { label: 'Esercizi Pendenti', icon: '📝', color: 'bg-orange-600' },
+  operational_consultations: { label: 'Consulenze', icon: '🗓️', color: 'bg-pink-600' },
 };
 
 export default function ConsultantFileSearchAnalyticsPage() {
@@ -2242,6 +2265,205 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <p className="text-xs text-blue-500">token risparmiati</p>
                         </div>
                       </div>
+
+                      {settings?.operationalSyncEnabled && (
+                        <>
+                          <div className="border-t pt-4 mt-4">
+                            <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                              📊 Contenuti Operativi
+                              {settings?.lastOperationalSyncAt && (
+                                <span className="text-xs font-normal text-gray-400 ml-auto">
+                                  Ultimo sync: {new Date(settings.lastOperationalSyncAt).toLocaleString('it-IT')}
+                                </span>
+                              )}
+                            </h5>
+                          </div>
+                          {settings?.autoSyncOperationalClients && (
+                            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-blue-100 p-2 rounded-lg">
+                                  <Users className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-blue-900">👥 Clienti</p>
+                                  <p className="text-sm text-blue-600">Lista clienti con statistiche</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-blue-700">~15,000</p>
+                                <p className="text-xs text-blue-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalClientStates && (
+                            <div className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-rose-100 p-2 rounded-lg">
+                                  <Target className="h-5 w-5 text-rose-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-rose-900">🎯 Stato Clienti</p>
+                                  <p className="text-sm text-rose-600">Stato attuale e obiettivi</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-rose-700">~20,000</p>
+                                <p className="text-xs text-rose-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalWhatsappTemplates && (
+                            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                  <MessageCircle className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-green-900">💬 Template WhatsApp</p>
+                                  <p className="text-sm text-green-600">Template messaggi agenti</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-green-700">~12,000</p>
+                                <p className="text-xs text-green-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalTwilioTemplates && (
+                            <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-cyan-100 p-2 rounded-lg">
+                                  <MessageSquare className="h-5 w-5 text-cyan-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-cyan-900">📱 Template Twilio</p>
+                                  <p className="text-sm text-cyan-600">Template contenuti</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-cyan-700">~8,000</p>
+                                <p className="text-xs text-cyan-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalConfig && (
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-gray-100 p-2 rounded-lg">
+                                  <Settings className="h-5 w-5 text-gray-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">⚙️ Configurazione</p>
+                                  <p className="text-sm text-gray-600">SMTP, calendario, API</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-gray-700">~10,000</p>
+                                <p className="text-xs text-gray-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalEmail && (
+                            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-purple-100 p-2 rounded-lg">
+                                  <Mail className="h-5 w-5 text-purple-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-purple-900">📧 Email Marketing</p>
+                                  <p className="text-sm text-purple-600">Bozze e scheduler</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-purple-700">~12,000</p>
+                                <p className="text-xs text-purple-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalCampaigns && (
+                            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-amber-100 p-2 rounded-lg">
+                                  <TrendingUp className="h-5 w-5 text-amber-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-amber-900">📢 Campagne</p>
+                                  <p className="text-sm text-amber-600">Marketing analytics</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-amber-700">~10,000</p>
+                                <p className="text-xs text-amber-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalCalendar && (
+                            <div className="flex items-center justify-between p-3 bg-teal-50 rounded-lg border border-teal-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-teal-100 p-2 rounded-lg">
+                                  <CalendarClock className="h-5 w-5 text-teal-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-teal-900">📅 Calendario</p>
+                                  <p className="text-sm text-teal-600">Appuntamenti</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-teal-700">~8,000</p>
+                                <p className="text-xs text-teal-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalExercisesPending && (
+                            <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-orange-100 p-2 rounded-lg">
+                                  <ClipboardCheck className="h-5 w-5 text-orange-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-orange-900">📝 Esercizi Pendenti</p>
+                                  <p className="text-sm text-orange-600">Da revisionare</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-orange-700">~12,000</p>
+                                <p className="text-xs text-orange-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {settings?.autoSyncOperationalConsultations && (
+                            <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg border border-pink-200">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-pink-100 p-2 rounded-lg">
+                                  <CalendarClock className="h-5 w-5 text-pink-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-pink-900">🗓️ Consulenze</p>
+                                  <p className="text-sm text-pink-600">Storico e task</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-pink-700">~10,000</p>
+                                <p className="text-xs text-pink-500">token risparmiati</p>
+                              </div>
+                            </div>
+                          )}
+                          {![
+                            settings?.autoSyncOperationalClients,
+                            settings?.autoSyncOperationalClientStates,
+                            settings?.autoSyncOperationalWhatsappTemplates,
+                            settings?.autoSyncOperationalTwilioTemplates,
+                            settings?.autoSyncOperationalConfig,
+                            settings?.autoSyncOperationalEmail,
+                            settings?.autoSyncOperationalCampaigns,
+                            settings?.autoSyncOperationalCalendar,
+                            settings?.autoSyncOperationalExercisesPending,
+                            settings?.autoSyncOperationalConsultations,
+                          ].some(v => v) && (
+                            <p className="text-gray-400 text-sm italic p-2">Nessuna sorgente operativa attivata. Vai in Impostazioni per abilitarle.</p>
+                          )}
+                        </>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -4138,6 +4360,188 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             checked={settings?.autoSyncExerciseExternalDocs ?? false}
                             onCheckedChange={(checked) => handleToggle('autoSyncExerciseExternalDocs', checked)}
                             disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        📊 Sincronizzazione Dati Operativi
+                      </h4>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Sincronizza i dati operativi in File Search per ridurre drasticamente i token del system prompt (~125K → ~8K tokens).
+                      </p>
+
+                      <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <Label className="text-base font-medium text-orange-900">Abilita Tutto Operativo</Label>
+                            <p className="text-sm text-orange-700">
+                              Attiva/disattiva la sincronizzazione di tutti i dati operativi
+                            </p>
+                          </div>
+                          <Switch
+                            checked={settings?.operationalSyncEnabled ?? false}
+                            onCheckedChange={(checked) => handleToggle('operationalSyncEnabled', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+                        {(settings?.operationalSyncEnabled) && (
+                          <div className="mt-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Label className="text-sm text-orange-800 whitespace-nowrap">Intervallo sync (minuti):</Label>
+                              <Select
+                                value={settings?.operationalSyncIntervalMinutes?.toString() ?? "60"}
+                                onValueChange={(value) => handleToggle('operationalSyncIntervalMinutes', parseInt(value))}
+                                disabled={updateSettingsMutation.isPending}
+                              >
+                                <SelectTrigger className="w-[100px] bg-white">
+                                  <SelectValue placeholder="Min" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[15, 30, 60, 120, 240, 480].map(m => (
+                                    <SelectItem key={m} value={m.toString()}>
+                                      {m} min
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {settings?.lastOperationalSyncAt && (
+                              <p className="text-xs text-orange-600">
+                                Ultima sincronizzazione operativa: {new Date(settings.lastOperationalSyncAt).toLocaleString('it-IT')}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 mb-4">
+                        <p className="text-sm text-emerald-700">
+                          <strong>💡 Risparmio stimato: ~117K tokens per messaggio</strong> — I dati operativi vengono indicizzati in File Search invece di essere caricati nel system prompt.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>👥 Clienti</Label>
+                            <p className="text-sm text-gray-500">Lista clienti con statistiche e progresso</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalClients ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalClients', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>🎯 Stato Clienti</Label>
+                            <p className="text-sm text-gray-500">Stato attuale, ideale, ostacoli e motivazioni</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalClientStates ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalClientStates', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>💬 Template WhatsApp</Label>
+                            <p className="text-sm text-gray-500">Template messaggi e configurazione agenti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalWhatsappTemplates ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalWhatsappTemplates', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>📱 Template Twilio</Label>
+                            <p className="text-sm text-gray-500">Template contenuti Twilio</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalTwilioTemplates ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalTwilioTemplates', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>⚙️ Configurazione</Label>
+                            <p className="text-sm text-gray-500">SMTP, calendario, API esterne</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalConfig ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalConfig', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>📧 Email Marketing</Label>
+                            <p className="text-sm text-gray-500">Bozze, scheduler, journey templates</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalEmail ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalEmail', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>📢 Campagne</Label>
+                            <p className="text-sm text-gray-500">Campagne marketing e analytics</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalCampaigns ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalCampaigns', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>📅 Calendario</Label>
+                            <p className="text-sm text-gray-500">Appuntamenti e impostazioni calendario</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalCalendar ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalCalendar', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>📝 Esercizi Pendenti</Label>
+                            <p className="text-sm text-gray-500">Esercizi da revisionare e feedback</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalExercisesPending ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalExercisesPending', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>🗓️ Consulenze</Label>
+                            <p className="text-sm text-gray-500">Storico consulenze e task</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncOperationalConsultations ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncOperationalConsultations', checked)}
+                            disabled={updateSettingsMutation.isPending || !(settings?.operationalSyncEnabled)}
                           />
                         </div>
                       </div>
