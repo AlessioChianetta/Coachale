@@ -1466,11 +1466,9 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const drawTwoToneDivider = (y: number) => {
-      const dividerMid = 50 + (545 - 50) * 0.4;
+    const drawDivider = (y: number) => {
       doc.save();
-      doc.moveTo(50, y).lineTo(dividerMid, y).strokeColor('#1450A0').lineWidth(1.5).stroke();
-      doc.moveTo(dividerMid, y).lineTo(545, y).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+      doc.moveTo(50, y).lineTo(545, y).strokeColor('#dcdce0').lineWidth(0.4).stroke();
       doc.restore();
     };
 
@@ -1479,52 +1477,34 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
     doc.fontSize(10).font('Helvetica').fillColor('#666666')
       .text(`Cliente: ${task.contact_name || 'N/A'}  |  Data: ${new Date().toLocaleDateString('it-IT')}`, { align: 'center' });
     doc.moveDown(0.5);
-    drawTwoToneDivider(doc.y);
+    drawDivider(doc.y);
     doc.moveDown(1);
 
     if (report.summary) {
       const summaryY = doc.y;
-      doc.save();
-      doc.rect(50, summaryY - 2, 8.5, 0).fill(20, 80, 160);
-      const summaryText = report.summary;
       doc.fillColor('#333333').fontSize(9).font('Helvetica-Oblique')
-        .text(summaryText, 65, summaryY, { width: 480, align: 'justify' });
+        .text(report.summary, 65, summaryY, { width: 480, align: 'justify' });
       const summaryEndY = doc.y;
-      doc.rect(50, summaryY - 2, 8.5, summaryEndY - summaryY + 4).fill(20, 80, 160);
+      doc.save();
+      doc.rect(50, summaryY - 2, 3, summaryEndY - summaryY + 4).fill('#1450A0');
       doc.restore();
       doc.y = summaryEndY;
       doc.moveDown(1);
-      drawTwoToneDivider(doc.y);
+      drawDivider(doc.y);
       doc.moveDown(1);
     }
 
     if (report.sections && Array.isArray(report.sections)) {
       report.sections.forEach((section: any, idx: number) => {
         if (doc.y > 700) doc.addPage();
-        const isAlt = idx % 2 === 1;
-        if (isAlt) {
-          doc.save();
-          doc.rect(45, doc.y - 5, 510, 0).fill('#f7f7f7');
-        }
-        const sectionStartY = doc.y;
         doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold')
           .text(`${idx + 1}. ${section.heading}`, { align: 'left' });
         doc.moveDown(0.5);
         doc.fillColor('#333333').fontSize(10).font('Helvetica')
           .text(section.content, { align: 'justify', lineGap: 3 });
-        if (isAlt) {
-          const sectionH = doc.y - sectionStartY + 10;
-          doc.rect(45, sectionStartY - 5, 510, sectionH).fill('#f7f7f7');
-          doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold')
-            .text(`${idx + 1}. ${section.heading}`, 50, sectionStartY, { align: 'left' });
-          doc.moveDown(0.5);
-          doc.fillColor('#333333').fontSize(10).font('Helvetica')
-            .text(section.content, 50, undefined as any, { align: 'justify', lineGap: 3 });
-          doc.restore();
-        }
         doc.moveDown(0.6);
         if (idx < report.sections.length - 1) {
-          drawTwoToneDivider(doc.y);
+          drawDivider(doc.y);
         }
         doc.moveDown(0.6);
       });
@@ -1532,30 +1512,26 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
 
     if (report.key_findings && Array.isArray(report.key_findings) && report.key_findings.length > 0) {
       if (doc.y > 650) doc.addPage();
-      drawTwoToneDivider(doc.y);
+      drawDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Risultati Chiave');
       doc.moveDown(0.5);
       for (const f of report.key_findings) {
         if (doc.y > 720) doc.addPage();
-        const cardY = doc.y;
+        const findingY = doc.y;
         doc.save();
-        const textHeight = doc.heightOfString(f, { width: 445, fontSize: 10 });
-        const cardH = Math.max(textHeight + 14, 28);
-        doc.rect(60, cardY, 485, cardH).lineWidth(0.5).fillAndStroke('#F0FFF0', '#8BC48B');
-        doc.fillColor('#2E7D32').fontSize(10).font('Helvetica-Bold')
-          .text('✓', 66, cardY + 5, { width: 14 });
-        doc.fillColor('#333333').fontSize(10).font('Helvetica')
-          .text(f, 82, cardY + 5, { width: 455, lineGap: 2 });
+        doc.rect(55, findingY, 2.5, 12).fill('#228B22');
         doc.restore();
-        doc.y = cardY + cardH + 6;
+        doc.fillColor('#333333').fontSize(10).font('Helvetica')
+          .text(f, 65, findingY, { width: 475, lineGap: 2 });
+        doc.moveDown(0.5);
       }
       doc.moveDown(0.8);
     }
 
     if (report.recommendations && Array.isArray(report.recommendations) && report.recommendations.length > 0) {
       if (doc.y > 650) doc.addPage();
-      drawTwoToneDivider(doc.y);
+      drawDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Raccomandazioni');
       doc.moveDown(0.5);
@@ -1591,7 +1567,7 @@ async function generatePdfBuffer(report: any, analysis: any, task: AITaskInfo): 
 
     if (report.next_steps && Array.isArray(report.next_steps) && report.next_steps.length > 0) {
       if (doc.y > 650) doc.addPage();
-      drawTwoToneDivider(doc.y);
+      drawDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor('#1a1a1a').fontSize(13).font('Helvetica-Bold').text('Prossimi Passi');
       doc.moveDown(0.5);
@@ -1645,11 +1621,9 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
       }
     };
 
-    const drawTwoToneDivider = (y: number) => {
-      const dividerMid = 55 + contentWidth * 0.4;
+    const drawDivider = (y: number) => {
       doc.save();
-      doc.moveTo(55, y).lineTo(dividerMid, y).strokeColor(DARK_BLUE).lineWidth(1.5).stroke();
-      doc.moveTo(dividerMid, y).lineTo(pageWidth - 55, y).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+      doc.moveTo(55, y).lineTo(pageWidth - 55, y).strokeColor('#dcdce0').lineWidth(0.4).stroke();
       doc.restore();
     };
 
@@ -1709,9 +1683,9 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
         doc.moveTo(55, doc.y).lineTo(200, doc.y).strokeColor(ACCENT_BLUE).lineWidth(0.5).stroke();
       } else if (itemType === 'step') {
         const stepY = doc.y;
-        if (lastStepBottomY > 0 && lastStepBottomY < stepY) {
+        if (lastStepBottomY > 0 && lastStepBottomY < stepY && (stepY - lastStepBottomY) < 200) {
           doc.save();
-          doc.moveTo(70, lastStepBottomY).lineTo(70, stepY).strokeColor('#7BAAF7').lineWidth(1.5).stroke();
+          doc.moveTo(70, lastStepBottomY).lineTo(70, stepY).strokeColor('#c0d0e8').lineWidth(1).stroke();
           doc.restore();
         }
         doc.save();
@@ -1789,7 +1763,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
 
       doc.moveDown(0.6);
       if (idx < body.length - 1) {
-        drawTwoToneDivider(doc.y);
+        drawDivider(doc.y);
       }
       doc.moveDown(0.6);
     }
@@ -1813,7 +1787,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
     if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0 && docType === 'contract') {
       checkPageBreak(120);
       doc.moveDown(1.5);
-      drawTwoToneDivider(doc.y);
+      drawDivider(doc.y);
       doc.moveDown(0.8);
       doc.fillColor(DARK_BLUE).fontSize(11).font('Helvetica-Bold').text('FIRME', { align: 'center' });
       doc.moveDown(1);
