@@ -2689,7 +2689,7 @@ COME COMPORTARTI IN CHAT:
 - Usa paragrafi separati per ogni concetto (NON fare muri di testo)
 - Usa **grassetto** per i punti chiave e le cifre importanti
 
-${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n')}` : ''}
+${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
 
 ${customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
 
