@@ -793,7 +793,6 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   let aiProviderResult: AiProviderResult;
   try {
     aiProviderResult = await getAIProvider(clientId, consultantId);
-    aiProviderResult.setFeature?.('chat-assistant');
   } catch (error: any) {
     if (error.message === "API_KEY_MISSING" || error.message.includes("No Gemini API key available")) {
       throw new Error("API Key Gemini mancante. Per favore, aggiungi la tua API Key personale nel profilo.");
@@ -1702,20 +1701,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
-        fileSearchProvider.setFeature?.('chat-assistant');
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(clientId, consultantId);
-        aiProviderResult.setFeature?.('chat-assistant');
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(clientId, consultantId);
-      aiProviderResult.setFeature?.('chat-assistant');
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }
@@ -3893,20 +3889,17 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (fileSearchProvider) {
         aiClient = fileSearchProvider.client;
         providerMetadata = fileSearchProvider.metadata;
-        fileSearchProvider.setFeature?.('chat-assistant');
         aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
       } else {
         // Fallback to normal provider if Google AI Studio not available
         console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
         aiProviderResult = await getAIProvider(consultantId, consultantId);
-        aiProviderResult.setFeature?.('chat-assistant');
         aiClient = aiProviderResult.client;
         providerMetadata = aiProviderResult.metadata;
       }
     } else {
       // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
       aiProviderResult = await getAIProvider(consultantId, consultantId);
-      aiProviderResult.setFeature?.('chat-assistant');
       aiClient = aiProviderResult.client;
       providerMetadata = aiProviderResult.metadata;
     }

@@ -259,6 +259,10 @@ const SUBKEY_LABELS: Record<string, string> = {
   'whatsapp-document-analysis': '📄 Analisi Documento (generico)',
   'whatsapp-sticker-analysis': '😀 Analisi Sticker',
   'instagram-agent': '📸 Instagram Agent (generico)',
+  'client-chat': '💬 Chat Cliente',
+  'consultant-chat': '💬 Chat Consulente',
+  'chat-text-response': '💬 Risposta Testo',
+  'chat-assistant': '✨ Assistente AI',
 };
 
 function getSubKeyLabel(key: string): string {
