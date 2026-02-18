@@ -176,7 +176,16 @@ interface HierarchicalData {
       university: SyncedDocument[];
       consultantGuide: SyncedDocument[];
       dynamicContext: SyncedDocument[];
-      operationalContext: SyncedDocument[];
+      opClients: SyncedDocument[];
+      opClientStates: SyncedDocument[];
+      opWhatsappTemplates: SyncedDocument[];
+      opTwilioTemplates: SyncedDocument[];
+      opConfig: SyncedDocument[];
+      opEmail: SyncedDocument[];
+      opCampaigns: SyncedDocument[];
+      opCalendar: SyncedDocument[];
+      opExercisesPending: SyncedDocument[];
+      opConsultations: SyncedDocument[];
       other: SyncedDocument[];
     };
     totals: {
@@ -186,7 +195,16 @@ interface HierarchicalData {
       university: number;
       consultantGuide: number;
       dynamicContext: number;
-      operationalContext: number;
+      opClients: number;
+      opClientStates: number;
+      opWhatsappTemplates: number;
+      opTwilioTemplates: number;
+      opConfig: number;
+      opEmail: number;
+      opCampaigns: number;
+      opCalendar: number;
+      opExercisesPending: number;
+      opConsultations: number;
     };
     dynamicContextAutoSync?: boolean;
     lastDynamicContextSync?: string | null;
@@ -406,11 +424,16 @@ interface AuditData {
       missing: Array<{ id: string; title: string }>;
       outdated: Array<{ id: string; title: string; indexedAt: Date | null }>;
     };
-    operationalContext?: {
-      total: number;
-      indexed: number;
-      documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }>;
-    };
+    opClients?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opClientStates?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opWhatsappTemplates?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opTwilioTemplates?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opConfig?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opEmail?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opCampaigns?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opCalendar?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opExercisesPending?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
+    opConsultations?: { total: number; indexed: number; documents: Array<{ id: string; title: string; status: string; indexedAt: string | null }> };
   };
   clients: Array<{
     clientId: string;
@@ -2770,7 +2793,16 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           (hData?.consultantStore.totals.university || 0) +
                                           (hData?.consultantStore.totals.consultantGuide || 0) +
                                           (hData?.consultantStore.totals.dynamicContext || 0) +
-                                          (hData?.consultantStore.totals.operationalContext || 0);
+                                          (hData?.consultantStore.totals.opClients || 0) +
+                                          (hData?.consultantStore.totals.opClientStates || 0) +
+                                          (hData?.consultantStore.totals.opWhatsappTemplates || 0) +
+                                          (hData?.consultantStore.totals.opTwilioTemplates || 0) +
+                                          (hData?.consultantStore.totals.opConfig || 0) +
+                                          (hData?.consultantStore.totals.opEmail || 0) +
+                                          (hData?.consultantStore.totals.opCampaigns || 0) +
+                                          (hData?.consultantStore.totals.opCalendar || 0) +
+                                          (hData?.consultantStore.totals.opExercisesPending || 0) +
+                                          (hData?.consultantStore.totals.opConsultations || 0);
                   const clientsTotal = hData?.clientStores.reduce((sum, c) => sum + c.totals.total, 0) || 0;
                   
                   const groupByDocumentType = (docs: SyncedDocument[]) => {
@@ -2969,17 +3001,17 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                     </CollapsibleContent>
                                   </Collapsible>
 
-                                  <Collapsible open={openCategories['operationalContext']} onOpenChange={() => toggleCategory('operationalContext')}>
+                                  <Collapsible open={openCategories['opClients']} onOpenChange={() => toggleCategory('opClients')}>
                                     <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
-                                      {openCategories['operationalContext'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
-                                      <Database className="h-5 w-5 text-orange-600" />
-                                      <span className="font-medium text-gray-800">Contesto Operativo</span>
-                                      {getSyncStatusBadge(hData.consultantStore.documents.operationalContext || [])}
-                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.operationalContext || 0} doc</Badge>
+                                      {openCategories['opClients'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <Users className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Panoramica Clienti</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opClients || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opClients || 0} doc</Badge>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="ml-6 mt-2 space-y-1">
-                                      {(hData.consultantStore.documents.operationalContext || []).length > 0 ? (
-                                        (hData.consultantStore.documents.operationalContext || []).map(doc => (
+                                      {(hData.consultantStore.documents.opClients || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opClients || []).map(doc => (
                                           <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                             <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                             <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
@@ -2989,7 +3021,232 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           </div>
                                         ))
                                       ) : (
-                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento operativo sincronizzato</p>
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opClientStates']} onOpenChange={() => toggleCategory('opClientStates')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opClientStates'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <Activity className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Stati dei Clienti</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opClientStates || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opClientStates || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opClientStates || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opClientStates || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opWhatsappTemplates']} onOpenChange={() => toggleCategory('opWhatsappTemplates')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opWhatsappTemplates'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <MessageSquare className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Template WhatsApp</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opWhatsappTemplates || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opWhatsappTemplates || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opWhatsappTemplates || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opWhatsappTemplates || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opTwilioTemplates']} onOpenChange={() => toggleCategory('opTwilioTemplates')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opTwilioTemplates'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <MessageCircle className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Template Twilio</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opTwilioTemplates || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opTwilioTemplates || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opTwilioTemplates || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opTwilioTemplates || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opConfig']} onOpenChange={() => toggleCategory('opConfig')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opConfig'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <Settings className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Configurazione</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opConfig || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opConfig || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opConfig || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opConfig || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opEmail']} onOpenChange={() => toggleCategory('opEmail')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opEmail'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <Mail className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Email Marketing</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opEmail || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opEmail || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opEmail || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opEmail || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opCampaigns']} onOpenChange={() => toggleCategory('opCampaigns')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opCampaigns'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <Target className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Campagne Marketing</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opCampaigns || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opCampaigns || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opCampaigns || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opCampaigns || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opCalendar']} onOpenChange={() => toggleCategory('opCalendar')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opCalendar'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <CalendarClock className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Calendario</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opCalendar || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opCalendar || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opCalendar || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opCalendar || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opExercisesPending']} onOpenChange={() => toggleCategory('opExercisesPending')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opExercisesPending'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <ClipboardCheck className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Esercizi in Attesa</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opExercisesPending || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opExercisesPending || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opExercisesPending || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opExercisesPending || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['opConsultations']} onOpenChange={() => toggleCategory('opConsultations')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100">
+                                      {openCategories['opConsultations'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                                      <ScrollText className="h-5 w-5 text-orange-600" />
+                                      <span className="font-medium text-gray-800">Consulenze Recenti</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.opConsultations || [])}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.opConsultations || 0} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-1">
+                                      {(hData.consultantStore.documents.opConsultations || []).length > 0 ? (
+                                        (hData.consultantStore.documents.opConsultations || []).map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                            <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                            <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                            <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                              {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                            </Badge>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento</p>
                                       )}
                                     </CollapsibleContent>
                                   </Collapsible>
@@ -5302,44 +5559,55 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       </CollapsibleContent>
                     </Collapsible>
 
-                    <Collapsible open={openAuditCategories['operationalContext']} onOpenChange={() => toggleAuditCategory('operationalContext')}>
-                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors">
-                        {openAuditCategories['operationalContext'] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
-                        <Database className="h-4 w-4 text-orange-600" />
-                        <span className="font-medium text-orange-900">Contesto Operativo</span>
-                        <div className="ml-auto flex items-center gap-2">
-                          {(auditData?.consultant?.operationalContext?.total || 0) > 0 ? (
-                            <Badge className="bg-emerald-200 text-emerald-800">
-                              {auditData?.consultant?.operationalContext?.indexed || 0}/{auditData?.consultant?.operationalContext?.total || 0} indicizzati
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-200 text-gray-600">
-                              Nessun documento
-                            </Badge>
-                          )}
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 space-y-1">
-                        {(auditData?.consultant?.operationalContext?.documents?.length || 0) > 0 ? (
-                          auditData?.consultant?.operationalContext?.documents?.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200">
-                              <div className="flex items-center gap-2">
-                                <Database className="h-4 w-4 text-orange-400" />
-                                <span className="text-sm">{doc.title}</span>
-                              </div>
-                              <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                    {[
+                      { key: 'opClients' as const, icon: Users, label: 'Panoramica Clienti' },
+                      { key: 'opClientStates' as const, icon: Activity, label: 'Stati dei Clienti' },
+                      { key: 'opWhatsappTemplates' as const, icon: MessageSquare, label: 'Template WhatsApp' },
+                      { key: 'opTwilioTemplates' as const, icon: MessageCircle, label: 'Template Twilio' },
+                      { key: 'opConfig' as const, icon: Settings, label: 'Configurazione' },
+                      { key: 'opEmail' as const, icon: Mail, label: 'Email Marketing' },
+                      { key: 'opCampaigns' as const, icon: Target, label: 'Campagne Marketing' },
+                      { key: 'opCalendar' as const, icon: CalendarClock, label: 'Calendario' },
+                      { key: 'opExercisesPending' as const, icon: ClipboardCheck, label: 'Esercizi in Attesa' },
+                      { key: 'opConsultations' as const, icon: ScrollText, label: 'Consulenze Recenti' },
+                    ].map(({ key, icon: Icon, label }) => (
+                      <Collapsible key={key} open={openAuditCategories[key]} onOpenChange={() => toggleAuditCategory(key)}>
+                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors">
+                          {openAuditCategories[key] ? <ChevronDown className="h-4 w-4 text-orange-600" /> : <ChevronRight className="h-4 w-4 text-orange-600" />}
+                          <Icon className="h-4 w-4 text-orange-600" />
+                          <span className="font-medium text-orange-900">{label}</span>
+                          <div className="ml-auto flex items-center gap-2">
+                            {((auditData?.consultant as any)?.[key]?.total || 0) > 0 ? (
+                              <Badge className="bg-emerald-200 text-emerald-800">
+                                {(auditData?.consultant as any)?.[key]?.indexed || 0}/{(auditData?.consultant as any)?.[key]?.total || 0} indicizzati
                               </Badge>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
-                            <Database className="h-4 w-4 text-gray-400" />
-                            Nessun documento operativo sincronizzato
-                          </p>
-                        )}
-                      </CollapsibleContent>
-                    </Collapsible>
+                            ) : (
+                              <Badge className="bg-gray-200 text-gray-600">Nessun documento</Badge>
+                            )}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2 space-y-1">
+                          {((auditData?.consultant as any)?.[key]?.documents?.length || 0) > 0 ? (
+                            (auditData?.consultant as any)?.[key]?.documents?.map((doc: any) => (
+                              <div key={doc.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200">
+                                <div className="flex items-center gap-2">
+                                  <Icon className="h-4 w-4 text-orange-400" />
+                                  <span className="text-sm">{doc.title}</span>
+                                </div>
+                                <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                  {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                                </Badge>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-gray-400" />
+                              Nessun documento
+                            </p>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
 
                     <Collapsible open={openAuditCategories['library']} onOpenChange={() => toggleAuditCategory('library')}>
                       <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
@@ -7142,7 +7410,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   <div className="space-y-4">
                                     {/* SEZIONE 1: Store Consulente */}
                                     {(() => {
-                                      const consultantCategories = ['library', 'knowledgeBase', 'exercises', 'university', 'consultantGuide', 'dynamicContext', 'operationalContext', 'consultations'];
+                                      const consultantCategories = ['library', 'knowledgeBase', 'exercises', 'university', 'consultantGuide', 'dynamicContext', 'opClients', 'opClientStates', 'opWhatsappTemplates', 'opTwilioTemplates', 'opConfig', 'opEmail', 'opCampaigns', 'opCalendar', 'opExercisesPending', 'opConsultations', 'consultations'];
                                       const consultantData = Object.entries(report.categoryDetails)
                                         .filter(([key]) => consultantCategories.includes(key))
                                         .filter(([, detail]) => detail.processed > 0 || detail.synced > 0);
@@ -7173,7 +7441,16 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                                   {key === 'university' && <GraduationCap className="h-3 w-3 text-indigo-500" />}
                                                   {key === 'consultantGuide' && <FileText className="h-3 w-3 text-green-500" />}
                                                   {key === 'dynamicContext' && <Brain className="h-3 w-3 text-purple-500" />}
-                                                  {key === 'operationalContext' && <Database className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opClients' && <Users className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opClientStates' && <Activity className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opWhatsappTemplates' && <MessageSquare className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opTwilioTemplates' && <MessageCircle className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opConfig' && <Settings className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opEmail' && <Mail className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opCampaigns' && <Target className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opCalendar' && <CalendarClock className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opExercisesPending' && <ClipboardCheck className="h-3 w-3 text-orange-500" />}
+                                                  {key === 'opConsultations' && <ScrollText className="h-3 w-3 text-orange-500" />}
                                                   {key === 'consultations' && <MessageSquare className="h-3 w-3 text-teal-500" />}
                                                   <span className="font-medium text-gray-700">{detail.name}</span>
                                                 </div>
