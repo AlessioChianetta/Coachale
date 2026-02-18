@@ -45,6 +45,9 @@ import {
   externalApiConfigs,
   externalLeadImportLogs,
   consultantAvailabilitySettings,
+  aiScheduledTasks,
+  aiAssistantPreferences,
+  consultantPersonalTasks,
 } from "../shared/schema";
 import { eq, and, desc, gte, sql, inArray, count, asc } from "drizzle-orm";
 import twilio from "twilio";
@@ -1061,6 +1064,17 @@ export interface ConsultantContext {
     pageType: string;
     contextNotes: string[];
   };
+  lightweightExtra?: {
+    clientNames: Array<{ name: string; email: string }>;
+    todayAppointmentDetails: Array<{ title: string; start: string; end: string }>;
+    nextAppointments: Array<{ title: string; start: string; clientName?: string }>;
+    activeClientStates: Array<{ clientName: string; currentState: string; idealState: string }>;
+    recentAutonomousTasks: Array<{ contactName: string; taskCategory: string; aiInstruction: string; status: string; resultSummary: string | null; completedAt: string | null; originType: string }>;
+    recentEmailsSent: Array<{ clientName: string; subject: string; emailType: string; sentAt: string; openedAt: string | null }>;
+    pendingConsultantTasks: Array<{ title: string; description: string | null; dueDate: string | null; priority: string; category: string; completed: boolean }>;
+    aiPreferences: { writingStyle: string; responseLength: string; customInstructions: string | null; preferredModel: string; thinkingLevel: string } | null;
+    activeIntegrations: { whatsappActive: boolean; emailConfigured: boolean; calendarConnected: boolean; telephonyActive: boolean };
+  };
 }
 
 // ========================================
@@ -1159,6 +1173,182 @@ async function buildLightweightContext(
   const unreadWhatsApp = unreadWhatsAppResult?.count ?? 0;
   const pendingEmailDrafts = pendingEmailDraftsResult?.count ?? 0;
   const thisWeekAppointments = thisWeekAppointmentsResult?.count ?? 0;
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    clientNamesResult,
+    todayAppointmentDetailsResult,
+    nextAppointmentsResult,
+    activeClientStatesResult,
+    recentAutonomousTasksResult,
+    recentEmailsSentResult,
+    pendingConsultantTasksResult,
+    aiPreferencesResult,
+    whatsappConfigResult,
+    smtpConfigResult,
+  ] = await Promise.all([
+    db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
+      .from(users)
+      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')))
+      .orderBy(desc(users.createdAt)),
+
+    db.select({ title: calendarEvents.title, start: calendarEvents.start, end: calendarEvents.end })
+      .from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, consultantId),
+        gte(calendarEvents.start, startOfToday),
+        sql`${calendarEvents.start} < ${endOfToday}`
+      ))
+      .orderBy(asc(calendarEvents.start)),
+
+    db.select({ title: calendarEvents.title, start: calendarEvents.start })
+      .from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, consultantId),
+        gte(calendarEvents.start, now)
+      ))
+      .orderBy(asc(calendarEvents.start))
+      .limit(5),
+
+    db.select({
+      clientFirstName: users.firstName,
+      clientLastName: users.lastName,
+      currentState: clientStateTracking.currentState,
+      idealState: clientStateTracking.idealState,
+    })
+      .from(clientStateTracking)
+      .innerJoin(users, eq(clientStateTracking.clientId, users.id))
+      .where(and(
+        eq(clientStateTracking.consultantId, consultantId),
+        gte(clientStateTracking.lastUpdated, thirtyDaysAgo)
+      ))
+      .orderBy(desc(clientStateTracking.lastUpdated))
+      .limit(15),
+
+    db.select({
+      contactName: aiScheduledTasks.contactName,
+      taskCategory: aiScheduledTasks.taskCategory,
+      aiInstruction: aiScheduledTasks.aiInstruction,
+      status: aiScheduledTasks.status,
+      resultSummary: aiScheduledTasks.resultSummary,
+      completedAt: aiScheduledTasks.completedAt,
+      originType: aiScheduledTasks.originType,
+    })
+      .from(aiScheduledTasks)
+      .where(and(
+        eq(aiScheduledTasks.consultantId, consultantId),
+        gte(aiScheduledTasks.createdAt, sevenDaysAgo)
+      ))
+      .orderBy(desc(aiScheduledTasks.createdAt))
+      .limit(10),
+
+    db.select({
+      clientFirstName: users.firstName,
+      clientLastName: users.lastName,
+      subject: automatedEmailsLog.subject,
+      emailType: automatedEmailsLog.emailType,
+      sentAt: automatedEmailsLog.sentAt,
+      openedAt: automatedEmailsLog.openedAt,
+    })
+      .from(automatedEmailsLog)
+      .innerJoin(users, eq(automatedEmailsLog.clientId, users.id))
+      .where(and(eq(users.consultantId, consultantId), gte(automatedEmailsLog.sentAt, sevenDaysAgo)))
+      .orderBy(desc(automatedEmailsLog.sentAt))
+      .limit(10),
+
+    db.select({
+      title: consultantPersonalTasks.title,
+      description: consultantPersonalTasks.description,
+      dueDate: consultantPersonalTasks.dueDate,
+      priority: consultantPersonalTasks.priority,
+      category: consultantPersonalTasks.category,
+      completed: consultantPersonalTasks.completed,
+    })
+      .from(consultantPersonalTasks)
+      .where(and(
+        eq(consultantPersonalTasks.consultantId, consultantId),
+        eq(consultantPersonalTasks.completed, false)
+      ))
+      .orderBy(asc(consultantPersonalTasks.dueDate))
+      .limit(10),
+
+    db.select({
+      writingStyle: aiAssistantPreferences.writingStyle,
+      responseLength: aiAssistantPreferences.responseLength,
+      customInstructions: aiAssistantPreferences.customInstructions,
+      preferredModel: aiAssistantPreferences.preferredModel,
+      thinkingLevel: aiAssistantPreferences.thinkingLevel,
+    })
+      .from(aiAssistantPreferences)
+      .where(eq(aiAssistantPreferences.userId, consultantId))
+      .limit(1),
+
+    db.select({ isActive: consultantWhatsappConfig.isActive })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+      .limit(1),
+
+    db.select({ isActive: consultantSmtpSettings.isActive })
+      .from(consultantSmtpSettings)
+      .where(eq(consultantSmtpSettings.consultantId, consultantId))
+      .limit(1),
+  ]);
+
+  const lightweightExtra = {
+    clientNames: clientNamesResult.map(c => ({ name: `${c.firstName} ${c.lastName}`, email: c.email })),
+    todayAppointmentDetails: todayAppointmentDetailsResult.map(a => ({
+      title: a.title || 'Appuntamento',
+      start: new Date(a.start!).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
+      end: a.end ? new Date(a.end).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '',
+    })),
+    nextAppointments: nextAppointmentsResult.map(a => ({
+      title: a.title || 'Appuntamento',
+      start: new Date(a.start!).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    })),
+    activeClientStates: activeClientStatesResult.map(s => ({
+      clientName: `${s.clientFirstName} ${s.clientLastName}`,
+      currentState: (s.currentState || '').substring(0, 150),
+      idealState: (s.idealState || '').substring(0, 150),
+    })),
+    recentAutonomousTasks: recentAutonomousTasksResult.map(t => ({
+      contactName: t.contactName || 'N/A',
+      taskCategory: t.taskCategory || 'other',
+      aiInstruction: (t.aiInstruction || '').substring(0, 200),
+      status: t.status || 'unknown',
+      resultSummary: t.resultSummary ? t.resultSummary.substring(0, 200) : null,
+      completedAt: t.completedAt ? new Date(t.completedAt).toLocaleString('it-IT') : null,
+      originType: t.originType || 'manual',
+    })),
+    recentEmailsSent: recentEmailsSentResult.map(e => ({
+      clientName: `${e.clientFirstName} ${e.clientLastName}`,
+      subject: e.subject || '',
+      emailType: e.emailType || '',
+      sentAt: e.sentAt ? new Date(e.sentAt).toLocaleString('it-IT') : '',
+      openedAt: e.openedAt ? new Date(e.openedAt).toLocaleString('it-IT') : null,
+    })),
+    pendingConsultantTasks: pendingConsultantTasksResult.map(t => ({
+      title: t.title,
+      description: t.description ? t.description.substring(0, 100) : null,
+      dueDate: t.dueDate ? new Date(t.dueDate).toLocaleDateString('it-IT') : null,
+      priority: t.priority,
+      category: t.category,
+      completed: t.completed,
+    })),
+    aiPreferences: aiPreferencesResult[0] ? {
+      writingStyle: aiPreferencesResult[0].writingStyle,
+      responseLength: aiPreferencesResult[0].responseLength,
+      customInstructions: aiPreferencesResult[0].customInstructions,
+      preferredModel: aiPreferencesResult[0].preferredModel || 'gemini-3-flash-preview',
+      thinkingLevel: aiPreferencesResult[0].thinkingLevel || 'none',
+    } : null,
+    activeIntegrations: {
+      whatsappActive: whatsappConfigResult[0]?.isActive ?? false,
+      emailConfigured: smtpConfigResult[0]?.isActive ?? false,
+      calendarConnected: todayAppointments > 0 || upcomingAppointments > 0,
+      telephonyActive: false,
+    },
+  };
 
   const pageContextData = pageContext ? {
     pageType: pageContext.pageType,
@@ -1262,6 +1452,7 @@ async function buildLightweightContext(
       stats: { total: 0, totalUsage: 0, byCategory: {} },
     },
     pageContext: pageContextData,
+    lightweightExtra,
   };
 }
 

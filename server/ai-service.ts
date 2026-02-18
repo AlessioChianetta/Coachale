@@ -4037,6 +4037,33 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       if (consultantContext.pageContext) {
         console.log(`   │ 📍 Contesto pagina: ${(consultantContext.pageContext.pageType || '').substring(0, 31).padEnd(31)}│`);
       }
+      if (consultantContext.lightweightExtra?.clientNames?.length) {
+        console.log(`   │ 👥 Lista clienti: ${String(consultantContext.lightweightExtra.clientNames.length).padEnd(33)}│`);
+      }
+      if (consultantContext.lightweightExtra?.todayAppointmentDetails?.length) {
+        console.log(`   │ 📅 Appuntamenti oggi (dettaglio): ${String(consultantContext.lightweightExtra.todayAppointmentDetails.length).padEnd(17)}│`);
+      }
+      if (consultantContext.lightweightExtra?.nextAppointments?.length) {
+        console.log(`   │ 📆 Prossimi appuntamenti: ${String(consultantContext.lightweightExtra.nextAppointments.length).padEnd(25)}│`);
+      }
+      if (consultantContext.lightweightExtra?.activeClientStates?.length) {
+        console.log(`   │ 🎯 Stati clienti attivi: ${String(consultantContext.lightweightExtra.activeClientStates.length).padEnd(26)}│`);
+      }
+      if (consultantContext.lightweightExtra?.recentAutonomousTasks?.length) {
+        console.log(`   │ 🤖 Task agenti autonomi (7gg): ${String(consultantContext.lightweightExtra.recentAutonomousTasks.length).padEnd(19)}│`);
+      }
+      if (consultantContext.lightweightExtra?.recentEmailsSent?.length) {
+        console.log(`   │ ✉️  Email inviate (7gg): ${String(consultantContext.lightweightExtra.recentEmailsSent.length).padEnd(27)}│`);
+      }
+      if (consultantContext.lightweightExtra?.pendingConsultantTasks?.length) {
+        console.log(`   │ 📋 Task pendenti: ${String(consultantContext.lightweightExtra.pendingConsultantTasks.length).padEnd(33)}│`);
+      }
+      if (consultantContext.lightweightExtra?.aiPreferences) {
+        console.log(`   │ 🧠 Config AI (stile, modello, thinking)          │`);
+      }
+      if (consultantContext.lightweightExtra?.activeIntegrations) {
+        console.log(`   │ 🔌 Integrazioni attive (WA, Email, Cal, Tel)     │`);
+      }
       console.log(`   └──────────────────────────────────────────────────────┘`);
       console.log(`   📏 Prompt base: ~${basePromptTokens.toLocaleString()} token + Memory: ~${memoryContextTokens.toLocaleString()} token`);
 
@@ -4515,6 +4542,87 @@ Informazioni sul Consulente:
 - 💬 Messaggi WhatsApp non letti: ${context.dashboard.unreadWhatsApp ?? 0}
 - ✉️ Email draft pendenti: ${context.dashboard.pendingEmailDrafts ?? 0}
 - 📆 Appuntamenti questa settimana: ${context.dashboard.thisWeekAppointments ?? 0}
+
+${context.lightweightExtra?.clientNames && context.lightweightExtra.clientNames.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👥 I TUOI CLIENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.clientNames.map(c => `- ${c.name} (${c.email})`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.todayAppointmentDetails && context.lightweightExtra.todayAppointmentDetails.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 APPUNTAMENTI DI OGGI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.todayAppointmentDetails.map(a => `- ${a.start}${a.end ? `-${a.end}` : ''}: ${a.title}`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.nextAppointments && context.lightweightExtra.nextAppointments.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📆 PROSSIMI APPUNTAMENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.nextAppointments.map(a => `- ${a.start}: ${a.title}`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.activeClientStates && context.lightweightExtra.activeClientStates.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 STATI CLIENTI ATTIVI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.activeClientStates.map(s => `📌 ${s.clientName}:
+   Stato attuale: ${s.currentState}
+   Obiettivo: ${s.idealState}`).join('\n\n')}
+` : ''}
+
+${context.lightweightExtra?.recentAutonomousTasks && context.lightweightExtra.recentAutonomousTasks.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 ATTIVITÀ AGENTI AUTONOMI (ultimi 7 giorni)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.recentAutonomousTasks.map(t => `- [${t.status.toUpperCase()}] ${t.taskCategory} → ${t.contactName}: ${t.aiInstruction}${t.resultSummary ? `\n  Risultato: ${t.resultSummary}` : ''}`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.recentEmailsSent && context.lightweightExtra.recentEmailsSent.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✉️ EMAIL INVIATE DI RECENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.recentEmailsSent.map(e => `- ${e.sentAt} → ${e.clientName}: "${e.subject}" (${e.emailType})${e.openedAt ? ' ✅ Letta' : ' 📬 Non letta'}`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.pendingConsultantTasks && context.lightweightExtra.pendingConsultantTasks.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 LE TUE TASK PENDENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${context.lightweightExtra.pendingConsultantTasks.map(t => `- [${t.priority.toUpperCase()}] ${t.title}${t.dueDate ? ` (scadenza: ${t.dueDate})` : ''}${t.description ? ` - ${t.description}` : ''}`).join('\n')}
+` : ''}
+
+${context.lightweightExtra?.aiPreferences ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 CONFIGURAZIONE AI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Stile di scrittura: ${context.lightweightExtra.aiPreferences.writingStyle}
+- Lunghezza risposte: ${context.lightweightExtra.aiPreferences.responseLength}
+- Modello: ${context.lightweightExtra.aiPreferences.preferredModel}
+- Livello thinking: ${context.lightweightExtra.aiPreferences.thinkingLevel}
+${context.lightweightExtra.aiPreferences.customInstructions ? `- Istruzioni personalizzate: ${context.lightweightExtra.aiPreferences.customInstructions}` : ''}
+` : ''}
+
+${context.lightweightExtra?.activeIntegrations ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 INTEGRAZIONI ATTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- WhatsApp Business: ${context.lightweightExtra.activeIntegrations.whatsappActive ? '✅ Attivo' : '❌ Non configurato'}
+- Email/SMTP: ${context.lightweightExtra.activeIntegrations.emailConfigured ? '✅ Configurato' : '❌ Non configurato'}
+- Calendario: ${context.lightweightExtra.activeIntegrations.calendarConnected ? '✅ Collegato' : '❌ Non collegato'}
+- Telefonia AI: ${context.lightweightExtra.activeIntegrations.telephonyActive ? '✅ Attiva' : '❌ Non attiva'}
+` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔍 MODALITÀ FILE SEARCH ATTIVA - I TUOI DOCUMENTI INDICIZZATI
