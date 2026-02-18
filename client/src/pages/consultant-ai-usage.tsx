@@ -1230,6 +1230,8 @@ export default function ConsultantAIUsagePage() {
                         <span className="font-semibold text-slate-900 dark:text-white">{selectedUser.name}</span>
                         {selectedUser.role === 'consultant' ? (
                           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
+                        ) : selectedUser.role === 'sub_consultant' ? (
+                          <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 text-xs">Consulente</Badge>
                         ) : (
                           <Badge variant="secondary" className="text-xs">Cliente</Badge>
                         )}
@@ -1444,7 +1446,7 @@ export default function ConsultantAIUsagePage() {
                             <TableBody>
                               {clientData.map((row: any, i: number) => {
                                 const hasData = (row.totalTokens || 0) > 0;
-                                const userId = row.clientRole === 'consultant' ? 'self' : row.clientId;
+                                const userId = (row.clientRole === 'consultant' && !row.clientId) ? 'self' : row.clientId;
                                 return (
                                   <TableRow
                                     key={`user-${i}`}
@@ -1460,6 +1462,8 @@ export default function ConsultantAIUsagePage() {
                                     <TableCell>
                                       {row.clientRole === "consultant" ? (
                                         <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
+                                      ) : row.clientRole === "sub_consultant" ? (
+                                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 text-xs">Consulente</Badge>
                                       ) : (
                                         <Badge variant="secondary" className="text-xs">Cliente</Badge>
                                       )}

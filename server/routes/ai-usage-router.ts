@@ -147,14 +147,26 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
     const { start, end } = getDateRange(period, from, to);
 
     const result = await db.execute(sql`
-      WITH usage_data AS (
+      WITH sub_consultant_ids AS (
+        SELECT id FROM users
+        WHERE consultant_id = ${consultantId}
+          AND role = 'consultant'
+          AND is_active = true
+          AND id != ${consultantId}
+      ),
+      usage_data AS (
         SELECT
-          t.client_id AS client_id,
+          CASE
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN t.consultant_id
+            ELSE t.client_id
+          END AS client_id,
           CASE 
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
             ELSE u.first_name || ' ' || u.last_name
           END AS user_name,
           CASE 
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN 'sub_consultant'
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
             ELSE 'client'
           END AS client_role,
@@ -163,12 +175,13 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           COUNT(*) AS request_count,
           MAX(t.created_at)::text AS last_used,
           (SELECT feature FROM ai_token_usage t2
-           WHERE t2.consultant_id = ${consultantId}
+           WHERE (t2.consultant_id = ${consultantId} OR t2.consultant_id IN (SELECT id FROM sub_consultant_ids))
              AND t2.created_at >= ${start}
              AND t2.created_at <= ${end}
              AND (
                ((t2.client_id IS NULL OR t2.client_id = '' OR t2.client_id = t2.consultant_id) AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id))
                OR t2.client_id = t.client_id
+               OR t2.consultant_id = t.consultant_id
              )
            GROUP BY feature
            ORDER BY COUNT(*) DESC
@@ -177,11 +190,26 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
         FROM ai_token_usage t
         LEFT JOIN users u ON t.client_id = u.id
         LEFT JOIN users cu ON t.consultant_id = cu.id
-        WHERE t.consultant_id = ${consultantId}
+        LEFT JOIN users sc ON t.consultant_id = sc.id AND t.consultant_id IN (SELECT id FROM sub_consultant_ids)
+        WHERE (t.consultant_id = ${consultantId} OR t.consultant_id IN (SELECT id FROM sub_consultant_ids))
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
           AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true)
-        GROUP BY t.client_id, t.consultant_id, u.first_name, u.last_name, cu.first_name, cu.last_name
+        GROUP BY
+          CASE
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN t.consultant_id
+            ELSE t.client_id
+          END,
+          CASE 
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
+            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
+            ELSE u.first_name || ' ' || u.last_name
+          END,
+          CASE 
+            WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN 'sub_consultant'
+            WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
+            ELSE 'client'
+          END
       ),
       active_clients AS (
         SELECT
@@ -244,6 +272,10 @@ router.get("/by-client/:clientId/features", authenticateToken, async (req: AuthR
     const { start, end } = getDateRange(period, from, to);
 
     const isSelf = clientId === 'self';
+
+    const isSubConsultant = !isSelf ? await db.execute(sql`
+      SELECT 1 FROM users WHERE id = ${clientId} AND consultant_id = ${consultantId} AND role = 'consultant' AND is_active = true LIMIT 1
+    `).then(r => r.rows.length > 0) : false;
     
     const result = await db.execute(sql`
       SELECT
@@ -252,10 +284,13 @@ router.get("/by-client/:clientId/features", authenticateToken, async (req: AuthR
         COALESCE(SUM(total_cost::numeric), 0)::text AS "totalCost",
         COUNT(*)::text AS "requestCount"
       FROM ai_token_usage
-      WHERE consultant_id = ${consultantId}
-        AND created_at >= ${start}
+      WHERE created_at >= ${start}
         AND created_at <= ${end}
-        AND ${isSelf ? sql`(client_id IS NULL OR client_id = '' OR client_id = ${consultantId})` : sql`client_id = ${clientId}`}
+        AND ${isSelf 
+          ? sql`consultant_id = ${consultantId} AND (client_id IS NULL OR client_id = '' OR client_id = ${consultantId})` 
+          : isSubConsultant 
+            ? sql`consultant_id = ${clientId}` 
+            : sql`consultant_id = ${consultantId} AND client_id = ${clientId}`}
       GROUP BY feature
       ORDER BY SUM(total_cost::numeric) DESC
     `);
