@@ -1669,7 +1669,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
 
     for (let idx = 0; idx < body.length; idx++) {
       const item = body[idx];
-      checkPageBreak(100);
+      checkPageBreak(40);
 
       const itemType = item.type || 'paragraph';
       const itemNumber = item.number || `${idx + 1}`;
@@ -1708,7 +1708,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
 
       if (itemContent) {
         doc.moveDown(0.4);
-        checkPageBreak(60);
+        checkPageBreak(30);
         doc.fillColor(TEXT_PRIMARY).fontSize(10).font('Helvetica')
           .text(itemContent, 55, doc.y, { width: contentWidth, align: 'justify', lineGap: 3.5 });
       }
@@ -1769,7 +1769,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
     }
 
     if (footer.notes) {
-      checkPageBreak(80);
+      checkPageBreak(40);
       doc.moveDown(1);
       doc.moveTo(55, doc.y).lineTo(pageWidth - 55, doc.y).strokeColor(BORDER_LIGHT).lineWidth(0.5).stroke();
       doc.moveDown(0.5);
@@ -1785,7 +1785,7 @@ async function generateFormalDocumentPdfBuffer(formalDoc: any, reportData: any, 
     }
 
     if (footer.signatures && Array.isArray(footer.signatures) && footer.signatures.length > 0 && docType === 'contract') {
-      checkPageBreak(120);
+      checkPageBreak(60);
       doc.moveDown(1.5);
       drawDivider(doc.y);
       doc.moveDown(0.8);
