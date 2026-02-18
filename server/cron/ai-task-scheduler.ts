@@ -100,7 +100,47 @@ async function processAITasks(): Promise<void> {
     if (deferredMoveResult.rows.length > 0) {
       console.log(`🤖 [AI-SCHEDULER] STEP 1b: Re-queued ${deferredMoveResult.rows.length} deferred→waiting_approval:`, deferredMoveResult.rows.map((r: any) => `${r.id}(${r.ai_role})`));
     }
-    
+
+    const zombieResult = await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'scheduled',
+          scheduled_at = NOW() + interval '30 seconds',
+          started_at = NULL,
+          current_attempt = LEAST(current_attempt + 1, max_attempts),
+          result_summary = 'Task bloccato in esecuzione - riprogrammato automaticamente',
+          result_data = COALESCE(result_data, '{}'::jsonb) || '{"zombie_recovered": true}'::jsonb,
+          updated_at = NOW()
+      WHERE status = 'in_progress' 
+        AND updated_at < NOW() - interval '10 minutes'
+        AND current_attempt < max_attempts
+      RETURNING id, ai_role, current_attempt, max_attempts
+    `);
+    if (zombieResult.rows.length > 0) {
+      console.log(`🧟 [AI-SCHEDULER] Recovered ${zombieResult.rows.length} zombie tasks (stuck in_progress >10min):`);
+      zombieResult.rows.forEach((r: any) => {
+        console.log(`   🔄 ${r.id} (${r.ai_role}) - attempt ${r.current_attempt}/${r.max_attempts}`);
+      });
+    }
+
+    const zombieFailedResult = await db.execute(sql`
+      UPDATE ai_scheduled_tasks 
+      SET status = 'failed',
+          result_summary = 'Task bloccato in esecuzione troppo a lungo - tentativi esauriti',
+          error_message = 'Zombie task: stuck in in_progress state, max attempts reached',
+          completed_at = NOW(),
+          updated_at = NOW()
+      WHERE status = 'in_progress' 
+        AND updated_at < NOW() - interval '10 minutes'
+        AND current_attempt >= max_attempts
+      RETURNING id, ai_role
+    `);
+    if (zombieFailedResult.rows.length > 0) {
+      console.log(`💀 [AI-SCHEDULER] Failed ${zombieFailedResult.rows.length} zombie tasks (max attempts reached):`);
+      zombieFailedResult.rows.forEach((r: any) => {
+        console.log(`   ❌ ${r.id} (${r.ai_role})`);
+      });
+    }
+
     // Find tasks ready to execute:
     // 1. Scheduled tasks whose time has come
     // 2. Retry-pending tasks whose retry time has come
