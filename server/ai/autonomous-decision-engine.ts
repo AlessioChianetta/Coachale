@@ -824,18 +824,23 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 }`;
 
   try {
+    const taskConsultantId = task.consultant_id;
+    console.log(`${LOG_PREFIX} [PLAN-GEN] Starting plan generation for task=${task.id}, consultant=${taskConsultantId}, instruction="${(task.ai_instruction || '').substring(0, 80)}..."`);
+    
     const result = await withRetry(async () => {
       const apiKey = await getGeminiApiKeyForClassifier();
       if (!apiKey) throw new Error("No Gemini API key available");
+      console.log(`${LOG_PREFIX} [PLAN-GEN] API key obtained, calling Gemini for task=${task.id}`);
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await trackedGenerateContent(ai, {
         model: GEMINI_3_MODEL,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         config: { temperature: 0.2, maxOutputTokens: 4096 },
-      }, { consultantId: task.consultant_id, feature: 'decision-engine', keySource: 'classifier' });
+      }, { consultantId: taskConsultantId, feature: 'decision-engine', keySource: 'classifier' });
 
       const text = response.text;
+      console.log(`${LOG_PREFIX} [PLAN-GEN] Gemini responded for task=${task.id}, response length=${text?.length || 0}`);
       if (!text) throw new Error("Empty response from Gemini");
 
       const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -869,7 +874,7 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
       estimated_duration_minutes: result.estimated_duration_minutes ?? 5,
     };
 
-    console.log(`${LOG_PREFIX} Decision for task ${task.id}: execute=${decision.should_execute}, confidence=${decision.confidence}, steps=${decision.execution_plan.length}`);
+    console.log(`${LOG_PREFIX} [PLAN-GEN] ✅ Decision for task ${task.id}: execute=${decision.should_execute}, confidence=${decision.confidence}, steps=${decision.execution_plan.length}, reasoning="${decision.reasoning.substring(0, 100)}..."`);
 
     await logActivity(task.consultant_id, {
       event_type: "execution_plan_generated",

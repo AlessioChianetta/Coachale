@@ -470,7 +470,7 @@ async function handleFetchClientData(
 async function handleSearchPrivateStores(
   task: AITaskInfo,
   _step: ExecutionStep,
-  _previousResults: Record<string, any>,
+  previousResults: Record<string, any>,
   rolePersonality?: string | null,
   agentContextSection?: string,
   agentDocs?: AgentDocuments | null,
