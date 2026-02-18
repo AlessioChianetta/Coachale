@@ -1121,7 +1121,8 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise'),
         university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson'),
         dynamicContext: consultantDocs.filter(d => d.sourceType === 'dynamic_context'),
-        other: consultantDocs.filter(d => !['consultant_guide', 'library', 'knowledge_base', 'exercise', 'university', 'university_lesson', 'dynamic_context'].includes(d.sourceType)),
+        operationalContext: consultantDocs.filter(d => d.sourceType === 'operational_context'),
+        other: consultantDocs.filter(d => !['consultant_guide', 'library', 'knowledge_base', 'exercise', 'university', 'university_lesson', 'dynamic_context', 'operational_context'].includes(d.sourceType)),
       },
       totals: {
         consultantGuide: consultantDocs.filter(d => d.sourceType === 'consultant_guide').length,
@@ -1130,6 +1131,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise').length,
         university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson').length,
         dynamicContext: consultantDocs.filter(d => d.sourceType === 'dynamic_context').length,
+        operationalContext: consultantDocs.filter(d => d.sourceType === 'operational_context').length,
       },
     };
     
@@ -1652,6 +1654,32 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
         result = { 
           success: syncResult.totalDocuments > 0, 
           error: syncResult.totalDocuments === 0 ? 'Nessun documento dinamico sincronizzato' : undefined 
+        };
+        break;
+      case 'operational_context':
+        const { syncDynamicDocuments: syncOpDynamicDocuments } = await import('../ai/dynamic-context-documents');
+        const { fileSearchSettings: opFileSearchSettings } = await import('../../shared/schema');
+        const { eq: opEq } = await import('drizzle-orm');
+        const [opSettings] = await db.select().from(opFileSearchSettings).where(opEq(opFileSearchSettings.consultantId, consultantId)).limit(1);
+        let opSettingsObj = undefined;
+        if (opSettings?.operationalSyncEnabled) {
+          opSettingsObj = {
+            clients: opSettings.autoSyncOperationalClients,
+            clientStates: opSettings.autoSyncOperationalClientStates,
+            whatsappTemplates: opSettings.autoSyncOperationalWhatsappTemplates,
+            twilioTemplates: opSettings.autoSyncOperationalTwilioTemplates,
+            config: opSettings.autoSyncOperationalConfig,
+            email: opSettings.autoSyncOperationalEmail,
+            campaigns: opSettings.autoSyncOperationalCampaigns,
+            calendar: opSettings.autoSyncOperationalCalendar,
+            exercisesPending: opSettings.autoSyncOperationalExercisesPending,
+            consultations: opSettings.autoSyncOperationalConsultations,
+          };
+        }
+        const opSyncResult = await syncOpDynamicDocuments(consultantId, opSettingsObj);
+        result = { 
+          success: opSyncResult.totalDocuments > 0, 
+          error: opSyncResult.totalDocuments === 0 ? 'Nessun documento operativo sincronizzato' : undefined 
         };
         break;
       case 'client_guide':
