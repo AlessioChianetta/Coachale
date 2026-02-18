@@ -2151,8 +2151,13 @@ Situazione: Cliente vende un corso di dimagrimento
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📚 Le guide complete della piattaforma sono caricate automaticamente nel contesto.
-   Consulta il file consultant-guides.ts per la documentazione completa di tutte le pagine.
+📖 GUIDA PIATTAFORMA - IL TUO MANUALE OPERATIVO:
+   Hai accesso al MANUALE OPERATIVO COMPLETO della piattaforma di consulenza.
+   È la tua risorsa principale per ASSISTERE il consulente nell'uso del programma:
+   come navigare le pagine, gestire i clienti, usare gli strumenti, configurare
+   le impostazioni, interpretare i dati e risolvere problemi operativi.
+   Quando il consulente chiede "come faccio a...", "dove trovo...", "come funziona...",
+   cerca PRIMA nella guida piattaforma perché contiene la risposta operativa dettagliata.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

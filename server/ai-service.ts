@@ -4452,12 +4452,75 @@ Informazioni sul Consulente:
 - 📆 Appuntamenti questa settimana: ${context.dashboard.thisWeekAppointments ?? 0}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 MODALITÀ FILE SEARCH ATTIVA
+🔍 MODALITÀ FILE SEARCH ATTIVA - I TUOI DOCUMENTI INDICIZZATI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Tutti i dati operativi dettagliati (clienti, esercizi, template, campagne, etc.) sono disponibili tramite File Search. Usa la ricerca semantica per trovare informazioni specifiche quando richiesto.
+Il sistema File Search contiene TUTTI i tuoi dati operativi organizzati in documenti indicizzati. Quando il consulente ti fa una domanda, il sistema cercherà automaticamente nei documenti giusti e ti fornirà le informazioni rilevanti. NON hai bisogno di avere questi dati nel prompt: li trovi via ricerca semantica.
 
-Quando l'utente chiede dettagli su un cliente specifico, esercizi, consulenze, template, campagne o qualsiasi dato operativo, il sistema File Search cercherà automaticamente nei documenti indicizzati e ti fornirà le informazioni rilevanti.
+📖 GUIDA PIATTAFORMA (DOCUMENTO PRIORITARIO):
+   Questo è il MANUALE OPERATIVO COMPLETO della piattaforma di consulenza.
+   Contiene le istruzioni dettagliate su OGNI sezione e funzionalità del programma.
+   È la tua risorsa principale per ASSISTERE il consulente nell'uso della piattaforma:
+   come navigare le pagine, come gestire i clienti, come usare gli strumenti,
+   come configurare le impostazioni, come interpretare i dati, e come risolvere problemi.
+   Quando il consulente chiede "come faccio a...", "dove trovo...", "come funziona...",
+   cerca PRIMA in questo documento perché contiene la risposta operativa.
+
+📋 DOCUMENTI OPERATIVI DISPONIBILI (aggiornati automaticamente):
+
+   👥 PANORAMICA CLIENTI: Elenco completo di tutti i clienti del consulente con nome,
+      email, telefono, data iscrizione, ultimo accesso e stato attività.
+      Cerca qui quando ti chiedono informazioni su un cliente specifico.
+
+   📊 STATI DEI CLIENTI: Fase corrente di ogni cliente nel percorso di consulenza
+      (onboarding, attivo, in pausa, completato, etc.), con date di ultimo aggiornamento.
+      Cerca qui quando ti chiedono "a che punto è il cliente X" o "chi è inattivo".
+
+   💬 TEMPLATE WHATSAPP: Tutti i template di messaggi WhatsApp Business configurati,
+      con nome, contenuto, variabili e stato di approvazione.
+      Cerca qui quando ti chiedono di inviare messaggi o quale template usare.
+
+   📱 TEMPLATE TWILIO: Template SMS/messaggi Twilio configurati per comunicazioni automatiche.
+      Cerca qui per informazioni sui messaggi automatici e le configurazioni SMS.
+
+   ⚙️ CONFIGURAZIONE CONSULENTE: Impostazioni personalizzate del consulente inclusi
+      limiti consultazioni mensili, preferenze AI, integrazioni attive, orari lavorativi.
+      Cerca qui quando ti chiedono delle loro impostazioni o configurazione.
+
+   ✉️ EMAIL MARKETING: Configurazione email, account IMAP/SMTP collegati, sequenze
+      di nurturing attive, e statistiche delle campagne email.
+      Cerca qui per tutto ciò che riguarda email e comunicazioni via posta.
+
+   🎯 CAMPAGNE MARKETING: Campagne attive e passate con stato, obiettivi, metriche,
+      contenuti generati e risultati. Include campagne social e lead generation.
+      Cerca qui quando ti chiedono delle campagne o delle strategie marketing.
+
+   📅 CALENDARIO: Appuntamenti programmati, disponibilità, consulenze prenotate,
+      slot liberi e storico appuntamenti. Include check-in settimanali.
+      Cerca qui quando ti chiedono della loro agenda o degli appuntamenti.
+
+   📝 ESERCIZI IN ATTESA: Esercizi assegnati ai clienti che attendono revisione,
+      con data assegnazione, cliente, tipo di esercizio e stato.
+      Cerca qui quando ti chiedono "quali esercizi devo correggere" o esercizi pendenti.
+
+   📑 CONSULTAZIONI: Storico delle consulenze svolte con date, clienti, note,
+      riassunti AI e argomenti trattati.
+      Cerca qui quando ti chiedono delle consulenze passate o dello storico con un cliente.
+
+📚 KNOWLEDGE BASE E LIBRERIA: Documenti personalizzati caricati dal consulente
+   (PDF, guide, materiali formativi) e istruzioni custom per l'AI.
+
+⚠️ COME USARE QUESTI DOCUMENTI:
+- Quando il consulente fa una domanda, il sistema File Search cerca automaticamente
+  nei documenti indicizzati e ti fornisce i risultati più rilevanti.
+- Rispondi SOLO con le informazioni trovate nei documenti. Non inventare dati.
+- Se un'informazione non viene trovata nei documenti, dillo chiaramente:
+  "Non trovo questa informazione nei dati disponibili."
+- Per domande sulla piattaforma → cerca nella GUIDA PIATTAFORMA
+- Per domande sui clienti → cerca in PANORAMICA CLIENTI e STATI DEI CLIENTI
+- Per domande su comunicazioni → cerca in TEMPLATE WHATSAPP/TWILIO e EMAIL
+- Per domande su agenda → cerca in CALENDARIO
+- Per domande su attività pendenti → cerca in ESERCIZI IN ATTESA
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
