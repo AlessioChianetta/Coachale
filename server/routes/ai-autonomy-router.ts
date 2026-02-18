@@ -44,6 +44,7 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         role_frequencies: {},
         role_autonomy_modes: {},
         role_working_hours: {},
+        whatsapp_template_ids: [],
       });
     }
 
@@ -80,6 +81,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const roleFrequencies = JSON.stringify(body.role_frequencies ?? {});
     const roleAutonomyModes = JSON.stringify(body.role_autonomy_modes ?? {});
     const roleWorkingHours = JSON.stringify(body.role_working_hours ?? {});
+    const whatsappTemplateIds = JSON.stringify(body.whatsapp_template_ids ?? []);
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -87,13 +89,13 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         always_approve_actions, working_hours_start, working_hours_end, working_days,
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
-        role_frequencies, role_autonomy_modes, role_working_hours
+        role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
-        ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb
+        ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -114,6 +116,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         role_frequencies = EXCLUDED.role_frequencies,
         role_autonomy_modes = EXCLUDED.role_autonomy_modes,
         role_working_hours = EXCLUDED.role_working_hours,
+        whatsapp_template_ids = EXCLUDED.whatsapp_template_ids,
         updated_at = now()
       RETURNING *
     `);

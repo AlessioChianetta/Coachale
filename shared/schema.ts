@@ -10317,6 +10317,7 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   consultantPhone: varchar("consultant_phone", { length: 30 }),
   consultantEmail: varchar("consultant_email", { length: 255 }),
   consultantWhatsapp: varchar("consultant_whatsapp", { length: 30 }),
+  whatsappTemplateIds: jsonb("whatsapp_template_ids").$type<string[]>().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });

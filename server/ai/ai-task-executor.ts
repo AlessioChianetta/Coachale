@@ -1638,6 +1638,23 @@ async function handleSendWhatsapp(
     return { status: "skipped", reason: "Nessun numero di telefono disponibile" };
   }
 
+  let selectedTemplateId: string | null = null;
+  try {
+    const templateSettings = await db.execute(sql`
+      SELECT whatsapp_template_ids FROM ai_autonomy_settings
+      WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+    `);
+    const templateIds = (templateSettings.rows[0] as any)?.whatsapp_template_ids || [];
+    if (templateIds.length > 0) {
+      selectedTemplateId = templateIds[Math.floor(Math.random() * templateIds.length)];
+      console.log(`📋 ${LOG_PREFIX} WhatsApp template selezionato: ${selectedTemplateId} (da ${templateIds.length} configurati)`);
+    } else {
+      console.log(`⚠️ ${LOG_PREFIX} Nessun template WhatsApp configurato, invio come testo libero`);
+    }
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Errore nel recupero template WhatsApp:`, err.message);
+  }
+
   let messageText = _step.params?.message_summary || "";
 
   if (!messageText) {
@@ -1670,7 +1687,10 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
       resolvedPhone,
       messageText,
       undefined,
-      task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : undefined,
+      {
+        ...(task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {}),
+        ...(selectedTemplateId ? { contentSid: selectedTemplateId } : {}),
+      },
     );
 
     await logActivity(task.consultant_id, {
@@ -1689,6 +1709,7 @@ NON fare un papiro. Massimo 2-3 frasi. Sii diretto e cordiale. Se c'è un report
       message_sid: messageSid,
       target_phone: resolvedPhone,
       message_preview: messageText.substring(0, 100),
+      template_used: selectedTemplateId || 'plain_text',
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} WhatsApp send failed:`, error.message);

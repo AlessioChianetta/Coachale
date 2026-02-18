@@ -14,6 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Bot, Activity, Phone, Mail, MessageSquare,
   Clock, Shield, Zap, Brain, CheckCircle, AlertTriangle,
@@ -808,9 +809,57 @@ function SettingsTab({
   const [showPromptForRole, setShowPromptForRole] = useState<string | null>(null);
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
+  const [openTemplateCategories, setOpenTemplateCategories] = useState<Set<string>>(new Set());
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const { data: whatsappTemplates = [], isLoading: templatesLoading } = useQuery<{
+    id: string;
+    friendlyName: string;
+    bodyText: string;
+    approvalStatus: string;
+    useCase?: string;
+  }[]>({
+    queryKey: ["/api/weekly-checkin/templates"],
+    enabled: settings.channels_enabled.whatsapp,
+  });
+
+  const TEMPLATE_CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+    "Setter": { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", icon: "bg-blue-500" },
+    "Follow-up": { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-300", border: "border-orange-200 dark:border-orange-800", icon: "bg-orange-500" },
+    "Check-in": { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800", icon: "bg-purple-500" },
+    "Notifica": { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800", icon: "bg-cyan-500" },
+    "Generale": { bg: "bg-gray-50 dark:bg-gray-900/20", text: "text-gray-700 dark:text-gray-300", border: "border-gray-200 dark:border-gray-800", icon: "bg-gray-500" },
+  };
+
+  const categorizeTemplate = (template: { friendlyName: string; useCase?: string }): string => {
+    const name = (template.friendlyName || "").toLowerCase();
+    const useCase = (template.useCase || "").toLowerCase();
+    if (name.includes("setter") || useCase.includes("setter")) return "Setter";
+    if (name.includes("follow-up") || name.includes("followup") || useCase.includes("follow")) return "Follow-up";
+    if (name.includes("check") || useCase.includes("check")) return "Check-in";
+    if (name.includes("notifica") || name.includes("promemoria") || useCase.includes("notifica")) return "Notifica";
+    return "Generale";
+  };
+
+  const templatesByCategory = React.useMemo(() => {
+    const grouped: Record<string, typeof whatsappTemplates> = {};
+    whatsappTemplates.forEach((template) => {
+      const category = categorizeTemplate(template);
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push(template);
+    });
+    return grouped;
+  }, [whatsappTemplates]);
+
+  const handleAutonomyTemplateToggle = (templateId: string, isChecked: boolean) => {
+    const currentIds = settings.whatsapp_template_ids || [];
+    const newIds = isChecked
+      ? [...currentIds, templateId]
+      : currentIds.filter((id) => id !== templateId);
+    setSettings(prev => ({ ...prev, whatsapp_template_ids: newIds }));
+  };
 
   const { data: systemPrompts } = useQuery<Record<string, { name: string; displayName: string; description: string; systemPromptTemplate: string }>>({
     queryKey: ["/api/ai-autonomy/roles/system-prompts"],
@@ -2071,6 +2120,134 @@ function SettingsTab({
               </div>
             </div>
           </div>
+
+          {settings.channels_enabled.whatsapp && (
+            <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-green-500" />
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+                  <MessageSquare className="h-5 w-5 text-emerald-600" />
+                  Template WhatsApp per Dipendenti AI
+                </div>
+                {(settings.whatsapp_template_ids || []).length > 0 && (
+                  <Badge className="bg-emerald-500 text-white text-xs px-3 py-1">
+                    {(settings.whatsapp_template_ids || []).length} selezionati
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Seleziona i template che i dipendenti AI useranno per inviare messaggi WhatsApp. Senza template, i messaggi verranno inviati come testo libero (funziona solo con conversazioni attive nelle ultime 24h).
+              </p>
+
+              {templatesLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                </div>
+              ) : whatsappTemplates.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">Nessun template WhatsApp approvato trovato</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Configura i template nella sezione WhatsApp Templates
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                  {Object.entries(templatesByCategory).map(([categoryName, categoryTemplates]) => {
+                    const isOpen = openTemplateCategories.has(categoryName);
+                    const colors = TEMPLATE_CATEGORY_COLORS[categoryName] || TEMPLATE_CATEGORY_COLORS["Generale"];
+                    const selectedInCategory = categoryTemplates.filter(t =>
+                      (settings.whatsapp_template_ids || []).includes(t.id)
+                    ).length;
+
+                    return (
+                      <Collapsible
+                        key={categoryName}
+                        open={isOpen}
+                        onOpenChange={(open) => {
+                          setOpenTemplateCategories(prev => {
+                            const newSet = new Set(prev);
+                            if (open) {
+                              newSet.add(categoryName);
+                            } else {
+                              newSet.delete(categoryName);
+                            }
+                            return newSet;
+                          });
+                        }}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <div className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-3 h-3 rounded-full ${colors.icon}`}></div>
+                              <span className={`font-semibold ${colors.text}`}>{categoryName}</span>
+                              <Badge variant="outline" className={`text-xs ${colors.bg} ${colors.text} ${colors.border}`}>
+                                {categoryTemplates.length} template
+                              </Badge>
+                              {selectedInCategory > 0 && (
+                                <Badge className="bg-emerald-500 text-white text-xs">
+                                  {selectedInCategory} selezionati
+                                </Badge>
+                              )}
+                            </div>
+                            <ChevronDown className={`h-4 w-4 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <div className="space-y-2 pl-2">
+                            {categoryTemplates.map((template) => {
+                              const isSelected = (settings.whatsapp_template_ids || []).includes(template.id);
+                              return (
+                                <label
+                                  key={template.id}
+                                  className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 ${
+                                    isSelected
+                                      ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-md"
+                                      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) => handleAutonomyTemplateToggle(template.id, checked as boolean)}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-gray-900 dark:text-white">
+                                        {template.friendlyName}
+                                      </span>
+                                      <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                                        Approvato
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
+                                      {template.bodyText || "Template senza corpo visibile"}
+                                    </p>
+                                    <p className="text-xs text-gray-400 font-mono mt-2">
+                                      {template.id}
+                                    </p>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              )}
+
+              {(settings.whatsapp_template_ids || []).length === 0 && whatsappTemplates.length > 0 && (
+                <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    Nessun template selezionato. I dipendenti AI invieranno messaggi come testo libero, che funziona solo se la conversazione è attiva nelle ultime 24 ore.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
