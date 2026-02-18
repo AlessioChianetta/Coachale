@@ -2884,16 +2884,16 @@ Esempio di flusso corretto:
             temperature: 0.7,
             maxOutputTokens: 2048,
           },
-        } as any, { consultantId, feature: `agent-chat:${roleId}` });
+        }, { consultantId, feature: `agent-chat:${roleId}` });
       } else {
-        response = await trackedGenerateContent(aiClient, {
+        response = await aiClient.generateContent({
           model: providerModel,
           contents: chatContents,
-          config: {
+          generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 2048,
           },
-        }, { consultantId, feature: `agent-chat:${roleId}` });
+        });
       }
 
       aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
