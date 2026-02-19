@@ -1515,7 +1515,7 @@ function DashboardTab({
               <p className="text-xs mt-1">I task completati sono nell'archivio in basso</p>
             </div>
           ) : (
-            <div className="overflow-x-auto pb-4 -mx-2 px-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+            <div className="kanban-scroll pb-4 -mx-2 px-2">
               <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
                 {kanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];

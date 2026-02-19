@@ -510,6 +510,28 @@
     display: none;
   }
 
+  .kanban-scroll {
+    overflow-x: auto;
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--border)) hsl(var(--muted));
+  }
+  .kanban-scroll::-webkit-scrollbar {
+    height: 10px;
+    display: block;
+  }
+  .kanban-scroll::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 5px;
+  }
+  .kanban-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 5px;
+    border: 2px solid hsl(var(--muted));
+  }
+  .kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
   /* Wattpad-style smooth scrolling */
   .wattpad-scroll {
     scroll-behavior: smooth;
