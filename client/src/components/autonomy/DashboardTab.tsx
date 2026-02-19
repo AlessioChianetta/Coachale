@@ -1762,7 +1762,19 @@ function DashboardTab({
                                     {getPriorityIndicator(task.priority)}
                                   </div>
                                 </div>
-                                <p className={cn("text-xs text-muted-foreground mb-2 leading-relaxed", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
+                                <p className={cn("text-xs text-muted-foreground leading-relaxed", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
+                                {task.ai_instruction && task.ai_instruction.length > 80 && (
+                                  <button
+                                    onClick={(e) => toggleTaskExpand(task.id, e)}
+                                    className="text-[10px] text-primary hover:text-primary/80 font-medium mb-1.5 flex items-center gap-0.5"
+                                  >
+                                    {expandedTaskIds.has(task.id) ? (
+                                      <><ChevronUp className="h-3 w-3" /> Comprimi</>
+                                    ) : (
+                                      <><ChevronDown className="h-3 w-3" /> Espandi</>
+                                    )}
+                                  </button>
+                                )}
                                 {plannedActions.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mb-2">
                                     {plannedActions.map((action, idx) => (
