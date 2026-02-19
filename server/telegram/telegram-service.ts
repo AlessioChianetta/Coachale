@@ -330,7 +330,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
   }
 }
 
-export type TaskNotifyEvent = 'completed' | 'failed' | 'waiting_input' | 'waiting_approval' | 'created';
+export type TaskNotifyEvent = 'completed' | 'failed' | 'waiting_input' | 'waiting_approval' | 'created' | 'follow_up';
 
 interface TaskNotifyData {
   taskId: string;
@@ -366,6 +366,10 @@ const TASK_NOTIFY_MESSAGES: Record<TaskNotifyEvent, (roleName: string, data: Tas
     const contact = data.contactName ? ` per ${data.contactName}` : '';
     const category = data.taskCategory ? ` [${data.taskCategory}]` : '';
     return `📋 Nuovo task creato${contact}${category}: ${(data.instruction || '').substring(0, 200)}`;
+  },
+  follow_up: (roleName, data) => {
+    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    return `🔄 ${roleName} ha aggiornato un task esistente${contact} con nuovo contesto: ${(data.instruction || '').substring(0, 200)}`;
   },
 };
 

@@ -2155,6 +2155,79 @@ FORMATO JSON quando è un task nuovo (come prima):
         continue;
       }
 
+      const toolCodePattern = /tool_code\s*\n?\s*google_file_search\s*\{/i;
+      if (useFileSearch && toolCodePattern.test(responseText)) {
+        console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Detected tool_code google_file_search in text response — executing File Search grounding`);
+        const searchQueries = [...responseText.matchAll(/google_file_search\s*\{?\s*query\s*[:=]\s*[<«"']?([^>»"'\n}]+)/gi)]
+          .map(m => m[1].trim()).filter(q => q.length > 3);
+        if (searchQueries.length === 0) {
+          searchQueries.push('informazioni principali documenti consulente');
+        }
+        console.log(`🔍 [AUTONOMOUS-GEN] [${role.name}] Extracted ${searchQueries.length} search queries: ${searchQueries.map(q => `"${q}"`).join(', ')}`);
+
+        try {
+          let groundedContent = '';
+          for (const query of searchQueries.slice(0, 3)) {
+            try {
+              const searchResponse = await aiClient!.generateContent({
+                model: providerModel,
+                contents: [{ role: 'user', parts: [{ text: `Cerca nei documenti e riassumi le informazioni rilevanti per: ${query}. Rispondi con un riassunto conciso.` }] }],
+                generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+                tools: [agentFileSearchTool],
+              });
+              let searchResult = '';
+              try { searchResult = searchResponse.response.text(); } catch {
+                const parts = searchResponse.response.candidates?.[0]?.content?.parts || [];
+                searchResult = parts.filter((p: any) => p.text).map((p: any) => p.text).join('');
+              }
+              if (searchResult && !toolCodePattern.test(searchResult)) {
+                groundedContent += `\n\n--- Risultati ricerca: "${query}" ---\n${searchResult.substring(0, 3000)}`;
+                console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] File Search for "${query}": ${searchResult.length} chars`);
+              } else {
+                console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] File Search for "${query}" returned empty or tool_code`);
+              }
+            } catch (searchErr: any) {
+              console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] File Search query failed: ${searchErr.message}`);
+            }
+          }
+
+          const enrichedPrompt = groundedContent.length > 50
+            ? `${prompt}\n\n${'═'.repeat(60)}\nCONTESTO DAI DOCUMENTI (File Search)\n${'═'.repeat(60)}${groundedContent}\n${'═'.repeat(60)}\n\nBasandoti su TUTTE le informazioni sopra (clienti, contesto operativo E documenti), genera i task nel formato JSON richiesto.`
+            : prompt;
+
+          const hasGroundedResults = groundedContent.length > 50;
+          if (!hasGroundedResults) {
+            console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] File Search grounding returned no usable results — falling back with File Search tool on final call`);
+          }
+          console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Re-calling Gemini with ${hasGroundedResults ? 'enriched context from File Search' : 'original prompt + File Search tool fallback'} for JSON output`);
+          const jsonResponse = await aiClient!.generateContent({
+            model: providerModel,
+            contents: [{ role: 'user', parts: [{ text: enrichedPrompt + '\n\nRispondi ESCLUSIVAMENTE con JSON valido nel formato: {"tasks": [...], "overall_reasoning": "..."}. NON usare tool_code.' }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 8192,
+              ...(!hasGroundedResults ? {} : { responseMimeType: 'application/json' }),
+            },
+            ...(!hasGroundedResults ? { tools: [agentFileSearchTool] } : {}),
+          });
+          try {
+            responseText = jsonResponse.response.text();
+          } catch {
+            const parts = jsonResponse.response.candidates?.[0]?.content?.parts || [];
+            responseText = parts.filter((p: any) => p.text).map((p: any) => p.text).join('');
+          }
+          console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] JSON response after File Search grounding (${responseText?.length || 0} chars)`);
+        } catch (followUpErr: any) {
+          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] File Search grounding failed: ${followUpErr.message}`);
+          continue;
+        }
+
+        if (!responseText) {
+          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Empty response after File Search grounding`);
+          continue;
+        }
+      }
+
       let parsed: { tasks: AutonomousSuggestedTask[], overall_reasoning?: string };
       let cleaned = responseText.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
       if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
@@ -2387,6 +2460,14 @@ FORMATO JSON quando è un task nuovo (come prima):
                   ai_role: role.id,
                   cycle_id: cycleId,
                 });
+                void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+                  notifyTaskViaTelegram(consultantId, role.id, 'follow_up', {
+                    taskId: followUpId,
+                    instruction: suggestedTask.ai_instruction,
+                    contactName: suggestedTask.contact_name,
+                    taskCategory: suggestedTask.task_category || existing.task_category,
+                  })
+                ).catch(() => {});
                 continue;
               } else {
                 console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] follow_up_of=${followUpId} not found or not active. Creating as new task.`);
@@ -2456,6 +2537,14 @@ FORMATO JSON quando è un task nuovo (come prima):
                   ai_role: role.id,
                   cycle_id: cycleId,
                 });
+                void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+                  notifyTaskViaTelegram(consultantId, role.id, 'follow_up', {
+                    taskId: matchedExisting.id,
+                    instruction: suggestedTask.ai_instruction,
+                    contactName: suggestedTask.contact_name,
+                    taskCategory: suggestedTask.task_category || matchedExisting.task_category,
+                  })
+                ).catch(() => {});
                 continue;
               }
             }
