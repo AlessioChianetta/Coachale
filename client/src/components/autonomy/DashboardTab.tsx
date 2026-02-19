@@ -2474,67 +2474,91 @@ function DashboardTab({
                   )}
                 </div>
 
-                {taskDetailData.aggregated_followups && taskDetailData.aggregated_followups.length > 0 && (
-                  <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-3">
-                    <h3 className="text-base font-semibold flex items-center gap-2">
-                      <RefreshCw className="h-4.5 w-4.5 text-amber-500" />
-                      Follow-up ricevuti
-                      <Badge variant="outline" className={cn(
-                        "text-xs ml-1 tabular-nums",
-                        taskDetailData.aggregated_followups.length >= 5 ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800" :
-                        taskDetailData.aggregated_followups.length >= 3 ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800" :
-                        ""
-                      )}>{taskDetailData.aggregated_followups.length}</Badge>
-                    </h3>
-                    {taskDetailData.aggregated_followups.length >= 5 && (
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
-                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-red-700 dark:text-red-400">
-                          Questo task ha ricevuto <strong>{taskDetailData.aggregated_followups.length} follow-up</strong>. Valuta se approvarlo subito o modificarlo.
-                        </p>
+                {(() => {
+                  const parsedFollowUps: Array<{ date: string; text: string }> = [];
+                  if (task.additional_context) {
+                    const regex = /---\s*Follow-up\s+([\d/]+,?\s*[\d:]+)\s*---\s*\n([\s\S]*?)(?=\n---\s*Follow-up|\s*$)/g;
+                    let match;
+                    while ((match = regex.exec(task.additional_context)) !== null) {
+                      const text = match[2].trim();
+                      if (text) parsedFollowUps.push({ date: match[1].trim(), text });
+                    }
+                  }
+                  if (parsedFollowUps.length === 0) return null;
+                  const count = parsedFollowUps.length;
+                  return (
+                    <div className="rounded-xl border border-border shadow-sm bg-card overflow-hidden">
+                      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-3">
+                        <div className={cn(
+                          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                          count >= 5 ? "bg-red-100 dark:bg-red-950/40" :
+                          count >= 3 ? "bg-amber-100 dark:bg-amber-950/40" :
+                          "bg-blue-100 dark:bg-blue-950/40"
+                        )}>
+                          <RefreshCw className={cn(
+                            "h-4 w-4",
+                            count >= 5 ? "text-red-600 dark:text-red-400" :
+                            count >= 3 ? "text-amber-600 dark:text-amber-400" :
+                            "text-blue-600 dark:text-blue-400"
+                          )} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-semibold text-foreground">Follow-up ricevuti</h3>
+                          <p className="text-[11px] text-muted-foreground">
+                            {count >= 5 ? "L'AI insiste molto — valuta se agire o modificare il task" :
+                             count >= 3 ? "L'AI sta insistendo su questo punto" :
+                             "Aggiornamenti dall'AI su questo task"}
+                          </p>
+                        </div>
+                        <Badge className={cn(
+                          "tabular-nums text-xs font-bold px-2.5 py-1",
+                          count >= 5 ? "bg-red-500 text-white hover:bg-red-600" :
+                          count >= 3 ? "bg-amber-500 text-white hover:bg-amber-600" :
+                          "bg-blue-500 text-white hover:bg-blue-600"
+                        )}>{count}</Badge>
                       </div>
-                    )}
-                    {taskDetailData.aggregated_followups.length >= 3 && taskDetailData.aggregated_followups.length < 5 && (
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                        <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-700 dark:text-amber-400">
-                          Più follow-up ricevuti. L'AI continua a insistere su questo task.
-                        </p>
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      {taskDetailData.aggregated_followups.map((fu, idx) => {
-                        const titleText = fu.title.replace(/^\[.*?\]\s*/, '');
-                        return (
-                          <div key={fu.id} className={cn(
-                            "flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-colors",
-                            idx === taskDetailData.aggregated_followups!.length - 1
-                              ? "bg-primary/5 border-primary/20"
-                              : "bg-muted/20 border-border/40"
-                          )}>
-                            <div className={cn(
-                              "mt-1 flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold shrink-0",
-                              idx === taskDetailData.aggregated_followups!.length - 1
-                                ? "bg-primary text-white"
-                                : "bg-muted text-muted-foreground"
+
+                      <div className="divide-y divide-border/40">
+                        {parsedFollowUps.map((fu, idx) => {
+                          const isLast = idx === parsedFollowUps.length - 1;
+                          return (
+                            <div key={idx} className={cn(
+                              "px-5 py-4 transition-colors",
+                              isLast ? "bg-primary/5" : "hover:bg-muted/30"
                             )}>
-                              {idx + 1}
+                              <div className="flex items-start gap-3">
+                                <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
+                                  <div className={cn(
+                                    "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                    isLast ? "bg-primary text-white shadow-sm" :
+                                    count >= 5 && idx >= count - 3 ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400" :
+                                    "bg-muted text-muted-foreground"
+                                  )}>
+                                    {idx + 1}
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={cn(
+                                      "text-[11px] font-medium px-2 py-0.5 rounded-md",
+                                      isLast ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                    )}>
+                                      {fu.date}
+                                    </span>
+                                    {isLast && (
+                                      <span className="text-[10px] font-semibold text-primary">Ultimo</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[13px] text-foreground/90 leading-[1.7] whitespace-pre-wrap">{fu.text}</p>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-foreground leading-relaxed">{titleText}</p>
-                              {fu.description && (
-                                <p className="text-[11px] text-muted-foreground mt-1">{fu.description}</p>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap mt-0.5">
-                              {new Date(fu.created_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {taskDetailData.follow_ups && taskDetailData.follow_ups.length > 0 && (
                   <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-3">
