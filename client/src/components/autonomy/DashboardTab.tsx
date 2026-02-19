@@ -1432,7 +1432,7 @@ function DashboardTab({
                           {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
                           {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setEditTask(task)}>
+                        <DropdownMenuItem onClick={() => { setEditInstruction(task.ai_instruction || ''); setEditContext(task.additional_context || ''); setEditTask(task); }}>
                           <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
@@ -1602,7 +1602,7 @@ function DashboardTab({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={() => setEditTask(task)}>
+                          <DropdownMenuItem onClick={() => { setEditInstruction(task.ai_instruction || ''); setEditContext(task.additional_context || ''); setEditTask(task); }}>
                             <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
@@ -1906,7 +1906,7 @@ function DashboardTab({
                                           {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
                                           {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setEditTask(task)}>
+                                        <DropdownMenuItem onClick={() => { setEditInstruction(task.ai_instruction || ''); setEditContext(task.additional_context || ''); setEditTask(task); }}>
                                           <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
