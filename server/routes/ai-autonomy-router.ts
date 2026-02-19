@@ -965,7 +965,7 @@ router.get("/tasks/:id", authenticateToken, requireAnyRole(["consultant", "super
       return res.status(404).json({ error: "Task not found" });
     }
 
-    const [activityResult, followUpsResult] = await Promise.all([
+    const [activityResult, followUpsResult, aggregatedFollowUpsResult] = await Promise.all([
       db.execute(sql`
         SELECT * FROM ai_activity_log
         WHERE task_id = ${id} AND consultant_id = ${consultantId}
@@ -978,12 +978,20 @@ router.get("/tasks/:id", authenticateToken, requireAnyRole(["consultant", "super
         WHERE parent_task_id = ${id} AND consultant_id = ${consultantId}
         ORDER BY created_at ASC
       `),
+      db.execute(sql`
+        SELECT id, title, description, created_at
+        FROM ai_activity_log
+        WHERE task_id = ${id} AND consultant_id = ${consultantId}
+          AND (title ILIKE '%follow-up%' OR title ILIKE '%follow_up%' OR title ILIKE '%aggregat%')
+        ORDER BY created_at ASC
+      `),
     ]);
 
     return res.json({
       task: result.rows[0],
       activity: activityResult.rows,
       follow_ups: followUpsResult.rows,
+      aggregated_followups: aggregatedFollowUpsResult.rows,
     });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching task detail:", error);

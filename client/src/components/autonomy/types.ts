@@ -179,10 +179,18 @@ export interface FollowUpTask {
   completed_at: string | null;
 }
 
+export interface AggregatedFollowUp {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+}
+
 export interface TaskDetailResponse {
   task: AITask;
   activity: ActivityItem[];
   follow_ups?: FollowUpTask[];
+  aggregated_followups?: AggregatedFollowUp[];
 }
 
 export interface SystemStatus {
