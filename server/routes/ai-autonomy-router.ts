@@ -920,7 +920,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
                scheduling_reason, scheduled_by, original_scheduled_at,
                parent_task_id, additional_context,
                current_attempt, max_attempts,
-               (SELECT COUNT(*)::int FROM ai_scheduled_tasks fu WHERE fu.parent_task_id = ai_scheduled_tasks.id) as follow_up_count
+               (SELECT COUNT(*)::int FROM ai_activity_log al WHERE al.task_id = ai_scheduled_tasks.id AND (al.title ILIKE '%follow-up%' OR al.title ILIKE '%follow_up%' OR al.title ILIKE '%aggregat%')) as follow_up_count
         FROM ai_scheduled_tasks
         WHERE ${whereClause}
         ORDER BY created_at DESC
