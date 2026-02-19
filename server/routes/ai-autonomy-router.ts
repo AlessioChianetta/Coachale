@@ -2972,6 +2972,36 @@ router.get("/telegram-conversations/:roleId/:chatId/messages", authenticateToken
   }
 });
 
+router.delete("/telegram-conversations/:roleId/:chatId/reset", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId, chatId } = req.params;
+
+    const delMessages = await db.execute(sql`
+      DELETE FROM telegram_open_mode_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}::bigint
+    `);
+
+    await db.execute(sql`
+      UPDATE telegram_user_profiles
+      SET onboarding_status = 'pending', onboarding_step = 0,
+          onboarding_conversation = NULL, onboarding_summary = NULL,
+          full_profile_json = NULL, user_name = NULL, user_job = NULL,
+          user_goals = NULL, user_desires = NULL, group_context = NULL,
+          group_members = NULL, group_objectives = NULL,
+          updated_at = NOW()
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}::bigint
+    `);
+
+    console.log(`[TELEGRAM-RESET] Reset chat ${chatId} for role ${roleId}: ${delMessages.rowCount} messages deleted`);
+    res.json({ success: true, messagesDeleted: delMessages.rowCount });
+  } catch (error: any) {
+    console.error("[TELEGRAM-RESET] Error:", error.message);
+    return res.status(500).json({ error: "Failed to reset conversation" });
+  }
+});
+
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

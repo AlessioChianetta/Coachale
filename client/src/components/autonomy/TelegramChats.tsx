@@ -9,7 +9,11 @@ import { getAuthHeaders } from "@/lib/auth";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import {
-  Loader2, MessageCircle, Users, ArrowLeft, Send, User, Bot, X,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Loader2, MessageCircle, Users, ArrowLeft, Send, User, Bot, X, RotateCcw,
 } from "lucide-react";
 
 interface TelegramChatsProps {
@@ -85,6 +89,7 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
   const [selectedChat, setSelectedChat] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<TelegramMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,6 +132,22 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
       }
     } catch {}
     setMessagesLoading(false);
+  };
+
+  const resetChat = async (chatId: string) => {
+    setResetting(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/telegram-conversations/${roleId}/${chatId}/reset`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        setSelectedChat(null);
+        setMessages([]);
+        loadConversations();
+      }
+    } catch {}
+    setResetting(false);
   };
 
   const getConversationLabel = (conv: Conversation) => {
@@ -253,6 +274,33 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
                       {selectedChat.chat_type === "private" ? "Chat privata" : "Gruppo"} · {selectedChat.message_count} messaggi
                     </p>
                   </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Resetta
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Resettare questa conversazione?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tutti i messaggi verranno cancellati e l'utente ripartirà dall'onboarding quando ti riscriverà su Telegram. Questa azione non è reversibile.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => resetChat(selectedChat.telegram_chat_id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={resetting}
+                        >
+                          {resetting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                          Resetta chat
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
 
                 <ScrollArea className="flex-1">
