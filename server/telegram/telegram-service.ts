@@ -238,7 +238,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
         const ai = new GoogleGenAI({ apiKey });
-        const systemPrompt = `Sei ${roleName}, assistente personale di un consulente finanziario. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
+        const systemPrompt = `Sei ${roleName}, assistente personale di un professionista. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
 
 REGOLE FONDAMENTALI:
 - NON dire MAI che sei un bot, un'AI, un assistente artificiale o automatico
