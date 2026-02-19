@@ -448,6 +448,46 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
   }
 }
 
+function buildTelegramChatContext(params: {
+  isGroupChat: boolean;
+  chatTitle: string;
+  firstName: string;
+  username: string;
+  senderId: string;
+  senderStatus: 'owner' | 'open_mode' | 'unknown';
+}): string {
+  const { isGroupChat, chatTitle, firstName, username, senderId, senderStatus } = params;
+  const parts: string[] = [];
+
+  if (isGroupChat) {
+    parts.push(`[CONTESTO TELEGRAM: Stai rispondendo in un GRUPPO chiamato "${chatTitle || 'Gruppo senza nome'}"]`);
+  } else {
+    parts.push(`[CONTESTO TELEGRAM: Stai rispondendo in una CHAT PRIVATA]`);
+  }
+
+  const senderParts: string[] = [];
+  if (firstName) senderParts.push(`nome: ${firstName}`);
+  if (username) senderParts.push(`username: @${username}`);
+  if (senderId) senderParts.push(`id: ${senderId}`);
+
+  const statusLabel = senderStatus === 'owner'
+    ? 'proprietario/consulente verificato'
+    : senderStatus === 'open_mode'
+      ? 'utente registrato via modalità aperta'
+      : 'utente non riconosciuto';
+
+  senderParts.push(`stato: ${statusLabel}`);
+  parts.push(`[MITTENTE: ${senderParts.join(', ')}]`);
+
+  if (isGroupChat) {
+    parts.push(`[NOTA: Nel gruppo rispondi in modo conciso e diretto. Rivolgiti a ${firstName || username || 'l\'utente'} per nome quando possibile. Adatta il tono alla persona che ti scrive. Ricorda chi è ogni persona per le interazioni future.]`);
+  } else {
+    parts.push(`[NOTA: In chat privata puoi essere più dettagliato. Adatta il tono alla persona che ti scrive.]`);
+  }
+
+  return parts.join('\n');
+}
+
 export async function processIncomingTelegramMessage(update: any, configId: string): Promise<void> {
   const msg = update.message || update.channel_post;
   if (!msg) {
@@ -559,16 +599,22 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       if (!processedText) return;
 
       const profileContext = await getProfileContext(consultantId, aiRole, chatId);
-      const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
+      const senderId = String(fromUser?.id || '');
+      const chatContext = buildTelegramChatContext({ isGroupChat, chatTitle, firstName, username, senderId, senderStatus: 'open_mode' });
+      const contextParts = [chatContext];
+      if (profileContext) contextParts.push(profileContext);
+      contextParts.push(processedText);
+      const messageWithContext = contextParts.join('\n\n');
 
       console.log(`[TELEGRAM-PROMPT] Open mode message for ${aiRole} from chat ${chatId}:`);
+      console.log(`[TELEGRAM-PROMPT] Chat context: ${chatContext}`);
       console.log(`[TELEGRAM-PROMPT] Profile context: ${profileContext || 'none'}`);
       console.log(`[TELEGRAM-PROMPT] User message: ${processedText}`);
       console.log(`[TELEGRAM-PROMPT] Full message with context: ${messageWithContext.substring(0, 500)}`);
 
       try {
         const roleName = aiRole;
-        const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
+        const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: senderId, sender_name: firstName, sender_username: username });
         await db.execute(sql`
           INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
           VALUES (${consultantId}::uuid, ${aiRole}, ${roleName}, 'consultant', ${processedText.trim()}, ${telegramMetadata}::jsonb)
@@ -577,7 +623,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
         const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
         const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
           skipUserMessageInsert: true,
-          metadata: { source: "telegram", telegram_chat_id: chatId },
+          metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: senderId, sender_name: firstName, sender_username: username },
           source: "telegram",
         });
 
@@ -627,7 +673,11 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
         const ai = new GoogleGenAI({ apiKey });
+        const gatekeeperSenderId = String(fromUser?.id || '');
+        const gatekeeperChatCtx = buildTelegramChatContext({ isGroupChat, chatTitle, firstName, username, senderId: gatekeeperSenderId, senderStatus: 'unknown' });
         const systemPrompt = `Sei ${roleName}, assistente personale di un professionista. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
+
+${gatekeeperChatCtx}
 
 REGOLE FONDAMENTALI:
 - NON dire MAI che sei un bot, un'AI, un assistente artificiale o automatico
@@ -697,16 +747,22 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
   }
 
   const profileContext = await getProfileContext(consultantId, aiRole, chatId);
-  const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
+  const ownerSenderId = String(fromUser?.id || '');
+  const chatContext = buildTelegramChatContext({ isGroupChat, chatTitle, firstName, username, senderId: ownerSenderId, senderStatus: 'owner' });
+  const contextParts = [chatContext];
+  if (profileContext) contextParts.push(profileContext);
+  contextParts.push(processedText);
+  const messageWithContext = contextParts.join('\n\n');
 
   console.log(`[TELEGRAM-PROMPT] Owner message for ${aiRole} from chat ${chatId}:`);
+  console.log(`[TELEGRAM-PROMPT] Chat context: ${chatContext}`);
   console.log(`[TELEGRAM-PROMPT] Profile context: ${profileContext || 'none'}`);
   console.log(`[TELEGRAM-PROMPT] User message: ${processedText}`);
   console.log(`[TELEGRAM-PROMPT] Full message with context: ${messageWithContext.substring(0, 500)}`);
 
   try {
     const roleName = aiRole;
-    const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
+    const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: ownerSenderId, sender_name: firstName, sender_username: username });
     await db.execute(sql`
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
       VALUES (${consultantId}::uuid, ${aiRole}, ${roleName}, 'consultant', ${processedText.trim()}, ${telegramMetadata}::jsonb)
@@ -715,7 +771,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
       skipUserMessageInsert: true,
-      metadata: { source: "telegram", telegram_chat_id: chatId },
+      metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: ownerSenderId, sender_name: firstName, sender_username: username },
       source: "telegram",
     });
 
