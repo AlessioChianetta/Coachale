@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1044,7 +1044,7 @@ export default function ConsultantVoiceCallsPage() {
   const [quickCreateExpandedCategory, setQuickCreateExpandedCategory] = useState<string | null>(null);
   const [quickCreateSelectedTemplate, setQuickCreateSelectedTemplate] = useState<TemplateItem | null>(null);
   const [quickCreateTemplateValues, setQuickCreateTemplateValues] = useState<Record<string, string>>({});
-  const [selectedEvent, setSelectedEvent] = useState<{ type: 'task' | 'call' | 'history'; data: any } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ type: 'call' | 'history'; data: any } | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   // Delete confirmation dialog states
@@ -1060,6 +1060,7 @@ export default function ConsultantVoiceCallsPage() {
   const [calendarContactFilter, setCalendarContactFilter] = useState("");
   const [calendarShowAllCalls, setCalendarShowAllCalls] = useState(false);
   const [showContactsDropdown, setShowContactsDropdown] = useState(false);
+  const calendarScrollRef = useRef<HTMLDivElement>(null);
   
   // Wizard step state (1: Chi, 2: Cosa, 3: Quando)
   const [wizardStep, setWizardStep] = useState(1);
@@ -1106,6 +1107,13 @@ export default function ConsultantVoiceCallsPage() {
       setRetryIntervalMinutes(voiceSettings.voiceRetryIntervalMinutes);
     }
   }, [voiceSettings?.vpsBridgeUrl, voiceSettings?.voiceMaxRetryAttempts, voiceSettings?.voiceRetryIntervalMinutes]);
+
+  useEffect(() => {
+    if (calendarScrollRef.current) {
+      const HOUR_HEIGHT = 60;
+      calendarScrollRef.current.scrollTop = 7 * HOUR_HEIGHT;
+    }
+  }, [calendarWeekStart]);
 
   const updateVoiceMutation = useMutation({
     mutationFn: async (voiceId: string) => {
@@ -4241,7 +4249,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                     {/* Titolo per vista calendario */}
                     {aiTasksView === 'calendar' && (
                       <h2 className="text-xl font-normal text-foreground">
-                        Calendario AI Tasks
+                        Calendario Chiamate
                       </h2>
                     )}
                   </div>
@@ -4317,7 +4325,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      setSelectedEvent({ type: 'task', data: task });
+                                      setSelectedEvent({ type: 'call', data: task });
                                       setShowEventDetails(true);
                                     }}
                                   >
@@ -4525,64 +4533,45 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         return name.includes(search) || phone.includes(search);
                       };
                       
-                      const upcomingTasks = (calendarData?.aiTasks || [])
-                        .filter((t: AITask) => new Date(t.scheduled_at) > now && t.status === 'scheduled' && matchesContactFilter(t))
-                        .sort((a: AITask, b: AITask) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-                        .slice(0, 5);
-                      
-                      // Chiamate FUTURE (solo pending/retry_scheduled)
                       const upcomingCalls = (calendarData?.scheduledCalls || [])
                         .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && ['pending', 'retry_scheduled'].includes(c.status) && matchesContactFilter(c))
                         .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
                       
-                      const allUpcoming = [...upcomingTasks.map((t: AITask) => ({ ...t, eventType: 'task' as const })), ...upcomingCalls.map((c: any) => ({ ...c, eventType: 'call' as const }))]
-                        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-                        .slice(0, 5);
-                      
-                      if (allUpcoming.length === 0) return null;
+                      if (upcomingCalls.length === 0) return null;
                       
                       return (
                         <Card className="border-l-4 border-l-violet-500">
                           <CardHeader className="pb-2">
                             <CardTitle className="text-base flex items-center gap-2">
                               <Clock className="h-4 w-4 text-violet-500" />
-                              Prossimi Invii
+                              Prossime Chiamate
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
                             <div className="flex gap-3 overflow-x-auto pb-2">
-                              {allUpcoming.map((event) => {
-                                const eventDate = new Date(event.scheduled_at);
-                                const isTask = event.eventType === 'task';
+                              {upcomingCalls.map((call: any) => {
+                                const callDate = new Date(call.scheduled_at);
                                 return (
                                   <div
-                                    key={event.id}
+                                    key={call.id}
                                     onClick={() => {
-                                      setSelectedEvent({ type: event.eventType, data: event });
+                                      setSelectedEvent({ type: 'call', data: call });
                                       setShowEventDetails(true);
                                     }}
-                                    className={`flex-shrink-0 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
-                                      isTask 
-                                        ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800' 
-                                        : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-                                    }`}
+                                    className="flex-shrink-0 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
                                   >
                                     <div className="flex items-center gap-2 mb-1">
-                                      {isTask ? (
-                                        <Bot className="h-4 w-4 text-purple-500" />
-                                      ) : (
-                                        <Phone className="h-4 w-4 text-blue-500" />
-                                      )}
+                                      <Phone className="h-4 w-4 text-blue-500" />
                                       <span className="text-xs font-medium">
-                                        {format(eventDate, 'EEE d', { locale: it })}
+                                        {format(callDate, 'EEE d', { locale: it })}
                                       </span>
                                     </div>
                                     <p className="text-sm font-semibold truncate max-w-[120px]">
-                                      {isTask ? (event.contact_name || event.contact_phone) : event.target_phone}
+                                      {call.target_phone}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {format(eventDate, 'HH:mm')}
+                                      {format(callDate, 'HH:mm')}
                                     </p>
                                   </div>
                                 );
@@ -4648,6 +4637,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
 
                             {/* Griglia oraria con scroll - GOOGLE CALENDAR STYLE */}
                             <div 
+                              ref={calendarScrollRef}
                               className="relative overflow-auto" 
                               style={{ maxHeight: 'calc(100vh - 280px)', minHeight: '500px' }}
                               onMouseLeave={() => {
@@ -4686,18 +4676,10 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     return name.includes(search) || phone.includes(search);
                                   };
                                   
-                                  // AI Tasks: sempre mostrati (le chiamate generate appaiono nella timeline interna)
-                                  const dayTasks = (calendarData?.aiTasks?.filter((t: AITask) => 
-                                    isSameDay(new Date(t.scheduled_at), day) && matchesContactFilter(t)
-                                  ) || []);
-                                  
-                                  // Chiamate PROGRAMMATE: nascondi quelle generate da AI tasks (hanno source_task_id)
-                                  // perché appaiono già nella timeline del task viola
                                   const dayCalls = (calendarData?.scheduledCalls?.filter((c: any) => 
                                     c.scheduled_at && 
                                     isSameDay(new Date(c.scheduled_at), day) && 
-                                    matchesContactFilter(c) &&
-                                    !c.source_task_id // Nascondi chiamate generate da AI tasks
+                                    matchesContactFilter(c)
                                   ) || []);
                                   
                                   // STORICO chiamate: 
@@ -4724,12 +4706,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                   
                                   // Combina tutti gli eventi con metadati per priorità/clustering
                                   const allEvents = [
-                                    ...dayTasks.map((t: AITask) => ({ 
-                                      ...t, 
-                                      eventType: 'task' as const, 
-                                      time: new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60,
-                                      priority: t.status === 'in_progress' ? 1 : t.status === 'scheduled' ? 2 : 3
-                                    })),
                                     ...dayCalls.map((c: any) => ({ 
                                       ...c, 
                                       eventType: 'call' as const, 
@@ -4882,96 +4858,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                             <span className="text-base">{cluster.count}</span>
                                             <span className="text-[10px] opacity-80">eventi</span>
                                           </button>
-                                        );
-                                      })}
-
-                                      {/* AI Tasks - Posizionati al minuto esatto */}
-                                      {dayTasks.map((task: AITask) => {
-                                        const taskDate = new Date(task.scheduled_at);
-                                        const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
-                                        const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
-                                        if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
-                                        const pos = eventPositions.get(task.id) || { left: 0, width: 100, isHidden: false };
-                                        if (pos.isHidden) return null; // Nascosto nel cluster
-                                        const isNarrow = pos.width < 50;
-                                        
-                                        // Colori in base al task_type E allo status
-                                        // Lo status ha precedenza: failed = rosso, completed = verde opaco
-                                        const getTaskColors = () => {
-                                          // STATUS HA PRECEDENZA SUL TIPO
-                                          if (task.status === 'failed') {
-                                            return { 
-                                              bg: 'bg-red-500 hover:bg-red-600', 
-                                              border: 'border-red-700', 
-                                              ring: 'ring-red-300',
-                                              statusExtra: 'border-dashed'
-                                            };
-                                          }
-                                          if (task.status === 'retry_pending') {
-                                            return { 
-                                              bg: 'bg-orange-500 hover:bg-orange-600', 
-                                              border: 'border-orange-700', 
-                                              ring: 'ring-orange-300',
-                                              statusExtra: ''
-                                            };
-                                          }
-                                          if (task.status === 'completed') {
-                                            return { 
-                                              bg: 'bg-emerald-500 hover:bg-emerald-600', 
-                                              border: 'border-emerald-700', 
-                                              ring: 'ring-emerald-300',
-                                              statusExtra: 'opacity-70'
-                                            };
-                                          }
-                                          
-                                          // Per altri stati, usa colore per tipo
-                                          switch (task.task_type) {
-                                            case 'single_call':
-                                              return { bg: 'bg-emerald-500 hover:bg-emerald-600', border: 'border-emerald-700', ring: 'ring-emerald-300', statusExtra: '' };
-                                            case 'follow_up':
-                                              return { bg: 'bg-blue-500 hover:bg-blue-600', border: 'border-blue-700', ring: 'ring-blue-300', statusExtra: '' };
-                                            case 'ai_task':
-                                            default:
-                                              return { bg: 'bg-purple-500 hover:bg-purple-600', border: 'border-purple-700', ring: 'ring-purple-300', statusExtra: '' };
-                                          }
-                                        };
-                                        const taskColors = getTaskColors();
-                                        
-                                        // Stile extra per in_progress
-                                        const statusStyles = task.status === 'in_progress' 
-                                          ? `ring-2 ${taskColors.ring} shadow-lg z-25` 
-                                          : taskColors.statusExtra;
-                                        
-                                        // Etichetta tipo per tooltip
-                                        const typeLabel = task.task_type === 'single_call' ? 'Chiamata' : task.task_type === 'follow_up' ? 'Follow-up' : 'Task AI';
-                                        
-                                        return (
-                                          <div
-                                            key={task.id}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedEvent({ type: 'task', data: task });
-                                              setShowEventDetails(true);
-                                            }}
-                                            className={`absolute ${taskColors.bg} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px] ${taskColors.border} ${statusStyles}`}
-                                            style={{ 
-                                              top: top, 
-                                              height: EVENT_HEIGHT,
-                                              left: `calc(${pos.left}% + 2px)`,
-                                              width: `calc(${pos.width}% - 4px)`,
-                                              minWidth: '50px'
-                                            }}
-                                            title={`[${typeLabel}] ${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.ai_instruction}${task.result_summary ? ` (${task.result_summary})` : ''}`}
-                                          >
-                                            <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
-                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
-                                                {task.contact_name || task.contact_phone}
-                                              </div>
-                                              <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
-                                                {format(taskDate, 'HH:mm')} {!isNarrow && `• ${typeLabel}`}
-                                              </div>
-                                            </div>
-                                          </div>
                                         );
                                       })}
 
@@ -6325,7 +6211,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     const eventType = evt.eventType;
                                     const getTypeStyles = () => {
                                       switch (eventType) {
-                                        case 'task': return { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', icon: <Bot className="h-4 w-4 text-purple-500" /> };
                                         case 'call': return { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', icon: <Phone className="h-4 w-4 text-blue-500" /> };
                                         case 'history': return { bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800', icon: <PhoneIncoming className="h-4 w-4 text-emerald-500" /> };
                                         default: return { bg: 'bg-gray-50 dark:bg-gray-900/20', border: 'border-gray-200 dark:border-gray-800', icon: <Phone className="h-4 w-4 text-gray-500" /> };
@@ -6338,7 +6223,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         onClick={() => {
                                           setShowClusterPopover(false);
                                           setSelectedEvent({ 
-                                            type: eventType === 'task' ? 'task' : eventType === 'call' ? 'call' : 'history', 
+                                            type: eventType === 'call' ? 'call' : 'history', 
                                             data: evt 
                                           });
                                           setShowEventDetails(true);
@@ -6352,7 +6237,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                               {evt.contact_name || evt.contact_phone || evt.target_phone || evt.caller_id || 'Sconosciuto'}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                              {format(eventDate, 'HH:mm')} - {eventType === 'task' ? 'AI Task' : eventType === 'call' ? 'Programmata' : 'Storico'}
+                                              {format(eventDate, 'HH:mm')} - {eventType === 'call' ? 'Programmata' : 'Storico'}
                                               {evt.duration_seconds ? ` (${Math.floor(evt.duration_seconds / 60)}m)` : ''}
                                             </p>
                                           </div>
@@ -6373,17 +6258,11 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                     <DialogHeader>
                                       <div className="flex items-center gap-3">
                                         {(() => {
-                                          const taskType = selectedEvent.data?.task_type as 'single_call' | 'follow_up' | 'ai_task' | undefined;
-                                          const typeInfo = taskType ? CALL_TYPE_INFO[taskType] : null;
-                                          const TypeIcon = typeInfo?.icon || (selectedEvent.type === 'history' ? PhoneIncoming : Phone);
-                                          const bgColor = selectedEvent.type === 'task' && typeInfo
-                                            ? `bg-${typeInfo.color}-100 dark:bg-${typeInfo.color}-900/30`
-                                            : selectedEvent.type === 'history' 
+                                          const TypeIcon = selectedEvent.type === 'history' ? PhoneIncoming : Phone;
+                                          const bgColor = selectedEvent.type === 'history' 
                                               ? 'bg-emerald-100 dark:bg-emerald-900/30'
                                               : 'bg-blue-100 dark:bg-blue-900/30';
-                                          const iconColor = selectedEvent.type === 'task' && typeInfo
-                                            ? `text-${typeInfo.color}-600 dark:text-${typeInfo.color}-400`
-                                            : selectedEvent.type === 'history'
+                                          const iconColor = selectedEvent.type === 'history'
                                               ? 'text-emerald-600 dark:text-emerald-400'
                                               : 'text-blue-600 dark:text-blue-400';
                                           return (
@@ -6394,16 +6273,12 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         })()}
                                         <div>
                                           <DialogTitle className="text-lg">
-                                            {selectedEvent.type === 'task' 
-                                              ? (CALL_TYPE_INFO[selectedEvent.data?.task_type as keyof typeof CALL_TYPE_INFO]?.title || 'Task AI')
-                                              : selectedEvent.type === 'history' 
+                                            {selectedEvent.type === 'history' 
                                                 ? 'Chiamata Effettuata' 
                                                 : 'Chiamata Programmata'}
                                           </DialogTitle>
                                           <DialogDescription>
-                                            {selectedEvent.type === 'task' 
-                                              ? (selectedEvent.data.contact_name || selectedEvent.data.contact_phone)
-                                              : selectedEvent.type === 'history'
+                                            {selectedEvent.type === 'history'
                                                 ? (selectedEvent.data.client_name || selectedEvent.data.called_number)
                                                 : selectedEvent.data.target_phone
                                             }
@@ -6544,112 +6419,6 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         </div>
                                       )}
                                       
-                                      {/* Cronologia Tentativi - usa attempts_log per dati REALI */}
-                                      {selectedEvent.type === 'task' && (selectedEvent.data.current_attempt > 0 || selectedEvent.data.result_summary || (selectedEvent.data.attempts_log && selectedEvent.data.attempts_log.length > 0)) && (
-                                        <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                                          <div className="flex items-center justify-between mb-3">
-                                            <p className="text-xs font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
-                                              <RotateCcw className="h-3.5 w-3.5" />
-                                              Cronologia Tentativi
-                                            </p>
-                                            <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                                              {selectedEvent.data.current_attempt || (selectedEvent.data.attempts_log?.length || 0)}/{selectedEvent.data.max_attempts || 3} tentativi
-                                            </Badge>
-                                          </div>
-                                          
-                                          {/* Timeline dei tentativi - da attempts_log REALE */}
-                                          <div className="space-y-2 border-l-2 border-orange-200 dark:border-orange-700 pl-3 ml-1">
-                                            {/* Mostra tentativi da attempts_log se disponibile */}
-                                            {selectedEvent.data.attempts_log && selectedEvent.data.attempts_log.length > 0 ? (
-                                              <>
-                                                {(selectedEvent.data.attempts_log as Array<{attempt: number; timestamp: string; status: string; error?: string}>).map((attemptLog, idx) => (
-                                                  <div key={idx} className="relative">
-                                                    <div className={`absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full ${
-                                                      attemptLog.status === 'final_failure' ? 'bg-red-500' :
-                                                      attemptLog.status === 'failed' ? 'bg-orange-400' :
-                                                      attemptLog.status === 'success' ? 'bg-green-500' :
-                                                      'bg-blue-400'
-                                                    }`}></div>
-                                                    <div className="text-sm">
-                                                      <p className={`font-medium ${
-                                                        attemptLog.status === 'final_failure' ? 'text-red-600 dark:text-red-400' :
-                                                        attemptLog.status === 'failed' ? 'text-orange-700 dark:text-orange-400' :
-                                                        attemptLog.status === 'success' ? 'text-green-600 dark:text-green-400' :
-                                                        'text-blue-600 dark:text-blue-400'
-                                                      }`}>
-                                                        Tentativo {attemptLog.attempt}
-                                                        {attemptLog.status === 'final_failure' && ' (FINALE)'}
-                                                      </p>
-                                                      <p className="text-xs text-muted-foreground">
-                                                        {format(toItalianTime(attemptLog.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
-                                                      </p>
-                                                      {attemptLog.error && (
-                                                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                                                          {attemptLog.error}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                              </>
-                                            ) : (
-                                              <>
-                                                {/* Fallback: mostra info approssimate se non c'è attempts_log */}
-                                                {selectedEvent.data.current_attempt >= 1 && (
-                                                  <div className="relative">
-                                                    <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-orange-400"></div>
-                                                    <div className="text-sm">
-                                                      <p className="font-medium text-orange-700 dark:text-orange-400">
-                                                        Tentativo {selectedEvent.data.current_attempt}
-                                                      </p>
-                                                      {selectedEvent.data.last_attempt_at && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                          {format(toItalianTime(selectedEvent.data.last_attempt_at), 'dd/MM/yyyy HH:mm', { locale: it })}
-                                                        </p>
-                                                      )}
-                                                      {selectedEvent.data.result_summary && (
-                                                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                                                          {selectedEvent.data.result_summary}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </>
-                                            )}
-                                            
-                                            {/* Prossimo tentativo programmato */}
-                                            {selectedEvent.data.next_retry_at && selectedEvent.data.status === 'retry_pending' && (
-                                              <div className="relative">
-                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-blue-400 animate-pulse"></div>
-                                                <div className="text-sm">
-                                                  <p className="font-medium text-blue-600 dark:text-blue-400">
-                                                    Prossimo tentativo
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                    {format(toItalianTime(selectedEvent.data.next_retry_at), 'dd/MM/yyyy HH:mm', { locale: it })}
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            )}
-                                            
-                                            {/* Stato finale se fallito (solo se non c'è già in attempts_log) */}
-                                            {selectedEvent.data.status === 'failed' && (!selectedEvent.data.attempts_log || selectedEvent.data.attempts_log.length === 0) && (
-                                              <div className="relative">
-                                                <div className="absolute -left-[17px] top-1 h-2.5 w-2.5 rounded-full bg-red-500"></div>
-                                                <div className="text-sm">
-                                                  <p className="font-medium text-red-600 dark:text-red-400">
-                                                    Task fallito definitivamente
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground">
-                                                    Tentativi esauriti
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
                                     </div>
                                     
                                     {/* Mostra azioni solo per eventi futuri (non history e non passati) */}
@@ -6659,8 +6428,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                                         : null;
                                       const isPast = eventDate ? eventDate < new Date() : true;
                                       const isHistory = selectedEvent?.type === 'history';
-                                      const isTask = selectedEvent?.type === 'task';
-                                      const canModify = !isHistory && isTask;
+                                      const canModify = !isHistory && selectedEvent?.type === 'call';
                                       
                                       return (
                                         <div className="flex justify-between gap-2 pt-2">
