@@ -344,32 +344,38 @@ interface TaskNotifyData {
 
 const TASK_NOTIFY_MESSAGES: Record<TaskNotifyEvent, (roleName: string, data: TaskNotifyData) => string> = {
   completed: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
-    const summary = data.resultSummary ? `\n${data.resultSummary.substring(0, 300)}` : '';
-    return `✅ ${roleName} ha completato un task${contact}: ${(data.instruction || '').substring(0, 150)}${summary}`;
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
+    const instruction = data.instruction || '';
+    const summary = data.resultSummary ? `\n\n📝 *Risultato:*\n${data.resultSummary.substring(0, 800)}` : '';
+    return `✅ *${roleName}* ha completato un task ${contact}\n\n${instruction}${summary}`;
   },
   failed: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
-    const error = data.errorMessage ? `\nMotivo: ${data.errorMessage.substring(0, 200)}` : '';
-    return `❌ ${roleName} non è riuscito a completare un task${contact}: ${(data.instruction || '').substring(0, 150)}${error}`;
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
+    const instruction = data.instruction || '';
+    const error = data.errorMessage ? `\n\n⚠️ *Motivo:*\n${data.errorMessage.substring(0, 500)}` : '';
+    return `❌ *${roleName}* non è riuscito a completare un task ${contact}\n\n${instruction}${error}`;
   },
   waiting_input: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
-    const step = data.stepInfo ? `\nStep attuale: ${data.stepInfo.substring(0, 150)}` : '';
-    return `⏸️ ${roleName} ha bisogno del tuo input${contact}: ${(data.instruction || '').substring(0, 150)}${step}\n\nApri la piattaforma per rispondere.`;
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
+    const instruction = data.instruction || '';
+    const step = data.stepInfo ? `\n\n🔹 *Step attuale:*\n${data.stepInfo.substring(0, 500)}` : '';
+    return `⏸️ *${roleName}* ha bisogno del tuo input ${contact}\n\n${instruction}${step}\n\n👉 Apri la piattaforma per rispondere.`;
   },
   waiting_approval: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
-    return `🔔 ${roleName} ha preparato un task${contact} e attende la tua approvazione: ${(data.instruction || '').substring(0, 150)}\n\nApri la piattaforma per approvare.`;
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
+    const instruction = data.instruction || '';
+    return `🔔 *${roleName}* ha preparato un task ${contact} e attende la tua approvazione\n\n${instruction}\n\n👉 Apri la piattaforma per approvare.`;
   },
   created: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
     const category = data.taskCategory ? ` [${data.taskCategory}]` : '';
-    return `📋 Nuovo task creato${contact}${category}: ${(data.instruction || '').substring(0, 200)}`;
+    const instruction = data.instruction || '';
+    return `📋 Nuovo task creato ${contact}${category}\n\n${instruction}`;
   },
   follow_up: (roleName, data) => {
-    const contact = data.contactName ? ` per ${data.contactName}` : '';
-    return `🔄 ${roleName} ha aggiornato un task esistente${contact} con nuovo contesto: ${(data.instruction || '').substring(0, 200)}`;
+    const contact = data.contactName ? `per *${data.contactName}*` : '';
+    const instruction = data.instruction || '';
+    return `🔄 *${roleName}* ha aggiornato un task esistente ${contact}\n\n${instruction}`;
   },
 };
 
@@ -401,7 +407,7 @@ export async function notifyTaskViaTelegram(
     const roleName = roleId.charAt(0).toUpperCase() + roleId.slice(1);
     const message = TASK_NOTIFY_MESSAGES[event](roleName, data);
 
-    await sendTelegramMessage(botToken, chatId, message);
+    await sendTelegramMessage(botToken, chatId, message, "Markdown");
     console.log(`[TELEGRAM-NOTIFY] Sent ${event} notification to owner chat ${chatId} for role ${roleId}`);
   } catch (err: any) {
     console.error(`[TELEGRAM-NOTIFY] Failed to notify ${event} for role ${roleId}:`, err.message);
