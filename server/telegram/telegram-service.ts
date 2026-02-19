@@ -226,7 +226,7 @@ Rispondi in italiano, in modo breve (max 3-4 righe), caldo e accogliente. Non us
         const result = await trackedGenerateContent(ai, {
           model: GEMINI_3_MODEL,
           contents: [{ role: "user", parts: [{ text: gatekeeperPrompt }] }],
-          config: { temperature: 0.7 },
+          config: { temperature: 1 },
         }, {
           consultantId,
           feature: "telegram_gatekeeper",
