@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
+import { useBrandContext } from "@/contexts/BrandContext";
 import {
   Sheet,
   SheetContent,
@@ -572,17 +573,22 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
 
 
+  const { brandName, brandLogoUrl, brandPrimaryColor, brandSecondaryColor } = useBrandContext();
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo e nome app - Modern Clean Style with Tabs */}
       {!isCollapsed && <div className="mb-4 pb-1">
         <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-border/50">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg shadow-sm">
-              <BookOpen className="h-4 w-4 text-white" />
+            <div className="p-1.5 rounded-lg shadow-sm" style={{ background: `linear-gradient(135deg, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
+              {brandLogoUrl ? (
+                <img src={brandLogoUrl} alt={brandName} className="h-4 w-4 rounded" />
+              ) : (
+                <BookOpen className="h-4 w-4 text-white" />
+              )}
             </div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-              Consulente Pro
+              {brandName}
             </h2>
           </div>
           {!isMobile && (
@@ -605,9 +611,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               className={cn(
                 "flex-1 py-2 px-3 text-xs font-semibold uppercase tracking-wide rounded-lg transition-all duration-200",
                 sidebarTab === 'platform'
-                  ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50"
+                  ? `text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50`
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
               )}
+              style={sidebarTab === 'platform' ? { background: `linear-gradient(to right, ${brandPrimaryColor}1a, ${brandSecondaryColor}1a)` } : undefined}
             >
               Piattaforma
             </button>
@@ -1258,12 +1265,16 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
         <SheetContent side="left" className="w-80 p-0 bg-slate-50 dark:bg-[hsl(222,18%,6%)]" style={{ animationDuration: "250ms" }} data-testid="sidebar-mobile" data-tour="client-sidebar">
           <SheetHeader className="p-6 pb-4 border-b border-slate-200 dark:border-border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <SheetTitle className="text-left flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
-                <Home className="text-white" size={18} />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
+                {brandLogoUrl ? (
+                  <img src={brandLogoUrl} alt={brandName} className="h-6 w-6 rounded" />
+                ) : (
+                  <Home className="text-white" size={18} />
+                )}
               </div>
               <div>
-                <span className="font-bold text-lg bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">
-                  Consulente Pro
+                <span className="font-bold text-lg bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
+                  {brandName}
                 </span>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Platform</p>
               </div>

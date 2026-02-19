@@ -11,6 +11,7 @@ import AuthGuard from "@/components/auth-guard";
 import RoleBasedRedirect from "@/components/role-based-redirect";
 import { TourProvider } from "@/contexts/TourContext";
 import { AlessiaSessionProvider } from "@/contexts/AlessiaSessionContext";
+import { BrandProvider } from "@/contexts/BrandContext";
 import { FloatingAlessiaChat } from "@/components/alessia/FloatingAlessiaChat";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
@@ -999,12 +1000,14 @@ function App() {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="app-theme-mode">
       <QueryClientProvider client={queryClient}>
         <AlessiaSessionProvider>
+          <BrandProvider>
           <TourProvider>
             <TooltipProvider>
               <Toaster />
               <Router />
             </TooltipProvider>
           </TourProvider>
+          </BrandProvider>
         </AlessiaSessionProvider>
       </QueryClientProvider>
     </ThemeProvider>

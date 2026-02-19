@@ -30,6 +30,8 @@ import {
   MapPin,
   Linkedin,
   Instagram,
+  Palette,
+  BookOpen,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -79,6 +81,11 @@ interface DetailedProfileData {
   additionalContext: string;
   toneOfVoice: string;
   topicsToAvoid: string;
+  brandName: string;
+  brandLogoUrl: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
+  brandFaviconUrl: string;
 }
 
 const defaultDetailedData: DetailedProfileData = {
@@ -115,6 +122,11 @@ const defaultDetailedData: DetailedProfileData = {
   additionalContext: "",
   toneOfVoice: "",
   topicsToAvoid: "",
+  brandName: "",
+  brandLogoUrl: "",
+  brandPrimaryColor: "#06b6d4",
+  brandSecondaryColor: "#14b8a6",
+  brandFaviconUrl: "",
 };
 
 export default function ConsultantProfileSettingsPage() {
@@ -201,6 +213,11 @@ export default function ConsultantProfileSettingsPage() {
         additionalContext: detailedProfile.additionalContext || "",
         toneOfVoice: detailedProfile.toneOfVoice || "",
         topicsToAvoid: detailedProfile.topicsToAvoid || "",
+        brandName: detailedProfile.brandName || "",
+        brandLogoUrl: detailedProfile.brandLogoUrl || "",
+        brandPrimaryColor: detailedProfile.brandPrimaryColor || "#06b6d4",
+        brandSecondaryColor: detailedProfile.brandSecondaryColor || "#14b8a6",
+        brandFaviconUrl: detailedProfile.brandFaviconUrl || "",
       });
     }
   }, [detailedProfile]);
@@ -379,7 +396,7 @@ export default function ConsultantProfileSettingsPage() {
 
           <div className="max-w-4xl mx-auto">
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className={`${isMobile ? "flex flex-wrap h-auto gap-1 p-2" : "grid grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-2"} w-full bg-white/80 backdrop-blur-sm rounded-xl mb-6 shadow-sm`}>
+              <TabsList className={`${isMobile ? "flex flex-wrap h-auto gap-1 p-2" : "grid grid-cols-5 lg:grid-cols-9 h-auto gap-1 p-2"} w-full bg-white/80 backdrop-blur-sm rounded-xl mb-6 shadow-sm`}>
                 <TabsTrigger value="personal" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <User className="w-3 h-3" /> Personali
                 </TabsTrigger>
@@ -403,6 +420,9 @@ export default function ConsultantProfileSettingsPage() {
                 </TabsTrigger>
                 <TabsTrigger value="ai-context" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                   <Brain className="w-3 h-3" /> AI
+                </TabsTrigger>
+                <TabsTrigger value="brand" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <Palette className="h-3 w-3" /> Brand
                 </TabsTrigger>
               </TabsList>
 
@@ -984,6 +1004,116 @@ export default function ConsultantProfileSettingsPage() {
                     </div>
 
                     <SaveButton onClick={handleSaveDetailed} isPending={saveDetailedMutation.isPending} label="Salva Contesto AI" />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="brand">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-6 w-6 text-cyan-600" />
+                      Personalizzazione Brand
+                    </CardTitle>
+                    <CardDescription>
+                      Personalizza l'aspetto della piattaforma con il tuo brand (white-label per reseller)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Nome Brand</Label>
+                      <Input
+                        placeholder="Il nome del tuo brand (es. 'Studio Rossi Consulenza')"
+                        value={detailedFormData.brandName}
+                        onChange={(e) => handleDetailedChange("brandName", e.target.value)}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-slate-500">Sostituisce "Consulente Pro" nella sidebar e nel loader</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">URL Logo</Label>
+                      <Input
+                        placeholder="https://example.com/logo.png"
+                        value={detailedFormData.brandLogoUrl}
+                        onChange={(e) => handleDetailedChange("brandLogoUrl", e.target.value)}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-slate-500">Sostituisce l'icona predefinita nella sidebar e nel loader</p>
+                      {detailedFormData.brandLogoUrl && (
+                        <div className="mt-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center gap-3">
+                          <img src={detailedFormData.brandLogoUrl} alt="Preview logo" className="h-10 w-10 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <span className="text-xs text-slate-500">Anteprima logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Colore Primario</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={detailedFormData.brandPrimaryColor}
+                            onChange={(e) => handleDetailedChange("brandPrimaryColor", e.target.value)}
+                            className="h-11 w-14 rounded cursor-pointer border border-slate-200"
+                          />
+                          <Input
+                            value={detailedFormData.brandPrimaryColor}
+                            onChange={(e) => handleDetailedChange("brandPrimaryColor", e.target.value)}
+                            className="h-11 font-mono text-sm"
+                            placeholder="#06b6d4"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Colore Secondario</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={detailedFormData.brandSecondaryColor}
+                            onChange={(e) => handleDetailedChange("brandSecondaryColor", e.target.value)}
+                            className="h-11 w-14 rounded cursor-pointer border border-slate-200"
+                          />
+                          <Input
+                            value={detailedFormData.brandSecondaryColor}
+                            onChange={(e) => handleDetailedChange("brandSecondaryColor", e.target.value)}
+                            className="h-11 font-mono text-sm"
+                            placeholder="#14b8a6"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-semibold mb-3">Anteprima Colori</p>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg shadow-sm" style={{ background: `linear-gradient(135deg, ${detailedFormData.brandPrimaryColor}, ${detailedFormData.brandSecondaryColor})` }}>
+                          {detailedFormData.brandLogoUrl ? (
+                            <img src={detailedFormData.brandLogoUrl} alt="Logo" className="h-5 w-5 rounded" />
+                          ) : (
+                            <BookOpen className="h-5 w-5 text-white" />
+                          )}
+                        </div>
+                        <span className="font-bold text-sm" style={{ color: detailedFormData.brandPrimaryColor }}>
+                          {detailedFormData.brandName || "Consulente Pro"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">URL Favicon</Label>
+                      <Input
+                        placeholder="https://example.com/favicon.ico"
+                        value={detailedFormData.brandFaviconUrl}
+                        onChange={(e) => handleDetailedChange("brandFaviconUrl", e.target.value)}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-slate-500">Sostituisce il favicon della piattaforma nel browser</p>
+                    </div>
+
+                    <SaveButton onClick={handleSaveDetailed} isPending={saveDetailedMutation.isPending} label="Salva Brand" />
                   </CardContent>
                 </Card>
               </TabsContent>

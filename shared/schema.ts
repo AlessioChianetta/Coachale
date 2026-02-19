@@ -3565,7 +3565,13 @@ export const consultantDetailedProfiles = pgTable("consultant_detailed_profiles"
   additionalContext: text("additional_context"),
   toneOfVoice: text("tone_of_voice"),
   topicsToAvoid: text("topics_to_avoid"),
-  
+
+  brandName: text("brand_name"),
+  brandLogoUrl: text("brand_logo_url"),
+  brandPrimaryColor: text("brand_primary_color").default('#06b6d4'),
+  brandSecondaryColor: text("brand_secondary_color").default('#14b8a6'),
+  brandFaviconUrl: text("brand_favicon_url"),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
