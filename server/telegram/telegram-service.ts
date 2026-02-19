@@ -382,7 +382,7 @@ export async function notifyTaskViaTelegram(
   try {
     const configResult = await db.execute(sql`
       SELECT id, bot_token FROM telegram_bot_configs
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_active = true
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND enabled = true
       LIMIT 1
     `);
     if (configResult.rows.length === 0) return;
