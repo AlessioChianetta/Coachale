@@ -404,58 +404,6 @@ function DashboardTab({
   const [draggedColumn, setDraggedColumn] = React.useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = React.useState<string | null>(null);
 
-  const orderedKanbanColumns = useMemo(() => {
-    if (columnOrder.length === 0) return kanbanColumns;
-    const orderMap = new Map(columnOrder.map((role, idx) => [role, idx]));
-    const sorted = [...kanbanColumns].sort((a, b) => {
-      const aIdx = orderMap.get(a.role);
-      const bIdx = orderMap.get(b.role);
-      if (aIdx !== undefined && bIdx !== undefined) return aIdx - bIdx;
-      if (aIdx !== undefined) return -1;
-      if (bIdx !== undefined) return 1;
-      return 0;
-    });
-    return sorted;
-  }, [kanbanColumns, columnOrder]);
-
-  const handleColumnDragStart = (e: React.DragEvent, role: string) => {
-    setDraggedColumn(role);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', role);
-    if (e.currentTarget instanceof HTMLElement) {
-      e.currentTarget.style.opacity = '0.5';
-    }
-  };
-  const handleColumnDragEnd = (e: React.DragEvent) => {
-    if (e.currentTarget instanceof HTMLElement) {
-      e.currentTarget.style.opacity = '1';
-    }
-    setDraggedColumn(null);
-    setDragOverColumn(null);
-  };
-  const handleColumnDragOver = (e: React.DragEvent, role: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (role !== draggedColumn) {
-      setDragOverColumn(role);
-    }
-  };
-  const handleColumnDrop = (e: React.DragEvent, targetRole: string) => {
-    e.preventDefault();
-    if (!draggedColumn || draggedColumn === targetRole) return;
-    const currentOrder = orderedKanbanColumns.map(c => c.role);
-    const fromIdx = currentOrder.indexOf(draggedColumn);
-    const toIdx = currentOrder.indexOf(targetRole);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const newOrder = [...currentOrder];
-    newOrder.splice(fromIdx, 1);
-    newOrder.splice(toIdx, 0, draggedColumn);
-    setColumnOrder(newOrder);
-    try { localStorage.setItem('kanban-column-order', JSON.stringify(newOrder)); } catch {}
-    setDraggedColumn(null);
-    setDragOverColumn(null);
-  };
-
   const [scrollProgress, setScrollProgress] = React.useState(0);
   const [hasOverflow, setHasOverflow] = React.useState(false);
 
@@ -741,6 +689,58 @@ function DashboardTab({
       archiveCount: completed.length,
     };
   }, [tasksData?.tasks, dashboardRoleFilter, dashboardStatusFilter, pendingApprovalTasks, availableRoles]);
+
+  const orderedKanbanColumns = useMemo(() => {
+    if (columnOrder.length === 0) return kanbanColumns;
+    const orderMap = new Map(columnOrder.map((role, idx) => [role, idx]));
+    const sorted = [...kanbanColumns].sort((a, b) => {
+      const aIdx = orderMap.get(a.role);
+      const bIdx = orderMap.get(b.role);
+      if (aIdx !== undefined && bIdx !== undefined) return aIdx - bIdx;
+      if (aIdx !== undefined) return -1;
+      if (bIdx !== undefined) return 1;
+      return 0;
+    });
+    return sorted;
+  }, [kanbanColumns, columnOrder]);
+
+  const handleColumnDragStart = (e: React.DragEvent, role: string) => {
+    setDraggedColumn(role);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', role);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+  const handleColumnDragEnd = (e: React.DragEvent) => {
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
+  const handleColumnDragOver = (e: React.DragEvent, role: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (role !== draggedColumn) {
+      setDragOverColumn(role);
+    }
+  };
+  const handleColumnDrop = (e: React.DragEvent, targetRole: string) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetRole) return;
+    const currentOrder = orderedKanbanColumns.map(c => c.role);
+    const fromIdx = currentOrder.indexOf(draggedColumn);
+    const toIdx = currentOrder.indexOf(targetRole);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, draggedColumn);
+    setColumnOrder(newOrder);
+    try { localStorage.setItem('kanban-column-order', JSON.stringify(newOrder)); } catch {}
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
 
   const STATUS_TABS = [
     { value: 'all', label: 'Tutti', count: tasksStats?.total ?? 0, icon: <ListTodo className="h-3.5 w-3.5" />, color: '' },
