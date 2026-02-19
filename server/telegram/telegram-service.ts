@@ -3,6 +3,29 @@ import { sql } from "drizzle-orm";
 
 const TELEGRAM_API = "https://api.telegram.org/bot";
 
+const gatekeeperChatHistory = new Map<string, { role: string; text: string; ts: number }[]>();
+const GATEKEEPER_MAX_MESSAGES = 20;
+const GATEKEEPER_TTL_MS = 30 * 60 * 1000;
+
+function getGatekeeperHistory(chatId: string): { role: string; text: string }[] {
+  const key = chatId;
+  const history = gatekeeperChatHistory.get(key) || [];
+  const now = Date.now();
+  const valid = history.filter(m => now - m.ts < GATEKEEPER_TTL_MS);
+  if (valid.length !== history.length) gatekeeperChatHistory.set(key, valid);
+  return valid.map(m => ({ role: m.role, text: m.text }));
+}
+
+function addGatekeeperMessage(chatId: string, role: "user" | "model", text: string) {
+  const key = chatId;
+  if (!gatekeeperChatHistory.has(key)) gatekeeperChatHistory.set(key, []);
+  const history = gatekeeperChatHistory.get(key)!;
+  history.push({ role, text, ts: Date.now() });
+  if (history.length > GATEKEEPER_MAX_MESSAGES) {
+    history.splice(0, history.length - GATEKEEPER_MAX_MESSAGES);
+  }
+}
+
 export async function setTelegramWebhook(botToken: string, webhookUrl: string, secretToken?: string): Promise<boolean> {
   try {
     const body: any = {
@@ -215,7 +238,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
         const ai = new GoogleGenAI({ apiKey });
-        const gatekeeperPrompt = `Sei ${roleName}, assistente personale di un consulente finanziario. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
+        const systemPrompt = `Sei ${roleName}, assistente personale di un consulente finanziario. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
 
 REGOLE FONDAMENTALI:
 - NON dire MAI che sei un bot, un'AI, un assistente artificiale o automatico
@@ -225,20 +248,33 @@ REGOLE FONDAMENTALI:
 - Usa un tono naturale, colloquiale, come parleresti su WhatsApp con un conoscente
 - Sii caloroso/a ma professionale, come chi lavora in un'azienda moderna
 - Max 2-3 righe, scrivi come una persona vera (no elenchi, no frasi fatte)
+- Hai MEMORIA della conversazione: ricordi cosa ti hanno detto prima e non ripeti le stesse cose
+- Se hai già spiegato come attivare l'accesso, NON ripeterlo — rispondi normalmente alla conversazione
 
-CONTESTO: Qualcuno che non ha ancora accesso ti ha scritto: "${text.substring(0, 200)}"
-
-COSA DEVI COMUNICARE (in modo naturale e umano, variando sempre la formulazione):
+COSA DEVI COMUNICARE (solo la PRIMA volta o se ha senso ripeterlo):
 - Che al momento gestisci le comunicazioni solo per i clienti del consulente
 - Che se sono interessati, possono chiedere al consulente il codice di accesso
 - Che una volta ricevuto basta scrivere /attiva e il codice
 
-Reagisci anche al CONTENUTO del messaggio se ha senso (es. se dicono "ciao" saluta, se chiedono "cosa fai" spiega brevemente chi sei nel team, se dicono qualcosa di specifico rispondi a quello prima di spiegare il codice).
+Reagisci al CONTENUTO del messaggio (es. se dicono "ciao" saluta, se chiedono "cosa fai" spiega chi sei, se ringraziano rispondi con calore, se fanno domande specifiche rispondi come meglio puoi).
 
-Rispondi in italiano. Scrivi come una persona vera su Telegram, non come un comunicato stampa.`;
+Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
+
+        const previousMessages = getGatekeeperHistory(chatId);
+        const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+        contents.push({ role: "user", parts: [{ text: systemPrompt }] });
+        contents.push({ role: "model", parts: [{ text: "Capito, sono pronto a rispondere come " + roleName + "." }] });
+
+        for (const msg of previousMessages) {
+          contents.push({ role: msg.role, parts: [{ text: msg.text }] });
+        }
+
+        contents.push({ role: "user", parts: [{ text: text.substring(0, 500) }] });
+
         const result = await trackedGenerateContent(ai, {
           model: GEMINI_3_MODEL,
-          contents: [{ role: "user", parts: [{ text: gatekeeperPrompt }] }],
+          contents,
           config: { temperature: 1 },
         }, {
           consultantId,
@@ -248,6 +284,8 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram, non come un comu
         });
         const aiReply = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (aiReply) {
+          addGatekeeperMessage(chatId, "user", text.substring(0, 500));
+          addGatekeeperMessage(chatId, "model", aiReply);
           await sendTelegramMessage(botToken, chatId, aiReply);
           return;
         }
