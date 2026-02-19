@@ -389,11 +389,10 @@ export async function notifyTaskViaTelegram(
 
     const config = configResult.rows[0] as any;
     const botToken = config.bot_token;
-    const configId = config.id;
 
     const ownerResult = await db.execute(sql`
       SELECT telegram_chat_id FROM telegram_chat_links
-      WHERE config_id = ${configId} AND is_owner = true AND active = true
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true AND active = true
       LIMIT 1
     `);
     if (ownerResult.rows.length === 0) return;
