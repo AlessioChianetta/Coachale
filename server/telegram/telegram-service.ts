@@ -15,6 +15,21 @@ const groupHistoryBuffer = new Map<number, {
 const HISTORY_THRESHOLD_SECONDS = 30;
 const HISTORY_FLUSH_DELAY_MS = 3000;
 
+const onboardingBuffer = new Map<string, {
+  messages: Array<{ from: string; text: string }>;
+  timer: NodeJS.Timeout | null;
+  consultantId: string;
+  aiRole: string;
+  chatId: number;
+  chatType: string;
+  botToken: string;
+  botUsername: string;
+  chatTitle: string;
+  isGroupChat: boolean;
+}>();
+
+const ONBOARDING_BUFFER_DELAY_MS = 5000;
+
 async function getGroupInfo(botToken: string, chatId: number): Promise<{ title?: string; description?: string }> {
   try {
     const res = await fetch(`${TELEGRAM_API}${botToken}/getChat?chat_id=${chatId}`);
@@ -606,6 +621,184 @@ ${conversationText}`;
   }
 }
 
+async function processOnboardingStep(
+  consultantId: string,
+  aiRole: string,
+  chatId: number,
+  chatType: string,
+  botToken: string,
+  botUsername: string,
+  chatTitle: string,
+  isGroupChat: boolean,
+  userMessage: string,
+  existingProfile?: any
+): Promise<void> {
+  try {
+    let profile = existingProfile;
+    if (!profile) {
+      const profileResult = await db.execute(sql`
+        SELECT id, onboarding_status, onboarding_step, onboarding_conversation,
+               group_description, group_history
+        FROM telegram_user_profiles
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+        LIMIT 1
+      `);
+      if (profileResult.rows.length === 0) return;
+      profile = profileResult.rows[0] as any;
+    }
+
+    if (profile.onboarding_status !== 'in_onboarding') return;
+
+    const currentStep = profile.onboarding_step || 0;
+
+    const existingConversation: Array<{ role: string; content: string }> = Array.isArray(profile.onboarding_conversation)
+      ? profile.onboarding_conversation
+      : [];
+
+    const conversationWithUserMsg = [...existingConversation, { role: 'user', content: userMessage }];
+
+    let continueGroupContext: string | undefined;
+    if (isGroupChat) {
+      const ctxParts: string[] = [];
+      let gDesc = profile.group_description;
+      if (!gDesc) {
+        const gInfo = await getGroupInfo(botToken, chatId);
+        gDesc = gInfo.description || null;
+        if (gDesc) {
+          await db.execute(sql`
+            UPDATE telegram_user_profiles SET group_description = ${gDesc}, updated_at = NOW()
+            WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+          `);
+        }
+      }
+      if (gDesc) ctxParts.push(`Descrizione del gruppo: ${gDesc}`);
+      if (chatTitle) ctxParts.push(`Nome del gruppo: ${chatTitle}`);
+      if (profile.group_history) {
+        const truncated = profile.group_history.length > 2000 ? profile.group_history.substring(0, 2000) + '...[troncato]' : profile.group_history;
+        ctxParts.push(`Storico messaggi recenti del gruppo:\n${truncated}`);
+      }
+      if (ctxParts.length > 0) continueGroupContext = ctxParts.join('\n\n');
+    }
+
+    const forceComplete = currentStep >= MAX_ONBOARDING_STEPS - 1;
+
+    let aiResponse: string;
+    if (forceComplete) {
+      let forcePrompt = getOnboardingSystemPrompt(aiRole, isGroupChat)
+        + '\n\nIMPORTANTE: Hai raggiunto il numero massimo di scambi. DEVI chiudere l\'onboarding ORA. Fai un riassunto di quello che sai e aggiungi [ONBOARDING_COMPLETE] alla fine.';
+      if (continueGroupContext) {
+        forcePrompt = `${forcePrompt}\n\n--- CONTESTO GIÀ DISPONIBILE SUL GRUPPO ---\n${continueGroupContext}\n--- FINE CONTESTO ---`;
+      }
+      console.log(`[TELEGRAM-ONBOARDING] System prompt for chat ${chatId} (forceComplete, step ${currentStep}):\n${forcePrompt.substring(0, 500)}...`);
+
+      const tempConversation = conversationWithUserMsg.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+        const apiKey = await getGeminiApiKeyForClassifier();
+        const ai = new GoogleGenAI({ apiKey: apiKey! });
+        const result = await trackedGenerateContent(ai, {
+          model: GEMINI_3_MODEL,
+          contents: tempConversation,
+          config: { temperature: 0.9, systemInstruction: forcePrompt },
+        }, {
+          consultantId,
+          feature: "telegram_onboarding",
+          keySource: "superadmin",
+          callerRole: "consultant",
+        });
+        aiResponse = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (!aiResponse.includes('[ONBOARDING_COMPLETE]')) {
+          aiResponse += '\n\n[ONBOARDING_COMPLETE]';
+        }
+      } catch (err: any) {
+        console.error(`[TELEGRAM-ONBOARDING] Force complete AI error:`, err.message);
+        aiResponse = 'Ok, ho raccolto abbastanza informazioni. Iniziamo a lavorare! [ONBOARDING_COMPLETE]';
+      }
+    } else {
+      aiResponse = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, conversationWithUserMsg, continueGroupContext);
+    }
+
+    const isComplete = aiResponse.includes('[ONBOARDING_COMPLETE]');
+    const cleanResponse = aiResponse.replace(/\[ONBOARDING_COMPLETE\]/g, '').trim();
+
+    const updatedConversation = [...conversationWithUserMsg, { role: 'assistant', content: cleanResponse }];
+
+    if (isComplete) {
+      console.log(`[TELEGRAM-ONBOARDING] AI signaled onboarding complete for chat ${chatId} at step ${currentStep + 1}`);
+
+      const { profileJson, summary } = await extractProfileFromConversation(consultantId, updatedConversation, isGroupChat);
+
+      const userName = profileJson.user_name || null;
+      const userJob = profileJson.user_job || null;
+      const userGoals = profileJson.user_goals || null;
+      const userDesires = profileJson.user_desires || null;
+      const groupContext = profileJson.group_context || null;
+      const groupMembers = profileJson.group_members || null;
+      const groupObjectives = profileJson.group_objectives || null;
+
+      await db.execute(sql`
+        UPDATE telegram_user_profiles
+        SET onboarding_status = 'completed',
+            onboarding_step = ${currentStep + 1},
+            onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
+            onboarding_summary = ${summary},
+            full_profile_json = ${JSON.stringify(profileJson)}::jsonb,
+            user_name = COALESCE(${userName}, user_name),
+            user_job = COALESCE(${userJob}, user_job),
+            user_goals = COALESCE(${userGoals}, user_goals),
+            user_desires = COALESCE(${userDesires}, user_desires),
+            group_context = COALESCE(${groupContext}, group_context),
+            group_members = COALESCE(${groupMembers}, group_members),
+            group_objectives = COALESCE(${groupObjectives}, group_objectives),
+            updated_at = NOW()
+        WHERE id = ${profile.id}
+      `);
+
+      await sendTelegramMessage(botToken, chatId, cleanResponse);
+      console.log(`[TELEGRAM-ONBOARDING] Onboarding completed for chat ${chatId}`);
+      return;
+    }
+
+    await db.execute(sql`
+      UPDATE telegram_user_profiles
+      SET onboarding_step = ${currentStep + 1},
+          onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${profile.id}
+    `);
+
+    await sendTelegramMessage(botToken, chatId, cleanResponse);
+    console.log(`[TELEGRAM-ONBOARDING] Onboarding step ${currentStep + 1} for chat ${chatId}`);
+  } catch (err: any) {
+    console.error(`[TELEGRAM-ONBOARDING] processOnboardingStep error for chat ${chatId}:`, err.message);
+  }
+}
+
+async function flushOnboardingBuffer(bufferKey: string): Promise<void> {
+  const buf = onboardingBuffer.get(bufferKey);
+  if (!buf || buf.messages.length === 0) {
+    onboardingBuffer.delete(bufferKey);
+    return;
+  }
+
+  const { consultantId, aiRole, chatId, chatType, botToken, botUsername, chatTitle, isGroupChat, messages } = buf;
+  onboardingBuffer.delete(bufferKey);
+
+  const truncatedMessages = messages.map(m => ({ from: m.from, text: m.text.substring(0, 500) }));
+  const combinedMessage = truncatedMessages.length === 1
+    ? `[${truncatedMessages[0].from}]: ${truncatedMessages[0].text}`
+    : `[Messaggi dal gruppo]\n${truncatedMessages.map(m => `[${m.from}]: ${m.text}`).join('\n')}`;
+
+  console.log(`[TELEGRAM-ONBOARDING] Flushing buffer for group ${chatId}: ${messages.length} messages from ${[...new Set(messages.map(m => m.from))].join(', ')}`);
+
+  await processOnboardingStep(consultantId, aiRole, chatId, chatType, botToken, botUsername, chatTitle, isGroupChat, combinedMessage);
+}
+
 async function handleOpenModeOnboarding(
   consultantId: string,
   aiRole: string,
@@ -703,132 +896,38 @@ async function handleOpenModeOnboarding(
     }
 
     if (existingProfile.onboarding_status === 'in_onboarding') {
-      const currentStep = existingProfile.onboarding_step || 0;
-      const userMessage = text.trim().substring(0, 1000);
+      const senderName = firstName || username || 'Utente';
+      let cleanText = text.trim();
+      if (botUsername) {
+        cleanText = cleanText.replace(new RegExp(`@${botUsername}\\b`, 'gi'), '').trim();
+      }
+      if (!cleanText) return 'handled';
 
-      const existingConversation: Array<{ role: string; content: string }> = Array.isArray(existingProfile.onboarding_conversation)
-        ? existingProfile.onboarding_conversation
-        : [];
-
-      const conversationWithUserMsg = [...existingConversation, { role: 'user', content: userMessage }];
-
-      let continueGroupContext: string | undefined;
       if (isGroupChat) {
-        const ctxParts: string[] = [];
-        let gDesc = existingProfile.group_description;
-        if (!gDesc) {
-          const gInfo = await getGroupInfo(botToken, chatId);
-          gDesc = gInfo.description || null;
-          if (gDesc) {
-            await db.execute(sql`
-              UPDATE telegram_user_profiles SET group_description = ${gDesc}, updated_at = NOW()
-              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
-            `);
-          }
+        const bufferKey = `${consultantId}_${aiRole}_${chatId}`;
+        const existing = onboardingBuffer.get(bufferKey);
+
+        if (existing) {
+          existing.messages.push({ from: senderName, text: cleanText });
+          if (existing.timer) clearTimeout(existing.timer);
+          existing.timer = setTimeout(() => flushOnboardingBuffer(bufferKey), ONBOARDING_BUFFER_DELAY_MS);
+          console.log(`[TELEGRAM-ONBOARDING] Buffered message from ${senderName} in group ${chatId} (${existing.messages.length} total, waiting ${ONBOARDING_BUFFER_DELAY_MS}ms)`);
+        } else {
+          const buf = {
+            messages: [{ from: senderName, text: cleanText }],
+            timer: null as NodeJS.Timeout | null,
+            consultantId, aiRole, chatId, chatType, botToken, botUsername, chatTitle, isGroupChat,
+          };
+          buf.timer = setTimeout(() => flushOnboardingBuffer(bufferKey), ONBOARDING_BUFFER_DELAY_MS);
+          onboardingBuffer.set(bufferKey, buf);
+          console.log(`[TELEGRAM-ONBOARDING] Started buffer for group ${chatId}, first message from ${senderName}, waiting ${ONBOARDING_BUFFER_DELAY_MS}ms`);
         }
-        if (gDesc) ctxParts.push(`Descrizione del gruppo: ${gDesc}`);
-        if (chatTitle) ctxParts.push(`Nome del gruppo: ${chatTitle}`);
-        if (existingProfile.group_history) {
-          const truncated = existingProfile.group_history.length > 2000 ? existingProfile.group_history.substring(0, 2000) + '...[troncato]' : existingProfile.group_history;
-          ctxParts.push(`Storico messaggi recenti del gruppo:\n${truncated}`);
-        }
-        if (ctxParts.length > 0) continueGroupContext = ctxParts.join('\n\n');
-      }
-
-      const forceComplete = currentStep >= MAX_ONBOARDING_STEPS - 1;
-
-      let aiResponse: string;
-      if (forceComplete) {
-        let forcePrompt = getOnboardingSystemPrompt(aiRole, isGroupChat)
-          + '\n\nIMPORTANTE: Hai raggiunto il numero massimo di scambi. DEVI chiudere l\'onboarding ORA. Fai un riassunto di quello che sai e aggiungi [ONBOARDING_COMPLETE] alla fine.';
-        if (continueGroupContext) {
-          forcePrompt = `${forcePrompt}\n\n--- CONTESTO GIÀ DISPONIBILE SUL GRUPPO ---\n${continueGroupContext}\n--- FINE CONTESTO ---`;
-        }
-        console.log(`[TELEGRAM-ONBOARDING] System prompt for chat ${chatId} (forceComplete, step ${currentStep}):\n${forcePrompt.substring(0, 500)}...`);
-
-        const tempConversation = conversationWithUserMsg.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        }));
-
-        try {
-          const { GoogleGenAI } = await import("@google/genai");
-          const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
-          const apiKey = await getGeminiApiKeyForClassifier();
-          const ai = new GoogleGenAI({ apiKey: apiKey! });
-          const result = await trackedGenerateContent(ai, {
-            model: GEMINI_3_MODEL,
-            contents: tempConversation,
-            config: { temperature: 0.9, systemInstruction: forcePrompt },
-          }, {
-            consultantId,
-            feature: "telegram_onboarding",
-            keySource: "superadmin",
-            callerRole: "consultant",
-          });
-          aiResponse = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (!aiResponse.includes('[ONBOARDING_COMPLETE]')) {
-            aiResponse += '\n\n[ONBOARDING_COMPLETE]';
-          }
-        } catch (err: any) {
-          console.error(`[TELEGRAM-ONBOARDING] Force complete AI error:`, err.message);
-          aiResponse = 'Ok, ho raccolto abbastanza informazioni. Iniziamo a lavorare! [ONBOARDING_COMPLETE]';
-        }
-      } else {
-        aiResponse = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, conversationWithUserMsg, continueGroupContext);
-      }
-
-      const isComplete = aiResponse.includes('[ONBOARDING_COMPLETE]');
-      const cleanResponse = aiResponse.replace(/\[ONBOARDING_COMPLETE\]/g, '').trim();
-
-      const updatedConversation = [...conversationWithUserMsg, { role: 'assistant', content: cleanResponse }];
-
-      if (isComplete) {
-        console.log(`[TELEGRAM-ONBOARDING] AI signaled onboarding complete for chat ${chatId} at step ${currentStep + 1}`);
-
-        const { profileJson, summary } = await extractProfileFromConversation(consultantId, updatedConversation, isGroupChat);
-
-        const userName = profileJson.user_name || null;
-        const userJob = profileJson.user_job || null;
-        const userGoals = profileJson.user_goals || null;
-        const userDesires = profileJson.user_desires || null;
-        const groupContext = profileJson.group_context || null;
-        const groupMembers = profileJson.group_members || null;
-        const groupObjectives = profileJson.group_objectives || null;
-
-        await db.execute(sql`
-          UPDATE telegram_user_profiles
-          SET onboarding_status = 'completed',
-              onboarding_step = ${currentStep + 1},
-              onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
-              onboarding_summary = ${summary},
-              full_profile_json = ${JSON.stringify(profileJson)}::jsonb,
-              user_name = COALESCE(${userName}, user_name),
-              user_job = COALESCE(${userJob}, user_job),
-              user_goals = COALESCE(${userGoals}, user_goals),
-              user_desires = COALESCE(${userDesires}, user_desires),
-              group_context = COALESCE(${groupContext}, group_context),
-              group_members = COALESCE(${groupMembers}, group_members),
-              group_objectives = COALESCE(${groupObjectives}, group_objectives),
-              updated_at = NOW()
-          WHERE id = ${existingProfile.id}
-        `);
-
-        await sendTelegramMessage(botToken, chatId, cleanResponse);
-        console.log(`[TELEGRAM-ONBOARDING] Onboarding completed for chat ${chatId}`);
         return 'handled';
       }
 
-      await db.execute(sql`
-        UPDATE telegram_user_profiles
-        SET onboarding_step = ${currentStep + 1},
-            onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
-            updated_at = NOW()
-        WHERE id = ${existingProfile.id}
-      `);
+      const userMessage = cleanText.substring(0, 1000);
 
-      await sendTelegramMessage(botToken, chatId, cleanResponse);
-      console.log(`[TELEGRAM-ONBOARDING] Onboarding step ${currentStep + 1} for chat ${chatId}`);
+      await processOnboardingStep(consultantId, aiRole, chatId, chatType, botToken, botUsername, chatTitle, isGroupChat, userMessage, existingProfile);
       return 'handled';
     }
 
