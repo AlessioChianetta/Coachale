@@ -23,7 +23,7 @@ import {
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
   ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil,
   Layers, Square, CheckSquare, GitBranch, MoreHorizontal, LayoutList, Zap,
-  AlertTriangle, Archive
+  AlertTriangle, Archive, GripVertical
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -393,6 +393,67 @@ function DashboardTab({
       else next.add(taskId);
       return next;
     });
+  };
+
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('kanban-column-order');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [draggedColumn, setDraggedColumn] = React.useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = React.useState<string | null>(null);
+
+  const orderedKanbanColumns = useMemo(() => {
+    if (columnOrder.length === 0) return kanbanColumns;
+    const orderMap = new Map(columnOrder.map((role, idx) => [role, idx]));
+    const sorted = [...kanbanColumns].sort((a, b) => {
+      const aIdx = orderMap.get(a.role);
+      const bIdx = orderMap.get(b.role);
+      if (aIdx !== undefined && bIdx !== undefined) return aIdx - bIdx;
+      if (aIdx !== undefined) return -1;
+      if (bIdx !== undefined) return 1;
+      return 0;
+    });
+    return sorted;
+  }, [kanbanColumns, columnOrder]);
+
+  const handleColumnDragStart = (e: React.DragEvent, role: string) => {
+    setDraggedColumn(role);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', role);
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+  const handleColumnDragEnd = (e: React.DragEvent) => {
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  };
+  const handleColumnDragOver = (e: React.DragEvent, role: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (role !== draggedColumn) {
+      setDragOverColumn(role);
+    }
+  };
+  const handleColumnDrop = (e: React.DragEvent, targetRole: string) => {
+    e.preventDefault();
+    if (!draggedColumn || draggedColumn === targetRole) return;
+    const currentOrder = orderedKanbanColumns.map(c => c.role);
+    const fromIdx = currentOrder.indexOf(draggedColumn);
+    const toIdx = currentOrder.indexOf(targetRole);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, draggedColumn);
+    setColumnOrder(newOrder);
+    try { localStorage.setItem('kanban-column-order', JSON.stringify(newOrder)); } catch {}
+    setDraggedColumn(null);
+    setDragOverColumn(null);
   };
 
   const [scrollProgress, setScrollProgress] = React.useState(0);
@@ -1565,7 +1626,7 @@ function DashboardTab({
             <Target className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-bold tracking-tight">Task per Ruolo</h3>
             <span className="text-[10px] text-muted-foreground ml-1">
-              ({kanbanColumns.reduce((sum, col) => sum + col.tasks.length, 0)} task)
+              ({orderedKanbanColumns.reduce((sum, col) => sum + col.tasks.length, 0)} task)
             </span>
           </div>
           {kanbanColumns.length === 0 && !loadingTasks ? (
@@ -1596,7 +1657,7 @@ function DashboardTab({
               )}
               <div ref={kanbanScrollRef} className="kanban-scroll pb-2 -mx-2 px-2">
                 <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
-                  {kanbanColumns.map(({ role, tasks: columnTasks }) => {
+                  {orderedKanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];
                   const roleBorderColors: Record<string, string> = {
                     alessia: "border-t-pink-400",
@@ -1608,18 +1669,28 @@ function DashboardTab({
                     marco: "border-t-indigo-400",
                     personalizza: "border-t-violet-400",
                   };
+                  const isDragOver = dragOverColumn === role && draggedColumn !== role;
                   return (
                     <div
                       key={role}
+                      draggable
+                      onDragStart={(e) => handleColumnDragStart(e, role)}
+                      onDragEnd={handleColumnDragEnd}
+                      onDragOver={(e) => handleColumnDragOver(e, role)}
+                      onDrop={(e) => handleColumnDrop(e, role)}
+                      onDragLeave={() => setDragOverColumn(null)}
                       className={cn(
-                        "min-w-[300px] max-w-[340px] flex-shrink-0 rounded-xl border border-border/50 bg-muted/20 dark:bg-muted/10 border-t-4 flex flex-col",
-                        roleBorderColors[role] || "border-t-gray-400"
+                        "min-w-[300px] max-w-[340px] flex-shrink-0 rounded-xl border border-border/50 bg-muted/20 dark:bg-muted/10 border-t-4 flex flex-col transition-all duration-200",
+                        roleBorderColors[role] || "border-t-gray-400",
+                        isDragOver && "ring-2 ring-primary/50 scale-[1.02]",
+                        draggedColumn === role && "opacity-50"
                       )}
                     >
-                      <div className="p-3 border-b border-border/30">
+                      <div className="p-3 border-b border-border/30 cursor-grab active:cursor-grabbing select-none">
                         <div className="flex items-center gap-2.5">
+                          <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0 -ml-1" />
                           {profile?.avatar ? (
-                            <img src={profile.avatar} alt={role} className="h-9 w-9 rounded-full ring-2 ring-background" />
+                            <img src={profile.avatar} alt={role} className="h-9 w-9 rounded-full ring-2 ring-background pointer-events-none" />
                           ) : (
                             <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                               {role === '__manual__' ? <User className="h-4 w-4 text-muted-foreground" /> : <Brain className="h-4 w-4 text-muted-foreground" />}
@@ -1799,7 +1870,7 @@ function DashboardTab({
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary/50 rounded-full transition-all duration-200"
-                      style={{ width: `${Math.max(15, ((1 / Math.max(kanbanColumns.length, 1)) * 100))}%`, marginLeft: `${scrollProgress * (100 - Math.max(15, ((1 / Math.max(kanbanColumns.length, 1)) * 100)))}%` }}
+                      style={{ width: `${Math.max(15, ((1 / Math.max(orderedKanbanColumns.length, 1)) * 100))}%`, marginLeft: `${scrollProgress * (100 - Math.max(15, ((1 / Math.max(orderedKanbanColumns.length, 1)) * 100)))}%` }}
                     />
                   </div>
                   <button
