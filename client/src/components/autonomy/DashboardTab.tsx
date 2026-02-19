@@ -1761,32 +1761,6 @@ function DashboardTab({
         </div>
       )}
 
-      {/* Pagination */}
-      {tasksData && tasksData.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDashboardPage(p => Math.max(1, p - 1))}
-            disabled={dashboardPage <= 1}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Precedente
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Pagina {tasksData.page} di {tasksData.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDashboardPage(p => Math.min(tasksData.totalPages, p + 1))}
-            disabled={dashboardPage >= tasksData.totalPages}
-          >
-            Successiva
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      )}
 
             <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">

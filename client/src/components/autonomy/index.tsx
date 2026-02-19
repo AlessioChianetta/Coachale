@@ -234,7 +234,7 @@ export default function ConsultantAIAutonomyPage() {
     },
   });
 
-  const tasksUrl = `/api/ai-autonomy/tasks?page=${dashboardPage}&limit=20${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}${dashboardRoleFilter !== "all" ? `&ai_role=${dashboardRoleFilter}` : ""}`;
+  const tasksUrl = `/api/ai-autonomy/tasks?page=1&limit=500${dashboardStatusFilter !== "all" ? `&status=${dashboardStatusFilter}` : ""}${dashboardCategoryFilter !== "all" ? `&category=${dashboardCategoryFilter}` : ""}${dashboardOriginFilter !== "all" ? `&origin=${dashboardOriginFilter}` : ""}${dashboardRoleFilter !== "all" ? `&ai_role=${dashboardRoleFilter}` : ""}`;
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: NewTaskData) => {
