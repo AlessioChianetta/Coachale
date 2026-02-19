@@ -458,6 +458,18 @@ app.use((req, res, next) => {
     log("🧠 Memory summary scheduler is disabled (set MEMORY_SUMMARY_ENABLED=true to enable)");
   }
 
+  // Setup Agent Daily Summary Scheduler (23:55 Italian time)
+  const agentDailySummaryEnabled = schedulersMasterEnabled && process.env.AGENT_DAILY_SUMMARY_ENABLED !== "false";
+  
+  if (agentDailySummaryEnabled) {
+    const { initAgentDailySummaryScheduler } = await import("./cron/agent-daily-summary-scheduler");
+    log("🧠 Agent daily summary scheduler enabled - starting (23:55 Europe/Rome)...");
+    initAgentDailySummaryScheduler();
+    log("✅ Agent daily summary scheduler started");
+  } else {
+    log("🧠 Agent daily summary scheduler is disabled (set AGENT_DAILY_SUMMARY_ENABLED=true to enable)");
+  }
+
   // Setup Dynamic Context Scheduler (Hourly at :30)
   const dynamicContextEnabled = schedulersMasterEnabled && process.env.DYNAMIC_CONTEXT_ENABLED !== "false";
   

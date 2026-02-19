@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -34,6 +36,11 @@ import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./uti
 import TelegramConfig from "./TelegramConfig";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
+
+const AI_ROLE_NAMES_MAP: Record<string, string> = {
+  alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
+  stella: 'Stella', iris: 'Iris', marco: 'Marco', personalizza: 'Personalizza',
+};
 
 const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
   alessia: [
@@ -775,6 +782,112 @@ interface SettingsTabProps {
   setChatOpenRoleId: (roleId: string | null) => void;
 }
 
+function AgentMemoryContent({ roleId }: { roleId: string }) {
+  const [summaries, setSummaries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setLoading(true);
+    setSummaries([]);
+    setExpandedDays(new Set());
+    fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=60`, {
+      headers: getAuthHeaders(),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setSummaries(data.summaries || []);
+        if (data.summaries?.length > 0) {
+          setExpandedDays(new Set([data.summaries[0].summary_date]));
+        }
+      })
+      .catch(err => console.error('Error fetching summaries:', err))
+      .finally(() => setLoading(false));
+  }, [roleId]);
+
+  const toggleDay = (date: string) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T12:00:00');
+    const now = new Date();
+    const today = now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    const yesterday = new Date(now.getTime() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    const dateKey = dateStr.substring(0, 10);
+    
+    if (dateKey === today) return 'Oggi';
+    if (dateKey === yesterday) return 'Ieri';
+    return date.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Rome' });
+  };
+
+  const getDateStyle = (dateStr: string) => {
+    const now = new Date();
+    const today = now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    const yesterday = new Date(now.getTime() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+    const dateKey = dateStr.substring(0, 10);
+    
+    if (dateKey === today) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200';
+    if (dateKey === yesterday) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200';
+    return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+        <span className="ml-2 text-sm text-muted-foreground">Caricamento memoria...</span>
+      </div>
+    );
+  }
+
+  if (summaries.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">I riassunti vengono generati automaticamente ogni sera alle 23:55</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {summaries.map((s: any) => {
+        const dateKey = s.summary_date?.substring(0, 10);
+        const isOpen = expandedDays.has(dateKey);
+        return (
+          <div key={s.id} className="rounded-xl border border-border overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left"
+              onClick={() => toggleDay(dateKey)}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium capitalize">{formatDate(dateKey)}</span>
+                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getDateStyle(dateKey))}>
+                  {s.message_count} msg
+                </Badge>
+              </div>
+              {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {isOpen && (
+              <div className="px-3 pb-3 border-t">
+                <p className="text-sm text-foreground/80 leading-relaxed pt-2 whitespace-pre-wrap">{s.summary_text}</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SettingsTab({
   settings,
   setSettings,
@@ -813,6 +926,7 @@ function SettingsTab({
   const [triggeringRoleId, setTriggeringRoleId] = useState<string | null>(null);
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
   const [openTemplateCategories, setOpenTemplateCategories] = useState<Set<string>>(new Set());
+  const [memoryOpenRoleId, setMemoryOpenRoleId] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -2764,6 +2878,18 @@ function SettingsTab({
                                   <MessageSquare className="h-3.5 w-3.5" />
                                   Chatta con {role.name}
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 text-xs rounded-lg gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
+                                  }}
+                                >
+                                  <Brain className="h-3.5 w-3.5" />
+                                  Memoria
+                                </Button>
                                 {triggerRoleResult[role.id] && (
                                   <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
                                     {triggerRoleResult[role.id].success
@@ -3047,6 +3173,24 @@ function SettingsTab({
         </Button>
       </div>
 
+      <Sheet open={!!memoryOpenRoleId} onOpenChange={(open) => !open && setMemoryOpenRoleId(null)}>
+        <SheetContent side="left" className="w-[400px] sm:w-[500px] p-0">
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <div>
+                  <h3 className="font-semibold text-sm">Memoria di {memoryOpenRoleId && AI_ROLE_NAMES_MAP[memoryOpenRoleId]}</h3>
+                  <p className="text-xs text-muted-foreground">Riassunti giornalieri delle conversazioni</p>
+                </div>
+              </div>
+            </div>
+            <ScrollArea className="flex-1 p-4">
+              {memoryOpenRoleId && <AgentMemoryContent roleId={memoryOpenRoleId} />}
+            </ScrollArea>
+          </div>
+        </SheetContent>
+      </Sheet>
     </motion.div>
   );
 }
