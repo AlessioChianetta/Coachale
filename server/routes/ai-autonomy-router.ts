@@ -872,7 +872,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
 
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit as string) || 10));
     const offset = (page - 1) * limit;
     const statusFilter = req.query.status as string | undefined;
     const categoryFilter = req.query.category as string | undefined;
