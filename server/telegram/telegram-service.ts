@@ -210,11 +210,11 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
     console.log(`[TELEGRAM] Unauthorized access from chat ${chatId}, sending friendly gatekeeper response`);
     try {
       const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "";
+      const { GoogleGenAI } = await import("@google/genai");
+      const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+      const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+        const ai = new GoogleGenAI({ apiKey });
         const gatekeeperPrompt = `Sei ${roleName}, un assistente AI privato di un consulente. Qualcuno che non è il tuo proprietario ti ha scritto questo messaggio: "${text.substring(0, 200)}"
 
 Rispondi in modo gentile, amichevole e professionale. Spiega che:
@@ -223,8 +223,17 @@ Rispondi in modo gentile, amichevole e professionale. Spiega che:
 - Una volta ricevuto il codice, basta inviare /attiva seguito dal codice
 
 Rispondi in italiano, in modo breve (max 3-4 righe), caldo e accogliente. Non usare markdown.`;
-        const result = await model.generateContent(gatekeeperPrompt);
-        const aiReply = result.response.text();
+        const result = await trackedGenerateContent(ai, {
+          model: GEMINI_3_MODEL,
+          contents: [{ role: "user", parts: [{ text: gatekeeperPrompt }] }],
+          config: { temperature: 0.7 },
+        }, {
+          consultantId,
+          feature: "telegram_gatekeeper",
+          keySource: "superadmin",
+          callerRole: "consultant",
+        });
+        const aiReply = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (aiReply) {
           await sendTelegramMessage(botToken, chatId, aiReply);
           return;
