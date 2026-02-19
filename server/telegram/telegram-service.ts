@@ -472,6 +472,7 @@ async function generateOnboardingResponse(
     if (groupPreContext) {
       systemPrompt = `${systemPrompt}\n\n--- CONTESTO GIÀ DISPONIBILE SUL GRUPPO ---\n${groupPreContext}\n--- FINE CONTESTO ---\nUsa queste informazioni per personalizzare le tue domande e dimostrare che conosci già il contesto del gruppo. Non ripetere informazioni già note, ma approfondisci ciò che manca.`;
     }
+    console.log(`[TELEGRAM-ONBOARDING] System prompt (${aiRole}, group=${isGroup}, msgs=${conversation.length}):\n${systemPrompt.substring(0, 800)}...`);
 
     const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
     for (const msg of conversation) {
@@ -711,12 +712,39 @@ async function handleOpenModeOnboarding(
 
       const conversationWithUserMsg = [...existingConversation, { role: 'user', content: userMessage }];
 
+      let continueGroupContext: string | undefined;
+      if (isGroupChat) {
+        const ctxParts: string[] = [];
+        let gDesc = existingProfile.group_description;
+        if (!gDesc) {
+          const gInfo = await getGroupInfo(botToken, chatId);
+          gDesc = gInfo.description || null;
+          if (gDesc) {
+            await db.execute(sql`
+              UPDATE telegram_user_profiles SET group_description = ${gDesc}, updated_at = NOW()
+              WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+            `);
+          }
+        }
+        if (gDesc) ctxParts.push(`Descrizione del gruppo: ${gDesc}`);
+        if (chatTitle) ctxParts.push(`Nome del gruppo: ${chatTitle}`);
+        if (existingProfile.group_history) {
+          const truncated = existingProfile.group_history.length > 2000 ? existingProfile.group_history.substring(0, 2000) + '...[troncato]' : existingProfile.group_history;
+          ctxParts.push(`Storico messaggi recenti del gruppo:\n${truncated}`);
+        }
+        if (ctxParts.length > 0) continueGroupContext = ctxParts.join('\n\n');
+      }
+
       const forceComplete = currentStep >= MAX_ONBOARDING_STEPS - 1;
 
       let aiResponse: string;
       if (forceComplete) {
-        const forcePrompt = getOnboardingSystemPrompt(aiRole, isGroupChat)
+        let forcePrompt = getOnboardingSystemPrompt(aiRole, isGroupChat)
           + '\n\nIMPORTANTE: Hai raggiunto il numero massimo di scambi. DEVI chiudere l\'onboarding ORA. Fai un riassunto di quello che sai e aggiungi [ONBOARDING_COMPLETE] alla fine.';
+        if (continueGroupContext) {
+          forcePrompt = `${forcePrompt}\n\n--- CONTESTO GIÀ DISPONIBILE SUL GRUPPO ---\n${continueGroupContext}\n--- FINE CONTESTO ---`;
+        }
+        console.log(`[TELEGRAM-ONBOARDING] System prompt for chat ${chatId} (forceComplete, step ${currentStep}):\n${forcePrompt.substring(0, 500)}...`);
 
         const tempConversation = conversationWithUserMsg.map(m => ({
           role: m.role === 'assistant' ? 'model' : 'user',
@@ -747,7 +775,7 @@ async function handleOpenModeOnboarding(
           aiResponse = 'Ok, ho raccolto abbastanza informazioni. Iniziamo a lavorare! [ONBOARDING_COMPLETE]';
         }
       } else {
-        aiResponse = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, conversationWithUserMsg);
+        aiResponse = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, conversationWithUserMsg, continueGroupContext);
       }
 
       const isComplete = aiResponse.includes('[ONBOARDING_COMPLETE]');
