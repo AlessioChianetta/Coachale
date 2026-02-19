@@ -1673,18 +1673,18 @@ function DashboardTab({
                 </button>
               )}
               <div ref={kanbanScrollRef} className="kanban-scroll pb-2 -mx-2 px-2">
-                <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
+                <div className="flex gap-5" style={{ minWidth: 'max-content' }}>
                   {orderedKanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];
-                  const roleBorderColors: Record<string, string> = {
-                    alessia: "border-t-pink-400",
-                    millie: "border-t-purple-400",
-                    echo: "border-t-orange-400",
-                    nova: "border-t-rose-400",
-                    stella: "border-t-emerald-400",
-                    iris: "border-t-teal-400",
-                    marco: "border-t-indigo-400",
-                    personalizza: "border-t-violet-400",
+                  const roleAccentColors: Record<string, string> = {
+                    alessia: "bg-pink-400",
+                    millie: "bg-purple-400",
+                    echo: "bg-orange-400",
+                    nova: "bg-rose-400",
+                    stella: "bg-emerald-400",
+                    iris: "bg-teal-400",
+                    marco: "bg-indigo-400",
+                    personalizza: "bg-violet-400",
                   };
                   const isDragOver = dragOverColumn === role && draggedColumn !== role;
                   return (
@@ -1697,70 +1697,67 @@ function DashboardTab({
                       onDrop={(e) => handleColumnDrop(e, role)}
                       onDragLeave={() => setDragOverColumn(null)}
                       className={cn(
-                        "min-w-[300px] max-w-[340px] flex-shrink-0 rounded-xl border border-border/50 bg-muted/20 dark:bg-muted/10 border-t-4 flex flex-col transition-all duration-200",
-                        roleBorderColors[role] || "border-t-gray-400",
-                        isDragOver && "ring-2 ring-primary/50 scale-[1.02]",
+                        "min-w-[310px] max-w-[350px] flex-shrink-0 rounded-xl border border-border/30 bg-card/50 dark:bg-card/30 flex flex-col transition-all duration-200",
+                        isDragOver && "ring-2 ring-primary/30 scale-[1.01]",
                         draggedColumn === role && "opacity-50"
                       )}
                     >
-                      <div className="p-3 border-b border-border/30 cursor-grab active:cursor-grabbing select-none">
+                      <div className="px-3.5 py-3 cursor-grab active:cursor-grabbing select-none">
                         <div className="flex items-center gap-2.5">
-                          <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0 -ml-1" />
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 -ml-0.5" />
                           {profile?.avatar ? (
-                            <img src={profile.avatar} alt={role} className="h-9 w-9 rounded-full ring-2 ring-background pointer-events-none" />
+                            <img src={profile.avatar} alt={role} className="h-8 w-8 rounded-full ring-1 ring-border/50 pointer-events-none" />
                           ) : (
-                            <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
-                              {role === '__manual__' ? <User className="h-4 w-4 text-muted-foreground" /> : <Brain className="h-4 w-4 text-muted-foreground" />}
+                            <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center">
+                              {role === '__manual__' ? <User className="h-3.5 w-3.5 text-muted-foreground" /> : <Brain className="h-3.5 w-3.5 text-muted-foreground" />}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold leading-tight">
+                            <p className="text-[13px] font-semibold leading-tight text-foreground">
                               {role === '__manual__' ? 'Manuali' : role.charAt(0).toUpperCase() + role.slice(1)}
                             </p>
                             {profile?.role && (
-                              <p className="text-[10px] text-muted-foreground leading-tight">{profile.role}</p>
+                              <p className="text-[10px] text-muted-foreground/70 leading-tight">{profile.role}</p>
                             )}
                           </div>
-                          <Badge variant="outline" className="text-[10px] tabular-nums px-1.5">
+                          <span className="text-[11px] tabular-nums text-muted-foreground font-medium">
                             {columnTasks.length}
-                          </Badge>
+                          </span>
                           {role !== '__manual__' && onOpenChat && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 shrink-0"
+                              className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-primary hover:bg-primary/5 shrink-0"
                               title={`Chatta con ${role.charAt(0).toUpperCase() + role.slice(1)}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onOpenChat(role);
                               }}
                             >
-                              <MessageSquare className="h-3.5 w-3.5" />
+                              <MessageSquare className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
                       </div>
-                      <div className="p-2 space-y-2 max-h-[calc(100vh-340px)] overflow-y-auto flex-1">
+                      <div className="px-2 pb-2 space-y-1.5 max-h-[calc(100vh-340px)] overflow-y-auto flex-1">
                         {columnTasks.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground/40">
-                            <ListTodo className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                          <div className="text-center py-10 text-muted-foreground/30">
+                            <ListTodo className="h-5 w-5 mx-auto mb-1.5 opacity-40" />
                             <p className="text-[10px]">Nessun task attivo</p>
                           </div>
                         ) : (
                           columnTasks.map((task) => {
                             const plannedActions = detectPlannedActions(task);
                             const isWaitingApproval = task.status === 'waiting_approval';
+                            const priorityStripeColor = task.priority === 1 ? "bg-red-400" : task.priority === 2 ? "bg-amber-400" : task.priority === 3 ? "bg-blue-400" : "bg-muted-foreground/20";
                             return (
                               <motion.div
                                 key={task.id}
-                                initial={{ opacity: 0, y: 8 }}
+                                initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className={cn(
-                                  "p-3 rounded-lg border border-border/60 bg-card hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer border-l-4",
-                                  getPriorityBorderColor(task.priority),
-                                  mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400",
-                                  task.follow_up_count === 2 && "border-amber-300/50 dark:border-amber-700/50",
-                                  task.follow_up_count != null && task.follow_up_count >= 3 && "border-red-400/60 dark:border-red-600/50 shadow-sm shadow-red-500/10"
+                                  "group/card relative rounded-lg border border-border/30 bg-card hover:border-border/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-150 cursor-pointer overflow-hidden",
+                                  mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
                                 )}
                                 onClick={() => {
                                   if (mergeMode) {
@@ -1774,141 +1771,150 @@ function DashboardTab({
                                   }
                                 }}
                               >
-                                {mergeMode && (
-                                  <div className="mb-2">
-                                    <Checkbox checked={selectedMergeIds.has(task.id)} className="h-3.5 w-3.5" />
-                                  </div>
-                                )}
-                                <div className="flex items-center justify-between gap-2 mb-1">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    {task.contact_name && (
-                                      <span className="text-xs font-semibold truncate flex items-center gap-1">
-                                        <User className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                                        {task.contact_name}
-                                      </span>
-                                    )}
-                                    {!task.contact_name && (
-                                      <span className="text-xs text-muted-foreground italic">Nessun contatto</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    {getPriorityIndicator(task.priority)}
-                                  </div>
-                                </div>
-                                {task.current_attempt != null && task.current_attempt > 1 && (
-                                  <span className={cn(
-                                    "text-[10px] px-1 py-0 rounded font-medium",
-                                    task.current_attempt === 2 && "text-amber-600 dark:text-amber-400",
-                                    task.current_attempt >= 3 && "text-red-600 dark:text-red-400"
-                                  )}>
-                                    #{task.current_attempt}
-                                  </span>
-                                )}
-                                <p className={cn("text-xs text-muted-foreground leading-relaxed", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
-                                {task.ai_instruction && task.ai_instruction.length > 80 && (
-                                  <button
-                                    onClick={(e) => toggleTaskExpand(task.id, e)}
-                                    className="text-[10px] text-primary hover:text-primary/80 font-medium mb-1.5 flex items-center gap-0.5"
-                                  >
-                                    {expandedTaskIds.has(task.id) ? (
-                                      <><ChevronUp className="h-3 w-3" /> Comprimi</>
-                                    ) : (
-                                      <><ChevronDown className="h-3 w-3" /> Espandi</>
-                                    )}
-                                  </button>
-                                )}
-                                {plannedActions.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mb-2">
-                                    {plannedActions.map((action, idx) => (
-                                      <span key={idx} className={cn("inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border", action.color)}>
-                                        {action.icon}
-                                        <span className="leading-none">{action.label}</span>
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1">
-                                    {getTaskStatusBadge(task.status)}
-                                    {(task.follow_up_count != null && task.follow_up_count > 0) && (
-                                      <span className={cn(
-                                        "inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
-                                        task.follow_up_count === 1 && "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
-                                        task.follow_up_count === 2 && "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
-                                        task.follow_up_count >= 3 && "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800 animate-pulse"
-                                      )}>
-                                        <GitBranch className="h-2.5 w-2.5" />
-                                        {task.follow_up_count}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground">{getRelativeTime(task.created_at)}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
-                                  {isWaitingApproval && (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        className="h-6 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white gap-0.5 flex-1"
-                                        onClick={async (e) => {
-                                          e.stopPropagation();
-                                          try {
-                                            const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
-                                            if (!res.ok) throw new Error("Failed");
-                                            toast({ title: "Task avviato" });
-                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
-                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                            queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                          } catch {
-                                            toast({ title: "Errore", variant: "destructive" });
-                                          }
-                                        }}
-                                      >
-                                        <ThumbsUp className="h-2.5 w-2.5" /> Approva
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-6 px-2 text-[10px] border-red-200 text-red-600"
-                                        onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
-                                      >
-                                        <Ban className="h-2.5 w-2.5" />
-                                      </Button>
-                                    </>
+                                <div className={cn("absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg", priorityStripeColor)} />
+
+                                <div className="pl-3.5 pr-3 py-3 space-y-2">
+                                  {mergeMode && (
+                                    <div className="mb-1">
+                                      <Checkbox checked={selectedMergeIds.has(task.id)} className="h-3.5 w-3.5" />
+                                    </div>
                                   )}
-                                  {!isWaitingApproval && <div className="flex-1" />}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground">
-                                        <MoreHorizontal className="h-3 w-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
-                                      <DropdownMenuItem onClick={(e) => toggleTaskExpand(task.id, e)}>
-                                        {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
-                                        {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setEditTask(task)}>
-                                        <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
-                                        <CalendarClock className="h-3.5 w-3.5 mr-2" /> Modifica orario
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
-                                        <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta da me
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
-                                        <MessageSquare className="h-3.5 w-3.5 mr-2" /> Parlane in chat
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
-                                        <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
-                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {task.contact_name ? (
+                                        <span className="text-[13px] font-semibold text-foreground truncate">{task.contact_name}</span>
+                                      ) : (
+                                        <span className="text-[12px] text-muted-foreground/60">Nessun contatto</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {(task.follow_up_count != null && task.follow_up_count > 0) && (
+                                        <span className={cn(
+                                          "inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
+                                          task.follow_up_count >= 3 ? "text-red-500 bg-red-500/10" :
+                                          task.follow_up_count === 2 ? "text-amber-500 bg-amber-500/10" :
+                                          "text-blue-500 bg-blue-500/10"
+                                        )}>
+                                          <RefreshCw className="h-2 w-2" />
+                                          {task.follow_up_count}
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-muted-foreground/50">{getRelativeTime(task.created_at)}</span>
+                                    </div>
+                                  </div>
+
+                                  <p className={cn("text-[12px] text-muted-foreground leading-[1.6]", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
+                                  {task.ai_instruction && task.ai_instruction.length > 80 && (
+                                    <button
+                                      onClick={(e) => toggleTaskExpand(task.id, e)}
+                                      className="text-[10px] text-primary/70 hover:text-primary font-medium flex items-center gap-0.5"
+                                    >
+                                      {expandedTaskIds.has(task.id) ? (
+                                        <><ChevronUp className="h-2.5 w-2.5" /> Meno</>
+                                      ) : (
+                                        <><ChevronDown className="h-2.5 w-2.5" /> Altro</>
+                                      )}
+                                    </button>
+                                  )}
+
+                                  {plannedActions.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {plannedActions.map((action, idx) => (
+                                        <span key={idx} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground border border-border/30">
+                                          {action.icon}
+                                          <span className="leading-none">{action.label}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center justify-between pt-1.5" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-2">
+                                      {isWaitingApproval ? (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-6 px-2.5 text-[10px] font-medium border-emerald-300/50 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors gap-1"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              try {
+                                                const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
+                                                if (!res.ok) throw new Error("Failed");
+                                                toast({ title: "Task avviato" });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                                queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                                queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                              } catch {
+                                                toast({ title: "Errore", variant: "destructive" });
+                                              }
+                                            }}
+                                          >
+                                            <CheckCircle className="h-2.5 w-2.5" /> Approva
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/5"
+                                            onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
+                                          >
+                                            <Ban className="h-2.5 w-2.5" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <span className={cn(
+                                          "text-[10px] font-medium",
+                                          task.status === 'completed' ? "text-emerald-500" :
+                                          task.status === 'failed' ? "text-red-500" :
+                                          task.status === 'in_progress' ? "text-primary" :
+                                          task.status === 'paused' || task.status === 'waiting_input' ? "text-amber-500" :
+                                          "text-muted-foreground/60"
+                                        )}>
+                                          {task.status === 'completed' ? 'Completato' :
+                                           task.status === 'failed' ? 'Fallito' :
+                                           task.status === 'in_progress' ? 'In esecuzione' :
+                                           task.status === 'paused' ? 'In pausa' :
+                                           task.status === 'waiting_input' ? 'Attesa input' :
+                                           task.status === 'scheduled' ? 'Programmato' :
+                                           task.status === 'approved' ? 'Approvato' :
+                                           task.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                          <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem onClick={(e) => toggleTaskExpand(task.id, e)}>
+                                          {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
+                                          {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setEditTask(task)}>
+                                          <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
+                                          <CalendarClock className="h-3.5 w-3.5 mr-2" /> Modifica orario
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
+                                          <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta da me
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
+                                          <MessageSquare className="h-3.5 w-3.5 mr-2" /> Parlane in chat
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                                          <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
+                                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
                                 </div>
                               </motion.div>
                             );
