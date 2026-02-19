@@ -207,8 +207,33 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   `);
 
   if (ownerCheck.rows.length === 0) {
-    await sendTelegramMessage(botToken, chatId, "🔒 Questo bot è privato. Per attivarlo, usa il comando /attiva seguito dal codice di attivazione fornito dalla piattaforma.");
-    console.log(`[TELEGRAM] Unauthorized access attempt from chat ${chatId}`);
+    console.log(`[TELEGRAM] Unauthorized access from chat ${chatId}, sending friendly gatekeeper response`);
+    try {
+      const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "";
+      if (apiKey) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+        const gatekeeperPrompt = `Sei ${roleName}, un assistente AI privato di un consulente. Qualcuno che non è il tuo proprietario ti ha scritto questo messaggio: "${text.substring(0, 200)}"
+
+Rispondi in modo gentile, amichevole e professionale. Spiega che:
+- Sei un assistente AI privato e al momento sei disponibile solo per il tuo consulente di riferimento
+- Per poter utilizzare questo bot, devono contattare il consulente che lo gestisce per ricevere un codice di attivazione
+- Una volta ricevuto il codice, basta inviare /attiva seguito dal codice
+
+Rispondi in italiano, in modo breve (max 3-4 righe), caldo e accogliente. Non usare markdown.`;
+        const result = await model.generateContent(gatekeeperPrompt);
+        const aiReply = result.response.text();
+        if (aiReply) {
+          await sendTelegramMessage(botToken, chatId, aiReply);
+          return;
+        }
+      }
+    } catch (gatekeeperErr: any) {
+      console.error(`[TELEGRAM] Gatekeeper AI error:`, gatekeeperErr.message);
+    }
+    await sendTelegramMessage(botToken, chatId, `Ciao! Sono ${aiRole.charAt(0).toUpperCase() + aiRole.slice(1)}, un assistente AI privato. Al momento sono disponibile solo per il mio consulente di riferimento. Se vuoi utilizzarmi, contatta il consulente per ricevere un codice di attivazione e invia /attiva CODICE.`);
     return;
   }
 
