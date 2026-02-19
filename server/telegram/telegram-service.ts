@@ -1050,19 +1050,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
 
   const isGroupChat = chatType === 'group' || chatType === 'supergroup';
 
-  let openModeBypassMention = false;
-  if (isGroupChat && config.open_mode) {
-    const groupProfile = await db.execute(sql`
-      SELECT onboarding_status FROM telegram_user_profiles
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
-      LIMIT 1
-    `);
-    if (groupProfile.rows.length === 0 || (groupProfile.rows[0] as any).onboarding_status === 'in_onboarding') {
-      openModeBypassMention = true;
-    }
-  }
-
-  if (isGroupChat && !openModeBypassMention) {
+  if (isGroupChat) {
     if (!config.group_support && !config.open_mode) {
       console.log(`[TELEGRAM] Group support disabled for config ${configId}, ignoring`);
       return;
