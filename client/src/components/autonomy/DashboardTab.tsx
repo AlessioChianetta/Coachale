@@ -22,7 +22,8 @@ import {
   Save, RefreshCw, AlertCircle, Info, Shield, RotateCcw, Database,
   Phone, Mail, MessageSquare, Globe, FileText, Eye, Search,
   ThumbsUp, Ban, UserCheck, ExternalLink, CalendarClock, Pencil,
-  Layers, Square, CheckSquare, GitBranch, MoreHorizontal, LayoutList, Zap
+  Layers, Square, CheckSquare, GitBranch, MoreHorizontal, LayoutList, Zap,
+  AlertTriangle, Archive
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -554,8 +555,36 @@ function DashboardTab({
 
   const [showCompletedSection, setShowCompletedSection] = React.useState(false);
 
-  const { groupedTasks, recentCompletedTasks, olderCompletedTasks } = useMemo(() => {
-    if (!tasksData?.tasks) return { groupedTasks: [], recentCompletedTasks: [], olderCompletedTasks: [] };
+  const ATTENTION_STATUSES = new Set(['waiting_approval', 'waiting_input', 'failed', 'paused']);
+
+  const attentionTasks = useMemo(() => {
+    const tasks: AITask[] = [];
+    const seenIds = new Set<string>();
+    if (pendingApprovalTasks) {
+      pendingApprovalTasks.forEach(t => {
+        seenIds.add(t.id);
+        tasks.push(t);
+      });
+    }
+    if (tasksData?.tasks) {
+      tasksData.tasks.filter(t => !t.parent_task_id).forEach(t => {
+        if (['waiting_input', 'failed', 'paused'].includes(t.status) && !seenIds.has(t.id)) {
+          tasks.push(t);
+          seenIds.add(t.id);
+        }
+      });
+    }
+    const statusOrder: Record<string, number> = { failed: 0, waiting_input: 1, waiting_approval: 2, paused: 3 };
+    return tasks.sort((a, b) => {
+      const aO = statusOrder[a.status] ?? 4;
+      const bO = statusOrder[b.status] ?? 4;
+      if (aO !== bO) return aO - bO;
+      return a.priority - b.priority;
+    });
+  }, [pendingApprovalTasks, tasksData?.tasks]);
+
+  const { groupedTasks, kanbanColumns, recentCompletedTasks, olderCompletedTasks, archiveCount } = useMemo(() => {
+    if (!tasksData?.tasks) return { groupedTasks: [], kanbanColumns: [], recentCompletedTasks: [], olderCompletedTasks: [], archiveCount: 0 };
     const topLevelTasks = tasksData.tasks.filter(t => !t.parent_task_id);
     const filteredTasks = dashboardRoleFilter === 'all'
       ? topLevelTasks
@@ -564,8 +593,8 @@ function DashboardTab({
         : topLevelTasks.filter(t => t.ai_role === dashboardRoleFilter);
 
     const isAllTab = dashboardStatusFilter === 'all';
-    const activeTasks = isAllTab ? filteredTasks.filter(t => t.status !== 'completed') : filteredTasks;
-    const completed = isAllTab ? filteredTasks.filter(t => t.status === 'completed') : [];
+    const allActive = isAllTab ? filteredTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled') : filteredTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+    const completed = filteredTasks.filter(t => t.status === 'completed' || t.status === 'cancelled');
 
     const now = Date.now();
     const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
@@ -580,23 +609,33 @@ function DashboardTab({
       }
     });
 
-    const groups: Record<string, typeof activeTasks> = {};
-    activeTasks.forEach(task => {
+    const groups: Record<string, typeof allActive> = {};
+    allActive.forEach(task => {
       const role = task.ai_role || '__manual__';
       if (!groups[role]) groups[role] = [];
       groups[role].push(task);
     });
+
     const roleOrder = Object.keys(groups).sort((a, b) => {
       if (a === '__manual__') return 1;
       if (b === '__manual__') return -1;
       return a.localeCompare(b);
     });
+
+    const kanbanRoleOrder = [...new Set([...Object.keys(groups), ...availableRoles])].sort((a, b) => {
+      if (a === '__manual__') return 1;
+      if (b === '__manual__') return -1;
+      return a.localeCompare(b);
+    });
+
     return {
       groupedTasks: roleOrder.map(role => ({ role, tasks: groups[role] })),
+      kanbanColumns: kanbanRoleOrder.map(role => ({ role, tasks: groups[role] || [] })).filter(col => col.tasks.length > 0 || availableRoles.includes(col.role)),
       recentCompletedTasks: recent,
       olderCompletedTasks: older,
+      archiveCount: completed.length,
     };
-  }, [tasksData?.tasks, dashboardRoleFilter, dashboardStatusFilter]);
+  }, [tasksData?.tasks, dashboardRoleFilter, dashboardStatusFilter, pendingApprovalTasks, availableRoles]);
 
   const STATUS_TABS = [
     { value: 'all', label: 'Tutti', count: tasksStats?.total ?? 0, icon: <ListTodo className="h-3.5 w-3.5" />, color: '' },
@@ -1103,1137 +1142,626 @@ function DashboardTab({
         )}
       </div>
 
+      {/* Compact Stats Bar */}
+      {!loadingStats && tasksStats && (
+        <div className="flex items-center gap-3 text-xs flex-wrap px-1 py-2 rounded-xl bg-muted/30 border border-border/30">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <ListTodo className="h-3.5 w-3.5" />
+            <span className="font-bold text-foreground tabular-nums">{tasksStats.total}</span> totali
+          </div>
+          <span className="text-border">|</span>
+          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+            <Activity className="h-3 w-3" />
+            <span className="font-semibold tabular-nums">{tasksStats.in_progress}</span> attivi
+          </div>
+          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <ThumbsUp className="h-3 w-3" />
+            <span className="font-semibold tabular-nums">{tasksStats.waiting_approval}</span> approvazione
+          </div>
+          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle className="h-3 w-3" />
+            <span className="font-semibold tabular-nums">{tasksStats.completed}</span> completati
+          </div>
+          {(tasksStats.failed ?? 0) > 0 && (
+            <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+              <XCircle className="h-3 w-3" />
+              <span className="font-semibold tabular-nums">{tasksStats.failed}</span> falliti
+            </div>
+          )}
+          {(tasksStats.scheduled ?? 0) > 0 && (
+            <div className="flex items-center gap-1 text-blue-500 dark:text-blue-400">
+              <CalendarClock className="h-3 w-3" />
+              <span className="font-semibold tabular-nums">{tasksStats.scheduled}</span> programmati
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION 1: Richiede Attenzione */}
+      {attentionTasks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <div className="flex items-center gap-2 px-1">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-bold tracking-tight">Richiede Attenzione</h3>
+            <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] tabular-nums">
+              {attentionTasks.length}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {attentionTasks.map((task, index) => {
+              const profile = task.ai_role ? AI_ROLE_PROFILES[task.ai_role] : null;
+              return (
+                <motion.div
+                  key={task.id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-xl border-l-4 cursor-pointer hover:shadow-md transition-all",
+                    task.status === 'failed' ? "border-l-red-500 bg-red-50/60 dark:bg-red-950/20 border border-red-200/50 dark:border-red-800/30" :
+                    task.status === 'waiting_input' ? "border-l-orange-500 bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30" :
+                    task.status === 'paused' ? "border-l-slate-400 bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800/30" :
+                    "border-l-amber-500 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30",
+                    mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
+                  )}
+                  onClick={() => {
+                    if (mergeMode) {
+                      setSelectedMergeIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(task.id)) next.delete(task.id); else next.add(task.id);
+                        return next;
+                      });
+                    } else {
+                      setSelectedTaskId(task.id);
+                    }
+                  }}
+                >
+                  {mergeMode && (
+                    <Checkbox checked={selectedMergeIds.has(task.id)} className="shrink-0" />
+                  )}
+                  {profile?.avatar ? (
+                    <img src={profile.avatar} alt={task.ai_role || ''} className="h-8 w-8 rounded-full shrink-0 ring-2 ring-background" />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="text-xs font-bold">{task.ai_role ? task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1) : 'Manuale'}</span>
+                      {getTaskStatusBadge(task.status)}
+                      {task.contact_name && (
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-0.5 truncate">
+                          <User className="h-2.5 w-2.5" />
+                          {task.contact_name}
+                        </span>
+                      )}
+                      {getPriorityIndicator(task.priority)}
+                    </div>
+                    <p className="text-xs text-muted-foreground/80 line-clamp-1">{task.ai_instruction}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {task.status === 'waiting_approval' && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
+                              if (!res.ok) throw new Error("Failed");
+                              toast({ title: "Task avviato", description: "Il task è stato avviato" });
+                              queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                              queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                              queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                            } catch {
+                              toast({ title: "Errore", variant: "destructive" });
+                            }
+                          }}
+                        >
+                          <ThumbsUp className="h-3 w-3" /> Approva
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                          onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
+                        >
+                          <Ban className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                    {task.status === 'waiting_input' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs border-orange-200 text-orange-600 dark:border-orange-800 dark:text-orange-400"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
+                      >
+                        <UserCheck className="h-3 w-3 mr-1" /> Fornisci input
+                      </Button>
+                    )}
+                    {task.status === 'failed' && (
+                      <Button
+                        size="sm"
+                        className="h-7 px-2.5 text-xs bg-red-600 hover:bg-red-700 text-white gap-1"
+                        onClick={(e) => { e.stopPropagation(); onExecuteTask(task.id); }}
+                      >
+                        <RefreshCw className="h-3 w-3" /> Riprova
+                      </Button>
+                    )}
+                    {task.status === 'paused' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs"
+                        onClick={(e) => { e.stopPropagation(); onExecuteTask(task.id); }}
+                      >
+                        <Play className="h-3 w-3 mr-1" /> Riprendi
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground"
+                      onClick={(e) => { e.stopPropagation(); setPostponeTask(task); }}
+                    >
+                      <CalendarClock className="h-3.5 w-3.5" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                          <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
+                          <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setActionDialogTask(task)}>
+                          <Cog className="h-3.5 w-3.5 mr-2" /> Azioni
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {/* SECTION 2: In Corso - Active tasks with live progress */}
       {activeTasks && activeTasks.length > 0 && (
-        <Card className="border border-primary/20 rounded-xl shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-              </span>
-              Task Attive in Tempo Reale
-              <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{activeTasks.length}</Badge>
-              <span className="ml-auto text-xs font-normal text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Ultimo aggiornamento: {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {activeTasks.map((task, index) => (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            </span>
+            <h3 className="text-sm font-bold tracking-tight">In Corso</h3>
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] tabular-nums">{activeTasks.length}</Badge>
+            <span className="ml-auto text-[10px] font-normal text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {activeTasks.map((task) => (
               <motion.div
                 key={task.id}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.08 }}
-                className="rounded-xl border border-border bg-card p-4 space-y-3 cursor-pointer hover:border-primary/40 transition-colors"
+                className="rounded-xl border border-primary/20 bg-card p-3 cursor-pointer hover:border-primary/40 transition-colors"
                 onClick={() => setSelectedTaskId(task.id)}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{task.ai_instruction}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {getCategoryBadge(task.task_category)}
-                      {getPriorityIndicator(task.priority)}
-                      <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
-                        {task.status === "in_progress" ? "In esecuzione" : task.status === "approved" ? "Approvato" : "Programmato"}
-                      </Badge>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 mb-2">
+                  {task.ai_role && AI_ROLE_PROFILES[task.ai_role]?.avatar && (
+                    <img src={AI_ROLE_PROFILES[task.ai_role].avatar} alt={task.ai_role} className="h-6 w-6 rounded-full" />
+                  )}
+                  <p className="text-sm font-medium truncate flex-1">{task.ai_instruction}</p>
+                  {getCategoryBadge(task.task_category)}
+                  {getPriorityIndicator(task.priority)}
                 </div>
                 {task.execution_plan && task.execution_plan.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>Progresso</span>
-                      <span>{task.execution_plan.filter(s => s.status === "completed").length}/{task.execution_plan.length} step</span>
+                      <span className="tabular-nums">{task.execution_plan.filter(s => s.status === "completed").length}/{task.execution_plan.length} step</span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-1.5">
                       <div
-                        className="bg-primary h-2 rounded-full transition-all duration-500"
+                        className="bg-primary h-1.5 rounded-full transition-all duration-500"
                         style={{ width: `${(task.execution_plan.filter(s => s.status === "completed").length / task.execution_plan.length) * 100}%` }}
                       />
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-1">
                       {task.execution_plan.map((step) => (
-                        <div key={step.step} className="flex items-center gap-1 text-xs">
+                        <span key={step.step} className="flex items-center gap-0.5 text-[10px]">
                           {step.status === "completed" ? (
-                            <CheckCircle className="h-3 w-3 text-emerald-500" />
+                            <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
                           ) : step.status === "in_progress" ? (
-                            <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                            <Loader2 className="h-2.5 w-2.5 text-primary animate-spin" />
                           ) : step.status === "failed" ? (
-                            <XCircle className="h-3 w-3 text-red-500" />
+                            <XCircle className="h-2.5 w-2.5 text-red-500" />
                           ) : (
-                            <div className="h-3 w-3 rounded-full border border-muted-foreground/40" />
+                            <div className="h-2.5 w-2.5 rounded-full border border-muted-foreground/40" />
                           )}
-                          <span className={step.status === "completed" ? "text-emerald-600" : step.status === "in_progress" ? "text-primary" : "text-muted-foreground"}>
+                          <span className={cn(
+                            step.status === "completed" ? "text-emerald-600" :
+                            step.status === "in_progress" ? "text-primary" :
+                            "text-muted-foreground"
+                          )}>
                             {step.action.replace(/_/g, " ")}
                           </span>
-                        </div>
+                        </span>
                       ))}
                     </div>
                   </div>
                 )}
                 {task.result_summary && (
-                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-xl p-2">{task.result_summary}</p>
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-2 mt-2">{task.result_summary}</p>
                 )}
               </motion.div>
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {pendingApprovalTasks && pendingApprovalTasks.length > 0 && (
-        <Card className="border border-amber-200 dark:border-amber-800 rounded-xl shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              <CardTitle className="text-base">Task Generati dall'AI</CardTitle>
-              <Badge className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400">
-                {pendingApprovalTasks.length}
-              </Badge>
-            </div>
-            <CardDescription>Task autonomi in attesa della tua approvazione</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {pendingApprovalTasks.map((task) => (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-xl border border-amber-200/50 dark:border-amber-800/50 bg-background/80 space-y-2"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{task.ai_instruction}</p>
-                    {task.ai_reasoning && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.ai_reasoning}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center flex-wrap gap-1.5">
-                  {getCategoryBadge(task.task_category)}
-                  {getPriorityIndicator(task.priority)}
-                  {task.ai_role && (
-                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getRoleBadge(task.ai_role))}>
-                      {task.ai_role}
-                    </Badge>
-                  )}
-                  {task.contact_name && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      <User className="h-3 w-3 mr-0.5" />
-                      {task.contact_name}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, {
-                          method: "PATCH",
-                          headers: getAuthHeaders(),
-                        });
-                        if (!res.ok) throw new Error("Failed");
-                        toast({ title: "Task avviato", description: "Il task è stato avviato con successo" });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                      } catch {
-                        toast({ title: "Errore", description: "Impossibile avviare il task", variant: "destructive" });
-                      }
-                    }}
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Avvia
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                    onClick={() => handleMarkDone(task.id)}
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Già fatta
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-                    onClick={() => setCancelDialogTask(task)}
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Elimina
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="flex items-center overflow-x-auto scrollbar-none">
-          {STATUS_TABS.map(tab => {
-            const effectiveActive = dashboardStatusFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => handleStatusTabChange(tab.value)}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-3 text-xs font-medium whitespace-nowrap transition-all duration-200 border-b-2 relative",
-                  effectiveActive
-                    ? "border-primary text-primary bg-primary/5"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                <span className={cn(tab.color)}>{tab.icon}</span>
-                <span>{tab.label}</span>
-                {tab.count > 0 && (
-                  <span className={cn(
-                    "min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1",
-                    effectiveActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="relative overflow-hidden rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50 to-indigo-50/50 dark:from-blue-950/40 dark:to-indigo-950/20 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/15 dark:bg-blue-400/15">
-              <ListTodo className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-blue-100">{loadingStats ? "—" : tasksStats?.total ?? 0}</p>
-              <p className="text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80 uppercase tracking-wider">Totali</p>
-            </div>
           </div>
-          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-blue-400/10 dark:bg-blue-400/5" />
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/40 dark:to-orange-950/20 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/15 dark:bg-amber-400/15">
-              <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100">{loadingStats ? "—" : tasksStats?.active ?? 0}</p>
-              <p className="text-[11px] font-medium text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider">Attivi</p>
-            </div>
-          </div>
-          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-amber-400/10 dark:bg-amber-400/5" />
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50 to-green-50/50 dark:from-emerald-950/40 dark:to-green-950/20 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/15 dark:bg-emerald-400/15">
-              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100">{loadingStats ? "—" : tasksStats?.completed ?? 0}</p>
-              <p className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">Completati</p>
-            </div>
-          </div>
-          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-emerald-400/10 dark:bg-emerald-400/5" />
-        </div>
-        <div className="relative overflow-hidden rounded-2xl border border-red-200/60 dark:border-red-800/40 bg-gradient-to-br from-red-50 to-rose-50/50 dark:from-red-950/40 dark:to-rose-950/20 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-red-500/15 dark:bg-red-400/15">
-              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold tracking-tight text-red-900 dark:text-red-100">{loadingStats ? "—" : tasksStats?.failed ?? 0}</p>
-              <p className="text-[11px] font-medium text-red-600/80 dark:text-red-400/80 uppercase tracking-wider">Falliti</p>
-            </div>
-          </div>
-          <div className="absolute -bottom-3 -right-3 h-16 w-16 rounded-full bg-red-400/10 dark:bg-red-400/5" />
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Search className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtra task</span>
-        </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <Select value={dashboardStatusFilter} onValueChange={(val) => { setDashboardStatusFilter(val); setDashboardPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 rounded-lg text-sm">
-              <SelectValue placeholder="Stato" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutti gli stati</SelectItem>
-              <SelectItem value="active">Attivi</SelectItem>
-              <SelectItem value="completed">Completati</SelectItem>
-              <SelectItem value="failed">Falliti</SelectItem>
-              <SelectItem value="paused">In pausa</SelectItem>
-              <SelectItem value="deferred">Rimandati</SelectItem>
-              <SelectItem value="cancelled">Cancellati</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={dashboardCategoryFilter} onValueChange={(val) => { setDashboardCategoryFilter(val); setDashboardPage(1); }}>
-            <SelectTrigger className="w-[160px] h-9 rounded-lg text-sm">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutte le categorie</SelectItem>
-              <SelectItem value="outreach">Contatto</SelectItem>
-              <SelectItem value="reminder">Promemoria</SelectItem>
-              <SelectItem value="followup">Follow-up</SelectItem>
-              <SelectItem value="analysis">Analisi</SelectItem>
-              <SelectItem value="report">Report</SelectItem>
-              <SelectItem value="research">Ricerca</SelectItem>
-              <SelectItem value="preparation">Preparazione</SelectItem>
-              <SelectItem value="monitoring">Monitoraggio</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={dashboardOriginFilter} onValueChange={(val) => { setDashboardOriginFilter(val); setDashboardPage(1); }}>
-            <SelectTrigger className="w-[180px] h-9 rounded-lg text-sm">
-              <SelectValue placeholder="Origine" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tutte le origini</SelectItem>
-              <SelectItem value="manual">Manuali</SelectItem>
-              <SelectItem value="autonomous">Autonomi (AI)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {availableRoles.length > 0 && (
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
-          <button
-            onClick={() => setDashboardRoleFilter("all")}
-            className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px]",
-              dashboardRoleFilter === "all"
-                ? "bg-primary/10 ring-2 ring-primary/40"
-                : "hover:bg-muted/60"
-            )}
-          >
-            <div className={cn(
-              "h-10 w-10 rounded-full bg-muted flex items-center justify-center transition-all",
-              dashboardRoleFilter === "all" && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-            )}>
-              <ListTodo className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <span className={cn(
-              "text-[10px] font-medium leading-tight text-center",
-              dashboardRoleFilter === "all" ? "text-primary" : "text-muted-foreground"
-            )}>Tutti</span>
-          </button>
-          {availableRoles.map(role => {
-            const profile = AI_ROLE_PROFILES[role];
-            const isActive = dashboardRoleFilter === role;
-            const roleRingColors: Record<string, string> = {
-              alessia: "ring-pink-400",
-              millie: "ring-purple-400",
-              echo: "ring-orange-400",
-              nova: "ring-pink-400",
-              stella: "ring-emerald-400",
-              iris: "ring-teal-400",
-              marco: "ring-indigo-400",
-            };
-            const roleBgColors: Record<string, string> = {
-              alessia: "bg-pink-50 dark:bg-pink-950/30",
-              millie: "bg-purple-50 dark:bg-purple-950/30",
-              echo: "bg-orange-50 dark:bg-orange-950/30",
-              nova: "bg-pink-50 dark:bg-pink-950/30",
-              stella: "bg-emerald-50 dark:bg-emerald-950/30",
-              iris: "bg-teal-50 dark:bg-teal-950/30",
-              marco: "bg-indigo-50 dark:bg-indigo-950/30",
-            };
-            const roleTextColors: Record<string, string> = {
-              alessia: "text-pink-600 dark:text-pink-400",
-              millie: "text-purple-600 dark:text-purple-400",
-              echo: "text-orange-600 dark:text-orange-400",
-              nova: "text-pink-600 dark:text-pink-400",
-              stella: "text-emerald-600 dark:text-emerald-400",
-              iris: "text-teal-600 dark:text-teal-400",
-              marco: "text-indigo-600 dark:text-indigo-400",
-            };
-            const taskCount = tasksStats?.role_counts?.find(rc => rc.role === role)?.count || 0;
-            return (
-              <button
-                key={role}
-                onClick={() => setDashboardRoleFilter(isActive ? "all" : role)}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px] relative",
-                  isActive
-                    ? cn(roleBgColors[role] || "bg-primary/10", "ring-2", roleRingColors[role] || "ring-primary/40")
-                    : "hover:bg-muted/60"
-                )}
-              >
-                {profile?.avatar ? (
-                  <img
-                    src={profile.avatar}
-                    alt={role}
-                    className={cn(
-                      "h-10 w-10 rounded-full object-cover transition-all",
-                      isActive
-                        ? cn("ring-2 ring-offset-2 ring-offset-background", roleRingColors[role] || "ring-primary")
-                        : "ring-1 ring-border opacity-75 hover:opacity-100"
-                    )}
-                  />
-                ) : (
-                  <div className={cn(
-                    "h-10 w-10 rounded-full bg-muted flex items-center justify-center",
-                    isActive && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                  )}>
-                    <ListTodo className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                )}
-                <span className={cn(
-                  "text-[10px] font-medium leading-tight text-center max-w-[80px] line-clamp-2",
-                  isActive ? (roleTextColors[role] || "text-primary") : "text-muted-foreground"
-                )}>
-                  {profile?.role || role.charAt(0).toUpperCase() + role.slice(1)}
-                </span>
-                {taskCount > 0 && (
-                  <span className={cn(
-                    "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-background",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted-foreground/20 text-muted-foreground"
-                  )}>
-                    {taskCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-          {(tasksStats?.manual_count ?? 0) > 0 && (
-            <button
-              onClick={() => setDashboardRoleFilter(dashboardRoleFilter === "__manual__" ? "all" : "__manual__")}
-              className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 shrink-0 min-w-[84px] relative",
-                dashboardRoleFilter === "__manual__"
-                  ? "bg-muted ring-2 ring-muted-foreground/40"
-                  : "hover:bg-muted/60"
-              )}
-            >
-              <div className={cn(
-                "h-10 w-10 rounded-full bg-muted flex items-center justify-center transition-all",
-                dashboardRoleFilter === "__manual__" && "ring-2 ring-muted-foreground ring-offset-2 ring-offset-background"
-              )}>
-                <User className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <span className={cn(
-                "text-[10px] font-medium leading-tight text-center",
-                dashboardRoleFilter === "__manual__" ? "text-foreground" : "text-muted-foreground"
-              )}>Manuali</span>
-              {(tasksStats?.manual_count ?? 0) > 0 && (
-                <span className={cn(
-                  "absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-background",
-                  dashboardRoleFilter === "__manual__"
-                    ? "bg-muted-foreground text-background"
-                    : "bg-muted-foreground/20 text-muted-foreground"
-                )}>
-                  {tasksStats?.manual_count}
-                </span>
-              )}
-            </button>
-          )}
         </div>
       )}
 
+      {/* SECTION 3: Kanban Board / Executive View */}
       {loadingTasks ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : !tasksData?.tasks?.length ? (
-        <Card className="border border-border rounded-xl shadow-sm">
-          <CardContent className="py-12 text-center">
-            <ListTodo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Nessun task trovato</p>
-          </CardContent>
-        </Card>
+      ) : executiveView ? (
+        <div className="rounded-xl border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Ruolo</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Contatto</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground min-w-[200px]">Istruzione</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Stato</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Priorità</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Data</th>
+                  <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Azioni</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {kanbanColumns.flatMap(g => g.tasks).map((task) => (
+                  <tr
+                    key={task.id}
+                    className="hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => setSelectedTaskId(task.id)}
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {task.ai_role && AI_ROLE_PROFILES[task.ai_role]?.avatar && (
+                          <img src={AI_ROLE_PROFILES[task.ai_role].avatar} className="h-5 w-5 rounded-full" alt="" />
+                        )}
+                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getRoleBadge(task.ai_role || ''))}>
+                          {task.ai_role ? task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1) : 'Manuale'}
+                        </Badge>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-medium">{task.contact_name || '\u2014'}</td>
+                    <td className="px-3 py-2.5 max-w-[300px] truncate text-muted-foreground">{task.ai_instruction}</td>
+                    <td className="px-3 py-2.5">{getTaskStatusBadge(task.status)}</td>
+                    <td className="px-3 py-2.5">{getPriorityIndicator(task.priority)}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{getRelativeTime(task.created_at)}</td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                            <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setActionDialogTask(task)}>
+                            <Cog className="h-3.5 w-3.5 mr-2" /> Azioni
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setPostponeTask(task)}>
+                            <CalendarClock className="h-3.5 w-3.5 mr-2" /> Rimanda
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+                {kanbanColumns.flatMap(g => g.tasks).length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <ListTodo className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm">Nessun task attivo</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
-        <div className="space-y-6">
-          {groupedTasks.map(({ role, tasks }) => {
-            const profile = role !== '__manual__' ? AI_ROLE_PROFILES[role] : null;
-            const roleAccentMap: Record<string, string> = {
-              alessia: "text-pink-600 dark:text-pink-400",
-              millie: "text-purple-600 dark:text-purple-400",
-              echo: "text-orange-600 dark:text-orange-400",
-              nova: "text-pink-600 dark:text-pink-400",
-              stella: "text-emerald-600 dark:text-emerald-400",
-              iris: "text-teal-600 dark:text-teal-400",
-              marco: "text-indigo-600 dark:text-indigo-400",
-            };
-            const roleRingMap: Record<string, string> = {
-              alessia: "ring-pink-300",
-              millie: "ring-purple-300",
-              echo: "ring-orange-300",
-              nova: "ring-pink-300",
-              stella: "ring-emerald-300",
-              iris: "ring-teal-300",
-              marco: "ring-indigo-300",
-            };
-            const accentText = role !== '__manual__' ? (roleAccentMap[role] || '') : '';
-            const accentRing = role !== '__manual__' ? (roleRingMap[role] || 'ring-border') : 'ring-border';
-            return (
-              <div key={role} className="space-y-2">
-                <div className="flex items-center gap-3 px-1 py-2">
-                  {profile?.avatar ? (
-                    <img src={profile.avatar} alt={role} className={cn("h-8 w-8 rounded-full object-cover ring-2 ring-offset-1 ring-offset-background", accentRing)} />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <ListTodo className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn("font-semibold text-sm cursor-pointer hover:underline", accentText)}
-                        onClick={() => role !== '__manual__' && navigate(`/consultant/ai-autonomy/employee/${role}`)}
-                      >
-                        {role === '__manual__' ? 'Task Manuali' : role.charAt(0).toUpperCase() + role.slice(1)}
-                      </span>
-                      {profile && (
-                        <span className="text-xs text-muted-foreground">{profile.role}</span>
+        <div>
+          <div className="flex items-center gap-2 px-1 mb-3">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold tracking-tight">Task per Ruolo</h3>
+            <span className="text-[10px] text-muted-foreground ml-1">
+              ({kanbanColumns.reduce((sum, col) => sum + col.tasks.length, 0)} task)
+            </span>
+          </div>
+          {kanbanColumns.length === 0 && !loadingTasks ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <ListTodo className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-medium">Nessun task attivo</p>
+              <p className="text-xs mt-1">I task completati sono nell'archivio in basso</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto pb-4 -mx-2 px-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+              <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
+                {kanbanColumns.map(({ role, tasks: columnTasks }) => {
+                  const profile = AI_ROLE_PROFILES[role];
+                  const roleBorderColors: Record<string, string> = {
+                    alessia: "border-t-pink-400",
+                    millie: "border-t-purple-400",
+                    echo: "border-t-orange-400",
+                    nova: "border-t-rose-400",
+                    stella: "border-t-emerald-400",
+                    iris: "border-t-teal-400",
+                    marco: "border-t-indigo-400",
+                    personalizza: "border-t-violet-400",
+                  };
+                  return (
+                    <div
+                      key={role}
+                      className={cn(
+                        "min-w-[300px] max-w-[340px] flex-shrink-0 rounded-xl border border-border/50 bg-muted/20 dark:bg-muted/10 border-t-4 flex flex-col",
+                        roleBorderColors[role] || "border-t-gray-400"
                       )}
-                      {role !== '__manual__' && (
-                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => navigate(`/consultant/ai-autonomy/employee/${role}`)}>
-                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs tabular-nums">
-                    {tasks.length}
-                  </Badge>
-                </div>
-                <div className={cn("space-y-4 pl-1", executiveView && "space-y-1.5")}>
-                  {tasks.map((task) => {
-                    const plannedActions = detectPlannedActions(task);
-                    const isWaiting = task.status === 'waiting_approval';
-                    const isActionable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved', 'deferred'].includes(task.status);
-                    const isCancellable = ['scheduled', 'draft', 'waiting_approval', 'paused', 'deferred'].includes(task.status);
-                    const canPostpone = ['scheduled', 'draft', 'waiting_approval', 'paused', 'approved'].includes(task.status);
-                    const canRequestReport = ['completed', 'in_progress', 'failed'].includes(task.status);
-                    const isMergeSelected = selectedMergeIds.has(task.id);
-                    const isExpanded = expandedTaskIds.has(task.id);
-
-                    if (executiveView) {
-                      return (
-                        <React.Fragment key={task.id}>
-                        <div
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-2.5 rounded-lg border transition-colors cursor-pointer",
-                            "hover:bg-muted/40",
-                            getPriorityBorderColor(task.priority),
-                            "border-l-4",
-                            isWaiting && "bg-amber-50/30 dark:bg-amber-950/10"
+                    >
+                      <div className="p-3 border-b border-border/30">
+                        <div className="flex items-center gap-2.5">
+                          {profile?.avatar ? (
+                            <img src={profile.avatar} alt={role} className="h-9 w-9 rounded-full ring-2 ring-background" />
+                          ) : (
+                            <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
+                              {role === '__manual__' ? <User className="h-4 w-4 text-muted-foreground" /> : <Brain className="h-4 w-4 text-muted-foreground" />}
+                            </div>
                           )}
-                          onClick={(e) => toggleTaskExpand(task.id, e)}
-                        >
-                          <div className="flex-1 min-w-0 flex items-center gap-2.5">
-                            {task.contact_name && (
-                              <span className="text-sm font-semibold text-foreground shrink-0">
-                                {task.contact_name}
-                              </span>
-                            )}
-                            <p className="text-sm text-muted-foreground truncate">
-                              {task.ai_instruction}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold leading-tight">
+                              {role === '__manual__' ? 'Manuali' : role.charAt(0).toUpperCase() + role.slice(1)}
                             </p>
+                            {profile?.role && (
+                              <p className="text-[10px] text-muted-foreground leading-tight">{profile.role}</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {getPriorityIndicator(task.priority)}
-                            {getTaskStatusBadge(task.status)}
-                            {isWaiting && (
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-2.5 text-xs gap-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                                    method: "PATCH",
-                                    headers: getAuthHeaders(),
-                                  }).then(res => {
-                                    if (res.ok) {
-                                      toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                                      queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                      queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                    } else {
-                                      toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                                    }
-                                  });
+                          <Badge variant="outline" className="text-[10px] tabular-nums px-1.5">
+                            {columnTasks.length}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="p-2 space-y-2 max-h-[calc(100vh-340px)] overflow-y-auto flex-1">
+                        {columnTasks.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground/40">
+                            <ListTodo className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
+                            <p className="text-[10px]">Nessun task attivo</p>
+                          </div>
+                        ) : (
+                          columnTasks.map((task) => {
+                            const plannedActions = detectPlannedActions(task);
+                            const isWaitingApproval = task.status === 'waiting_approval';
+                            return (
+                              <motion.div
+                                key={task.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={cn(
+                                  "p-3 rounded-lg border border-border/60 bg-card hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer border-l-4",
+                                  getPriorityBorderColor(task.priority),
+                                  mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
+                                )}
+                                onClick={() => {
+                                  if (mergeMode) {
+                                    setSelectedMergeIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(task.id)) next.delete(task.id); else next.add(task.id);
+                                      return next;
+                                    });
+                                  } else {
+                                    setSelectedTaskId(task.id);
+                                  }
                                 }}
                               >
-                                <ThumbsUp className="h-3 w-3" />
-                                Approva
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 text-muted-foreground"
-                              onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        </React.Fragment>
-                      );
-                    }
-
-                    return (
-                      <React.Fragment key={task.id}>
-                      <Card
-                        className={cn(
-                          "transition-all duration-200 border rounded-xl border-l-4 overflow-hidden",
-                          isWaiting ? "bg-muted/20 dark:bg-muted/5" : "bg-card",
-                          getPriorityBorderColor(task.priority),
-                          mergeMode && isMergeSelected && "ring-2 ring-purple-400 bg-purple-50/30 dark:bg-purple-950/20"
-                        )}
-                      >
-                        <CardContent className="p-0">
-                          <div
-                            className="px-4 pt-4 pb-3 cursor-pointer flex gap-3"
-                            onClick={(e) => {
-                              if (mergeMode) {
-                                e.stopPropagation();
-                                toggleMergeSelect(task.id);
-                              } else {
-                                toggleTaskExpand(task.id, e);
-                              }
-                            }}
-                          >
-                            {mergeMode && (
-                              <div className="pt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                  checked={isMergeSelected}
-                                  onCheckedChange={() => toggleMergeSelect(task.id)}
-                                  className="h-5 w-5 border-2"
-                                />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {mergeMode && (
+                                  <div className="mb-2">
+                                    <Checkbox checked={selectedMergeIds.has(task.id)} className="h-3.5 w-3.5" />
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <div className="flex items-center gap-1.5 min-w-0">
                                     {task.contact_name && (
-                                      <span className="inline-flex items-center gap-1.5 text-base font-bold text-foreground">
-                                        <User className="h-4 w-4 text-muted-foreground/70" />
-                                        {task.ai_role === 'marco' && <span className="text-xs font-normal text-muted-foreground mr-0.5">Riguarda:</span>}
+                                      <span className="text-xs font-semibold truncate flex items-center gap-1">
+                                        <User className="h-3 w-3 text-muted-foreground/60 shrink-0" />
                                         {task.contact_name}
                                       </span>
                                     )}
-                                    {task.ai_role !== 'marco' && task.contact_phone && (
-                                      <span className="text-[11px] text-muted-foreground/70 font-mono">
-                                        {task.contact_phone}
+                                    {!task.contact_name && (
+                                      <span className="text-xs text-muted-foreground italic">Nessun contatto</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {getPriorityIndicator(task.priority)}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 leading-relaxed">{task.ai_instruction}</p>
+                                {plannedActions.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {plannedActions.map((action, idx) => (
+                                      <span key={idx} className={cn("inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border", action.color)}>
+                                        {action.icon}
+                                        <span className="leading-none">{action.label}</span>
                                       </span>
-                                    )}
+                                    ))}
                                   </div>
-                                  <p className={cn(
-                                    "text-sm text-foreground/80 leading-relaxed transition-all duration-200",
-                                    !isExpanded && "line-clamp-2"
-                                  )}>
-                                    {task.ai_instruction}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                )}
+                                <div className="flex items-center justify-between">
                                   {getTaskStatusBadge(task.status)}
-                                  {getPriorityIndicator(task.priority)}
+                                  <span className="text-[10px] text-muted-foreground">{getRelativeTime(task.created_at)}</span>
                                 </div>
-                              </div>
-
-                              {isExpanded && task.additional_context && (
-                                <div className="mt-2.5 text-xs bg-muted/40 dark:bg-muted/20 rounded-lg px-3 py-2 border border-border/40">
-                                  <span className="font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
-                                    <Info className="h-3 w-3" />
-                                    Contesto aggiuntivo
-                                  </span>
-                                  <span className="text-foreground/70">{task.additional_context}</span>
-                                </div>
-                              )}
-
-                              {subTaskMap.has(task.id) && (
-                                <div className="mt-2 flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 cursor-pointer"
-                                  onClick={(e) => { e.stopPropagation(); toggleTaskExpand(task.id, e); }}
-                                >
-                                  <Layers className="h-3 w-3" />
-                                  <span>{subTaskMap.get(task.id)!.length} follow-up</span>
-                                  <ChevronRight className={cn("h-3 w-3 transition-transform", isExpanded && "rotate-90")} />
-                                </div>
-                              )}
-
-                              {task.origin_type === 'autonomous' && task.ai_reasoning && (
-                                <details className="mt-2.5" open={isExpanded}>
-                                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground/70 flex items-center gap-1">
-                                    <Sparkles className="h-3 w-3 text-purple-400" />
-                                    Insight AI
-                                  </summary>
-                                  <p className={cn(
-                                    "mt-1 text-xs text-muted-foreground/80 italic pl-4",
-                                    !isExpanded && "line-clamp-2"
-                                  )}>
-                                    {task.ai_reasoning}
-                                  </p>
-                                </details>
-                              )}
-
-                              <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                                {plannedActions.map((action, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30"
-                                  >
-                                    {action.icon}
-                                    {action.label}
-                                  </span>
-                                ))}
-                                {task.origin_type === 'autonomous' && (
-                                  <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
-                                    <Sparkles className="h-2.5 w-2.5" />
-                                    AI
-                                  </span>
-                                )}
-                                <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
-                                  {getCategoryBadge(task.task_category)}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground/70">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {getRelativeTime(task.created_at)}
-                                </span>
-                                {task.scheduled_at && ['scheduled', 'waiting_approval', 'approved', 'draft', 'paused'].includes(task.status) && (
-                                  <span className="flex items-center gap-1 text-primary/80 font-medium" title={task.scheduling_reason || undefined}>
-                                    <CalendarClock className="h-2.5 w-2.5" />
-                                    {new Date(task.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                )}
-                                {task.completed_at && (
-                                  <span className="flex items-center gap-1">
-                                    <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
-                                    {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {(isWaiting || isActionable) && (
-                            <div className="px-4 py-2 border-t border-border/30 bg-muted/10 flex items-center gap-2">
-                              {isWaiting && (
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 h-7 px-3 text-xs font-medium"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    fetch(`/api/ai-autonomy/tasks/${task.id}/approve`, {
-                                      method: "PATCH",
-                                      headers: getAuthHeaders(),
-                                    }).then(res => {
-                                      if (res.ok) {
-                                        toast({ title: "Task approvato", description: "Il task verrà eseguito al prossimo ciclo" });
-                                        queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                      } else {
-                                        toast({ title: "Errore", description: "Impossibile approvare il task", variant: "destructive" });
-                                      }
-                                    });
-                                  }}
-                                >
-                                  <ThumbsUp className="h-3 w-3" />
-                                  Approva
-                                </Button>
-                              )}
-                              {canPostpone && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 h-7 px-2.5 text-xs border-border/50 text-muted-foreground hover:text-foreground"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPostponeTask(task);
-                                  }}
-                                >
-                                  <Clock className="h-3 w-3" />
-                                  Rimanda
-                                </Button>
-                              )}
-                              {isCancellable && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 h-7 px-2.5 text-xs border-red-200/50 text-red-500 hover:bg-red-50/50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCancelDialogTask(task);
-                                  }}
-                                >
-                                  <Ban className="h-3 w-3" />
-                                  Rifiuta
-                                </Button>
-                              )}
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  {isWaiting && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => {
-                                        setEditInstruction(task.ai_instruction || "");
-                                        setEditContext(task.additional_context || "");
-                                        setEditTask(task);
-                                      }}>
-                                        <Pencil className="h-3.5 w-3.5 mr-2" />
-                                        Modifica testo
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => {
-                                        const currentScheduled = task.scheduled_at ? new Date(task.scheduled_at) : new Date();
-                                        const localIso = new Date(currentScheduled.getTime() - currentScheduled.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                                        setRescheduleDate(localIso);
-                                        setRescheduleTask(task);
-                                      }}>
-                                        <CalendarClock className="h-3.5 w-3.5 mr-2" />
-                                        Modifica orario
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {isActionable && (
-                                    <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
-                                      <UserCheck className="h-3.5 w-3.5 mr-2" />
-                                      Già fatta da me
-                                    </DropdownMenuItem>
-                                  )}
-                                  {canRequestReport && task.ai_role && onOpenChatWithTask && (
-                                    <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task, 'Cosa hai fatto?')}>
-                                      <MessageSquare className="h-3.5 w-3.5 mr-2" />
-                                      Cosa hai fatto?
-                                    </DropdownMenuItem>
-                                  )}
-                                  {task.ai_role && onOpenChatWithTask && !canRequestReport && (
-                                    <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
-                                      <MessageSquare className="h-3.5 w-3.5 mr-2" />
-                                      Parlane in chat
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
-                                    <Eye className="h-3.5 w-3.5 mr-2" />
-                                    Dettagli
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          )}
-
-                          {!isWaiting && !isActionable && (
-                            <div className="px-4 py-2 border-t border-border/20 bg-muted/5 flex items-center gap-2">
-                              {canRequestReport && task.ai_role && onOpenChatWithTask && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1 h-7 px-2.5 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50/50 dark:text-violet-400 dark:hover:bg-violet-950/20"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenChatAboutTask(task, 'Cosa hai fatto?');
-                                  }}
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                  Cosa hai fatto?
-                                </Button>
-                              )}
-                              {task.ai_role && onOpenChatWithTask && !canRequestReport && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1 h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenChatAboutTask(task);
-                                  }}
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                  Parlane in chat
-                                </Button>
-                              )}
-                              <div className="ml-auto">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1 h-7 px-2.5 text-xs text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTaskId(task.id);
-                                  }}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                  Dettagli
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                      {isExpanded && subTaskMap.has(task.id) && (
-                        <div className="ml-6 pl-4 border-l-2 border-purple-200/60 dark:border-purple-800/40 space-y-2">
-                          {subTaskMap.get(task.id)!.map((subTask) => {
-                            const subExpanded = expandedTaskIds.has(subTask.id);
-                            const subPlannedActions = detectPlannedActions(subTask);
-                            return (
-                              <div
-                                key={subTask.id}
-                                className="rounded-lg bg-muted/20 border border-border/20 overflow-hidden cursor-pointer hover:bg-muted/30 transition-colors"
-                                onClick={(e) => toggleTaskExpand(subTask.id, e)}
-                              >
-                                <div className="flex items-start gap-2 px-3 py-2.5">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                      {subTask.contact_name && (
-                                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground/80">
-                                          <User className="h-3 w-3 text-muted-foreground/60" />
-                                          {subTask.contact_name}
-                                        </span>
-                                      )}
-                                      {getTaskStatusBadge(subTask.status)}
-                                      {subTask.priority <= 2 && getPriorityIndicator(subTask.priority)}
-                                    </div>
-                                    <p className={cn(
-                                      "text-xs text-muted-foreground leading-relaxed",
-                                      !subExpanded && "line-clamp-1"
-                                    )}>
-                                      {subTask.ai_instruction}
-                                    </p>
-
-                                    {subExpanded && (
-                                      <>
-                                        {subTask.additional_context && (
-                                          <div className="mt-2 text-[11px] bg-muted/40 rounded px-2.5 py-1.5 border border-border/30">
-                                            <span className="font-medium text-muted-foreground flex items-center gap-1 mb-0.5">
-                                              <Info className="h-2.5 w-2.5" />
-                                              Contesto
-                                            </span>
-                                            <span className="text-foreground/70">{subTask.additional_context}</span>
-                                          </div>
-                                        )}
-
-                                        {subTask.origin_type === 'autonomous' && subTask.ai_reasoning && (
-                                          <div className="mt-2 text-[11px] text-muted-foreground/70 italic bg-purple-50/30 dark:bg-purple-950/10 rounded px-2.5 py-1.5 border border-purple-200/30 dark:border-purple-800/20">
-                                            <Sparkles className="h-2.5 w-2.5 inline mr-1 text-purple-400" />
-                                            {subTask.ai_reasoning}
-                                          </div>
-                                        )}
-
-                                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                                          {subPlannedActions.map((action, idx) => (
-                                            <span key={idx} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
-                                              {action.icon}
-                                              {action.label}
-                                            </span>
-                                          ))}
-                                          <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border border-border/30">
-                                            {getCategoryBadge(subTask.task_category)}
-                                          </span>
-                                        </div>
-
-                                        {subTask.result_summary && (
-                                          <div className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/10 rounded px-2.5 py-1.5 border border-emerald-200/30 dark:border-emerald-800/20">
-                                            <CheckCircle className="h-2.5 w-2.5 inline mr-1" />
-                                            {subTask.result_summary}
-                                          </div>
-                                        )}
-
-                                        {subTask.scheduled_at && (
-                                          <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-primary/80 font-medium">
-                                            <CalendarClock className="h-2.5 w-2.5" />
-                                            {new Date(subTask.scheduled_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
+                                {isWaitingApproval && (
+                                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+                                    <Button
+                                      size="sm"
+                                      className="h-6 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white gap-0.5 flex-1"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
+                                          if (!res.ok) throw new Error("Failed");
+                                          toast({ title: "Task avviato" });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                          queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                        } catch {
+                                          toast({ title: "Errore", variant: "destructive" });
+                                        }
+                                      }}
+                                    >
+                                      <ThumbsUp className="h-2.5 w-2.5" /> Approva
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-6 px-2 text-[10px] border-red-200 text-red-600"
+                                      onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
+                                    >
+                                      <Ban className="h-2.5 w-2.5" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 text-muted-foreground"
+                                      onClick={(e) => { e.stopPropagation(); setActionDialogTask(task); }}
+                                    >
+                                      <MoreHorizontal className="h-3 w-3" />
+                                    </Button>
                                   </div>
-                                  <div className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground/60">
-                                    <span>{getRelativeTime(subTask.created_at)}</span>
-                                    <ChevronRight className={cn("h-3 w-3 transition-transform", subExpanded && "rotate-90")} />
-                                  </div>
-                                </div>
-                              </div>
+                                )}
+                              </motion.div>
                             );
-                          })}
-                        </div>
-                      )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
       )}
 
-      {recentCompletedTasks.length > 0 && dashboardStatusFilter === 'all' && (
-        <div className="mt-4">
-          <div className="flex items-center gap-2 px-2 py-2 mb-2">
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-              Completati di recente ({recentCompletedTasks.length})
-            </span>
-          </div>
-          <div className="space-y-2">
-            {recentCompletedTasks.map((task) => (
-              <Card key={task.id} className="border-l-4 border-l-emerald-400 border rounded-lg shadow-sm overflow-hidden opacity-80 hover:opacity-100 transition-opacity bg-muted/20 border-border/40 cursor-pointer" onClick={() => setSelectedTaskId(task.id)}>
-                <CardContent className="px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+      {/* SECTION 4: Archivio (collapsed by default) */}
+      {(recentCompletedTasks.length > 0 || olderCompletedTasks.length > 0) && (
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowCompletedSection(!showCompletedSection)}
+            className="flex items-center gap-2 px-1 w-full text-left group hover:opacity-80 transition-opacity"
+          >
+            <Archive className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-bold tracking-tight text-muted-foreground">Archivio</h3>
+            <Badge variant="outline" className="text-[10px] tabular-nums">{archiveCount}</Badge>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground ml-auto transition-transform duration-200", showCompletedSection && "rotate-180")} />
+          </button>
+          {showCompletedSection && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="space-y-4"
+            >
+              {recentCompletedTasks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider">Ultime 24 ore</p>
+                  {recentCompletedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="p-2.5 rounded-lg border border-border/40 bg-card/60 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getTaskStatusBadge(task.status)}
                         {task.ai_role && (
                           <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", getRoleBadge(task.ai_role))}>
                             {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
                           </Badge>
                         )}
                         {task.contact_name && (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                            <User className="h-3 w-3" />
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                            <User className="h-2.5 w-2.5" />
                             {task.contact_name}
                           </span>
                         )}
+                        <span className="text-[10px] text-muted-foreground ml-auto">{getRelativeTime(task.completed_at || task.created_at)}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1">
-                        {task.ai_instruction}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
-                        {task.completed_at && (
-                          <span className="flex items-center gap-0.5">
-                            <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
-                            {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        )}
-                        <span>{getRelativeTime(task.created_at)}</span>
-                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{task.ai_instruction}</p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {task.ai_role && onOpenChatWithTask && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 h-7 px-2 text-[10px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                          onClick={(e) => { e.stopPropagation(); handleOpenChatAboutTask(task, 'Cosa hai fatto?'); }}
-                        >
-                          <MessageSquare className="h-3 w-3" />
-                          Cosa hai fatto?
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1 h-7 px-2 text-[10px] text-muted-foreground"
-                        onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {olderCompletedTasks.length > 0 && dashboardStatusFilter === 'all' && (
-        <div className="mt-4">
-          <button
-            onClick={() => setShowCompletedSection(!showCompletedSection)}
-            className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-border/60 bg-muted/30 hover:bg-muted/50 transition-colors"
-          >
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm font-medium text-muted-foreground">
-              Completati ({olderCompletedTasks.length})
-            </span>
-            <ChevronRight className={cn("h-4 w-4 text-muted-foreground ml-auto transition-transform", showCompletedSection && "rotate-90")} />
-          </button>
-          {showCompletedSection && (
-            <div className="mt-2 space-y-2 pl-2">
-              {olderCompletedTasks.map((task) => (
-                <Card key={task.id} className="border rounded-lg shadow-sm overflow-hidden opacity-70 hover:opacity-100 transition-opacity bg-muted/20 border-border/40">
-                  <CardContent className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={(e) => toggleTaskExpand(task.id, e)}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          {task.contact_name && (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-                              <User className="h-3 w-3" />
-                              {task.contact_name}
-                            </span>
-                          )}
-                          {task.ai_role && (
-                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-muted-foreground">
-                              {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
-                            </Badge>
-                          )}
-                          <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px] py-0 px-1.5">
-                            <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
-                            Completato
+                  ))}
+                </div>
+              )}
+              {olderCompletedTasks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1 uppercase tracking-wider">Precedenti</p>
+                  {olderCompletedTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="p-2 rounded-lg border border-border/30 bg-card/40 opacity-55 hover:opacity-100 transition-opacity cursor-pointer"
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getTaskStatusBadge(task.status)}
+                        {task.ai_role && (
+                          <Badge variant="outline" className={cn("text-[10px] py-0 px-1.5", getRoleBadge(task.ai_role))}>
+                            {task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1)}
                           </Badge>
-                        </div>
-                        <p className={cn("text-xs text-muted-foreground leading-relaxed", !expandedTaskIds.has(task.id) && "line-clamp-1")}>
-                          {task.ai_instruction}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
-                          {task.completed_at && (
-                            <span className="flex items-center gap-0.5">
-                              <CheckCircle className="h-2.5 w-2.5 text-emerald-500" />
-                              {new Date(task.completed_at).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                          <span>{getRelativeTime(task.created_at)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {task.ai_role && onOpenChatWithTask && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1 h-7 px-2 text-[10px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                            onClick={(e) => { e.stopPropagation(); handleOpenChatAboutTask(task, 'Cosa hai fatto?'); }}
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            Cosa hai fatto?
-                          </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 h-7 px-2 text-[10px] text-muted-foreground"
-                          onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
-                        >
-                          <Eye className="h-3 w-3" />
-                        </Button>
+                        {task.contact_name && (
+                          <span className="text-[11px] text-muted-foreground">{task.contact_name}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground ml-auto">
+                          {task.completed_at ? new Date(task.completed_at).toLocaleDateString("it-IT", { day: "2-digit", month: "short" }) : getRelativeTime(task.created_at)}
+                        </span>
                       </div>
+                      <p className="text-xs text-muted-foreground/70 line-clamp-1 mt-0.5">{task.ai_instruction}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
           )}
         </div>
       )}
 
+      {/* Pagination */}
       {tasksData && tasksData.totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 pt-4">
           <Button
@@ -2260,7 +1788,7 @@ function DashboardTab({
         </div>
       )}
 
-      <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
+            <Dialog open={!!selectedTaskId} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
           {loadingTaskDetail ? (
             <div className="flex items-center justify-center py-20">
