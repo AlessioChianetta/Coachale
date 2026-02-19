@@ -2511,16 +2511,15 @@ FORMATO JSON quando è un task nuovo (come prima):
             });
 
             const createdStatus = getTaskStatusForRole(settings, role.id);
-            if (createdStatus === 'waiting_approval') {
-              void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
-                notifyTaskViaTelegram(consultantId, role.id, 'waiting_approval', {
-                  taskId,
-                  instruction: suggestedTask.ai_instruction,
-                  contactName: suggestedTask.contact_name,
-                  taskCategory: suggestedTask.task_category || role.categories[0] || 'followup',
-                })
-              ).catch(() => {});
-            }
+            const notifyEvent = createdStatus === 'waiting_approval' ? 'waiting_approval' : 'created';
+            void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+              notifyTaskViaTelegram(consultantId, role.id, notifyEvent as any, {
+                taskId,
+                instruction: suggestedTask.ai_instruction,
+                contactName: suggestedTask.contact_name,
+                taskCategory: suggestedTask.task_category || role.categories[0] || 'followup',
+              })
+            ).catch(() => {});
 
             if (suggestedTask.contact_id) {
               clientsWithPendingTasks.add(suggestedTask.contact_id);
