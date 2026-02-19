@@ -137,6 +137,9 @@ export interface AITask {
   whatsapp_config_id?: string;
   execution_mode?: string;
   parent_task_id?: string;
+  current_attempt?: number;
+  max_attempts?: number;
+  follow_up_count?: number;
 }
 
 export interface TasksResponse {

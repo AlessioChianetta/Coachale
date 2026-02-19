@@ -1576,7 +1576,22 @@ function DashboardTab({
                     </td>
                     <td className="px-3 py-2.5 font-medium">{task.contact_name || '\u2014'}</td>
                     <td className="px-3 py-2.5 max-w-[300px] truncate text-muted-foreground">{task.ai_instruction}</td>
-                    <td className="px-3 py-2.5">{getTaskStatusBadge(task.status)}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-1">
+                        {getTaskStatusBadge(task.status)}
+                        {(task.follow_up_count != null && task.follow_up_count > 0) && (
+                          <span className={cn(
+                            "inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
+                            task.follow_up_count === 1 && "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
+                            task.follow_up_count === 2 && "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+                            task.follow_up_count >= 3 && "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800 animate-pulse"
+                          )}>
+                            <GitBranch className="h-2.5 w-2.5" />
+                            {task.follow_up_count}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5">{getPriorityIndicator(task.priority)}</td>
                     <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{getRelativeTime(task.created_at)}</td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -1743,7 +1758,9 @@ function DashboardTab({
                                 className={cn(
                                   "p-3 rounded-lg border border-border/60 bg-card hover:border-primary/30 hover:shadow-sm transition-all cursor-pointer border-l-4",
                                   getPriorityBorderColor(task.priority),
-                                  mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
+                                  mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400",
+                                  task.follow_up_count === 2 && "border-amber-300/50 dark:border-amber-700/50",
+                                  task.follow_up_count != null && task.follow_up_count >= 3 && "border-red-400/60 dark:border-red-600/50 shadow-sm shadow-red-500/10"
                                 )}
                                 onClick={() => {
                                   if (mergeMode) {
@@ -1778,6 +1795,15 @@ function DashboardTab({
                                     {getPriorityIndicator(task.priority)}
                                   </div>
                                 </div>
+                                {task.current_attempt != null && task.current_attempt > 1 && (
+                                  <span className={cn(
+                                    "text-[10px] px-1 py-0 rounded font-medium",
+                                    task.current_attempt === 2 && "text-amber-600 dark:text-amber-400",
+                                    task.current_attempt >= 3 && "text-red-600 dark:text-red-400"
+                                  )}>
+                                    #{task.current_attempt}
+                                  </span>
+                                )}
                                 <p className={cn("text-xs text-muted-foreground leading-relaxed", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
                                 {task.ai_instruction && task.ai_instruction.length > 80 && (
                                   <button
@@ -1802,7 +1828,20 @@ function DashboardTab({
                                   </div>
                                 )}
                                 <div className="flex items-center justify-between">
-                                  {getTaskStatusBadge(task.status)}
+                                  <div className="flex items-center gap-1">
+                                    {getTaskStatusBadge(task.status)}
+                                    {(task.follow_up_count != null && task.follow_up_count > 0) && (
+                                      <span className={cn(
+                                        "inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums",
+                                        task.follow_up_count === 1 && "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
+                                        task.follow_up_count === 2 && "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+                                        task.follow_up_count >= 3 && "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800 animate-pulse"
+                                      )}>
+                                        <GitBranch className="h-2.5 w-2.5" />
+                                        {task.follow_up_count}
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-[10px] text-muted-foreground">{getRelativeTime(task.created_at)}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
