@@ -590,7 +590,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo e nome app - Modern Clean Style */}
-      {!isCollapsed && <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700/50">
+      {!isCollapsed && <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-border/50">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg shadow-sm">
             <BookOpen className="h-4 w-4 text-white" />
@@ -685,7 +685,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {/* Category Items */}
                 {(isCategoryExpanded || isAlwaysVisible) && (
                   <div className={cn(
-                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5 ml-6 border-l border-slate-200 dark:border-slate-700 pl-2"
+                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5 ml-6 border-l border-slate-200 dark:border-border pl-2"
                   )}>
                     {category.items.map((item) => {
                       const Icon = item.icon;
@@ -832,7 +832,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* Submenu - Modern style */}
               {hasChildren && isExpanded && !isCollapsed && (
                 <div 
-                  className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-slate-700 pl-3"
+                  className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-border pl-3"
                   data-tour={role === "client" ? `client-${slugify(item.name)}-submenu` : undefined}
                 >
                   {item.children!.map((child) => {
@@ -885,7 +885,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* I Miei Agenti AI Section - Only for clients with assigned agents */}
         {role === "client" && assignedAgents.length > 0 && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
             <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
               I Miei Agenti AI
             </h3>
@@ -913,7 +913,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Dipendenti AI del Consulente - Link to consultant's employee agents for Gold/Deluxe clients */}
         {role === "client" && consultantInfo?.success && consultantInfo.data?.slug && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
             <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
               Dipendenti AI
             </h3>
@@ -939,7 +939,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Pro Tools Section - Collapsible premium section for clients */}
         {role === "client" && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
             <button
               onClick={() => setExpandedProTools(!expandedProTools)}
               className="w-full flex items-center justify-between px-3 py-1.5 group"
@@ -1025,7 +1025,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       </Link>
 
                       {hasChildren && isExpanded && (
-                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-slate-700 pl-3">
+                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-border pl-3">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
                             const isChildActive = isRouteActive(child.href, location);
@@ -1072,7 +1072,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
         )}
 
         {/* External Services Section - Collapsible premium section */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
           {!isCollapsed && (
             <button
               onClick={() => setExpandedExternalServices(!expandedExternalServices)}
@@ -1198,7 +1198,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
       {/* User info e logout - agganciato in basso */}
       {!isCollapsed && (
-      <div className="px-2 py-3 border-t border-slate-200 dark:border-slate-700 mt-auto">
+      <div className="px-2 py-3 border-t border-slate-200 dark:border-border mt-auto">
         <div className="flex items-center gap-2 px-2 py-2 rounded-lg">
           <Avatar className="w-9 h-9 border-2 border-slate-200 dark:border-slate-600 flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
@@ -1301,8 +1301,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="left" className="w-80 p-0 bg-slate-50 dark:bg-slate-900" style={{ animationDuration: "250ms" }} data-testid="sidebar-mobile" data-tour="client-sidebar">
-          <SheetHeader className="p-6 pb-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <SheetContent side="left" className="w-80 p-0 bg-slate-50 dark:bg-[hsl(222,18%,6%)]" style={{ animationDuration: "250ms" }} data-testid="sidebar-mobile" data-tour="client-sidebar">
+          <SheetHeader className="p-6 pb-4 border-b border-slate-200 dark:border-border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <SheetTitle className="text-left flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
                 <Home className="text-white" size={18} />
@@ -1328,7 +1328,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     <>
       {!isCollapsed && (
       <div 
-        className="hidden md:flex flex-col bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 transition-all duration-150 h-screen sticky top-0 w-72"
+        className="hidden md:flex flex-col bg-slate-50 dark:bg-[hsl(222,18%,6%)] border-r border-slate-200 dark:border-border p-4 transition-all duration-150 h-screen sticky top-0 w-72"
         data-testid="sidebar"
         data-tour="client-sidebar"
       >

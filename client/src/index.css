@@ -23,13 +23,25 @@
     border-radius: 10px;
   }
 
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 10px;
   }
 
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground));
+  }
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--border));
   }
 
   /* Force word-break in AI messages */
@@ -147,7 +159,7 @@
   }
 
   .dark .glass-effect {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(31, 41, 55, 0.8);
   }
 
 
@@ -166,7 +178,7 @@
     }
 
     .dark .wattpad-content table {
-        border: 1px solid #374151;
+        border: 1px solid hsl(var(--border));
     }
   }
   
@@ -324,10 +336,10 @@
   .dark .shimmer {
     background: linear-gradient(
       to right,
-      #1f1f1f 0%,
-      #2a2a2a 20%,
-      #1f1f1f 40%,
-      #1f1f1f 100%
+      hsl(var(--card)) 0%,
+      hsl(var(--muted)) 20%,
+      hsl(var(--card)) 40%,
+      hsl(var(--card)) 100%
     );
     background-size: 2000px 100%;
   }
@@ -571,7 +583,7 @@
     word-break: break-word;
   }
   .dark .wattpad-content {
-    color: #d1d5db;
+    color: hsl(var(--muted-foreground));
   }
 
 
@@ -584,7 +596,7 @@
   margin-top: 2.5rem;
   margin-bottom: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: hsl(222, 13%, 13%);
   
   /* Forza il BOX del titolo a non superare MAI la larghezza del suo contenitore. */
   max-width: 100%;
@@ -600,7 +612,7 @@
   .dark .wattpad-content h2,
   .dark .wattpad-content h3,
   .dark .wattpad-content h4 {
-    color: #f9fafb;
+    color: hsl(var(--foreground));
   }
 
   .wattpad-content h1 {
@@ -639,20 +651,20 @@
 
   .wattpad-content strong {
     font-weight: 600;
-    color: #1f2937;
+    color: hsl(222, 13%, 13%);
   }
 
   .dark .wattpad-content strong {
-    color: #f9fafb;
+    color: hsl(var(--foreground));
   }
 
   .wattpad-content em {
     font-style: italic;
-    color: #6b7280;
+    color: hsl(218, 12%, 48%);
   }
 
   .dark .wattpad-content em {
-    color: #9ca3af;
+    color: hsl(var(--muted-foreground));
   }
 
   .wattpad-content ul, 
@@ -689,7 +701,7 @@
   }
 
   .dark .wattpad-content code {
-    background: #374151;
+    background: hsl(var(--input));
   }
 
   /* Smooth reading animations */
@@ -765,11 +777,11 @@
 
   .reader-content strong {
     font-weight: 600;
-    color: #1f2937;
+    color: hsl(222, 13%, 13%);
   }
 
   .dark .reader-content strong {
-    color: #f9fafb;
+    color: hsl(var(--foreground));
   }
 
   .reader-content em {

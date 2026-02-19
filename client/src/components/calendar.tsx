@@ -240,7 +240,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-[#1f1f1f] p-4 rounded-lg border border-[#dadce0] dark:border-[#3c4043] shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-card p-4 rounded-lg border border-[#dadce0] dark:border-border shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -334,7 +334,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
       </div>
 
       <div className={cn(
-        "bg-white dark:bg-[#1f1f1f] rounded-lg border border-[#dadce0] dark:border-[#3c4043] overflow-hidden shadow-sm",
+        "bg-white dark:bg-card rounded-lg border border-[#dadce0] dark:border-border overflow-hidden shadow-sm",
         "calendar-container"
       )} style={{ scrollBehavior: 'smooth', maxHeight: 'calc(100vh - 200px)' }}>
         <FullCalendar
