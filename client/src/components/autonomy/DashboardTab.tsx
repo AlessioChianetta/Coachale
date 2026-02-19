@@ -1654,19 +1654,31 @@ function DashboardTab({
             </div>
           ) : (
             <div className="relative group/kanban">
-              {canScrollLeft && (
+              {hasOverflow && (
                 <button
                   onClick={() => scrollKanban('left')}
-                  className="absolute left-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
+                  disabled={!canScrollLeft}
+                  className={cn(
+                    "absolute left-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full border shadow-lg flex items-center justify-center transition-all",
+                    canScrollLeft
+                      ? "bg-card border-border hover:bg-primary hover:text-white hover:border-primary cursor-pointer"
+                      : "bg-card/50 border-border/30 text-muted-foreground/30 cursor-not-allowed"
+                  )}
                   aria-label="Scorri a sinistra"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
               )}
-              {canScrollRight && (
+              {hasOverflow && (
                 <button
                   onClick={() => scrollKanban('right')}
-                  className="absolute right-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
+                  disabled={!canScrollRight}
+                  className={cn(
+                    "absolute right-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full border shadow-lg flex items-center justify-center transition-all",
+                    canScrollRight
+                      ? "bg-card border-border hover:bg-primary hover:text-white hover:border-primary cursor-pointer"
+                      : "bg-card/50 border-border/30 text-muted-foreground/30 cursor-not-allowed"
+                  )}
                   aria-label="Scorri a destra"
                 >
                   <ChevronRight className="h-5 w-5" />
