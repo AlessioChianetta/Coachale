@@ -1,0 +1,37 @@
+per supporto gruppi rispondi a menzioni come funziona? come lo collego ad un gruppo? se adesso volessi far euna modalità di attivazione ok, ma anche una accessibile per tutti dove gli fa delle domande di presentazione tipo come ti chiami che lavoro fai etcetc obiettivi desideri, e poi una volta che ha tutto usa quelli come base e fa il marco di sempre? questo per nuovi numeri, per i gruppi stessa cosa ogni volta che entra in un nuovo gruppo fa delle domande per capire il contesto e poi si basa su quello, se esce dal gruppo viene salvato un contesto in qualche file che si va a riprendere se rientra o cosa, dimmi cosa hai capito e se si può fare
+
+
+
+Ti spiego come funziona ora e cosa vuoi aggiungere:
+
+Come funziona ora il supporto gruppi:
+
+Quando attivi "Supporto Gruppi", il bot risponde solo quando qualcuno lo menziona con @nomedelbot nel gruppo
+Per collegarlo a un gruppo: aggiungi il bot come membro del gruppo, poi qualcuno deve menzionarlo e il bot si attiva automaticamente
+Quello che vuoi aggiungere - 2 modalità nuove:
+
+Chat private (nuovi utenti): Quando un numero nuovo scrive al bot per la prima volta, invece di rispondere subito come Marco, il bot parte con un "onboarding" - fa domande tipo: "Come ti chiami?", "Che lavoro fai?", "Quali sono i tuoi obiettivi?", "Cosa desideri raggiungere?". Una volta raccolte le risposte, salva tutto come profilo utente e da lì in poi usa quel contesto per rispondere da Marco con la sua personalità aggressiva di sempre.
+
+Gruppi (nuovo gruppo): Stessa logica - quando il bot entra in un nuovo gruppo, fa domande per capire il contesto del gruppo (di cosa si occupa, chi sono i membri, obiettivi). Poi usa quel contesto come base per le risposte future. Se esce dal gruppo, il contesto viene salvato nel database, e se rientra lo recupera automaticamente.
+
+Si può fare al 100%. Servono queste cose:
+
+Una tabella per i "profili Telegram" (contesto utenti/gruppi)
+Logica di onboarding nel webhook handler che rileva se è un utente/gruppo nuovo
+Domande sequenziali gestite con uno stato ("in onboarding" vs "onboarded")
+Salvataggio/recupero del contesto dal database quando il bot esce/rientra in un gruppo
+
+
+
+
+Il /attiva codice resta come opzione "protetta" - è la modalità attuale dove solo chi ha il codice dal consulente può collegare la chat. Questa rimane invariata.
+
+La novità è una modalità "aperta" parallela - quando un utente qualsiasi scrive al bot senza codice di attivazione, il bot parte con l'onboarding automatico (domande di presentazione). Non serve /attiva. Il bot è accessibile a tutti, chiunque può scrivergli e viene accolto con le domande.
+
+In pratica il consulente avrà un toggle nelle impostazioni Telegram di ogni dipendente:
+
+Modalità Protetta (attuale): serve /attiva CODICE per chattare
+Modalità Aperta: chiunque può scrivere al bot, parte l'onboarding automatico
+Per i gruppi: quando il bot viene aggiunto a un gruppo, parte sempre l'onboarding di contesto (non serve codice).
+
+E sì, funziona per tutti gli 8 dipendenti AI - ogni bot ha la sua personalità (Marco aggressivo, Alessia empatica, etc.), ma il flusso di onboarding è lo stesso. Le domande e il tono delle domande si adattano alla personalità del dipendente.
