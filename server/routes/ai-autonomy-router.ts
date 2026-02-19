@@ -3280,7 +3280,7 @@ router.get("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consu
     const { roleId } = req.params;
 
     const configResult = await db.execute(sql`
-      SELECT id, ai_role, bot_token, bot_username, webhook_url, enabled, group_support, created_at, updated_at
+      SELECT id, ai_role, bot_token, bot_username, webhook_url, enabled, group_support, activation_code, created_at, updated_at
       FROM telegram_bot_configs
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
       LIMIT 1
@@ -3330,18 +3330,20 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
     const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || '';
     const { randomBytes } = await import("crypto");
     const webhookSecret = randomBytes(32).toString('hex');
+    const activationCode = randomBytes(3).toString('hex').toUpperCase();
 
     const upsertResult = await db.execute(sql`
-      INSERT INTO telegram_bot_configs (consultant_id, ai_role, bot_token, bot_username, enabled, group_support, webhook_secret)
-      VALUES (${consultantId}::uuid, ${roleId}, ${bot_token}, ${botInfo.username || ''}, ${enabled}, ${group_support}, ${webhookSecret})
+      INSERT INTO telegram_bot_configs (consultant_id, ai_role, bot_token, bot_username, enabled, group_support, webhook_secret, activation_code)
+      VALUES (${consultantId}::uuid, ${roleId}, ${bot_token}, ${botInfo.username || ''}, ${enabled}, ${group_support}, ${webhookSecret}, ${activationCode})
       ON CONFLICT (consultant_id, ai_role) DO UPDATE SET
         bot_token = EXCLUDED.bot_token,
         bot_username = EXCLUDED.bot_username,
         enabled = EXCLUDED.enabled,
         group_support = EXCLUDED.group_support,
         webhook_secret = EXCLUDED.webhook_secret,
+        activation_code = EXCLUDED.activation_code,
         updated_at = NOW()
-      RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret
+      RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret, activation_code
     `);
 
     const savedConfig = upsertResult.rows[0] as any;

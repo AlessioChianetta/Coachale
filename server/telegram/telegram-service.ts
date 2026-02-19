@@ -169,6 +169,49 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
     }
   }
 
+  const activateMatch = text.match(/^\/attiva\s+(\w+)$/i);
+  if (activateMatch) {
+    const code = activateMatch[1].toUpperCase();
+    const codeCheck = await db.execute(sql`
+      SELECT activation_code FROM telegram_bot_configs 
+      WHERE id = ${parseInt(configId)} AND activation_code = ${code}
+      LIMIT 1
+    `);
+    if (codeCheck.rows.length > 0) {
+      await db.execute(sql`
+        INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active, is_owner)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true, true)
+        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+          active = true, is_owner = true,
+          chat_type = EXCLUDED.chat_type, chat_title = EXCLUDED.chat_title,
+          username = EXCLUDED.username, first_name = EXCLUDED.first_name
+      `);
+      const { randomBytes } = await import("crypto");
+      const newCode = randomBytes(3).toString('hex').toUpperCase();
+      await db.execute(sql`
+        UPDATE telegram_bot_configs SET activation_code = ${newCode}, updated_at = NOW()
+        WHERE id = ${parseInt(configId)}
+      `);
+      await sendTelegramMessage(botToken, chatId, "✅ Attivazione riuscita! Ora puoi usare questo bot normalmente.");
+      return;
+    } else {
+      await sendTelegramMessage(botToken, chatId, "❌ Codice di attivazione non valido.");
+      return;
+    }
+  }
+
+  const ownerCheck = await db.execute(sql`
+    SELECT id FROM telegram_chat_links
+    WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId} AND is_owner = true AND active = true
+    LIMIT 1
+  `);
+
+  if (ownerCheck.rows.length === 0) {
+    await sendTelegramMessage(botToken, chatId, "🔒 Questo bot è privato. Per attivarlo, usa il comando /attiva seguito dal codice di attivazione fornito dalla piattaforma.");
+    console.log(`[TELEGRAM] Unauthorized access attempt from chat ${chatId}`);
+    return;
+  }
+
   let processedText = text;
   if (isGroupChat && botUsername) {
     processedText = text.replace(new RegExp(`@${botUsername}\\b`, 'gi'), '').trim();
@@ -177,30 +220,6 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   if (!processedText) {
     console.log(`[TELEGRAM] Empty message after mention removal, skipping`);
     return;
-  }
-
-  const linkResult = await db.execute(sql`
-    SELECT id, consultant_id, ai_role FROM telegram_chat_links
-    WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId} AND active = true
-    LIMIT 1
-  `);
-
-  if (linkResult.rows.length === 0) {
-    console.log(`[TELEGRAM] No chat link found, auto-creating for chat ${chatId}`);
-    try {
-      await db.execute(sql`
-        INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active)
-        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true)
-        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
-          active = true,
-          chat_type = EXCLUDED.chat_type,
-          chat_title = EXCLUDED.chat_title,
-          username = EXCLUDED.username,
-          first_name = EXCLUDED.first_name
-      `);
-    } catch (linkErr: any) {
-      console.error(`[TELEGRAM] Error creating chat link:`, linkErr.message);
-    }
   }
 
   try {

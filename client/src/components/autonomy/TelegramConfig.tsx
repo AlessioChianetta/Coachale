@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
-import { Loader2, Send, Check, X, Trash2, MessageCircle, Users, Link2, Unlink, ChevronUp, ChevronDown } from "lucide-react";
+import { Loader2, Send, Check, X, Trash2, MessageCircle, Users, Link2, Unlink, ChevronUp, ChevronDown, Copy, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TelegramConfigProps {
@@ -48,6 +48,8 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
   const [botName, setBotName] = useState("");
   const [linkedChats, setLinkedChats] = useState<TelegramChat[]>([]);
   const [maskedToken, setMaskedToken] = useState("");
+  const [activationCode, setActivationCode] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -69,6 +71,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
           setConnected(true);
           setBotUsername(cfg.bot_username || "");
           setBotName(cfg.bot_name || "");
+          setActivationCode(cfg.activation_code || "");
         }
         setLinkedChats(data.linkedChats || []);
       }
@@ -117,9 +120,11 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
         body: JSON.stringify({ bot_token: botToken, enabled, group_support: groupSupport }),
       });
       if (res.ok) {
+        const data = await res.json();
         setSaveResult({ success: true, message: "Configurazione salvata" });
         setConnected(true);
         setMaskedToken(botToken);
+        setActivationCode(data.config?.activation_code || "");
       } else {
         const err = await res.json().catch(() => ({}));
         setSaveResult({ success: false, message: err.error || "Errore nel salvataggio" });
@@ -291,6 +296,37 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                 </div>
               </div>
 
+              {connected && activationCode && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5 text-amber-500" />
+                    Codice di Attivazione
+                  </Label>
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2 border border-border/50">
+                    <code className="text-sm font-mono font-bold tracking-widest text-foreground flex-1">{activationCode}</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[10px] shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`/attiva ${activationCode}`);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? (
+                        <><Check className="h-3 w-3 mr-1" /> Copiato</>
+                      ) : (
+                        <><Copy className="h-3 w-3 mr-1" /> Copia</>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Invia <code className="font-mono bg-muted px-1 rounded">/attiva {activationCode}</code> al bot su Telegram per collegare la tua chat. Il codice si rigenera dopo l'uso.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
                   <Link2 className="h-3.5 w-3.5 text-indigo-500" />
@@ -298,7 +334,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                 </Label>
                 {linkedChats.length === 0 ? (
                   <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
-                    Nessuna chat collegata. Scrivi al bot su Telegram per collegarlo automaticamente.
+                    Nessuna chat collegata. Usa il codice di attivazione per collegare la tua chat.
                   </div>
                 ) : (
                   <div className="space-y-1">
