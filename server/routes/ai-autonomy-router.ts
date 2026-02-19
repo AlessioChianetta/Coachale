@@ -2802,6 +2802,9 @@ router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, require
              COUNT(*)::int as msg_count
       FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
+          SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
+        )))
       GROUP BY DATE(created_at AT TIME ZONE 'Europe/Rome')
       HAVING COUNT(*) >= 2
       ORDER BY msg_date DESC
@@ -2858,6 +2861,9 @@ router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, require
           SELECT sender, message, created_at FROM agent_chat_messages
           WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
             AND DATE(created_at AT TIME ZONE 'Europe/Rome') = ${msgDate}::date
+            AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
+              SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
+            )))
           ORDER BY created_at ASC
         `);
 
@@ -2921,6 +2927,13 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
     const safeLimit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
     const before = req.query.before as string;
 
+    const ownerChatIdResult = await db.execute(sql`
+      SELECT telegram_chat_id FROM telegram_chat_links
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true AND active = true
+      LIMIT 1
+    `);
+    const ownerTelegramChatId = ownerChatIdResult.rows.length > 0 ? (ownerChatIdResult.rows[0] as any).telegram_chat_id : null;
+
     let result;
     if (before) {
       result = await db.execute(sql`
@@ -2928,6 +2941,11 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         FROM agent_chat_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
           AND created_at < ${before}::timestamptz
+          AND (
+            metadata IS NULL
+            OR metadata->>'source' != 'telegram'
+            OR metadata->>'source' = 'telegram' AND (metadata->>'telegram_chat_id')::text = ${String(ownerTelegramChatId || '')}
+          )
         ORDER BY created_at DESC LIMIT ${safeLimit}
       `);
     } else {
@@ -2935,6 +2953,11 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         SELECT id, ai_role, role_name, sender, message, created_at, metadata
         FROM agent_chat_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          AND (
+            metadata IS NULL
+            OR metadata->>'source' != 'telegram'
+            OR metadata->>'source' = 'telegram' AND (metadata->>'telegram_chat_id')::text = ${String(ownerTelegramChatId || '')}
+          )
         ORDER BY created_at DESC LIMIT ${safeLimit}
       `);
     }
@@ -3771,6 +3794,9 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     historyQuery = db.execute(sql`
       SELECT sender, message, created_at FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
+          SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
+        )))
       ORDER BY created_at DESC LIMIT 100
     `);
   }
