@@ -623,7 +623,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
         const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
         const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
           skipUserMessageInsert: true,
-          metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: senderId, sender_name: firstName, sender_username: username },
+          metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
           source: "telegram",
         });
 
@@ -771,7 +771,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
     const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
       skipUserMessageInsert: true,
-      metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: ownerSenderId, sender_name: firstName, sender_username: username },
+      metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: ownerSenderId, sender_name: firstName, sender_username: username },
       source: "telegram",
     });
 

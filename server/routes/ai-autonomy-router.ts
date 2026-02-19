@@ -3729,7 +3729,7 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
   }
 });
 
-export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string }): Promise<string> {
+export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string }): Promise<string> {
   if (!AI_ROLES[roleId]) {
     throw new Error(`Invalid role ID: ${roleId}`);
   }
@@ -3792,18 +3792,33 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
   const focusPriorities = agentCtx.focusPriorities || [];
   const customContext = agentCtx.customContext || '';
 
+  const isTelegram = options?.source === 'telegram';
+  const isGroupChat = options?.metadata?.chat_type === 'group' || options?.metadata?.chat_type === 'supergroup';
+  const senderName = options?.metadata?.sender_name || '';
+  const senderUsername = options?.metadata?.sender_username || '';
+
+  let chatModeDescription: string;
+  if (isTelegram && isGroupChat) {
+    chatModeDescription = `Stai rispondendo su TELEGRAM in un GRUPPO${options?.metadata?.chat_title ? ` chiamato "${options.metadata.chat_title}"` : ''}. La persona che ti sta scrivendo è ${senderName || 'un utente'}${senderUsername ? ` (@${senderUsername})` : ''}. Nel gruppo rispondi in modo conciso e diretto, rivolgiti alla persona per nome. Adatta il tono alla persona specifica.`;
+  } else if (isTelegram) {
+    chatModeDescription = `Stai rispondendo su TELEGRAM in una CHAT PRIVATA con ${senderName || 'il tuo consulente'}${senderUsername ? ` (@${senderUsername})` : ''}. In chat privata puoi essere più dettagliato.`;
+  } else {
+    chatModeDescription = `Stai chattando direttamente con il tuo consulente (il tuo "capo").`;
+  }
+
   let systemPrompt = `${personality}
 
-Stai chattando direttamente con il tuo consulente (il tuo "capo"). Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
+${chatModeDescription} Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
 
 COME COMPORTARTI IN CHAT:
 - Fai domande di follow-up — non limitarti a dare ordini o report
-- Se il consulente ti dice qualcosa, rispondi a QUELLO specificamente
+- Se ti dicono qualcosa, rispondi a QUELLO specificamente
 - Chiedi chiarimenti se non hai abbastanza contesto
 - Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
 - Se hai task attivi o completati, menzionali naturalmente nella conversazione
 - Usa paragrafi separati per ogni concetto (NON fare muri di testo)
 - Usa **grassetto** per i punti chiave e le cifre importanti
+${isTelegram && isGroupChat ? '- Nel gruppo sii conciso (max 3-4 righe se possibile)\n- Ricorda chi è ogni persona e adatta le risposte alla persona specifica' : ''}
 
 ${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
 
@@ -3908,10 +3923,9 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     console.warn(`[AGENT-CHAT-INTERNAL] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
   }
 
-  const isTelegram = options?.source === 'telegram' || options?.metadata?.source === 'telegram';
-
   if (isTelegram) {
     const marcoTelegramExtra = roleId === 'marco' ? `\n- Sei su Telegram ma sei SEMPRE Marco il coach: diretto, crudo, senza filtri. Niente tono da assistente gentile. Provoca, spingi, chiedi conto.` : '';
+    const groupExtra = isGroupChat ? `\n- Sei in un GRUPPO: rispondi alla persona che ti ha scritto (${senderName || 'l\'utente'}) per nome. Persone diverse nel gruppo possono scriverti e devi adattare il tono a ciascuno.` : '';
     systemPrompt += `\nSTAI RISPONDENDO SU TELEGRAM — REGOLE CHAT:
 1. Rispondi SEMPRE in italiano
 2. Scrivi CORTO come su WhatsApp — max 2-3 righe per messaggio, mai muri di testo
@@ -3922,7 +3936,7 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 7. NON inventare dati
 8. Usa grassetto SOLO per 1-2 parole chiave, non per intere frasi
 9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
-10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}`;
+10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}`;
   } else {
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
