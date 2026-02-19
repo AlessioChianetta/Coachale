@@ -395,25 +395,39 @@ function DashboardTab({
     });
   };
 
-  const updateScrollArrows = React.useCallback(() => {
+  const [scrollProgress, setScrollProgress] = React.useState(0);
+  const [hasOverflow, setHasOverflow] = React.useState(false);
+
+  const updateScrollState = React.useCallback(() => {
     const el = kanbanScrollRef.current;
     if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 10);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const overflows = maxScroll > 20;
+    setHasOverflow(overflows);
+    if (overflows) {
+      setCanScrollLeft(el.scrollLeft > 10);
+      setCanScrollRight(el.scrollLeft < maxScroll - 10);
+      setScrollProgress(maxScroll > 0 ? el.scrollLeft / maxScroll : 0);
+    } else {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      setScrollProgress(0);
+    }
   }, []);
 
   React.useEffect(() => {
     const el = kanbanScrollRef.current;
     if (!el) return;
-    updateScrollArrows();
-    el.addEventListener('scroll', updateScrollArrows, { passive: true });
-    const ro = new ResizeObserver(updateScrollArrows);
+    const timer = setTimeout(updateScrollState, 100);
+    el.addEventListener('scroll', updateScrollState, { passive: true });
+    const ro = new ResizeObserver(() => setTimeout(updateScrollState, 50));
     ro.observe(el);
     return () => {
-      el.removeEventListener('scroll', updateScrollArrows);
+      clearTimeout(timer);
+      el.removeEventListener('scroll', updateScrollState);
       ro.disconnect();
     };
-  }, [updateScrollArrows, tasksData]);
+  }, [updateScrollState, tasksData]);
 
   const scrollKanban = (direction: 'left' | 'right') => {
     const el = kanbanScrollRef.current;
@@ -1561,26 +1575,26 @@ function DashboardTab({
               <p className="text-xs mt-1">I task completati sono nell'archivio in basso</p>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative group/kanban">
               {canScrollLeft && (
                 <button
                   onClick={() => scrollKanban('left')}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background/90 border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors backdrop-blur-sm"
+                  className="absolute left-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
                   aria-label="Scorri a sinistra"
                 >
-                  <ChevronLeft className="h-5 w-5 text-foreground" />
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
               )}
               {canScrollRight && (
                 <button
                   onClick={() => scrollKanban('right')}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background/90 border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors backdrop-blur-sm"
+                  className="absolute right-0 top-[45%] -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all"
                   aria-label="Scorri a destra"
                 >
-                  <ChevronRight className="h-5 w-5 text-foreground" />
+                  <ChevronRight className="h-5 w-5" />
                 </button>
               )}
-              <div ref={kanbanScrollRef} className="kanban-scroll pb-4 -mx-2 px-2">
+              <div ref={kanbanScrollRef} className="kanban-scroll pb-2 -mx-2 px-2">
                 <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
                   {kanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];
@@ -1768,6 +1782,40 @@ function DashboardTab({
                 })}
                 </div>
               </div>
+              {hasOverflow && (
+                <div className="mt-2 flex items-center gap-3 px-2">
+                  <button
+                    onClick={() => scrollKanban('left')}
+                    disabled={!canScrollLeft}
+                    className={cn(
+                      "h-8 w-8 rounded-lg border flex items-center justify-center transition-all shrink-0",
+                      canScrollLeft
+                        ? "border-border bg-card hover:bg-primary hover:text-white hover:border-primary cursor-pointer"
+                        : "border-border/30 bg-muted/30 text-muted-foreground/30 cursor-not-allowed"
+                    )}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary/50 rounded-full transition-all duration-200"
+                      style={{ width: `${Math.max(15, ((1 / Math.max(kanbanColumns.length, 1)) * 100))}%`, marginLeft: `${scrollProgress * (100 - Math.max(15, ((1 / Math.max(kanbanColumns.length, 1)) * 100)))}%` }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => scrollKanban('right')}
+                    disabled={!canScrollRight}
+                    className={cn(
+                      "h-8 w-8 rounded-lg border flex items-center justify-center transition-all shrink-0",
+                      canScrollRight
+                        ? "border-border bg-card hover:bg-primary hover:text-white hover:border-primary cursor-pointer"
+                        : "border-border/30 bg-muted/30 text-muted-foreground/30 cursor-not-allowed"
+                    )}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
