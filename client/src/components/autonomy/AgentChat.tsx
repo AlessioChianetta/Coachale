@@ -8,7 +8,7 @@ import { getAuthHeaders } from "@/lib/auth";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import {
-  Send, Loader2, Trash2, User, X, ChevronDown, Sparkles,
+  Send, Loader2, Trash2, User, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -120,6 +120,15 @@ function getRelativeTime(dateStr: string): string {
   return date.toLocaleDateString("it-IT");
 }
 
+interface DailySummary {
+  id: number;
+  summary_date: string;
+  summary_text: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function AgentChat({ roleId, roleName, avatar, accentColor, open, onClose, initialMessage }: AgentChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -129,6 +138,10 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initialMessageProcessed = useRef(false);
+  const [memoriaOpen, setMemoriaOpen] = useState(false);
+  const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
+  const [loadingSummaries, setLoadingSummaries] = useState(false);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -247,6 +260,49 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
     }
   };
 
+  const fetchDailySummaries = useCallback(async () => {
+    setLoadingSummaries(true);
+    try {
+      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=30`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDailySummaries(data.summaries || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch daily summaries:", err);
+    } finally {
+      setLoadingSummaries(false);
+    }
+  }, [roleId]);
+
+  const toggleMemoria = useCallback(() => {
+    const newState = !memoriaOpen;
+    setMemoriaOpen(newState);
+    if (newState && dailySummaries.length === 0) {
+      fetchDailySummaries();
+    }
+  }, [memoriaOpen, dailySummaries.length, fetchDailySummaries]);
+
+  const toggleDay = useCallback((date: string) => {
+    setExpandedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }, []);
+
+  const formatDateItalian = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const suggestions = ROLE_SUGGESTIONS[roleId] || ROLE_SUGGESTIONS.personalizza;
 
   if (!open) return null;
@@ -270,6 +326,15 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
             <Button
               variant="ghost"
               size="icon"
+              className={cn("h-8 w-8", memoriaOpen && "bg-primary/10")}
+              onClick={toggleMemoria}
+              title="Memoria"
+            >
+              <Brain className="h-4 w-4 text-muted-foreground" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={clearChat}
               disabled={clearing || messages.length === 0}
@@ -287,6 +352,79 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
             </Button>
           </div>
         </div>
+
+        <AnimatePresence>
+          {memoriaOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="border-b overflow-hidden"
+            >
+              <div className="px-4 py-3 bg-muted/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4" style={{ color: accentColor }} />
+                    <h4 className="text-sm font-semibold">Memoria</h4>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setMemoriaOpen(false)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <ScrollArea className="max-h-[300px]">
+                  {loadingSummaries ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : dailySummaries.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Brain className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                      <p className="text-xs text-muted-foreground">Nessun riassunto giornaliero disponibile</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">I riassunti vengono generati automaticamente dopo 40+ messaggi</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 pr-3">
+                      {dailySummaries.map((ds) => (
+                        <div key={ds.id} className="rounded-lg border bg-background/80">
+                          <button
+                            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors rounded-lg"
+                            onClick={() => toggleDay(ds.summary_date)}
+                          >
+                            <ChevronRight className={cn("h-3 w-3 shrink-0 transition-transform", expandedDays.has(ds.summary_date) && "rotate-90")} />
+                            <Calendar className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="text-xs font-medium flex-1 capitalize">{formatDateItalian(ds.summary_date)}</span>
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                              <MessageSquare className="h-2.5 w-2.5" />
+                              {ds.message_count}
+                            </span>
+                          </button>
+                          <AnimatePresence>
+                            {expandedDays.has(ds.summary_date) && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-3 pb-3 pt-1">
+                                  <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                    {ds.summary_text}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div
           ref={scrollRef}

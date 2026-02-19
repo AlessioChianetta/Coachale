@@ -2763,6 +2763,29 @@ Il tuo obiettivo: portare questa attività ai massimi livelli, a numeri mai vist
   personalizza: `Sei un assistente AI personalizzato. Segui le istruzioni specifiche del consulente per il tuo ruolo e comportamento. In chat sei collaborativo e disponibile al dialogo.`,
 };
 
+router.get("/agent-chat/:roleId/daily-summaries", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { roleId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 90);
+    
+    const result = await db.execute(sql`
+      SELECT id, summary_date::text as summary_date, summary_text, message_count, created_at, updated_at
+      FROM agent_chat_daily_summaries
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY summary_date DESC
+      LIMIT ${limit}
+    `);
+    
+    return res.json({ summaries: result.rows });
+  } catch (error: any) {
+    console.error("[DAILY-SUMMARY] Error fetching:", error.message);
+    return res.status(500).json({ error: "Failed to fetch daily summaries" });
+  }
+});
+
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -3238,6 +3261,70 @@ Esempio di flusso corretto:
           if (allMsgs.length <= keepCount + 10) return;
           const msgsToSummarize = allMsgs.slice(0, -keepCount);
 
+          const dayGroups: Record<string, any[]> = {};
+          for (const m of msgsToSummarize) {
+            const dayKey = new Date(m.created_at).toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+            if (!dayGroups[dayKey]) dayGroups[dayKey] = [];
+            dayGroups[dayKey].push(m);
+          }
+
+          const dayKeys = Object.keys(dayGroups);
+          const existingSummariesResult = await db.execute(sql`
+            SELECT summary_date::text as summary_date FROM agent_chat_daily_summaries
+            WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+              AND summary_date = ANY(${dayKeys}::date[])
+          `);
+          const existingDays = new Set((existingSummariesResult.rows as any[]).map(r => r.summary_date.substring(0, 10)));
+
+          for (const [day, msgs] of Object.entries(dayGroups)) {
+            if (existingDays.has(day)) continue;
+            
+            const summaryInput = msgs.map((m: any) =>
+              `[${m.sender === 'consultant' ? 'Consulente' : capturedRoleName}] ${m.message}`
+            ).join('\n\n');
+
+            const daySummaryPrompt = `Riassumi questa conversazione del ${day} tra il consulente e ${capturedRoleName} in modo conciso ma completo. Mantieni:
+- Decisioni prese
+- Azioni concordate
+- Aggiornamenti importanti
+- Feedback e preferenze espresse dal consulente
+- Task discussi e il loro stato
+Scrivi il riassunto in italiano, in terza persona, max 300 parole.
+
+CONVERSAZIONE DEL ${day}:
+${summaryInput}`;
+
+            try {
+              let daySummaryResult: any;
+              if (capturedAiClient.models?.generateContent) {
+                daySummaryResult = await trackedGenerateContent(capturedAiClient, {
+                  model: capturedModel,
+                  contents: [{ role: 'user' as const, parts: [{ text: daySummaryPrompt }] }],
+                  config: { temperature: 0.3, maxOutputTokens: 600 },
+                }, { consultantId: capturedConsultantId, feature: `agent-daily-summary:${capturedRoleId}` });
+              } else {
+                daySummaryResult = await capturedAiClient.generateContent({
+                  model: capturedModel,
+                  contents: [{ role: 'user' as const, parts: [{ text: daySummaryPrompt }] }],
+                  generationConfig: { temperature: 0.3, maxOutputTokens: 600 },
+                });
+              }
+
+              const daySummaryText = daySummaryResult.text?.() || daySummaryResult.response?.text?.() || '';
+              if (daySummaryText && daySummaryText.length > 30) {
+                await db.execute(sql`
+                  INSERT INTO agent_chat_daily_summaries (consultant_id, ai_role, summary_date, summary_text, message_count)
+                  VALUES (${capturedConsultantId}::uuid, ${capturedRoleId}, ${day}::date, ${daySummaryText}, ${msgs.length})
+                  ON CONFLICT (consultant_id, ai_role, summary_date) DO UPDATE SET
+                    summary_text = EXCLUDED.summary_text, message_count = EXCLUDED.message_count, updated_at = NOW()
+                `);
+                console.log(`[DAILY-SUMMARY] Generated summary for ${capturedRoleId} on ${day} (${msgs.length} msgs)`);
+              }
+            } catch (dayErr: any) {
+              console.warn(`[DAILY-SUMMARY] Error generating summary for ${day}:`, dayErr.message);
+            }
+          }
+
           const summaryInput = msgsToSummarize.map((m: any) =>
             `[${m.sender === 'consultant' ? 'Consulente' : capturedRoleName}] ${m.message}`
           ).join('\n\n');
@@ -3297,10 +3384,11 @@ ${summaryInput}`;
                   AND created_at < ${firstKeptMsg.created_at}::timestamptz
               `);
             }
-            console.log(`📝 [AGENT-CHAT] Auto-summary generated for ${capturedRoleId}, summarized ${msgsToSummarize.length} messages, kept last ${keepCount}`);
+
+            console.log(`[AGENT-SUMMARY] Summary updated for ${capturedRoleId}, kept ${keepCount} msgs, deleted older ones`);
           }
-        } catch (sumErr: any) {
-          console.error(`[AGENT-CHAT] Auto-summary error for ${capturedRoleId}:`, sumErr.message);
+        } catch (summaryErr: any) {
+          console.error(`[AGENT-SUMMARY] Error:`, summaryErr.message);
         }
       })();
     }
@@ -3670,7 +3758,26 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 `;
 
   if (existingSummary) {
-    systemPrompt += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI CON IL CONSULENTE:\n${existingSummary}\n`;
+    systemPrompt += `\nRIASSUNTO GENERALE CONVERSAZIONI PRECEDENTI:\n${existingSummary}\n`;
+  }
+
+  try {
+    const dailySummariesResult = await db.execute(sql`
+      SELECT summary_date::text as summary_date, summary_text, message_count
+      FROM agent_chat_daily_summaries
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY summary_date DESC LIMIT 7
+    `);
+    const dailySummaries = dailySummariesResult.rows as any[];
+    if (dailySummaries.length > 0) {
+      systemPrompt += `\nRIASSUNTI GIORNALIERI RECENTI:\n`;
+      for (const ds of dailySummaries.reverse()) {
+        const dateFormatted = new Date(ds.summary_date).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        systemPrompt += `\n📅 ${dateFormatted} (${ds.message_count} messaggi):\n${ds.summary_text}\n`;
+      }
+    }
+  } catch (dsErr: any) {
+    console.warn(`[DAILY-SUMMARY] Error fetching daily summaries for prompt:`, dsErr.message);
   }
 
   const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
