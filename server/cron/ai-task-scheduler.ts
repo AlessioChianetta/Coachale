@@ -1951,18 +1951,40 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         throw fetchErr;
       }
 
+      const freshAllTasksResult = await db.execute(sql`
+        SELECT t.id, t.contact_id::text as contact_id, t.contact_name, t.task_category, 
+               t.ai_instruction, t.status, t.ai_role, t.created_at,
+               t.completed_at, t.result_summary
+        FROM ai_scheduled_tasks t
+        WHERE t.consultant_id::text = ${cId}
+          AND t.created_at > NOW() - INTERVAL '7 days'
+          AND t.status IN ('scheduled', 'waiting_approval', 'approved', 'cancelled', 'completed', 'failed', 'deferred', 'in_progress')
+        ORDER BY t.created_at DESC
+        LIMIT 40
+      `);
+      const freshAllTasksSummary = (freshAllTasksResult.rows as any[]).map(t => ({
+        id: t.id,
+        contact: t.contact_name || t.contact_id || 'N/A',
+        category: t.task_category,
+        instruction: t.ai_instruction || '',
+        status: t.status,
+        role: t.ai_role || 'generic',
+        created: t.created_at ? new Date(t.created_at).toISOString() : 'N/A',
+        result: t.result_summary || null,
+      }));
+
       let prompt = role.buildPrompt({
         clientsList: effectiveClientsList,
         roleData,
         settings,
         romeTimeStr,
         recentCompletedTasks: recentTasksSummary,
-        recentAllTasks: recentAllTasksSummary,
+        recentAllTasks: freshAllTasksSummary,
         permanentBlocks,
         recentReasoningByRole,
       });
 
-      const activeTasksForRole = recentAllTasksSummary.filter(t => 
+      const activeTasksForRole = freshAllTasksSummary.filter(t => 
         t.role === role.id && ['scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress'].includes(t.status)
       );
       if (activeTasksForRole.length > 0) {
