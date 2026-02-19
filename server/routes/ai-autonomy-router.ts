@@ -3132,6 +3132,25 @@ Esempio di flusso corretto:
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse})
     `);
 
+    try {
+      const telegramConfigResult = await db.execute(sql`
+        SELECT tc.bot_token, tl.telegram_chat_id
+        FROM telegram_bot_configs tc
+        JOIN telegram_chat_links tl ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
+        WHERE tc.consultant_id = ${consultantId}::uuid AND tc.ai_role = ${roleId} AND tc.enabled = true AND tl.active = true
+      `);
+      if (telegramConfigResult.rows.length > 0) {
+        const { sendTelegramMessage } = await import("../telegram/telegram-service");
+        for (const row of telegramConfigResult.rows as any[]) {
+          sendTelegramMessage(row.bot_token, row.telegram_chat_id, aiResponse, "Markdown").catch(err =>
+            console.warn("[TELEGRAM] Failed to forward to Telegram:", err.message)
+          );
+        }
+      }
+    } catch (tgErr: any) {
+      console.warn("[TELEGRAM] Forward error:", tgErr.message);
+    }
+
     const totalCountResult = await db.execute(sql`
       SELECT COUNT(*)::int as cnt FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
@@ -3240,6 +3259,175 @@ ${summaryInput}`;
   }
 });
 
+// =========================================================================
+// TELEGRAM CONFIG ROUTES
+// =========================================================================
+
+router.get("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+
+    const configResult = await db.execute(sql`
+      SELECT id, ai_role, bot_token, bot_username, webhook_url, enabled, group_support, created_at, updated_at
+      FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      LIMIT 1
+    `);
+
+    const config = configResult.rows[0] as any || null;
+
+    let linkedChats: any[] = [];
+    if (config) {
+      const chatsResult = await db.execute(sql`
+        SELECT id, telegram_chat_id, chat_type, chat_title, username, first_name, linked_at, active
+        FROM telegram_chat_links
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ORDER BY linked_at DESC
+      `);
+      linkedChats = chatsResult.rows as any[];
+    }
+
+    if (config) {
+      config.bot_token_masked = config.bot_token ? config.bot_token.substring(0, 8) + '...' + config.bot_token.slice(-4) : '';
+    }
+
+    return res.json({ config, linkedChats });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error fetching config:", error);
+    return res.status(500).json({ error: "Failed to fetch Telegram config" });
+  }
+});
+
+router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+    const { bot_token, enabled = true, group_support = false } = req.body;
+
+    if (!bot_token || typeof bot_token !== 'string') {
+      return res.status(400).json({ error: "bot_token is required" });
+    }
+
+    const { getBotInfo, setTelegramWebhook, removeTelegramWebhook } = await import("../telegram/telegram-service");
+    const botInfo = await getBotInfo(bot_token);
+    if (!botInfo.ok) {
+      return res.status(400).json({ error: `Invalid bot token: ${botInfo.error}` });
+    }
+
+    const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || '';
+    const { randomBytes } = await import("crypto");
+    const webhookSecret = randomBytes(32).toString('hex');
+
+    const upsertResult = await db.execute(sql`
+      INSERT INTO telegram_bot_configs (consultant_id, ai_role, bot_token, bot_username, enabled, group_support, webhook_secret)
+      VALUES (${consultantId}::uuid, ${roleId}, ${bot_token}, ${botInfo.username || ''}, ${enabled}, ${group_support}, ${webhookSecret})
+      ON CONFLICT (consultant_id, ai_role) DO UPDATE SET
+        bot_token = EXCLUDED.bot_token,
+        bot_username = EXCLUDED.bot_username,
+        enabled = EXCLUDED.enabled,
+        group_support = EXCLUDED.group_support,
+        webhook_secret = EXCLUDED.webhook_secret,
+        updated_at = NOW()
+      RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret
+    `);
+
+    const savedConfig = upsertResult.rows[0] as any;
+    const webhookUrl = `https://${domain}/api/telegram/webhook/${savedConfig.id}`;
+
+    if (enabled) {
+      const webhookSet = await setTelegramWebhook(bot_token, webhookUrl, savedConfig.webhook_secret);
+      if (webhookSet) {
+        await db.execute(sql`
+          UPDATE telegram_bot_configs SET webhook_url = ${webhookUrl}, updated_at = NOW()
+          WHERE id = ${savedConfig.id}
+        `);
+        savedConfig.webhook_url = webhookUrl;
+      }
+    } else {
+      await removeTelegramWebhook(bot_token);
+      await db.execute(sql`
+        UPDATE telegram_bot_configs SET webhook_url = NULL, updated_at = NOW()
+        WHERE id = ${savedConfig.id}
+      `);
+      savedConfig.webhook_url = null;
+    }
+
+    return res.json({
+      success: true,
+      config: {
+        ...savedConfig,
+        bot_token_masked: bot_token.substring(0, 8) + '...' + bot_token.slice(-4),
+        bot_username: botInfo.username,
+        bot_firstName: botInfo.firstName,
+      },
+    });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error saving config:", error);
+    return res.status(500).json({ error: "Failed to save Telegram config" });
+  }
+});
+
+router.post("/telegram-config/:roleId/test", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+
+    const configResult = await db.execute(sql`
+      SELECT bot_token FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      LIMIT 1
+    `);
+
+    const config = configResult.rows[0] as any;
+    if (!config?.bot_token) {
+      return res.status(404).json({ error: "No Telegram bot configured for this role" });
+    }
+
+    const { getBotInfo } = await import("../telegram/telegram-service");
+    const botInfo = await getBotInfo(config.bot_token);
+    return res.json(botInfo);
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error testing bot:", error);
+    return res.status(500).json({ error: "Failed to test bot connection" });
+  }
+});
+
+router.delete("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+
+    const configResult = await db.execute(sql`
+      SELECT bot_token FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      LIMIT 1
+    `);
+
+    const config = configResult.rows[0] as any;
+    if (config?.bot_token) {
+      const { removeTelegramWebhook } = await import("../telegram/telegram-service");
+      await removeTelegramWebhook(config.bot_token);
+    }
+
+    await db.execute(sql`
+      DELETE FROM telegram_bot_configs WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+    await db.execute(sql`
+      DELETE FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error deleting config:", error);
+    return res.status(500).json({ error: "Failed to delete Telegram config" });
+  }
+});
+
 router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -3275,5 +3463,215 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
     return res.status(500).json({ error: "Failed to clear chat" });
   }
 });
+
+export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any> }): Promise<string> {
+  if (!AI_ROLES[roleId]) {
+    throw new Error(`Invalid role ID: ${roleId}`);
+  }
+
+  const role = AI_ROLES[roleId];
+  const roleName = role?.name || roleId;
+
+  if (!options?.skipUserMessageInsert) {
+    const metadataJson = JSON.stringify(options?.metadata || { source: "web" });
+    await db.execute(sql`
+      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()}, ${metadataJson}::jsonb)
+    `);
+  }
+
+  const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
+    db.execute(sql`
+      SELECT sender, message, created_at FROM agent_chat_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY created_at DESC LIMIT 20
+    `),
+    db.execute(sql`
+      SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId}::uuid LIMIT 1
+    `),
+    db.execute(sql`
+      SELECT title, description, event_data, created_at FROM ai_activity_log
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY created_at DESC LIMIT 5
+    `),
+    db.execute(sql`
+      SELECT id, ai_instruction, task_category, contact_name, status, priority, scheduled_at, created_at
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        AND status IN ('scheduled', 'waiting_approval', 'in_progress', 'approved', 'draft', 'paused')
+      ORDER BY priority DESC, created_at DESC LIMIT 10
+    `),
+    db.execute(sql`
+      SELECT id, ai_instruction, task_category, contact_name, status, result_summary, result_data, completed_at
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
+      ORDER BY completed_at DESC LIMIT 8
+    `),
+  ]);
+
+  const chatHistory = (historyResult.rows as any[]).reverse();
+  const settingsRow = contextResult.rows[0] as any;
+  const agentCtx = settingsRow?.agent_contexts?.[roleId] || {};
+  const customInstructions = settingsRow?.custom_instructions || '';
+  const chatSummaries = settingsRow?.chat_summaries || {};
+  const existingSummary = chatSummaries[roleId]?.summary || '';
+  const recentActivity = recentActivityResult.rows as any[];
+  const activeTasks = activeTasksResult.rows as any[];
+  const completedTasks = completedTasksResult.rows as any[];
+
+  const personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
+  const focusPriorities = agentCtx.focusPriorities || [];
+  const customContext = agentCtx.customContext || '';
+
+  let systemPrompt = `${personality}
+
+Stai chattando direttamente con il tuo consulente (il tuo "capo"). Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
+
+COME COMPORTARTI IN CHAT:
+- Fai domande di follow-up — non limitarti a dare ordini o report
+- Se il consulente ti dice qualcosa, rispondi a QUELLO specificamente
+- Chiedi chiarimenti se non hai abbastanza contesto
+- Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
+- Se hai task attivi o completati, menzionali naturalmente nella conversazione
+- Usa paragrafi separati per ogni concetto (NON fare muri di testo)
+- Usa **grassetto** per i punti chiave e le cifre importanti
+
+${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
+
+${customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
+
+${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
+`;
+
+  if (existingSummary) {
+    systemPrompt += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI CON IL CONSULENTE:\n${existingSummary}\n`;
+  }
+
+  if (activeTasks.length > 0) {
+    systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task:\n`;
+    for (let idx = 0; idx < activeTasks.length; idx++) {
+      const t = activeTasks[idx];
+      const statusLabels: Record<string, string> = {
+        scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
+        in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
+      };
+      systemPrompt += `${idx + 1}. [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
+    }
+  }
+
+  if (completedTasks.length > 0) {
+    systemPrompt += `\nTASK COMPLETATI DI RECENTE:\n`;
+    for (const t of completedTasks) {
+      systemPrompt += `- [${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${t.ai_instruction?.substring(0, 200) || 'N/A'}`;
+      if (t.result_summary) systemPrompt += ` → ${t.result_summary.substring(0, 200)}`;
+      systemPrompt += '\n';
+    }
+  }
+
+  if (recentActivity.length > 0) {
+    systemPrompt += `\nLE TUE ULTIME ANALISI/AZIONI:\n`;
+    for (const a of recentActivity) {
+      systemPrompt += `- [${new Date(a.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${a.title}: ${a.description?.substring(0, 200) || ''}\n`;
+    }
+  }
+
+  try {
+    const autonomousRole = AI_ROLES[roleId];
+    if (autonomousRole?.fetchRoleData) {
+      const clientIdsResult = await db.execute(sql`
+        SELECT id::text FROM users WHERE consultant_id = ${consultantId}::text AND is_active = true LIMIT 50
+      `);
+      const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
+      const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
+      if (roleData && Object.keys(roleData).length > 0) {
+        let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
+        for (const [key, value] of Object.entries(roleData)) {
+          if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
+          const jsonStr = JSON.stringify(value, null, 0);
+          roleDataSection += `${key}: ${jsonStr.length > 2000 ? jsonStr.substring(0, 2000) + '...' : jsonStr}\n`;
+        }
+        systemPrompt += roleDataSection;
+      }
+    }
+  } catch (roleDataErr: any) {
+    console.warn(`[AGENT-CHAT-INTERNAL] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
+  }
+
+  systemPrompt += `\nREGOLE:
+1. Rispondi SEMPRE in italiano
+2. Usa paragrafi separati
+3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
+4. DIALOGA: fai domande, chiedi feedback
+5. NON inventare dati
+6. Usa **grassetto** per cifre e concetti chiave`;
+
+  const historyLimit = existingSummary ? 15 : 20;
+  const relevantHistory = chatHistory.slice(-historyLimit);
+  const conversationParts = relevantHistory.map((m: any) => ({
+    role: m.sender === 'consultant' ? 'user' as const : 'model' as const,
+    parts: [{ text: m.message }],
+  }));
+
+  let aiResponse = '';
+  let aiClient: any = null;
+  let providerModel = GEMINI_3_MODEL;
+
+  try {
+    const { getAIProvider } = await import("../ai/provider-factory");
+    try {
+      const provider = await getAIProvider(consultantId, consultantId);
+      provider.setFeature?.(`agent-chat:${roleId}`);
+      aiClient = provider.client;
+      const providerName = provider.metadata?.name || '';
+      const { getModelForProviderName } = await import("../ai/provider-factory");
+      providerModel = getModelForProviderName(providerName);
+    } catch {
+      const apiKey = await getGeminiApiKeyForClassifier();
+      if (apiKey) {
+        const genAI = new GoogleGenAI({ apiKey });
+        aiClient = genAI;
+      }
+    }
+
+    if (!aiClient) throw new Error("No AI provider available");
+
+    const chatContents = [
+      { role: 'user' as const, parts: [{ text: systemPrompt }] },
+      { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
+      ...conversationParts,
+    ];
+
+    let response: any;
+    if (aiClient.models?.generateContent) {
+      response = await trackedGenerateContent(aiClient, {
+        model: providerModel,
+        contents: chatContents,
+        config: { temperature: 0.7, maxOutputTokens: 2048 },
+      }, { consultantId, feature: `agent-chat:${roleId}` });
+    } else {
+      response = await aiClient.generateContent({
+        model: providerModel,
+        contents: chatContents,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+      });
+    }
+
+    aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
+  } catch (err: any) {
+    console.error(`[AGENT-CHAT-INTERNAL] AI error for ${roleId}:`, err.message);
+    aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco.`;
+  }
+
+  aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
+
+  await db.execute(sql`
+    INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+    VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse}, '{"source":"telegram"}'::jsonb)
+  `);
+
+  return aiResponse;
+}
 
 export default router;

@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
+import TelegramConfig from "./TelegramConfig";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
@@ -2773,6 +2774,7 @@ function SettingsTab({
                               </div>
 
                               <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
+                              <TelegramConfig roleId={role.id} roleName={role.name} />
                             </div>
                           </motion.div>
                         )}

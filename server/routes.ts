@@ -13902,6 +13902,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // AI Autonomy settings and activity log routes
   app.use("/api/ai-autonomy", aiAutonomyRouter);
 
+  // Telegram webhook (public, no auth - Telegram calls this directly)
+  app.post("/api/telegram/webhook/:configId", async (req, res) => {
+    const { handleTelegramWebhook } = await import("./telegram/telegram-webhook-handler");
+    await handleTelegramWebhook(req, res);
+  });
+
   // Round-Robin OAuth callback (unauthenticated - Google redirect)
   app.get("/api/round-robin/members/calendar/oauth/callback", async (req, res) => {
     try {
