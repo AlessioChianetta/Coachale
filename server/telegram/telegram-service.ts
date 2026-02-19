@@ -625,6 +625,8 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
           skipUserMessageInsert: true,
           metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
           source: "telegram",
+          isOpenMode: true,
+          telegramChatId: chatId,
         });
 
         await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");

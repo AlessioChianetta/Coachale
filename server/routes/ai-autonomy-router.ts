@@ -3729,7 +3729,7 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
   }
 });
 
-export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string }): Promise<string> {
+export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string; telegramContext?: string; isOpenMode?: boolean; telegramChatId?: number }): Promise<string> {
   if (!AI_ROLES[roleId]) {
     throw new Error(`Invalid role ID: ${roleId}`);
   }
@@ -3745,22 +3745,48 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     `);
   }
 
-  const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
-    db.execute(sql`
+  const isOpenMode = options?.isOpenMode === true;
+  const telegramChatId = options?.telegramChatId;
+
+  if (isOpenMode && !telegramChatId) {
+    console.error(`[AGENT-CHAT-INTERNAL] isOpenMode=true but telegramChatId is missing, falling back to empty history for safety`);
+  }
+
+  let historyQuery: Promise<any>;
+  const emptyResult = { rows: [] };
+
+  if (isOpenMode) {
+    if (telegramChatId) {
+      historyQuery = db.execute(sql`
+        SELECT sender, message, created_at FROM agent_chat_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+          AND metadata->>'telegram_chat_id' = ${String(telegramChatId)}
+        ORDER BY created_at DESC LIMIT 50
+      `);
+    } else {
+      console.error('[AGENT-CHAT-INTERNAL] isOpenMode without telegramChatId - returning empty history for safety');
+      historyQuery = Promise.resolve(emptyResult);
+    }
+  } else {
+    historyQuery = db.execute(sql`
       SELECT sender, message, created_at FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
       ORDER BY created_at DESC LIMIT 100
-    `),
+    `);
+  }
+
+  const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
+    historyQuery,
     db.execute(sql`
       SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
       WHERE consultant_id = ${consultantId}::uuid LIMIT 1
     `),
-    db.execute(sql`
+    isOpenMode ? Promise.resolve(emptyResult) : db.execute(sql`
       SELECT title, description, event_data, created_at FROM ai_activity_log
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
       ORDER BY created_at DESC LIMIT 5
     `),
-    db.execute(sql`
+    isOpenMode ? Promise.resolve(emptyResult) : db.execute(sql`
       SELECT id, ai_instruction, task_category, contact_name, status, priority, scheduled_at, created_at
       FROM ai_scheduled_tasks
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
@@ -3768,7 +3794,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       ORDER BY priority DESC, created_at DESC
       LIMIT 200
     `),
-    db.execute(sql`
+    isOpenMode ? Promise.resolve(emptyResult) : db.execute(sql`
       SELECT id, ai_instruction, task_category, contact_name, status, result_summary, result_data, completed_at
       FROM ai_scheduled_tasks
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
@@ -3820,41 +3846,49 @@ COME COMPORTARTI IN CHAT:
 - Usa **grassetto** per i punti chiave e le cifre importanti
 ${isTelegram && isGroupChat ? '- Nel gruppo sii conciso (max 3-4 righe se possibile)\n- Ricorda chi è ogni persona e adatta le risposte alla persona specifica' : ''}
 
-${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
+${!isOpenMode && focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
 
-${customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
+${!isOpenMode && customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
 
-${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
+${!isOpenMode && customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 `;
 
-  if (existingSummary) {
+  if (isOpenMode) {
+    systemPrompt += `\nStai parlando con un UTENTE ESTERNO che ti ha contattato via Telegram in modalità aperta.
+NON hai accesso ai dati privati del consulente. NON menzionare task, clienti, o informazioni riservate.
+Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con questa persona.\n`;
+  }
+
+  if (!isOpenMode && existingSummary) {
     systemPrompt += `\nRIASSUNTO GENERALE CONVERSAZIONI PRECEDENTI:\n${existingSummary}\n`;
   }
 
-  try {
-    const dailySummariesResult = await db.execute(sql`
-      SELECT summary_date::text as summary_date, summary_text, message_count
-      FROM agent_chat_daily_summaries
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY summary_date DESC LIMIT 7
-    `);
-    const dailySummaries = dailySummariesResult.rows as any[];
-    if (dailySummaries.length > 0) {
-      systemPrompt += `\nRIASSUNTI GIORNALIERI RECENTI:\n`;
-      for (const ds of dailySummaries.reverse()) {
-        const dateFormatted = new Date(ds.summary_date).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        systemPrompt += `\n📅 ${dateFormatted} (${ds.message_count} messaggi):\n${ds.summary_text}\n`;
+  if (!isOpenMode) {
+    try {
+      const dailySummariesResult = await db.execute(sql`
+        SELECT summary_date::text as summary_date, summary_text, message_count
+        FROM agent_chat_daily_summaries
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+        ORDER BY summary_date DESC LIMIT 7
+      `);
+      const dailySummaries = dailySummariesResult.rows as any[];
+      if (dailySummaries.length > 0) {
+        systemPrompt += `\nRIASSUNTI GIORNALIERI RECENTI:\n`;
+        for (const ds of dailySummaries.reverse()) {
+          const dateFormatted = new Date(ds.summary_date).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          systemPrompt += `\n📅 ${dateFormatted} (${ds.message_count} messaggi):\n${ds.summary_text}\n`;
+        }
       }
+    } catch (dsErr: any) {
+      console.warn(`[DAILY-SUMMARY] Error fetching daily summaries for prompt:`, dsErr.message);
     }
-  } catch (dsErr: any) {
-    console.warn(`[DAILY-SUMMARY] Error fetching daily summaries for prompt:`, dsErr.message);
   }
 
   const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
   const MAX_TASKS_TOKENS = 4000;
   let tasksTokenCount = 0;
 
-  if (activeTasks.length > 0) {
+  if (!isOpenMode && activeTasks.length > 0) {
     systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task:\n`;
     for (let idx = 0; idx < activeTasks.length; idx++) {
       const t = activeTasks[idx];
@@ -3872,7 +3906,7 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     }
   }
 
-  if (completedTasks.length > 0) {
+  if (!isOpenMode && completedTasks.length > 0) {
     systemPrompt += `\nTASK COMPLETATI — TOTALE: ${completedTasks.length} task:\n`;
     for (let idx = 0; idx < completedTasks.length; idx++) {
       const t = completedTasks[idx];
@@ -3894,33 +3928,35 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     }
   }
 
-  if (recentActivity.length > 0) {
+  if (!isOpenMode && recentActivity.length > 0) {
     systemPrompt += `\nLE TUE ULTIME ANALISI/AZIONI:\n`;
     for (const a of recentActivity) {
       systemPrompt += `- [${new Date(a.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${a.title}: ${a.description?.substring(0, 200) || ''}\n`;
     }
   }
 
-  try {
-    const autonomousRole = AI_ROLES[roleId];
-    if (autonomousRole?.fetchRoleData) {
-      const clientIdsResult = await db.execute(sql`
-        SELECT id::text FROM users WHERE consultant_id = ${consultantId}::text AND is_active = true LIMIT 50
-      `);
-      const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
-      const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
-      if (roleData && Object.keys(roleData).length > 0) {
-        let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
-        for (const [key, value] of Object.entries(roleData)) {
-          if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
-          const jsonStr = JSON.stringify(value, null, 0);
-          roleDataSection += `${key}: ${jsonStr.length > 2000 ? jsonStr.substring(0, 2000) + '...' : jsonStr}\n`;
+  if (!isOpenMode) {
+    try {
+      const autonomousRole = AI_ROLES[roleId];
+      if (autonomousRole?.fetchRoleData) {
+        const clientIdsResult = await db.execute(sql`
+          SELECT id::text FROM users WHERE consultant_id = ${consultantId}::text AND is_active = true LIMIT 50
+        `);
+        const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
+        const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
+        if (roleData && Object.keys(roleData).length > 0) {
+          let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE:\n';
+          for (const [key, value] of Object.entries(roleData)) {
+            if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
+            const jsonStr = JSON.stringify(value, null, 0);
+            roleDataSection += `${key}: ${jsonStr.length > 2000 ? jsonStr.substring(0, 2000) + '...' : jsonStr}\n`;
+          }
+          systemPrompt += roleDataSection;
         }
-        systemPrompt += roleDataSection;
       }
+    } catch (roleDataErr: any) {
+      console.warn(`[AGENT-CHAT-INTERNAL] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
     }
-  } catch (roleDataErr: any) {
-    console.warn(`[AGENT-CHAT-INTERNAL] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
   }
 
   if (isTelegram) {
