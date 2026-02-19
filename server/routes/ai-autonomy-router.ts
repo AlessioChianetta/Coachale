@@ -3378,7 +3378,7 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
       return res.status(400).json({ error: `Invalid bot token: ${botInfo.error}` });
     }
 
-    const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS || '';
+    const domain = process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
     const { randomBytes } = await import("crypto");
     const webhookSecret = randomBytes(32).toString('hex');
     const activationCode = randomBytes(3).toString('hex').toUpperCase();
@@ -3391,8 +3391,6 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
         bot_username = EXCLUDED.bot_username,
         enabled = EXCLUDED.enabled,
         group_support = EXCLUDED.group_support,
-        webhook_secret = EXCLUDED.webhook_secret,
-        activation_code = EXCLUDED.activation_code,
         open_mode = EXCLUDED.open_mode,
         updated_at = NOW()
       RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret, activation_code, open_mode
@@ -3506,6 +3504,49 @@ router.delete("/telegram-config/:roleId", authenticateToken, requireAnyRole(["co
   } catch (error: any) {
     console.error("[TELEGRAM] Error deleting config:", error);
     return res.status(500).json({ error: "Failed to delete Telegram config" });
+  }
+});
+
+router.post("/telegram-refresh-webhooks", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const domain = process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
+    if (!domain) return res.status(400).json({ error: "No domain configured" });
+
+    const { setTelegramWebhook } = await import("../telegram/telegram-service");
+
+    const configs = await db.execute(sql`
+      SELECT id, bot_token, webhook_secret, webhook_url, ai_role
+      FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND enabled = true
+    `);
+
+    const results: any[] = [];
+    for (const row of configs.rows as any[]) {
+      const newWebhookUrl = `https://${domain}/api/telegram/webhook/${row.id}`;
+      const needsUpdate = row.webhook_url !== newWebhookUrl;
+
+      if (needsUpdate) {
+        const success = await setTelegramWebhook(row.bot_token, newWebhookUrl, row.webhook_secret);
+        if (success) {
+          await db.execute(sql`
+            UPDATE telegram_bot_configs SET webhook_url = ${newWebhookUrl}, updated_at = NOW()
+            WHERE id = ${row.id}
+          `);
+        }
+        results.push({ role: row.ai_role, old_url: row.webhook_url, new_url: newWebhookUrl, success });
+      } else {
+        results.push({ role: row.ai_role, url: newWebhookUrl, status: 'already_current' });
+      }
+    }
+
+    console.log('[TELEGRAM] Webhook refresh results:', JSON.stringify(results));
+    return res.json({ success: true, domain, results });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error refreshing webhooks:", error);
+    return res.status(500).json({ error: "Failed to refresh webhooks" });
   }
 });
 

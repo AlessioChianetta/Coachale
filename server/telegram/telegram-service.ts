@@ -561,6 +561,11 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       const profileContext = await getProfileContext(consultantId, aiRole, chatId);
       const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
 
+      console.log(`[TELEGRAM-PROMPT] Open mode message for ${aiRole} from chat ${chatId}:`);
+      console.log(`[TELEGRAM-PROMPT] Profile context: ${profileContext || 'none'}`);
+      console.log(`[TELEGRAM-PROMPT] User message: ${processedText}`);
+      console.log(`[TELEGRAM-PROMPT] Full message with context: ${messageWithContext.substring(0, 500)}`);
+
       try {
         const roleName = aiRole;
         const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
@@ -673,6 +678,11 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
   const profileContext = await getProfileContext(consultantId, aiRole, chatId);
   const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
 
+  console.log(`[TELEGRAM-PROMPT] Owner message for ${aiRole} from chat ${chatId}:`);
+  console.log(`[TELEGRAM-PROMPT] Profile context: ${profileContext || 'none'}`);
+  console.log(`[TELEGRAM-PROMPT] User message: ${processedText}`);
+  console.log(`[TELEGRAM-PROMPT] Full message with context: ${messageWithContext.substring(0, 500)}`);
+
   try {
     const roleName = aiRole;
     const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
@@ -775,6 +785,18 @@ export async function notifyTaskViaTelegram(
 
     await sendTelegramMessage(botToken, chatId, message, "Markdown");
     console.log(`[TELEGRAM-NOTIFY] Sent ${event} notification to owner chat ${chatId} for role ${roleId}`);
+
+    try {
+      const plainMessage = message.replace(/\*/g, '');
+      const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, notification_type: event, task_id: data.taskId });
+      await db.execute(sql`
+        INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+        VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'assistant', ${plainMessage}, ${telegramMetadata}::jsonb)
+      `);
+      console.log(`[TELEGRAM-NOTIFY] Saved ${event} notification to agent_chat_messages for role ${roleId}`);
+    } catch (saveErr: any) {
+      console.error(`[TELEGRAM-NOTIFY] Failed to save notification to chat history:`, saveErr.message);
+    }
   } catch (err: any) {
     console.error(`[TELEGRAM-NOTIFY] Failed to notify ${event} for role ${roleId}:`, err.message);
   }
