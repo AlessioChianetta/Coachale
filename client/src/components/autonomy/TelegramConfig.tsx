@@ -345,6 +345,16 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                 </div>
               </div>
 
+              {groupSupport && (
+                <div className="text-[10px] text-muted-foreground px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-lg space-y-1">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Requisiti per i gruppi:</p>
+                  <p>1. Disattiva la <strong>Group Privacy</strong> su @BotFather: scrivi /setprivacy → seleziona il bot → Disable</p>
+                  <p>2. Dopo la modifica, <strong>rimuovi il bot dal gruppo e riaggiunggilo</strong></p>
+                  <p>3. In alternativa, rendi il bot <strong>admin del gruppo</strong></p>
+                  <p className="italic">Se hai già attivato il bot in chat privata, i gruppi saranno collegati automaticamente.</p>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <Switch
                   id={`telegram-openmode-${roleId}`}
