@@ -3476,7 +3476,7 @@ router.delete("/agent-chat/:roleId/clear", authenticateToken, requireAnyRole(["c
   }
 });
 
-export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any> }): Promise<string> {
+export async function processAgentChatInternal(consultantId: string, roleId: string, message: string, options?: { skipUserMessageInsert?: boolean; metadata?: Record<string, any>; source?: string }): Promise<string> {
   if (!AI_ROLES[roleId]) {
     throw new Error(`Invalid role ID: ${roleId}`);
   }
@@ -3611,13 +3611,29 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     console.warn(`[AGENT-CHAT-INTERNAL] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
   }
 
-  systemPrompt += `\nREGOLE:
+  const isTelegram = options?.source === 'telegram' || options?.metadata?.source === 'telegram';
+
+  if (isTelegram) {
+    systemPrompt += `\nSTAI RISPONDENDO SU TELEGRAM — REGOLE CHAT:
+1. Rispondi SEMPRE in italiano
+2. Scrivi CORTO come su WhatsApp — max 2-3 righe per messaggio, mai muri di testo
+3. Vai dritto al punto, niente preamboli o riassunti
+4. NON fare elenchi numerati o puntati — parla in modo fluido
+5. DIALOGA: fai UNA domanda alla volta, non bombardare
+6. Tono colloquiale da collega, non da report aziendale
+7. NON inventare dati
+8. Usa grassetto SOLO per 1-2 parole chiave, non per intere frasi
+9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
+10. Reagisci al messaggio come farebbe un collega su Telegram`;
+  } else {
+    systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
 2. Usa paragrafi separati
 3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
 4. DIALOGA: fai domande, chiedi feedback
 5. NON inventare dati
 6. Usa **grassetto** per cifre e concetti chiave`;
+  }
 
   const historyLimit = existingSummary ? 15 : 20;
   const relevantHistory = chatHistory.slice(-historyLimit);
@@ -3655,18 +3671,21 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
       ...conversationParts,
     ];
 
+    const chatTemp = isTelegram ? 1 : 0.7;
+    const chatMaxTokens = isTelegram ? 512 : 2048;
+
     let response: any;
     if (aiClient.models?.generateContent) {
       response = await trackedGenerateContent(aiClient, {
         model: providerModel,
         contents: chatContents,
-        config: { temperature: 0.7, maxOutputTokens: 2048 },
+        config: { temperature: chatTemp, maxOutputTokens: chatMaxTokens },
       }, { consultantId, feature: `agent-chat:${roleId}` });
     } else {
       response = await aiClient.generateContent({
         model: providerModel,
         contents: chatContents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        generationConfig: { temperature: chatTemp, maxOutputTokens: chatMaxTokens },
       });
     }
 

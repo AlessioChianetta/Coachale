@@ -319,6 +319,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     const aiResponse = await processAgentChatInternal(consultantId, aiRole, processedText, {
       skipUserMessageInsert: true,
       metadata: { source: "telegram", telegram_chat_id: chatId },
+      source: "telegram",
     });
 
     await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
