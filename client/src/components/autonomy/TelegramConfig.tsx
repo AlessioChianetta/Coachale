@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
-import { Loader2, Send, Check, X, Trash2, MessageCircle, Users, Link2, Unlink, ChevronUp, ChevronDown, Copy, Shield } from "lucide-react";
+import { Loader2, Send, Check, X, Trash2, MessageCircle, Users, Link2, Unlink, ChevronUp, ChevronDown, Copy, Shield, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TelegramConfigProps {
@@ -26,6 +26,7 @@ interface TelegramConfigData {
   bot_token?: string;
   enabled?: boolean;
   group_support?: boolean;
+  open_mode?: boolean;
   bot_username?: string;
   bot_name?: string;
   connected?: boolean;
@@ -43,6 +44,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
   const [botToken, setBotToken] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [groupSupport, setGroupSupport] = useState(false);
+  const [openMode, setOpenMode] = useState(false);
   const [connected, setConnected] = useState(false);
   const [botUsername, setBotUsername] = useState("");
   const [botName, setBotName] = useState("");
@@ -68,6 +70,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
           }
           setEnabled(cfg.enabled ?? false);
           setGroupSupport(cfg.group_support ?? false);
+          setOpenMode(cfg.open_mode ?? false);
           setConnected(true);
           setBotUsername(cfg.bot_username || "");
           setBotName(cfg.bot_name || "");
@@ -117,7 +120,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
       const res = await fetch(`/api/ai-autonomy/telegram-config/${roleId}`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ bot_token: botToken, enabled, group_support: groupSupport }),
+        body: JSON.stringify({ bot_token: botToken, enabled, group_support: groupSupport, open_mode: openMode }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -148,6 +151,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
         setMaskedToken("");
         setEnabled(false);
         setGroupSupport(false);
+        setOpenMode(false);
         setConnected(false);
         setBotUsername("");
         setBotName("");
@@ -311,7 +315,25 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                 </div>
               </div>
 
-              {connected && activationCode && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`telegram-openmode-${roleId}`}
+                  checked={openMode}
+                  onCheckedChange={setOpenMode}
+                />
+                <Label htmlFor={`telegram-openmode-${roleId}`} className="text-xs cursor-pointer flex items-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  Modalità Aperta (chiunque può chattare)
+                </Label>
+              </div>
+
+              {openMode && (
+                <div className="text-[10px] text-muted-foreground italic px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-lg">
+                  Il bot risponderà a chiunque. I nuovi utenti faranno un breve onboarding prima di ricevere risposte AI.
+                </div>
+              )}
+
+              {!openMode && connected && activationCode && (
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
                     <Shield className="h-3.5 w-3.5 text-amber-500" />

@@ -3331,7 +3331,7 @@ router.get("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consu
     const { roleId } = req.params;
 
     const configResult = await db.execute(sql`
-      SELECT id, ai_role, bot_token, bot_username, webhook_url, enabled, group_support, activation_code, created_at, updated_at
+      SELECT id, ai_role, bot_token, bot_username, webhook_url, enabled, group_support, activation_code, open_mode, created_at, updated_at
       FROM telegram_bot_configs
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
       LIMIT 1
@@ -3366,7 +3366,7 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
     const consultantId = (req as AuthRequest).user?.id;
     if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
     const { roleId } = req.params;
-    const { bot_token, enabled = true, group_support = false } = req.body;
+    const { bot_token, enabled = true, group_support = false, open_mode = false } = req.body;
 
     if (!bot_token || typeof bot_token !== 'string') {
       return res.status(400).json({ error: "bot_token is required" });
@@ -3384,8 +3384,8 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
     const activationCode = randomBytes(3).toString('hex').toUpperCase();
 
     const upsertResult = await db.execute(sql`
-      INSERT INTO telegram_bot_configs (consultant_id, ai_role, bot_token, bot_username, enabled, group_support, webhook_secret, activation_code)
-      VALUES (${consultantId}::uuid, ${roleId}, ${bot_token}, ${botInfo.username || ''}, ${enabled}, ${group_support}, ${webhookSecret}, ${activationCode})
+      INSERT INTO telegram_bot_configs (consultant_id, ai_role, bot_token, bot_username, enabled, group_support, webhook_secret, activation_code, open_mode)
+      VALUES (${consultantId}::uuid, ${roleId}, ${bot_token}, ${botInfo.username || ''}, ${enabled}, ${group_support}, ${webhookSecret}, ${activationCode}, ${open_mode})
       ON CONFLICT (consultant_id, ai_role) DO UPDATE SET
         bot_token = EXCLUDED.bot_token,
         bot_username = EXCLUDED.bot_username,
@@ -3393,8 +3393,9 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
         group_support = EXCLUDED.group_support,
         webhook_secret = EXCLUDED.webhook_secret,
         activation_code = EXCLUDED.activation_code,
+        open_mode = EXCLUDED.open_mode,
         updated_at = NOW()
-      RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret, activation_code
+      RETURNING id, bot_token, bot_username, enabled, group_support, webhook_url, webhook_secret, activation_code, open_mode
     `);
 
     const savedConfig = upsertResult.rows[0] as any;
