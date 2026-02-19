@@ -1242,7 +1242,7 @@ function DashboardTab({
                       )}
                       {getPriorityIndicator(task.priority)}
                     </div>
-                    <p className="text-xs text-muted-foreground/80 line-clamp-1">{task.ai_instruction}</p>
+                    <p className={cn("text-xs text-muted-foreground/80", expandedTaskIds.has(task.id) ? "" : "line-clamp-1")}>{task.ai_instruction}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {task.status === 'waiting_approval' && (
@@ -1320,15 +1320,25 @@ function DashboardTab({
                           <MoreHorizontal className="h-3.5 w-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
-                          <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={(e) => toggleTaskExpand(task.id, e)}>
+                          {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
+                          {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditTask(task)}>
+                          <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
+                          <CalendarClock className="h-3.5 w-3.5 mr-2" /> Modifica orario
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
-                          <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta
+                          <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta da me
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setActionDialogTask(task)}>
-                          <Cog className="h-3.5 w-3.5 mr-2" /> Azioni
+                        <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
+                          <MessageSquare className="h-3.5 w-3.5 mr-2" /> Parlane in chat
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                          <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
                           <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
@@ -1469,15 +1479,21 @@ function DashboardTab({
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => setEditTask(task)}>
+                            <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
+                            <CalendarClock className="h-3.5 w-3.5 mr-2" /> Modifica orario
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
+                            <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta da me
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
+                            <MessageSquare className="h-3.5 w-3.5 mr-2" /> Parlane in chat
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
                             <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setActionDialogTask(task)}>
-                            <Cog className="h-3.5 w-3.5 mr-2" /> Azioni
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPostponeTask(task)}>
-                            <CalendarClock className="h-3.5 w-3.5 mr-2" /> Rimanda
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
                             <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
@@ -1612,7 +1628,7 @@ function DashboardTab({
                                     {getPriorityIndicator(task.priority)}
                                   </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 leading-relaxed">{task.ai_instruction}</p>
+                                <p className={cn("text-xs text-muted-foreground mb-2 leading-relaxed", expandedTaskIds.has(task.id) ? "" : "line-clamp-2")}>{task.ai_instruction}</p>
                                 {plannedActions.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mb-2">
                                     {plannedActions.map((action, idx) => (
@@ -1627,46 +1643,72 @@ function DashboardTab({
                                   {getTaskStatusBadge(task.status)}
                                   <span className="text-[10px] text-muted-foreground">{getRelativeTime(task.created_at)}</span>
                                 </div>
-                                {isWaitingApproval && (
-                                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      size="sm"
-                                      className="h-6 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white gap-0.5 flex-1"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        try {
-                                          const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
-                                          if (!res.ok) throw new Error("Failed");
-                                          toast({ title: "Task avviato" });
-                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
-                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
-                                          queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
-                                          queryClient.invalidateQueries({ queryKey: [tasksUrl] });
-                                        } catch {
-                                          toast({ title: "Errore", variant: "destructive" });
-                                        }
-                                      }}
-                                    >
-                                      <ThumbsUp className="h-2.5 w-2.5" /> Approva
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 px-2 text-[10px] border-red-200 text-red-600"
-                                      onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
-                                    >
-                                      <Ban className="h-2.5 w-2.5" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0 text-muted-foreground"
-                                      onClick={(e) => { e.stopPropagation(); setActionDialogTask(task); }}
-                                    >
-                                      <MoreHorizontal className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/30" onClick={(e) => e.stopPropagation()}>
+                                  {isWaitingApproval && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        className="h-6 px-2 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white gap-0.5 flex-1"
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          try {
+                                            const res = await fetch(`/api/ai-autonomy/tasks/${task.id}/execute`, { method: "PATCH", headers: getAuthHeaders() });
+                                            if (!res.ok) throw new Error("Failed");
+                                            toast({ title: "Task avviato" });
+                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/pending-approval-tasks"] });
+                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/active-tasks"] });
+                                            queryClient.invalidateQueries({ queryKey: ["/api/ai-autonomy/tasks-stats"] });
+                                            queryClient.invalidateQueries({ queryKey: [tasksUrl] });
+                                          } catch {
+                                            toast({ title: "Errore", variant: "destructive" });
+                                          }
+                                        }}
+                                      >
+                                        <ThumbsUp className="h-2.5 w-2.5" /> Approva
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-6 px-2 text-[10px] border-red-200 text-red-600"
+                                        onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
+                                      >
+                                        <Ban className="h-2.5 w-2.5" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {!isWaitingApproval && <div className="flex-1" />}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground">
+                                        <MoreHorizontal className="h-3 w-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={(e) => toggleTaskExpand(task.id, e)}>
+                                        {expandedTaskIds.has(task.id) ? <ChevronUp className="h-3.5 w-3.5 mr-2" /> : <ChevronDown className="h-3.5 w-3.5 mr-2" />}
+                                        {expandedTaskIds.has(task.id) ? 'Comprimi' : 'Espandi'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setEditTask(task)}>
+                                        <FileText className="h-3.5 w-3.5 mr-2" /> Modifica testo
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setRescheduleTask(task)}>
+                                        <CalendarClock className="h-3.5 w-3.5 mr-2" /> Modifica orario
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleMarkDone(task.id)}>
+                                        <CheckCircle className="h-3.5 w-3.5 mr-2" /> Già fatta da me
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleOpenChatAboutTask(task)}>
+                                        <MessageSquare className="h-3.5 w-3.5 mr-2" /> Parlane in chat
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setSelectedTaskId(task.id)}>
+                                        <Eye className="h-3.5 w-3.5 mr-2" /> Dettagli
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setCancelDialogTask(task)} className="text-red-600">
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Elimina
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                               </motion.div>
                             );
                           })
