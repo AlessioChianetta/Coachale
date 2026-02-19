@@ -2155,11 +2155,11 @@ FORMATO JSON quando è un task nuovo (come prima):
         continue;
       }
 
-      const toolCodePattern = /tool_code\s*\n?\s*google_file_search\s*\{/i;
+      const toolCodePattern = /tool_code\s*\n?\s*google[_:]file_search\s*\{/i;
       if (useFileSearch && toolCodePattern.test(responseText)) {
-        console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Detected tool_code google_file_search in text response — executing File Search grounding`);
-        const searchQueries = [...responseText.matchAll(/google_file_search\s*\{?\s*query\s*[:=]\s*[<«"']?([^>»"'\n}]+)/gi)]
-          .map(m => m[1].trim()).filter(q => q.length > 3);
+        console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Detected tool_code google file_search in text response — executing File Search grounding`);
+        const searchQueries = [...responseText.matchAll(/google[_:]file_search\s*\{?\s*query\s*[:=]\s*(?:<[^>]*>|[<«"'])?([^>»"'\n}]+)/gi)]
+          .map(m => m[1].replace(/<[^>]*>/g, '').trim()).filter(q => q.length > 3);
         if (searchQueries.length === 0) {
           searchQueries.push('informazioni principali documenti consulente');
         }
@@ -2258,11 +2258,58 @@ FORMATO JSON quando è un task nuovo (come prima):
                 const fixed = escapeNewlinesInStrings(jsonMatch[0]).replace(/,\s*([}\]])/g, '$1');
                 parsed = JSON.parse(fixed);
               } catch {
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
-                console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] First char code: ${responseText.charCodeAt(0)}, length: ${responseText.length}, hasFileSearch: ${useFileSearch}`);
-                continue;
+                if (useFileSearch && /google[_:]file_search/i.test(responseText)) {
+                  console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Response is tool_code file_search (not JSON) — doing grounding retry`);
+                  const retryQueries = [...responseText.matchAll(/google[_:]file_search\s*\{?\s*query\s*[:=]\s*(?:<[^>]*>|[<«"'])?([^>»"'\n}]+)/gi)]
+                    .map(m => m[1].replace(/<[^>]*>/g, '').trim()).filter(q => q.length > 3);
+                  if (retryQueries.length === 0) retryQueries.push('informazioni principali documenti consulente');
+                  console.log(`🔍 [AUTONOMOUS-GEN] [${role.name}] Retry queries: ${retryQueries.map(q => `"${q}"`).join(', ')}`);
+                  let retryContext = '';
+                  for (const rq of retryQueries.slice(0, 3)) {
+                    try {
+                      const sr = await aiClient!.generateContent({
+                        model: providerModel,
+                        contents: [{ role: 'user', parts: [{ text: `Cerca nei documenti: ${rq}. Rispondi con un riassunto conciso.` }] }],
+                        generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+                        tools: [agentFileSearchTool],
+                      });
+                      let srText = '';
+                      try { srText = sr.response.text(); } catch { srText = (sr.response.candidates?.[0]?.content?.parts || []).filter((p: any) => p.text).map((p: any) => p.text).join(''); }
+                      if (srText && !/google[_:]file_search/i.test(srText)) {
+                        retryContext += `\n--- ${rq} ---\n${srText.substring(0, 3000)}`;
+                      }
+                    } catch {}
+                  }
+                  const retryPrompt = retryContext.length > 50
+                    ? `${prompt}\n\nCONTESTO DAI DOCUMENTI:\n${retryContext}\n\nGenera i task in JSON.`
+                    : prompt;
+                  try {
+                    const retryResp = await aiClient!.generateContent({
+                      model: providerModel,
+                      contents: [{ role: 'user', parts: [{ text: retryPrompt + '\n\nRispondi SOLO con JSON valido: {"tasks": [...], "overall_reasoning": "..."}. NON usare tool_code.' }] }],
+                      generationConfig: { temperature: 0.3, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+                    });
+                    let retryText = '';
+                    try { retryText = retryResp.response.text(); } catch { retryText = (retryResp.response.candidates?.[0]?.content?.parts || []).filter((p: any) => p.text).map((p: any) => p.text).join(''); }
+                    if (retryText) {
+                      const retryClean = retryText.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+                      parsed = JSON.parse(retryClean);
+                      console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Grounding retry succeeded: ${parsed.tasks?.length || 0} tasks`);
+                    } else {
+                      console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Grounding retry returned empty`);
+                      continue;
+                    }
+                  } catch (retryErr: any) {
+                    console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Grounding retry failed: ${retryErr.message}`);
+                    continue;
+                  }
+                } else {
+                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Could not parse Gemini JSON response`);
+                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw first 800 chars: ${responseText.substring(0, 800)}`);
+                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Raw last 200 chars: ${responseText.substring(responseText.length - 200)}`);
+                  console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] First char code: ${responseText.charCodeAt(0)}, length: ${responseText.length}, hasFileSearch: ${useFileSearch}`);
+                  continue;
+                }
               }
             }
           } else {
