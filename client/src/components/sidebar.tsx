@@ -295,7 +295,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
+
   const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed);
   
   const isCollapsed = controlledIsCollapsed !== undefined ? controlledIsCollapsed : internalCollapsed;
@@ -574,18 +574,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     }
   };
 
-  const handleFinancialClick = () => {
-    setIsLoadingFinancial(true);
 
-    // Simulate loading for animation
-    setTimeout(() => {
-      window.open('https://conorbitale.replit.app', '_blank');
-      setIsLoadingFinancial(false);
-      if (isMobile && onClose) {
-        onClose();
-      }
-    }, 1000);
-  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -1071,7 +1060,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           </div>
         )}
 
-        {/* External Services Section - Collapsible premium section */}
+        {/* STRUMENTI Section - Collapsible tools section */}
         <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
           {!isCollapsed && (
             <button
@@ -1079,12 +1068,12 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               className="w-full flex items-center justify-between px-3 py-1.5 group"
             >
               <div className="flex items-center gap-1.5">
-                <Sparkles className={cn(
+                <Rocket className={cn(
                   "h-3.5 w-3.5 text-purple-500 transition-transform duration-200",
                   "group-hover:rotate-12 group-hover:scale-110"
                 )} />
                 <span className="text-[10px] font-semibold uppercase tracking-widest bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-                  Servizi Esterni
+                  Strumenti
                 </span>
               </div>
               <ChevronRight className={cn(
@@ -1096,101 +1085,67 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           
           {(expandedExternalServices || isCollapsed) && (
             <div className={cn("space-y-0.5", !isCollapsed && "mt-1")}>
-              {/* ConOrbitale - Gestione Finanziaria */}
-              <div
-                className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                  isLoadingFinancial && "bg-slate-50 dark:bg-slate-800 animate-pulse",
-                  isCollapsed && "justify-center px-2"
-                )}
-                onClick={handleFinancialClick}
-                data-testid="link-gestione-finanziaria"
-                title={isCollapsed ? "ConOrbitale" : undefined}
-              >
-                {/* Hover indicator bar */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                <DollarSign 
-                  className={cn(
-                    "h-[18px] w-[18px] flex-shrink-0 text-emerald-500",
-                    isLoadingFinancial && "animate-spin"
-                  )} 
-                />
-                {!isCollapsed && (
-                  <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="font-medium truncate">ConOrbitale</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* ContractAle */}
-              <div
-                className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                  isCollapsed && "justify-center px-2"
-                )}
-                onClick={() => window.open('https://contractale.replit.app', '_blank')}
-                data-testid="link-contractale"
-                title={isCollapsed ? "ContractAle" : undefined}
-              >
-                {/* Hover indicator bar */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                <FileText className="h-[18px] w-[18px] flex-shrink-0 text-teal-500" />
-                {!isCollapsed && (
-                  <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="font-medium truncate">ContractAle</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* CrmAle */}
-              <div
-                className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                  isCollapsed && "justify-center px-2"
-                )}
-                onClick={() => window.open('https://crmale.replit.app', '_blank')}
-                data-testid="link-crmale"
-                title={isCollapsed ? "CrmAle" : undefined}
-              >
-                {/* Hover indicator bar */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                <Users className="h-[18px] w-[18px] flex-shrink-0 text-cyan-500" />
-                {!isCollapsed && (
-                  <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="font-medium truncate">CrmAle</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* SiteAle - Configurable site URL */}
-              {user?.siteUrl && (
-                <div
-                  className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                    "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                    isCollapsed && "justify-center px-2"
-                  )}
-                  onClick={() => window.open(user.siteUrl!, '_blank')}
-                  data-testid="link-siteale"
-                  title={isCollapsed ? "SiteAle" : undefined}
-                >
-                  {/* Hover indicator bar */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                  <ExternalLink className="h-[18px] w-[18px] flex-shrink-0 text-orange-500" />
-                  {!isCollapsed && (
-                    <div className="flex-1 flex items-center justify-between min-w-0">
-                      <span className="font-medium truncate">SiteAle</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+              {[
+                { name: "Orbitale Finanza", href: "/consultant/tools/finanza", icon: DollarSign, color: "text-emerald-500" },
+                { name: "Orbitale CRM", href: "/consultant/tools/crm", icon: Users, color: "text-cyan-500" },
+                { name: "Orbitale Contract", href: "/consultant/tools/contract", icon: FileText, color: "text-teal-500" },
+                { name: "Orbitale Locale", href: "/consultant/tools/locale", icon: Star, color: "text-orange-500" },
+              ].map((tool) => {
+                const ToolIcon = tool.icon;
+                const isActive = isRouteActive(tool.href, location);
+                return (
+                  <Link key={tool.href} href={tool.href}>
+                    <div
+                      className={cn(
+                        "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                        isActive
+                          ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                        isCollapsed && "justify-center px-2"
+                      )}
+                      data-testid={`link-${slugify(tool.name)}`}
+                      onClick={handleLinkClick}
+                      title={isCollapsed ? tool.name : undefined}
+                    >
+                      <div className={cn(
+                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
+                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )} />
+                      <ToolIcon className={cn(
+                        "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
+                        isActive ? "text-cyan-500" : tool.color
+                      )} />
+                      {!isCollapsed && (
+                        <span className={cn(
+                          "font-medium truncate",
+                          isActive && "font-semibold"
+                        )}>{tool.name}</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </Link>
+                );
+              })}
+
+              {/* NotebookLM - External link */}
+              <div
+                className={cn(
+                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                  isCollapsed && "justify-center px-2"
+                )}
+                onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
+                data-testid="link-notebooklm"
+                title={isCollapsed ? "NotebookLM" : undefined}
+              >
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+                <BookOpen className="h-[18px] w-[18px] flex-shrink-0 text-purple-500" />
+                {!isCollapsed && (
+                  <div className="flex-1 flex items-center justify-between min-w-0">
+                    <span className="font-medium truncate">NotebookLM</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

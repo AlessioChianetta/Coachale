@@ -135,6 +135,7 @@ const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 const ManagerLogin = lazy(() => import("@/pages/manager-login"));
 const ConsultantPaymentAutomations = lazy(() => import("@/pages/consultant-payment-automations"));
+const ConsultantOrbitaleTool = lazy(() => import("@/pages/consultant-orbitale-tool"));
 const ManagerChat = lazy(() => import("@/pages/manager-chat"));
 const PublicAIChat = lazy(() => import("@/pages/public-ai-chat"));
 const PublicPricing = lazy(() => import("@/pages/public-pricing"));
@@ -524,6 +525,12 @@ function Router() {
           <Route path="/consultant/payment-automations">
             <AuthGuard requiredRole="consultant">
               <ConsultantPaymentAutomations />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/tools/:toolId">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantOrbitaleTool />
             </AuthGuard>
           </Route>
 
