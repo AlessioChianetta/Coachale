@@ -3524,6 +3524,57 @@ router.post("/telegram-config/:roleId", authenticateToken, requireAnyRole(["cons
   }
 });
 
+router.patch("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+    const { enabled, group_support, open_mode } = req.body;
+
+    const existing = await db.execute(sql`
+      SELECT id, bot_token, enabled FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} LIMIT 1
+    `);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Config not found" });
+    }
+    const config = existing.rows[0] as any;
+
+    const updates: string[] = [];
+    const newEnabled = enabled !== undefined ? enabled : config.enabled;
+    const newGroupSupport = group_support !== undefined ? group_support : undefined;
+    const newOpenMode = open_mode !== undefined ? open_mode : undefined;
+
+    await db.execute(sql`
+      UPDATE telegram_bot_configs SET
+        enabled = COALESCE(${enabled !== undefined ? enabled : null}::boolean, enabled),
+        group_support = COALESCE(${group_support !== undefined ? group_support : null}::boolean, group_support),
+        open_mode = COALESCE(${open_mode !== undefined ? open_mode : null}::boolean, open_mode),
+        updated_at = NOW()
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+
+    if (enabled !== undefined && enabled !== config.enabled) {
+      const { setTelegramWebhook, removeTelegramWebhook } = await import("../telegram/telegram-service");
+      const domain = process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
+      if (enabled) {
+        const webhookUrl = `https://${domain}/api/telegram/webhook/${config.id}`;
+        await setTelegramWebhook(config.bot_token, webhookUrl, config.webhook_secret || '');
+        await db.execute(sql`UPDATE telegram_bot_configs SET webhook_url = ${webhookUrl} WHERE id = ${config.id}`);
+      } else {
+        await removeTelegramWebhook(config.bot_token);
+        await db.execute(sql`UPDATE telegram_bot_configs SET webhook_url = NULL WHERE id = ${config.id}`);
+      }
+    }
+
+    console.log(`[TELEGRAM] Toggled config for ${roleId}: enabled=${enabled}, group_support=${group_support}, open_mode=${open_mode}`);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error updating toggles:", error);
+    return res.status(500).json({ error: "Failed to update config" });
+  }
+});
+
 router.post("/telegram-config/:roleId/test", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

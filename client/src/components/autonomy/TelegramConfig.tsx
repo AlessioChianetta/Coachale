@@ -143,6 +143,25 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
     setSaving(false);
   };
 
+  const saveToggle = async (field: string, value: boolean) => {
+    try {
+      const res = await fetch(`/api/ai-autonomy/telegram-config/${roleId}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        setSaveResult({ success: true, message: "Salvato" });
+        setTimeout(() => setSaveResult(null), 2000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSaveResult({ success: false, message: err.error || "Errore nel salvataggio" });
+      }
+    } catch {
+      setSaveResult({ success: false, message: "Errore nel salvataggio" });
+    }
+  };
+
   const deleteConfig = async () => {
     if (!confirm(`Vuoi rimuovere la configurazione Telegram per ${roleName}?`)) return;
     setDeleting(true);
@@ -303,7 +322,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                     checked={enabled}
                     onCheckedChange={(val) => {
                       setEnabled(val);
-                      if (connected) saveConfig({ enabled: val });
+                      if (connected) saveToggle('enabled', val);
                     }}
                   />
                   <Label htmlFor={`telegram-enabled-${roleId}`} className="text-xs cursor-pointer">
@@ -316,7 +335,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                     checked={groupSupport}
                     onCheckedChange={(val) => {
                       setGroupSupport(val);
-                      if (connected) saveConfig({ group_support: val });
+                      if (connected) saveToggle('group_support', val);
                     }}
                   />
                   <Label htmlFor={`telegram-groups-${roleId}`} className="text-xs cursor-pointer flex items-center gap-1">
@@ -332,7 +351,7 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                   checked={openMode}
                   onCheckedChange={(val) => {
                     setOpenMode(val);
-                    if (connected) saveConfig({ open_mode: val });
+                    if (connected) saveToggle('open_mode', val);
                   }}
                 />
                 <Label htmlFor={`telegram-openmode-${roleId}`} className="text-xs cursor-pointer flex items-center gap-1">
