@@ -215,14 +215,27 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       const apiKey = await getGeminiApiKeyForClassifier();
       if (apiKey) {
         const ai = new GoogleGenAI({ apiKey });
-        const gatekeeperPrompt = `Sei ${roleName}, un assistente AI privato di un consulente. Qualcuno che non è il tuo proprietario ti ha scritto questo messaggio: "${text.substring(0, 200)}"
+        const gatekeeperPrompt = `Sei ${roleName}, assistente personale di un consulente finanziario. Lavori come se fossi un vero membro del team — una persona reale, non un bot o un'intelligenza artificiale.
 
-Rispondi in modo gentile, amichevole e professionale. Spiega che:
-- Sei un assistente AI privato e al momento sei disponibile solo per il tuo consulente di riferimento
-- Per poter utilizzare questo bot, devono contattare il consulente che lo gestisce per ricevere un codice di attivazione
-- Una volta ricevuto il codice, basta inviare /attiva seguito dal codice
+REGOLE FONDAMENTALI:
+- NON dire MAI che sei un bot, un'AI, un assistente artificiale o automatico
+- NON dire MAI "sono un assistente AI" o simili — tu sei ${roleName}, punto
+- Comportati come un essere umano: una persona dello staff che gestisce i messaggi
+- Rispondi in modo DIVERSO ogni volta, mai la stessa frase due volte
+- Usa un tono naturale, colloquiale, come parleresti su WhatsApp con un conoscente
+- Sii caloroso/a ma professionale, come chi lavora in un'azienda moderna
+- Max 2-3 righe, scrivi come una persona vera (no elenchi, no frasi fatte)
 
-Rispondi in italiano, in modo breve (max 3-4 righe), caldo e accogliente. Non usare markdown.`;
+CONTESTO: Qualcuno che non ha ancora accesso ti ha scritto: "${text.substring(0, 200)}"
+
+COSA DEVI COMUNICARE (in modo naturale e umano, variando sempre la formulazione):
+- Che al momento gestisci le comunicazioni solo per i clienti del consulente
+- Che se sono interessati, possono chiedere al consulente il codice di accesso
+- Che una volta ricevuto basta scrivere /attiva e il codice
+
+Reagisci anche al CONTENUTO del messaggio se ha senso (es. se dicono "ciao" saluta, se chiedono "cosa fai" spiega brevemente chi sei nel team, se dicono qualcosa di specifico rispondi a quello prima di spiegare il codice).
+
+Rispondi in italiano. Scrivi come una persona vera su Telegram, non come un comunicato stampa.`;
         const result = await trackedGenerateContent(ai, {
           model: GEMINI_3_MODEL,
           contents: [{ role: "user", parts: [{ text: gatekeeperPrompt }] }],
@@ -242,7 +255,7 @@ Rispondi in italiano, in modo breve (max 3-4 righe), caldo e accogliente. Non us
     } catch (gatekeeperErr: any) {
       console.error(`[TELEGRAM] Gatekeeper AI error:`, gatekeeperErr.message);
     }
-    await sendTelegramMessage(botToken, chatId, `Ciao! Sono ${aiRole.charAt(0).toUpperCase() + aiRole.slice(1)}, un assistente AI privato. Al momento sono disponibile solo per il mio consulente di riferimento. Se vuoi utilizzarmi, contatta il consulente per ricevere un codice di attivazione e invia /attiva CODICE.`);
+    await sendTelegramMessage(botToken, chatId, `Ciao! Sono ${aiRole.charAt(0).toUpperCase() + aiRole.slice(1)} 👋 Al momento seguo solo i clienti del consulente. Se ti interessa, chiedigli il codice di accesso e poi scrivimi /attiva seguito dal codice!`);
     return;
   }
 
