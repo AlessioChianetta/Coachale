@@ -43,25 +43,25 @@ const consultantSuggestions = [
     icon: Target,
     label: "Panoramica cliente",
     prompt: "Dammi una panoramica completa del cliente selezionato",
-    gradient: "from-[#6C5CE7] to-[#8B7CF7]",
+    gradient: "from-primary to-primary/80",
   },
   {
     icon: BookOpen,
     label: "Progressi esercizi",
     prompt: "Mostrami i progressi degli esercizi di questo cliente",
-    gradient: "from-[#8B7CF7] to-[#A78BFA]",
+    gradient: "from-primary/80 to-violet-400",
   },
   {
     icon: MessageSquare,
     label: "Prepara consulenza",
     prompt: "Aiutami a preparare la prossima consulenza con questo cliente",
-    gradient: "from-[#5B4CD6] to-[#6C5CE7]",
+    gradient: "from-primary/90 to-primary",
   },
   {
     icon: Lightbulb,
     label: "Suggerimenti azioni",
     prompt: "Quali azioni dovrei intraprendere con i miei clienti questa settimana?",
-    gradient: "from-[#7C6DF7] to-[#6C5CE7]",
+    gradient: "from-primary/85 to-primary",
   },
 ];
 
@@ -70,25 +70,25 @@ const clientSuggestions = [
     icon: Target,
     label: "I miei obiettivi",
     prompt: "Mostrami un riepilogo dei miei obiettivi e progressi",
-    gradient: "from-[#6C5CE7] to-[#8B7CF7]",
+    gradient: "from-primary to-primary/80",
   },
   {
     icon: BookOpen,
     label: "Cosa studiare oggi",
     prompt: "Quale lezione dovrei studiare oggi?",
-    gradient: "from-[#8B7CF7] to-[#A78BFA]",
+    gradient: "from-primary/80 to-violet-400",
   },
   {
     icon: TrendingUp,
     label: "I miei progressi",
     prompt: "Analizza i miei progressi nelle ultime settimane",
-    gradient: "from-[#5B4CD6] to-[#6C5CE7]",
+    gradient: "from-primary/90 to-primary",
   },
   {
     icon: Lightbulb,
     label: "Esercizi pendenti",
     prompt: "Quali esercizi ho ancora da completare?",
-    gradient: "from-[#7C6DF7] to-[#6C5CE7]",
+    gradient: "from-primary/85 to-primary",
   },
 ];
 
@@ -149,7 +149,7 @@ export function WelcomeScreen({
           transition={{ delay: 0.1, duration: 0.5 }}
           className="relative mb-8"
         >
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#6C5CE7] via-[#7C6DF7] to-[#8B7CF7] flex items-center justify-center shadow-lg shadow-[#6C5CE7]/25">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-primary/85 to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
             <motion.div
               animate={{ 
                 rotate: [0, 5, -5, 0],
@@ -168,7 +168,7 @@ export function WelcomeScreen({
             </motion.div>
           </div>
           <motion.div
-            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#00B894] flex items-center justify-center"
+            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center"
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ repeat: Infinity, duration: 2 }}
           >
@@ -192,7 +192,7 @@ export function WelcomeScreen({
           className="text-base md:text-lg text-slate-500/60 dark:text-slate-400/60 mb-3 text-center"
         >
           {agentName ? (
-            <>Sono <span className="font-medium text-[#6C5CE7] dark:text-[#8B7CF7]">{agentName}</span>, il tuo copilota AI per il business</>
+            <>Sono <span className="font-medium text-primary">{agentName}</span>, il tuo copilota AI per il business</>
           ) : (
             "Il tuo copilota AI per il business"
           )}
@@ -204,7 +204,7 @@ export function WelcomeScreen({
           transition={{ delay: 0.35, duration: 0.5 }}
           className="flex items-center gap-2 mb-8"
         >
-          <Activity className="w-3 h-3 text-[#00B894]" />
+          <Activity className="w-3 h-3 text-emerald-500" />
           <span className="text-xs text-slate-400 dark:text-slate-500">Assistente attivo · Tutti i sistemi sincronizzati</span>
         </motion.div>
 
@@ -277,8 +277,8 @@ export function WelcomeScreen({
                   "group relative flex flex-col items-start gap-3 p-5 rounded-xl",
                   "bg-white dark:bg-slate-800/50",
                   "border border-slate-200 dark:border-slate-700/50",
-                  "hover:border-[#6C5CE7]/40 dark:hover:border-[#6C5CE7]/40",
-                  "hover:shadow-lg hover:shadow-[#6C5CE7]/5",
+                  "hover:border-primary/40 dark:hover:border-primary/40",
+                  "hover:shadow-lg hover:shadow-primary/5",
                   "transition-all duration-200",
                   "text-left",
                   disabled && "opacity-50 cursor-not-allowed"
@@ -301,7 +301,7 @@ export function WelcomeScreen({
                     {suggestion.prompt}
                   </span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 absolute top-5 right-4 group-hover:text-[#6C5CE7] transition-colors duration-200" />
+                <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 absolute top-5 right-4 group-hover:text-primary transition-colors duration-200" />
               </motion.button>
             ))
           )}
@@ -311,9 +311,9 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.85, duration: 0.5 }}
-          className="mt-8 flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#6C5CE7]/5 dark:bg-[#6C5CE7]/10 border border-[#6C5CE7]/10 dark:border-[#6C5CE7]/20"
+          className="mt-8 flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20"
         >
-          <Lightbulb className="w-4 h-4 text-[#6C5CE7] dark:text-[#8B7CF7] flex-shrink-0" />
+          <Lightbulb className="w-4 h-4 text-primary flex-shrink-0" />
           <span className="text-xs text-slate-500 dark:text-slate-400">
             Suggerimento: Chiedi un'analisi dei clienti inattivi per riattivare il tuo business
           </span>

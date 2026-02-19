@@ -631,7 +631,7 @@ function ChatMessagesView({ conversationId }: { conversationId: string }) {
 
   return (
     <ScrollArea className="flex-1">
-      <div className="p-4 space-y-3 bg-[#e5ddd5] dark:bg-gray-900/50 min-h-full">
+      <div className="p-4 space-y-3 bg-muted dark:bg-gray-900/50 min-h-full">
         {messages.map((msg) => {
           const isInbound = msg.direction === "inbound";
           const isAI = msg.sender === "ai";

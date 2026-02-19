@@ -291,16 +291,16 @@ export default function ConsultantDashboard() {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case "high": return "border-l-[#FF7675]";
-      case "medium": return "border-l-[#FDCB6E]";
+      case "high": return "border-l-red-400";
+      case "medium": return "border-l-yellow-400";
       default: return "border-l-blue-400";
     }
   };
 
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
-      case "high": return "bg-[#FF7675]/10 text-[#FF7675] border-[#FF7675]/20";
-      case "medium": return "bg-[#FDCB6E]/10 text-[#FDCB6E] border-[#FDCB6E]/20";
+      case "high": return "bg-red-400/10 text-red-400 border-red-400/20";
+      case "medium": return "bg-yellow-400/10 text-yellow-400 border-yellow-400/20";
       default: return "bg-blue-500/10 text-blue-500 border-blue-500/20";
     }
   };
@@ -325,9 +325,9 @@ export default function ConsultantDashboard() {
 
   const kpiGlowColors = [
     "hover:shadow-blue-500/20 hover:border-blue-500/30",
-    "hover:shadow-[#FDCB6E]/20 hover:border-[#FDCB6E]/30",
-    "hover:shadow-[#00B894]/20 hover:border-[#00B894]/30",
-    "hover:shadow-[#FF7675]/20 hover:border-[#FF7675]/30",
+    "hover:shadow-yellow-400/20 hover:border-yellow-400/30",
+    "hover:shadow-emerald-500/20 hover:border-emerald-500/30",
+    "hover:shadow-red-400/20 hover:border-red-400/30",
   ];
 
   const sparklinePoints = useMemo(() => {
@@ -427,10 +427,9 @@ export default function ConsultantDashboard() {
             >
               <div className="absolute inset-0 shimmer-bg pointer-events-none" style={{ opacity: 0.5 }} />
               <div className="relative flex items-center gap-4 sm:gap-6">
-                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-[#6C5CE7]/30 ring-offset-2 ring-offset-background shadow-lg">
+                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-primary/30 ring-offset-2 ring-offset-background shadow-lg">
                   <AvatarFallback
-                    className="text-lg sm:text-xl font-bold"
-                    style={{ background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)', color: '#fff' }}
+                    className="text-lg sm:text-xl font-bold bg-gradient-to-br from-primary to-violet-400 text-white"
                   >
                     {userInitials}
                   </AvatarFallback>
@@ -443,9 +442,9 @@ export default function ConsultantDashboard() {
                     Ecco cosa succede oggi nel tuo business
                   </p>
                 </div>
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00B894]/10 border border-[#00B894]/20">
-                  <TrendingUp className="h-3.5 w-3.5 text-[#00B894]" />
-                  <span className="text-xs font-medium text-[#00B894]">↑ +12% rispetto a ieri</span>
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-xs font-medium text-emerald-500">↑ +12% rispetto a ieri</span>
                 </div>
               </div>
             </div>
@@ -532,7 +531,7 @@ export default function ConsultantDashboard() {
                       <div className="flex flex-wrap gap-2">
                         {aiInsights.highlights.map((h, i) => (
                           <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/12 text-white/90 text-xs backdrop-blur-sm border border-white/10">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00B894]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             {h}
                           </span>
                         ))}
@@ -555,7 +554,7 @@ export default function ConsultantDashboard() {
                   {aiInsights.priorities.map((p, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div className={cn("mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0",
-                        i === 0 ? "bg-[#FF7675]" : i === 1 ? "bg-[#FDCB6E]" : "bg-[#6C5CE7]"
+                        i === 0 ? "bg-red-400" : i === 1 ? "bg-yellow-400" : "bg-primary"
                       )}>
                         {i + 1}
                       </div>
@@ -575,12 +574,12 @@ export default function ConsultantDashboard() {
               <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
                 <CardHeader className="pb-3 pt-5 px-5">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-[#FF7675]/10">
-                      <Flame className="h-4 w-4 text-[#FF7675]" />
+                    <div className="p-1.5 rounded-lg bg-red-400/10">
+                      <Flame className="h-4 w-4 text-red-400" />
                     </div>
                     <CardTitle className="text-base font-bold">Richiede Attenzione</CardTitle>
                     {attentionItems.length > 0 && (
-                      <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-[#FF7675]/10 text-[#FF7675] border-[#FF7675]/20 hover:bg-[#FF7675]/15">{attentionItems.length}</Badge>
+                      <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 border-red-400/20 hover:bg-red-400/15">{attentionItems.length}</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -616,7 +615,7 @@ export default function ConsultantDashboard() {
                     })
                   ) : (
                     <div className="text-center py-8 text-muted-foreground/60 text-sm">
-                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-[#00B894]/40" />
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500/40" />
                       Nessun elemento richiede attenzione
                     </div>
                   )}
@@ -628,8 +627,8 @@ export default function ConsultantDashboard() {
                 <CardHeader className="pb-3 pt-5 px-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-[#00B894]/10">
-                        <Calendar className="h-4 w-4 text-[#00B894]" />
+                      <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                        <Calendar className="h-4 w-4 text-emerald-500" />
                       </div>
                       <CardTitle className="text-base font-bold">Prossimi Appuntamenti</CardTitle>
                     </div>
@@ -649,11 +648,11 @@ export default function ConsultantDashboard() {
                     upcomingAppointments.map((apt: any) => (
                       <div 
                         key={apt.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md border-l-[3px] border-l-[#00B894]"
+                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md border-l-[3px] border-l-emerald-500"
                         onClick={() => setLocation("/consultant/appointments")}
                       >
-                        <div className="p-2 rounded-lg bg-[#00B894]/10 shrink-0">
-                          <Clock className="h-4 w-4 text-[#00B894]" />
+                        <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
+                          <Clock className="h-4 w-4 text-emerald-500" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold truncate">
@@ -668,7 +667,7 @@ export default function ConsultantDashboard() {
                     ))
                   ) : (
                     <div className="text-center py-8 text-muted-foreground/60 text-sm">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 text-[#00B894]/30" />
+                      <Calendar className="h-8 w-8 mx-auto mb-2 text-emerald-500/30" />
                       Nessun appuntamento in programma
                     </div>
                   )}
@@ -741,7 +740,7 @@ export default function ConsultantDashboard() {
                         onClick={() => setLocation(`/consultant/clients`)}
                       >
                         <Avatar className="h-10 w-10 shadow-sm">
-                          <AvatarFallback className="text-sm font-bold" style={{ background: 'linear-gradient(135deg, #6C5CE7, #a29bfe)', color: '#fff' }}>
+                          <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary to-violet-400 text-white">
                             {client.firstName?.[0]}{client.lastName?.[0]}
                           </AvatarFallback>
                         </Avatar>
@@ -770,8 +769,8 @@ export default function ConsultantDashboard() {
               <CardHeader className="pb-3 pt-5 px-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-[#6C5CE7]/10">
-                      <TrendingUp className="h-4 w-4 text-[#6C5CE7]" />
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                      <TrendingUp className="h-4 w-4 text-primary" />
                     </div>
                     <CardTitle className="text-base font-bold">Trend Esercizi</CardTitle>
                   </div>
@@ -792,7 +791,7 @@ export default function ConsultantDashboard() {
                     <div className="flex items-end gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-1">Completamento</p>
-                        <p className="text-3xl font-bold" style={{ color: '#6C5CE7' }}>{exerciseProgress.percentage}%</p>
+                        <p className="text-3xl font-bold text-primary">{exerciseProgress.percentage}%</p>
                       </div>
                       <svg width="120" height="40" viewBox="0 0 120 40" className="mb-1">
                         <defs>
@@ -827,17 +826,17 @@ export default function ConsultantDashboard() {
                   <div className="flex gap-5">
                     <div className="text-center">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <CheckCircle className="h-3.5 w-3.5 text-[#00B894]" />
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                         <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Completati</span>
                       </div>
-                      <p className="text-2xl font-bold text-[#00B894]">{exerciseProgress.completed}</p>
+                      <p className="text-2xl font-bold text-emerald-500">{exerciseProgress.completed}</p>
                     </div>
                     <div className="text-center">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <RotateCcw className="h-3.5 w-3.5 text-[#FDCB6E]" />
+                        <RotateCcw className="h-3.5 w-3.5 text-yellow-400" />
                         <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">In Attesa</span>
                       </div>
-                      <p className="text-2xl font-bold text-[#FDCB6E]">{exerciseProgress.pending}</p>
+                      <p className="text-2xl font-bold text-yellow-400">{exerciseProgress.pending}</p>
                     </div>
                   </div>
                 </div>

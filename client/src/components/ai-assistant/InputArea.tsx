@@ -197,7 +197,7 @@ export function InputArea({
         </div>
       )}
 
-      <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200/70 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all duration-300 focus-within:border-[#6C5CE7]/40 dark:focus-within:border-[#6C5CE7]/40 focus-within:shadow-[#6C5CE7]/10 focus-within:bg-white dark:focus-within:bg-slate-800">
+      <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200/70 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all duration-300 focus-within:border-primary/40 dark:focus-within:border-primary/40 focus-within:shadow-primary/10 focus-within:bg-white dark:focus-within:bg-slate-800">
         <div className="px-4 pt-3 pb-2">
           <Textarea
             value={message}
@@ -327,7 +327,7 @@ export function InputArea({
               onClick={handleSend}
               disabled={(!message.trim() && attachedFiles.length === 0) || cannotSend}
               size="sm"
-              className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-[#6C5CE7] to-[#8B7CF7] hover:from-[#5B4CD6] hover:to-[#7A6BE6] disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
+              className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
             >
               {isProcessing ? (
                 <div className="flex gap-0.5">

@@ -159,7 +159,7 @@ export default function MomentumSidebar({
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-[#1a73e8] transition-transform duration-200 hover:scale-110" />
+          <Zap className="h-5 w-5 text-primary transition-transform duration-200 hover:scale-110" />
           <h3 className="font-semibold text-gray-900 dark:text-white">Momentum</h3>
         </div>
         <Button
@@ -370,7 +370,7 @@ export default function MomentumSidebar({
                   return (
                     <div
                       key={goal.id}
-                      className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-[#1a73e8] dark:hover:border-[#1a73e8] hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer"
+                      className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary dark:hover:border-primary hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
@@ -405,7 +405,7 @@ export default function MomentumSidebar({
                 <Button
                   variant="link"
                   onClick={onSwitchToMomentum}
-                  className="text-[#1a73e8] mt-2"
+                  className="text-primary mt-2"
                   size="sm"
                 >
                   Crea un obiettivo
@@ -420,7 +420,7 @@ export default function MomentumSidebar({
       <div className="sticky bottom-0 bg-white dark:bg-gray-800 border-t p-4 space-y-2">
         <Button
           onClick={onOpenCheckin}
-          className="w-full bg-[#1a73e8] hover:bg-[#1557b0] hover:brightness-105 text-white gap-2 shadow-sm transition-all duration-150 active:scale-95"
+          className="w-full bg-primary hover:bg-primary/80 hover:brightness-105 text-white gap-2 shadow-sm transition-all duration-150 active:scale-95"
         >
           <Plus className="h-4 w-4" />
           Fai Check-in

@@ -240,7 +240,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-card p-4 rounded-lg border border-[#dadce0] dark:border-border shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-card p-4 rounded-lg border border-border shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -266,8 +266,8 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
             <ChevronRight className="h-5 w-5" />
           </Button>
           <div className="ml-4 flex items-center gap-3">
-            <CalendarIcon className="h-6 w-6 text-[#5f6368]" />
-            <h2 className="text-xl font-normal text-[#3c4043] dark:text-[#e8eaed]" style={{ fontFamily: "'Product Sans', 'Google Sans', 'Roboto', sans-serif" }}>
+            <CalendarIcon className="h-6 w-6 text-muted-foreground" />
+            <h2 className="text-xl font-normal text-foreground" style={{ fontFamily: "'Product Sans', 'Google Sans', 'Roboto', sans-serif" }}>
               {title}
             </h2>
           </div>
@@ -281,7 +281,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
             className={cn(
               "px-3 sm:px-4 h-9 font-medium transition-all whitespace-nowrap",
               showCheckins 
-                ? "bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc] dark:bg-[#1a73e8] dark:text-white" 
+                ? "bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary dark:text-white" 
                 : "hover:bg-gray-100 dark:hover:bg-gray-800"
             )}
           >
@@ -297,7 +297,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
               className={cn(
                 "px-2 sm:px-4 h-9 font-medium transition-all flex-1 sm:flex-initial whitespace-nowrap text-xs sm:text-sm",
                 currentView === 'dayGridMonth' 
-                  ? "bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc] dark:bg-[#1a73e8] dark:text-white" 
+                  ? "bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary dark:text-white" 
                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
               )}
             >
@@ -310,7 +310,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
               className={cn(
                 "px-2 sm:px-4 h-9 font-medium transition-all flex-1 sm:flex-initial whitespace-nowrap text-xs sm:text-sm",
                 currentView === 'timeGridWeek' 
-                  ? "bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc] dark:bg-[#1a73e8] dark:text-white" 
+                  ? "bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary dark:text-white" 
                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
               )}
             >
@@ -323,7 +323,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
               className={cn(
                 "px-2 sm:px-4 h-9 font-medium transition-all flex-1 sm:flex-initial whitespace-nowrap text-xs sm:text-sm",
                 currentView === 'timeGridDay' 
-                  ? "bg-[#e8f0fe] text-[#1a73e8] hover:bg-[#d2e3fc] dark:bg-[#1a73e8] dark:text-white" 
+                  ? "bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary dark:text-white" 
                   : "hover:bg-gray-100 dark:hover:bg-gray-800"
               )}
             >
@@ -334,7 +334,7 @@ export default function Calendar({ onEventClick, onDateSelect }: CalendarProps) 
       </div>
 
       <div className={cn(
-        "bg-white dark:bg-card rounded-lg border border-[#dadce0] dark:border-border overflow-hidden shadow-sm",
+        "bg-white dark:bg-card rounded-lg border border-border overflow-hidden shadow-sm",
         "calendar-container"
       )} style={{ scrollBehavior: 'smooth', maxHeight: 'calc(100vh - 200px)' }}>
         <FullCalendar

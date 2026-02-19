@@ -55,7 +55,7 @@ export default function UnifiedClientHeader({
                 </Button>
               )}
               <div className="flex items-center gap-2">
-                <CalendarIcon className="h-6 w-6 text-[#1a73e8]" />
+                <CalendarIcon className="h-6 w-6 text-primary" />
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Calendar
                 </h1>
@@ -79,7 +79,7 @@ export default function UnifiedClientHeader({
                   size="sm" 
                   onClick={onNewEvent}
                   data-tour="calendar-new-event-btn"
-                  className="bg-[#1a73e8] hover:bg-[#1557b0] hover:brightness-105 text-white gap-1.5 transition-all duration-150 active:scale-95"
+                  className="bg-primary hover:bg-primary/80 hover:brightness-105 text-white gap-1.5 transition-all duration-150 active:scale-95"
                 >
                   <Plus className="h-4 w-4" />
                   Evento
@@ -166,7 +166,7 @@ export default function UnifiedClientHeader({
               </Button>
             )}
             <div className="flex items-center gap-2">
-              <CalendarIcon className="h-7 w-7 text-[#1a73e8]" />
+              <CalendarIcon className="h-7 w-7 text-primary" />
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Calendar
               </h1>
@@ -256,7 +256,7 @@ export default function UnifiedClientHeader({
               <Button 
                 onClick={onNewEvent}
                 data-tour="calendar-new-event-btn"
-                className="bg-[#1a73e8] hover:bg-[#1557b0] hover:brightness-105 text-white gap-2 shadow-sm transition-all duration-150 active:scale-95"
+                className="bg-primary hover:bg-primary/80 hover:brightness-105 text-white gap-2 shadow-sm transition-all duration-150 active:scale-95"
               >
                 <Plus className="h-4 w-4" />
                 Nuovo Evento
@@ -296,7 +296,7 @@ function TabButton({ active, onClick, icon: Icon, children, ...props }: TabButto
       className={cn(
         "relative px-5 py-2.5 rounded-full font-medium text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap",
         active
-          ? "bg-[#1a73e8] text-white shadow-md shadow-blue-200 dark:shadow-blue-900/50 hover:brightness-105"
+          ? "bg-primary text-white shadow-md shadow-blue-200 dark:shadow-blue-900/50 hover:brightness-105"
           : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-[1.02]",
         "active:scale-[0.98]"
       )}

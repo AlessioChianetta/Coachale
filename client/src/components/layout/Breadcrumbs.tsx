@@ -17,7 +17,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 px-2 text-gray-600 hover:text-[#1a73e8] dark:text-gray-400 dark:hover:text-blue-400 transition-colors duration-200 hover-underline-animation"
+        className="h-8 px-2 text-gray-600 hover:text-primary dark:text-gray-400 dark:hover:text-blue-400 transition-colors duration-200 hover-underline-animation"
         onClick={items[0]?.onClick}
       >
         <Home className="h-4 w-4" />
@@ -33,7 +33,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
             <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-600 mx-0.5" />
             {isLast ? (
               // Current page - bold and blue, not clickable
-              <span className="px-2 py-1 font-semibold text-[#1a73e8] dark:text-blue-400">
+              <span className="px-2 py-1 font-semibold text-primary dark:text-blue-400">
                 {item.label}
               </span>
             ) : (
@@ -41,7 +41,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 text-gray-600 hover:text-[#1a73e8] dark:text-gray-400 dark:hover:text-blue-400 font-normal transition-colors duration-200 hover-underline-animation"
+                className="h-8 px-2 text-gray-600 hover:text-primary dark:text-gray-400 dark:hover:text-blue-400 font-normal transition-colors duration-200 hover-underline-animation"
                 onClick={item.onClick}
               >
                 {item.label}
