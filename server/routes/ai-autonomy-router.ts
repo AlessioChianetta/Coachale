@@ -3672,7 +3672,7 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     ];
 
     const chatTemp = isTelegram ? 1 : 0.7;
-    const chatMaxTokens = isTelegram ? 512 : 2048;
+    const chatMaxTokens = 2048;
 
     let response: any;
     if (aiClient.models?.generateContent) {
