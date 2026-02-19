@@ -140,88 +140,255 @@ export async function sendTelegramMessage(botToken: string, chatId: number | str
   }
 }
 
-const PRIVATE_ONBOARDING_QUESTIONS = [
-  { step: 0, field: 'user_name', fallback: 'Ciao! 👋 Per conoscerti meglio, come ti chiami?' },
-  { step: 1, field: 'user_job', fallback: 'Piacere! Che lavoro fai?' },
-  { step: 2, field: 'user_goals', fallback: 'Interessante! Quali sono i tuoi obiettivi principali?' },
-  { step: 3, field: 'user_desires', fallback: 'Perfetto! Cosa desideri raggiungere?' },
-];
+const MAX_ONBOARDING_STEPS = 15;
 
-const GROUP_ONBOARDING_QUESTIONS = [
-  { step: 0, field: 'group_context', fallback: 'Ciao a tutti! 👋 Di cosa si occupa questo gruppo?' },
-  { step: 1, field: 'group_members', fallback: 'Capito! Chi sono i membri principali?' },
-  { step: 2, field: 'group_objectives', fallback: 'Ottimo! Quali sono gli obiettivi del gruppo?' },
-];
+const ROLE_ONBOARDING_PROMPTS: Record<string, { private: string; group: string }> = {
+  marco: {
+    private: `Sei MARCO, Executive Coach. Stai facendo l'onboarding di una persona nuova su Telegram.
+Il tuo stile: diretto, crudo, provocatorio, senza filtri. Non sei un assistente gentile - sei il coach che spinge oltre i limiti.
 
-const PRIVATE_QUESTION_PROMPTS = [
-  "Come ti chiami?",
-  "Che lavoro fai?",
-  "Quali sono i tuoi obiettivi principali?",
-  "Cosa desideri raggiungere?",
-];
+OBIETTIVO: Conosci questa persona per poterla aiutare davvero. Devi raccogliere abbastanza informazioni per poi essere un coach efficace.
 
-const GROUP_QUESTION_PROMPTS = [
-  "Di cosa si occupa questo gruppo?",
-  "Chi sono i membri principali?",
-  "Quali sono gli obiettivi del gruppo?",
-];
+COME PROCEDERE:
+- Presentati brevemente con il tuo stile al primo messaggio
+- Fai domande una alla volta, in modo naturale e provocatorio
+- Commenta OGNI risposta prima di fare la prossima domanda (provoca, sfida, approfondisci)
+- Decidi TU quali domande fare in base a quello che la persona ti dice
+- Se dice qualcosa di vago, insisti. Non accettare risposte generiche.
+- Adatta le domande alla situazione: un imprenditore riceverà domande diverse da un disoccupato
 
-async function generatePersonalityQuestion(
-  aiRole: string,
-  questionPrompt: string,
-  fallbackText: string,
-  consultantId: string,
-  stepIndex: number,
-  isFirstMessage: boolean
-): Promise<string> {
-  try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
-    const apiKey = await getGeminiApiKeyForClassifier();
-    if (!apiKey) return fallbackText;
+INFORMAZIONI DA RACCOGLIERE (non necessariamente in quest'ordine):
+- Nome
+- Cosa fa nella vita (lavoro, studio, situazione)
+- Situazione finanziaria (guadagni, risparmi, debiti)
+- Obiettivo concreto con numeri e tempistiche
+- Cosa ha provato finora per raggiungerlo
+- Perché ha deciso di agire adesso
 
-    const ai = new GoogleGenAI({ apiKey });
-    const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
-
-    const systemPrompt = `Sei ${roleName}. Devi formulare una domanda di onboarding con il tuo stile personale.
-La domanda base è: "${questionPrompt}"
-${isFirstMessage ? 'Questo è il primo messaggio — presentati brevemente e fai la domanda.' : 'Hai già parlato con questa persona — fai la domanda in modo naturale.'}
+QUANDO HAI FINITO:
+Quando hai raccolto abbastanza informazioni (minimo 4-5 scambi), chiudi l'onboarding con:
+1. Un riassunto brutalmente onesto della situazione della persona
+2. La tua prima valutazione da coach (cosa pensi, dove sono i problemi, dove puoi aiutare)
+3. Aggiungi ESATTAMENTE il tag [ONBOARDING_COMPLETE] alla fine del tuo ultimo messaggio
 
 REGOLE:
-- Scrivi SOLO la domanda riformulata nel tuo stile, max 2-3 righe
-- NON dire che sei un bot o un'AI
-- Sii naturale e colloquiale come su Telegram
-- Usa emoji con moderazione
-- Rispondi in italiano`;
+- Scrivi come su Telegram: breve, diretto, informale
+- Dai del "tu"
+- NON dire mai che sei un bot o un'AI
+- NON fare liste di domande tutte insieme - UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+    group: `Sei MARCO, Executive Coach. Stai facendo l'onboarding di un GRUPPO nuovo su Telegram.
+Il tuo stile: diretto, crudo, provocatorio, senza filtri.
 
-    const result = await trackedGenerateContent(ai, {
-      model: GEMINI_3_MODEL,
-      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
-      config: { temperature: 0.9 },
-    }, {
-      consultantId,
-      feature: "telegram_onboarding",
-      keySource: "superadmin",
-      callerRole: "consultant",
-    });
+OBIETTIVO: Conosci questo gruppo per poterlo aiutare davvero. Devi capire chi sono, cosa fanno e dove vogliono arrivare.
 
-    const aiText = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return aiText || fallbackText;
-  } catch (err: any) {
-    console.error(`[TELEGRAM-ONBOARDING] AI question generation error:`, err.message);
-    return fallbackText;
+COME PROCEDERE:
+- Presentati brevemente con il tuo stile al primo messaggio
+- Fai domande una alla volta, in modo naturale
+- Commenta OGNI risposta prima di fare la prossima domanda
+- Decidi TU quali domande fare in base a quello che il gruppo ti dice
+
+INFORMAZIONI DA RACCOGLIERE:
+- Contesto del gruppo (azienda, team, progetto)
+- Chi sono i membri principali e i loro ruoli
+- Obiettivi del gruppo con numeri e tempistiche
+- Sfide attuali e cosa hanno provato finora
+- Cosa si aspettano da te
+
+QUANDO HAI FINITO:
+Quando hai raccolto abbastanza informazioni (minimo 3-4 scambi), chiudi con:
+1. Un riassunto della situazione del gruppo
+2. La tua valutazione iniziale
+3. Aggiungi ESATTAMENTE il tag [ONBOARDING_COMPLETE] alla fine del tuo ultimo messaggio
+
+REGOLE:
+- Scrivi come su Telegram: breve, diretto, informale
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+  },
+  stella: {
+    private: `Sei STELLA, Assistente WhatsApp & Comunicazione. Stai facendo l'onboarding di una persona nuova su Telegram.
+Il tuo stile: empatico, caloroso, accogliente ma professionale. Metti le persone a loro agio.
+
+OBIETTIVO: Conosci questa persona per poterla assistere al meglio nella comunicazione e gestione clienti.
+
+COME PROCEDERE:
+- Presentati con calore al primo messaggio
+- Fai domande una alla volta, in modo naturale e empatico
+- Mostra interesse genuino per ogni risposta prima di procedere
+- Adatta le domande alla situazione della persona
+
+INFORMAZIONI DA RACCOGLIERE (non necessariamente in quest'ordine):
+- Nome
+- Cosa fa nella vita
+- Come gestisce attualmente la comunicazione con i clienti
+- Obiettivi principali
+- Cosa si aspetta da te
+
+QUANDO HAI FINITO:
+Quando hai raccolto abbastanza informazioni (minimo 4-5 scambi), chiudi con:
+1. Un riassunto affettuoso ma preciso della situazione
+2. Come pensi di poterla aiutare
+3. Aggiungi ESATTAMENTE il tag [ONBOARDING_COMPLETE] alla fine del tuo ultimo messaggio
+
+REGOLE:
+- Scrivi come su Telegram: breve, caloroso, informale
+- Dai del "tu"
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+    group: `Sei STELLA, Assistente WhatsApp & Comunicazione. Stai facendo l'onboarding di un GRUPPO su Telegram.
+Il tuo stile: empatico, caloroso, accogliente.
+
+OBIETTIVO: Conosci questo gruppo per supportarlo nella comunicazione.
+
+COME PROCEDERE:
+- Presentati con calore
+- Fai domande una alla volta
+- Mostra interesse genuino per ogni risposta
+
+INFORMAZIONI DA RACCOGLIERE:
+- Contesto del gruppo
+- Membri principali e ruoli
+- Come gestiscono la comunicazione attualmente
+- Obiettivi del gruppo
+
+QUANDO HAI FINITO:
+Dopo 3-4 scambi, chiudi con un riassunto e aggiungi [ONBOARDING_COMPLETE] alla fine.
+
+REGOLE:
+- Breve, calorosa, informale
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+  },
+  iris: {
+    private: `Sei IRIS, Assistente Email & Analisi. Stai facendo l'onboarding di una persona nuova su Telegram.
+Il tuo stile: analitico, preciso, strutturato ma amichevole. Vai al sodo con eleganza.
+
+OBIETTIVO: Conosci questa persona per ottimizzare la sua gestione email e analisi dati.
+
+COME PROCEDERE:
+- Presentati in modo professionale al primo messaggio
+- Fai domande una alla volta, precise e mirate
+- Analizza ogni risposta prima di procedere
+- Adatta le domande alla situazione
+
+INFORMAZIONI DA RACCOGLIERE (non necessariamente in quest'ordine):
+- Nome
+- Cosa fa nella vita
+- Volume di email/comunicazioni da gestire
+- Obiettivi principali
+- Sfide attuali nella gestione dati
+
+QUANDO HAI FINITO:
+Dopo 4-5 scambi, chiudi con:
+1. Un'analisi strutturata della situazione
+2. Le tue raccomandazioni iniziali
+3. Aggiungi ESATTAMENTE il tag [ONBOARDING_COMPLETE] alla fine
+
+REGOLE:
+- Breve, precisa, professionale
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+    group: `Sei IRIS, Assistente Email & Analisi. Stai facendo l'onboarding di un GRUPPO su Telegram.
+Il tuo stile: analitico, preciso, strutturato.
+
+OBIETTIVO: Conosci questo gruppo per supportarlo nell'analisi e gestione dati.
+
+COME PROCEDERE:
+- Presentati professionalmente
+- Fai domande una alla volta, precise e mirate
+
+INFORMAZIONI DA RACCOGLIERE:
+- Contesto del gruppo
+- Membri e ruoli
+- Volume di dati/email da gestire
+- Obiettivi del gruppo
+
+QUANDO HAI FINITO:
+Dopo 3-4 scambi, chiudi con un'analisi e aggiungi [ONBOARDING_COMPLETE] alla fine.
+
+REGOLE:
+- Breve, precisa, professionale
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+  },
+};
+
+const DEFAULT_ONBOARDING_PROMPT = {
+  private: (roleName: string) => `Sei ${roleName}. Stai facendo l'onboarding di una persona nuova su Telegram.
+
+OBIETTIVO: Conosci questa persona per poterla aiutare al meglio.
+
+COME PROCEDERE:
+- Presentati brevemente al primo messaggio
+- Fai domande una alla volta, in modo naturale
+- Commenta ogni risposta prima di fare la prossima domanda
+- Decidi tu quali domande fare in base alle risposte
+
+INFORMAZIONI DA RACCOGLIERE:
+- Nome
+- Cosa fa nella vita
+- Obiettivi principali
+- Cosa si aspetta da te
+
+QUANDO HAI FINITO:
+Dopo 4-5 scambi, chiudi con:
+1. Un riassunto della situazione
+2. Come pensi di poter aiutare
+3. Aggiungi ESATTAMENTE il tag [ONBOARDING_COMPLETE] alla fine del tuo ultimo messaggio
+
+REGOLE:
+- Scrivi come su Telegram: breve, naturale, informale
+- Dai del "tu"
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+  group: (roleName: string) => `Sei ${roleName}. Stai facendo l'onboarding di un GRUPPO nuovo su Telegram.
+
+OBIETTIVO: Conosci questo gruppo per poterlo supportare al meglio.
+
+COME PROCEDERE:
+- Presentati brevemente al primo messaggio
+- Fai domande una alla volta
+
+INFORMAZIONI DA RACCOGLIERE:
+- Contesto del gruppo
+- Membri principali
+- Obiettivi del gruppo
+
+QUANDO HAI FINITO:
+Dopo 3-4 scambi, chiudi con un riassunto e aggiungi [ONBOARDING_COMPLETE] alla fine.
+
+REGOLE:
+- Breve, naturale, informale
+- NON dire mai che sei un bot o un'AI
+- UNA domanda alla volta
+- Rispondi SEMPRE in italiano`,
+};
+
+function getOnboardingSystemPrompt(aiRole: string, isGroup: boolean): string {
+  const rolePrompts = ROLE_ONBOARDING_PROMPTS[aiRole.toLowerCase()];
+  if (rolePrompts) {
+    return isGroup ? rolePrompts.group : rolePrompts.private;
   }
+  const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
+  return isGroup ? DEFAULT_ONBOARDING_PROMPT.group(roleName) : DEFAULT_ONBOARDING_PROMPT.private(roleName);
 }
 
-async function generateWelcomeMessage(
+async function generateOnboardingResponse(
   aiRole: string,
   consultantId: string,
   isGroup: boolean,
-  profileSummary: string
+  conversation: Array<{ role: string; content: string }>
 ): Promise<string> {
-  const fallback = isGroup
-    ? "✅ Perfetto, ora conosco meglio il gruppo! Sono pronto ad aiutarvi. Scrivetemi quando volete!"
-    : "✅ Grazie per le informazioni! Ora ti conosco meglio e posso aiutarti al meglio. Scrivimi quando vuoi!";
+  const fallback = conversation.length === 0
+    ? `Ciao! Sono ${aiRole.charAt(0).toUpperCase() + aiRole.slice(1)} 👋 Raccontami un po' di te!`
+    : "Interessante! Dimmi di più...";
   try {
     const { GoogleGenAI } = await import("@google/genai");
     const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
@@ -229,22 +396,24 @@ async function generateWelcomeMessage(
     if (!apiKey) return fallback;
 
     const ai = new GoogleGenAI({ apiKey });
-    const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
+    const systemPrompt = getOnboardingSystemPrompt(aiRole, isGroup);
 
-    const systemPrompt = `Sei ${roleName}. L'onboarding è appena terminato. Hai raccolto queste informazioni:
-${profileSummary}
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    for (const msg of conversation) {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      });
+    }
 
-Scrivi un breve messaggio di benvenuto (max 3-4 righe) nel tuo stile personale.
-- Ringrazia per le informazioni
-- Digli che sei pronto ad aiutarlo/aiutarli
-- NON dire che sei un bot o AI
-- Sii naturale e caloroso
-- Rispondi in italiano`;
+    if (contents.length === 0) {
+      contents.push({ role: "user", parts: [{ text: "Ciao" }] });
+    }
 
     const result = await trackedGenerateContent(ai, {
       model: GEMINI_3_MODEL,
-      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
-      config: { temperature: 0.9 },
+      contents,
+      config: { temperature: 0.9, systemInstruction: systemPrompt },
     }, {
       consultantId,
       feature: "telegram_onboarding",
@@ -255,8 +424,109 @@ Scrivi un breve messaggio di benvenuto (max 3-4 righe) nel tuo stile personale.
     const aiText = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
     return aiText || fallback;
   } catch (err: any) {
-    console.error(`[TELEGRAM-ONBOARDING] Welcome message generation error:`, err.message);
+    console.error(`[TELEGRAM-ONBOARDING] AI conversation error:`, err.message);
     return fallback;
+  }
+}
+
+async function extractProfileFromConversation(
+  consultantId: string,
+  conversation: Array<{ role: string; content: string }>,
+  isGroup: boolean
+): Promise<{ profileJson: any; summary: string }> {
+  const defaultProfile = {
+    user_name: null, user_job: null, user_goals: null, user_desires: null,
+    financial_situation: null, key_challenges: null, why_now: null, additional_context: null,
+  };
+  const defaultSummary = "Profilo raccolto tramite onboarding conversazionale.";
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) return { profileJson: defaultProfile, summary: defaultSummary };
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const conversationText = conversation
+      .map(m => `${m.role === 'assistant' ? 'AI' : 'Utente'}: ${m.content}`)
+      .join('\n\n');
+
+    const extractionPrompt = isGroup
+      ? `Analizza questa conversazione di onboarding di un GRUPPO ed estrai le informazioni raccolte in formato JSON:
+{
+  "group_context": "...",
+  "group_members": "...",
+  "group_objectives": "...",
+  "key_challenges": "...",
+  "additional_context": "..."
+}
+Estrai SOLO le informazioni effettivamente menzionate. Usa null per quelle non disponibili.
+Rispondi SOLO con il JSON, senza altro testo.
+
+CONVERSAZIONE:
+${conversationText}`
+      : `Analizza questa conversazione di onboarding ed estrai le informazioni raccolte in formato JSON:
+{
+  "user_name": "...",
+  "user_job": "...",
+  "user_goals": "...",
+  "user_desires": "...",
+  "financial_situation": "...",
+  "key_challenges": "...",
+  "why_now": "...",
+  "additional_context": "..."
+}
+Estrai SOLO le informazioni effettivamente menzionate. Usa null per quelle non disponibili.
+Rispondi SOLO con il JSON, senza altro testo.
+
+CONVERSAZIONE:
+${conversationText}`;
+
+    const summaryPrompt = `Basandoti su questa conversazione di onboarding, scrivi un RIASSUNTO conciso (max 5 righe) del profilo della persona/gruppo. Includi le informazioni chiave raccolte in modo leggibile. Rispondi SOLO con il riassunto, senza altro testo.
+
+CONVERSAZIONE:
+${conversationText}`;
+
+    const [extractionResult, summaryResult] = await Promise.all([
+      trackedGenerateContent(ai, {
+        model: GEMINI_3_MODEL,
+        contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+        config: { temperature: 0.1 },
+      }, {
+        consultantId,
+        feature: "telegram_onboarding",
+        keySource: "superadmin",
+        callerRole: "consultant",
+      }),
+      trackedGenerateContent(ai, {
+        model: GEMINI_3_MODEL,
+        contents: [{ role: "user", parts: [{ text: summaryPrompt }] }],
+        config: { temperature: 0.3 },
+      }, {
+        consultantId,
+        feature: "telegram_onboarding",
+        keySource: "superadmin",
+        callerRole: "consultant",
+      }),
+    ]);
+
+    const extractionText = extractionResult?.text || extractionResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const summaryText = summaryResult?.text || summaryResult?.candidates?.[0]?.content?.parts?.[0]?.text || defaultSummary;
+
+    let profileJson = defaultProfile;
+    try {
+      const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        profileJson = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr) {
+      console.error(`[TELEGRAM-ONBOARDING] JSON parse error:`, parseErr);
+    }
+
+    return { profileJson, summary: summaryText.trim() };
+  } catch (err: any) {
+    console.error(`[TELEGRAM-ONBOARDING] Profile extraction error:`, err.message);
+    return { profileJson: defaultProfile, summary: defaultSummary };
   }
 }
 
@@ -276,24 +546,25 @@ async function handleOpenModeOnboarding(
   try {
     const profileResult = await db.execute(sql`
       SELECT id, onboarding_status, onboarding_step, user_name, user_job, user_goals, user_desires,
-             group_context, group_members, group_objectives
+             group_context, group_members, group_objectives, onboarding_conversation
       FROM telegram_user_profiles
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
       LIMIT 1
     `);
 
-    const questions = isGroupChat ? GROUP_ONBOARDING_QUESTIONS : PRIVATE_ONBOARDING_QUESTIONS;
-    const questionPrompts = isGroupChat ? GROUP_QUESTION_PROMPTS : PRIVATE_QUESTION_PROMPTS;
-    const maxSteps = questions.length;
-
     if (profileResult.rows.length === 0) {
-      console.log(`[TELEGRAM-ONBOARDING] New ${isGroupChat ? 'group' : 'private'} chat ${chatId}, starting onboarding`);
+      console.log(`[TELEGRAM-ONBOARDING] New ${isGroupChat ? 'group' : 'private'} chat ${chatId}, starting AI-driven onboarding`);
+
+      const initialConversation: Array<{ role: string; content: string }> = [];
+      const aiFirstMessage = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, initialConversation);
+
+      const savedConversation = [{ role: 'assistant', content: aiFirstMessage }];
 
       await db.execute(sql`
-        INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, onboarding_step, first_name, username)
-        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, 'in_onboarding', 0, ${firstName || null}, ${username || null})
+        INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, onboarding_step, first_name, username, onboarding_conversation)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, 'in_onboarding', 0, ${firstName || null}, ${username || null}, ${JSON.stringify(savedConversation)}::jsonb)
         ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
-          onboarding_status = 'in_onboarding', onboarding_step = 0, updated_at = NOW()
+          onboarding_status = 'in_onboarding', onboarding_step = 0, onboarding_conversation = ${JSON.stringify(savedConversation)}::jsonb, updated_at = NOW()
       `);
 
       await db.execute(sql`
@@ -304,10 +575,7 @@ async function handleOpenModeOnboarding(
           username = EXCLUDED.username, first_name = EXCLUDED.first_name
       `);
 
-      const question = await generatePersonalityQuestion(
-        aiRole, questionPrompts[0], questions[0].fallback, consultantId, 0, true
-      );
-      await sendTelegramMessage(botToken, chatId, question);
+      await sendTelegramMessage(botToken, chatId, aiFirstMessage);
       return 'handled';
     }
 
@@ -334,72 +602,120 @@ async function handleOpenModeOnboarding(
 
     if (profile.onboarding_status === 'in_onboarding') {
       const currentStep = profile.onboarding_step || 0;
-      const answer = text.trim().substring(0, 1000);
+      const userMessage = text.trim().substring(0, 1000);
 
-      const currentQuestion = questions[currentStep];
-      if (currentQuestion) {
-        const fieldName = currentQuestion.field;
-        await db.execute(sql`
-          UPDATE telegram_user_profiles
-          SET ${sql.raw(fieldName)} = ${answer}, updated_at = NOW()
-          WHERE id = ${profile.id}
-        `);
-        console.log(`[TELEGRAM-ONBOARDING] Saved ${fieldName} for chat ${chatId}: "${answer.substring(0, 50)}"`);
+      const existingConversation: Array<{ role: string; content: string }> = Array.isArray(profile.onboarding_conversation)
+        ? profile.onboarding_conversation
+        : [];
+
+      const conversationWithUserMsg = [...existingConversation, { role: 'user', content: userMessage }];
+
+      const forceComplete = currentStep >= MAX_ONBOARDING_STEPS - 1;
+
+      let aiResponse: string;
+      if (forceComplete) {
+        const forcePrompt = getOnboardingSystemPrompt(aiRole, isGroupChat)
+          + '\n\nIMPORTANTE: Hai raggiunto il numero massimo di scambi. DEVI chiudere l\'onboarding ORA. Fai un riassunto di quello che sai e aggiungi [ONBOARDING_COMPLETE] alla fine.';
+
+        const tempConversation = conversationWithUserMsg.map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        }));
+
+        try {
+          const { GoogleGenAI } = await import("@google/genai");
+          const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+          const apiKey = await getGeminiApiKeyForClassifier();
+          const ai = new GoogleGenAI({ apiKey: apiKey! });
+          const result = await trackedGenerateContent(ai, {
+            model: GEMINI_3_MODEL,
+            contents: tempConversation,
+            config: { temperature: 0.9, systemInstruction: forcePrompt },
+          }, {
+            consultantId,
+            feature: "telegram_onboarding",
+            keySource: "superadmin",
+            callerRole: "consultant",
+          });
+          aiResponse = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!aiResponse.includes('[ONBOARDING_COMPLETE]')) {
+            aiResponse += '\n\n[ONBOARDING_COMPLETE]';
+          }
+        } catch (err: any) {
+          console.error(`[TELEGRAM-ONBOARDING] Force complete AI error:`, err.message);
+          aiResponse = 'Ok, ho raccolto abbastanza informazioni. Iniziamo a lavorare! [ONBOARDING_COMPLETE]';
+        }
+      } else {
+        aiResponse = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, conversationWithUserMsg);
       }
 
-      const nextStep = currentStep + 1;
+      const isComplete = aiResponse.includes('[ONBOARDING_COMPLETE]');
+      const cleanResponse = aiResponse.replace(/\[ONBOARDING_COMPLETE\]/g, '').trim();
 
-      if (nextStep >= maxSteps) {
-        const updatedProfile = await db.execute(sql`
-          SELECT user_name, user_job, user_goals, user_desires, group_context, group_members, group_objectives
-          FROM telegram_user_profiles WHERE id = ${profile.id}
-        `);
-        const p = updatedProfile.rows[0] as any;
-        const fullProfile = isGroupChat
-          ? { group_context: p.group_context, group_members: p.group_members, group_objectives: p.group_objectives }
-          : { user_name: p.user_name, user_job: p.user_job, user_goals: p.user_goals, user_desires: p.user_desires };
+      const updatedConversation = [...conversationWithUserMsg, { role: 'assistant', content: cleanResponse }];
+
+      if (isComplete) {
+        console.log(`[TELEGRAM-ONBOARDING] AI signaled onboarding complete for chat ${chatId} at step ${currentStep + 1}`);
+
+        const { profileJson, summary } = await extractProfileFromConversation(consultantId, updatedConversation, isGroupChat);
+
+        const userName = profileJson.user_name || null;
+        const userJob = profileJson.user_job || null;
+        const userGoals = profileJson.user_goals || null;
+        const userDesires = profileJson.user_desires || null;
+        const groupContext = profileJson.group_context || null;
+        const groupMembers = profileJson.group_members || null;
+        const groupObjectives = profileJson.group_objectives || null;
 
         await db.execute(sql`
           UPDATE telegram_user_profiles
-          SET onboarding_status = 'completed', onboarding_step = ${nextStep},
-              full_profile_json = ${JSON.stringify(fullProfile)}::jsonb, updated_at = NOW()
+          SET onboarding_status = 'completed',
+              onboarding_step = ${currentStep + 1},
+              onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
+              onboarding_summary = ${summary},
+              full_profile_json = ${JSON.stringify(profileJson)}::jsonb,
+              user_name = COALESCE(${userName}, user_name),
+              user_job = COALESCE(${userJob}, user_job),
+              user_goals = COALESCE(${userGoals}, user_goals),
+              user_desires = COALESCE(${userDesires}, user_desires),
+              group_context = COALESCE(${groupContext}, group_context),
+              group_members = COALESCE(${groupMembers}, group_members),
+              group_objectives = COALESCE(${groupObjectives}, group_objectives),
+              updated_at = NOW()
           WHERE id = ${profile.id}
         `);
 
-        const profileSummary = isGroupChat
-          ? `Contesto: ${p.group_context || '-'}\nMembri: ${p.group_members || '-'}\nObiettivi: ${p.group_objectives || '-'}`
-          : `Nome: ${p.user_name || '-'}\nLavoro: ${p.user_job || '-'}\nObiettivi: ${p.user_goals || '-'}\nDesideri: ${p.user_desires || '-'}`;
-
-        const welcomeMsg = await generateWelcomeMessage(aiRole, consultantId, isGroupChat, profileSummary);
-        await sendTelegramMessage(botToken, chatId, welcomeMsg);
+        await sendTelegramMessage(botToken, chatId, cleanResponse);
         console.log(`[TELEGRAM-ONBOARDING] Onboarding completed for chat ${chatId}`);
         return 'handled';
       }
 
       await db.execute(sql`
-        UPDATE telegram_user_profiles SET onboarding_step = ${nextStep}, updated_at = NOW()
+        UPDATE telegram_user_profiles
+        SET onboarding_step = ${currentStep + 1},
+            onboarding_conversation = ${JSON.stringify(updatedConversation)}::jsonb,
+            updated_at = NOW()
         WHERE id = ${profile.id}
       `);
 
-      const nextQuestion = questions[nextStep];
-      const question = await generatePersonalityQuestion(
-        aiRole, questionPrompts[nextStep], nextQuestion.fallback, consultantId, nextStep, false
-      );
-      await sendTelegramMessage(botToken, chatId, question);
+      await sendTelegramMessage(botToken, chatId, cleanResponse);
+      console.log(`[TELEGRAM-ONBOARDING] Onboarding step ${currentStep + 1} for chat ${chatId}`);
       return 'handled';
     }
 
     if (profile.onboarding_status === 'pending') {
+      const initialConversation: Array<{ role: string; content: string }> = [];
+      const aiFirstMessage = await generateOnboardingResponse(aiRole, consultantId, isGroupChat, initialConversation);
+      const savedConversation = [{ role: 'assistant', content: aiFirstMessage }];
+
       await db.execute(sql`
         UPDATE telegram_user_profiles
-        SET onboarding_status = 'in_onboarding', onboarding_step = 0, updated_at = NOW()
+        SET onboarding_status = 'in_onboarding', onboarding_step = 0,
+            onboarding_conversation = ${JSON.stringify(savedConversation)}::jsonb, updated_at = NOW()
         WHERE id = ${profile.id}
       `);
 
-      const question = await generatePersonalityQuestion(
-        aiRole, questionPrompts[0], questions[0].fallback, consultantId, 0, true
-      );
-      await sendTelegramMessage(botToken, chatId, question);
+      await sendTelegramMessage(botToken, chatId, aiFirstMessage);
       return 'handled';
     }
 
@@ -414,7 +730,7 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
   try {
     const profileResult = await db.execute(sql`
       SELECT onboarding_status, chat_type, user_name, user_job, user_goals, user_desires,
-             group_context, group_members, group_objectives
+             group_context, group_members, group_objectives, onboarding_summary, full_profile_json
       FROM telegram_user_profiles
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
         AND onboarding_status = 'completed'
@@ -425,6 +741,25 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
 
     const p = profileResult.rows[0] as any;
     const isGroup = p.chat_type === 'group' || p.chat_type === 'supergroup';
+    const contextLabel = isGroup ? 'CONTESTO GRUPPO TELEGRAM' : 'CONTESTO UTENTE TELEGRAM';
+
+    if (p.onboarding_summary) {
+      return `[${contextLabel}: ${p.onboarding_summary}]`;
+    }
+
+    if (p.full_profile_json && typeof p.full_profile_json === 'object') {
+      const fpj = p.full_profile_json;
+      const parts: string[] = [];
+      for (const [key, value] of Object.entries(fpj)) {
+        if (value && value !== 'null') {
+          const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          parts.push(`${label}: ${value}`);
+        }
+      }
+      if (parts.length > 0) {
+        return `[${contextLabel}: ${parts.join(', ')}]`;
+      }
+    }
 
     if (isGroup) {
       const parts = [];
@@ -432,7 +767,7 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
       if (p.group_members) parts.push(`Membri: ${p.group_members}`);
       if (p.group_objectives) parts.push(`Obiettivi: ${p.group_objectives}`);
       if (parts.length === 0) return null;
-      return `[CONTESTO GRUPPO TELEGRAM: ${parts.join(', ')}]`;
+      return `[${contextLabel}: ${parts.join(', ')}]`;
     } else {
       const parts = [];
       if (p.user_name) parts.push(`Nome: ${p.user_name}`);
@@ -440,7 +775,7 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
       if (p.user_goals) parts.push(`Obiettivi: ${p.user_goals}`);
       if (p.user_desires) parts.push(`Desideri: ${p.user_desires}`);
       if (parts.length === 0) return null;
-      return `[CONTESTO UTENTE TELEGRAM: ${parts.join(', ')}]`;
+      return `[${contextLabel}: ${parts.join(', ')}]`;
     }
   } catch (err: any) {
     console.error(`[TELEGRAM] Error fetching profile context:`, err.message);
