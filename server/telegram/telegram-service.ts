@@ -140,6 +140,314 @@ export async function sendTelegramMessage(botToken: string, chatId: number | str
   }
 }
 
+const PRIVATE_ONBOARDING_QUESTIONS = [
+  { step: 0, field: 'user_name', fallback: 'Ciao! 👋 Per conoscerti meglio, come ti chiami?' },
+  { step: 1, field: 'user_job', fallback: 'Piacere! Che lavoro fai?' },
+  { step: 2, field: 'user_goals', fallback: 'Interessante! Quali sono i tuoi obiettivi principali?' },
+  { step: 3, field: 'user_desires', fallback: 'Perfetto! Cosa desideri raggiungere?' },
+];
+
+const GROUP_ONBOARDING_QUESTIONS = [
+  { step: 0, field: 'group_context', fallback: 'Ciao a tutti! 👋 Di cosa si occupa questo gruppo?' },
+  { step: 1, field: 'group_members', fallback: 'Capito! Chi sono i membri principali?' },
+  { step: 2, field: 'group_objectives', fallback: 'Ottimo! Quali sono gli obiettivi del gruppo?' },
+];
+
+const PRIVATE_QUESTION_PROMPTS = [
+  "Come ti chiami?",
+  "Che lavoro fai?",
+  "Quali sono i tuoi obiettivi principali?",
+  "Cosa desideri raggiungere?",
+];
+
+const GROUP_QUESTION_PROMPTS = [
+  "Di cosa si occupa questo gruppo?",
+  "Chi sono i membri principali?",
+  "Quali sono gli obiettivi del gruppo?",
+];
+
+async function generatePersonalityQuestion(
+  aiRole: string,
+  questionPrompt: string,
+  fallbackText: string,
+  consultantId: string,
+  stepIndex: number,
+  isFirstMessage: boolean
+): Promise<string> {
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) return fallbackText;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
+
+    const systemPrompt = `Sei ${roleName}. Devi formulare una domanda di onboarding con il tuo stile personale.
+La domanda base è: "${questionPrompt}"
+${isFirstMessage ? 'Questo è il primo messaggio — presentati brevemente e fai la domanda.' : 'Hai già parlato con questa persona — fai la domanda in modo naturale.'}
+
+REGOLE:
+- Scrivi SOLO la domanda riformulata nel tuo stile, max 2-3 righe
+- NON dire che sei un bot o un'AI
+- Sii naturale e colloquiale come su Telegram
+- Usa emoji con moderazione
+- Rispondi in italiano`;
+
+    const result = await trackedGenerateContent(ai, {
+      model: GEMINI_3_MODEL,
+      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+      config: { temperature: 0.9 },
+    }, {
+      consultantId,
+      feature: "telegram_onboarding",
+      keySource: "superadmin",
+      callerRole: "consultant",
+    });
+
+    const aiText = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return aiText || fallbackText;
+  } catch (err: any) {
+    console.error(`[TELEGRAM-ONBOARDING] AI question generation error:`, err.message);
+    return fallbackText;
+  }
+}
+
+async function generateWelcomeMessage(
+  aiRole: string,
+  consultantId: string,
+  isGroup: boolean,
+  profileSummary: string
+): Promise<string> {
+  const fallback = isGroup
+    ? "✅ Perfetto, ora conosco meglio il gruppo! Sono pronto ad aiutarvi. Scrivetemi quando volete!"
+    : "✅ Grazie per le informazioni! Ora ti conosco meglio e posso aiutarti al meglio. Scrivimi quando vuoi!";
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) return fallback;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const roleName = aiRole.charAt(0).toUpperCase() + aiRole.slice(1);
+
+    const systemPrompt = `Sei ${roleName}. L'onboarding è appena terminato. Hai raccolto queste informazioni:
+${profileSummary}
+
+Scrivi un breve messaggio di benvenuto (max 3-4 righe) nel tuo stile personale.
+- Ringrazia per le informazioni
+- Digli che sei pronto ad aiutarlo/aiutarli
+- NON dire che sei un bot o AI
+- Sii naturale e caloroso
+- Rispondi in italiano`;
+
+    const result = await trackedGenerateContent(ai, {
+      model: GEMINI_3_MODEL,
+      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+      config: { temperature: 0.9 },
+    }, {
+      consultantId,
+      feature: "telegram_onboarding",
+      keySource: "superadmin",
+      callerRole: "consultant",
+    });
+
+    const aiText = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return aiText || fallback;
+  } catch (err: any) {
+    console.error(`[TELEGRAM-ONBOARDING] Welcome message generation error:`, err.message);
+    return fallback;
+  }
+}
+
+async function handleOpenModeOnboarding(
+  consultantId: string,
+  aiRole: string,
+  chatId: number,
+  chatType: string,
+  text: string,
+  botToken: string,
+  botUsername: string,
+  firstName: string,
+  username: string,
+  chatTitle: string,
+  isGroupChat: boolean
+): Promise<'handled' | 'completed' | 'not_applicable'> {
+  try {
+    const profileResult = await db.execute(sql`
+      SELECT id, onboarding_status, onboarding_step, user_name, user_job, user_goals, user_desires,
+             group_context, group_members, group_objectives
+      FROM telegram_user_profiles
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+      LIMIT 1
+    `);
+
+    const questions = isGroupChat ? GROUP_ONBOARDING_QUESTIONS : PRIVATE_ONBOARDING_QUESTIONS;
+    const questionPrompts = isGroupChat ? GROUP_QUESTION_PROMPTS : PRIVATE_QUESTION_PROMPTS;
+    const maxSteps = questions.length;
+
+    if (profileResult.rows.length === 0) {
+      console.log(`[TELEGRAM-ONBOARDING] New ${isGroupChat ? 'group' : 'private'} chat ${chatId}, starting onboarding`);
+
+      await db.execute(sql`
+        INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, onboarding_step, first_name, username)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, 'in_onboarding', 0, ${firstName || null}, ${username || null})
+        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+          onboarding_status = 'in_onboarding', onboarding_step = 0, updated_at = NOW()
+      `);
+
+      await db.execute(sql`
+        INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active, is_owner)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true, false)
+        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+          active = true, chat_type = EXCLUDED.chat_type, chat_title = EXCLUDED.chat_title,
+          username = EXCLUDED.username, first_name = EXCLUDED.first_name
+      `);
+
+      const question = await generatePersonalityQuestion(
+        aiRole, questionPrompts[0], questions[0].fallback, consultantId, 0, true
+      );
+      await sendTelegramMessage(botToken, chatId, question);
+      return 'handled';
+    }
+
+    const profile = profileResult.rows[0] as any;
+
+    if (profile.onboarding_status === 'completed') {
+      const linkCheck = await db.execute(sql`
+        SELECT id FROM telegram_chat_links
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId} AND active = true
+        LIMIT 1
+      `);
+      if (linkCheck.rows.length === 0) {
+        await db.execute(sql`
+          INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active, is_owner)
+          VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true, false)
+          ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+            active = true, chat_type = EXCLUDED.chat_type, chat_title = EXCLUDED.chat_title,
+            username = EXCLUDED.username, first_name = EXCLUDED.first_name
+        `);
+        console.log(`[TELEGRAM-ONBOARDING] Re-linked chat ${chatId} for completed profile`);
+      }
+      return 'completed';
+    }
+
+    if (profile.onboarding_status === 'in_onboarding') {
+      const currentStep = profile.onboarding_step || 0;
+      const answer = text.trim().substring(0, 1000);
+
+      const currentQuestion = questions[currentStep];
+      if (currentQuestion) {
+        const fieldName = currentQuestion.field;
+        await db.execute(sql`
+          UPDATE telegram_user_profiles
+          SET ${sql.raw(fieldName)} = ${answer}, updated_at = NOW()
+          WHERE id = ${profile.id}
+        `);
+        console.log(`[TELEGRAM-ONBOARDING] Saved ${fieldName} for chat ${chatId}: "${answer.substring(0, 50)}"`);
+      }
+
+      const nextStep = currentStep + 1;
+
+      if (nextStep >= maxSteps) {
+        const updatedProfile = await db.execute(sql`
+          SELECT user_name, user_job, user_goals, user_desires, group_context, group_members, group_objectives
+          FROM telegram_user_profiles WHERE id = ${profile.id}
+        `);
+        const p = updatedProfile.rows[0] as any;
+        const fullProfile = isGroupChat
+          ? { group_context: p.group_context, group_members: p.group_members, group_objectives: p.group_objectives }
+          : { user_name: p.user_name, user_job: p.user_job, user_goals: p.user_goals, user_desires: p.user_desires };
+
+        await db.execute(sql`
+          UPDATE telegram_user_profiles
+          SET onboarding_status = 'completed', onboarding_step = ${nextStep},
+              full_profile_json = ${JSON.stringify(fullProfile)}::jsonb, updated_at = NOW()
+          WHERE id = ${profile.id}
+        `);
+
+        const profileSummary = isGroupChat
+          ? `Contesto: ${p.group_context || '-'}\nMembri: ${p.group_members || '-'}\nObiettivi: ${p.group_objectives || '-'}`
+          : `Nome: ${p.user_name || '-'}\nLavoro: ${p.user_job || '-'}\nObiettivi: ${p.user_goals || '-'}\nDesideri: ${p.user_desires || '-'}`;
+
+        const welcomeMsg = await generateWelcomeMessage(aiRole, consultantId, isGroupChat, profileSummary);
+        await sendTelegramMessage(botToken, chatId, welcomeMsg);
+        console.log(`[TELEGRAM-ONBOARDING] Onboarding completed for chat ${chatId}`);
+        return 'handled';
+      }
+
+      await db.execute(sql`
+        UPDATE telegram_user_profiles SET onboarding_step = ${nextStep}, updated_at = NOW()
+        WHERE id = ${profile.id}
+      `);
+
+      const nextQuestion = questions[nextStep];
+      const question = await generatePersonalityQuestion(
+        aiRole, questionPrompts[nextStep], nextQuestion.fallback, consultantId, nextStep, false
+      );
+      await sendTelegramMessage(botToken, chatId, question);
+      return 'handled';
+    }
+
+    if (profile.onboarding_status === 'pending') {
+      await db.execute(sql`
+        UPDATE telegram_user_profiles
+        SET onboarding_status = 'in_onboarding', onboarding_step = 0, updated_at = NOW()
+        WHERE id = ${profile.id}
+      `);
+
+      const question = await generatePersonalityQuestion(
+        aiRole, questionPrompts[0], questions[0].fallback, consultantId, 0, true
+      );
+      await sendTelegramMessage(botToken, chatId, question);
+      return 'handled';
+    }
+
+    return 'not_applicable';
+  } catch (err: any) {
+    console.error(`[TELEGRAM-ONBOARDING] Error:`, err.message);
+    return 'not_applicable';
+  }
+}
+
+async function getProfileContext(consultantId: string, aiRole: string, chatId: number): Promise<string | null> {
+  try {
+    const profileResult = await db.execute(sql`
+      SELECT onboarding_status, chat_type, user_name, user_job, user_goals, user_desires,
+             group_context, group_members, group_objectives
+      FROM telegram_user_profiles
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+        AND onboarding_status = 'completed'
+      LIMIT 1
+    `);
+
+    if (profileResult.rows.length === 0) return null;
+
+    const p = profileResult.rows[0] as any;
+    const isGroup = p.chat_type === 'group' || p.chat_type === 'supergroup';
+
+    if (isGroup) {
+      const parts = [];
+      if (p.group_context) parts.push(`Contesto gruppo: ${p.group_context}`);
+      if (p.group_members) parts.push(`Membri: ${p.group_members}`);
+      if (p.group_objectives) parts.push(`Obiettivi: ${p.group_objectives}`);
+      if (parts.length === 0) return null;
+      return `[CONTESTO GRUPPO TELEGRAM: ${parts.join(', ')}]`;
+    } else {
+      const parts = [];
+      if (p.user_name) parts.push(`Nome: ${p.user_name}`);
+      if (p.user_job) parts.push(`Lavoro: ${p.user_job}`);
+      if (p.user_goals) parts.push(`Obiettivi: ${p.user_goals}`);
+      if (p.user_desires) parts.push(`Desideri: ${p.user_desires}`);
+      if (parts.length === 0) return null;
+      return `[CONTESTO UTENTE TELEGRAM: ${parts.join(', ')}]`;
+    }
+  } catch (err: any) {
+    console.error(`[TELEGRAM] Error fetching profile context:`, err.message);
+    return null;
+  }
+}
+
 export async function processIncomingTelegramMessage(update: any, configId: string): Promise<void> {
   const msg = update.message || update.channel_post;
   if (!msg) {
@@ -163,7 +471,7 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   console.log(`[TELEGRAM] Incoming message from chat ${chatId} (${chatType}): "${text.substring(0, 100)}"`);
 
   const configResult = await db.execute(sql`
-    SELECT id, consultant_id, ai_role, bot_token, bot_username, enabled, group_support
+    SELECT id, consultant_id, ai_role, bot_token, bot_username, enabled, group_support, open_mode
     FROM telegram_bot_configs
     WHERE id = ${parseInt(configId)} AND enabled = true
     LIMIT 1
@@ -181,8 +489,21 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   const aiRole = config.ai_role;
 
   const isGroupChat = chatType === 'group' || chatType === 'supergroup';
-  if (isGroupChat) {
-    if (!config.group_support) {
+
+  let openModeBypassMention = false;
+  if (isGroupChat && config.open_mode) {
+    const groupProfile = await db.execute(sql`
+      SELECT onboarding_status FROM telegram_user_profiles
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId}
+      LIMIT 1
+    `);
+    if (groupProfile.rows.length === 0 || (groupProfile.rows[0] as any).onboarding_status === 'in_onboarding') {
+      openModeBypassMention = true;
+    }
+  }
+
+  if (isGroupChat && !openModeBypassMention) {
+    if (!config.group_support && !config.open_mode) {
       console.log(`[TELEGRAM] Group support disabled for config ${configId}, ignoring`);
       return;
     }
@@ -219,6 +540,48 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       return;
     } else {
       await sendTelegramMessage(botToken, chatId, "❌ Codice di attivazione non valido.");
+      return;
+    }
+  }
+
+  if (config.open_mode) {
+    const openModeResult = await handleOpenModeOnboarding(
+      consultantId, aiRole, chatId, chatType, text, botToken, botUsername, firstName, username, chatTitle, isGroupChat
+    );
+    if (openModeResult === 'handled') {
+      return;
+    }
+    if (openModeResult === 'completed') {
+      let processedText = text;
+      if (isGroupChat && botUsername) {
+        processedText = text.replace(new RegExp(`@${botUsername}\\b`, 'gi'), '').trim();
+      }
+      if (!processedText) return;
+
+      const profileContext = await getProfileContext(consultantId, aiRole, chatId);
+      const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
+
+      try {
+        const roleName = aiRole;
+        const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
+        await db.execute(sql`
+          INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+          VALUES (${consultantId}::uuid, ${aiRole}, ${roleName}, 'consultant', ${processedText.trim()}, ${telegramMetadata}::jsonb)
+        `);
+
+        const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
+        const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
+          skipUserMessageInsert: true,
+          metadata: { source: "telegram", telegram_chat_id: chatId },
+          source: "telegram",
+        });
+
+        await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
+        console.log(`[TELEGRAM] Open mode response sent to chat ${chatId} for role ${aiRole}`);
+      } catch (err: any) {
+        console.error(`[TELEGRAM] Error processing open mode message:`, err.message);
+        await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
+      }
       return;
     }
   }
@@ -307,6 +670,9 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     return;
   }
 
+  const profileContext = await getProfileContext(consultantId, aiRole, chatId);
+  const messageWithContext = profileContext ? `${profileContext}\n\n${processedText}` : processedText;
+
   try {
     const roleName = aiRole;
     const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId });
@@ -316,7 +682,7 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     `);
 
     const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
-    const aiResponse = await processAgentChatInternal(consultantId, aiRole, processedText, {
+    const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
       skipUserMessageInsert: true,
       metadata: { source: "telegram", telegram_chat_id: chatId },
       source: "telegram",
