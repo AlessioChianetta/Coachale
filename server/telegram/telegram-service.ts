@@ -919,7 +919,36 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
     }
   }
 
-  if (config.open_mode) {
+  // Check if sender is owner FIRST (before open mode) so owner messages always go to normal flow
+  let ownerCheck = await db.execute(sql`
+    SELECT id FROM telegram_chat_links
+    WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId} AND is_owner = true AND active = true
+    LIMIT 1
+  `);
+
+  if (ownerCheck.rows.length === 0 && isGroupChat && config.group_support && fromUser?.id) {
+    const senderUserId = String(fromUser.id);
+    const privateOwnerCheck = await db.execute(sql`
+      SELECT id FROM telegram_chat_links
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${senderUserId} AND chat_type = 'private' AND is_owner = true AND active = true
+      LIMIT 1
+    `);
+    if (privateOwnerCheck.rows.length > 0) {
+      console.log(`[TELEGRAM] Auto-linking group ${chatId} for owner ${senderUserId} (already verified via private chat)`);
+      await db.execute(sql`
+        INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active, is_owner)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true, true)
+        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+          active = true, is_owner = true,
+          chat_type = EXCLUDED.chat_type, chat_title = EXCLUDED.chat_title,
+          username = EXCLUDED.username, first_name = EXCLUDED.first_name
+      `);
+      ownerCheck = { rows: [{ id: 'auto-linked' }] } as any;
+    }
+  }
+
+  // If NOT owner, try open mode flow for external users
+  if (ownerCheck.rows.length === 0 && config.open_mode) {
     const openModeResult = await handleOpenModeOnboarding(
       consultantId, aiRole, chatId, chatType, text, botToken, botUsername, firstName, username, chatTitle, isGroupChat
     );
@@ -969,33 +998,6 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
         await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
       }
       return;
-    }
-  }
-
-  let ownerCheck = await db.execute(sql`
-    SELECT id FROM telegram_chat_links
-    WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${chatId} AND is_owner = true AND active = true
-    LIMIT 1
-  `);
-
-  if (ownerCheck.rows.length === 0 && isGroupChat && config.group_support && fromUser?.id) {
-    const senderUserId = String(fromUser.id);
-    const privateOwnerCheck = await db.execute(sql`
-      SELECT id FROM telegram_chat_links
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${aiRole} AND telegram_chat_id = ${senderUserId} AND chat_type = 'private' AND is_owner = true AND active = true
-      LIMIT 1
-    `);
-    if (privateOwnerCheck.rows.length > 0) {
-      console.log(`[TELEGRAM] Auto-linking group ${chatId} for owner ${senderUserId} (already verified via private chat)`);
-      await db.execute(sql`
-        INSERT INTO telegram_chat_links (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, username, first_name, active, is_owner)
-        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, ${username || null}, ${firstName || null}, true, true)
-        ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
-          active = true, is_owner = true,
-          chat_type = EXCLUDED.chat_type, chat_title = EXCLUDED.chat_title,
-          username = EXCLUDED.username, first_name = EXCLUDED.first_name
-      `);
-      ownerCheck = { rows: [{ id: 'auto-linked' }] } as any;
     }
   }
 
