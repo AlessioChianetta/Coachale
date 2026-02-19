@@ -1,0 +1,40 @@
+
+DashboardTab.tsx:416 Uncaught ReferenceError: Cannot access 'kanbanColumns' before initialization
+    at DashboardTab (DashboardTab.tsx:416:27)
+
+injected.js:37 The above error occurred in the <DashboardTab> component:
+
+    at DashboardTab (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/components/autonomy/DashboardTab.tsx:101:3)
+    at div
+    at https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=1b6b45cf:230:13
+    at Presence (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…unner/workspace/node_modules/.vite/deps/chunk-7QGJQHFX.js?v=1b6b45cf:24:11)
+    at https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=1b6b45cf:174:13
+    at _c5 (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…nner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=1b6b45cf:230:13
+    at Provider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=1b6b45cf:44:15)
+    at https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=1b6b45cf:51:7
+    at div
+    at main
+    at div
+    at div
+    at div
+    at ConsultantAIAutonomyPage (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/components/autonomy/index.tsx:40:20)
+    at AuthGuard (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b6b45cf:226:16)
+    at Switch (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1b6b45cf:283:17)
+    at Suspense
+    at Router (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/App.tsx?v=fgD2ByLLHWdUTVnzCB5Z7:324:35)
+    at Provider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…unner/workspace/node_modules/.vite/deps/chunk-66JOO7XH.js?v=1b6b45cf:44:15)
+    at TooltipProvider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1b6b45cf:158:5)
+    at TourProvider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at AlessiaSessionProvider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1b6b45cf:3096:3)
+    at V (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=1b6b45cf:44:25)
+    at J (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.repli…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=1b6b45cf:42:18)
+    at App (https://416bbcb8-c7a3-4cf0-9f28-b10bd3d09ff5-00-1kgfwtjkjldzw.janeway.replit.dev/src/App.tsx?v=fgD2ByLLHWdUTVnzCB5Z7:2048:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=1b6b45cf:9129 Uncaught ReferenceError: Cannot access 'kanbanColumns' before initialization
+    at DashboardTab (DashboardTab.tsx:416:27)

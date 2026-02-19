@@ -413,7 +413,7 @@ function DashboardTab({
       el.removeEventListener('scroll', updateScrollArrows);
       ro.disconnect();
     };
-  }, [updateScrollArrows, kanbanColumns]);
+  }, [updateScrollArrows, tasksData]);
 
   const scrollKanban = (direction: 'left' | 'right') => {
     const el = kanbanScrollRef.current;

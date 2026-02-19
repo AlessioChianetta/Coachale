@@ -80,9 +80,28 @@
 }
 
 .dark {
-  --background: hsl(210, 40%, 8%);
-  --foreground: hsl(210, 40%, 98%);
-  --card: hsl(210, 40%, 10%);
+  --background: hsl(222, 18%, 7%);
+  --foreground: hsl(210, 20%, 96%);
+  --card: hsl(222, 18%, 10%);
+  --card-foreground: hsl(210, 20%, 96%);
+  --popover: hsl(222, 18%, 12%);
+  --popover-foreground: hsl(210, 20%, 96%);
+  --primary: hsl(224, 85%, 60%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(262, 70%, 60%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(222, 18%, 14%);
+  --muted-foreground: hsl(215, 12%, 65%);
+  --accent: hsl(28, 85%, 55%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --success: hsl(142, 70%, 45%);
+  --success-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 72%, 55%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(222, 15%, 18%);
+  --input: hsl(222, 15%, 16%);
+  --ring: hsl(224, 85%, 65%);
+}
 
 @keyframes shimmer {
   0% {
@@ -95,26 +114,6 @@
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
-}
-
-  --card-foreground: hsl(210, 40%, 98%);
-  --popover: hsl(210, 40%, 10%);
-  --popover-foreground: hsl(210, 40%, 98%);
-  --primary: hsl(231, 48%, 68%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(271, 39%, 57%);
-  --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(210, 40%, 15%);
-  --muted-foreground: hsl(215, 16%, 65%);
-  --accent: hsl(25, 95%, 53%);
-  --accent-foreground: hsl(0, 0%, 100%);
-  --success: hsl(142, 71%, 45%);
-  --success-foreground: hsl(0, 0%, 100%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(210, 40%, 20%);
-  --input: hsl(210, 40%, 20%);
-  --ring: hsl(231, 48%, 68%);
 }
 
 @layer base {
