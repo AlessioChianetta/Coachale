@@ -2509,10 +2509,13 @@ FORMATO JSON quando è un task nuovo (come prima):
                 const existing = existingCheck.rows[0] as any;
                 console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] AI follow_up_of=${followUpId}. Aggregating into existing task (status: ${existing.status}).`);
 
-                const followUpNote = `\n\n--- Follow-up ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} ---\n${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                const previousInstruction = existing.ai_instruction || '';
+                const followUpNote = `\n\n--- Follow-up ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} ---\nIstruzione precedente: ${previousInstruction.substring(0, 300)}\nAggiornamento: ${suggestedTask.ai_instruction?.substring(0, 500) || 'Aggiornamento'}`;
+                const newInstruction = suggestedTask.ai_instruction || previousInstruction;
                 await db.execute(sql`
                   UPDATE ai_scheduled_tasks
-                  SET additional_context = COALESCE(additional_context, '') || ${followUpNote},
+                  SET ai_instruction = ${newInstruction},
+                      additional_context = COALESCE(additional_context, '') || ${followUpNote},
                       updated_at = NOW(),
                       priority = GREATEST(priority, ${Math.min(Math.max(suggestedTask.priority || 3, 1), 4)})
                   WHERE id = ${followUpId}
