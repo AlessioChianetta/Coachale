@@ -3451,6 +3451,23 @@ router.post("/telegram-config/:roleId/test", authenticateToken, requireAnyRole([
   }
 });
 
+router.post("/telegram-config/:roleId/test-notify", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+    const { notifyTaskViaTelegram } = await import("../telegram/telegram-service");
+    await notifyTaskViaTelegram(consultantId, roleId, 'follow_up', {
+      taskTitle: '🧪 Test di notifica Telegram',
+      contactName: 'Sistema',
+    });
+    return res.json({ success: true, message: "Test notification sent" });
+  } catch (error: any) {
+    console.error("[TELEGRAM] Error sending test notification:", error);
+    return res.status(500).json({ error: "Failed to send test notification" });
+  }
+});
+
 router.delete("/telegram-config/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
