@@ -3606,7 +3606,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     db.execute(sql`
       SELECT sender, message, created_at FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY created_at DESC LIMIT 20
+      ORDER BY created_at DESC LIMIT 100
     `),
     db.execute(sql`
       SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
@@ -3622,14 +3622,16 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
       FROM ai_scheduled_tasks
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
         AND status IN ('scheduled', 'waiting_approval', 'in_progress', 'approved', 'draft', 'paused')
-      ORDER BY priority DESC, created_at DESC LIMIT 10
+      ORDER BY priority DESC, created_at DESC
+      LIMIT 200
     `),
     db.execute(sql`
       SELECT id, ai_instruction, task_category, contact_name, status, result_summary, result_data, completed_at
       FROM ai_scheduled_tasks
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
-      ORDER BY completed_at DESC LIMIT 8
+        AND status = 'completed'
+      ORDER BY completed_at DESC
+      LIMIT 200
     `),
   ]);
 
@@ -3671,6 +3673,10 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
     systemPrompt += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI CON IL CONSULENTE:\n${existingSummary}\n`;
   }
 
+  const estimateTokens = (text: string) => Math.ceil(text.length / 3.5);
+  const MAX_TASKS_TOKENS = 4000;
+  let tasksTokenCount = 0;
+
   if (activeTasks.length > 0) {
     systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task:\n`;
     for (let idx = 0; idx < activeTasks.length; idx++) {
@@ -3679,16 +3685,35 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
         scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
         in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
       };
-      systemPrompt += `${idx + 1}. [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
+      const line = `${idx + 1}. [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
+      tasksTokenCount += estimateTokens(line);
+      if (tasksTokenCount > MAX_TASKS_TOKENS) {
+        systemPrompt += `... e altri ${activeTasks.length - idx} task attivi (troncati per spazio)\n`;
+        break;
+      }
+      systemPrompt += line;
     }
   }
 
   if (completedTasks.length > 0) {
-    systemPrompt += `\nTASK COMPLETATI DI RECENTE:\n`;
-    for (const t of completedTasks) {
-      systemPrompt += `- [${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${t.ai_instruction?.substring(0, 200) || 'N/A'}`;
-      if (t.result_summary) systemPrompt += ` → ${t.result_summary.substring(0, 200)}`;
-      systemPrompt += '\n';
+    systemPrompt += `\nTASK COMPLETATI — TOTALE: ${completedTasks.length} task:\n`;
+    for (let idx = 0; idx < completedTasks.length; idx++) {
+      const t = completedTasks[idx];
+      const dateStr = t.completed_at ? new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'N/A';
+      let line: string;
+      if (idx < 10) {
+        line = `${idx + 1}. [${dateStr}] ${t.ai_instruction?.substring(0, 200) || 'N/A'}`;
+        if (t.result_summary) line += ` → ${t.result_summary.substring(0, 200)}`;
+        line += '\n';
+      } else {
+        line = `${idx + 1}. [${dateStr}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.task_category || ''} — ${t.ai_instruction?.substring(0, 80) || 'N/A'}\n`;
+      }
+      tasksTokenCount += estimateTokens(line);
+      if (tasksTokenCount > MAX_TASKS_TOKENS) {
+        systemPrompt += `... e altri ${completedTasks.length - idx} task completati (troncati per spazio)\n`;
+        break;
+      }
+      systemPrompt += line;
     }
   }
 
@@ -3746,9 +3771,18 @@ ${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
 6. Usa **grassetto** per cifre e concetti chiave`;
   }
 
-  const historyLimit = existingSummary ? 15 : 20;
-  const relevantHistory = chatHistory.slice(-historyLimit);
-  const conversationParts = relevantHistory.map((m: any) => ({
+  const MAX_CHAT_CHARS = 32000;
+
+  let charCount = 0;
+  const fittingMessages: typeof chatHistory = [];
+  for (let i = chatHistory.length - 1; i >= 0; i--) {
+    const msgChars = (chatHistory[i].message || '').length;
+    if (charCount + msgChars > MAX_CHAT_CHARS && fittingMessages.length > 0) break;
+    charCount += msgChars;
+    fittingMessages.unshift(chatHistory[i]);
+  }
+
+  const conversationParts = fittingMessages.map((m: any) => ({
     role: m.sender === 'consultant' ? 'user' as const : 'model' as const,
     parts: [{ text: m.message }],
   }));
