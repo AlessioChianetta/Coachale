@@ -52,7 +52,6 @@ import {
   LayoutGrid,
   PenLine,
   CreditCard,
-  Rocket,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -308,14 +307,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   };
   const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'platform' | 'tools'>('platform');
   
   const [expandedProTools, setExpandedProTools] = useState<boolean>(() => {
     const saved = localStorage.getItem('sidebar-pro-tools-expanded');
-    return saved ? JSON.parse(saved) : false;
-  });
-  
-  const [expandedExternalServices, setExpandedExternalServices] = useState<boolean>(() => {
-    const saved = localStorage.getItem('sidebar-external-services-expanded');
     return saved ? JSON.parse(saved) : false;
   });
 
@@ -513,10 +508,11 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     localStorage.setItem('sidebar-pro-tools-expanded', JSON.stringify(expandedProTools));
   }, [expandedProTools]);
 
-  // Save External Services expansion state to localStorage
   useEffect(() => {
-    localStorage.setItem('sidebar-external-services-expanded', JSON.stringify(expandedExternalServices));
-  }, [expandedExternalServices]);
+    if (location.startsWith('/consultant/tools/')) {
+      setSidebarTab('tools');
+    }
+  }, [location]);
 
   // Auto-collapse sidebar when AI Assistant page opens
   useEffect(() => {
@@ -578,37 +574,129 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo e nome app - Modern Clean Style */}
-      {!isCollapsed && <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-border/50">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg shadow-sm">
-            <BookOpen className="h-4 w-4 text-white" />
-          </div>
-          <div>
+      {/* Logo e nome app - Modern Clean Style with Tabs */}
+      {!isCollapsed && <div className="mb-4 pb-1">
+        <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 dark:border-border/50">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg shadow-sm">
+              <BookOpen className="h-4 w-4 text-white" />
+            </div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
               Consulente Pro
             </h2>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Platform
-            </p>
           </div>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              data-tour={role === "client" ? "client-collapse-button" : undefined}
+              title="Riduci sidebar"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+          )}
         </div>
-        {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            data-tour={role === "client" ? "client-collapse-button" : undefined}
-            title="Riduci sidebar"
-          >
-            <ChevronLeft size={16} />
-          </Button>
+        {categories && (
+          <div className="flex gap-1 px-1">
+            <button
+              onClick={() => setSidebarTab('platform')}
+              className={cn(
+                "flex-1 py-2 px-3 text-xs font-semibold uppercase tracking-wide rounded-lg transition-all duration-200",
+                sidebarTab === 'platform'
+                  ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/50"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              Piattaforma
+            </button>
+            <button
+              onClick={() => setSidebarTab('tools')}
+              className={cn(
+                "flex-1 py-2 px-3 text-xs font-semibold uppercase tracking-wide rounded-lg transition-all duration-200",
+                sidebarTab === 'tools'
+                  ? "bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/50"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-300"
+              )}
+            >
+              Strumenti
+            </button>
+          </div>
         )}
       </div>}
 
+      {/* Tools Tab Content */}
+      {sidebarTab === 'tools' && !isCollapsed && categories && (
+        <nav className="space-y-1 flex-1 overflow-y-auto">
+          <div className="px-3 py-2 mb-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Software e strumenti esterni integrati nella piattaforma.</p>
+          </div>
+          <div className="space-y-1">
+            {[
+              { name: "Orbitale Finanza", desc: "Gestione finanziaria", href: "/consultant/tools/finanza", icon: DollarSign, color: "text-emerald-500" },
+              { name: "Orbitale CRM", desc: "Gestione lead e clienti", href: "/consultant/tools/crm", icon: Users, color: "text-cyan-500" },
+              { name: "Orbitale Contract", desc: "Creazione contratti", href: "/consultant/tools/contract", icon: FileText, color: "text-teal-500" },
+              { name: "Orbitale Locale", desc: "Gestione ristoranti", href: "/consultant/tools/locale", icon: Star, color: "text-orange-500" },
+            ].map((tool) => {
+              const ToolIcon = tool.icon;
+              const isActive = isRouteActive(tool.href, location);
+              return (
+                <Link key={tool.href} href={tool.href}>
+                  <div
+                    className={cn(
+                      "group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                      isActive
+                        ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                    )}
+                    onClick={handleLinkClick}
+                  >
+                    <div className={cn(
+                      "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
+                      isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )} />
+                    <div className={cn(
+                      "p-1.5 rounded-lg",
+                      isActive ? "bg-cyan-100 dark:bg-cyan-900/30" : "bg-slate-100 dark:bg-slate-800"
+                    )}>
+                      <ToolIcon className={cn("h-4 w-4", isActive ? "text-cyan-500" : tool.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("font-medium block truncate", isActive && "font-semibold")}>{tool.name}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">{tool.desc}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+
+            <div className="mx-3 my-2">
+              <div className="h-px bg-slate-200 dark:bg-slate-700/50" />
+            </div>
+
+            <div
+              className="group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+              onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
+            >
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+              <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
+                <BookOpen className="h-4 w-4 text-purple-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium truncate">NotebookLM</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                </div>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">AI notebook di Google</span>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Navigation Items - Modern SaaS Style */}
-      {!isCollapsed && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
+      {!isCollapsed && (sidebarTab === 'platform' || !categories) && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
         {/* Render categorized sidebar for consultant */}
         {categories && !isCollapsed ? (categories as SidebarCategoryExtended[]).map((category, idx) => {
           const isCategoryExpanded = expandedCategories.has(category.name);
@@ -1060,95 +1148,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           </div>
         )}
 
-        {/* STRUMENTI Section - Collapsible tools section */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
-          {!isCollapsed && (
-            <button
-              onClick={() => setExpandedExternalServices(!expandedExternalServices)}
-              className="w-full flex items-center justify-between px-3 py-1.5 group"
-            >
-              <div className="flex items-center gap-1.5">
-                <Rocket className={cn(
-                  "h-3.5 w-3.5 text-purple-500 transition-transform duration-200",
-                  "group-hover:rotate-12 group-hover:scale-110"
-                )} />
-                <span className="text-[10px] font-semibold uppercase tracking-widest bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-                  Strumenti
-                </span>
-              </div>
-              <ChevronRight className={cn(
-                "h-3 w-3 text-slate-400 transition-transform duration-200",
-                expandedExternalServices && "rotate-90"
-              )} />
-            </button>
-          )}
-          
-          {(expandedExternalServices || isCollapsed) && (
-            <div className={cn("space-y-0.5", !isCollapsed && "mt-1")}>
-              {[
-                { name: "Orbitale Finanza", href: "/consultant/tools/finanza", icon: DollarSign, color: "text-emerald-500" },
-                { name: "Orbitale CRM", href: "/consultant/tools/crm", icon: Users, color: "text-cyan-500" },
-                { name: "Orbitale Contract", href: "/consultant/tools/contract", icon: FileText, color: "text-teal-500" },
-                { name: "Orbitale Locale", href: "/consultant/tools/locale", icon: Star, color: "text-orange-500" },
-              ].map((tool) => {
-                const ToolIcon = tool.icon;
-                const isActive = isRouteActive(tool.href, location);
-                return (
-                  <Link key={tool.href} href={tool.href}>
-                    <div
-                      className={cn(
-                        "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                        isActive
-                          ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                        isCollapsed && "justify-center px-2"
-                      )}
-                      data-testid={`link-${slugify(tool.name)}`}
-                      onClick={handleLinkClick}
-                      title={isCollapsed ? tool.name : undefined}
-                    >
-                      <div className={cn(
-                        "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
-                        isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      )} />
-                      <ToolIcon className={cn(
-                        "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
-                        isActive ? "text-cyan-500" : tool.color
-                      )} />
-                      {!isCollapsed && (
-                        <span className={cn(
-                          "font-medium truncate",
-                          isActive && "font-semibold"
-                        )}>{tool.name}</span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {/* NotebookLM - External link */}
-              <div
-                className={cn(
-                  "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                  "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
-                  isCollapsed && "justify-center px-2"
-                )}
-                onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
-                data-testid="link-notebooklm"
-                title={isCollapsed ? "NotebookLM" : undefined}
-              >
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                <BookOpen className="h-[18px] w-[18px] flex-shrink-0 text-purple-500" />
-                {!isCollapsed && (
-                  <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="font-medium truncate">NotebookLM</span>
-                    <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
       </nav>}
 
       {/* User info e logout - agganciato in basso */}
