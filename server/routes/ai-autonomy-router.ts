@@ -2786,6 +2786,128 @@ router.get("/agent-chat/:roleId/daily-summaries", authenticateToken, requireAnyR
   }
 });
 
+router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    
+    const { roleId } = req.params;
+    const validRoleIds = Object.keys(AI_ROLES);
+    if (!validRoleIds.includes(roleId)) {
+      return res.status(400).json({ error: "Invalid role ID" });
+    }
+
+    const datesResult = await db.execute(sql`
+      SELECT DISTINCT DATE(created_at AT TIME ZONE 'Europe/Rome')::text as msg_date,
+             COUNT(*)::int as msg_count
+      FROM agent_chat_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      GROUP BY DATE(created_at AT TIME ZONE 'Europe/Rome')
+      HAVING COUNT(*) >= 2
+      ORDER BY msg_date DESC
+    `);
+
+    if (datesResult.rows.length === 0) {
+      return res.json({ generated: 0, message: "Nessun messaggio trovato" });
+    }
+
+    const existingResult = await db.execute(sql`
+      SELECT summary_date::text as summary_date FROM agent_chat_daily_summaries
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+    `);
+    const existingDates = new Set((existingResult.rows as any[]).map(r => r.summary_date));
+
+    const datesToGenerate = (datesResult.rows as any[]).filter(r => !existingDates.has(r.msg_date));
+    
+    if (datesToGenerate.length === 0) {
+      return res.json({ generated: 0, message: "Tutti i riassunti sono già stati generati" });
+    }
+
+    let aiClient: any = null;
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const { getSuperAdminGeminiKeys } = await import("../ai/provider-factory");
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys?.enabled && superAdminKeys.keys.length > 0) {
+        aiClient = new GoogleGenAI({ apiKey: superAdminKeys.keys[0] });
+      }
+    } catch {}
+
+    if (!aiClient) {
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const { getGeminiApiKeyForClassifier } = await import("../ai/provider-factory");
+        const apiKey = await getGeminiApiKeyForClassifier();
+        if (apiKey) {
+          aiClient = new GoogleGenAI({ apiKey });
+        }
+      } catch {}
+    }
+
+    if (!aiClient) {
+      return res.status(500).json({ error: "Nessuna chiave AI disponibile" });
+    }
+
+    const roleName = AI_ROLES[roleId as keyof typeof AI_ROLES]?.name || roleId;
+    let generated = 0;
+
+    for (const dateRow of datesToGenerate) {
+      try {
+        const msgDate = dateRow.msg_date;
+        const messagesResult = await db.execute(sql`
+          SELECT sender, message, created_at FROM agent_chat_messages
+          WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+            AND DATE(created_at AT TIME ZONE 'Europe/Rome') = ${msgDate}::date
+          ORDER BY created_at ASC
+        `);
+
+        const messages = messagesResult.rows as any[];
+        if (messages.length < 2) continue;
+
+        const summaryInput = messages.map((m: any) =>
+          `[${m.sender === 'consultant' ? 'Consulente' : roleName}] ${m.message}`
+        ).join('\n\n');
+
+        const summaryPrompt = `Riassumi questa conversazione del ${msgDate} tra il consulente e ${roleName} in modo conciso ma completo. Mantieni:
+- Decisioni prese
+- Azioni concordate
+- Aggiornamenti importanti
+- Feedback e preferenze espresse dal consulente
+- Task discussi e il loro stato
+Scrivi il riassunto in italiano, in terza persona, max 300 parole.
+
+CONVERSAZIONE DEL ${msgDate}:
+${summaryInput.substring(0, 15000)}`;
+
+        const result = await aiClient.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: [{ role: 'user', parts: [{ text: summaryPrompt }] }],
+          config: { temperature: 0.3, maxOutputTokens: 600 },
+        });
+
+        const summaryText = result.text?.() || result.response?.text?.() || '';
+        if (summaryText && summaryText.length > 30) {
+          await db.execute(sql`
+            INSERT INTO agent_chat_daily_summaries (consultant_id, ai_role, summary_date, summary_text, message_count)
+            VALUES (${consultantId}::uuid, ${roleId}, ${msgDate}::date, ${summaryText}, ${messages.length})
+            ON CONFLICT (consultant_id, ai_role, summary_date) DO UPDATE SET
+              summary_text = EXCLUDED.summary_text, message_count = EXCLUDED.message_count, updated_at = NOW()
+          `);
+          generated++;
+        }
+      } catch (err: any) {
+        console.error(`[DAILY-SUMMARY-MANUAL] Error for ${roleId} on ${dateRow.msg_date}:`, err.message);
+      }
+    }
+
+    console.log(`[DAILY-SUMMARY-MANUAL] Generated ${generated} summaries for ${roleId} (consultant ${consultantId.substring(0, 8)})`);
+    return res.json({ generated, total: datesToGenerate.length, message: `${generated} riassunti generati` });
+  } catch (error: any) {
+    console.error("[DAILY-SUMMARY-MANUAL] Error:", error.message);
+    return res.status(500).json({ error: "Errore nella generazione dei riassunti" });
+  }
+});
+
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

@@ -785,12 +785,12 @@ interface SettingsTabProps {
 function AgentMemoryContent({ roleId }: { roleId: string }) {
   const [summaries, setSummaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [generateResult, setGenerateResult] = useState<string | null>(null);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  const fetchSummaries = () => {
     setLoading(true);
-    setSummaries([]);
-    setExpandedDays(new Set());
     fetch(`/api/ai-autonomy/agent-chat/${roleId}/daily-summaries?limit=60`, {
       headers: getAuthHeaders(),
     })
@@ -803,7 +803,38 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
       })
       .catch(err => console.error('Error fetching summaries:', err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setSummaries([]);
+    setExpandedDays(new Set());
+    setGenerateResult(null);
+    fetchSummaries();
   }, [roleId]);
+
+  const generateSummaries = async () => {
+    setGenerating(true);
+    setGenerateResult(null);
+    try {
+      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/generate-summaries`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGenerateResult(data.message || `${data.generated} riassunti generati`);
+        if (data.generated > 0) {
+          fetchSummaries();
+        }
+      } else {
+        setGenerateResult(data.error || 'Errore nella generazione');
+      }
+    } catch (err) {
+      setGenerateResult('Errore di connessione');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const toggleDay = (date: string) => {
     setExpandedDays(prev => {
@@ -851,13 +882,42 @@ function AgentMemoryContent({ roleId }: { roleId: string }) {
       <div className="text-center py-12">
         <Brain className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
         <p className="text-sm font-medium text-muted-foreground">Nessun riassunto disponibile</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">I riassunti vengono generati automaticamente ogni sera alle 23:55</p>
+        <p className="text-xs text-muted-foreground/70 mt-1 mb-4">I riassunti vengono generati automaticamente ogni sera alle 23:55</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+          onClick={generateSummaries}
+          disabled={generating}
+        >
+          {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {generating ? 'Generazione in corso...' : 'Genera riassunti'}
+        </Button>
+        {generateResult && (
+          <p className="text-xs text-muted-foreground mt-2">{generateResult}</p>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{summaries.length} riassunti disponibili</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+          onClick={generateSummaries}
+          disabled={generating}
+        >
+          {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+          {generating ? 'Generazione...' : 'Genera'}
+        </Button>
+      </div>
+      {generateResult && (
+        <p className="text-xs text-center text-purple-600 dark:text-purple-400">{generateResult}</p>
+      )}
       {summaries.map((s: any) => {
         const dateKey = s.summary_date?.substring(0, 10);
         const isOpen = expandedDays.has(dateKey);
