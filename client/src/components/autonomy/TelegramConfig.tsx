@@ -113,14 +113,19 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
     setTesting(false);
   };
 
-  const saveConfig = async () => {
+  const saveConfig = async (overrides?: { enabled?: boolean; group_support?: boolean; open_mode?: boolean }) => {
     setSaving(true);
     setSaveResult(null);
     try {
       const res = await fetch(`/api/ai-autonomy/telegram-config/${roleId}`, {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ bot_token: botToken, enabled, group_support: groupSupport, open_mode: openMode }),
+        body: JSON.stringify({
+          bot_token: botToken,
+          enabled: overrides?.enabled ?? enabled,
+          group_support: overrides?.group_support ?? groupSupport,
+          open_mode: overrides?.open_mode ?? openMode,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -296,7 +301,10 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                   <Switch
                     id={`telegram-enabled-${roleId}`}
                     checked={enabled}
-                    onCheckedChange={setEnabled}
+                    onCheckedChange={(val) => {
+                      setEnabled(val);
+                      if (connected) saveConfig({ enabled: val });
+                    }}
                   />
                   <Label htmlFor={`telegram-enabled-${roleId}`} className="text-xs cursor-pointer">
                     Bot Attivo
@@ -306,7 +314,10 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                   <Switch
                     id={`telegram-groups-${roleId}`}
                     checked={groupSupport}
-                    onCheckedChange={setGroupSupport}
+                    onCheckedChange={(val) => {
+                      setGroupSupport(val);
+                      if (connected) saveConfig({ group_support: val });
+                    }}
                   />
                   <Label htmlFor={`telegram-groups-${roleId}`} className="text-xs cursor-pointer flex items-center gap-1">
                     <Users className="h-3 w-3" />
@@ -319,7 +330,10 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
                 <Switch
                   id={`telegram-openmode-${roleId}`}
                   checked={openMode}
-                  onCheckedChange={setOpenMode}
+                  onCheckedChange={(val) => {
+                    setOpenMode(val);
+                    if (connected) saveConfig({ open_mode: val });
+                  }}
                 />
                 <Label htmlFor={`telegram-openmode-${roleId}`} className="text-xs cursor-pointer flex items-center gap-1">
                   <Globe className="h-3 w-3" />
