@@ -112,6 +112,7 @@ const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard
 const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
 const RealtimeTest = lazy(() => import("@/pages/realtime-test"));
+const ThemePreview = lazy(() => import("@/pages/theme-preview"));
 const ClientSalesAgentsList = lazy(() => import("@/pages/client-sales-agents-list"));
 const ClientSalesAgentConfig = lazy(() => import("@/pages/client-sales-agent-config"));
 const ClientHumanSellersList = lazy(() => import("@/pages/client-human-sellers-list"));
@@ -214,6 +215,9 @@ function Router() {
 
           {/* Realtime test - WebSocket vs SSE */}
           <Route path="/realtime-test" component={RealtimeTest} />
+
+          {/* Theme preview - dev only */}
+          <Route path="/theme-preview" component={ThemePreview} />
 
           {/* SaaS Landing Page - no auth required */}
           <Route path="/Sas" component={SasLanding} />
