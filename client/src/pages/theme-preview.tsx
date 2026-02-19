@@ -128,26 +128,27 @@ export default function ThemePreview() {
   }, []);
 
   const p = palettes[selected];
+  const h = (v: string) => `hsl(${v.replace(/ /g, ", ")})`;
   const paletteStyles = {
-    "--background": p.background,
-    "--foreground": p.foreground,
-    "--card": p.card,
-    "--card-foreground": p.foreground,
-    "--popover": p.popover,
-    "--popover-foreground": p.foreground,
-    "--primary": p.primary,
-    "--primary-foreground": "0 0% 100%",
-    "--secondary": p.secondary,
-    "--secondary-foreground": "0 0% 100%",
-    "--muted": p.muted,
-    "--muted-foreground": p["muted-foreground"],
-    "--accent": p.accent,
-    "--accent-foreground": "0 0% 100%",
-    "--destructive": "0 72% 55%",
-    "--destructive-foreground": "0 0% 100%",
-    "--border": p.border,
-    "--input": p.border,
-    "--ring": p.primary,
+    "--background": h(p.background),
+    "--foreground": h(p.foreground),
+    "--card": h(p.card),
+    "--card-foreground": h(p.foreground),
+    "--popover": h(p.popover),
+    "--popover-foreground": h(p.foreground),
+    "--primary": h(p.primary),
+    "--primary-foreground": "hsl(0, 0%, 100%)",
+    "--secondary": h(p.secondary),
+    "--secondary-foreground": "hsl(0, 0%, 100%)",
+    "--muted": h(p.muted),
+    "--muted-foreground": h(p["muted-foreground"]),
+    "--accent": h(p.accent),
+    "--accent-foreground": "hsl(0, 0%, 100%)",
+    "--destructive": "hsl(0, 72%, 55%)",
+    "--destructive-foreground": "hsl(0, 0%, 100%)",
+    "--border": h(p.border),
+    "--input": h(p.border),
+    "--ring": h(p.primary),
   } as React.CSSProperties;
 
   return (
