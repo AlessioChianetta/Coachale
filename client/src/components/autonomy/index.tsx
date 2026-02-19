@@ -765,6 +765,10 @@ export default function ConsultantAIAutonomyPage() {
                       setChatInitialMessage(context);
                       setChatOpenRoleId(roleId);
                     }}
+                    onOpenChat={(roleId) => {
+                      setChatInitialMessage(undefined);
+                      setChatOpenRoleId(roleId);
+                    }}
                   />
                 </TabsContent>
 

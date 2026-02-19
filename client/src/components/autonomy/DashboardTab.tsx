@@ -77,6 +77,7 @@ interface DashboardTabProps {
   onExecuteTask: (taskId: string) => void;
   tasksUrl: string;
   onOpenChatWithTask?: (roleId: string, taskContext: string) => void;
+  onOpenChat?: (roleId: string) => void;
 }
 
 function DashboardTab({
@@ -101,6 +102,7 @@ function DashboardTab({
   onExecuteTask,
   tasksUrl,
   onOpenChatWithTask,
+  onOpenChat,
 }: DashboardTabProps) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -1707,6 +1709,20 @@ function DashboardTab({
                           <Badge variant="outline" className="text-[10px] tabular-nums px-1.5">
                             {columnTasks.length}
                           </Badge>
+                          {role !== '__manual__' && onOpenChat && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 shrink-0"
+                              title={`Chatta con ${role.charAt(0).toUpperCase() + role.slice(1)}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenChat(role);
+                              }}
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <div className="p-2 space-y-2 max-h-[calc(100vh-340px)] overflow-y-auto flex-1">
