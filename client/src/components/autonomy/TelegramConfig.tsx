@@ -213,6 +213,21 @@ export default function TelegramConfig({ roleId, roleName }: TelegramConfigProps
             </div>
           ) : (
             <>
+              {!connected && (
+                <div className="bg-muted/40 border border-border/50 rounded-lg p-3 space-y-2">
+                  <p className="text-[11px] font-semibold text-foreground">Come configurare il bot Telegram:</p>
+                  <ol className="text-[10px] text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
+                    <li>Apri Telegram e cerca <code className="font-mono bg-muted px-1 rounded text-foreground">@BotFather</code></li>
+                    <li>Scrivi <code className="font-mono bg-muted px-1 rounded text-foreground">/newbot</code> e segui le istruzioni per creare il bot</li>
+                    <li>BotFather ti darà un <strong className="text-foreground">token</strong> — copialo</li>
+                    <li>Incollalo qui sotto nel campo "Token Bot" e clicca "Salva Configurazione"</li>
+                    <li>Apparirà un <strong className="text-foreground">codice di attivazione</strong> — copialo</li>
+                    <li>Apri il tuo bot su Telegram e invia <code className="font-mono bg-muted px-1 rounded text-foreground">/attiva CODICE</code></li>
+                    <li>Fatto! Da quel momento puoi chattare con il dipendente AI via Telegram</li>
+                  </ol>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-xs font-semibold flex items-center gap-1.5">
                   <MessageCircle className="h-3.5 w-3.5 text-blue-500" />
