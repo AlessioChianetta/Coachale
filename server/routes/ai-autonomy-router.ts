@@ -2802,9 +2802,6 @@ router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, require
              COUNT(*)::int as msg_count
       FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
-          SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
-        )))
       GROUP BY DATE(created_at AT TIME ZONE 'Europe/Rome')
       HAVING COUNT(*) >= 2
       ORDER BY msg_date DESC
@@ -2861,9 +2858,6 @@ router.post("/agent-chat/:roleId/generate-summaries", authenticateToken, require
           SELECT sender, message, created_at FROM agent_chat_messages
           WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
             AND DATE(created_at AT TIME ZONE 'Europe/Rome') = ${msgDate}::date
-            AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
-              SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
-            )))
           ORDER BY created_at ASC
         `);
 
@@ -2914,6 +2908,70 @@ ${summaryInput.substring(0, 15000)}`;
   }
 });
 
+router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId } = req.params;
+
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (telegram_chat_id)
+        telegram_chat_id, chat_type, chat_title, sender_name, sender_username,
+        message as last_message, created_at as last_message_at,
+        (SELECT COUNT(*)::int FROM telegram_open_mode_messages t2
+         WHERE t2.consultant_id = telegram_open_mode_messages.consultant_id
+         AND t2.ai_role = telegram_open_mode_messages.ai_role
+         AND t2.telegram_chat_id = telegram_open_mode_messages.telegram_chat_id) as message_count
+      FROM telegram_open_mode_messages
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
+      ORDER BY telegram_chat_id, created_at DESC
+    `);
+
+    const conversations = (result.rows as any[]).sort((a, b) =>
+      new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+    );
+
+    res.json({ conversations });
+  } catch (error: any) {
+    console.error("[TELEGRAM-CONVERSATIONS] Error:", error.message);
+    return res.status(500).json({ error: "Failed to fetch conversations" });
+  }
+});
+
+router.get("/telegram-conversations/:roleId/:chatId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+    const { roleId, chatId } = req.params;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
+    const before = req.query.before as string;
+
+    let result;
+    if (before) {
+      result = await db.execute(sql`
+        SELECT id, sender_type, sender_name, sender_username, message, created_at
+        FROM telegram_open_mode_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}::bigint
+          AND created_at < ${before}::timestamptz
+        ORDER BY created_at DESC LIMIT ${limit}
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT id, sender_type, sender_name, sender_username, message, created_at
+        FROM telegram_open_mode_messages
+        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}::bigint
+        ORDER BY created_at DESC LIMIT ${limit}
+      `);
+    }
+
+    const messages = (result.rows as any[]).reverse();
+    res.json({ messages, hasMore: messages.length === limit });
+  } catch (error: any) {
+    console.error("[TELEGRAM-CONVERSATION-MESSAGES] Error:", error.message);
+    return res.status(500).json({ error: "Failed to fetch conversation messages" });
+  }
+});
+
 router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["consultant"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -2927,13 +2985,6 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
     const safeLimit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 100);
     const before = req.query.before as string;
 
-    const ownerChatIdResult = await db.execute(sql`
-      SELECT telegram_chat_id FROM telegram_chat_links
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true AND active = true
-      LIMIT 1
-    `);
-    const ownerTelegramChatId = ownerChatIdResult.rows.length > 0 ? (ownerChatIdResult.rows[0] as any).telegram_chat_id : null;
-
     let result;
     if (before) {
       result = await db.execute(sql`
@@ -2941,11 +2992,6 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         FROM agent_chat_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
           AND created_at < ${before}::timestamptz
-          AND (
-            metadata IS NULL
-            OR metadata->>'source' != 'telegram'
-            OR metadata->>'source' = 'telegram' AND (metadata->>'telegram_chat_id')::text = ${String(ownerTelegramChatId || '')}
-          )
         ORDER BY created_at DESC LIMIT ${safeLimit}
       `);
     } else {
@@ -2953,11 +2999,6 @@ router.get("/agent-chat/:roleId/messages", authenticateToken, requireAnyRole(["c
         SELECT id, ai_role, role_name, sender, message, created_at, metadata
         FROM agent_chat_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          AND (
-            metadata IS NULL
-            OR metadata->>'source' != 'telegram'
-            OR metadata->>'source' = 'telegram' AND (metadata->>'telegram_chat_id')::text = ${String(ownerTelegramChatId || '')}
-          )
         ORDER BY created_at DESC LIMIT ${safeLimit}
       `);
     }
@@ -3781,9 +3822,9 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
   if (isOpenMode) {
     if (telegramChatId) {
       historyQuery = db.execute(sql`
-        SELECT sender, message, created_at FROM agent_chat_messages
+        SELECT CASE WHEN sender_type = 'user' THEN 'consultant' ELSE 'agent' END as sender, message, created_at FROM telegram_open_mode_messages
         WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          AND metadata->>'telegram_chat_id' = ${String(telegramChatId)}
+          AND telegram_chat_id = ${telegramChatId}
         ORDER BY created_at DESC LIMIT 50
       `);
     } else {
@@ -3794,9 +3835,6 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     historyQuery = db.execute(sql`
       SELECT sender, message, created_at FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        AND (metadata IS NULL OR metadata->>'source' != 'telegram' OR (metadata->>'source' = 'telegram' AND COALESCE(metadata->>'telegram_chat_id', '') IN (
-          SELECT telegram_chat_id::text FROM telegram_chat_links WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_owner = true
-        )))
       ORDER BY created_at DESC LIMIT 100
     `);
   }
@@ -4080,10 +4118,20 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
 
   aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
 
-  await db.execute(sql`
-    INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
-    VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse}, '{"source":"telegram"}'::jsonb)
-  `);
+  if (options?.isOpenMode && options?.telegramChatId) {
+    await db.execute(sql`
+      INSERT INTO telegram_open_mode_messages (consultant_id, ai_role, telegram_chat_id, sender_type, message)
+      VALUES (${consultantId}::uuid, ${roleId}, ${options.telegramChatId}, 'agent', ${aiResponse})
+    `);
+  } else {
+    const responseMetadata = options?.source === 'telegram' 
+      ? JSON.stringify({ source: "telegram", telegram_chat_id: options?.metadata?.telegram_chat_id || null })
+      : '{"source":"web"}';
+    await db.execute(sql`
+      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse}, ${responseMetadata}::jsonb)
+    `);
+  }
 
   return aiResponse;
 }

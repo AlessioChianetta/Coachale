@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
-  Bot, Activity, Phone, Mail, MessageSquare,
+  Bot, Activity, Phone, Mail, MessageSquare, Send,
   Clock, Shield, Zap, Brain, CheckCircle, AlertTriangle,
   XCircle, Info, Loader2, Play,
   Save, BarChart3, ListTodo,
@@ -34,6 +34,7 @@ import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, Personaliz
 import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 import TelegramConfig from "./TelegramConfig";
+import TelegramChats from "./TelegramChats";
 
 import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
@@ -987,6 +988,7 @@ function SettingsTab({
   const [triggerRoleResult, setTriggerRoleResult] = useState<Record<string, { success: boolean; tasks: number; error?: string }>>({});
   const [openTemplateCategories, setOpenTemplateCategories] = useState<Set<string>>(new Set());
   const [memoryOpenRoleId, setMemoryOpenRoleId] = useState<string | null>(null);
+  const [telegramChatsRoleId, setTelegramChatsRoleId] = useState<string | null>(null);
   const autonomyInfo = getAutonomyLabel(settings.autonomy_level);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -2941,6 +2943,18 @@ function SettingsTab({
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  className="h-8 text-xs rounded-lg gap-1.5 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTelegramChatsRoleId(role.id);
+                                  }}
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                  Chat Telegram
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   className="h-8 text-xs rounded-lg gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -3232,6 +3246,15 @@ function SettingsTab({
           Salva Impostazioni
         </Button>
       </div>
+
+      {telegramChatsRoleId && (
+        <TelegramChats
+          roleId={telegramChatsRoleId}
+          roleName={AI_ROLE_NAMES_MAP[telegramChatsRoleId] || telegramChatsRoleId}
+          open={!!telegramChatsRoleId}
+          onClose={() => setTelegramChatsRoleId(null)}
+        />
+      )}
 
       <Sheet open={!!memoryOpenRoleId} onOpenChange={(open) => !open && setMemoryOpenRoleId(null)}>
         <SheetContent side="left" className="w-[400px] sm:w-[500px] p-0">

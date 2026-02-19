@@ -948,11 +948,9 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       console.log(`[TELEGRAM-PROMPT] Full message with context: ${messageWithContext.substring(0, 500)}`);
 
       try {
-        const roleName = aiRole;
-        const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: senderId, sender_name: firstName, sender_username: username });
         await db.execute(sql`
-          INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
-          VALUES (${consultantId}::uuid, ${aiRole}, ${roleName}, 'consultant', ${processedText.trim()}, ${telegramMetadata}::jsonb)
+          INSERT INTO telegram_open_mode_messages (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, sender_type, sender_name, sender_username, sender_id, message)
+          VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, 'user', ${firstName || null}, ${username || null}, ${senderId || null}, ${processedText.trim()})
         `);
 
         const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
