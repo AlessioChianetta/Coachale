@@ -635,16 +635,24 @@ async function handleOpenModeOnboarding(
       console.log(`[TELEGRAM-ONBOARDING] ${existingProfile ? 'Pending' : 'New'} ${isGroupChat ? 'group' : 'private'} chat ${chatId}, starting AI-driven onboarding`);
 
       let groupPreContext: string | undefined;
-      if (isGroupChat && existingProfile) {
+      let groupDesc: string | null = null;
+      if (isGroupChat) {
         const contextParts: string[] = [];
-        if (existingProfile.group_description) contextParts.push(`Descrizione del gruppo: ${existingProfile.group_description}`);
-        if (existingProfile.group_history) {
+        groupDesc = existingProfile?.group_description || null;
+        if (!groupDesc) {
+          console.log(`[TELEGRAM-ONBOARDING] No group description cached, fetching via getChat for ${chatId}`);
+          const groupInfo = await getGroupInfo(botToken, chatId);
+          groupDesc = groupInfo.description || null;
+        }
+        if (groupDesc) contextParts.push(`Descrizione del gruppo: ${groupDesc}`);
+        if (chatTitle) contextParts.push(`Nome del gruppo: ${chatTitle}`);
+        if (existingProfile?.group_history) {
           const truncated = existingProfile.group_history.length > 2000 ? existingProfile.group_history.substring(0, 2000) + '...[troncato]' : existingProfile.group_history;
           contextParts.push(`Storico messaggi recenti del gruppo:\n${truncated}`);
         }
         if (contextParts.length > 0) {
           groupPreContext = contextParts.join('\n\n');
-          console.log(`[TELEGRAM-ONBOARDING] Found pre-existing group context for chat ${chatId}, length=${groupPreContext.length}`);
+          console.log(`[TELEGRAM-ONBOARDING] Group context for chat ${chatId}, length=${groupPreContext.length}`);
         }
       }
 
@@ -654,10 +662,12 @@ async function handleOpenModeOnboarding(
       const savedConversation = [{ role: 'assistant', content: aiFirstMessage }];
 
       await db.execute(sql`
-        INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, onboarding_step, first_name, username, onboarding_conversation)
-        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, 'in_onboarding', 0, ${firstName || null}, ${username || null}, ${JSON.stringify(savedConversation)}::jsonb)
+        INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, onboarding_step, first_name, username, onboarding_conversation, group_description)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, 'in_onboarding', 0, ${firstName || null}, ${username || null}, ${JSON.stringify(savedConversation)}::jsonb, ${groupDesc || null})
         ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
-          onboarding_status = 'in_onboarding', onboarding_step = 0, onboarding_conversation = ${JSON.stringify(savedConversation)}::jsonb, updated_at = NOW()
+          onboarding_status = 'in_onboarding', onboarding_step = 0, onboarding_conversation = ${JSON.stringify(savedConversation)}::jsonb,
+          group_description = COALESCE(${groupDesc || null}, telegram_user_profiles.group_description),
+          updated_at = NOW()
       `);
 
       await db.execute(sql`
@@ -920,7 +930,34 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   const chatTitle = msg.chat.title || '';
 
   if (!text) {
-    console.log(`[TELEGRAM] Non-text message from chat ${chatId}, skipping`);
+    const isGroupNonText = chatType === 'group' || chatType === 'supergroup';
+    if (isGroupNonText) {
+      console.log(`[TELEGRAM] Non-text message from group ${chatId}, fetching group info...`);
+      try {
+        const cfgResult = await db.execute(sql`
+          SELECT id, consultant_id, ai_role, bot_token FROM telegram_bot_configs
+          WHERE id = ${parseInt(configId)} AND enabled = true LIMIT 1
+        `);
+        if (cfgResult.rows.length > 0) {
+          const cfg = cfgResult.rows[0] as any;
+          const groupInfo = await getGroupInfo(cfg.bot_token, chatId);
+          if (groupInfo.description || groupInfo.title) {
+            await db.execute(sql`
+              INSERT INTO telegram_user_profiles (consultant_id, ai_role, telegram_chat_id, chat_type, onboarding_status, group_description)
+              VALUES (${cfg.consultant_id}::uuid, ${cfg.ai_role}, ${chatId}, ${chatType}, 'pending', ${groupInfo.description || null})
+              ON CONFLICT (consultant_id, ai_role, telegram_chat_id) DO UPDATE SET
+                group_description = COALESCE(${groupInfo.description || null}, telegram_user_profiles.group_description),
+                updated_at = NOW()
+            `);
+            console.log(`[TELEGRAM] Saved group info for ${chatId}: title="${groupInfo.title}", description="${(groupInfo.description || '').substring(0, 100)}"`);
+          }
+        }
+      } catch (err: any) {
+        console.error(`[TELEGRAM] Error fetching group info for non-text message:`, err.message);
+      }
+    } else {
+      console.log(`[TELEGRAM] Non-text message from chat ${chatId}, skipping`);
+    }
     return;
   }
 
