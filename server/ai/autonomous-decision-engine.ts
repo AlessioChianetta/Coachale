@@ -786,7 +786,7 @@ AZIONI INTERNE (sempre disponibili, non richiedono canali di comunicazione):
 - "web_search": Cerca informazioni aggiornate su internet su un ARGOMENTO SPECIFICO. Specifica sempre il parametro "search_topic" con l'argomento preciso da ricercare (es. "strategie marketing massoterapia sportiva", "normative fiscali partita IVA 2026"). NON fare ricerche generiche.
 
 AZIONI DI COMUNICAZIONE (richiedono canale abilitato E contatto valido):
-- "prepare_call": Prepara script e contesto per una chiamata E decide l'orario migliore per effettuarla. Specifica il parametro "preferred_time" (formato HH:MM) e "preferred_date" (formato YYYY-MM-DD) basandoti sul contesto del cliente e l'urgenza del task.
+- "prepare_call": Prepara script e contesto per una chiamata E decide l'orario migliore per effettuarla. Specifica il parametro "preferred_time" (formato HH:MM) e "preferred_date" (formato YYYY-MM-DD). IMPORTANTE: Se la preparazione è per una consulenza futura, preferred_date DEVE essere PRIMA della data della consulenza (idealmente 1-2 giorni prima). NON programmare preparazioni dopo la data dell'evento.
 - "voice_call": Effettua una chiamata vocale. L'AI decide autonomamente il contenuto della chiamata in base alla situazione: può spiegare, dare consigli, far fare azioni al cliente, etc. La chiamata è flessibile e adattata al contesto.
 - "send_email": Invia un'email al cliente. Scrivi un messaggio BREVE e professionale. Se è disponibile un report, viene allegato come PDF. Specifica parametro "subject" per l'oggetto e "message_summary" per il contenuto (max 3-4 frasi).
 - "send_whatsapp": Invia un messaggio WhatsApp al cliente. Scrivi un messaggio BREVE (max 2-3 frasi). Se è disponibile un report, viene allegato il PDF. Specifica parametro "message_summary".
@@ -806,6 +806,7 @@ REGOLE:
 12. Per prepare_call, specifica SEMPRE "preferred_time" e "preferred_date" nel params
 13. Per send_email e send_whatsapp, specifica "subject" (solo email) e "message_summary" nel params - i messaggi devono essere BREVI, il dettaglio è nel PDF allegato
 14. Per prepare_call, CONTROLLA le chiamate già programmate e scegli un orario che NON si sovrapponga (almeno 30 minuti di distanza)
+15. REGOLA CRITICA TEMPORALE: Quando crei task di preparazione per una consulenza futura, il task DEVE essere programmato PRIMA della data della consulenza, idealmente 1-2 giorni prima. NON ha senso preparare una consulenza DOPO che è già avvenuta. Controlla le date in 'CONSULENZE IN PROGRAMMA' e assicurati che preferred_date sia ANTERIORE alla data della consulenza.
 
 Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 {

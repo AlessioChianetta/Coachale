@@ -990,13 +990,15 @@ async function handlePrepareCall(
   const clientData = previousResults.fetch_client_data || {};
 
   const callIdentity = rolePersonality
-    ? `${rolePersonality}\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`
+    ? `${rolePersonality}\nPrepara i punti chiave e il briefing per il CONSULENTE in vista della sua telefonata/consulenza con il cliente. Il tuo ruolo è preparare il consulente, fornendogli contesto, strategie, domande chiave da porre, e obiettivi per la chiamata. NON stai chiamando il cliente direttamente — stai facendo coaching al consulente su come condurre al meglio la conversazione.`
     : `Sei un assistente AI per consulenti.\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`;
 
   const prompt = `${callIdentity}
 ${agentContextSection || ''}
 
 IMPORTANT: The talking points and script MUST be about the CURRENT task instruction below, NOT about any previous task or report from a different context. Focus EXCLUSIVELY on what the current task asks.
+
+NOTA: Stai preparando un BRIEFING PER IL CONSULENTE. I talking points sono per il consulente, non per il cliente. Lo script di apertura e chiusura sono suggerimenti per come il consulente dovrebbe condurre la chiamata. Le obiezioni sono quelle che il CLIENTE potrebbe fare, e le risposte sono quelle che il CONSULENTE dovrebbe dare.
 
 ISTRUZIONE DEL TASK CORRENTE (questa è la PRIORITÀ ASSOLUTA - la chiamata DEVE riguardare QUESTO argomento):
 ${task.ai_instruction}
@@ -1025,8 +1027,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
       "tone": "professionale|empatico|urgente|informativo"
     }
   ],
-  "opening_script": "frase di apertura suggerita",
-  "closing_script": "frase di chiusura suggerita",
+  "opening_script": "frase di apertura suggerita per il consulente",
+  "closing_script": "frase di chiusura suggerita per il consulente",
   "objection_responses": [
     {
       "objection": "possibile obiezione",
