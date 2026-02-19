@@ -522,7 +522,7 @@ export default function ConsultantAIAutonomyPage() {
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
         <div className="flex-1 flex min-h-0">
           <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
-            <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-4xl" : "max-w-5xl")}>
+            <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-5xl" : "max-w-7xl")}>
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-violet-950 to-purple-950 p-6 lg:p-8 text-white shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
                 <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500/5 rounded-full blur-3xl" />
