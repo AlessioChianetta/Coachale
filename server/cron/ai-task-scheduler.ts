@@ -95,10 +95,20 @@ async function processAITasks(): Promise<void> {
       UPDATE ai_scheduled_tasks
       SET status = 'waiting_approval', updated_at = NOW()
       WHERE status = 'deferred' AND scheduled_at <= NOW()
-      RETURNING id, ai_role, task_type
+      RETURNING id, ai_role, task_type, consultant_id, ai_instruction, contact_name, task_category
     `);
     if (deferredMoveResult.rows.length > 0) {
       console.log(`🤖 [AI-SCHEDULER] STEP 1b: Re-queued ${deferredMoveResult.rows.length} deferred→waiting_approval:`, deferredMoveResult.rows.map((r: any) => `${r.id}(${r.ai_role})`));
+      for (const dTask of deferredMoveResult.rows as any[]) {
+        void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+          notifyTaskViaTelegram(dTask.consultant_id, dTask.ai_role || 'personalizza', 'waiting_approval', {
+            taskId: dTask.id,
+            instruction: dTask.ai_instruction,
+            contactName: dTask.contact_name,
+            taskCategory: dTask.task_category,
+          })
+        ).catch(() => {});
+      }
     }
 
     const zombieResult = await db.execute(sql`
@@ -528,6 +538,16 @@ async function handleFailure(task: AIScheduledTask, reason: string): Promise<voi
       WHERE source_task_id = ${task.id}
     `);
     
+    void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+      notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+        taskId: task.id,
+        instruction: task.ai_instruction,
+        contactName: task.contact_name,
+        errorMessage: `${reason}`,
+        taskCategory: task.task_category,
+      })
+    ).catch(() => {});
+    
     // NOTE: Recurrence is NOT scheduled here on failure
     // The callback will handle recurrence when a call actually completes successfully
     // This prevents duplicate recurrence scheduling
@@ -661,6 +681,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
             contact_id: task.contact_id,
             event_data: { confidence: decision.confidence }
           });
+          
+          void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+            notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+              taskId: task.id,
+              instruction: task.ai_instruction,
+              contactName: task.contact_name,
+              errorMessage: decision.reasoning.substring(0, 300),
+              taskCategory: task.task_category,
+            })
+          ).catch(() => {});
         } else {
           console.log(`🛑 [AI-SCHEDULER] Decision Engine says skip task ${task.id}: ${decision.reasoning}`);
           await db.execute(sql`
@@ -878,6 +908,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
             contact_name: task.contact_name,
             contact_id: task.contact_id,
           });
+
+          void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) => 
+            notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'waiting_input', {
+              taskId: task.id,
+              instruction: task.ai_instruction,
+              contactName: task.contact_name,
+              stepInfo: stepName,
+              taskCategory: task.task_category,
+            })
+          ).catch(() => {});
           
           console.log(`⏸️ [AI-SCHEDULER] ASSISTED MODE: Task ${task.id} paused after step ${i + 1}/${totalSteps}, waiting for consultant input`);
           return;
@@ -925,6 +965,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         contact_id: task.contact_id,
         event_data: { steps_completed: completedSteps, failed_step: failedStep }
       });
+      
+      void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+        notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+          taskId: task.id,
+          instruction: task.ai_instruction,
+          contactName: task.contact_name,
+          errorMessage: `Fallito allo step "${failedStep}"`,
+          taskCategory: task.task_category,
+        })
+      ).catch(() => {});
     } else {
       await db.execute(sql`
         UPDATE ai_scheduled_tasks 
@@ -973,6 +1023,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         event_data: { steps_completed: totalSteps }
       });
       
+      void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+        notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'completed', {
+          taskId: task.id,
+          instruction: task.ai_instruction,
+          contactName: task.contact_name,
+          resultSummary: `Completato: ${totalSteps} step eseguiti con successo`,
+          taskCategory: task.task_category,
+        })
+      ).catch(() => {});
+      
       console.log(`✅ [AI-SCHEDULER] Autonomous task ${task.id} completed (${totalSteps} steps)`);
     }
     
@@ -998,6 +1058,16 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       contact_name: task.contact_name,
       contact_id: task.contact_id,
     });
+    
+    void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+      notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+        taskId: task.id,
+        instruction: task.ai_instruction,
+        contactName: task.contact_name,
+        errorMessage: error.message,
+        taskCategory: task.task_category,
+      })
+    ).catch(() => {});
   }
 }
 
@@ -1178,7 +1248,7 @@ async function cleanupStuckCallingCalls(): Promise<void> {
         LIMIT 1
       `);
       
-      // First get source_task_id for AI task sync
+      // First get source_task_id for AI task sync and task details
       const callDetailResult = await db.execute(sql`
         SELECT source_task_id FROM scheduled_voice_calls WHERE id = ${call.id}
       `);
@@ -1212,6 +1282,24 @@ async function cleanupStuckCallingCalls(): Promise<void> {
             WHERE id = ${sourceTaskId}
           `);
           console.log(`🔗 [AI-SCHEDULER] Synced AI Task ${sourceTaskId} -> completed`);
+          
+          // Fetch task details for notification
+          const taskDetailResult = await db.execute(sql`
+            SELECT consultant_id, ai_role, ai_instruction, contact_name, task_category 
+            FROM ai_scheduled_tasks WHERE id = ${sourceTaskId}
+          `);
+          const taskDetail = (taskDetailResult.rows[0] as any);
+          if (taskDetail) {
+            void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+              notifyTaskViaTelegram(taskDetail.consultant_id, taskDetail.ai_role || 'personalizza', 'completed', {
+                taskId: sourceTaskId,
+                instruction: taskDetail.ai_instruction,
+                contactName: taskDetail.contact_name,
+                resultSummary: `Chiamata completata (sync automatico)${voiceCall.duration_seconds ? ` - ${voiceCall.duration_seconds}s` : ''}`,
+                taskCategory: taskDetail.task_category,
+              })
+            ).catch(() => {});
+          }
         }
       } else {
         // No matching call found - check if should retry or fail
@@ -1263,6 +1351,24 @@ async function cleanupStuckCallingCalls(): Promise<void> {
               WHERE id = ${sourceTaskId}
             `);
             console.log(`❌ [AI-SCHEDULER] Synced AI Task ${sourceTaskId} -> failed`);
+            
+            // Fetch task details for notification
+            const taskDetailResult = await db.execute(sql`
+              SELECT consultant_id, ai_role, ai_instruction, contact_name, task_category 
+              FROM ai_scheduled_tasks WHERE id = ${sourceTaskId}
+            `);
+            const taskDetail = (taskDetailResult.rows[0] as any);
+            if (taskDetail) {
+              void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+                notifyTaskViaTelegram(taskDetail.consultant_id, taskDetail.ai_role || 'personalizza', 'failed', {
+                  taskId: sourceTaskId,
+                  instruction: taskDetail.ai_instruction,
+                  contactName: taskDetail.contact_name,
+                  errorMessage: 'Chiamata fallita - nessuna risposta dal VPS',
+                  taskCategory: taskDetail.task_category,
+                })
+              ).catch(() => {});
+            }
           }
         }
       }
@@ -2403,6 +2509,18 @@ FORMATO JSON quando è un task nuovo (come prima):
                 role_name: role.name,
               },
             });
+
+            const createdStatus = getTaskStatusForRole(settings, role.id);
+            if (createdStatus === 'waiting_approval') {
+              void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) =>
+                notifyTaskViaTelegram(consultantId, role.id, 'waiting_approval', {
+                  taskId,
+                  instruction: suggestedTask.ai_instruction,
+                  contactName: suggestedTask.contact_name,
+                  taskCategory: suggestedTask.task_category || role.categories[0] || 'followup',
+                })
+              ).catch(() => {});
+            }
 
             if (suggestedTask.contact_id) {
               clientsWithPendingTasks.add(suggestedTask.contact_id);

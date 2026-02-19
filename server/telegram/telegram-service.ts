@@ -329,3 +329,73 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
     await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
   }
 }
+
+export type TaskNotifyEvent = 'completed' | 'failed' | 'waiting_input' | 'waiting_approval';
+
+interface TaskNotifyData {
+  taskId: string;
+  instruction?: string;
+  contactName?: string;
+  resultSummary?: string;
+  errorMessage?: string;
+  stepInfo?: string;
+  taskCategory?: string;
+}
+
+const TASK_NOTIFY_MESSAGES: Record<TaskNotifyEvent, (roleName: string, data: TaskNotifyData) => string> = {
+  completed: (roleName, data) => {
+    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    const summary = data.resultSummary ? `\n${data.resultSummary.substring(0, 300)}` : '';
+    return `✅ ${roleName} ha completato un task${contact}: ${(data.instruction || '').substring(0, 150)}${summary}`;
+  },
+  failed: (roleName, data) => {
+    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    const error = data.errorMessage ? `\nMotivo: ${data.errorMessage.substring(0, 200)}` : '';
+    return `❌ ${roleName} non è riuscito a completare un task${contact}: ${(data.instruction || '').substring(0, 150)}${error}`;
+  },
+  waiting_input: (roleName, data) => {
+    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    const step = data.stepInfo ? `\nStep attuale: ${data.stepInfo.substring(0, 150)}` : '';
+    return `⏸️ ${roleName} ha bisogno del tuo input${contact}: ${(data.instruction || '').substring(0, 150)}${step}\n\nApri la piattaforma per rispondere.`;
+  },
+  waiting_approval: (roleName, data) => {
+    const contact = data.contactName ? ` per ${data.contactName}` : '';
+    return `🔔 ${roleName} ha preparato un task${contact} e attende la tua approvazione: ${(data.instruction || '').substring(0, 150)}\n\nApri la piattaforma per approvare.`;
+  },
+};
+
+export async function notifyTaskViaTelegram(
+  consultantId: string,
+  roleId: string,
+  event: TaskNotifyEvent,
+  data: TaskNotifyData
+): Promise<void> {
+  try {
+    const configResult = await db.execute(sql`
+      SELECT id, bot_token FROM telegram_bot_configs
+      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId} AND is_active = true
+      LIMIT 1
+    `);
+    if (configResult.rows.length === 0) return;
+
+    const config = configResult.rows[0] as any;
+    const botToken = config.bot_token;
+    const configId = config.id;
+
+    const ownerResult = await db.execute(sql`
+      SELECT telegram_chat_id FROM telegram_chat_links
+      WHERE config_id = ${configId} AND is_owner = true AND active = true
+      LIMIT 1
+    `);
+    if (ownerResult.rows.length === 0) return;
+
+    const chatId = (ownerResult.rows[0] as any).telegram_chat_id;
+    const roleName = roleId.charAt(0).toUpperCase() + roleId.slice(1);
+    const message = TASK_NOTIFY_MESSAGES[event](roleName, data);
+
+    await sendTelegramMessage(botToken, chatId, message);
+    console.log(`[TELEGRAM-NOTIFY] Sent ${event} notification to owner chat ${chatId} for role ${roleId}`);
+  } catch (err: any) {
+    console.error(`[TELEGRAM-NOTIFY] Failed to notify ${event} for role ${roleId}:`, err.message);
+  }
+}

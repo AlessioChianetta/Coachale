@@ -1652,6 +1652,16 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
             contact_id: task.contact_id,
             event_data: { steps_completed: completedSteps, failed_step: failedStep }
           });
+
+          void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) => 
+            notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+              taskId: task.id,
+              instruction: task.ai_instruction,
+              contactName: task.contact_name,
+              errorMessage: `Fallito allo step "${failedStep}" (${completedSteps}/${totalSteps})`,
+              taskCategory: task.task_category,
+            })
+          ).catch(() => {});
         } else {
           await db.execute(sql`
             UPDATE ai_scheduled_tasks
@@ -1700,6 +1710,16 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
             event_data: { steps_completed: totalSteps }
           });
 
+          void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) => 
+            notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'completed', {
+              taskId: task.id,
+              instruction: task.ai_instruction,
+              contactName: task.contact_name,
+              resultSummary: `${totalSteps} step completati con successo`,
+              taskCategory: task.task_category,
+            })
+          ).catch(() => {});
+
           console.log(`✅ [AI-AUTONOMY] Manual task execution ${task.id} completed (${totalSteps} steps)`);
         }
       } catch (error: any) {
@@ -1724,6 +1744,16 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
           contact_name: task.contact_name,
           contact_id: task.contact_id,
         });
+
+        void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) => 
+          notifyTaskViaTelegram(task.consultant_id, task.ai_role || 'personalizza', 'failed', {
+            taskId: task.id,
+            instruction: task.ai_instruction,
+            contactName: task.contact_name,
+            errorMessage: error.message,
+            taskCategory: task.task_category,
+          })
+        ).catch(() => {});
       }
     };
 
@@ -2460,11 +2490,24 @@ router.patch("/tasks/:id/restore", authenticateToken, requireAnyRole(["consultan
       WHERE id = ${id}
         AND consultant_id = ${consultantId}
         AND status IN ('cancelled', 'failed', 'completed')
+      RETURNING id, ai_role, ai_instruction, contact_name, task_category
     `);
 
     if ((result.rowCount ?? 0) === 0) {
       return res.status(404).json({ error: "Task non trovato o non ripristinabile" });
     }
+
+    void import("../telegram/telegram-service").then(({ notifyTaskViaTelegram }) => {
+      const taskRow = result.rows?.[0] as any;
+      if (taskRow) {
+        notifyTaskViaTelegram(consultantId, taskRow.ai_role || 'personalizza', 'waiting_approval', {
+          taskId: taskRow.id || id,
+          instruction: taskRow.ai_instruction,
+          contactName: taskRow.contact_name,
+          taskCategory: taskRow.task_category,
+        });
+      }
+    }).catch(() => {});
 
     return res.json({ success: true });
   } catch (error: any) {
