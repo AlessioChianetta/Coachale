@@ -105,6 +105,9 @@ function DashboardTab({
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const kanbanScrollRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [expandedTaskIds, setExpandedTaskIds] = React.useState<Set<string>>(new Set());
   const [cancelDialogTask, setCancelDialogTask] = React.useState<AITask | null>(null);
   const [rescheduleTask, setRescheduleTask] = React.useState<AITask | null>(null);
@@ -390,6 +393,33 @@ function DashboardTab({
       else next.add(taskId);
       return next;
     });
+  };
+
+  const updateScrollArrows = React.useCallback(() => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  React.useEffect(() => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    updateScrollArrows();
+    el.addEventListener('scroll', updateScrollArrows, { passive: true });
+    const ro = new ResizeObserver(updateScrollArrows);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateScrollArrows);
+      ro.disconnect();
+    };
+  }, [updateScrollArrows, kanbanColumns]);
+
+  const scrollKanban = (direction: 'left' | 'right') => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    const scrollAmount = 340;
+    el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
   };
 
   const handleOpenChatAboutTask = (task: AITask, question?: string) => {
@@ -1531,9 +1561,28 @@ function DashboardTab({
               <p className="text-xs mt-1">I task completati sono nell'archivio in basso</p>
             </div>
           ) : (
-            <div className="kanban-scroll pb-4 -mx-2 px-2">
-              <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
-                {kanbanColumns.map(({ role, tasks: columnTasks }) => {
+            <div className="relative">
+              {canScrollLeft && (
+                <button
+                  onClick={() => scrollKanban('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background/90 border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors backdrop-blur-sm"
+                  aria-label="Scorri a sinistra"
+                >
+                  <ChevronLeft className="h-5 w-5 text-foreground" />
+                </button>
+              )}
+              {canScrollRight && (
+                <button
+                  onClick={() => scrollKanban('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-10 w-10 rounded-full bg-background/90 border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors backdrop-blur-sm"
+                  aria-label="Scorri a destra"
+                >
+                  <ChevronRight className="h-5 w-5 text-foreground" />
+                </button>
+              )}
+              <div ref={kanbanScrollRef} className="kanban-scroll pb-4 -mx-2 px-2">
+                <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
+                  {kanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];
                   const roleBorderColors: Record<string, string> = {
                     alessia: "border-t-pink-400",
@@ -1717,6 +1766,7 @@ function DashboardTab({
                     </div>
                   );
                 })}
+                </div>
               </div>
             </div>
           )}
