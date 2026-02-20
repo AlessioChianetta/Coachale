@@ -5144,6 +5144,64 @@ export class FileSearchSyncService {
       };
     }
     
+    // Global Consultation Store audit: check how many client consultation/email_journey docs are in the global store
+    const globalConsultationStoreRecord = await db.select({ id: fileSearchStores.id })
+      .from(fileSearchStores)
+      .where(and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+        sql`${fileSearchStores.displayName} = 'Store Globale Consulenze Clienti'`,
+        eq(fileSearchStores.isActive, true)
+      ))
+      .limit(1);
+    
+    // Count source docs (consultation + email_journey) from client stores
+    const sourceConsultationDocs = await db.execute(sql`
+      SELECT COUNT(DISTINCT d.id) as total
+      FROM file_search_documents d
+      JOIN file_search_stores s ON s.id = d.store_id
+      JOIN users u ON u.id::text = s.owner_id
+      WHERE s.owner_type = 'client' AND s.is_active = true
+        AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+        AND d.source_type IN ('consultation', 'email_journey')
+        AND d.status = 'indexed'
+    `);
+    const totalSourceDocs = parseInt((sourceConsultationDocs.rows[0] as any)?.total || '0', 10);
+    
+    let globalStoreDocsCount = 0;
+    let globalStoreLastSync: Date | null = null;
+    let globalStoreExists = false;
+    
+    if (globalConsultationStoreRecord.length > 0) {
+      globalStoreExists = true;
+      const globalDocs = await db.select({ 
+        id: fileSearchDocuments.id,
+        indexedAt: fileSearchDocuments.indexedAt
+      })
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.storeId, globalConsultationStoreRecord[0].id),
+          eq(fileSearchDocuments.status, 'indexed')
+        ));
+      globalStoreDocsCount = globalDocs.length;
+      if (globalDocs.length > 0) {
+        const latestSync = globalDocs.reduce((latest, d) => {
+          if (d.indexedAt && (!latest || d.indexedAt > latest)) return d.indexedAt;
+          return latest;
+        }, null as Date | null);
+        globalStoreLastSync = latestSync;
+      }
+    }
+    
+    const globalConsultationAudit = {
+      storeExists: globalStoreExists,
+      totalSourceDocs,
+      indexedInGlobalStore: globalStoreDocsCount,
+      isSynced: globalStoreExists && globalStoreDocsCount > 0 && globalStoreDocsCount >= totalSourceDocs,
+      needsSync: !globalStoreExists || globalStoreDocsCount === 0 || globalStoreDocsCount < totalSourceDocs,
+      lastSyncAt: globalStoreLastSync,
+    };
+
     console.log(`📊 [Audit] Phase 3 complete in ${Date.now() - phase3Start}ms`);
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -6008,6 +6066,7 @@ export class FileSearchSyncService {
         dynamicContext: dynamicContextResult,
         ...operationalResults,
       },
+      globalConsultationStore: globalConsultationAudit,
       clients: clientsAudit,
       departments: departmentsAudit,
       employees: employeesAudit,

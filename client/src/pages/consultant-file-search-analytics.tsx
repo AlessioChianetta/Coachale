@@ -5829,6 +5829,67 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       </Collapsible>
                     ))}
 
+                    <Collapsible open={openAuditCategories['globalConsultation']} onOpenChange={() => toggleAuditCategory('globalConsultation')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                        {openAuditCategories['globalConsultation'] ? <ChevronDown className="h-4 w-4 text-emerald-600" /> : <ChevronRight className="h-4 w-4 text-emerald-600" />}
+                        <Globe className="h-4 w-4 text-emerald-600" />
+                        <span className="font-medium text-emerald-900">Store Globale Consulenze Clienti</span>
+                        <div className="ml-auto flex items-center gap-2">
+                          {(auditData as any)?.globalConsultationStore?.isSynced ? (
+                            <Badge className="bg-emerald-200 text-emerald-800">
+                              Sincronizzato ({(auditData as any)?.globalConsultationStore?.indexedInGlobalStore || 0} doc)
+                            </Badge>
+                          ) : (auditData as any)?.globalConsultationStore?.storeExists ? (
+                            <Badge className="bg-amber-200 text-amber-800">
+                              Da aggiornare ({(auditData as any)?.globalConsultationStore?.indexedInGlobalStore || 0}/{(auditData as any)?.globalConsultationStore?.totalSourceDocs || 0})
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-200 text-red-800">
+                              Non creato
+                            </Badge>
+                          )}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {(auditData as any)?.globalConsultationStore?.isSynced ? (
+                          <div className="p-3 bg-emerald-50 rounded-lg">
+                            <p className="text-sm text-emerald-700 flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              Store globale sincronizzato con {(auditData as any)?.globalConsultationStore?.indexedInGlobalStore} documenti
+                            </p>
+                            {(auditData as any)?.globalConsultationStore?.lastSyncAt && (
+                              <p className="text-xs text-emerald-600 mt-1 ml-6">
+                                Ultima sincronizzazione: {new Date((auditData as any).globalConsultationStore.lastSyncAt).toLocaleString('it-IT')}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                            <p className="text-sm text-amber-800 mb-2">
+                              {!(auditData as any)?.globalConsultationStore?.storeExists 
+                                ? 'Lo Store Globale Consulenze non è stato ancora creato.'
+                                : `Lo store ha ${(auditData as any)?.globalConsultationStore?.indexedInGlobalStore || 0} documenti ma nei client store ci sono ${(auditData as any)?.globalConsultationStore?.totalSourceDocs || 0} documenti sorgente.`
+                              }
+                            </p>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                              onClick={() => syncSingleMutation.mutate({ type: 'global_consultation', id: 'all' })}
+                              disabled={syncSingleMutation.isPending}
+                            >
+                              {syncSingleMutation.isPending ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                              )}
+                              Sincronizza Store Globale
+                            </Button>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
                     <Collapsible open={openAuditCategories['library']} onOpenChange={() => toggleAuditCategory('library')}>
                       <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
                         {openAuditCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
