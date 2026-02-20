@@ -837,7 +837,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
       const consultationsSummary = (roleData.consultations || []).map((c: any) => ({
         client: c.client_name,
         client_id: c.client_id,
-        date: c.scheduled_at,
+        date: new Date(c.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         duration: c.duration,
         status: c.status,
         has_notes: !!c.notes,
@@ -848,7 +848,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
 
       const callsSummary = (roleData.voiceCalls || []).map((v: any) => ({
         phone: v.target_phone,
-        date: v.scheduled_at,
+        date: new Date(v.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         status: v.status,
         duration_sec: v.duration_seconds,
         instruction_preview: v.call_instruction?.substring(0, 150) || null,
@@ -938,17 +938,18 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     maxTasksPerRun: 2,
     fetchRoleData: fetchMillieData,
     buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
+      const fmtRome = (d: any) => d ? new Date(d).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
       const journeySummary = (roleData.journeyProgress || []).map((jp: any) => ({
         client: jp.client_name,
         client_id: jp.client_id,
         journey_day: jp.current_day,
-        last_email_sent: jp.last_email_sent_at,
+        last_email_sent: fmtRome(jp.last_email_sent_at),
         last_subject: jp.last_email_subject?.substring(0, 100),
       }));
 
       const emailLogSummary = (roleData.emailLogs || []).slice(0, 20).map((el: any) => ({
         client_id: el.client_id,
-        sent_at: el.sent_at,
+        sent_at: fmtRome(el.sent_at),
         subject: el.subject?.substring(0, 80),
         email_type: el.email_type,
         opened: !!el.opened_at,
@@ -1041,7 +1042,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         consultation_id: c.id,
         client: c.client_name,
         client_id: c.client_id,
-        date: c.scheduled_at,
+        date: new Date(c.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         duration: c.duration,
         has_notes: !!c.notes,
         has_transcript: !!c.transcript,
@@ -1051,9 +1052,9 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 
       const summarized = (roleData.recentSummaries || []).map((c: any) => ({
         client: c.client_name,
-        date: c.scheduled_at,
+        date: new Date(c.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         status: c.summary_email_status,
-        sent_at: c.summary_email_sent_at,
+        sent_at: c.summary_email_sent_at ? new Date(c.summary_email_sent_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
       }));
 
       const stats = roleData.pipelineStats;
@@ -1159,14 +1160,14 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         type: p.content_type,
         platform: p.platform,
         status: p.status,
-        published: p.published_at,
-        scheduled: p.scheduled_at,
+        published: p.published_at ? new Date(p.published_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+        scheduled: p.scheduled_at ? new Date(p.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
       }));
 
       const ideasSummary = (roleData.pendingIdeas || []).map((i: any) => ({
         title: i.title?.substring(0, 80),
         type: i.content_type,
-        created: i.created_at,
+        created: new Date(i.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }));
 
       return `Sei NOVA, Social Media Manager AI. Il tuo ruolo è analizzare il calendario contenuti del consulente e suggerire nuove idee e post da creare per mantenere la presenza social forte e costante.
@@ -1268,7 +1269,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         text: m.message_text?.substring(0, 150),
         direction: m.direction,
         sender: m.sender,
-        date: m.created_at,
+        date: new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }));
 
       return `Sei STELLA, WhatsApp Assistant AI. Il tuo ruolo è analizzare le conversazioni WhatsApp per identificare opportunità di follow-up, lead da qualificare e clienti che aspettano risposta.
@@ -1369,7 +1370,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         status: t.status,
         priority: t.priority,
         classification: t.ai_classification,
-        created: t.created_at,
+        created: new Date(t.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }));
 
       return `Sei IRIS, Email Hub Manager AI. Il tuo ruolo è monitorare le email in arrivo e i ticket aperti per assicurare che nessuna comunicazione importante venga ignorata.
@@ -1457,7 +1458,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         consultation_id: c.id,
         client: c.client_name,
         client_id: c.client_id,
-        date: c.scheduled_at,
+        date: new Date(c.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         duration: c.duration,
         status: c.status,
         has_notes: !!c.notes,
@@ -1551,7 +1552,7 @@ ${(() => {
   const pending = personalTasks.filter((t: any) => !t.completed);
   const completed = personalTasks.filter((t: any) => t.completed);
   let result = `Pendenti: ${pending.length}, Completate: ${completed.length}\n`;
-  result += pending.map((t: any) => `- [${t.priority?.toUpperCase()}] ${t.title} (${t.category})${t.due_date ? ` scadenza: ${new Date(t.due_date).toLocaleDateString('it-IT')}` : ''}`).join('\n');
+  result += pending.map((t: any) => `- [${t.priority?.toUpperCase()}] ${t.title} (${t.category})${t.due_date ? ` scadenza: ${new Date(t.due_date).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}`).join('\n');
   return result;
 })()}
 
@@ -1737,7 +1738,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       const consultationsSummary = (roleData.consultations || []).map((c: any) => ({
         client: c.client_name,
         client_id: c.client_id,
-        date: c.scheduled_at,
+        date: new Date(c.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         duration: c.duration,
         status: c.status,
       }));
@@ -1749,7 +1750,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
         status: t.status,
         channel: t.preferred_channel,
         role: t.ai_role,
-        created: t.created_at,
+        created: new Date(t.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       }));
 
       const personalizzaConfig = roleData.personalizzaConfig;

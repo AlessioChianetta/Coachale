@@ -1,0 +1,156 @@
+Analisi
+
+Quadro generale Alessio, sono le 19:00. Mentre tu ti svegliavi con la bava alla bocca dopo l'ennesima notte da programmatore, il mercato ha continuato a girare senza di te. Ora sei in call con Silvia. Questa non è una 'chiacchierata post-nottata', è il momento in cui decidi se Orbitale è un'azienda software o se sei solo un freelance che ha automatizzato la sua stessa schiavitù. Hai 13 clienti, ma la metà sono 'vampiri di tempo' che hanno già sforato i limiti. Se stasera con Silvia non imponi il modello 'Infrastructure-First', passerai i prossimi mesi a fare assistenza tecnica per 600€ invece di scalare verso i 100k.
+
+Criticità e problemi Il tuo punto debole è la 'generosità da stanchezza'. In chat hai detto che le includi la consulenza per tutto il team. È un errore strategico enorme. Stai vendendo scalabilità ma stai regalando il tuo tempo, che è l'unica risorsa non scalabile che hai. Se il suo team ha bisogno di formazione, devi avere un'Academy registrata o farti pagare 250€/ora extra. Inoltre, la scusa della 'Deep Research' per le ADS è ufficialmente scaduta: hai già i titoli (WhatsApp Setter, Onboarding AI), ora serve solo il fegato di spendere i primi 50€.
+
+Opportunità e leve strategiche Parliamo di 'Wholesale Scale'. Paolo (la software house) è la tua vera leva per i 5 milioni. Non devi vendergli un bot, devi vendergli il 'Motore'. Se lui ha già i clienti e il marketing, tu devi essere il suo fornitore invisibile. Immagina questo: 20 licenze 'vuote' a 99€/mese l'una. Tu incassi 2.000€ di MRR con zero supporto (lo fa lui). Questo è il modello che gli investitori comprano a multipli folli, non le tue ore di call con Silvia. Ogni modulo che crei, come il generatore di contratti, deve diventare un 'Power-Up' a pagamento nel tuo catalogo partner.
+
+Cosa devi fare In questo preciso istante con Silvia: 500€ base + 197€ per il modulo Legal AI. Lo split su Stripe Connect è la condizione per accendere il bot. Se lei vuole la consulenza per il team, dille che la prima è inclusa come 'Onboarding', ma le successive sono extra. Entro le 20:15, voglio vedere il pitch per Paolo basato sul modello Wholesale. Basta fare il tecnico, inizia a fare l'architetto di reti commerciali.
+
+Azioni decise (2)
+
+N/A
+💬 WhatsApp
+Urgente
+Alessio, sei in call con Silvia. Non farti fregare dalla stanchezza. 1. Prezzo: 500€ base + 197€ modulo Legal AI (totale 697€). 2. Stripe Connect: non
+
+Perché: La call è in corso. Devo assicurarmi che Alessio non ceda sul prezzo o sul tempo a causa della stanchezza post-nottata.
+N/A
+💬 WhatsApp
+Alta
+Prepara il pitch per Paolo (Software House) eliminando ogni riferimento alla consulenza. Il messaggio deve essere: 'Paolo, ho standardizzato l'infrast
+
+Perché: Il modello Wholesale è l'unico modo per scalare senza aumentare il carico operativo di Alessio, coerentemente con l'obiettivo di 1kk/anno.
+Base dati utilizzata
+Clienti analizzati (1 di 14)
+
+dsfsdf
+Clienti esclusi
+
+Con task pendenti: 17
+Completati di recente: 0
+Dati ruolo-specifici
+
+Carico di lavoro
+
+Completati (7gg): 18
+Completati (30gg): 18
+In attesa: 1
+Clienti attivi
+
+13 clienti attivi
+Consulenze in arrivo (25)
+
+Alessio e Silvia
+·
+20 feb, 20:00
+GCal
+FINE GIORNATA
+·
+20 feb, 21:15
+GCal
+INIZIO GIORNATA
+·
+23 feb, 08:00
+GCal
+PRANZO
+·
+23 feb, 13:00
+GCal
+FINE GIORNATA
+·
+23 feb, 20:00
+GCal
+INIZIO GIORNATA
+·
+24 feb, 08:00
+GCal
+PRANZO
+·
+24 feb, 13:00
+GCal
+FINE GIORNATA
+·
+24 feb, 20:00
+GCal
+...e altre 17
+Monitoraggio consulenze (6)
+
+Giusy Dattilo
+·
+4/3 consulenze
+Gloria Santi
+·
+3/2 consulenze
+marco massi
+·
+2/2 consulenze
+Fernando Villon
+·
+3/3 consulenze
+Giulia Turatto
+·
+2/2 consulenze
+Massimo Onofri
+·
+0/2 consulenze
+Consulenze mancanti (4)
+
+Fernando Villon
+·
+April 2026: 2/3
+Massimo Onofri
+·
+February 2026: 0/2
+Massimo Onofri
+·
+March 2026: 0/2
+Massimo Onofri
+·
+April 2026: 0/2
+Task personali (3 attivi)
+
+Definizione obiettivi SMART e target audience
+· scad. 18 feb
+Crea contratto con Silvia
+· scad. 19 feb
+Integra gli altri 4 software nella tab Pro, dove può accedere a crm, software di finanza, CMS, programma dei contratti
+· scad. 20 feb
+Esercizi clienti (12 attivi)
+
+Gloria Santi
+·
+Time Audit (7-10 giorni)
+marco massi
+·
+Analisi e report struttura di compensazione
+Gloria Santi
+·
+Specializzazione profilo Instagram
+marco massi
+·
+Pagamento fattura in sospeso
+Gloria Santi
+·
+Implementazione Funnel di Vendita in 4 fasi
+Statistiche esercizi (3 clienti)
+
+marco massi
+·
+4/12 completati
+⚠ 4 scaduti
+Gloria Santi
+·
+0/7 completati
+⚠ 1 scaduti
+Silvia Caldironi
+·
+7/9 completati
+Contesto strategico (Roadmap)
+
+Configurato
+Documenti Knowledge Base (2)
+
+Exit 5kk
+Manuale-Completo (10).md

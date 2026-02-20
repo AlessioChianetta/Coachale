@@ -3746,7 +3746,8 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
         scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
         in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
       };
-      const line = `${idx + 1}. [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
+      const scheduledStr = t.scheduled_at ? ` [${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}]` : '';
+      const line = `${idx + 1}. [${statusLabels[t.status] || t.status}]${scheduledStr} ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}\n`;
       tasksTokenCount += estimateTokens(line);
       if (tasksTokenCount > MAX_TASKS_TOKENS) {
         systemPrompt += `... e altri ${activeTasks.length - idx} task attivi (troncati per spazio)\n`;
