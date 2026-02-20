@@ -766,13 +766,14 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   `);
 
   const clientStoreResult = await db.execute(sql`
-    SELECT DISTINCT s.google_store_name, s.owner_id as client_id,
+    SELECT s.google_store_name, s.owner_id as client_id,
            u.first_name || ' ' || u.last_name as client_name
     FROM file_search_stores s
     JOIN users u ON u.id::text = s.owner_id
     JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
     WHERE s.owner_type = 'client' AND s.is_active = true
       AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+    GROUP BY s.google_store_name, s.owner_id, u.first_name, u.last_name
     ORDER BY u.first_name
   `);
 
