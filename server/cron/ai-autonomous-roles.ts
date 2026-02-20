@@ -765,6 +765,17 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
              COUNT(*) FILTER (WHERE ct.completed = false) DESC
   `);
 
+  const clientStoreResult = await db.execute(sql`
+    SELECT DISTINCT s.google_store_name, s.owner_id as client_id,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM file_search_stores s
+    JOIN users u ON u.id::text = s.owner_id
+    JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+    WHERE s.owner_type = 'client' AND s.is_active = true
+      AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+    ORDER BY u.first_name
+  `);
+
   return {
     upcomingConsultations: mergedConsultations,
     workload: workloadResult.rows[0] || {},
@@ -777,6 +788,7 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
     consultantPersonalTasks: personalTasksResult.rows,
     clientTasks: clientTasksResult.rows,
     clientTaskStats: clientTaskStatsResult.rows,
+    clientFileSearchStores: clientStoreResult.rows,
   };
 }
 
@@ -1450,7 +1462,7 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     shortDescription: "Executive coaching ossessivo per scalare l'attività",
     categories: ["preparation", "monitoring", "report", "scheduling"],
     preferredChannels: ["voice", "whatsapp", "email", "none"],
-    typicalPlan: ["fetch_client_data", "analyze_patterns", "generate_report"],
+    typicalPlan: ["fetch_client_data", "search_private_stores", "analyze_patterns", "generate_report"],
     maxTasksPerRun: 2,
     fetchRoleData: fetchMarcoData,
     buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
@@ -1592,6 +1604,14 @@ ${(() => {
 
 ROADMAP E NOTE STRATEGICHE:
 ${roleData.marcoContext?.roadmap || 'Nessuna roadmap definita'}
+
+CLIENTI CON DATI FILE SEARCH DISPONIBILI (Note Consulenze + Email Journey):
+${(() => {
+  const fileSearchClients = (roleData.clientFileSearchStores || []);
+  const uniqueClients = [...new Map(fileSearchClients.map((c: any) => [c.client_id, c.client_name])).values()];
+  return uniqueClients.length > 0 ? uniqueClients.join(', ') : 'Nessun dato File Search disponibile';
+})()}
+Quando crei task per un cliente specifico, usa lo step "search_private_stores" per cercare nei loro documenti privati (note consulenze e progressi email journey) per avere un quadro completo.
 
 DOCUMENTI DI RIFERIMENTO (dalla Knowledge Base):
 ${(() => {

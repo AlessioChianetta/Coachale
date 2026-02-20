@@ -3866,7 +3866,11 @@ Puoi proporre di approvare o avviare task. Il flusso è:
 3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
 4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
 5. NON eseguire mai azioni senza conferma esplicita del consulente
-6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto`;
+6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
+
+FILE SEARCH:
+Hai accesso automatico alle Note Consulenze e ai Progressi Email Journey dei clienti attivi tramite File Search.
+Quando parli di un cliente specifico, cerca attivamente nei documenti privati per avere informazioni dettagliate sulla loro situazione.`;
   }
 
   const MAX_CHAT_CHARS = 32000;
@@ -3917,19 +3921,57 @@ Puoi proporre di approvare o avviare task. Il flusso è:
     const chatTemp = isTelegram ? 1 : 0.7;
     const chatMaxTokens = 2048;
 
+    let fileSearchTool: any = null;
+    if (roleId === 'marco' && !isOpenMode) {
+      try {
+        const { FileSearchService } = await import("../ai/file-search-service");
+        const fileSearchService = new FileSearchService();
+        
+        const clientStoresResult = await db.execute(sql`
+          SELECT s.google_store_name
+          FROM file_search_stores s
+          JOIN users u ON u.id::text = s.owner_id
+          JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+          WHERE s.owner_type = 'client' AND s.is_active = true
+            AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+          GROUP BY s.google_store_name
+          ORDER BY COUNT(d.id) DESC
+          LIMIT 5
+        `);
+        
+        const storeNames = (clientStoresResult.rows as any[]).map(r => r.google_store_name);
+        if (storeNames.length > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
+          console.log(`🔍 [MARCO-CHAT] File Search enabled with ${storeNames.length} client stores`);
+        }
+      } catch (fsErr: any) {
+        console.warn(`[MARCO-CHAT] File Search setup failed:`, fsErr.message);
+      }
+    }
+
+    const chatConfig: any = { temperature: chatTemp, maxOutputTokens: chatMaxTokens };
+    if (fileSearchTool) {
+      chatConfig.tools = [fileSearchTool];
+    }
+
     let response: any;
     if (aiClient.models?.generateContent) {
       response = await trackedGenerateContent(aiClient, {
         model: providerModel,
         contents: chatContents,
-        config: { temperature: chatTemp, maxOutputTokens: chatMaxTokens },
+        config: chatConfig,
       }, { consultantId, feature: `agent-chat:${roleId}` });
     } else {
-      response = await aiClient.generateContent({
+      const genConfig: any = { temperature: chatTemp, maxOutputTokens: chatMaxTokens };
+      const callParams: any = {
         model: providerModel,
         contents: chatContents,
-        generationConfig: { temperature: chatTemp, maxOutputTokens: chatMaxTokens },
-      });
+        generationConfig: genConfig,
+      };
+      if (fileSearchTool) {
+        callParams.tools = [fileSearchTool];
+      }
+      response = await aiClient.generateContent(callParams);
     }
 
     aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
