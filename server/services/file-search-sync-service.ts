@@ -3396,6 +3396,33 @@ export class FileSearchSyncService {
       totalDailyReflections.synced + totalClientProgress.synced + totalLibraryProgress.synced + totalEmailJourney.synced;
 
     // ============================================================
+    // GLOBAL CONSULTATION STORE - Sync if enabled
+    // ============================================================
+    let globalConsultationResult = { created: 0, updated: 0, skipped: 0, deleted: 0 };
+    if (settings.autoSyncGlobalConsultation) {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`🌐 [FileSync] Syncing Global Consultation Store...`);
+      console.log(`${'─'.repeat(70)}`);
+      try {
+        const { FileSearchService } = await import('../ai/file-search-service');
+        const fileSearchServiceInstance = new FileSearchService();
+        const gcResult = await fileSearchServiceInstance.syncGlobalConsultationStore(consultantId);
+        globalConsultationResult = { 
+          created: gcResult.created, 
+          updated: gcResult.updated || 0, 
+          skipped: gcResult.skipped || 0, 
+          deleted: gcResult.deleted 
+        };
+        console.log(`   🌐 Global consultation store: ${gcResult.created} created, ${gcResult.updated || 0} updated, ${gcResult.skipped || 0} skipped, ${gcResult.deleted} deleted`);
+        if (gcResult.errors.length > 0) {
+          globalConsultationResult = { ...globalConsultationResult, deleted: gcResult.deleted };
+        }
+      } catch (gcError: any) {
+        console.error(`   ⚠️ Global consultation sync error (non-blocking): ${gcError.message}`);
+      }
+    }
+
+    // ============================================================
     // CLEANUP SOURCE ORPHANS - Remove documents whose source was deleted
     // ============================================================
     console.log(`\n${'─'.repeat(70)}`);
@@ -3522,6 +3549,10 @@ export class FileSearchSyncService {
       ...emailAccountsResult.errors,
       ...orphanErrors,
     ];
+
+    if (settings.autoSyncGlobalConsultation && globalConsultationResult.created + globalConsultationResult.updated > 0) {
+      console.log(`   🌐 Global Consultation Store: ${globalConsultationResult.created} created, ${globalConsultationResult.updated} updated, ${globalConsultationResult.skipped} skipped`);
+    }
 
     // Update report with final results
     await db.update(fileSearchSyncReports)
