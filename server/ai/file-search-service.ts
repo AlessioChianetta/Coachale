@@ -2095,12 +2095,16 @@ export class FileSearchService {
   async syncGlobalConsultationStore(consultantId: string): Promise<{
     success: boolean;
     created: number;
+    updated: number;
+    skipped: number;
     deleted: number;
     errors: string[];
     storeName?: string;
   }> {
     const errors: string[] = [];
     let created = 0;
+    let updated = 0;
+    let skipped = 0;
     let deleted = 0;
 
     try {
@@ -2130,7 +2134,7 @@ export class FileSearchService {
           userId: consultantId,
         });
         if (!createResult.success || !createResult.storeId) {
-          return { success: false, created: 0, deleted: 0, errors: [`Failed to create global store: ${createResult.error}`] };
+          return { success: false, created: 0, updated: 0, skipped: 0, deleted: 0, errors: [`Failed to create global store: ${createResult.error}`] };
         }
         globalStoreId = createResult.storeId;
         globalStoreName = createResult.storeName;
@@ -2155,123 +2159,188 @@ export class FileSearchService {
       console.log(`📋 [FileSearch] Found ${sourceDocRows.length} source documents from client stores`);
 
       const existingGlobalDocs = await db.execute(
-        sql`SELECT id FROM file_search_documents WHERE store_id = ${globalStoreId}`
+        sql`SELECT id, source_id, content_hash FROM file_search_documents WHERE store_id = ${globalStoreId}`
       );
 
-      const docsToDelete = existingGlobalDocs.rows as any[];
-      console.log(`🗑️ [FileSearch] Deleting ${docsToDelete.length} existing documents from global store`);
-
-      for (const doc of docsToDelete) {
-        try {
-          await this.deleteDocument(doc.id, consultantId);
-          deleted++;
-        } catch (err: any) {
-          errors.push(`Failed to delete doc ${doc.id}: ${err.message}`);
+      const existingDocsMap = new Map<string, { id: string; content_hash: string | null }>();
+      for (const row of existingGlobalDocs.rows as any[]) {
+        if (row.source_id) {
+          existingDocsMap.set(row.source_id, { id: row.id, content_hash: row.content_hash });
         }
       }
+      console.log(`📋 [FileSearch] Found ${existingDocsMap.size} existing documents in global store for comparison`);
 
-      console.log(`✅ [FileSearch] Deleted ${deleted} documents. Now uploading ${sourceDocRows.length} new documents...`);
+      const buildContent = async (row: any): Promise<{ content: string; title: string; globalSourceId: string } | null> => {
+        const clientName = `${row.first_name} ${row.last_name}`;
+        const sourceType = row.source_type as string;
+        const sourceId = row.source_id as string;
+        let contentWithHeader = '';
+        let structuredTitle = '';
 
-      let processedCount = 0;
+        if (sourceType === 'consultation') {
+          const { consultations: consultationsSchema } = await import('../../shared/schema');
+          const consultation = await db.query.consultations.findFirst({
+            where: eq(consultationsSchema.id, sourceId),
+          });
+
+          if (consultation) {
+            const consultDate = consultation.scheduledAt 
+              ? new Date(consultation.scheduledAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : 'N/A';
+            
+            contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Nota Consulenza\nData: ${consultDate}\n=== CONTENUTO ===\n# Consulenza con ${clientName}\nData: ${consultDate}\nDurata: ${consultation.duration} minuti\nStato: ${consultation.status}\n`;
+            
+            if (consultation.notes) {
+              contentWithHeader += `\n## Note\n${consultation.notes}\n`;
+            }
+            if (consultation.transcript) {
+              contentWithHeader += `\n## Trascrizione\n${consultation.transcript}\n`;
+            }
+            if (consultation.summaryEmail) {
+              contentWithHeader += `\n## Riepilogo\n${consultation.summaryEmail}\n`;
+            }
+            
+            structuredTitle = `[CLIENTE: ${clientName}] - Consulenza - ${consultDate}`;
+          } else {
+            contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Nota Consulenza\n=== CONTENUTO ===\n${row.display_name || 'Consulenza'}\n`;
+            structuredTitle = `[CLIENTE: ${clientName}] - Consulenza`;
+          }
+        } else if (sourceType === 'email_journey') {
+          const emailResult = await db.execute(
+            sql`SELECT subject, body, sent_at FROM automated_emails_log WHERE id = ${sourceId} LIMIT 1`
+          );
+
+          if (emailResult.rows.length > 0) {
+            const email = emailResult.rows[0] as any;
+            const emailDate = email.sent_at 
+              ? new Date(email.sent_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+              : 'N/A';
+            
+            contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Email Journey\nData: ${emailDate}\n=== CONTENUTO ===\nOggetto: ${email.subject || 'Senza oggetto'}\n${email.body || ''}\n`;
+            structuredTitle = `[CLIENTE: ${clientName}] - Email Journey - ${emailDate}`;
+          } else {
+            contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Email Journey\n=== CONTENUTO ===\n${row.display_name || 'Email Journey'}\n`;
+            structuredTitle = `[CLIENTE: ${clientName}] - Email Journey`;
+          }
+        } else {
+          return null;
+        }
+
+        const sourceIdPrefix = sourceType === 'consultation' ? 'global_consultation_' : 'global_emailjourney_';
+        return { content: contentWithHeader, title: structuredTitle, globalSourceId: `${sourceIdPrefix}${sourceId}` };
+      };
+
+      const toUpload: Array<{ content: string; title: string; globalSourceId: string; isUpdate: boolean; oldDocId?: string }> = [];
+      const processedGlobalSourceIds = new Set<string>();
 
       for (const row of sourceDocRows) {
         try {
-          const clientName = `${row.first_name} ${row.last_name}`;
-          const sourceType = row.source_type as string;
-          const sourceId = row.source_id as string;
-          let contentWithHeader = '';
-          let structuredTitle = '';
+          const built = await buildContent(row);
+          if (!built) continue;
 
-          if (sourceType === 'consultation') {
-            const { consultations: consultationsSchema } = await import('../../shared/schema');
-            const consultation = await db.query.consultations.findFirst({
-              where: eq(consultationsSchema.id, sourceId),
-            });
+          const { content, title, globalSourceId } = built;
+          processedGlobalSourceIds.add(globalSourceId);
 
-            if (consultation) {
-              const consultDate = consultation.scheduledAt 
-                ? new Date(consultation.scheduledAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                : 'N/A';
-              
-              contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Nota Consulenza\nData: ${consultDate}\n=== CONTENUTO ===\n# Consulenza con ${clientName}\nData: ${consultDate}\nDurata: ${consultation.duration} minuti\nStato: ${consultation.status}\n`;
-              
-              if (consultation.notes) {
-                contentWithHeader += `\n## Note\n${consultation.notes}\n`;
-              }
-              if (consultation.transcript) {
-                contentWithHeader += `\n## Trascrizione\n${consultation.transcript}\n`;
-              }
-              if (consultation.summaryEmail) {
-                contentWithHeader += `\n## Riepilogo\n${consultation.summaryEmail}\n`;
-              }
-              
-              structuredTitle = `[CLIENTE: ${clientName}] - Consulenza - ${consultDate}`;
-            } else {
-              contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Nota Consulenza\n=== CONTENUTO ===\n${row.display_name || 'Consulenza'}\n`;
-              structuredTitle = `[CLIENTE: ${clientName}] - Consulenza`;
-            }
-          } else if (sourceType === 'email_journey') {
-            const emailResult = await db.execute(
-              sql`SELECT subject, body, sent_at FROM automated_emails_log WHERE id = ${sourceId} LIMIT 1`
-            );
+          const newHash = crypto.createHash('sha256').update(content, 'utf8').digest('hex').substring(0, 16);
+          const existing = existingDocsMap.get(globalSourceId);
 
-            if (emailResult.rows.length > 0) {
-              const email = emailResult.rows[0] as any;
-              const emailDate = email.sent_at 
-                ? new Date(email.sent_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                : 'N/A';
-              
-              contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Email Journey\nData: ${emailDate}\n=== CONTENUTO ===\nOggetto: ${email.subject || 'Senza oggetto'}\n${email.body || ''}\n`;
-              structuredTitle = `[CLIENTE: ${clientName}] - Email Journey - ${emailDate}`;
-            } else {
-              contentWithHeader = `=== DOCUMENTO CLIENTE ===\nCliente: ${clientName}\nTipo: Email Journey\n=== CONTENUTO ===\n${row.display_name || 'Email Journey'}\n`;
-              structuredTitle = `[CLIENTE: ${clientName}] - Email Journey`;
-            }
-          } else {
+          if (existing && existing.content_hash === newHash) {
+            skipped++;
             continue;
           }
 
-          const sourceIdPrefix = sourceType === 'consultation' ? 'global_consultation_' : 'global_emailjourney_';
-
-          const uploadResult = await this.uploadDocumentFromContent({
-            content: contentWithHeader,
-            displayName: structuredTitle,
-            storeId: globalStoreId,
-            sourceType: 'manual',
-            sourceId: `${sourceIdPrefix}${sourceId}`,
-            userId: consultantId,
-            skipHashCheck: true,
-          });
-
-          if (uploadResult.success) {
-            created++;
+          if (existing) {
+            toUpload.push({ content, title, globalSourceId, isUpdate: true, oldDocId: existing.id });
           } else {
-            errors.push(`Failed to upload ${structuredTitle}: ${uploadResult.error}`);
+            toUpload.push({ content, title, globalSourceId, isUpdate: false });
           }
-
-          processedCount++;
-          if (processedCount % 10 === 0) {
-            console.log(`📊 [FileSearch] Global sync progress: ${processedCount}/${sourceDocRows.length} (${created} created, ${errors.length} errors)`);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (err: any) {
           errors.push(`Error processing doc ${row.doc_id}: ${err.message}`);
         }
       }
 
-      console.log(`🌐 [FileSearch] Global consultation store sync complete: ${created} created, ${deleted} deleted, ${errors.length} errors`);
+      console.log(`📊 [FileSearch] Analysis: ${toUpload.length} to upload (${toUpload.filter(d => d.isUpdate).length} updates, ${toUpload.filter(d => !d.isUpdate).length} new), ${skipped} unchanged, checking orphans...`);
+
+      const orphanIds: string[] = [];
+      for (const [sourceId, doc] of existingDocsMap.entries()) {
+        if (!processedGlobalSourceIds.has(sourceId)) {
+          orphanIds.push(doc.id);
+        }
+      }
+      console.log(`🗑️ [FileSearch] Found ${orphanIds.length} orphaned documents to delete`);
+
+      const BATCH_SIZE = 5;
+
+      const docsToDeleteBeforeUpload = toUpload.filter(d => d.isUpdate && d.oldDocId).map(d => d.oldDocId!);
+      const allDocsToDelete = [...docsToDeleteBeforeUpload, ...orphanIds];
+      
+      for (let i = 0; i < allDocsToDelete.length; i += BATCH_SIZE) {
+        const batch = allDocsToDelete.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(docId => this.deleteDocument(docId, consultantId))
+        );
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            deleted++;
+          } else {
+            errors.push(`Failed to delete doc: ${result.reason?.message || 'unknown error'}`);
+          }
+        }
+      }
+
+      console.log(`✅ [FileSearch] Deleted ${deleted} documents. Now uploading ${toUpload.length} documents in batches of ${BATCH_SIZE}...`);
+
+      let processedCount = 0;
+
+      for (let i = 0; i < toUpload.length; i += BATCH_SIZE) {
+        const batch = toUpload.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(doc => this.uploadDocumentFromContent({
+            content: doc.content,
+            displayName: doc.title,
+            storeId: globalStoreId,
+            sourceType: 'manual',
+            sourceId: doc.globalSourceId,
+            userId: consultantId,
+            skipHashCheck: true,
+          }))
+        );
+
+        for (let j = 0; j < results.length; j++) {
+          const result = results[j];
+          const doc = batch[j];
+          if (result.status === 'fulfilled' && result.value.success) {
+            if (doc.isUpdate) {
+              updated++;
+            } else {
+              created++;
+            }
+          } else {
+            const errorMsg = result.status === 'rejected' ? result.reason?.message : result.value?.error;
+            errors.push(`Failed to upload ${doc.title}: ${errorMsg}`);
+          }
+        }
+
+        processedCount += batch.length;
+        if (processedCount % 10 === 0 || processedCount === toUpload.length) {
+          console.log(`📊 [FileSearch] Global sync progress: ${processedCount}/${toUpload.length} (${created} created, ${updated} updated, ${errors.length} errors)`);
+        }
+      }
+
+      console.log(`🌐 [FileSearch] Global consultation store sync complete: ${created} created, ${updated} updated, ${skipped} skipped, ${deleted} deleted, ${errors.length} errors`);
       
       return {
-        success: errors.length === 0 || created > 0,
+        success: errors.length === 0 || created > 0 || updated > 0 || skipped > 0,
         created,
+        updated,
+        skipped,
         deleted,
         errors,
         storeName: globalStoreName,
       };
     } catch (error: any) {
       console.error(`❌ [FileSearch] Error in global consultation store sync:`, error);
-      return { success: false, created, deleted, errors: [...errors, error.message] };
+      return { success: false, created, updated, skipped, deleted, errors: [...errors, error.message] };
     }
   }
 

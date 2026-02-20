@@ -93,13 +93,26 @@ async function runScheduledSync() {
             console.error(`      ⚠️ Operational sync error (non-blocking): ${opError.message}`);
           }
         }
+
+        let globalConsultationSynced = 0;
+        if ((settings as any).autoSyncGlobalConsultation) {
+          try {
+            const { FileSearchService } = await import('../ai/file-search-service');
+            const fileSearchService = new FileSearchService();
+            const gcResult = await fileSearchService.syncGlobalConsultationStore(settings.consultantId);
+            globalConsultationSynced = gcResult.created + (gcResult.updated || 0);
+            console.log(`      🌐 Global consultation store synced: ${gcResult.created} created, ${gcResult.updated || 0} updated, ${gcResult.skipped || 0} skipped`);
+          } catch (gcError: any) {
+            console.error(`      ⚠️ Global consultation sync error (non-blocking): ${gcError.message}`);
+          }
+        }
         
         await db.update(fileSearchSettings)
           .set({ lastScheduledSync: new Date() })
           .where(eq(fileSearchSettings.consultantId, settings.consultantId));
 
         console.log(`   ✅ Scheduled sync completed for ${settings.consultantId}`);
-        console.log(`      Synced: ${result.totalSynced}, Updated: ${result.totalUpdated}, Skipped: ${result.totalSkipped}, Failed: ${result.totalFailed}${operationalSynced > 0 ? `, Operational: ${operationalSynced}` : ''}`);
+        console.log(`      Synced: ${result.totalSynced}, Updated: ${result.totalUpdated}, Skipped: ${result.totalSkipped}, Failed: ${result.totalFailed}${operationalSynced > 0 ? `, Operational: ${operationalSynced}` : ''}${globalConsultationSynced > 0 ? `, Global Consultation: ${globalConsultationSynced}` : ''}`);
       } catch (error: any) {
         console.error(`   ❌ Scheduled sync failed for ${settings.consultantId}:`, error.message);
       }

@@ -356,8 +356,10 @@ router.post('/sync-global-consultation', authenticateToken, requireRole('consult
     if (result.success) {
       res.json({ 
         success: true, 
-        message: `Store globale sincronizzato: ${result.created} documenti caricati`,
+        message: `Store globale sincronizzato: ${result.created} creati, ${result.updated} aggiornati, ${result.skipped} invariati`,
         created: result.created,
+        updated: result.updated,
+        skipped: result.skipped,
         deleted: result.deleted,
         storeName: result.storeName,
       });

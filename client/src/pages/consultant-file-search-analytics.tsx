@@ -131,6 +131,7 @@ interface FileSearchSettings {
   autoSyncAssignedUniversity: boolean;
   autoSyncExerciseExternalDocs: boolean;
   autoSyncEmailAccounts: boolean;
+  autoSyncGlobalConsultation: boolean;
   operationalSyncEnabled: boolean;
   operationalSyncIntervalMinutes: number;
   lastOperationalSyncAt: string | null;
@@ -4776,6 +4777,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           />
                         </div>
 
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Globe className="h-4 w-4 text-emerald-600" />
+                            <div>
+                              <Label>Store Globale Consulenze</Label>
+                              <p className="text-sm text-gray-500">Sincronizza automaticamente le consulenze e email journey di tutti i clienti in un unico store per Marco</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncGlobalConsultation ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncGlobalConsultation', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
                         <div className="border-t pt-4 mt-4">
                           <h6 className="text-sm font-medium text-gray-600 mb-3 flex items-center gap-2">
                             <Target className="h-4 w-4" />
@@ -5013,46 +5029,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <RefreshCw className="h-4 w-4 mr-2" />
                           )}
                           Sincronizza Contesto Operativo Ora
-                        </Button>
-                      </div>
-                      <div className="border-t pt-6 mt-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Globe className="h-5 w-5 text-emerald-600" />
-                          <h4 className="font-medium text-emerald-900">Store Globale Consulenze Clienti</h4>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Consolida tutte le note consulenze e i progressi email journey di tutti i clienti attivi in un unico store. 
-                          Questo permette a Marco di cercare in tutti i documenti dei clienti con una singola query.
-                        </p>
-                        <Button
-                          variant="outline"
-                          className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          onClick={async () => {
-                            try {
-                              const response = await fetch("/api/file-search/sync-global-consultation", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                credentials: "include",
-                              });
-                              const data = await response.json();
-                              if (data.success) {
-                                toast({ title: "Store globale sincronizzato", description: `${data.created} documenti caricati` });
-                                queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
-                              } else {
-                                toast({ title: "Errore sincronizzazione", description: data.error || "Errore sconosciuto", variant: "destructive" });
-                              }
-                            } catch (err: any) {
-                              toast({ title: "Errore", description: err.message, variant: "destructive" });
-                            }
-                          }}
-                          disabled={syncSingleMutation.isPending}
-                        >
-                          {syncSingleMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                          )}
-                          Sincronizza Store Globale Consulenze
                         </Button>
                       </div>
                     </div>

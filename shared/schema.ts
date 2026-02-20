@@ -7155,6 +7155,7 @@ export const fileSearchSettings = pgTable("file_search_settings", {
   autoSyncConsultantGuides: boolean("auto_sync_consultant_guides").default(true).notNull(),
   autoSyncEmailAccounts: boolean("auto_sync_email_accounts").default(false).notNull(),
   autoSyncSystemPromptDocs: boolean("auto_sync_system_prompt_docs").default(false).notNull(),
+  autoSyncGlobalConsultation: boolean("auto_sync_global_consultation").default(false).notNull(),
   autoSyncOperationalClients: boolean("auto_sync_operational_clients").default(false).notNull(),
   autoSyncOperationalClientStates: boolean("auto_sync_operational_client_states").default(false).notNull(),
   autoSyncOperationalWhatsappTemplates: boolean("auto_sync_operational_whatsapp_templates").default(false).notNull(),
