@@ -9,6 +9,10 @@ import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
 import { getTemplatesByDirection } from '../voice/voice-templates';
 import { AI_ROLES } from "../cron/ai-autonomous-roles";
+import { upload } from "../middleware/upload";
+import fs from 'fs';
+
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 
 const router = Router();
 
@@ -3503,6 +3507,193 @@ Esempio di flusso corretto:
   } catch (error: any) {
     console.error("[AGENT-CHAT] Error sending message:", error);
     return res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
+router.post("/agent-chat/:roleId/send-media", authenticateToken, requireAnyRole(["consultant"]), upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { roleId } = req.params;
+    if (!AI_ROLES[roleId]) {
+      return res.status(400).json({ error: "Invalid role ID" });
+    }
+
+    const file = req.file;
+    const textMessage = req.body.message || '';
+    
+    if (!file && !textMessage) {
+      return res.status(400).json({ error: "File or message is required" });
+    }
+
+    let mediaContext = '';
+    let displayMessage = textMessage;
+
+    if (file) {
+      const fileBuffer = fs.readFileSync(file.path);
+      
+      try {
+        const mimeType = file.mimetype || '';
+        const fileName = file.originalname || 'file';
+        const ext = fileName.toLowerCase().split('.').pop() || '';
+
+        if (mimeType.includes('pdf') || mimeType.includes('word') || mimeType.includes('spreadsheet') || 
+            mimeType.includes('excel') || mimeType.includes('text/') || mimeType.includes('csv') ||
+            ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'txt', 'csv', 'md', 'json'].includes(ext)) {
+          
+          if (mimeType === 'application/pdf' || ext === 'pdf') {
+            const pdfParse = (await import('pdf-parse')).default;
+            const data = await pdfParse(fileBuffer);
+            if (data.text?.trim()) {
+              const truncated = data.text.length > 15000 ? data.text.substring(0, 15000) + '\n...[documento troncato]' : data.text;
+              mediaContext = `[DOCUMENTO ALLEGATO: "${fileName}"]\n${truncated}\n[FINE DOCUMENTO]`;
+            }
+          } else if (mimeType.includes('wordprocessingml') || ext === 'docx') {
+            const mammoth = await import('mammoth');
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            if (result.value?.trim()) {
+              const truncated = result.value.length > 15000 ? result.value.substring(0, 15000) + '\n...[documento troncato]' : result.value;
+              mediaContext = `[DOCUMENTO ALLEGATO: "${fileName}"]\n${truncated}\n[FINE DOCUMENTO]`;
+            }
+          } else if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || ext === 'xlsx' || ext === 'xls') {
+            const XLSX = await import('xlsx');
+            const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+            const sheets: string[] = [];
+            for (const sheetName of workbook.SheetNames) {
+              const sheet = workbook.Sheets[sheetName];
+              const csv = XLSX.utils.sheet_to_csv(sheet);
+              if (csv.trim()) sheets.push(`--- Foglio: ${sheetName} ---\n${csv}`);
+            }
+            if (sheets.length > 0) {
+              const content = sheets.join('\n\n');
+              const truncated = content.length > 15000 ? content.substring(0, 15000) + '\n...[documento troncato]' : content;
+              mediaContext = `[DOCUMENTO ALLEGATO: "${fileName}"]\n${truncated}\n[FINE DOCUMENTO]`;
+            }
+          } else if (mimeType.includes('text/') || ['txt', 'csv', 'md', 'json'].includes(ext)) {
+            const text = fileBuffer.toString('utf-8').trim();
+            if (text) {
+              const truncated = text.length > 15000 ? text.substring(0, 15000) + '\n...[documento troncato]' : text;
+              mediaContext = `[DOCUMENTO ALLEGATO: "${fileName}"]\n${truncated}\n[FINE DOCUMENTO]`;
+            }
+          }
+
+          if (!mediaContext) {
+            mediaContext = `[DOCUMENTO ALLEGATO: "${fileName}" - tipo: ${mimeType} - non è stato possibile estrarre il contenuto]`;
+          }
+          displayMessage = textMessage ? `${textMessage} [📎 ${fileName}]` : `📎 ${fileName}`;
+        }
+        else if (mimeType.includes('audio/') || ['mp3', 'wav', 'm4a', 'ogg', 'webm'].includes(ext)) {
+          try {
+            const { GoogleGenAI } = await import("@google/genai");
+            const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+            const apiKey = await getGeminiApiKeyForClassifier();
+            if (apiKey) {
+              const ai = new GoogleGenAI({ apiKey });
+              const base64Audio = fileBuffer.toString('base64');
+              const result = await trackedGenerateContent(ai, {
+                model: GEMINI_3_MODEL,
+                contents: [{
+                  role: 'user',
+                  parts: [
+                    { inlineData: { mimeType: mimeType || 'audio/webm', data: base64Audio } },
+                    { text: 'Trascrivi questo messaggio audio in italiano. Restituisci SOLO la trascrizione del testo parlato, senza aggiungere commenti o note. Se non riesci a capire qualcosa, scrivi [incomprensibile].' },
+                  ],
+                }],
+                config: { temperature: 0.1 },
+              }, {
+                consultantId,
+                feature: "agent_chat_audio_transcription",
+                keySource: "superadmin",
+                callerRole: "consultant",
+              });
+              const transcription = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (transcription?.trim()) {
+                mediaContext = `[MESSAGGIO VOCALE - trascrizione]: ${transcription.trim()}`;
+                displayMessage = textMessage ? `${textMessage} [🎤 Vocale: "${transcription.trim().substring(0, 100)}..."]` : `🎤 Vocale: "${transcription.trim().substring(0, 100)}..."`;
+              } else {
+                mediaContext = `[MESSAGGIO VOCALE ricevuto ma non è stato possibile trascriverlo]`;
+                displayMessage = textMessage ? `${textMessage} [🎤 Vocale non trascrivibile]` : `🎤 Vocale non trascrivibile`;
+              }
+            } else {
+              mediaContext = `[MESSAGGIO VOCALE ricevuto - chiave API non disponibile per la trascrizione]`;
+              displayMessage = textMessage ? `${textMessage} [🎤 Vocale]` : `🎤 Messaggio vocale`;
+            }
+          } catch (audioErr: any) {
+            console.error(`[AGENT-CHAT] Audio transcription error:`, audioErr.message);
+            mediaContext = `[MESSAGGIO VOCALE ricevuto ma errore durante la trascrizione]`;
+            displayMessage = `🎤 Vocale (errore trascrizione)`;
+          }
+        }
+        else if (mimeType.includes('image/')) {
+          try {
+            const { GoogleGenAI } = await import("@google/genai");
+            const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+            const apiKey = await getGeminiApiKeyForClassifier();
+            if (apiKey) {
+              const ai = new GoogleGenAI({ apiKey });
+              const base64Image = fileBuffer.toString('base64');
+              const result = await trackedGenerateContent(ai, {
+                model: GEMINI_3_MODEL,
+                contents: [{
+                  role: 'user',
+                  parts: [
+                    { inlineData: { mimeType, data: base64Image } },
+                    { text: 'Descrivi questa immagine in dettaglio in italiano. Se contiene testo, trascrivilo. Se contiene dati, tabelle o grafici, descrivili nel dettaglio.' },
+                  ],
+                }],
+                config: { temperature: 0.2 },
+              }, {
+                consultantId,
+                feature: "agent_chat_image_analysis",
+                keySource: "superadmin",
+                callerRole: "consultant",
+              });
+              const description = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (description) {
+                mediaContext = `[IMMAGINE ALLEGATA - analisi]: ${description}`;
+                displayMessage = textMessage ? `${textMessage} [🖼️ Immagine]` : `🖼️ Immagine allegata`;
+              } else {
+                mediaContext = `[IMMAGINE ALLEGATA - analisi non disponibile]`;
+                displayMessage = textMessage ? `${textMessage} [🖼️ Immagine]` : `🖼️ Immagine allegata`;
+              }
+            } else {
+              mediaContext = `[IMMAGINE ALLEGATA - chiave API non disponibile per l'analisi]`;
+              displayMessage = textMessage ? `${textMessage} [🖼️ Immagine]` : `🖼️ Immagine allegata`;
+            }
+          } catch (imgErr: any) {
+            console.error(`[AGENT-CHAT] Image analysis error:`, imgErr.message);
+            mediaContext = `[IMMAGINE ALLEGATA - non è stato possibile analizzarla]`;
+            displayMessage = `🖼️ Immagine (errore analisi)`;
+          }
+        }
+      } finally {
+        try { fs.unlinkSync(file.path); } catch {}
+      }
+    }
+
+    const fullMessage = mediaContext 
+      ? (textMessage ? `${textMessage}\n\n${mediaContext}` : mediaContext)
+      : textMessage;
+
+    if (!fullMessage) {
+      return res.status(400).json({ error: "Could not process file" });
+    }
+
+    const role = AI_ROLES[roleId];
+    const roleName = role?.name || roleId;
+
+    await db.execute(sql`
+      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
+      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${displayMessage.trim()})
+    `);
+
+    const response = await processAgentChatInternal(consultantId, roleId, fullMessage);
+
+    res.json({ response: { message: response } });
+  } catch (err: any) {
+    console.error(`[AGENT-CHAT] Media processing error:`, err.message);
+    res.status(500).json({ error: "Error processing media" });
   }
 });
 

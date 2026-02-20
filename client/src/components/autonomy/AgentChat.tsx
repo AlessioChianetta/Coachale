@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import {
   Send, Loader2, Trash2, User, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
+  Paperclip, Mic, MicOff, FileText, Image as ImageIcon, Music,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -142,6 +143,13 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const [loadingSummaries, setLoadingSummaries] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -189,6 +197,9 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
   }, [open]);
 
   const sendMessage = async (text?: string) => {
+    if (selectedFile) {
+      return sendWithMedia();
+    }
     const messageText = (text || input).trim();
     if (!messageText || sending) return;
 
@@ -257,6 +268,131 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
       console.error("Failed to clear chat:", err);
     } finally {
       setClearing(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) {
+        alert('File troppo grande (max 50MB)');
+        return;
+      }
+      setSelectedFile(file);
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], 'voice-message.webm', { type: 'audio/webm' });
+        setSelectedFile(audioFile);
+        setIsRecording(false);
+        setRecordingDuration(0);
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Recording error:', err);
+      alert('Impossibile accedere al microfono');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const sendWithMedia = async () => {
+    if (!selectedFile && !input.trim()) return;
+    if (sending) return;
+
+    const messageText = input.trim();
+    const file = selectedFile;
+    
+    let previewText = messageText;
+    if (file) {
+      const isAudio = file.type.startsWith('audio/');
+      const isImage = file.type.startsWith('image/');
+      const icon = isAudio ? '🎤' : isImage ? '🖼️' : '📎';
+      const label = isAudio ? 'Vocale' : file.name;
+      previewText = messageText ? `${messageText} [${icon} ${label}]` : `${icon} ${label}`;
+    }
+
+    const tempMsg: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      sender: "consultant",
+      message: previewText,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, tempMsg]);
+    setInput("");
+    setSelectedFile(null);
+    setSending(true);
+    scrollToBottom();
+
+    try {
+      const formData = new FormData();
+      if (file) formData.append('file', file);
+      if (messageText) formData.append('message', messageText);
+
+      const headers = getAuthHeaders();
+      delete (headers as any)['Content-Type'];
+
+      const res = await fetch(`/api/ai-autonomy/agent-chat/${roleId}/send-media`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const agentMsg: ChatMessage = {
+          id: `agent-${Date.now()}`,
+          sender: "agent",
+          message: data.response.message,
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, agentMsg]);
+        scrollToBottom();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setMessages(prev => [...prev, {
+          id: `err-${Date.now()}`,
+          sender: "agent",
+          message: `Errore: ${errData.error || 'Riprova tra poco'}`,
+          created_at: new Date().toISOString(),
+        }]);
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        id: `err-${Date.now()}`,
+        sender: "agent",
+        message: "Errore di connessione. Riprova.",
+        created_at: new Date().toISOString(),
+      }]);
+    } finally {
+      setSending(false);
+      textareaRef.current?.focus();
     }
   };
 
@@ -550,7 +686,59 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
         </div>
 
         <div className="border-t p-3">
+          {selectedFile && (
+            <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs">
+              {selectedFile.type.startsWith('audio/') ? (
+                <Music className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+              ) : selectedFile.type.startsWith('image/') ? (
+                <ImageIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              ) : (
+                <FileText className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              )}
+              <span className="truncate flex-1">{selectedFile.name}</span>
+              <span className="text-muted-foreground shrink-0">
+                {(selectedFile.size / 1024).toFixed(0)}KB
+              </span>
+              <button
+                onClick={() => setSelectedFile(null)}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          {isRecording && (
+            <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-red-50 dark:bg-red-950/30 rounded-lg text-xs">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-red-600 dark:text-red-400 font-medium">
+                Registrazione in corso... {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+              </span>
+              <button
+                onClick={stopRecording}
+                className="ml-auto text-red-600 dark:text-red-400 hover:text-red-700 font-medium"
+              >
+                Stop
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.ogg"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 rounded-xl"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || isRecording}
+              title="Allega file"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Textarea
               ref={textareaRef}
               value={input}
@@ -563,20 +751,33 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
               }}
               placeholder={`Scrivi a ${roleName}...`}
               className="min-h-[40px] max-h-[120px] resize-none text-sm rounded-xl"
-              disabled={sending}
+              disabled={sending || isRecording}
             />
-            <Button
-              size="icon"
-              className="h-10 w-10 shrink-0 rounded-xl"
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || sending}
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+            {!input.trim() && !selectedFile ? (
+              <Button
+                size="icon"
+                variant={isRecording ? "destructive" : "ghost"}
+                className="h-10 w-10 shrink-0 rounded-xl"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={sending}
+                title={isRecording ? "Ferma registrazione" : "Registra vocale"}
+              >
+                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl"
+                onClick={() => sendMessage()}
+                disabled={(!input.trim() && !selectedFile) || sending}
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>

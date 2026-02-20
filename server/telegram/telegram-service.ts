@@ -30,6 +30,26 @@ const onboardingBuffer = new Map<string, {
 
 const ONBOARDING_BUFFER_DELAY_MS = 5000;
 
+const privateMessageBuffer = new Map<string, {
+  messages: Array<{ text: string; date: number }>;
+  timer: NodeJS.Timeout | null;
+  consultantId: string;
+  aiRole: string;
+  chatId: number;
+  chatType: string;
+  botToken: string;
+  botUsername: string;
+  firstName: string;
+  username: string;
+  chatTitle: string;
+  isGroupChat: boolean;
+  isOwner: boolean;
+  isOpenMode: boolean;
+  configId: string;
+}>();
+
+const PRIVATE_BUFFER_DELAY_MS = 3000;
+
 async function getGroupInfo(botToken: string, chatId: number): Promise<{ title?: string; description?: string }> {
   try {
     const res = await fetch(`${TELEGRAM_API}${botToken}/getChat?chat_id=${chatId}`);
@@ -1001,6 +1021,65 @@ async function getProfileContext(consultantId: string, aiRole: string, chatId: n
   }
 }
 
+async function flushPrivateBuffer(bufferKey: string): Promise<void> {
+  const buf = privateMessageBuffer.get(bufferKey);
+  if (!buf || buf.messages.length === 0) {
+    privateMessageBuffer.delete(bufferKey);
+    return;
+  }
+
+  const { consultantId, aiRole, chatId, chatType, botToken, botUsername, firstName, username, chatTitle, isGroupChat, isOwner, isOpenMode, messages } = buf;
+  privateMessageBuffer.delete(bufferKey);
+
+  const combinedText = messages.length === 1 
+    ? messages[0].text 
+    : messages.map(m => m.text).join('\n');
+
+  console.log(`[TELEGRAM] Flushing private buffer for chat ${chatId}: ${messages.length} messages combined`);
+
+  const profileContext = await getProfileContext(consultantId, aiRole, chatId);
+  const senderId = String(chatId);
+  const senderStatus = isOwner ? 'owner' : isOpenMode ? 'open_mode' : 'unknown';
+  const chatContext = buildTelegramChatContext({ isGroupChat, chatTitle, firstName, username, senderId, senderStatus: senderStatus as any });
+  const contextParts = [chatContext];
+  if (profileContext) contextParts.push(profileContext);
+  contextParts.push(combinedText);
+  const messageWithContext = contextParts.join('\n\n');
+
+  console.log(`[TELEGRAM-PROMPT] Buffered ${senderStatus} message for ${aiRole} from chat ${chatId}:`);
+  console.log(`[TELEGRAM-PROMPT] Combined ${messages.length} messages: ${combinedText.substring(0, 200)}`);
+
+  try {
+    if (isOpenMode) {
+      await db.execute(sql`
+        INSERT INTO telegram_open_mode_messages (consultant_id, ai_role, telegram_chat_id, chat_type, chat_title, sender_type, sender_name, sender_username, sender_id, message)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${chatId}, ${chatType}, ${chatTitle || null}, 'user', ${firstName || null}, ${username || null}, ${senderId || null}, ${combinedText.trim()})
+      `);
+    } else {
+      const telegramMetadata = JSON.stringify({ source: "telegram", telegram_chat_id: chatId, chat_type: chatType, sender_id: senderId, sender_name: firstName, sender_username: username });
+      await db.execute(sql`
+        INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
+        VALUES (${consultantId}::uuid, ${aiRole}, ${aiRole}, 'consultant', ${combinedText.trim()}, ${telegramMetadata}::jsonb)
+      `);
+    }
+
+    const { processAgentChatInternal } = await import("../routes/ai-autonomy-router");
+    const aiResponse = await processAgentChatInternal(consultantId, aiRole, messageWithContext, {
+      skipUserMessageInsert: true,
+      metadata: { source: "telegram", telegram_chat_id: chatId, chat_type: chatType, chat_title: chatTitle, sender_id: senderId, sender_name: firstName, sender_username: username },
+      source: "telegram",
+      isOpenMode: isOpenMode,
+      telegramChatId: chatId,
+    });
+
+    await sendTelegramMessage(botToken, chatId, aiResponse, "Markdown");
+    console.log(`[TELEGRAM] Buffered response sent to chat ${chatId} for role ${aiRole}`);
+  } catch (err: any) {
+    console.error(`[TELEGRAM] Error processing buffered message:`, err.message);
+    await sendTelegramMessage(botToken, chatId, "⚠️ Mi dispiace, c'è stato un errore. Riprova tra poco.");
+  }
+}
+
 function buildTelegramChatContext(params: {
   isGroupChat: boolean;
   chatTitle: string;
@@ -1041,6 +1120,112 @@ function buildTelegramChatContext(params: {
   return parts.join('\n');
 }
 
+async function downloadTelegramFile(botToken: string, fileId: string): Promise<Buffer | null> {
+  try {
+    const fileRes = await fetch(`${TELEGRAM_API}${botToken}/getFile?file_id=${fileId}`);
+    const fileData = await fileRes.json();
+    if (!fileData.ok || !fileData.result?.file_path) {
+      console.error(`[TELEGRAM-MEDIA] getFile failed:`, fileData.description);
+      return null;
+    }
+    const downloadUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
+    const downloadRes = await fetch(downloadUrl);
+    if (!downloadRes.ok) {
+      console.error(`[TELEGRAM-MEDIA] Download failed: ${downloadRes.status}`);
+      return null;
+    }
+    const arrayBuffer = await downloadRes.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (err: any) {
+    console.error(`[TELEGRAM-MEDIA] Download error:`, err.message);
+    return null;
+  }
+}
+
+async function extractTextFromDocument(buffer: Buffer, fileName: string, mimeType: string): Promise<string | null> {
+  try {
+    const ext = fileName.toLowerCase().split('.').pop() || '';
+    
+    if (mimeType === 'application/pdf' || ext === 'pdf') {
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(buffer);
+      return data.text?.trim() || null;
+    }
+    
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === 'docx') {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value?.trim() || null;
+    }
+    
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || ext === 'xlsx' || ext === 'xls' || mimeType === 'application/vnd.ms-excel') {
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheets: string[] = [];
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        if (csv.trim()) {
+          sheets.push(`--- Foglio: ${sheetName} ---\n${csv}`);
+        }
+      }
+      return sheets.join('\n\n') || null;
+    }
+
+    if (mimeType === 'text/plain' || ext === 'txt' || ext === 'csv' || ext === 'json' || ext === 'md') {
+      return buffer.toString('utf-8').trim() || null;
+    }
+
+    console.log(`[TELEGRAM-MEDIA] Unsupported document type: ${mimeType} (${ext})`);
+    return null;
+  } catch (err: any) {
+    console.error(`[TELEGRAM-MEDIA] Document extraction error for ${fileName}:`, err.message);
+    return null;
+  }
+}
+
+async function transcribeAudioWithGemini(buffer: Buffer, mimeType: string, consultantId: string): Promise<string | null> {
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) return null;
+
+    const ai = new GoogleGenAI({ apiKey });
+    const base64Audio = buffer.toString('base64');
+    
+    const audioPart = {
+      inlineData: {
+        mimeType: mimeType || 'audio/ogg',
+        data: base64Audio,
+      },
+    };
+
+    const result = await trackedGenerateContent(ai, {
+      model: GEMINI_3_MODEL,
+      contents: [{
+        role: 'user',
+        parts: [
+          audioPart,
+          { text: 'Trascrivi questo messaggio audio in italiano. Restituisci SOLO la trascrizione del testo parlato, senza aggiungere commenti o note. Se non riesci a capire qualcosa, scrivi [incomprensibile].' },
+        ],
+      }],
+      config: { temperature: 0.1 },
+    }, {
+      consultantId,
+      feature: "telegram_audio_transcription",
+      keySource: "superadmin",
+      callerRole: "consultant",
+    });
+
+    const transcription = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return transcription?.trim() || null;
+  } catch (err: any) {
+    console.error(`[TELEGRAM-MEDIA] Audio transcription error:`, err.message);
+    return null;
+  }
+}
+
 export async function processIncomingTelegramMessage(update: any, configId: string): Promise<void> {
   const msg = update.message || update.channel_post;
   if (!msg) {
@@ -1049,17 +1234,120 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
   }
 
   const chatId = msg.chat.id;
-  const text = msg.text;
+  let text = msg.text || msg.caption || '';
   const chatType = msg.chat.type;
   const fromUser = msg.from;
   const username = fromUser?.username || '';
   const firstName = fromUser?.first_name || '';
   const chatTitle = msg.chat.title || '';
 
+  let mediaContext = '';
+  
+  if (msg.document) {
+    console.log(`[TELEGRAM-MEDIA] Document received: ${msg.document.file_name} (${msg.document.mime_type}, ${msg.document.file_size} bytes)`);
+    if (msg.document.file_size && msg.document.file_size > 20 * 1024 * 1024) {
+      console.log(`[TELEGRAM-MEDIA] Document too large (${msg.document.file_size} bytes), skipping`);
+    } else {
+      const cfgRes = await db.execute(sql`
+        SELECT bot_token FROM telegram_bot_configs WHERE id = ${parseInt(configId)} AND enabled = true LIMIT 1
+      `);
+      if (cfgRes.rows.length > 0) {
+        const bt = (cfgRes.rows[0] as any).bot_token;
+        const fileBuffer = await downloadTelegramFile(bt, msg.document.file_id);
+        if (fileBuffer) {
+          const extractedText = await extractTextFromDocument(fileBuffer, msg.document.file_name || 'document', msg.document.mime_type || '');
+          if (extractedText) {
+            const truncated = extractedText.length > 15000 ? extractedText.substring(0, 15000) + '\n...[documento troncato]' : extractedText;
+            mediaContext = `[DOCUMENTO ALLEGATO: "${msg.document.file_name}"]\n${truncated}\n[FINE DOCUMENTO]`;
+            console.log(`[TELEGRAM-MEDIA] Extracted ${extractedText.length} chars from ${msg.document.file_name}`);
+          } else {
+            mediaContext = `[DOCUMENTO ALLEGATO: "${msg.document.file_name}" - tipo: ${msg.document.mime_type || 'sconosciuto'} - non è stato possibile estrarre il contenuto testuale]`;
+          }
+        }
+      }
+    }
+  }
+  
+  if (msg.voice || msg.audio) {
+    const audio = msg.voice || msg.audio;
+    console.log(`[TELEGRAM-MEDIA] ${msg.voice ? 'Voice' : 'Audio'} message received: ${audio.duration}s, ${audio.mime_type || 'unknown'}`);
+    if (audio.file_size && audio.file_size > 10 * 1024 * 1024) {
+      console.log(`[TELEGRAM-MEDIA] Audio too large (${audio.file_size} bytes), skipping`);
+    } else {
+      const cfgRes = await db.execute(sql`
+        SELECT bot_token, consultant_id FROM telegram_bot_configs WHERE id = ${parseInt(configId)} AND enabled = true LIMIT 1
+      `);
+      if (cfgRes.rows.length > 0) {
+        const cfg = cfgRes.rows[0] as any;
+        const fileBuffer = await downloadTelegramFile(cfg.bot_token, audio.file_id);
+        if (fileBuffer) {
+          const transcription = await transcribeAudioWithGemini(fileBuffer, audio.mime_type || 'audio/ogg', cfg.consultant_id);
+          if (transcription) {
+            mediaContext = `[MESSAGGIO VOCALE - trascrizione]: ${transcription}`;
+            console.log(`[TELEGRAM-MEDIA] Transcribed audio: "${transcription.substring(0, 100)}..."`);
+          } else {
+            mediaContext = `[MESSAGGIO VOCALE ricevuto ma non è stato possibile trascriverlo]`;
+          }
+        }
+      }
+    }
+  }
+  
+  if (msg.photo && msg.photo.length > 0) {
+    const largestPhoto = msg.photo[msg.photo.length - 1];
+    console.log(`[TELEGRAM-MEDIA] Photo received: ${largestPhoto.width}x${largestPhoto.height}`);
+    const cfgRes = await db.execute(sql`
+      SELECT bot_token, consultant_id FROM telegram_bot_configs WHERE id = ${parseInt(configId)} AND enabled = true LIMIT 1
+    `);
+    if (cfgRes.rows.length > 0) {
+      const cfg = cfgRes.rows[0] as any;
+      const fileBuffer = await downloadTelegramFile(cfg.bot_token, largestPhoto.file_id);
+      if (fileBuffer) {
+        try {
+          const { GoogleGenAI } = await import("@google/genai");
+          const { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } = await import("../ai/provider-factory");
+          const apiKey = await getGeminiApiKeyForClassifier();
+          if (apiKey) {
+            const ai = new GoogleGenAI({ apiKey });
+            const base64Image = fileBuffer.toString('base64');
+            const result = await trackedGenerateContent(ai, {
+              model: GEMINI_3_MODEL,
+              contents: [{
+                role: 'user',
+                parts: [
+                  { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+                  { text: 'Descrivi questa immagine in dettaglio in italiano. Se contiene testo, trascrivilo. Se contiene dati, tabelle o grafici, descrivili nel dettaglio.' },
+                ],
+              }],
+              config: { temperature: 0.2 },
+            }, {
+              consultantId: cfg.consultant_id,
+              feature: "telegram_image_analysis",
+              keySource: "superadmin",
+              callerRole: "consultant",
+            });
+            const description = result?.text || result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (description) {
+              mediaContext = `[IMMAGINE ALLEGATA - analisi]: ${description}`;
+              console.log(`[TELEGRAM-MEDIA] Image analyzed: "${description.substring(0, 100)}..."`);
+            }
+          }
+        } catch (imgErr: any) {
+          console.error(`[TELEGRAM-MEDIA] Image analysis error:`, imgErr.message);
+          mediaContext = `[IMMAGINE ALLEGATA - non è stato possibile analizzarla]`;
+        }
+      }
+    }
+  }
+
+  if (mediaContext) {
+    text = text ? `${text}\n\n${mediaContext}` : mediaContext;
+  }
+
   if (!text) {
     const isGroupNonText = chatType === 'group' || chatType === 'supergroup';
     if (isGroupNonText) {
-      console.log(`[TELEGRAM] Non-text message from group ${chatId}, fetching group info...`);
+      console.log(`[TELEGRAM] Unprocessable non-text message from group ${chatId}`);
       try {
         const cfgResult = await db.execute(sql`
           SELECT id, consultant_id, ai_role, bot_token FROM telegram_bot_configs
@@ -1076,14 +1364,13 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
                 group_description = COALESCE(${groupInfo.description || null}, telegram_user_profiles.group_description),
                 updated_at = NOW()
             `);
-            console.log(`[TELEGRAM] Saved group info for ${chatId}: title="${groupInfo.title}", description="${(groupInfo.description || '').substring(0, 100)}"`);
           }
         }
       } catch (err: any) {
         console.error(`[TELEGRAM] Error fetching group info for non-text message:`, err.message);
       }
     } else {
-      console.log(`[TELEGRAM] Non-text message from chat ${chatId}, skipping`);
+      console.log(`[TELEGRAM] Unprocessable message from chat ${chatId}, skipping`);
     }
     return;
   }
@@ -1234,6 +1521,31 @@ export async function processIncomingTelegramMessage(update: any, configId: stri
       }
       if (!processedText) return;
 
+      if (!isGroupChat) {
+        const bufferKey = `open_${consultantId}_${aiRole}_${chatId}`;
+        const existing = privateMessageBuffer.get(bufferKey);
+        
+        if (existing) {
+          existing.messages.push({ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) });
+          if (existing.timer) clearTimeout(existing.timer);
+          existing.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+          console.log(`[TELEGRAM] Buffered open mode message in chat ${chatId} (${existing.messages.length} total)`);
+          return;
+        } else {
+          const buf = {
+            messages: [{ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) }],
+            timer: null as NodeJS.Timeout | null,
+            consultantId, aiRole, chatId, chatType, botToken, botUsername,
+            firstName, username, chatTitle, isGroupChat,
+            isOwner: false, isOpenMode: true, configId,
+          };
+          buf.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+          privateMessageBuffer.set(bufferKey, buf);
+          console.log(`[TELEGRAM] Started buffer for open mode chat ${chatId}`);
+          return;
+        }
+      }
+
       const profileContext = await getProfileContext(consultantId, aiRole, chatId);
       const senderId = String(fromUser?.id || '');
       const chatContext = buildTelegramChatContext({ isGroupChat, chatTitle, firstName, username, senderId, senderStatus: 'open_mode' });
@@ -1353,6 +1665,31 @@ Rispondi in italiano. Scrivi come una persona vera su Telegram.`;
   if (!processedText) {
     console.log(`[TELEGRAM] Empty message after mention removal, skipping`);
     return;
+  }
+
+  if (!isGroupChat) {
+    const bufferKey = `owner_${consultantId}_${aiRole}_${chatId}`;
+    const existing = privateMessageBuffer.get(bufferKey);
+    
+    if (existing) {
+      existing.messages.push({ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) });
+      if (existing.timer) clearTimeout(existing.timer);
+      existing.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+      console.log(`[TELEGRAM] Buffered owner message in chat ${chatId} (${existing.messages.length} total, waiting ${PRIVATE_BUFFER_DELAY_MS}ms)`);
+      return;
+    } else {
+      const buf = {
+        messages: [{ text: processedText, date: msg.date || Math.floor(Date.now() / 1000) }],
+        timer: null as NodeJS.Timeout | null,
+        consultantId, aiRole, chatId, chatType, botToken, botUsername,
+        firstName, username, chatTitle, isGroupChat,
+        isOwner: true, isOpenMode: false, configId,
+      };
+      buf.timer = setTimeout(() => flushPrivateBuffer(bufferKey), PRIVATE_BUFFER_DELAY_MS);
+      privateMessageBuffer.set(bufferKey, buf);
+      console.log(`[TELEGRAM] Started buffer for owner chat ${chatId}, waiting ${PRIVATE_BUFFER_DELAY_MS}ms`);
+      return;
+    }
   }
 
   const profileContext = await getProfileContext(consultantId, aiRole, chatId);
