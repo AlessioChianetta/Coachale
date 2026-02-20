@@ -930,7 +930,8 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncOperationalCampaigns,
       autoSyncOperationalCalendar,
       autoSyncOperationalExercisesPending,
-      autoSyncOperationalConsultations
+      autoSyncOperationalConsultations,
+      autoSyncGlobalConsultation
     } = req.body;
     
     const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
@@ -981,6 +982,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncOperationalCalendar === 'boolean') updateData.autoSyncOperationalCalendar = autoSyncOperationalCalendar;
     if (typeof autoSyncOperationalExercisesPending === 'boolean') updateData.autoSyncOperationalExercisesPending = autoSyncOperationalExercisesPending;
     if (typeof autoSyncOperationalConsultations === 'boolean') updateData.autoSyncOperationalConsultations = autoSyncOperationalConsultations;
+    if (typeof autoSyncGlobalConsultation === 'boolean') updateData.autoSyncGlobalConsultation = autoSyncGlobalConsultation;
     
     const [updated] = await db
       .update(fileSearchSettings)
