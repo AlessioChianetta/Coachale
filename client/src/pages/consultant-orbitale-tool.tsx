@@ -62,6 +62,7 @@ export default function ConsultantOrbitaleTool() {
                 src={tool.url}
                 className="flex-1 w-full border-0"
                 style={{ height: 'calc(100vh - 49px)' }}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                 allow="clipboard-read; clipboard-write"
                 title={tool.name}
               />
