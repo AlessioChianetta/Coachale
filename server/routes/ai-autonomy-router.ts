@@ -3059,449 +3059,14 @@ router.post("/agent-chat/:roleId/send", authenticateToken, requireAnyRole(["cons
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const role = AI_ROLES[roleId];
-    const roleName = role?.name || roleId;
-
-    await db.execute(sql`
-      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
-      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'consultant', ${message.trim()})
-    `);
-
-    const [historyResult, contextResult, recentActivityResult, activeTasksResult, completedTasksResult] = await Promise.all([
-      db.execute(sql`
-        SELECT sender, message, created_at FROM agent_chat_messages
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        ORDER BY created_at DESC LIMIT 20
-      `),
-      db.execute(sql`
-        SELECT agent_contexts, custom_instructions, chat_summaries FROM ai_autonomy_settings
-        WHERE consultant_id = ${consultantId}::uuid LIMIT 1
-      `),
-      db.execute(sql`
-        SELECT title, description, event_data, created_at FROM ai_activity_log
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-        ORDER BY created_at DESC LIMIT 5
-      `),
-      db.execute(sql`
-        SELECT id, ai_instruction, task_category, contact_name, status, priority, scheduled_at, created_at
-        FROM ai_scheduled_tasks
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          AND status IN ('scheduled', 'waiting_approval', 'in_progress', 'approved', 'draft', 'paused')
-        ORDER BY priority DESC, created_at DESC LIMIT 10
-      `),
-      db.execute(sql`
-        SELECT id, ai_instruction, task_category, contact_name, status, result_summary, result_data, completed_at
-        FROM ai_scheduled_tasks
-        WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-          AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
-        ORDER BY completed_at DESC LIMIT 8
-      `),
-    ]);
-
-    const chatHistory = (historyResult.rows as any[]).reverse();
-    const settingsRow = contextResult.rows[0] as any;
-    const agentCtx = settingsRow?.agent_contexts?.[roleId] || {};
-    const customInstructions = settingsRow?.custom_instructions || '';
-    const chatSummaries = settingsRow?.chat_summaries || {};
-    const existingSummary = chatSummaries[roleId]?.summary || '';
-    const recentActivity = recentActivityResult.rows as any[];
-    const activeTasks = activeTasksResult.rows as any[];
-    const completedTasks = completedTasksResult.rows as any[];
-
-    const personality = ROLE_CHAT_PERSONALITIES[roleId] || ROLE_CHAT_PERSONALITIES.personalizza;
-    const focusPriorities = agentCtx.focusPriorities || [];
-    const customContext = agentCtx.customContext || '';
-
-    let systemPrompt = `${personality}
-
-Stai chattando direttamente con il tuo consulente (il tuo "capo"). Questa è una CONVERSAZIONE — non un report. Rispondi come in una chat WhatsApp: naturale, diretto, e soprattutto INTERATTIVO.
-
-COME COMPORTARTI IN CHAT:
-- Fai domande di follow-up — non limitarti a dare ordini o report
-- Se il consulente ti dice qualcosa, rispondi a QUELLO specificamente
-- Chiedi chiarimenti se non hai abbastanza contesto
-- Proponi azioni ma CHIEDI conferma ("vuoi che proceda?" / "ti torna?")
-- Se hai task attivi o completati, menzionali naturalmente nella conversazione
-- Usa paragrafi separati per ogni concetto (NON fare muri di testo)
-- Usa **grassetto** per i punti chiave e le cifre importanti
-
-${focusPriorities.length > 0 ? `\nLE TUE PRIORITÀ DI FOCUS:\n${focusPriorities.map((p: any, i: number) => `${i + 1}. ${typeof p === 'string' ? p : p.text || p.name || JSON.stringify(p)}`).join('\n')}` : ''}
-
-${customContext ? `\nCONTESTO PERSONALIZZATO:\n${customContext}` : ''}
-
-${customInstructions ? `\nISTRUZIONI GENERALI:\n${customInstructions}` : ''}
-`;
-
-    if (existingSummary) {
-      systemPrompt += `\nRIASSUNTO CONVERSAZIONI PRECEDENTI CON IL CONSULENTE:\n${existingSummary}\n`;
-    }
-
-    if (activeTasks.length > 0) {
-      systemPrompt += `\nI TUOI TASK ATTIVI — TOTALE: ${activeTasks.length} task (che devi ancora completare):\n`;
-      for (let idx = 0; idx < activeTasks.length; idx++) {
-        const t = activeTasks[idx];
-        const statusLabels: Record<string, string> = {
-          scheduled: '📅 Programmato', waiting_approval: '⏳ In attesa approvazione',
-          in_progress: '⚡ In esecuzione', approved: '✅ Approvato', draft: '📝 Bozza', paused: '⏸️ In pausa',
-        };
-        systemPrompt += `${idx + 1}. [ID: ${t.id}] [${statusLabels[t.status] || t.status}] ${t.contact_name ? `(${t.contact_name}) ` : ''}${t.ai_instruction?.substring(0, 150)}${t.scheduled_at ? ` — programmato: ${new Date(t.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}` : ''}\n`;
-      }
-      systemPrompt += `IMPORTANTE: Hai esattamente ${activeTasks.length} task attivi. Quando li menzioni, riporta il numero corretto.\n`;
-      systemPrompt += `Puoi menzionare questi task nella conversazione, chiedere se procedere, o suggerire modifiche.\n`;
-    }
-
-    if (completedTasks.length > 0) {
-      systemPrompt += `\nTASK CHE HAI COMPLETATO DI RECENTE (questi sono i TUOI risultati, li hai fatti TU):\n`;
-      for (const t of completedTasks) {
-        systemPrompt += `\n--- TASK COMPLETATO ---\n`;
-        systemPrompt += `Data: ${new Date(t.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}\n`;
-        systemPrompt += `Istruzione: ${t.ai_instruction?.substring(0, 200) || 'N/A'}\n`;
-        systemPrompt += `Categoria: ${t.task_category || 'N/A'}${t.contact_name ? ` | Contatto: ${t.contact_name}` : ''}\n`;
-        if (t.result_summary) {
-          systemPrompt += `Risultato: ${t.result_summary.substring(0, 300)}\n`;
-        }
-        if (t.result_data) {
-          const rd = typeof t.result_data === 'string' ? JSON.parse(t.result_data) : t.result_data;
-          if (rd.generate_report?.report_text) {
-            systemPrompt += `Report generato:\n${rd.generate_report.report_text.substring(0, 800)}\n`;
-          }
-          if (rd.search_private_stores?.findings_summary) {
-            systemPrompt += `Documenti trovati: ${rd.search_private_stores.findings_summary.substring(0, 300)}\n`;
-          }
-          if (rd.analyze_patterns?.suggested_approach) {
-            systemPrompt += `Analisi: ${rd.analyze_patterns.suggested_approach.substring(0, 300)}\n`;
-          }
-          if (rd.send_email?.sent) {
-            systemPrompt += `Email inviata: ${rd.send_email.subject || 'N/A'}\n`;
-          }
-          if (rd.send_whatsapp?.sent) {
-            systemPrompt += `WhatsApp inviato: ${rd.send_whatsapp.message_preview?.substring(0, 150) || 'messaggio inviato'}\n`;
-          }
-          if (rd.voice_call?.scheduled_call_id) {
-            systemPrompt += `Chiamata programmata: ID ${rd.voice_call.scheduled_call_id}\n`;
-          }
-          const stepLog = rd.step_log || rd.execution_log;
-          if (Array.isArray(stepLog) && stepLog.length > 0) {
-            systemPrompt += `Step eseguiti: ${stepLog.map((s: any) => `${s.action || s.step}(${s.status || 'done'})`).join(' → ')}\n`;
-          }
-        }
-      }
-      systemPrompt += `\nQUANDO IL CONSULENTE TI CHIEDE COSA HAI FATTO: Rispondi con i dettagli concreti dai task sopra. Cita numeri, nomi, risultati specifici.\n`;
-    }
-
-    if (recentActivity.length > 0) {
-      systemPrompt += `\nLE TUE ULTIME ANALISI/AZIONI:\n`;
-      for (const a of recentActivity) {
-        systemPrompt += `- [${new Date(a.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}] ${a.title}: ${a.description?.substring(0, 200) || ''}\n`;
-      }
-    }
-
-    try {
-      const autonomousRole = AI_ROLES[roleId];
-      if (autonomousRole?.fetchRoleData) {
-        const clientIdsResult = await db.execute(sql`
-          SELECT id::text FROM users WHERE consultant_id = ${consultantId}::text AND is_active = true LIMIT 50
-        `);
-        const clientIds = (clientIdsResult.rows as any[]).map(r => r.id);
-        const roleData = await autonomousRole.fetchRoleData(consultantId, clientIds);
-        
-        if (roleData && Object.keys(roleData).length > 0) {
-          let roleDataSection = '\nDATI OPERATIVI IN TEMPO REALE (dal tuo database):\n';
-          for (const [key, value] of Object.entries(roleData)) {
-            if (key === 'fileSearchStoreNames' || key === 'kbDocumentTitles') continue;
-            const jsonStr = JSON.stringify(value, null, 0);
-            if (jsonStr.length > 3000) {
-              roleDataSection += `${key}: ${jsonStr.substring(0, 3000)}...(troncato)\n`;
-            } else {
-              roleDataSection += `${key}: ${jsonStr}\n`;
-            }
-          }
-          roleDataSection += '\nUsa questi dati per rispondere in modo PRECISO e CONTESTUALIZZATO. Non inventare numeri — riferisci quelli reali.\n';
-          systemPrompt += roleDataSection;
-        }
-      }
-    } catch (roleDataErr: any) {
-      console.warn(`[AGENT-CHAT] Error fetching role data for ${roleId}: ${roleDataErr.message}`);
-    }
-
-    try {
-      const { fetchSystemDocumentsForAgent } = await import("../services/system-prompt-documents-service");
-      const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, roleId);
-      if (agentSystemDocs) {
-        systemPrompt += '\n' + agentSystemDocs + '\n';
-      }
-    } catch (sysDocErr: any) {
-      console.warn(`[AGENT-CHAT] Error fetching system docs for ${roleId}: ${sysDocErr.message}`);
-    }
-
-    try {
-      const { fetchAgentContext, buildAgentContextSection } = await import("../cron/ai-autonomous-roles");
-      const agentCtxFull = await fetchAgentContext(consultantId, roleId);
-      const ctxSection = buildAgentContextSection(agentCtxFull, roleName);
-      if (ctxSection) {
-        systemPrompt += '\n' + ctxSection + '\n';
-      }
-    } catch (ctxErr: any) {
-      console.warn(`[AGENT-CHAT] Error fetching agent context for ${roleId}: ${ctxErr.message}`);
-    }
-
-    systemPrompt += `\nREGOLE:
-1. Rispondi SEMPRE in italiano
-2. Usa paragrafi separati (lascia una riga vuota tra concetti diversi)
-3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
-4. DIALOGA: fai domande, chiedi feedback, proponi e chiedi conferma
-5. Se il consulente ti aggiorna, riconosci, commenta e suggerisci prossimi passi
-6. Se hai task in attesa di approvazione, chiedi se vuole approvarli
-7. NON inventare dati — basati solo sulle informazioni che hai
-8. Usa **grassetto** per cifre e concetti chiave
-
-AZIONI SUI TASK:
-Puoi proporre di approvare o avviare task. Il flusso è:
-1. PRIMA proponi l'azione e descrivi cosa farà il task, poi chiedi conferma esplicita
-2. SOLO DOPO che il consulente conferma (dice "sì", "ok", "vai", "procedi", "fallo", "approvalo"), includi il comando nella tua risposta
-3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
-4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
-5. NON eseguire mai azioni senza conferma esplicita del consulente
-6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
-
-Esempio di flusso corretto:
-- Tu: "Ho il task X in attesa. Vuoi che lo approvi?"
-- Consulente: "Sì, vai"
-- Tu: "Perfetto, approvo il task. [[APPROVA:uuid-del-task]] Fatto! Il task è stato approvato e verrà eseguito."`;
-
-
-    console.log(`\n${'='.repeat(80)}\n[AGENT-CHAT] System prompt completo per ${roleId.toUpperCase()} (${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}):\n${'='.repeat(80)}\n${systemPrompt}\n${'='.repeat(80)}\n`);
-
-    const historyLimit = existingSummary ? 15 : 20;
-    const relevantHistory = chatHistory.slice(-historyLimit);
-    const conversationParts = relevantHistory.map((m: any) => ({
-      role: m.sender === 'consultant' ? 'user' as const : 'model' as const,
-      parts: [{ text: m.message }],
-    }));
-
-    let aiResponse = '';
-    let aiClient: any = null;
-    let providerModel = GEMINI_3_MODEL;
-
-    try {
-      const { getAIProvider } = await import("../ai/provider-factory");
-
-      try {
-        const provider = await getAIProvider(consultantId, consultantId);
-        provider.setFeature?.(`agent-chat:${roleId}`);
-        aiClient = provider.client;
-        const providerName = provider.metadata?.name || '';
-        const { getModelForProviderName } = await import("../ai/provider-factory");
-        providerModel = getModelForProviderName(providerName);
-      } catch {
-        const apiKey = await getGeminiApiKeyForClassifier();
-        if (apiKey) {
-          const genAI = new GoogleGenAI({ apiKey });
-          aiClient = genAI;
-        }
-      }
-
-      if (!aiClient) {
-        throw new Error("No AI provider available");
-      }
-
-      const chatContents = [
-        { role: 'user' as const, parts: [{ text: systemPrompt }] },
-        { role: 'model' as const, parts: [{ text: `Capito, sono ${roleName}. Sono pronto a chattare con il mio consulente.` }] },
-        ...conversationParts,
-      ];
-
-      let response: any;
-      if (aiClient.models?.generateContent) {
-        response = await trackedGenerateContent(aiClient, {
-          model: providerModel,
-          contents: chatContents,
-          config: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        }, { consultantId, feature: `agent-chat:${roleId}` });
-      } else {
-        response = await aiClient.generateContent({
-          model: providerModel,
-          contents: chatContents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        });
-      }
-
-      aiResponse = response.text?.() || response.text || response.response?.text?.() || 'Mi dispiace, non sono riuscito a generare una risposta.';
-    } catch (err: any) {
-      console.error(`[AGENT-CHAT] AI error for ${roleId}:`, err.message);
-      aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco. (${err.message?.substring(0, 100)})`;
-    }
-
-    const actionResults: { type: string; taskId: string; success: boolean; error?: string }[] = [];
-    const approveMatches = aiResponse.match(/\[\[APPROVA:[^\]]+\]\]/gi) || [];
-    const executeMatches = aiResponse.match(/\[\[ESEGUI:[^\]]+\]\]/gi) || [];
-
-    console.log(`📋 [AGENT-CHAT] Parsing action markers from AI response for ${roleId}:`);
-    console.log(`   Raw AI response length: ${aiResponse.length}`);
-    console.log(`   APPROVA markers found: ${approveMatches.length}`, approveMatches);
-    console.log(`   ESEGUI markers found: ${executeMatches.length}`, executeMatches);
-
-    for (const match of approveMatches) {
-      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '').trim();
-      console.log(`🔍 [AGENT-CHAT] Processing APPROVA for taskId: "${taskId}"`);
-      try {
-        const taskCheck = await db.execute(sql`
-          SELECT id, status, ai_instruction, scheduled_at FROM ai_scheduled_tasks
-          WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            AND status IN ('waiting_approval', 'scheduled', 'draft', 'paused')
-          LIMIT 1
-        `);
-        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status, scheduled_at: (taskCheck.rows[0] as any).scheduled_at } : 'NONE');
-        if ((taskCheck.rows[0] as any)?.id) {
-          const task = taskCheck.rows[0] as any;
-          const scheduledAt = task.scheduled_at ? new Date(task.scheduled_at) : null;
-
-          const updateResult = await db.execute(sql`
-              UPDATE ai_scheduled_tasks
-              SET status = 'scheduled',
-                  scheduled_at = NOW(),
-                  updated_at = NOW(),
-                  result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
-              WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            `);
-            console.log(`   Chat approval -> status='scheduled' + scheduled_at=NOW() + skip_guardrails=true (immediate execution, original scheduled_at was ${scheduledAt?.toISOString() || 'NULL'})`);
-            console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
-            actionResults.push({ type: 'approve_and_execute', taskId, success: true });
-            console.log(`🚀 [AGENT-CHAT] Task ${taskId} approved+scheduled for immediate execution via chat by ${roleId} (guardrails bypassed)`);
-        } else {
-          const allTaskCheck = await db.execute(sql`
-            SELECT id, status FROM ai_scheduled_tasks
-            WHERE id = ${taskId}
-            LIMIT 1
-          `);
-          console.log(`   ⚠️ Task not found with matching consultant. Global check: ${allTaskCheck.rows.length > 0 ? `found with status=${(allTaskCheck.rows[0] as any).status}` : 'NOT FOUND IN DB'}`);
-          actionResults.push({ type: 'approve', taskId, success: false, error: 'Task non trovato o non in stato approvabile' });
-        }
-      } catch (actionErr: any) {
-        actionResults.push({ type: 'approve', taskId, success: false, error: actionErr.message });
-        console.error(`❌ [AGENT-CHAT] Error approving task ${taskId}:`, actionErr.message);
-      }
-    }
-
-    for (const match of executeMatches) {
-      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '').trim();
-      console.log(`🔍 [AGENT-CHAT] Processing ESEGUI for taskId: "${taskId}"`);
-      try {
-        const taskCheck = await db.execute(sql`
-          SELECT id, status FROM ai_scheduled_tasks
-          WHERE id = ${taskId} AND consultant_id = ${consultantId}
-            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft', 'paused')
-          LIMIT 1
-        `);
-        console.log(`   DB query result: ${taskCheck.rows.length} rows found`, taskCheck.rows.length > 0 ? { id: (taskCheck.rows[0] as any).id, status: (taskCheck.rows[0] as any).status } : 'NONE');
-        if ((taskCheck.rows[0] as any)?.id) {
-          const updateResult = await db.execute(sql`
-            UPDATE ai_scheduled_tasks
-            SET status = 'scheduled',
-                scheduled_at = NOW(),
-                updated_at = NOW(),
-                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
-            WHERE id = ${taskId} AND consultant_id = ${consultantId}
-          `);
-          console.log(`   UPDATE result: ${updateResult.rowCount} rows updated`);
-          actionResults.push({ type: 'execute', taskId, success: true });
-          console.log(`🚀 [AGENT-CHAT] Task ${taskId} set for immediate execution via chat by ${roleId} (guardrails bypassed)`);
-        } else {
-          const allTaskCheck = await db.execute(sql`
-            SELECT id, status FROM ai_scheduled_tasks
-            WHERE id = ${taskId}
-            LIMIT 1
-          `);
-          console.log(`   ⚠️ Task not found with matching consultant. Global check: ${allTaskCheck.rows.length > 0 ? `found with status=${(allTaskCheck.rows[0] as any).status}` : 'NOT FOUND IN DB'}`);
-          actionResults.push({ type: 'execute', taskId, success: false, error: 'Task non trovato o non in stato eseguibile' });
-        }
-      } catch (actionErr: any) {
-        actionResults.push({ type: 'execute', taskId, success: false, error: actionErr.message });
-        console.error(`❌ [AGENT-CHAT] Error executing task ${taskId}:`, actionErr.message);
-      }
-    }
-
-    console.log(`📊 [AGENT-CHAT] Action results summary:`, JSON.stringify(actionResults));
-
-    aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
-
-    await db.execute(sql`
-      INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message)
-      VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse})
-    `);
-
-    try {
-      const telegramConfigResult = await db.execute(sql`
-        SELECT tc.bot_token, tl.telegram_chat_id
-        FROM telegram_bot_configs tc
-        JOIN telegram_chat_links tl ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
-        WHERE tc.consultant_id = ${consultantId}::uuid AND tc.ai_role = ${roleId} AND tc.enabled = true AND tl.active = true
-      `);
-      if (telegramConfigResult.rows.length > 0) {
-        const { sendTelegramMessage } = await import("../telegram/telegram-service");
-        for (const row of telegramConfigResult.rows as any[]) {
-          sendTelegramMessage(row.bot_token, row.telegram_chat_id, aiResponse, "Markdown").catch(err =>
-            console.warn("[TELEGRAM] Failed to forward to Telegram:", err.message)
-          );
-        }
-      }
-    } catch (tgErr: any) {
-      console.warn("[TELEGRAM] Forward error:", tgErr.message);
-    }
-
-    const totalCountResult = await db.execute(sql`
-      SELECT COUNT(*)::int as cnt FROM agent_chat_messages
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-    `);
-    const totalMessages = (totalCountResult.rows[0] as any)?.cnt || 0;
-
-    const capturedAiClient = aiClient;
-    const capturedModel = providerModel;
-    const capturedConsultantId = consultantId;
-    const capturedRoleId = roleId;
-    const capturedRoleName = roleName;
-
-    if (totalMessages >= 60) {
-      (async () => {
-        try {
-          const allMsgsResult = await db.execute(sql`
-            SELECT id, created_at FROM agent_chat_messages
-            WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
-            ORDER BY created_at ASC
-          `);
-          const allMsgs = allMsgsResult.rows as any[];
-
-          const keepCount = 30;
-          if (allMsgs.length <= keepCount) return;
-
-          const firstKeptMsg = allMsgs[allMsgs.length - keepCount];
-          if (firstKeptMsg?.created_at) {
-            await db.execute(sql`
-              DELETE FROM agent_chat_messages
-              WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
-                AND created_at < ${firstKeptMsg.created_at}::timestamptz
-            `);
-            console.log(`[AGENT-CHAT-CLEANUP] Cleaned up old messages for ${capturedRoleId}, kept ${keepCount}`);
-          }
-        } catch (cleanupErr: any) {
-          console.error(`[AGENT-CHAT-CLEANUP] Error:`, cleanupErr.message);
-        }
-      })();
-    }
+    const aiResponse = await processAgentChatInternal(consultantId, roleId, message.trim());
 
     return res.json({
       success: true,
       response: {
-        role_name: roleName,
+        role_name: AI_ROLES[roleId]?.name || roleId,
         message: aiResponse,
         ai_role: roleId,
-        actions_executed: actionResults.length > 0 ? actionResults : undefined,
       },
     });
   } catch (error: any) {
@@ -4056,7 +3621,7 @@ export async function processAgentChatInternal(consultantId: string, roleId: str
     historyQuery = db.execute(sql`
       SELECT sender, message, created_at FROM agent_chat_messages
       WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY created_at DESC LIMIT 100
+      ORDER BY created_at DESC
     `);
   }
 
@@ -4244,6 +3809,30 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
     }
   }
 
+  if (!isOpenMode) {
+    try {
+      const { fetchSystemDocumentsForAgent } = await import("../services/system-prompt-documents-service");
+      const agentSystemDocs = await fetchSystemDocumentsForAgent(consultantId, roleId);
+      if (agentSystemDocs) {
+        systemPrompt += '\n' + agentSystemDocs + '\n';
+      }
+    } catch (sysDocErr: any) {
+      console.warn(`[AGENT-CHAT-INTERNAL] Error fetching system docs for ${roleId}: ${sysDocErr.message}`);
+    }
+
+    try {
+      const { fetchAgentContext, buildAgentContextSection } = await import("../cron/ai-autonomous-roles");
+      const agentCtxFull = await fetchAgentContext(consultantId, roleId);
+      const roleName = AI_ROLES[roleId]?.name || roleId;
+      const ctxSection = buildAgentContextSection(agentCtxFull, roleName);
+      if (ctxSection) {
+        systemPrompt += '\n' + ctxSection + '\n';
+      }
+    } catch (ctxErr: any) {
+      console.warn(`[AGENT-CHAT-INTERNAL] Error fetching agent context for ${roleId}: ${ctxErr.message}`);
+    }
+  }
+
   if (isTelegram) {
     const marcoTelegramExtra = roleId === 'marco' ? `\n- Sei su Telegram ma sei SEMPRE Marco il coach: diretto, crudo, senza filtri. Niente tono da assistente gentile. Provoca, spingi, chiedi conto.` : '';
     const groupExtra = isGroupChat ? `\n- Sei in un GRUPPO: rispondi alla persona che ti ha scritto (${senderName || 'l\'utente'}) per nome. Persone diverse nel gruppo possono scriverti e devi adattare il tono a ciascuno.` : '';
@@ -4261,11 +3850,22 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
   } else {
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
-2. Usa paragrafi separati
+2. Usa paragrafi separati (lascia una riga vuota tra concetti diversi)
 3. Sii CONCISO ma COMPLETO — max 3-4 paragrafi brevi
-4. DIALOGA: fai domande, chiedi feedback
-5. NON inventare dati
-6. Usa **grassetto** per cifre e concetti chiave`;
+4. DIALOGA: fai domande, chiedi feedback, proponi e chiedi conferma
+5. Se il consulente ti aggiorna, riconosci, commenta e suggerisci prossimi passi
+6. Se hai task in attesa di approvazione, chiedi se vuole approvarli
+7. NON inventare dati — basati solo sulle informazioni che hai
+8. Usa **grassetto** per cifre e concetti chiave
+
+AZIONI SUI TASK:
+Puoi proporre di approvare o avviare task. Il flusso è:
+1. PRIMA proponi l'azione e descrivi cosa farà il task, poi chiedi conferma esplicita
+2. SOLO DOPO che il consulente conferma (dice "sì", "ok", "vai", "procedi", "fallo", "approvalo"), includi il comando nella tua risposta
+3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
+4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
+5. NON eseguire mai azioni senza conferma esplicita del consulente
+6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto`;
   }
 
   const MAX_CHAT_CHARS = 32000;
@@ -4337,6 +3937,61 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
     aiResponse = `Mi dispiace, c'è stato un problema tecnico. Riprova tra poco.`;
   }
 
+  if (!isOpenMode) {
+    const approveMatches = aiResponse.match(/\[\[APPROVA:[^\]]+\]\]/gi) || [];
+    const executeMatches = aiResponse.match(/\[\[ESEGUI:[^\]]+\]\]/gi) || [];
+
+    if (approveMatches.length > 0 || executeMatches.length > 0) {
+      console.log(`📋 [AGENT-CHAT-INTERNAL] Action markers found for ${roleId}: APPROVA=${approveMatches.length}, ESEGUI=${executeMatches.length}`);
+    }
+
+    for (const match of approveMatches) {
+      const taskId = match.replace(/\[\[APPROVA:/i, '').replace(']]', '').trim();
+      try {
+        const taskCheck = await db.execute(sql`
+          SELECT id, status FROM ai_scheduled_tasks
+          WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            AND status IN ('waiting_approval', 'scheduled', 'draft', 'paused')
+          LIMIT 1
+        `);
+        if ((taskCheck.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'scheduled', scheduled_at = NOW(), updated_at = NOW(),
+                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
+            WHERE id = ${taskId} AND consultant_id = ${consultantId}
+          `);
+          console.log(`🚀 [AGENT-CHAT-INTERNAL] Task ${taskId} approved+scheduled via chat by ${roleId}`);
+        }
+      } catch (actionErr: any) {
+        console.error(`❌ [AGENT-CHAT-INTERNAL] Error approving task ${taskId}:`, actionErr.message);
+      }
+    }
+
+    for (const match of executeMatches) {
+      const taskId = match.replace(/\[\[ESEGUI:/i, '').replace(']]', '').trim();
+      try {
+        const taskCheck = await db.execute(sql`
+          SELECT id, status FROM ai_scheduled_tasks
+          WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            AND status IN ('approved', 'waiting_approval', 'scheduled', 'draft', 'paused')
+          LIMIT 1
+        `);
+        if ((taskCheck.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'scheduled', scheduled_at = NOW(), updated_at = NOW(),
+                result_data = COALESCE(result_data, '{}'::jsonb) || '{"chat_approved": true, "skip_guardrails": true}'::jsonb
+            WHERE id = ${taskId} AND consultant_id = ${consultantId}
+          `);
+          console.log(`🚀 [AGENT-CHAT-INTERNAL] Task ${taskId} executed via chat by ${roleId}`);
+        }
+      } catch (actionErr: any) {
+        console.error(`❌ [AGENT-CHAT-INTERNAL] Error executing task ${taskId}:`, actionErr.message);
+      }
+    }
+  }
+
   aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
 
   if (options?.isOpenMode && options?.telegramChatId) {
@@ -4352,6 +4007,63 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
       INSERT INTO agent_chat_messages (consultant_id, ai_role, role_name, sender, message, metadata)
       VALUES (${consultantId}::uuid, ${roleId}, ${roleName}, 'agent', ${aiResponse}, ${responseMetadata}::jsonb)
     `);
+  }
+
+  if (!isOpenMode && options?.source !== 'telegram') {
+    try {
+      const telegramConfigResult = await db.execute(sql`
+        SELECT tc.bot_token, tl.telegram_chat_id
+        FROM telegram_bot_configs tc
+        JOIN telegram_chat_links tl ON tc.consultant_id = tl.consultant_id AND tc.ai_role = tl.ai_role
+        WHERE tc.consultant_id = ${consultantId}::uuid AND tc.ai_role = ${roleId} AND tc.enabled = true AND tl.active = true
+      `);
+      if (telegramConfigResult.rows.length > 0) {
+        const { sendTelegramMessage } = await import("../telegram/telegram-service");
+        for (const row of telegramConfigResult.rows as any[]) {
+          sendTelegramMessage(row.bot_token, row.telegram_chat_id, aiResponse, "Markdown").catch(err =>
+            console.warn("[TELEGRAM] Failed to forward to Telegram:", err.message)
+          );
+        }
+      }
+    } catch (tgErr: any) {
+      console.warn("[TELEGRAM] Forward error:", tgErr.message);
+    }
+  }
+
+  if (!isOpenMode) {
+    const capturedConsultantId = consultantId;
+    const capturedRoleId = roleId;
+    (async () => {
+      try {
+        const totalCountResult = await db.execute(sql`
+          SELECT COUNT(*)::int as cnt FROM agent_chat_messages
+          WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+        `);
+        const totalMessages = (totalCountResult.rows[0] as any)?.cnt || 0;
+        if (totalMessages >= 60) {
+          const allMsgsResult = await db.execute(sql`
+            SELECT id, created_at FROM agent_chat_messages
+            WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+            ORDER BY created_at ASC
+          `);
+          const allMsgs = allMsgsResult.rows as any[];
+          const keepCount = 30;
+          if (allMsgs.length > keepCount) {
+            const firstKeptMsg = allMsgs[allMsgs.length - keepCount];
+            if (firstKeptMsg?.created_at) {
+              await db.execute(sql`
+                DELETE FROM agent_chat_messages
+                WHERE consultant_id = ${capturedConsultantId}::uuid AND ai_role = ${capturedRoleId}
+                  AND created_at < ${firstKeptMsg.created_at}::timestamptz
+              `);
+              console.log(`[AGENT-CHAT-CLEANUP] Cleaned up old messages for ${capturedRoleId}, kept ${keepCount}`);
+            }
+          }
+        }
+      } catch (cleanupErr: any) {
+        console.error(`[AGENT-CHAT-CLEANUP] Error:`, cleanupErr.message);
+      }
+    })();
   }
 
   return aiResponse;
