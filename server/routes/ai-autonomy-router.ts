@@ -3868,9 +3868,14 @@ Puoi proporre di approvare o avviare task. Il flusso è:
 5. NON eseguire mai azioni senza conferma esplicita del consulente
 6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
 
-FILE SEARCH:
-Hai accesso automatico alle Note Consulenze e ai Progressi Email Journey dei clienti attivi tramite File Search.
-Quando parli di un cliente specifico, cerca attivamente nei documenti privati per avere informazioni dettagliate sulla loro situazione.`;
+FILE SEARCH (STORE GLOBALE CONSULENZE CLIENTI):
+Hai accesso automatico allo Store Globale Consulenze Clienti che contiene le Note Consulenze e i Progressi Email Journey di TUTTI i clienti attivi.
+REGOLE ANTI-ALLUCINAZIONE:
+- Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026")
+- Cita SEMPRE il nome del cliente quando riporti informazioni da un documento
+- NON mescolare MAI dati di clienti diversi nella stessa risposta senza distinguerli chiaramente
+- Se non trovi informazioni su un cliente specifico, dillo esplicitamente invece di inventare
+- Quando cerchi informazioni su un cliente, usa il suo nome completo come query di ricerca`;
   }
 
   const MAX_CHAT_CHARS = 32000;
@@ -3927,22 +3932,39 @@ Quando parli di un cliente specifico, cerca attivamente nei documenti privati pe
         const { FileSearchService } = await import("../ai/file-search-service");
         const fileSearchService = new FileSearchService();
         
-        const clientStoresResult = await db.execute(sql`
+        const globalStoreResult = await db.execute(sql`
           SELECT s.google_store_name
           FROM file_search_stores s
-          JOIN users u ON u.id::text = s.owner_id
-          JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
-          WHERE s.owner_type = 'client' AND s.is_active = true
-            AND u.consultant_id = ${consultantId}::text AND u.is_active = true
-          GROUP BY s.google_store_name
-          ORDER BY COUNT(d.id) DESC
-          LIMIT 5
+          WHERE s.owner_id = ${consultantId} AND s.owner_type = 'consultant'
+            AND s.display_name = 'Store Globale Consulenze Clienti'
+            AND s.is_active = true
+          LIMIT 1
         `);
         
-        const storeNames = (clientStoresResult.rows as any[]).map(r => r.google_store_name);
+        let storeNames: string[] = [];
+        
+        if (globalStoreResult.rows.length > 0) {
+          storeNames = [(globalStoreResult.rows[0] as any).google_store_name];
+          console.log(`🌐 [MARCO-CHAT] Using Global Consultation Store (1 slot)`);
+        } else {
+          const clientStoresResult = await db.execute(sql`
+            SELECT s.google_store_name
+            FROM file_search_stores s
+            JOIN users u ON u.id::text = s.owner_id
+            JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+            WHERE s.owner_type = 'client' AND s.is_active = true
+              AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+            GROUP BY s.google_store_name
+            ORDER BY COUNT(d.id) DESC
+            LIMIT 5
+          `);
+          storeNames = (clientStoresResult.rows as any[]).map(r => r.google_store_name);
+          console.log(`🔍 [MARCO-CHAT] Fallback: using ${storeNames.length} individual client stores`);
+        }
+        
         if (storeNames.length > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
-          console.log(`🔍 [MARCO-CHAT] File Search enabled with ${storeNames.length} client stores`);
+          console.log(`🔍 [MARCO-CHAT] File Search enabled with ${storeNames.length} store(s)`);
         }
       } catch (fsErr: any) {
         console.warn(`[MARCO-CHAT] File Search setup failed:`, fsErr.message);

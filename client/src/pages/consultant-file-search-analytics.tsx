@@ -56,7 +56,8 @@ import {
   Crown,
   Info,
   ScrollText,
-  Building2
+  Building2,
+  Globe
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -209,6 +210,13 @@ interface HierarchicalData {
     dynamicContextAutoSync?: boolean;
     lastDynamicContextSync?: string | null;
   };
+  globalConsultationStore?: {
+    storeId: string | null;
+    storeName: string | null;
+    googleStoreName: string | null;
+    documents: SyncedDocument[];
+    total: number;
+  } | null;
   clientStores: Array<{
     clientId: string;
     clientName: string;
@@ -3568,6 +3576,40 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </CollapsibleContent>
                               </Collapsible>
 
+                              {hData?.globalConsultationStore && hData.globalConsultationStore.total > 0 && (
+                                <Collapsible>
+                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                                    <ChevronRight className="h-5 w-5 text-emerald-600" />
+                                    <Globe className="h-5 w-5 text-emerald-600" />
+                                    <div className="flex flex-col items-start">
+                                      <span className="font-semibold text-emerald-900">Store Globale Consulenze Clienti</span>
+                                      {hData.globalConsultationStore.googleStoreName && (
+                                        <code className="text-[10px] text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded mt-0.5 font-normal">{hData.globalConsultationStore.googleStoreName}</code>
+                                      )}
+                                    </div>
+                                    <Badge className="ml-auto bg-emerald-200 text-emerald-800">{hData.globalConsultationStore.total} documenti</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-2 ml-4 space-y-1">
+                                    {hData.globalConsultationStore.documents.map(doc => (
+                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                        <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                        <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); fetchDocumentContent(doc.id, doc.displayName); }}
+                                          className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
+                                          title="Visualizza contenuto"
+                                        >
+                                          <Eye className="h-3 w-3 text-blue-500" />
+                                        </button>
+                                        <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
+
                               <Collapsible open={clientStoresOpen} onOpenChange={setClientStoresOpen}>
                                 <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
                                   {clientStoresOpen ? <ChevronDown className="h-5 w-5 text-purple-600" /> : <ChevronRight className="h-5 w-5 text-purple-600" />}
@@ -4969,6 +5011,46 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <RefreshCw className="h-4 w-4 mr-2" />
                           )}
                           Sincronizza Contesto Operativo Ora
+                        </Button>
+                      </div>
+                      <div className="border-t pt-6 mt-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Globe className="h-5 w-5 text-emerald-600" />
+                          <h4 className="font-medium text-emerald-900">Store Globale Consulenze Clienti</h4>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Consolida tutte le note consulenze e i progressi email journey di tutti i clienti attivi in un unico store. 
+                          Questo permette a Marco di cercare in tutti i documenti dei clienti con una singola query.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch("/api/file-search/sync-global-consultation", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                credentials: "include",
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                toast({ title: "Store globale sincronizzato", description: `${data.created} documenti caricati` });
+                                queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+                              } else {
+                                toast({ title: "Errore sincronizzazione", description: data.error || "Errore sconosciuto", variant: "destructive" });
+                              }
+                            } catch (err: any) {
+                              toast({ title: "Errore", description: err.message, variant: "destructive" });
+                            }
+                          }}
+                          disabled={syncSingleMutation.isPending}
+                        >
+                          {syncSingleMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Sincronizza Store Globale Consulenze
                         </Button>
                       </div>
                     </div>

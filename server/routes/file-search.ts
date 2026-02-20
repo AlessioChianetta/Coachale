@@ -343,6 +343,34 @@ router.post('/sync-all', authenticateToken, requireRole('consultant'), async (re
 });
 
 /**
+ * POST /api/file-search/sync-global-consultation
+ * Sync global consultation store - consolidates all client consultation + email_journey docs
+ */
+router.post('/sync-global-consultation', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    console.log(`🌐 [FileSearch] Starting global consultation store sync for consultant ${consultantId}`);
+    
+    const result = await fileSearchService.syncGlobalConsultationStore(consultantId);
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: `Store globale sincronizzato: ${result.created} documenti caricati`,
+        created: result.created,
+        deleted: result.deleted,
+        storeName: result.storeName,
+      });
+    } else {
+      res.status(500).json({ success: false, errors: result.errors });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing global consultation store:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/file-search/stores/:storeId/audit
  * Audit a FileSearchStore - compare local DB vs Google API
  * Returns discrepancies: documents only in DB, only on Google, or in both
@@ -1172,7 +1200,21 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     });
     
     // Build consultant store data - find the consultant's own store
-    const consultantStoreRecord = stores.find(s => s.ownerId === consultantId);
+    const consultantStoreRecord = stores.find(s => s.ownerId === consultantId && s.displayName !== 'Store Globale Consulenze Clienti');
+    
+    const globalConsultationStoreRecord = stores.find(s => 
+      s.ownerId === consultantId && s.displayName === 'Store Globale Consulenze Clienti'
+    );
+    const globalConsultationDocs = globalConsultationStoreRecord 
+      ? documents.filter(d => d.storeId === globalConsultationStoreRecord.id)
+      : [];
+    const globalConsultationStore = {
+      storeId: globalConsultationStoreRecord?.id || null,
+      storeName: globalConsultationStoreRecord?.displayName || null,
+      googleStoreName: (globalConsultationStoreRecord as any)?.googleStoreName || null,
+      documents: globalConsultationDocs,
+      total: globalConsultationDocs.length,
+    };
     const consultantStore = {
       storeId: consultantStoreRecord?.id || '',
       storeName: consultantStoreRecord?.displayName || 'Store Globale Consulente',
@@ -1588,6 +1630,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       })),
       hierarchicalData: {
         consultantStore,
+        globalConsultationStore,
         clientStores: clientStoresData,
         departmentStores: departmentStoresData,
         employeeStores: employeeStoresData,
@@ -1769,6 +1812,10 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
           return res.status(400).json({ error: 'clientId is required for client_guide' });
         }
         result = await fileSearchSyncService.syncClientGuide(clientId);
+        break;
+      case 'global_consultation':
+        const globalResult = await fileSearchService.syncGlobalConsultationStore(consultantId);
+        result = { success: globalResult.success, error: globalResult.errors?.join(', ') };
         break;
       case 'external_doc':
         // Sync external doc (Google Docs from workPlatform) for a specific exercise to client's store

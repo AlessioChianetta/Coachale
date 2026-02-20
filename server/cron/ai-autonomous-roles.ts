@@ -1606,13 +1606,16 @@ ${(() => {
 ROADMAP E NOTE STRATEGICHE:
 ${roleData.marcoContext?.roadmap || 'Nessuna roadmap definita'}
 
-CLIENTI CON DATI FILE SEARCH DISPONIBILI (Note Consulenze + Email Journey):
+STORE GLOBALE CONSULENZE CLIENTI (Note Consulenze + Email Journey):
 ${(() => {
   const fileSearchClients = (roleData.clientFileSearchStores || []);
   const uniqueClients = [...new Map(fileSearchClients.map((c: any) => [c.client_id, c.client_name])).values()];
-  return uniqueClients.length > 0 ? uniqueClients.join(', ') : 'Nessun dato File Search disponibile';
+  return uniqueClients.length > 0 
+    ? `Clienti con dati disponibili: ${uniqueClients.join(', ')}` 
+    : 'Nessun dato File Search disponibile';
 })()}
-Quando crei task per un cliente specifico, usa lo step "search_private_stores" per cercare nei loro documenti privati (note consulenze e progressi email journey) per avere un quadro completo.
+Quando crei task per un cliente specifico, usa lo step "search_private_stores" per cercare nei loro documenti privati.
+REGOLE ANTI-ALLUCINAZIONE: Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026"). Cita SEMPRE la fonte. NON mescolare dati di clienti diversi. Se non trovi info su un cliente, dillo esplicitamente.
 
 DOCUMENTI DI RIFERIMENTO (dalla Knowledge Base):
 ${(() => {
