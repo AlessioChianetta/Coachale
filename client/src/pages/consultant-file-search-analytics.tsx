@@ -3576,21 +3576,21 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </CollapsibleContent>
                               </Collapsible>
 
-                              {hData?.globalConsultationStore && hData.globalConsultationStore.total > 0 && (
-                                <Collapsible>
-                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
-                                    <ChevronRight className="h-5 w-5 text-emerald-600" />
-                                    <Globe className="h-5 w-5 text-emerald-600" />
-                                    <div className="flex flex-col items-start">
-                                      <span className="font-semibold text-emerald-900">Store Globale Consulenze Clienti</span>
-                                      {hData.globalConsultationStore.googleStoreName && (
-                                        <code className="text-[10px] text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded mt-0.5 font-normal">{hData.globalConsultationStore.googleStoreName}</code>
-                                      )}
-                                    </div>
-                                    <Badge className="ml-auto bg-emerald-200 text-emerald-800">{hData.globalConsultationStore.total} documenti</Badge>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="mt-2 ml-4 space-y-1">
-                                    {hData.globalConsultationStore.documents.map(doc => (
+                              <Collapsible open={openCategories['globalConsultation']} onOpenChange={() => toggleCategory('globalConsultation')}>
+                                <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                                  {openCategories['globalConsultation'] ? <ChevronDown className="h-5 w-5 text-emerald-600" /> : <ChevronRight className="h-5 w-5 text-emerald-600" />}
+                                  <Globe className="h-5 w-5 text-emerald-600" />
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-semibold text-emerald-900">Store Globale Consulenze Clienti</span>
+                                    {hData?.globalConsultationStore?.googleStoreName && (
+                                      <code className="text-[10px] text-emerald-500 bg-emerald-100 px-1.5 py-0.5 rounded mt-0.5 font-normal">{hData.globalConsultationStore.googleStoreName}</code>
+                                    )}
+                                  </div>
+                                  <Badge className="ml-auto bg-emerald-200 text-emerald-800">{hData?.globalConsultationStore?.total || 0} documenti</Badge>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2 ml-4 space-y-1">
+                                  {(hData?.globalConsultationStore?.documents || []).length > 0 ? (
+                                    (hData?.globalConsultationStore?.documents || []).map(doc => (
                                       <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
                                         <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                         <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
@@ -3605,10 +3605,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                                         </Badge>
                                       </div>
-                                    ))}
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-400 text-sm p-2 italic">Nessun documento. Usa "Sincronizza Store Globale Consulenze" nelle Impostazioni per popolare.</p>
+                                  )}
+                                </CollapsibleContent>
+                              </Collapsible>
 
                               <Collapsible open={clientStoresOpen} onOpenChange={setClientStoresOpen}>
                                 <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
