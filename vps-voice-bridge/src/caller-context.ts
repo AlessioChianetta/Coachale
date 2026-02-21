@@ -102,6 +102,60 @@ function normalizePhoneNumber(phone: string): string {
   return normalized;
 }
 
+interface NumberOwnerResponse {
+  found: boolean;
+  consultant_id?: string;
+  display_name?: string;
+}
+
+export async function fetchNumberOwner(calledNumber: string): Promise<NumberOwnerResponse | null> {
+  if (!config.replit.apiUrl || !config.replit.apiToken) {
+    log.debug(`Replit API not configured, skipping number owner lookup`);
+    return null;
+  }
+
+  try {
+    log.debug(`Fetching number owner`, { calledNumber });
+
+    const response = await fetch(
+      `${config.replit.apiUrl}/api/voice/number-lookup?phone=${encodeURIComponent(calledNumber)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${config.replit.apiToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as NumberOwnerResponse;
+
+    if (data.found) {
+      log.info(`Number owner found`, {
+        calledNumber,
+        consultant_id: data.consultant_id?.slice(0, 8),
+        display_name: data.display_name,
+      });
+    } else {
+      log.debug(`Number owner not found`, { calledNumber });
+    }
+
+    return data;
+
+  } catch (error) {
+    log.error(`Failed to fetch number owner`, {
+      calledNumber,
+      error: error instanceof Error ? error.message : 'Unknown',
+    });
+    return null;
+  }
+}
+
 export async function notifyCallStart(
   sessionId: string,
   callerId: string,

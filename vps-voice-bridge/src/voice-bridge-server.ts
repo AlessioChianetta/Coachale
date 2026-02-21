@@ -7,7 +7,7 @@ import { logger } from './logger.js';
 import { sessionManager } from './session-manager.js';
 import { ReplitWSClient } from './replit-ws-client.js';
 import { convertForGemini, convertFromGemini } from './audio-converter.js';
-import { fetchCallerContext, notifyCallStart, notifyCallEnd } from './caller-context.js';
+import { fetchCallerContext, fetchNumberOwner, notifyCallStart, notifyCallEnd } from './caller-context.js';
 import { callMetadata } from './esl-client.js';
 import { handleOutboundCall } from './outbound-handler.js';
 import {
@@ -256,11 +256,15 @@ export function startVoiceBridgeServer(): void {
 
       log.info(`📞 Call detected: ID=${callId} | CallerId=${callerId} | CallerName=${callerName}`);
 
+      const calledNumber = metadata?.calledNumber
+        || firstQueryValue(parsedUrl.query.called_number)
+        || 'unknown';
+
       const startMsg: AudioStreamStartMessage = {
         event: 'start',
         call_id: callId,
         caller_id: callerId,
-        called_number: '9999',
+        called_number: calledNumber,
         codec: 'L16',
         sample_rate: 8000,
       };
@@ -307,6 +311,16 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
 
   notifyCallStart(session.id, message.caller_id, message.called_number).catch(e => {
     log.warn(`⚠️ notifyCallStart failed (non-blocking)`, { error: e?.message });
+  });
+
+  fetchNumberOwner(message.called_number).then(ownerResult => {
+    if (ownerResult?.found) {
+      log.info(`📞 [NUMBER LOOKUP] Called number ${message.called_number} belongs to consultant=${ownerResult.consultant_id}, display=${ownerResult.display_name}`);
+    } else {
+      log.info(`📞 [NUMBER LOOKUP] Called number ${message.called_number} not found in voice_numbers`);
+    }
+  }).catch(e => {
+    log.warn(`⚠️ fetchNumberOwner failed (non-blocking)`, { error: e?.message });
   });
 
   bgInitSession(session.id);

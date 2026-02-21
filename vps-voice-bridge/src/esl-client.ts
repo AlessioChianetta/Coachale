@@ -6,7 +6,7 @@ import esl from 'modesl';
 const log = logger.child('ESL');
 
 // Mappa per memorizzare caller info per UUID
-export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, parkTime?: number }>();
+export const callMetadata = new Map<string, { callerIdNumber: string, callerIdName: string, calledNumber?: string, parkTime?: number }>();
 
 export function startESLController(): void {
   log.info(`Connecting to FreeSWITCH ESL at ${config.esl.host}:${config.esl.port}...`);
@@ -21,15 +21,17 @@ export function startESLController(): void {
     const uuid = event.getHeader('Unique-ID');
     const dest = event.getHeader('Caller-Destination-Number');
 
-    if (dest !== '9999') return;
+    const isInbound = /^(\+?3[0-9]{8,12}|[0-9]{4,12})$/.test(dest || '');
+    if (!isInbound) return;
 
     const callerIdNumber = event.getHeader('Caller-Caller-ID-Number') || 'unknown';
     const callerIdName = event.getHeader('Caller-Caller-ID-Name') || '';
+    const calledNumber = event.getHeader('Caller-Destination-Number') || '';
 
-    log.info(`🅿️  Detected call to 9999 (Parked)`, { uuid, callerIdNumber, callerIdName });
+    log.info(`🅿️  Detected inbound call (Parked)`, { uuid, callerIdNumber, callerIdName, calledNumber: dest });
     log.info(`⏱️ [ESL-TIMING] CHANNEL_PARK event received at ${tPark}`, { uuid });
 
-    callMetadata.set(uuid, { callerIdNumber, callerIdName, parkTime: tPark });
+    callMetadata.set(uuid, { callerIdNumber, callerIdName, calledNumber: dest, parkTime: tPark });
 
     if (uuid.startsWith('outbound-')) {
       log.info(`📞 OUTBOUND call detected - using existing scheduled call ID`, { uuid });
@@ -62,8 +64,8 @@ export function startESLController(): void {
   conn.on('esl::event::CHANNEL_HANGUP::*', (event: any) => {
     const uuid = event.getHeader('Unique-ID');
     const dest = event.getHeader('Caller-Destination-Number');
-    if (dest === '9999') {
-      log.debug(`🛑 Call 9999 ended`, { uuid });
+    if (callMetadata.has(uuid)) {
+      log.debug(`🛑 Call ended`, { uuid, dest });
       callMetadata.delete(uuid);
     }
   });

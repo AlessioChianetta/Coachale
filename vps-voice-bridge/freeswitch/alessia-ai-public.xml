@@ -1,6 +1,6 @@
 <include>
   <extension name="alessia_ai_9999_public">
-    <condition field="destination_number" expression="^9999$">
+    <condition field="destination_number" expression="^(\+?3[0-9]{8,12}|[0-9]{4,12})$">
       <action application="answer"/>
       <action application="sleep" data="500"/>
       <action application="playback" data="tone_stream://%(200,0,800)"/>

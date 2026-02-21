@@ -2597,6 +2597,85 @@ router.get("/health", authenticateToken, requireAnyRole(["consultant", "super_ad
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// NUMBER LOOKUP - Multi-tenant number lookup for VPS bridge
+// ═══════════════════════════════════════════════════════════════════
+
+function normalizePhoneForLookup(phone: string): string {
+  let normalized = phone.replace(/\s+/g, '').trim();
+  if (normalized.startsWith('00')) {
+    normalized = '+' + normalized.slice(2);
+  } else if (normalized.startsWith('+')) {
+    // already has +
+  } else if (normalized.startsWith('39') && normalized.length > 10) {
+    normalized = '+' + normalized;
+  } else if (/^\d{9,10}$/.test(normalized)) {
+    normalized = '+39' + normalized;
+  } else {
+    normalized = '+' + normalized;
+  }
+  return normalized;
+}
+
+router.get("/number-lookup", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized: Bearer token required' });
+    }
+
+    const tokenResult = await db.execute(sql`
+      SELECT id, consultant_id FROM voice_service_tokens
+      WHERE token = ${token} AND revoked_at IS NULL
+      LIMIT 1
+    `);
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or revoked service token' });
+    }
+
+    const phone = req.query.phone as string;
+    if (!phone) {
+      return res.status(400).json({ error: 'phone query parameter is required' });
+    }
+
+    const normalizedPhone = normalizePhoneForLookup(phone);
+    const withoutPlus = normalizedPhone.startsWith('+') ? normalizedPhone.slice(1) : normalizedPhone;
+    const digits = phone.replace(/\D/g, '');
+    const withCountryCode = digits.startsWith('39') ? '+' + digits : '+39' + digits;
+
+    const result = await db.execute(sql`
+      SELECT consultant_id, display_name, is_active
+      FROM voice_numbers
+      WHERE is_active = true
+        AND (
+          phone_number = ${normalizedPhone}
+          OR phone_number = ${withoutPlus}
+          OR phone_number = ${withCountryCode}
+        )
+      LIMIT 1
+    `);
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0] as any;
+      console.log(`📞 [Number Lookup] Found: ${phone} → consultant=${row.consultant_id}, display=${row.display_name}`);
+      return res.json({
+        found: true,
+        consultant_id: row.consultant_id,
+        display_name: row.display_name,
+      });
+    }
+
+    console.log(`📞 [Number Lookup] Not found: ${phone} (normalized: ${normalizedPhone})`);
+    return res.json({ found: false });
+  } catch (error) {
+    console.error("[Voice] Number lookup error:", error);
+    return res.status(500).json({ error: "Number lookup failed" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // OUTBOUND CALLBACK - VPS reports call result
 // ═══════════════════════════════════════════════════════════════════
 
