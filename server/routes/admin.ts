@@ -1355,6 +1355,77 @@ router.delete(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SuperAdmin Voice Configuration - Global VPS Bridge URL and Service Token
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get(
+  "/admin/superadmin/voice-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: Request, res: Response) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT vps_bridge_url, service_token, enabled FROM superadmin_voice_config WHERE id = 'default' LIMIT 1
+      `);
+      const config = result.rows[0] as any;
+      res.json({
+        success: true,
+        config: config ? {
+          vpsBridgeUrl: config.vps_bridge_url || '',
+          serviceToken: config.service_token ? '••••' + config.service_token.slice(-8) : '',
+          hasServiceToken: !!config.service_token,
+          enabled: config.enabled,
+        } : null,
+      });
+    } catch (error: any) {
+      console.error("Get superadmin voice config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.put(
+  "/admin/superadmin/voice-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: Request, res: Response) => {
+    try {
+      const { vpsBridgeUrl, serviceToken, enabled } = req.body;
+
+      const existing = await db.execute(sql`
+        SELECT id FROM superadmin_voice_config WHERE id = 'default' LIMIT 1
+      `);
+
+      if (existing.rows.length > 0) {
+        if (serviceToken && serviceToken !== '••••') {
+          await db.execute(sql`
+            UPDATE superadmin_voice_config 
+            SET vps_bridge_url = ${vpsBridgeUrl || null}, service_token = ${serviceToken}, enabled = ${enabled ?? true}, updated_at = NOW()
+            WHERE id = 'default'
+          `);
+        } else {
+          await db.execute(sql`
+            UPDATE superadmin_voice_config 
+            SET vps_bridge_url = ${vpsBridgeUrl || null}, enabled = ${enabled ?? true}, updated_at = NOW()
+            WHERE id = 'default'
+          `);
+        }
+      } else {
+        await db.execute(sql`
+          INSERT INTO superadmin_voice_config (id, vps_bridge_url, service_token, enabled)
+          VALUES ('default', ${vpsBridgeUrl || null}, ${serviceToken || null}, ${enabled ?? true})
+        `);
+      }
+
+      res.json({ success: true, message: "Voice configuration saved" });
+    } catch (error: any) {
+      console.error("Save superadmin voice config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SuperAdmin Instagram Configuration - Centralized Meta App credentials for OAuth
 // ═══════════════════════════════════════════════════════════════════════════
 

@@ -1068,10 +1068,16 @@ async function getUserIdFromRequest(req: any): Promise<{
           resolvedConsultantId = numberConfig.consultant_id;
           console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
 
-          // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform token
+          // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform/global token
           if (decoded.consultantId !== resolvedConsultantId && decoded.scope !== 'platform') {
-            console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform token → REJECTING`);
-            return null;
+            const isGlobalToken = await db.execute(sql`
+              SELECT 1 FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
+            `);
+            if (isGlobalToken.rows.length === 0) {
+              console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform/global token → REJECTING`);
+              return null;
+            }
+            console.log(`✅ [PHONE SERVICE] Global superadmin token accepted for cross-consultant routing`);
           }
 
           // Check concurrent call capacity

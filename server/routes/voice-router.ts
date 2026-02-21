@@ -2076,33 +2076,30 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       WHERE id = ${callId}
     `);
     
-    // Get VPS URL and SIP settings from database
-    const vpsResult = await db.execute(sql`
-      SELECT cas.vps_bridge_url, u.sip_caller_id, u.sip_gateway
-      FROM consultant_availability_settings cas
-      JOIN users u ON u.id = cas.consultant_id
-      WHERE cas.consultant_id = ${consultantId}
+    // Get VPS URL and service token from global superadmin config
+    const globalVoiceResult = await db.execute(sql`
+      SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
     `);
-    const vpsUrl = (vpsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
-    const sipCallerId = (vpsResult.rows[0] as any)?.sip_caller_id;
-    const sipGateway = (vpsResult.rows[0] as any)?.sip_gateway;
+    const globalVoice = globalVoiceResult.rows[0] as any;
+    const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const token = globalVoice?.service_token;
+
+    // Get SIP settings from consultant
+    const sipResult = await db.execute(sql`
+      SELECT sip_caller_id, sip_gateway FROM users WHERE id = ${consultantId}
+    `);
+    const sipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
+    const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
+
     if (!vpsUrl) {
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
         SET status = 'failed', error_message = 'VPS URL not configured', updated_at = NOW()
         WHERE id = ${callId}
       `);
-      return { success: false, error: "VPS URL not configured. Set it in Voice Settings → VPS tab" };
+      return { success: false, error: "VPS URL not configured" };
     }
     
-    // Get service token
-    const tokenResult = await db.execute(sql`
-      SELECT token FROM voice_service_tokens 
-      WHERE consultant_id = ${consultantId} AND revoked_at IS NULL
-      ORDER BY created_at DESC LIMIT 1
-    `);
-    
-    const token = (tokenResult.rows[0] as any)?.token;
     if (!token) {
       await db.execute(sql`
         UPDATE scheduled_voice_calls 
@@ -2625,14 +2622,21 @@ router.get("/number-lookup", async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized: Bearer token required' });
     }
 
-    const tokenResult = await db.execute(sql`
-      SELECT id, consultant_id FROM voice_service_tokens
-      WHERE token = ${token} AND revoked_at IS NULL
-      LIMIT 1
+    // Check global superadmin token first, then per-consultant tokens
+    const globalTokenResult = await db.execute(sql`
+      SELECT service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
     `);
+    
+    if (globalTokenResult.rows.length === 0) {
+      const tokenResult = await db.execute(sql`
+        SELECT id, consultant_id FROM voice_service_tokens
+        WHERE token = ${token} AND revoked_at IS NULL
+        LIMIT 1
+      `);
 
-    if (tokenResult.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid or revoked service token' });
+      if (tokenResult.rows.length === 0) {
+        return res.status(401).json({ error: 'Invalid or revoked service token' });
+      }
     }
 
     const phone = req.query.phone as string;

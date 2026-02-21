@@ -260,36 +260,28 @@ function generateScheduledCallId(): string {
  */
 async function initiateVoiceCall(task: AIScheduledTask): Promise<{ success: boolean; reason?: string; callId?: string }> {
   try {
-    // Get consultant's VPS settings and SIP caller ID from database
-    const settingsResult = await db.execute(sql`
-      SELECT 
-        cas.vps_bridge_url,
-        u.sip_caller_id,
-        u.sip_gateway
-      FROM consultant_availability_settings cas
-      JOIN users u ON u.id::text = cas.consultant_id::text
-      WHERE cas.consultant_id::text = ${task.consultant_id}::text
+    // Get VPS URL and service token from global superadmin config
+    const globalVoiceResult = await db.execute(sql`
+      SELECT vps_bridge_url, service_token FROM superadmin_voice_config WHERE id = 'default' AND enabled = true LIMIT 1
     `);
-    
-    const vpsUrl = (settingsResult.rows[0] as any)?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
-    const sipCallerId = (settingsResult.rows[0] as any)?.sip_caller_id;
-    const sipGateway = (settingsResult.rows[0] as any)?.sip_gateway;
+    const globalVoice = globalVoiceResult.rows[0] as any;
+    const vpsUrl = globalVoice?.vps_bridge_url || process.env.VPS_BRIDGE_URL;
+    const token = globalVoice?.service_token;
+
+    // Get SIP settings from consultant
+    const sipResult = await db.execute(sql`
+      SELECT sip_caller_id, sip_gateway FROM users WHERE id::text = ${task.consultant_id}::text
+    `);
+    const sipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
+    const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
     
     if (!vpsUrl) {
       return { 
         success: false, 
-        reason: 'VPS URL not configured for this consultant' 
+        reason: 'VPS URL not configured' 
       };
     }
     
-    // Get service token
-    const tokenResult = await db.execute(sql`
-      SELECT token FROM voice_service_tokens 
-      WHERE consultant_id = ${task.consultant_id}::text AND revoked_at IS NULL
-      ORDER BY created_at DESC LIMIT 1
-    `);
-    
-    const token = (tokenResult.rows[0] as any)?.token;
     if (!token) {
       return { 
         success: false, 
