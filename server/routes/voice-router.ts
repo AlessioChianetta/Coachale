@@ -24,6 +24,13 @@ if (!JWT_SECRET) {
   console.error("❌ [VOICE ROUTER] JWT_SECRET or SESSION_SECRET environment variable is required");
 }
 
+async function resolveConsultantId(user: any, queryOrBodyConsultantId?: string): Promise<string | null> {
+  if (user.role === 'consultant') return user.id;
+  if (queryOrBodyConsultantId) return queryOrBodyConsultantId;
+  const result = await db.execute(sql`SELECT id FROM users WHERE role = 'consultant' LIMIT 1`);
+  return (result.rows[0] as any)?.id || null;
+}
+
 const router = Router();
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1174,7 +1181,10 @@ router.get("/blocked", authenticateToken, requireAnyRole(["consultant", "super_a
 // PUT /api/voice/service-token - Salva token esistente nel database
 router.put("/service-token", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = req.user!.id;
+    const consultantId = await resolveConsultantId(req.user!);
+    if (!consultantId) {
+      return res.status(404).json({ error: "Nessun consultant trovato" });
+    }
     const { token } = req.body;
 
     if (!token || typeof token !== 'string' || token.length < 50) {
@@ -1223,10 +1233,10 @@ router.post("/service-token", authenticateToken, requireAnyRole(["consultant", "
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const consultantId = user.role === "consultant" ? user.id : req.body.consultantId;
+    const consultantId = await resolveConsultantId(user, req.body.consultantId);
     
     if (!consultantId) {
-      return res.status(400).json({ error: "consultantId required for super_admin" });
+      return res.status(404).json({ error: "Nessun consultant trovato" });
     }
 
     const consultantExists = await db.execute(sql`SELECT id FROM users WHERE id = ${consultantId} AND role = 'consultant' LIMIT 1`);
@@ -1289,10 +1299,10 @@ router.get("/service-token/status", authenticateToken, requireAnyRole(["consulta
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const consultantId = user.role === "consultant" ? user.id : (req.query.consultantId as string);
+    const consultantId = await resolveConsultantId(user, req.query.consultantId as string);
     
     if (!consultantId) {
-      return res.status(400).json({ error: "consultantId required for super_admin" });
+      return res.status(404).json({ error: "Nessun consultant trovato" });
     }
 
     const result = await db.execute(sql`
@@ -1365,7 +1375,10 @@ const VALID_VOICES = ['Achernar', 'Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'];
 // GET /api/voice/settings - Ottieni impostazioni voce
 router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = req.user!.id;
+    const consultantId = await resolveConsultantId(req.user!);
+    if (!consultantId) {
+      return res.status(404).json({ error: "Nessun consultant trovato" });
+    }
 
     const result = await db.execute(sql`
       SELECT voice_id, vps_bridge_url, voice_max_retry_attempts, voice_retry_interval_minutes 
@@ -1442,7 +1455,10 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
 // GET /api/voice/sip-settings - Ottieni configurazione SIP per chiamate in uscita
 router.get("/sip-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = req.user!.id;
+    const consultantId = await resolveConsultantId(req.user!);
+    if (!consultantId) {
+      return res.status(404).json({ error: "Nessun consultant trovato" });
+    }
 
     const result = await db.execute(sql`
       SELECT sip_caller_id, sip_gateway, esl_password 
@@ -1548,7 +1564,10 @@ router.put("/retry-settings", authenticateToken, requireAnyRole(["consultant", "
 // PUT /api/voice/vps-url - Aggiorna URL del VPS Bridge
 router.put("/vps-url", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = req.user!.id;
+    const consultantId = await resolveConsultantId(req.user!);
+    if (!consultantId) {
+      return res.status(404).json({ error: "Nessun consultant trovato" });
+    }
     const { vpsBridgeUrl } = req.body;
 
     if (vpsBridgeUrl && typeof vpsBridgeUrl !== 'string') {
