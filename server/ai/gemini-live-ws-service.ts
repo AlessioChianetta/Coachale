@@ -1053,6 +1053,59 @@ async function getUserIdFromRequest(req: any): Promise<{
         let resolvedCalledNumber = calledNumber || '9999';
         let numberConfig: any = null;
 
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // OUTBOUND CALL FIX: For outbound calls, the scheduledCallId contains
+        // the REAL consultant_id (set by the authenticated user who triggered the call).
+        // The global VPS token may contain a different consultant's ID, so we must
+        // resolve the correct consultant from the scheduled_voice_calls record FIRST,
+        // before voice_numbers lookup can override it with the wrong consultant.
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        if (scheduledCallIdParam) {
+          const scLookupStart = Date.now();
+          try {
+            const scResult = await db.execute(sql`
+              SELECT consultant_id, target_phone FROM scheduled_voice_calls 
+              WHERE id = ${scheduledCallIdParam} LIMIT 1
+            `);
+            console.log(`⏱️ [AUTH-DETAIL] scheduledCall consultant lookup: ${Date.now() - scLookupStart}ms`);
+            
+            if (scResult.rows.length > 0) {
+              const realConsultantId = (scResult.rows[0] as any).consultant_id;
+              console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`🔍 [ROUTING-DEBUG] OUTBOUND CONSULTANT OVERRIDE from scheduled_voice_calls:`);
+              console.log(`🔍 [ROUTING-DEBUG]   scheduledCallId: ${scheduledCallIdParam}`);
+              console.log(`🔍 [ROUTING-DEBUG]   JWT consultantId: ${decoded.consultantId}`);
+              console.log(`🔍 [ROUTING-DEBUG]   DB consultant_id (REAL): ${realConsultantId}`);
+              console.log(`🔍 [ROUTING-DEBUG]   target_phone: ${(scResult.rows[0] as any).target_phone}`);
+              
+              if (realConsultantId !== decoded.consultantId) {
+                console.log(`🔍 [ROUTING-DEBUG]   ⚠️ MISMATCH! JWT has ${decoded.consultantId} but call belongs to ${realConsultantId}`);
+                console.log(`🔍 [ROUTING-DEBUG]   ✅ OVERRIDING resolvedConsultantId → ${realConsultantId} (from DB, trusted source)`);
+                
+                // Verify the token is authorized (global platform token)
+                const isAuthorizedToken = await db.execute(sql`
+                  SELECT 1 FROM superadmin_voice_config 
+                  WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
+                `);
+                if (isAuthorizedToken.rows.length === 0 && decoded.scope !== 'platform') {
+                  console.error(`❌ [PHONE SERVICE] Token is not global/platform and consultantId mismatches → REJECTING`);
+                  return null;
+                }
+                console.log(`🔍 [ROUTING-DEBUG]   ✅ Token authorized (global/platform) for cross-consultant outbound`);
+              }
+              
+              resolvedConsultantId = realConsultantId;
+              console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            } else {
+              console.error(`❌ [ROUTING-DEBUG] scheduledCallId ${scheduledCallIdParam} not found in DB → REJECTING outbound call to prevent misrouting`);
+              return null;
+            }
+          } catch (err: any) {
+            console.error(`❌ [ROUTING-DEBUG] Failed to lookup scheduledCall consultant: ${err.message} → REJECTING outbound call`);
+            return null;
+          }
+        }
+
         if (calledNumber) {
           const normalizedCalledNumber = calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
           resolvedCalledNumber = normalizedCalledNumber;
@@ -1073,11 +1126,20 @@ async function getUserIdFromRequest(req: any): Promise<{
           }
 
           numberConfig = numberRows.rows[0] as any;
-          console.log(`🔍 [ROUTING-DEBUG] ⚠️ CONSULTANT OVERRIDE by voice_numbers lookup:`);
-          console.log(`🔍 [ROUTING-DEBUG]   BEFORE override: resolvedConsultantId = ${resolvedConsultantId}`);
+          console.log(`🔍 [ROUTING-DEBUG] voice_numbers lookup result:`);
+          console.log(`🔍 [ROUTING-DEBUG]   BEFORE: resolvedConsultantId = ${resolvedConsultantId}`);
           console.log(`🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = ${numberConfig.consultant_id}`);
-          resolvedConsultantId = numberConfig.consultant_id;
-          console.log(`🔍 [ROUTING-DEBUG]   AFTER override: resolvedConsultantId = ${resolvedConsultantId}`);
+          
+          // For OUTBOUND calls, the scheduledCallId already resolved the correct consultant
+          // Do NOT let voice_numbers override it (the calledNumber may belong to a different consultant)
+          if (scheduledCallIdParam && resolvedConsultantId !== numberConfig.consultant_id) {
+            console.log(`🔍 [ROUTING-DEBUG]   ⏭️ SKIPPING voice_numbers override for OUTBOUND call`);
+            console.log(`🔍 [ROUTING-DEBUG]   Keeping resolvedConsultantId = ${resolvedConsultantId} (from scheduled_voice_calls)`);
+            console.log(`🔍 [ROUTING-DEBUG]   voice_numbers would have set: ${numberConfig.consultant_id} (IGNORED for outbound)`);
+          } else {
+            resolvedConsultantId = numberConfig.consultant_id;
+            console.log(`🔍 [ROUTING-DEBUG]   AFTER: resolvedConsultantId = ${resolvedConsultantId}`);
+          }
           console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
 
           // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform/global token
