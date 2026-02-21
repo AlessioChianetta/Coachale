@@ -3685,7 +3685,7 @@ Una volta che hanno capito e confermato:
         // Load non-client settings from database (includes both legacy and new direction-specific fields)
         let voiceDirectives = '';
         // Direction-specific settings (new template system)
-        let promptSource: 'agent' | 'manual' | 'default' = 'default';
+        let promptSource: 'agent' | 'manual' | 'template' | 'default' = 'template';
         let templateId: string = 'mini-discovery'; // Default INBOUND template
         let agentId: string | null = null;
         let manualPrompt = '';
@@ -3718,18 +3718,16 @@ Una volta che hanno capito e confermato:
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
             
             if (isOutbound) {
-              promptSource = (settings.outboundPromptSource as 'agent' | 'manual' | 'default') 
-                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
-                || 'default';
-              templateId = settings.outboundTemplateId || 'sales-call-orbitale';
+              const rawOutboundSource = settings.outboundPromptSource || settings.nonClientPromptSource || 'template';
+              promptSource = (rawOutboundSource === 'default' ? 'template' : rawOutboundSource) as 'agent' | 'manual' | 'template';
+              templateId = settings.outboundTemplateId || 'sales-orbitale';
               agentId = settings.outboundAgentId || settings.nonClientAgentId;
               manualPrompt = settings.outboundManualPrompt || settings.nonClientManualPrompt || '';
               
               console.log(`📞 [${connectionId}] OUTBOUND non-client call - source=${promptSource}, template=${templateId}, agentId=${agentId}, brandVoice=${outboundBrandVoiceEnabled}`);
             } else {
-              promptSource = (settings.inboundPromptSource as 'agent' | 'manual' | 'default') 
-                || (settings.nonClientPromptSource as 'agent' | 'manual' | 'default') 
-                || 'default';
+              const rawInboundSource = settings.inboundPromptSource || settings.nonClientPromptSource || 'template';
+              promptSource = (rawInboundSource === 'default' ? 'template' : rawInboundSource) as 'agent' | 'manual' | 'template';
               templateId = settings.inboundTemplateId || 'mini-discovery';
               agentId = settings.inboundAgentId || settings.nonClientAgentId;
               manualPrompt = settings.inboundManualPrompt || settings.nonClientManualPrompt || '';
@@ -4253,11 +4251,47 @@ ${brandVoicePrompt}` : ''}`;
           // Default: Use template from voice-templates.ts
           const template = getTemplateById(templateId);
           if (template) {
+            let profileServices = '';
+            let profileTarget = '';
+            let profileUsp = '';
+            let profileSector = '';
+            try {
+              const profileResult = await db.execute(sql`
+                SELECT services_offered, specializations, ideal_client_description, 
+                       industries_served, unique_selling_proposition, geographic_focus,
+                       methodology, professional_title, bio
+                FROM consultant_detailed_profiles 
+                WHERE consultant_id = ${consultantId} LIMIT 1
+              `);
+              if (profileResult.rows.length > 0) {
+                const p = profileResult.rows[0] as any;
+                if (p.services_offered || p.specializations) {
+                  profileServices = `🔧 SERVIZI OFFERTI: ${p.services_offered || ''}${p.specializations ? ` | Specializzazioni: ${p.specializations}` : ''}${p.methodology ? ` | Metodo: ${p.methodology}` : ''}`;
+                }
+                if (p.ideal_client_description || p.industries_served) {
+                  profileTarget = `🎯 TARGET: ${p.ideal_client_description || ''}${p.industries_served ? ` | Settori: ${p.industries_served}` : ''}${p.geographic_focus ? ` | Area: ${p.geographic_focus}` : ''}`;
+                }
+                if (p.unique_selling_proposition) {
+                  profileUsp = `💎 PROPOSTA UNICA DI VALORE: ${p.unique_selling_proposition}`;
+                }
+                if (p.professional_title || p.bio) {
+                  profileSector = `👤 CHI È ${consultantName}: ${p.professional_title || ''}${p.bio ? ` — ${p.bio}` : ''}`;
+                }
+                console.log(`📊 [${connectionId}] Consultant profile loaded: services=${!!p.services_offered}, target=${!!p.ideal_client_description}, usp=${!!p.unique_selling_proposition}`);
+              }
+            } catch (err) {
+              console.warn(`⚠️ [${connectionId}] Could not load consultant profile:`, err);
+            }
+            
             contentPrompt = resolveTemplateVariables(template.prompt, {
               consultantName: consultantName,
               businessName: consultantBusinessName || '',
               aiName: 'Alessia',
-              contactName: extractedContactName || '' // 🆕 Usa nome estratto dallo storico
+              contactName: extractedContactName || '',
+              services: profileServices,
+              targetAudience: profileTarget,
+              usp: profileUsp,
+              sector: profileSector,
             });
             console.log(`📞 [${connectionId}] ${isOutbound ? 'OUTBOUND' : 'INBOUND'} - Using template: ${template.name} (${templateId}) - ${contentPrompt.length} chars - contactName: "${extractedContactName || '(none)'}"`);
 
