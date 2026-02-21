@@ -1160,6 +1160,33 @@ export default function ConsultantVoiceCallsPage() {
     },
   });
 
+  const toggleVpsNumberMutation = useMutation({
+    mutationFn: async (useVpsNumber: boolean) => {
+      const currentSettings = sipSettingsData || { sipCallerId: '', sipGateway: 'voip_trunk' };
+      const res = await fetch("/api/voice/sip-settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          sipCallerId: currentSettings.sipCallerId,
+          sipGateway: currentSettings.sipGateway,
+          useVpsNumber
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/voice/sip-settings"] });
+      toast({ title: "Salvato", description: "Impostazione numero aggiornata" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
   const improveInstructionMutation = useMutation({
     mutationFn: async (data: { instruction: string; task_type: string }) => {
       const res = await fetch("/api/voice/improve-instruction", {
@@ -1290,7 +1317,7 @@ export default function ConsultantVoiceCallsPage() {
   });
 
   // Query per impostazioni SIP configurate nella pagina voice-settings
-  const { data: sipSettingsData } = useQuery<{ sipCallerId: string; sipGateway: string }>({
+  const { data: sipSettingsData } = useQuery<{ sipCallerId: string; sipGateway: string; useVpsNumber: boolean }>({
     queryKey: ["/api/voice/sip-settings"],
     queryFn: async () => {
       const res = await fetch("/api/voice/sip-settings", { headers: getAuthHeaders() });
@@ -3513,6 +3540,56 @@ export default function ConsultantVoiceCallsPage() {
                         </Button>
                       </a>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Card: Numero Chiamate in Uscita */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PhoneOutgoing className="h-5 w-5" />
+                      Numero Chiamate in Uscita
+                    </CardTitle>
+                    <CardDescription>
+                      Quale numero vedranno i contatti quando li chiami
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-sm">Usa numero VPS generico</h4>
+                          <Badge variant="outline" className="text-xs">
+                            {sipSettingsData?.useVpsNumber ? 'Attivo' : 'Disattivo'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {sipSettingsData?.useVpsNumber 
+                            ? 'Le chiamate usano il numero generico del server VPS. I contatti vedranno un numero non riconducibile a te.'
+                            : 'Le chiamate usano il tuo numero configurato sopra. I contatti vedranno il tuo numero personale.'
+                          }
+                        </p>
+                      </div>
+                      <Switch
+                        checked={sipSettingsData?.useVpsNumber ?? false}
+                        onCheckedChange={(checked) => toggleVpsNumberMutation.mutate(checked)}
+                        disabled={toggleVpsNumberMutation.isPending}
+                      />
+                    </div>
+                    
+                    {!sipSettingsData?.useVpsNumber && !sipSettingsData?.sipCallerId && (
+                      <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Nessun numero configurato</p>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                            Le chiamate in uscita non partiranno finché non configuri il tuo numero nelle{' '}
+                            <a href="/consultant/voice-settings" className="underline font-medium">Impostazioni Numeri</a>
+                            {' '}oppure attivi il numero VPS generico.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

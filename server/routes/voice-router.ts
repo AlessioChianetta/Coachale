@@ -1445,7 +1445,7 @@ router.get("/sip-settings", authenticateToken, requireAnyRole(["consultant", "su
     }
 
     const result = await db.execute(sql`
-      SELECT sip_caller_id, sip_gateway, esl_password 
+      SELECT sip_caller_id, sip_gateway, esl_password, use_vps_number 
       FROM users
       WHERE id = ${consultantId}
       LIMIT 1
@@ -1455,7 +1455,8 @@ router.get("/sip-settings", authenticateToken, requireAnyRole(["consultant", "su
     res.json({ 
       sipCallerId: row?.sip_caller_id || '',
       sipGateway: row?.sip_gateway || 'voip_trunk',
-      eslPassword: row?.esl_password || ''
+      eslPassword: row?.esl_password || '',
+      useVpsNumber: row?.use_vps_number ?? false
     });
   } catch (error) {
     console.error("[Voice] Error fetching SIP settings:", error);
@@ -1467,7 +1468,7 @@ router.get("/sip-settings", authenticateToken, requireAnyRole(["consultant", "su
 router.put("/sip-settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { sipCallerId, sipGateway, eslPassword } = req.body;
+    const { sipCallerId, sipGateway, eslPassword, useVpsNumber } = req.body;
 
     // Validazione numero telefono
     const cleanNumber = (sipCallerId || '').trim();
@@ -1475,20 +1476,33 @@ router.put("/sip-settings", authenticateToken, requireAnyRole(["consultant", "su
       return res.status(400).json({ error: "Formato numero non valido. Usa formato internazionale (es: +39 02 1234567)" });
     }
 
-    await db.execute(sql`
-      UPDATE users
-      SET sip_caller_id = ${cleanNumber || null},
-          sip_gateway = ${sipGateway || 'voip_trunk'},
-          esl_password = ${eslPassword || null}
-      WHERE id = ${consultantId}
-    `);
+    // Solo aggiorna esl_password se esplicitamente fornita nel body
+    if (eslPassword !== undefined) {
+      await db.execute(sql`
+        UPDATE users
+        SET sip_caller_id = ${cleanNumber || null},
+            sip_gateway = ${sipGateway || 'voip_trunk'},
+            esl_password = ${eslPassword || null},
+            use_vps_number = ${useVpsNumber === true ? true : false}
+        WHERE id = ${consultantId}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE users
+        SET sip_caller_id = ${cleanNumber || null},
+            sip_gateway = ${sipGateway || 'voip_trunk'},
+            use_vps_number = ${useVpsNumber === true ? true : false}
+        WHERE id = ${consultantId}
+      `);
+    }
 
-    console.log(`📞 [Voice] SIP settings updated for consultant ${consultantId}: ${cleanNumber || 'N/A'}`);
+    console.log(`📞 [Voice] SIP settings updated for consultant ${consultantId}: ${cleanNumber || 'N/A'}, useVpsNumber: ${useVpsNumber}`);
     res.json({ 
       success: true, 
       sipCallerId: cleanNumber,
       sipGateway: sipGateway || 'voip_trunk',
-      eslPassword: eslPassword || ''
+      eslPassword: eslPassword || '',
+      useVpsNumber: useVpsNumber === true
     });
   } catch (error) {
     console.error("[Voice] Error updating SIP settings:", error);
@@ -2090,10 +2104,21 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
 
     // Get SIP settings from consultant
     const sipResult = await db.execute(sql`
-      SELECT sip_caller_id, sip_gateway FROM users WHERE id = ${consultantId}
+      SELECT sip_caller_id, sip_gateway, use_vps_number FROM users WHERE id = ${consultantId}
     `);
     const sipCallerId = (sipResult.rows[0] as any)?.sip_caller_id;
     const sipGateway = (sipResult.rows[0] as any)?.sip_gateway;
+    const useVpsNumber = (sipResult.rows[0] as any)?.use_vps_number ?? false;
+
+    // Se use_vps_number è OFF (default), il consulente DEVE avere un numero configurato
+    if (!useVpsNumber && !sipCallerId) {
+      await db.execute(sql`
+        UPDATE scheduled_voice_calls 
+        SET status = 'failed', error_message = 'Nessun numero configurato. Configura il tuo numero nelle Impostazioni VPS o attiva "Usa numero VPS".', updated_at = NOW()
+        WHERE id = ${callId}
+      `);
+      return { success: false, error: "Nessun numero configurato per le chiamate in uscita. Vai nelle Impostazioni VPS per configurare il tuo numero." };
+    }
 
     if (!vpsUrl) {
       await db.execute(sql`
@@ -2147,8 +2172,8 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       instructionType: call.instruction_type,
       useDefaultTemplate: call.use_default_template
     };
-    // Add SIP settings if configured by consultant
-    if (sipCallerId) {
+    // Add SIP settings - se useVpsNumber è ON, non mandare sipCallerId (usa numero VPS)
+    if (!useVpsNumber && sipCallerId) {
       vpsPayload.sipCallerId = sipCallerId;
     }
     if (sipGateway) {
