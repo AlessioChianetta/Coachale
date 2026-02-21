@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Phone,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -41,6 +42,7 @@ const adminItems: SidebarItem[] = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard, color: "text-blue-500" },
   { name: "Gerarchia", href: "/admin/hierarchy", icon: GitBranch, color: "text-purple-500" },
   { name: "Utenti", href: "/admin/users", icon: Users, color: "text-green-500" },
+  { name: "Alessia AI Phone", href: "/consultant/voice-calls", icon: Phone, color: "text-teal-500" },
   { name: "Impostazioni", href: "/admin/settings", icon: Settings, color: "text-orange-500" },
 ];
 
