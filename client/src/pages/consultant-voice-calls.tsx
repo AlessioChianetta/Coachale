@@ -2100,6 +2100,85 @@ export default function ConsultantVoiceCallsPage() {
   const health: HealthStatus | undefined = healthData;
   const tokenStatus: TokenStatus | undefined = tokenStatusData;
 
+  // XML constants for FreeSWITCH dialplans
+  const DIALPLAN_DEFAULT_XML = [
+    '<include>',
+    '  <extension name="alessia_ai_9999_default">',
+    '    <condition field="destination_number" expression="^9999$">',
+    '      <action application="answer"/>',
+    '      <action application="sleep" data="500"/>',
+    '      <action application="playback" data="tone_stream://%(200,0,800)"/>',
+    '      ',
+    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
+    '      ',
+    '      <action application="set" data="play_stream_name=websocket_audio"/>',
+    '      <action application="set" data="write_stream_name=websocket_audio"/>',
+    '',
+    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
+    '      ',
+    '      <action application="park"/>',
+    '      ',
+    '    </condition>',
+    '  </extension>',
+    '</include>',
+  ].join('\n');
+
+  const DIALPLAN_PUBLIC_XML = [
+    '<include>',
+    '  <extension name="alessia_ai_9999_public">',
+    '    <condition field="destination_number" expression="^9999$">',
+    '      <action application="answer"/>',
+    '      <action application="sleep" data="500"/>',
+    '      <action application="playback" data="tone_stream://%(200,0,800)"/>',
+    '      ',
+    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
+    '      ',
+    '      <action application="set" data="play_stream_name=websocket_audio"/>',
+    '      <action application="set" data="write_stream_name=websocket_audio"/>',
+    '',
+    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
+    '      ',
+    '      <action application="playback" data="local_stream://default"/>',
+    '      ',
+    '    </condition>',
+    '  </extension>',
+    '</include>',
+  ].join('\n');
+
+  const DIALPLAN_MULTITENANT_XML = [
+    '<include>',
+    '  <extension name="alessia_ai_multitenant">',
+    '    <condition field="destination_number" expression="^(\\+?3[0-9]{8,12}|[0-9]{4,12})$">',
+    '      <action application="answer"/>',
+    '      <action application="sleep" data="500"/>',
+    '      ',
+    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
+    '      ',
+    '      <action application="set" data="play_stream_name=websocket_audio"/>',
+    '      <action application="set" data="write_stream_name=websocket_audio"/>',
+    '',
+    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
+    '      ',
+    '      <action application="playback" data="local_stream://default"/>',
+    '    </condition>',
+    '  </extension>',
+    '</include>',
+  ].join('\n');
+
+  const DOCKER_DIALPLAN_COMMANDS = [
+    '# 1. Entra nel container',
+    'docker exec -it freeswitch bash',
+    '',
+    '# 2. Modifica il file public',
+    'vi /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml',
+    '',
+    '# 3. Esci dal container (Ctrl+D) e ricarica il dialplan',
+    'docker exec -it freeswitch fs_cli -x "reloadxml"',
+    '',
+    '# 4. Verifica che il dialplan sia caricato',
+    'docker exec -it freeswitch fs_cli -x "xml_locate dialplan"',
+  ].join('\n');
+
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "-";
     const mins = Math.floor(seconds / 60);
@@ -4020,6 +4099,110 @@ npm run build
 systemctl restart alessia-voice
 journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                         </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Card 5: Dialplan FreeSWITCH Docker */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Dialplan FreeSWITCH (File Attivi nel Docker)
+                      </CardTitle>
+                      <CardDescription>
+                        Configurazione dei file dialplan attivi nel container Docker FreeSWITCH
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Il dialplan di FreeSWITCH determina come vengono gestite le chiamate. I file attivi si trovano dentro il container Docker in <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">/usr/local/freeswitch/etc/freeswitch/dialplan/</code>. Il bridge WebSocket riconosce automaticamente il consultant dal numero chiamato (<code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">called_number</code>).
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm">📁 default/01_alessia_9999.xml — Chiamate Interne (Test)</h4>
+                        <p className="text-xs text-muted-foreground">Percorso nel Docker: /usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml</p>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{DIALPLAN_DEFAULT_XML}</pre>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Questo file gestisce le chiamate interne di test. Chiamando il 9999 da un telefono SIP registrato, la chiamata viene instradata all'AI.</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(DIALPLAN_DEFAULT_XML);
+                              toast({ title: "Copiato!", description: "XML copiato negli appunti" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" /> Copia XML
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm">📁 public/alessia-ai.xml — Chiamate Esterne (Produzione)</h4>
+                        <p className="text-xs text-muted-foreground">Percorso nel Docker: /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml</p>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{DIALPLAN_PUBLIC_XML}</pre>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Questo file gestisce le chiamate in entrata dall'esterno (SIP trunk). Per supportare TUTTI i numeri DID dei consultant, cambia la regex del numero.</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(DIALPLAN_PUBLIC_XML);
+                              toast({ title: "Copiato!", description: "XML copiato negli appunti" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" /> Copia XML
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="border-2 border-green-300 dark:border-green-700 rounded-lg p-4 space-y-3">
+                        <h4 className="font-semibold text-sm text-green-700 dark:text-green-400">✅ Versione Multi-Tenant (Consigliata)</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Per uso multi-tenant, sostituisci <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">expression="^9999$"</code> nel file public con una regex generica che cattura tutti i numeri DID in entrata.
+                        </p>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{DIALPLAN_MULTITENANT_XML}</pre>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            Questa regex accetta qualsiasi numero italiano/internazionale. Il bridge WebSocket passa il <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">called_number</code> alla piattaforma, che cerca nella tabella <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">voice_numbers</code> quale consultant ha quel numero e carica le sue impostazioni AI.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(DIALPLAN_MULTITENANT_XML);
+                              toast({ title: "Copiato!", description: "XML Multi-Tenant copiato negli appunti" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" /> Copia XML
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-sm">🐳 Comandi Docker per Applicare le Modifiche</h4>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{DOCKER_DIALPLAN_COMMANDS}</pre>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(DOCKER_DIALPLAN_COMMANDS);
+                            toast({ title: "Copiato!", description: "Comandi Docker copiati negli appunti" });
+                          }}
+                        >
+                          <Copy className="h-3 w-3 mr-1" /> Copia Comandi
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
