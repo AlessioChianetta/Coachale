@@ -1,0 +1,144 @@
+8:20:47 PM [express] GET /api/auth/my-profiles 304 in 398ms :: {"profiles":[{"id":"5f4305c0-7b21-40e…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔍 [ROUTING-DEBUG] /outbound/trigger called by user:
+🔍 [ROUTING-DEBUG]   req.user.id: c2146759-f08a-430a-afdf-701bbc674300
+🔍 [ROUTING-DEBUG]   req.user.email: info@elischool.it
+🔍 [ROUTING-DEBUG]   req.user.role: consultant
+🔍 [ROUTING-DEBUG]   req.user.firstName: N/A
+🔍 [ROUTING-DEBUG]   req.user.lastName: N/A
+📞 [Outbound] Trigger immediate call sc_1771705250317_g6rmq85bl to 1009
+8:20:50 PM [express] POST /api/voice/outbound/trigger 200 in 404ms :: {"success":true,"callId":"sc_1…
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] executeOutboundCall() called with:
+🔍 [ROUTING-DEBUG]   callId: sc_1771705250317_g6rmq85bl
+🔍 [ROUTING-DEBUG]   consultantId (param): c2146759-f08a-430a-afdf-701bbc674300
+🔍 [ROUTING-DEBUG]   call.consultant_id (from DB): c2146759-f08a-430a-afdf-701bbc674300
+🔍 [ROUTING-DEBUG]   token (first 30 chars): eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...
+🔍 [ROUTING-DEBUG]   DECODED global service token:
+🔍 [ROUTING-DEBUG]     consultantId in token: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]     type: phone_service
+🔍 [ROUTING-DEBUG]     scope: MISSING
+🔍 [ROUTING-DEBUG]     iat: 1770067900
+🔍 [ROUTING-DEBUG]     full decoded: {"type":"phone_service","consultantId":"0c73bbe5-51e1-4108-866b-6be7a52fce3b","createdAt":"2026-02-02T21:31:40.240Z","iat":1770067900}
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📞 [Outbound] Calling VPS: http://72.62.50.40:9090/outbound/call for 1009
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [Outbound] FULL VPS PAYLOAD:
+📋   targetPhone: 1009
+📋   callId: sc_1771705250317_g6rmq85bl
+📋   aiMode: assistenza
+📋   customPrompt: null
+📋   callInstruction: null
+📋   instructionType: null
+📋   useDefaultTemplate: false
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8:20:50 PM [express] GET /api/voice/outbound/scheduled 200 in 305ms :: {"calls":[{"id":"sc_177059332…
+8:20:51 PM [express] GET /api/voice/gemini-connections 304 in 203ms :: {"success":true,"connections"…
+✅ [Outbound] VPS accepted call: {
+  success: true,
+  callId: 'sc_1771705250317_g6rmq85bl',
+  freeswitchUuid: 'outbound-1771705251101-7hwugh'
+}
+🔗 [Outbound] Linking scheduled call sc_1771705250317_g6rmq85bl to VPS call sc_1771705250317_g6rmq85bl
+🎤 [4pf9xie] Client connected to Live API
+⏱️ [LATENCY-E2E] WebSocket arrival: 2026-02-21T20:20:54.360Z
+⏱️ [AUTH-DETAIL] JWT verify: 0ms
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:
+🔍 [ROUTING-DEBUG]   decoded.consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.type: phone_service
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   calledNumber: 9999
+🔍 [ROUTING-DEBUG]   callerId: 1009
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8:20:54 PM [express] POST /api/voice/call-start 200 in 15ms
+⏱️ [AUTH-DETAIL] voice_numbers lookup: 100ms
+🔍 [ROUTING-DEBUG] ⚠️ CONSULTANT OVERRIDE by voice_numbers lookup:
+🔍 [ROUTING-DEBUG]   BEFORE override: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   AFTER override: resolvedConsultantId = 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [PHONE SERVICE] Number 9999 → consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (Alessio Test)
+🔍 [ROUTING-DEBUG] Cross-consultant token check:
+🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   decoded.scope: N/A
+🔍 [ROUTING-DEBUG]   match? true
+⏱️ [AUTH-DETAIL] Channel check: 101ms (active: 1/5)
+📞 [PHONE SERVICE] Incoming call from 1009 for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📞 [Number Lookup] Found: 9999 → consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b, display=Alessio Test
+8:20:54 PM [express] GET /api/voice/number-lookup 200 in 200ms :: {"found":true,"consultant_id":"0c7…
+⏱️ [AUTH] userByPhone query: 103ms
+⏱️ [AUTH] scheduledCall query: 105ms
+⏱️ [AUTH] voiceSettings query: 106ms
+⏱️ [AUTH-DETAIL] Parallel auth queries completed in 106ms (from authPhaseStart: +308ms)
+📞 [PHONE SERVICE] Unknown caller - using anonymous mode
+🎤 [PHONE SERVICE] Using consultant voice: Achernar
+🔍 [PHONE SERVICE] Looking up scheduled call by ID: sc_1771705250317_g6rmq85bl
+📞 [PHONE SERVICE] Outbound call sc_1771705250317_g6rmq85bl not found with status 'calling', trying fallback...
+⚠️ [PHONE SERVICE] Fallback failed: scheduled call sc_1771705250317_g6rmq85bl not found at all
+✅ WebSocket authenticated: Phone Service - CallerId: 1009 - CalledNumber: 9999 - Consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b - Anonymous - Voice: Achernar
+⏱️ [AUTH-DETAIL] TOTAL auth phase: 411ms (JWT: sync, parallelQueries: 209ms, post-query logic: 202ms)
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ROUTING-DEBUG] FINAL AUTH RESULT for phone_service:
+🔍 [ROUTING-DEBUG]   resolvedConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [ROUTING-DEBUG]   userId: null
+🔍 [ROUTING-DEBUG]   userRole: anonymous_caller
+🔍 [ROUTING-DEBUG]   voiceCallId: vc_1771705254771_8ws5yd1mq
+🔍 [ROUTING-DEBUG]   callInstruction: null
+🔍 [ROUTING-DEBUG]   instructionType: null
+🔍 [ROUTING-DEBUG]   scheduledCallId: sc_1771705250317_g6rmq85bl
+🔍 [ROUTING-DEBUG]   outboundTargetPhone: N/A
+🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️ [LATENCY-E2E] Auth completed: +412ms from WS arrival
+⚡ [O5] EARLY-START: Launching slots + tasks queries immediately after auth
+🔧 [CONSULTATION TOOL] Executing getAvailableSlots for client voice_an
+   Args: {"startDate":"2026-02-21"}
+   ConversationId: none
+   AgentConfigId: none
+⚡ [O4] EARLY-START: Launching non-client parallel queries immediately after auth
+🔍 [ROUTING-DEBUG] Settings query: loading consultant_availability_settings for consultantId=0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [4pf9xie] Client null → Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔑 [4pf9xie] Starting Live API credential resolution (Google AI Studio → Vertex AI fallback)...
+🔍 Getting Google AI Studio key for Live API - consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b...
+🔍 Getting Vertex AI token for Live API - client null, consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b...
+
+📞 [4pf9xie] Phone call from UNKNOWN CALLER - loading dynamic non-client prompt
+⏱️ [NC-LATENCY] Auth → parallel queries start gap: 3ms (queries already running since auth)
+⚠️ No valid Vertex AI settings available for Live API
+⏱️ [NC-LATENCY] consultantInfo resolved: +103ms
+📞 [4pf9xie] Consultant info: alessio chianetta
+⚡ [PHONE SERVICE] Non-client parallel queries launched in 103ms (consultant resolved, settings+history running)
+📞 [PHONE SERVICE] Voice call record created: vc_1771705254771_8ws5yd1mq
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+🔑 [Live API] Using SuperAdmin Gemini key (1/1)
+✅ Got Google AI Studio key for Live API [source: superadmin]
+🔧 [4pf9xie] O3: LIVE_API_PROVIDER env var: "ai_studio"
+🔵 [4pf9xie] O3: Using GOOGLE AI STUDIO (forced by LIVE_API_PROVIDER=ai_studio) - Model: gemini-2.5-flash-native-audio-preview-12-2025
+⏱️ [NC-LATENCY] proactiveLead resolved: +282ms
+📋 [4pf9xie] No proactive lead found for 1009
+📞 [4pf9xie] DIRECTION DETECTION: scheduledCallId=sc_1771705250317_g6rmq85bl, isOutbound=true
+⏱️ [NC-LATENCY] settings resolved (non-instruction path): +282ms
+📞 [4pf9xie] OUTBOUND non-client call - source=template, template=sales-orbitale, agentId=760bb513-098f-4722-b02a-a700160c2fc3, brandVoice=true
+⏱️ [NC-LATENCY] previousConversations resolved (non-instruction path): +283ms (2 rows)
+📱 [4pf9xie] Included 2 conversations (668 chars) for inbound call
+📞 [4pf9xie] OUTBOUND - Using template: Sales Call Orbitale (sales-orbitale) - 18657 chars - contactName: "(none)"
+📊 [4pf9xie] Scenario: OUTBOUND NON-CLIENT (SCENARIO 3) | Prompt: template | Template: sales-orbitale | PrevConvs: true
+
+┌─────────────────────────────────────────────────────────────────────┐
+│           📊 SCENARIO DETECTION: NON-CLIENT OUTBOUND              │
+├─────────────────────────────────────────────────────────────────────┤
+│ Parametro                    │ Valore                              │
+├─────────────────────────────────────────────────────────────────────┤
+│ È cliente registrato?        │ ❌ NO                                │
+│ Ha istruzione (task/remind)? │ ❌ NO                                │
+│ Conversazioni precedenti?    │ ✅ SÌ                               │
+│ Caller ID                    │ 1009                                 │
+│ Scheduled Call ID            │ sc_1771705250317_g6r                 │
+│ Direction                    │ OUTBOUND                             │
+│ Prompt Source                │ template                             │
+│ Template ID                  │ sales-orbitale                       │
+├─────────────────────────────────────────────────────────────────────┤
+│ 🎯 SCENARIO                  │ OUTBOUND NON-CLIENT (SCENARIO 3)    │
+└─────────────────────────────────────────────────────────────────────┘
+🔒 [SLOTS] Found 0 pending bookings to exclude
+🏢 [BrandVoice] Cache 
