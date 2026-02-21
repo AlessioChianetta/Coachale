@@ -965,17 +965,7 @@ router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_
     }
     const {
       phone_number,
-      display_name,
-      greeting_text,
-      ai_mode = "assistenza",
-      fallback_number,
-      active_days = ["mon", "tue", "wed", "thu", "fri"],
-      active_hours_start = "09:00",
-      active_hours_end = "18:00",
-      timezone = "Europe/Rome",
-      out_of_hours_action = "voicemail",
-      max_concurrent_calls = 5,
-      max_call_duration_minutes = 30,
+      display_name = null,
       is_active = true
     } = req.body;
 
@@ -985,13 +975,13 @@ router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_
 
     const result = await db.execute(sql`
       INSERT INTO voice_numbers (
-        phone_number, display_name, consultant_id, greeting_text, ai_mode,
-        fallback_number, active_days, active_hours_start, active_hours_end,
+        phone_number, display_name, consultant_id, ai_mode,
+        active_days, active_hours_start, active_hours_end,
         timezone, out_of_hours_action, max_concurrent_calls, max_call_duration_minutes, is_active
       ) VALUES (
-        ${phone_number}, ${display_name}, ${consultantId}, ${greeting_text}, ${ai_mode},
-        ${fallback_number}, ${JSON.stringify(active_days)}::jsonb, ${active_hours_start}::time, ${active_hours_end}::time,
-        ${timezone}, ${out_of_hours_action}, ${max_concurrent_calls}, ${max_call_duration_minutes}, ${is_active}
+        ${phone_number}, ${display_name}, ${consultantId}, 'assistenza',
+        '["mon","tue","wed","thu","fri"]'::jsonb, '09:00'::time, '18:00'::time,
+        'Europe/Rome', 'voicemail', 5, 30, ${is_active}
       )
       RETURNING *
     `);
@@ -1013,16 +1003,6 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
     const consultantId = req.user?.role === "super_admin" ? undefined : req.user?.id;
     const {
       display_name,
-      greeting_text,
-      ai_mode,
-      fallback_number,
-      active_days,
-      active_hours_start,
-      active_hours_end,
-      timezone,
-      out_of_hours_action,
-      max_concurrent_calls,
-      max_call_duration_minutes,
       is_active
     } = req.body;
 
@@ -1031,16 +1011,6 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
     const result = await db.execute(sql`
       UPDATE voice_numbers SET
         display_name = COALESCE(${display_name}, display_name),
-        greeting_text = COALESCE(${greeting_text}, greeting_text),
-        ai_mode = COALESCE(${ai_mode}, ai_mode),
-        fallback_number = COALESCE(${fallback_number}, fallback_number),
-        active_days = COALESCE(${active_days ? JSON.stringify(active_days) : null}::jsonb, active_days),
-        active_hours_start = COALESCE(${active_hours_start}::time, active_hours_start),
-        active_hours_end = COALESCE(${active_hours_end}::time, active_hours_end),
-        timezone = COALESCE(${timezone}, timezone),
-        out_of_hours_action = COALESCE(${out_of_hours_action}, out_of_hours_action),
-        max_concurrent_calls = COALESCE(${max_concurrent_calls}, max_concurrent_calls),
-        max_call_duration_minutes = COALESCE(${max_call_duration_minutes}, max_call_duration_minutes),
         is_active = COALESCE(${is_active}, is_active),
         updated_at = NOW()
       WHERE id = ${id} ${ownerCheck}
