@@ -29,7 +29,11 @@ export default function AuthGuard({ children, requiredRole, fallback, blockTiers
     const user = getAuthUser();
 
     if (requiredRole) {
-      if (!user || user.role !== requiredRole) {
+      const hasAccess = user && (
+        user.role === requiredRole || 
+        user.role === 'super_admin'
+      );
+      if (!hasAccess) {
         setLocation("/login");
         setShouldRender("redirect");
         setIsChecking(false);
