@@ -959,7 +959,10 @@ router.get("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
 // POST /api/voice/numbers - Crea nuovo numero
 router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const consultantId = req.user?.id;
+    let consultantId = req.user?.id;
+    if (req.user?.role === "super_admin" && req.body.consultant_id) {
+      consultantId = req.body.consultant_id;
+    }
     const {
       phone_number,
       display_name,
@@ -972,7 +975,8 @@ router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_
       timezone = "Europe/Rome",
       out_of_hours_action = "voicemail",
       max_concurrent_calls = 5,
-      max_call_duration_minutes = 30
+      max_call_duration_minutes = 30,
+      is_active = true
     } = req.body;
 
     if (!phone_number) {
@@ -983,11 +987,11 @@ router.post("/numbers", authenticateToken, requireAnyRole(["consultant", "super_
       INSERT INTO voice_numbers (
         phone_number, display_name, consultant_id, greeting_text, ai_mode,
         fallback_number, active_days, active_hours_start, active_hours_end,
-        timezone, out_of_hours_action, max_concurrent_calls, max_call_duration_minutes
+        timezone, out_of_hours_action, max_concurrent_calls, max_call_duration_minutes, is_active
       ) VALUES (
         ${phone_number}, ${display_name}, ${consultantId}, ${greeting_text}, ${ai_mode},
         ${fallback_number}, ${JSON.stringify(active_days)}::jsonb, ${active_hours_start}::time, ${active_hours_end}::time,
-        ${timezone}, ${out_of_hours_action}, ${max_concurrent_calls}, ${max_call_duration_minutes}
+        ${timezone}, ${out_of_hours_action}, ${max_concurrent_calls}, ${max_call_duration_minutes}, ${is_active}
       )
       RETURNING *
     `);

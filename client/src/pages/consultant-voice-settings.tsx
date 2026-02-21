@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,10 @@ import {
   Phone,
   Clock,
   Shield,
-  Settings,
   Save,
   Loader2,
   Plus,
   Trash2,
-  AlertTriangle,
-  CheckCircle,
-  RefreshCw,
   Volume2,
   ArrowLeft,
 } from "lucide-react";
@@ -48,16 +44,6 @@ interface VoiceNumber {
   max_call_duration_minutes: number;
   is_active: boolean;
   created_at: string;
-}
-
-interface HealthStatus {
-  overall: string;
-  components: {
-    database: { status: string; latencyMs: number };
-    esl: { status: string; note?: string };
-    freeswitch: { status: string; note?: string };
-    gemini: { status: string; note?: string };
-  };
 }
 
 const DAYS_OF_WEEK = [
@@ -89,8 +75,24 @@ export default function ConsultantVoiceSettingsPage() {
   const [selectedNumber, setSelectedNumber] = useState<VoiceNumber | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
+  const [aiMode, setAiMode] = useState("assistenza");
+  const [outOfHoursAction, setOutOfHoursAction] = useState("voicemail");
+  const [isActive, setIsActive] = useState(true);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (selectedNumber) {
+      setAiMode(selectedNumber.ai_mode || "assistenza");
+      setOutOfHoursAction(selectedNumber.out_of_hours_action || "voicemail");
+      setIsActive(selectedNumber.is_active ?? true);
+    } else if (isCreating) {
+      setAiMode("assistenza");
+      setOutOfHoursAction("voicemail");
+      setIsActive(true);
+    }
+  }, [selectedNumber, isCreating]);
 
   const { data: numbersData, isLoading: loadingNumbers } = useQuery({
     queryKey: ["/api/voice/numbers"],
@@ -99,16 +101,6 @@ export default function ConsultantVoiceSettingsPage() {
       if (!res.ok) throw new Error("Errore nel caricamento numeri");
       return res.json();
     },
-  });
-
-  const { data: healthData, isLoading: loadingHealth, refetch: refetchHealth } = useQuery({
-    queryKey: ["/api/voice/health"],
-    queryFn: async () => {
-      const res = await fetch("/api/voice/health", { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Errore nel caricamento stato sistema");
-      return res.json();
-    },
-    refetchInterval: 30000,
   });
 
   const saveMutation = useMutation({
@@ -157,7 +149,6 @@ export default function ConsultantVoiceSettingsPage() {
   });
 
   const numbers: VoiceNumber[] = numbersData?.numbers || [];
-  const health: HealthStatus | undefined = healthData;
 
   const handleSave = (formData: FormData) => {
     const activeDays = DAYS_OF_WEEK.map((d) => d.value).filter((day) =>
@@ -168,35 +159,22 @@ export default function ConsultantVoiceSettingsPage() {
       phone_number: formData.get("phone_number") as string,
       display_name: formData.get("display_name") as string || null,
       greeting_text: formData.get("greeting_text") as string || null,
-      ai_mode: formData.get("ai_mode") as string,
+      ai_mode: aiMode,
       fallback_number: formData.get("fallback_number") as string || null,
       active_days: activeDays,
       active_hours_start: formData.get("active_hours_start") as string,
       active_hours_end: formData.get("active_hours_end") as string,
       timezone: formData.get("timezone") as string,
-      out_of_hours_action: formData.get("out_of_hours_action") as string,
+      out_of_hours_action: outOfHoursAction,
       max_concurrent_calls: parseInt(formData.get("max_concurrent_calls") as string, 10),
       max_call_duration_minutes: parseInt(formData.get("max_call_duration_minutes") as string, 10),
-      is_active: formData.get("is_active") === "on",
+      is_active: isActive,
     };
 
     if (selectedNumber?.id) {
       saveMutation.mutate({ ...data, id: selectedNumber.id });
     } else {
       saveMutation.mutate(data);
-    }
-  };
-
-  const renderHealthBadge = (status: string) => {
-    switch (status) {
-      case "up":
-      case "healthy":
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Online</Badge>;
-      case "down":
-      case "unhealthy":
-        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Offline</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
@@ -224,49 +202,7 @@ export default function ConsultantVoiceSettingsPage() {
                   </p>
                 </div>
               </div>
-              <Button onClick={refetchHealth} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Aggiorna Stato
-              </Button>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Stato Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingHealth ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Caricamento...
-                  </div>
-                ) : health ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">Database</div>
-                      {renderHealthBadge(health.components.database.status)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">ESL</div>
-                      {renderHealthBadge(health.components.esl.status)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">FreeSWITCH</div>
-                      {renderHealthBadge(health.components.freeswitch.status)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">Gemini AI</div>
-                      {renderHealthBadge(health.components.gemini.status)}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">Impossibile caricare lo stato</p>
-                )}
-              </CardContent>
-            </Card>
 
             <Tabs defaultValue="numbers" className="w-full">
               <TabsList>
@@ -394,7 +330,7 @@ export default function ConsultantVoiceSettingsPage() {
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label htmlFor="ai_mode">Modalità AI</Label>
-                            <Select name="ai_mode" defaultValue={selectedNumber?.ai_mode || "assistenza"}>
+                            <Select value={aiMode} onValueChange={setAiMode}>
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
@@ -484,8 +420,8 @@ export default function ConsultantVoiceSettingsPage() {
                           <div className="space-y-2">
                             <Label htmlFor="out_of_hours_action">Azione Fuori Orario</Label>
                             <Select
-                              name="out_of_hours_action"
-                              defaultValue={selectedNumber?.out_of_hours_action || "voicemail"}
+                              value={outOfHoursAction}
+                              onValueChange={setOutOfHoursAction}
                             >
                               <SelectTrigger className="w-full md:w-[300px]">
                                 <SelectValue />
@@ -539,8 +475,8 @@ export default function ConsultantVoiceSettingsPage() {
                         <div className="flex items-center gap-4">
                           <Switch
                             id="is_active"
-                            name="is_active"
-                            defaultChecked={selectedNumber?.is_active ?? true}
+                            checked={isActive}
+                            onCheckedChange={setIsActive}
                           />
                           <Label htmlFor="is_active">Numero Attivo</Label>
                         </div>
