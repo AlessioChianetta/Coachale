@@ -110,6 +110,7 @@ import {
   Construction,
   ExternalLink,
   MessagesSquare,
+  Shield,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -1293,7 +1294,7 @@ export default function ConsultantVoiceCallsPage() {
     refetchInterval: 30000,
   });
 
-  const { data: healthData } = useQuery({
+  const { data: healthData, refetch: refetchHealth } = useQuery({
     queryKey: ["/api/voice/health"],
     queryFn: async () => {
       const res = await fetch("/api/voice/health", { headers: getAuthHeaders() });
@@ -3568,25 +3569,47 @@ export default function ConsultantVoiceCallsPage() {
               </TabsContent>
 
               <TabsContent value="vps" className="space-y-6">
-                {/* Link rapido a pagina impostazioni numeri */}
-                <Card className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200 dark:border-violet-800">
-                  <CardContent className="pt-6">
+                {/* Card 1: Il Tuo Numero - Visibile a tutti */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Phone className="h-5 w-5" />
+                      Il Tuo Numero
+                    </CardTitle>
+                    <CardDescription>
+                      Numero VoIP configurato per le chiamate
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-full bg-violet-100 dark:bg-violet-900">
-                          <Phone className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                        <div className={`p-3 rounded-full ${sipSettingsData?.sipCallerId ? 'bg-green-100 dark:bg-green-900' : 'bg-amber-100 dark:bg-amber-900'}`}>
+                          <Phone className={`h-6 w-6 ${sipSettingsData?.sipCallerId ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-lg">Configura Numeri VoIP</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Gestisci i tuoi numeri telefonici, orari di attività e impostazioni AI
-                          </p>
+                          {sipSettingsData?.sipCallerId ? (
+                            <>
+                              <p className="font-semibold text-lg font-mono">{sipSettingsData.sipCallerId}</p>
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Attivo
+                              </Badge>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium text-amber-700 dark:text-amber-400">Nessun numero configurato</p>
+                              <p className="text-sm text-muted-foreground">
+                                Configura un numero nelle{' '}
+                                <a href="/consultant/voice-settings" className="underline text-violet-600 dark:text-violet-400">Impostazioni Numeri</a>
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                       <a href="/consultant/voice-settings">
-                        <Button variant="default" className="bg-violet-600 hover:bg-violet-700">
-                          <Phone className="h-4 w-4 mr-2" />
-                          Vai alle Impostazioni Numeri
+                        <Button variant="outline">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Gestisci Numeri
                           <ExternalLink className="h-4 w-4 ml-2" />
                         </Button>
                       </a>
@@ -3594,139 +3617,19 @@ export default function ConsultantVoiceCallsPage() {
                   </CardContent>
                 </Card>
 
+                {/* Card 2: Impostazioni Retry Chiamate - Visibile a tutti */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Settings className="h-5 w-5" />
-                      Configurazione VPS Voice Bridge
+                      <RotateCcw className="h-5 w-5" />
+                      Impostazioni Retry Chiamate
                     </CardTitle>
                     <CardDescription>
-                      Configura il bridge VPS per connettere FreeSWITCH a questa piattaforma
+                      Configura il comportamento dei tentativi automatici per le chiamate in uscita
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Stato Token */}
-                    <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
-                      <div className={`p-2 rounded-full ${tokenStatus?.hasToken || serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
-                        <Key className={`h-5 w-5 ${tokenStatus?.hasToken || serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {tokenStatus?.hasToken || serviceToken ? 'Token Attivo' : 'Nessun Token'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {serviceToken 
-                            ? 'Il token è pronto. Copialo nel file .env della VPS.' 
-                            : tokenStatus?.hasToken 
-                              ? tokenStatus.message
-                              : 'Genera un token per connettere il VPS a questa piattaforma.'}
-                        </p>
-                        {tokenStatus?.hasToken && tokenStatus.lastGeneratedAt && !serviceToken && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Ultimo generato: {new Date(tokenStatus.lastGeneratedAt).toLocaleString('it-IT')}
-                            {tokenStatus.revokedCount > 0 && (
-                              <span className="ml-2 text-orange-600">
-                                ({tokenStatus.revokedCount} token precedenti revocati)
-                              </span>
-                            )}
-                          </p>
-                        )}
-                      </div>
-                      <Button 
-                        onClick={() => generateTokenMutation.mutate()}
-                        disabled={generateTokenMutation.isPending}
-                        variant={tokenStatus?.hasToken || serviceToken ? "outline" : "default"}
-                      >
-                        {generateTokenMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : tokenStatus?.hasToken || serviceToken ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Rigenera
-                          </>
-                        ) : (
-                          <>
-                            <Key className="h-4 w-4 mr-2" />
-                            Genera Token
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Token input/output */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Token di Servizio (REPLIT_SERVICE_TOKEN):</label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={serviceToken || ''}
-                          onChange={(e) => setServiceToken(e.target.value)}
-                          placeholder="Incolla qui il token JWT esistente oppure genera uno nuovo"
-                          className="font-mono text-xs"
-                        />
-                        <Button onClick={copyToken} variant="outline" size="icon" disabled={!serviceToken}>
-                          {tokenCopied ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button 
-                          onClick={() => saveTokenMutation.mutate(serviceToken || '')}
-                          disabled={saveTokenMutation.isPending || !serviceToken}
-                          variant="default"
-                        >
-                          {saveTokenMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4 mr-2" />
-                              Salva
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Incolla il token esistente dalla VPS oppure generane uno nuovo. Clicca "Salva" per sincronizzarlo.
-                      </p>
-                    </div>
-
-                    {/* VPS Bridge URL */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">URL del VPS Bridge (per chiamate in uscita):</label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={vpsBridgeUrl}
-                          onChange={(e) => setVpsBridgeUrl(e.target.value)}
-                          placeholder="http://72.62.50.40:9090"
-                          className="font-mono text-xs"
-                        />
-                        <Button 
-                          onClick={() => saveVpsUrlMutation.mutate(vpsBridgeUrl)}
-                          disabled={saveVpsUrlMutation.isPending}
-                          variant="outline"
-                        >
-                          {saveVpsUrlMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Save className="h-4 w-4 mr-2" />
-                              Salva
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        L'indirizzo IP e porta del tuo VPS dove gira il bridge (es: http://IP:9090)
-                      </p>
-                    </div>
-
-                    {/* Retry Settings per chiamate in uscita */}
+                  <CardContent>
                     <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <RotateCcw className="h-5 w-5 text-blue-600" />
-                        <h4 className="font-medium">Configurazione Retry Chiamate in Uscita</h4>
-                      </div>
-                      
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="retryMaxAttempts" className="text-sm font-medium">
@@ -3793,47 +3696,220 @@ export default function ConsultantVoiceCallsPage() {
                         </Button>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    {/* WS_AUTH_TOKEN */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">WS_AUTH_TOKEN (per FreeSWITCH):</label>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setWsAuthToken(crypto.randomUUID().replace(/-/g, ''))}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Rigenera
-                        </Button>
+                {/* Card 3: Stato del Sistema - Visibile a tutti */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5" />
+                      Stato del Sistema
+                    </CardTitle>
+                    <CardDescription>
+                      Verifica lo stato della connessione al sistema vocale
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                      <div className="flex items-center gap-4">
+                        <div className={`h-4 w-4 rounded-full ${health?.overall === 'healthy' ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
+                        <div>
+                          <p className="font-medium">
+                            {health?.overall === 'healthy' ? 'Sistema Online' : 'Verifica in corso...'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Ultimo controllo: {new Date().toLocaleString('it-IT')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Input
-                          value={wsAuthToken}
-                          readOnly
-                          className="font-mono text-xs"
-                        />
-                        <Button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(wsAuthToken);
-                            toast({ title: "Copiato!", description: "WS_AUTH_TOKEN copiato" });
-                          }} 
-                          variant="outline" 
-                          size="icon"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Questo token autentica FreeSWITCH al bridge. Usalo sia nel .env che nel dialplan.
-                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetchHealth()}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Verifica Connessione
+                      </Button>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    {/* Template .env */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">File .env per la VPS:</label>
-                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                        <pre>{`# Bridge WebSocket Server
+                {/* Card 4: Gestione VPS - Solo super_admin */}
+                {currentRole === 'super_admin' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Configurazione VPS Bridge (Solo Amministratore)
+                      </CardTitle>
+                      <CardDescription>
+                        Configura il bridge VPS per connettere FreeSWITCH a questa piattaforma
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-amber-700 dark:text-amber-400">
+                          Queste impostazioni sono visibili solo agli amministratori di sistema.
+                        </AlertDescription>
+                      </Alert>
+
+                      {/* Stato Token */}
+                      <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
+                        <div className={`p-2 rounded-full ${tokenStatus?.hasToken || serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                          <Key className={`h-5 w-5 ${tokenStatus?.hasToken || serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {tokenStatus?.hasToken || serviceToken ? 'Token Attivo' : 'Nessun Token'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {serviceToken 
+                              ? 'Il token è pronto. Copialo nel file .env della VPS.' 
+                              : tokenStatus?.hasToken 
+                                ? tokenStatus.message
+                                : 'Genera un token per connettere il VPS a questa piattaforma.'}
+                          </p>
+                          {tokenStatus?.hasToken && tokenStatus.lastGeneratedAt && !serviceToken && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Ultimo generato: {new Date(tokenStatus.lastGeneratedAt).toLocaleString('it-IT')}
+                              {tokenStatus.revokedCount > 0 && (
+                                <span className="ml-2 text-orange-600">
+                                  ({tokenStatus.revokedCount} token precedenti revocati)
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                        <Button 
+                          onClick={() => generateTokenMutation.mutate()}
+                          disabled={generateTokenMutation.isPending}
+                          variant={tokenStatus?.hasToken || serviceToken ? "outline" : "default"}
+                        >
+                          {generateTokenMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : tokenStatus?.hasToken || serviceToken ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Rigenera
+                            </>
+                          ) : (
+                            <>
+                              <Key className="h-4 w-4 mr-2" />
+                              Genera Token
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Token input/output */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Token di Servizio (REPLIT_SERVICE_TOKEN):</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={serviceToken || ''}
+                            onChange={(e) => setServiceToken(e.target.value)}
+                            placeholder="Incolla qui il token JWT esistente oppure genera uno nuovo"
+                            className="font-mono text-xs"
+                          />
+                          <Button onClick={copyToken} variant="outline" size="icon" disabled={!serviceToken}>
+                            {tokenCopied ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button 
+                            onClick={() => saveTokenMutation.mutate(serviceToken || '')}
+                            disabled={saveTokenMutation.isPending || !serviceToken}
+                            variant="default"
+                          >
+                            {saveTokenMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Salva
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Incolla il token esistente dalla VPS oppure generane uno nuovo. Clicca "Salva" per sincronizzarlo.
+                        </p>
+                      </div>
+
+                      {/* VPS Bridge URL */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">URL del VPS Bridge (per chiamate in uscita):</label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={vpsBridgeUrl}
+                            onChange={(e) => setVpsBridgeUrl(e.target.value)}
+                            placeholder="http://72.62.50.40:9090"
+                            className="font-mono text-xs"
+                          />
+                          <Button 
+                            onClick={() => saveVpsUrlMutation.mutate(vpsBridgeUrl)}
+                            disabled={saveVpsUrlMutation.isPending}
+                            variant="outline"
+                          >
+                            {saveVpsUrlMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Salva
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          L'indirizzo IP e porta del tuo VPS dove gira il bridge (es: http://IP:9090)
+                        </p>
+                      </div>
+
+                      {/* WS_AUTH_TOKEN */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium">WS_AUTH_TOKEN (per FreeSWITCH):</label>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setWsAuthToken(crypto.randomUUID().replace(/-/g, ''))}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Rigenera
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            value={wsAuthToken}
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(wsAuthToken);
+                              toast({ title: "Copiato!", description: "WS_AUTH_TOKEN copiato" });
+                            }} 
+                            variant="outline" 
+                            size="icon"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Questo token autentica FreeSWITCH al bridge. Usalo sia nel .env che nel dialplan.
+                        </p>
+                      </div>
+
+                      {/* Template .env */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">File .env per la VPS:</label>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{`# Bridge WebSocket Server
 WS_HOST=0.0.0.0
 WS_PORT=9090
 WS_AUTH_TOKEN=${wsAuthToken}
@@ -3861,24 +3937,24 @@ SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
 
 # Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
 REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`}</pre>
-                      {sipSettingsData?.sipCallerId && (
-                        <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Numero VoIP configurato: {sipSettingsData.sipCallerId}
+                        {sipSettingsData?.sipCallerId && (
+                          <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Numero VoIP configurato: {sipSettingsData.sipCallerId}
+                          </div>
+                        )}
+                        {!sipSettingsData?.sipCallerId && (
+                          <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Configura il numero VoIP nelle <a href="/consultant/voice-settings" className="underline">Impostazioni Numeri</a>
+                          </div>
+                        )}
                         </div>
-                      )}
-                      {!sipSettingsData?.sipCallerId && (
-                        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Configura il numero VoIP nelle <a href="/consultant/voice-settings" className="underline">Impostazioni Numeri</a>
-                        </div>
-                      )}
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          const envContent = `# Bridge WebSocket Server
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            const envContent = `# Bridge WebSocket Server
 WS_HOST=0.0.0.0
 WS_PORT=9090
 WS_AUTH_TOKEN=${wsAuthToken}
@@ -3906,47 +3982,48 @@ SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
 
 # Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
 REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`;
-                          navigator.clipboard.writeText(envContent);
-                          toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copia Template .env
-                      </Button>
-                    </div>
-
-                    {/* Istruzioni FreeSWITCH */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
-                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                        <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`}</pre>
+                            navigator.clipboard.writeText(envContent);
+                            toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copia Template .env
+                        </Button>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`);
-                          toast({ title: "Copiato!", description: "Configurazione FreeSWITCH copiata" });
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copia Dialplan
-                      </Button>
-                    </div>
 
-                    {/* Comandi VPS */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Comandi per avviare il bridge sulla VPS:</label>
-                      <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
-                        <pre>{`cd /opt/alessia-voice
+                      {/* Istruzioni FreeSWITCH */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`}</pre>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`);
+                            toast({ title: "Copiato!", description: "Configurazione FreeSWITCH copiata" });
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copia Dialplan
+                        </Button>
+                      </div>
+
+                      {/* Comandi VPS */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Comandi per avviare il bridge sulla VPS:</label>
+                        <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre>{`cd /opt/alessia-voice
 npm install
 npm run build
 systemctl restart alessia-voice
 journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="ai-tasks" className="space-y-4">
