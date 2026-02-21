@@ -1004,6 +1004,7 @@ export default function ConsultantVoiceCallsPage() {
   const [outboundScheduledDate, setOutboundScheduledDate] = useState("");
   const [outboundScheduledTime, setOutboundScheduledTime] = useState("");
   const [isScheduleMode, setIsScheduleMode] = useState(false);
+  const [showNoNumberDialog, setShowNoNumberDialog] = useState(false);
   const [callInstruction, setCallInstruction] = useState("");
   const [instructionType, setInstructionType] = useState<'task' | 'reminder' | null>(null);
   const [clientTypeFilter, setClientTypeFilter] = useState<'all' | 'client' | 'non-client'>('all');
@@ -1890,11 +1891,20 @@ export default function ConsultantVoiceCallsPage() {
     }
   };
 
+  const canMakeOutboundCall = () => {
+    if (!sipSettingsData?.useVpsNumber && !sipSettingsData?.sipCallerId) {
+      setShowNoNumberDialog(true);
+      return false;
+    }
+    return true;
+  };
+
   const handleTriggerCall = () => {
     if (!outboundPhone.trim()) {
       toast({ title: "Errore", description: "Inserisci un numero di telefono", variant: "destructive" });
       return;
     }
+    if (!canMakeOutboundCall()) return;
     triggerOutboundMutation.mutate({ 
       targetPhone: outboundPhone.trim(), 
       aiMode: outboundAiMode,
@@ -1909,6 +1919,7 @@ export default function ConsultantVoiceCallsPage() {
       toast({ title: "Errore", description: "Inserisci numero, data e ora", variant: "destructive" });
       return;
     }
+    if (!canMakeOutboundCall()) return;
     const scheduledAt = new Date(`${outboundScheduledDate}T${outboundScheduledTime}`).toISOString();
     scheduleOutboundMutation.mutate({ 
       targetPhone: outboundPhone.trim(), 
@@ -7019,6 +7030,47 @@ export default function ConsultantVoiceCallsPage() {
           </div>
         </main>
       </div>
+
+      <Dialog open={showNoNumberDialog} onOpenChange={setShowNoNumberDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneOff className="h-5 w-5 text-destructive" />
+              Impossibile effettuare la chiamata
+            </DialogTitle>
+            <DialogDescription>
+              Non hai configurato nessun numero per le chiamate in uscita. L'AI non può chiamare senza un numero mittente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">1</span>
+              <div>
+                <p className="text-sm font-medium">Configura il tuo numero</p>
+                <p className="text-xs text-muted-foreground">Vai nelle Impostazioni Numeri per aggiungere il tuo numero VoIP personale.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+              <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">2</span>
+              <div>
+                <p className="text-sm font-medium">Oppure attiva il numero VPS</p>
+                <p className="text-xs text-muted-foreground">Vai nella tab Configurazione e attiva "Usa numero VPS generico" per usare il numero del server.</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowNoNumberDialog(false)}>
+              Chiudi
+            </Button>
+            <a href="/consultant/voice-settings" className="flex-1">
+              <Button className="w-full">
+                <Settings className="h-4 w-4 mr-2" />
+                Impostazioni Numeri
+              </Button>
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
