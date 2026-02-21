@@ -1736,6 +1736,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             ) as messages
           FROM ai_conversations ac
           WHERE ac.caller_phone = ${phoneCallerId}
+            AND ac.consultant_id = ${consultantId}
           ORDER BY ac.created_at DESC
           LIMIT 100
         `).catch((err: any) => {
@@ -2862,6 +2863,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
               // Use salesConversationId instead of clientId (prospect is not a registered user)
               const [newAiConversation] = await db.insert(aiConversations).values({
                 clientId: null, // Prospect is not a registered user
+                consultantId: consultantId,
                 salesConversationId: conversationId, // Link to sales conversation
                 title: `${modeLabel}: ${conversation.prospectName}`,
                 mode: 'live_voice', // Both sales_agent and consultation_invite use live_voice mode in DB
@@ -2935,6 +2937,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
               try {
                 const [newAiConversation] = await db.insert(aiConversations).values({
                   clientId: null,
+                  consultantId: consultantId,
                   salesConversationId: conversationId,
                   title: `${modeLabel}: ${conversation.prospectName}`,
                   mode: 'live_voice',
@@ -4414,6 +4417,7 @@ ${contentPrompt}`;
                   ) as messages
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
+                  AND ac.consultant_id = ${consultantId}
                 ORDER BY ac.created_at DESC
                 LIMIT 100
               `);
@@ -4755,6 +4759,7 @@ ${clientInstructionCallHistory}
                   ) as messages
                 FROM ai_conversations ac
                 WHERE ac.caller_phone = ${phoneCallerId}
+                  AND ac.consultant_id = ${consultantId}
                 ORDER BY ac.created_at DESC
                 LIMIT 100
               `);
@@ -9862,6 +9867,7 @@ ${compactFeedback}
                     if (conversation) {
                       const [newAiConversation] = await db.insert(aiConversations).values({
                         clientId: null,
+                        consultantId: consultantId,
                         salesConversationId: conversationId,
                         title: `${modeLabel}: ${conversation.prospectName}`,
                         mode: 'live_voice',
@@ -10046,6 +10052,7 @@ async function saveConversation(
     const conversationValues: any = {
       title: generateConversationTitle(conversationData.messages),
       mode: 'live_voice',
+      consultantId: consultantId,
       lastMessageAt: lastMessageTimestamp,
       createdAt: new Date(),
       updatedAt: new Date()
