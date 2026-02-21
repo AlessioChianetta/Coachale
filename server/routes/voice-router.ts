@@ -334,8 +334,8 @@ router.get("/contacts", authenticateToken, requireAnyRole(["consultant", "super_
           u.role,
           u.is_active,
           'client' as source,
-          (SELECT COUNT(*) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as call_count,
-          (SELECT MAX(started_at) FROM voice_calls vc WHERE vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) as last_call_at
+          (SELECT COUNT(*) FROM voice_calls vc WHERE (vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) AND vc.consultant_id = ${consultantId}) as call_count,
+          (SELECT MAX(started_at) FROM voice_calls vc WHERE (vc.caller_id = u.phone_number OR vc.called_number = u.phone_number) AND vc.consultant_id = ${consultantId}) as last_call_at
         FROM users u
         WHERE u.consultant_id = ${consultantId}
           AND u.phone_number IS NOT NULL 

@@ -1204,7 +1204,7 @@ async function cleanupStuckCallingCalls(): Promise<void> {
   try {
     // Find calls stuck in 'calling' for more than 5 minutes
     const stuckCallsResult = await db.execute(sql`
-      SELECT id, target_phone, updated_at, attempts, max_attempts 
+      SELECT id, target_phone, updated_at, attempts, max_attempts, consultant_id 
       FROM scheduled_voice_calls 
       WHERE status = 'calling' 
         AND updated_at < NOW() - INTERVAL '5 minutes'
@@ -1228,7 +1228,7 @@ async function cleanupStuckCallingCalls(): Promise<void> {
         updatedAtTimestamp = new Date().toISOString();
       }
       
-      // Check if there's a matching completed call in voice_calls
+      // Check if there's a matching completed call in voice_calls (filtered by consultant)
       const voiceCallResult = await db.execute(sql`
         SELECT id, status, duration_seconds, outcome 
         FROM voice_calls 
@@ -1236,6 +1236,7 @@ async function cleanupStuckCallingCalls(): Promise<void> {
           AND created_at > ${updatedAtTimestamp}::timestamp - INTERVAL '2 minutes'
           AND created_at < ${updatedAtTimestamp}::timestamp + INTERVAL '10 minutes'
           AND status = 'completed'
+          ${call.consultant_id ? sql`AND consultant_id = ${call.consultant_id}` : sql``}
         ORDER BY created_at DESC
         LIMIT 1
       `);
