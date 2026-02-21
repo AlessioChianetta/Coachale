@@ -27,7 +27,13 @@ if (!JWT_SECRET) {
 async function resolveConsultantId(user: any, queryOrBodyConsultantId?: string): Promise<string | null> {
   if (user.role === 'consultant') return user.id;
   if (queryOrBodyConsultantId) return queryOrBodyConsultantId;
-  const result = await db.execute(sql`SELECT id FROM users WHERE role = 'consultant' LIMIT 1`);
+  const result = await db.execute(sql`
+    SELECT u.id FROM users u
+    LEFT JOIN consultant_availability_settings cas ON cas.consultant_id = u.id
+    WHERE u.role = 'consultant'
+    ORDER BY cas.voice_service_token_created_at DESC NULLS LAST, cas.vps_bridge_url DESC NULLS LAST
+    LIMIT 1
+  `);
   return (result.rows[0] as any)?.id || null;
 }
 
