@@ -4,6 +4,7 @@ This full-stack web application is a comprehensive consultation platform connect
 # User Preferences
 Preferred communication style: Simple, everyday language.
 User requested "obsessive-compulsive" attention to detail when verifying what works and what doesn't.
+User prefers direct SQL for any database modifications (not ORM migrations).
 
 # System Architecture
 The application features a modern UI/UX built with React 18, TypeScript, Vite, Tailwind CSS, and `shadcn/ui`, prioritizing accessibility and responsiveness. The backend uses Express.js, TypeScript, JWT, bcrypt, and PostgreSQL (Drizzle ORM), implementing a robust role-based access control (consultant, client, super_admin) and multi-profile system.
