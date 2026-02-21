@@ -3745,6 +3745,7 @@ export default function ConsultantVoiceCallsPage() {
 
                 {/* Card 4: Gestione VPS - Solo super_admin */}
                 {currentRole === 'super_admin' && (
+                  <>
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -4135,6 +4136,7 @@ journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
                       </div>
                     </CardContent>
                   </Card>
+                  </>
                 )}
               </TabsContent>
 
