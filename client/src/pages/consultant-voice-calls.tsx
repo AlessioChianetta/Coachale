@@ -970,6 +970,14 @@ function BrandVoicePreview({ prompt, agentName }: { prompt: string; agentName: s
   );
 }
 
+const DIALPLAN_DEFAULT_XML = '<include>\n  <extension name="alessia_ai_9999_default">\n    <condition field="destination_number" expression="^9999$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      <action application="playback" data="tone_stream://%(200,0,800)"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="park"/>\n      \n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DIALPLAN_PUBLIC_XML = '<include>\n  <extension name="alessia_ai_9999_public">\n    <condition field="destination_number" expression="^9999$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      <action application="playback" data="tone_stream://%(200,0,800)"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="playback" data="local_stream://default"/>\n      \n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DIALPLAN_MULTITENANT_XML = '<include>\n  <extension name="alessia_ai_multitenant">\n    <condition field="destination_number" expression="^(\\+?3[0-9]{8,12}|[0-9]{4,12})$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="playback" data="local_stream://default"/>\n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DOCKER_DIALPLAN_COMMANDS = '# 1. Entra nel container\ndocker exec -it freeswitch bash\n\n# 2. Modifica il file public\nvi /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml\n\n# 3. Esci dal container (Ctrl+D) e ricarica il dialplan\ndocker exec -it freeswitch fs_cli -x "reloadxml"\n\n# 4. Verifica che il dialplan sia caricato\ndocker exec -it freeswitch fs_cli -x "xml_locate dialplan"';
+
 export default function ConsultantVoiceCallsPage() {
   const isMobile = useIsMobile();
   const { currentRole } = useRoleSwitch();
@@ -2099,85 +2107,6 @@ export default function ConsultantVoiceCallsPage() {
   const activeCalls: number = statsData?.activeCalls || 0;
   const health: HealthStatus | undefined = healthData;
   const tokenStatus: TokenStatus | undefined = tokenStatusData;
-
-  // XML constants for FreeSWITCH dialplans
-  const DIALPLAN_DEFAULT_XML = [
-    '<include>',
-    '  <extension name="alessia_ai_9999_default">',
-    '    <condition field="destination_number" expression="^9999$">',
-    '      <action application="answer"/>',
-    '      <action application="sleep" data="500"/>',
-    '      <action application="playback" data="tone_stream://%(200,0,800)"/>',
-    '      ',
-    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
-    '      ',
-    '      <action application="set" data="play_stream_name=websocket_audio"/>',
-    '      <action application="set" data="write_stream_name=websocket_audio"/>',
-    '',
-    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
-    '      ',
-    '      <action application="park"/>',
-    '      ',
-    '    </condition>',
-    '  </extension>',
-    '</include>',
-  ].join('\n');
-
-  const DIALPLAN_PUBLIC_XML = [
-    '<include>',
-    '  <extension name="alessia_ai_9999_public">',
-    '    <condition field="destination_number" expression="^9999$">',
-    '      <action application="answer"/>',
-    '      <action application="sleep" data="500"/>',
-    '      <action application="playback" data="tone_stream://%(200,0,800)"/>',
-    '      ',
-    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
-    '      ',
-    '      <action application="set" data="play_stream_name=websocket_audio"/>',
-    '      <action application="set" data="write_stream_name=websocket_audio"/>',
-    '',
-    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
-    '      ',
-    '      <action application="playback" data="local_stream://default"/>',
-    '      ',
-    '    </condition>',
-    '  </extension>',
-    '</include>',
-  ].join('\n');
-
-  const DIALPLAN_MULTITENANT_XML = [
-    '<include>',
-    '  <extension name="alessia_ai_multitenant">',
-    '    <condition field="destination_number" expression="^(\\+?3[0-9]{8,12}|[0-9]{4,12})$">',
-    '      <action application="answer"/>',
-    '      <action application="sleep" data="500"/>',
-    '      ',
-    '      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/>',
-    '      ',
-    '      <action application="set" data="play_stream_name=websocket_audio"/>',
-    '      <action application="set" data="write_stream_name=websocket_audio"/>',
-    '',
-    '      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>',
-    '      ',
-    '      <action application="playback" data="local_stream://default"/>',
-    '    </condition>',
-    '  </extension>',
-    '</include>',
-  ].join('\n');
-
-  const DOCKER_DIALPLAN_COMMANDS = [
-    '# 1. Entra nel container',
-    'docker exec -it freeswitch bash',
-    '',
-    '# 2. Modifica il file public',
-    'vi /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml',
-    '',
-    '# 3. Esci dal container (Ctrl+D) e ricarica il dialplan',
-    'docker exec -it freeswitch fs_cli -x "reloadxml"',
-    '',
-    '# 4. Verifica che il dialplan sia caricato',
-    'docker exec -it freeswitch fs_cli -x "xml_locate dialplan"',
-  ].join('\n');
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return "-";
