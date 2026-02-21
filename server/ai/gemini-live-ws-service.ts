@@ -1041,6 +1041,14 @@ async function getUserIdFromRequest(req: any): Promise<{
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // MULTI-TENANT NUMBER LOOKUP: calledNumber → consultant routing
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔍 [ROUTING-DEBUG] JWT DECODED in WebSocket auth:`);
+        console.log(`🔍 [ROUTING-DEBUG]   decoded.consultantId: ${decoded.consultantId}`);
+        console.log(`🔍 [ROUTING-DEBUG]   decoded.type: ${decoded.type}`);
+        console.log(`🔍 [ROUTING-DEBUG]   decoded.scope: ${decoded.scope || 'N/A'}`);
+        console.log(`🔍 [ROUTING-DEBUG]   calledNumber: ${calledNumber || 'N/A'}`);
+        console.log(`🔍 [ROUTING-DEBUG]   callerId: ${callerId || 'N/A'}`);
+        console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         let resolvedConsultantId = decoded.consultantId;
         let resolvedCalledNumber = calledNumber || '9999';
         let numberConfig: any = null;
@@ -1065,11 +1073,21 @@ async function getUserIdFromRequest(req: any): Promise<{
           }
 
           numberConfig = numberRows.rows[0] as any;
+          console.log(`🔍 [ROUTING-DEBUG] ⚠️ CONSULTANT OVERRIDE by voice_numbers lookup:`);
+          console.log(`🔍 [ROUTING-DEBUG]   BEFORE override: resolvedConsultantId = ${resolvedConsultantId}`);
+          console.log(`🔍 [ROUTING-DEBUG]   voice_numbers.consultant_id = ${numberConfig.consultant_id}`);
           resolvedConsultantId = numberConfig.consultant_id;
+          console.log(`🔍 [ROUTING-DEBUG]   AFTER override: resolvedConsultantId = ${resolvedConsultantId}`);
           console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
 
           // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform/global token
+          console.log(`🔍 [ROUTING-DEBUG] Cross-consultant token check:`);
+          console.log(`🔍 [ROUTING-DEBUG]   decoded.consultantId (from JWT): ${decoded.consultantId}`);
+          console.log(`🔍 [ROUTING-DEBUG]   resolvedConsultantId (from voice_numbers): ${resolvedConsultantId}`);
+          console.log(`🔍 [ROUTING-DEBUG]   decoded.scope: ${decoded.scope || 'N/A'}`);
+          console.log(`🔍 [ROUTING-DEBUG]   match? ${decoded.consultantId === resolvedConsultantId}`);
           if (decoded.consultantId !== resolvedConsultantId && decoded.scope !== 'platform') {
+            console.log(`🔍 [ROUTING-DEBUG]   ⚠️ MISMATCH detected! JWT consultant ≠ number consultant. Checking global token...`);
             const isGlobalToken = await db.execute(sql`
               SELECT 1 FROM superadmin_voice_config WHERE id = 'default' AND enabled = true AND service_token = ${token} LIMIT 1
             `);
@@ -1077,6 +1095,7 @@ async function getUserIdFromRequest(req: any): Promise<{
               console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform/global token → REJECTING`);
               return null;
             }
+            console.log(`🔍 [ROUTING-DEBUG]   ✅ Global token confirmed. Using resolvedConsultantId=${resolvedConsultantId} (overridden from JWT's ${decoded.consultantId})`);
             console.log(`✅ [PHONE SERVICE] Global superadmin token accepted for cross-consultant routing`);
           }
 
@@ -1096,6 +1115,8 @@ async function getUserIdFromRequest(req: any): Promise<{
             return null;
           }
         } else {
+          console.log(`🔍 [ROUTING-DEBUG] No calledNumber provided → FALLING BACK to JWT consultantId: ${decoded.consultantId}`);
+          console.log(`🔍 [ROUTING-DEBUG]   resolvedConsultantId remains: ${resolvedConsultantId}`);
           console.log(`⚠️ [PHONE SERVICE] No calledNumber provided - using JWT consultantId as fallback: ${decoded.consultantId}`);
           const fallbackChannelResult = await db.execute(sql`
             SELECT COUNT(*) as active_count FROM voice_calls 
@@ -1260,6 +1281,17 @@ async function getUserIdFromRequest(req: any): Promise<{
         console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - CalledNumber: ${resolvedCalledNumber} - Consultant: ${resolvedConsultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
         console.log(`⏱️ [AUTH-DETAIL] TOTAL auth phase: ${Date.now() - authPhaseStart}ms (JWT: sync, parallelQueries: ${Date.now() - parallelStart}ms, post-query logic: ${Date.now() - authPhaseStart - (Date.now() - parallelStart)}ms)`);
 
+        console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔍 [ROUTING-DEBUG] FINAL AUTH RESULT for phone_service:`);
+        console.log(`🔍 [ROUTING-DEBUG]   resolvedConsultantId: ${resolvedConsultantId}`);
+        console.log(`🔍 [ROUTING-DEBUG]   userId: ${userId}`);
+        console.log(`🔍 [ROUTING-DEBUG]   userRole: ${userRole}`);
+        console.log(`🔍 [ROUTING-DEBUG]   voiceCallId: ${voiceCallId}`);
+        console.log(`🔍 [ROUTING-DEBUG]   callInstruction: ${callInstruction ? callInstruction.substring(0, 50) + '...' : 'null'}`);
+        console.log(`🔍 [ROUTING-DEBUG]   instructionType: ${instructionType}`);
+        console.log(`🔍 [ROUTING-DEBUG]   scheduledCallId: ${scheduledCallId}`);
+        console.log(`🔍 [ROUTING-DEBUG]   outboundTargetPhone: ${outboundTargetPhone || 'N/A'}`);
+        console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         return {
           userId: userId,
           role: userRole,
@@ -1689,6 +1721,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         return null;
       });
       
+      console.log(`🔍 [ROUTING-DEBUG] Settings query: loading consultant_availability_settings for consultantId=${consultantId}`);
       _earlyStartedSettingsPromise = db.select({
         voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
         outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
@@ -3300,6 +3333,18 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
             console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}`);
+            console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
+            console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundPromptSource: ${outboundPromptSource}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundTemplateId: ${outboundTemplateId}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundAgentId: ${outboundAgentId || 'null'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundManualPrompt: ${outboundManualPrompt ? outboundManualPrompt.substring(0, 50) + '...' : 'empty'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundBrandVoiceEnabled: ${outboundBrandVoiceEnabled}`);
+            console.log(`🔍 [ROUTING-DEBUG]   outboundBrandVoiceAgentId: ${outboundBrandVoiceAgentId || 'null'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   nonClientPromptSource: ${settings.nonClientPromptSource || 'N/A'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   nonClientAgentId: ${settings.nonClientAgentId || 'null'}`);
+            console.log(`🔍 [ROUTING-DEBUG]   nonClientManualPrompt: ${settings.nonClientManualPrompt ? settings.nonClientManualPrompt.substring(0, 50) + '...' : 'empty'}`);
+            console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           }
           
           // Use consultant's voice directives or fallback to default

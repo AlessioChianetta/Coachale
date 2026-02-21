@@ -2113,6 +2113,26 @@ async function executeOutboundCall(callId: string, consultantId: string): Promis
       return { success: false, error: "No service token configured" };
     }
     
+    // 🔍 [ROUTING-DEBUG] Log consultantId passed to executeOutboundCall
+    console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔍 [ROUTING-DEBUG] executeOutboundCall() called with:`);
+    console.log(`🔍 [ROUTING-DEBUG]   callId: ${callId}`);
+    console.log(`🔍 [ROUTING-DEBUG]   consultantId (param): ${consultantId}`);
+    console.log(`🔍 [ROUTING-DEBUG]   call.consultant_id (from DB): ${call.consultant_id}`);
+    console.log(`🔍 [ROUTING-DEBUG]   token (first 30 chars): ${token ? token.substring(0, 30) + '...' : 'NULL'}`);
+    try {
+      const decodedServiceToken = jwt.decode(token) as any;
+      console.log(`🔍 [ROUTING-DEBUG]   DECODED global service token:`);
+      console.log(`🔍 [ROUTING-DEBUG]     consultantId in token: ${decodedServiceToken?.consultantId || 'MISSING'}`);
+      console.log(`🔍 [ROUTING-DEBUG]     type: ${decodedServiceToken?.type || 'MISSING'}`);
+      console.log(`🔍 [ROUTING-DEBUG]     scope: ${decodedServiceToken?.scope || 'MISSING'}`);
+      console.log(`🔍 [ROUTING-DEBUG]     iat: ${decodedServiceToken?.iat || 'MISSING'}`);
+      console.log(`🔍 [ROUTING-DEBUG]     full decoded: ${JSON.stringify(decodedServiceToken)}`);
+    } catch (decodeErr: any) {
+      console.log(`🔍 [ROUTING-DEBUG]   ⚠️ Could not decode token: ${decodeErr.message}`);
+    }
+    console.log(`🔍 [ROUTING-DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
     // Call VPS outbound endpoint
     const outboundUrl = `${vpsUrl.replace(/\/$/, '')}/outbound/call`;
     console.log(`📞 [Outbound] Calling VPS: ${outboundUrl} for ${call.target_phone}`);
@@ -2249,6 +2269,12 @@ function cancelCallTimer(callId: string): void {
 router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
+    console.log(`🔍 [ROUTING-DEBUG] /outbound/trigger called by user:`);
+    console.log(`🔍 [ROUTING-DEBUG]   req.user.id: ${req.user?.id}`);
+    console.log(`🔍 [ROUTING-DEBUG]   req.user.email: ${(req.user as any)?.email || 'N/A'}`);
+    console.log(`🔍 [ROUTING-DEBUG]   req.user.role: ${req.user?.role}`);
+    console.log(`🔍 [ROUTING-DEBUG]   req.user.firstName: ${(req.user as any)?.firstName || (req.user as any)?.first_name || 'N/A'}`);
+    console.log(`🔍 [ROUTING-DEBUG]   req.user.lastName: ${(req.user as any)?.lastName || (req.user as any)?.last_name || 'N/A'}`);
     if (!consultantId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
