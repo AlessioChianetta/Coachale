@@ -37,6 +37,10 @@ import {
   CreditCard,
   Sparkles,
   Plug,
+  Phone,
+  AlertTriangle,
+  FileText,
+  Zap,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -189,6 +193,22 @@ interface StripeStatsData {
   }>;
 }
 
+const DIALPLAN_DEFAULT_XML = '<include>\n  <extension name="alessia_ai_9999_default">\n    <condition field="destination_number" expression="^9999$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      <action application="playback" data="tone_stream://%(200,0,800)"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="park"/>\n      \n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DIALPLAN_PUBLIC_XML = '<include>\n  <extension name="alessia_ai_9999_public">\n    <condition field="destination_number" expression="^9999$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      <action application="playback" data="tone_stream://%(200,0,800)"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="playback" data="local_stream://default"/>\n      \n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DIALPLAN_MULTITENANT_XML = '<include>\n  <extension name="alessia_ai_multitenant">\n    <condition field="destination_number" expression="^(\\+?3[0-9]{8,12}|[0-9]{4,12})$">\n      <action application="answer"/>\n      <action application="sleep" data="500"/>\n      \n      <action application="set" data=\'STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}\'/' + '>\n      \n      <action application="set" data="play_stream_name=websocket_audio"/>\n      <action application="set" data="write_stream_name=websocket_audio"/>\n\n      <action application="set" data="as_res=${api(uuid_audio_stream ${uuid} start ws://127.0.0.1:9090?call_id=${uuid}&amp;caller_id=${caller_id_number}&amp;called_number=${destination_number}&amp;codec=L16&amp;sample_rate=16000&amp;bidirectional=true&amp;buffer_size=1024)}"/>\n      \n      <action application="playback" data="local_stream://default"/>\n    <' + '/condition>\n  <' + '/extension>\n<' + '/include>';
+
+const DOCKER_DIALPLAN_COMMANDS = '# 1. Entra nel container\ndocker exec -it freeswitch bash\n\n# 2. Modifica il file public\nvi /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml\n\n# 3. Esci dal container (Ctrl+D) e ricarica il dialplan\ndocker exec -it freeswitch fs_cli -x "reloadxml"\n\n# 4. Verifica che il dialplan sia caricato\ndocker exec -it freeswitch fs_cli -x "xml_locate dialplan"';
+
+interface VoiceTokenStatus {
+  hasToken: boolean;
+  tokenCount: number;
+  lastGeneratedAt: string | null;
+  revokedCount: number;
+  message: string;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -265,6 +285,11 @@ export default function AdminSettings() {
   const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
   const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
   const [isSavingStripe, setIsSavingStripe] = useState(false);
+
+  const [serviceToken, setServiceToken] = useState<string | null>(null);
+  const [wsAuthToken, setWsAuthToken] = useState<string>(() => crypto.randomUUID().replace(/-/g, ''));
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [vpsBridgeUrl, setVpsBridgeUrl] = useState<string>("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -463,6 +488,122 @@ export default function AdminSettings() {
       return response.json();
     },
     enabled: activeTab === "pagamenti",
+  });
+
+  const { data: voiceSettings, refetch: refetchVoice } = useQuery({
+    queryKey: ["/api/voice/settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/settings", { headers: getAuthHeaders() });
+      if (!res.ok) return { voiceId: 'achernar', vpsBridgeUrl: '', voiceMaxRetryAttempts: 3, voiceRetryIntervalMinutes: 5 };
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (voiceSettings?.vpsBridgeUrl) {
+      setVpsBridgeUrl(voiceSettings.vpsBridgeUrl);
+    }
+  }, [voiceSettings?.vpsBridgeUrl]);
+
+  const { data: tokenStatusData, refetch: refetchTokenStatus } = useQuery<VoiceTokenStatus>({
+    queryKey: ["/api/voice/service-token/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/service-token/status", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore nel caricamento stato token");
+      return res.json();
+    },
+  });
+
+  const tokenStatus: VoiceTokenStatus | undefined = tokenStatusData;
+
+  const { data: sipSettingsData } = useQuery<{ sipCallerId: string; sipGateway: string }>({
+    queryKey: ["/api/voice/sip-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/voice/sip-settings", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Errore caricamento SIP settings");
+      return res.json();
+    },
+  });
+
+  const generateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/voice/service-token", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella generazione del token");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setServiceToken(data.token);
+      refetchTokenStatus();
+      toast({ 
+        title: "Token generato", 
+        description: data.tokenNumber > 1 
+          ? `Token #${data.tokenNumber} generato (${data.tokenNumber - 1} precedenti revocati)` 
+          : "Il token di servizio è pronto per essere copiato" 
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const copyToken = async () => {
+    if (serviceToken) {
+      await navigator.clipboard.writeText(serviceToken);
+      setTokenCopied(true);
+      toast({ title: "Copiato!", description: "Token copiato negli appunti" });
+      setTimeout(() => setTokenCopied(false), 2000);
+    }
+  };
+
+  const saveVpsUrlMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const res = await fetch("/api/voice/vps-url", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ vpsBridgeUrl: url }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio dell'URL VPS");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchVoice();
+      toast({ title: "Salvato", description: "URL del VPS aggiornato" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const saveTokenMutation = useMutation({
+    mutationFn: async (token: string) => {
+      const res = await fetch("/api/voice/service-token", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nel salvataggio del token");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchTokenStatus();
+      toast({ title: "Token salvato", description: "Il token è stato sincronizzato con il database" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
   });
 
   const updateLicenseMutation = useMutation({
@@ -1199,7 +1340,7 @@ export default function AdminSettings() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-6 mb-6">
               <TabsTrigger value="integrazioni" className="flex items-center gap-2">
                 <Plug className="w-4 h-4" />
                 <span className="hidden sm:inline">Integrazioni</span>
@@ -1219,6 +1360,10 @@ export default function AdminSettings() {
               <TabsTrigger value="audit" className="flex items-center gap-2">
                 <History className="w-4 h-4" />
                 <span className="hidden sm:inline">Audit</span>
+              </TabsTrigger>
+              <TabsTrigger value="vps-voice" className="flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                <span className="hidden sm:inline">VPS/Voice</span>
               </TabsTrigger>
             </TabsList>
 
@@ -3248,6 +3393,391 @@ export default function AdminSettings() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="vps-voice" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Configurazione VPS Bridge (Solo Amministratore)
+                  </CardTitle>
+                  <CardDescription>
+                    Configura il bridge VPS per connettere FreeSWITCH a questa piattaforma
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-400">
+                      Queste impostazioni sono visibili solo agli amministratori di sistema.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex items-center gap-4 p-4 rounded-lg border bg-muted/50">
+                    <div className={`p-2 rounded-full ${tokenStatus?.hasToken || serviceToken ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                      <Key className={`h-5 w-5 ${tokenStatus?.hasToken || serviceToken ? 'text-green-600' : 'text-yellow-600'}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {tokenStatus?.hasToken || serviceToken ? 'Token Attivo' : 'Nessun Token'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {serviceToken 
+                          ? 'Il token è pronto. Copialo nel file .env della VPS.' 
+                          : tokenStatus?.hasToken 
+                            ? tokenStatus.message
+                            : 'Genera un token per connettere il VPS a questa piattaforma.'}
+                      </p>
+                      {tokenStatus?.hasToken && tokenStatus.lastGeneratedAt && !serviceToken && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ultimo generato: {new Date(tokenStatus.lastGeneratedAt).toLocaleString('it-IT')}
+                          {tokenStatus.revokedCount > 0 && (
+                            <span className="ml-2 text-orange-600">
+                              ({tokenStatus.revokedCount} token precedenti revocati)
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <Button 
+                      onClick={() => generateTokenMutation.mutate()}
+                      disabled={generateTokenMutation.isPending}
+                      variant={tokenStatus?.hasToken || serviceToken ? "outline" : "default"}
+                    >
+                      {generateTokenMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : tokenStatus?.hasToken || serviceToken ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Rigenera
+                        </>
+                      ) : (
+                        <>
+                          <Key className="h-4 w-4 mr-2" />
+                          Genera Token
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Token di Servizio (REPLIT_SERVICE_TOKEN):</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={serviceToken || ''}
+                        onChange={(e) => setServiceToken(e.target.value)}
+                        placeholder="Incolla qui il token JWT esistente oppure genera uno nuovo"
+                        className="font-mono text-xs"
+                      />
+                      <Button onClick={copyToken} variant="outline" size="icon" disabled={!serviceToken}>
+                        {tokenCopied ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button 
+                        onClick={() => saveTokenMutation.mutate(serviceToken || '')}
+                        disabled={saveTokenMutation.isPending || !serviceToken}
+                        variant="default"
+                      >
+                        {saveTokenMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Incolla il token esistente dalla VPS oppure generane uno nuovo. Clicca "Salva" per sincronizzarlo.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">URL del VPS Bridge (per chiamate in uscita):</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={vpsBridgeUrl}
+                        onChange={(e) => setVpsBridgeUrl(e.target.value)}
+                        placeholder="http://72.62.50.40:9090"
+                        className="font-mono text-xs"
+                      />
+                      <Button 
+                        onClick={() => saveVpsUrlMutation.mutate(vpsBridgeUrl)}
+                        disabled={saveVpsUrlMutation.isPending}
+                        variant="outline"
+                      >
+                        {saveVpsUrlMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      L'indirizzo IP e porta del tuo VPS dove gira il bridge (es: http://IP:9090)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">WS_AUTH_TOKEN (per FreeSWITCH):</label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setWsAuthToken(crypto.randomUUID().replace(/-/g, ''))}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Rigenera
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={wsAuthToken}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(wsAuthToken);
+                          toast({ title: "Copiato!", description: "WS_AUTH_TOKEN copiato" });
+                        }} 
+                        variant="outline" 
+                        size="icon"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Questo token autentica FreeSWITCH al bridge. Usalo sia nel .env che nel dialplan.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">File .env per la VPS:</label>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{`# Bridge WebSocket Server
+WS_HOST=0.0.0.0
+WS_PORT=9090
+WS_AUTH_TOKEN=${wsAuthToken}
+
+# Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
+REPLIT_WS_URL=${window.location.origin}
+REPLIT_API_URL=${window.location.origin}
+REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
+
+# Audio
+AUDIO_SAMPLE_RATE_IN=8000
+AUDIO_SAMPLE_RATE_OUT=8000
+SESSION_TIMEOUT_MS=1800000
+MAX_CONCURRENT_CALLS=10
+LOG_LEVEL=debug
+
+# FreeSWITCH Event Socket
+ESL_HOST=127.0.0.1
+ESL_PORT=8021
+ESL_PASSWORD=LA_TUA_PASSWORD_ESL
+
+# SIP Trunk per chiamate in uscita
+SIP_GATEWAY=${sipSettingsData?.sipGateway || 'voip_trunk'}
+SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
+
+# Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
+REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`}</pre>
+                    {sipSettingsData?.sipCallerId && (
+                      <div className="mt-2 text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Numero VoIP configurato: {sipSettingsData.sipCallerId}
+                      </div>
+                    )}
+                    {!sipSettingsData?.sipCallerId && (
+                      <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Configura il numero VoIP nelle <a href="/consultant/voice-settings" className="underline">Impostazioni Numeri</a>
+                      </div>
+                    )}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const envContent = `# Bridge WebSocket Server
+WS_HOST=0.0.0.0
+WS_PORT=9090
+WS_AUTH_TOKEN=${wsAuthToken}
+
+# Connessione a Replit (NO /ws/ai-voice - lo aggiunge il codice)
+REPLIT_WS_URL=${window.location.origin}
+REPLIT_API_URL=${window.location.origin}
+REPLIT_API_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}
+
+# Audio
+AUDIO_SAMPLE_RATE_IN=8000
+AUDIO_SAMPLE_RATE_OUT=8000
+SESSION_TIMEOUT_MS=1800000
+MAX_CONCURRENT_CALLS=10
+LOG_LEVEL=debug
+
+# FreeSWITCH Event Socket
+ESL_HOST=127.0.0.1
+ESL_PORT=8021
+ESL_PASSWORD=LA_TUA_PASSWORD_ESL
+
+# SIP Trunk per chiamate in uscita
+SIP_GATEWAY=${sipSettingsData?.sipGateway || 'voip_trunk'}
+SIP_CALLER_ID=${sipSettingsData?.sipCallerId || '+39TUONUMERO'}
+
+# Token per autenticare richieste outbound (usa lo stesso di REPLIT_API_TOKEN)
+REPLIT_SERVICE_TOKEN=${serviceToken || 'GENERA_IL_TOKEN_SOPRA'}`;
+                        navigator.clipboard.writeText(envContent);
+                        toast({ title: "Copiato!", description: "Template .env copiato negli appunti" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copia Template .env
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Configurazione FreeSWITCH (dialplan):</label>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`}</pre>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`<action application="audio_stream" data="ws://127.0.0.1:9090?token=${wsAuthToken} mono 8000"/>`);
+                        toast({ title: "Copiato!", description: "Configurazione FreeSWITCH copiata" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copia Dialplan
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Comandi per avviare il bridge sulla VPS:</label>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{`cd /opt/alessia-voice
+npm install
+npm run build
+systemctl restart alessia-voice
+journalctl -u alessia-voice -f  # Per vedere i log`}</pre>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Dialplan FreeSWITCH (File Attivi nel Docker)
+                  </CardTitle>
+                  <CardDescription>
+                    Configurazione dei file dialplan attivi nel container Docker FreeSWITCH
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Il dialplan di FreeSWITCH determina come vengono gestite le chiamate. I file attivi si trovano dentro il container Docker in <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">/usr/local/freeswitch/etc/freeswitch/dialplan/</code>. Il bridge WebSocket riconosce automaticamente il consultant dal numero chiamato (<code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">called_number</code>).
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm">📁 default/01_alessia_9999.xml — Chiamate Interne (Test)</h4>
+                    <p className="text-xs text-muted-foreground">Percorso nel Docker: /usr/local/freeswitch/etc/freeswitch/dialplan/default/01_alessia_9999.xml</p>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{DIALPLAN_DEFAULT_XML}</pre>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">Questo file gestisce le chiamate interne di test. Chiamando il 9999 da un telefono SIP registrato, la chiamata viene instradata all'AI.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(DIALPLAN_DEFAULT_XML);
+                          toast({ title: "Copiato!", description: "XML copiato negli appunti" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copia XML
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm">📁 public/alessia-ai.xml — Chiamate Esterne (Produzione)</h4>
+                    <p className="text-xs text-muted-foreground">Percorso nel Docker: /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml</p>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{DIALPLAN_PUBLIC_XML}</pre>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">Questo file gestisce le chiamate in entrata dall'esterno (SIP trunk). Per supportare TUTTI i numeri DID dei consultant, cambia la regex del numero.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(DIALPLAN_PUBLIC_XML);
+                          toast({ title: "Copiato!", description: "XML copiato negli appunti" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copia XML
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-2 border-green-300 dark:border-green-700 rounded-lg p-4 space-y-3">
+                    <h4 className="font-semibold text-sm text-green-700 dark:text-green-400">✅ Versione Multi-Tenant (Consigliata)</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Per uso multi-tenant, sostituisci <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">expression="^9999$"</code> nel file public con una regex generica che cattura tutti i numeri DID in entrata.
+                    </p>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{DIALPLAN_MULTITENANT_XML}</pre>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Questa regex accetta qualsiasi numero italiano/internazionale. Il bridge WebSocket passa il <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">called_number</code> alla piattaforma, che cerca nella tabella <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">voice_numbers</code> quale consultant ha quel numero e carica le sue impostazioni AI.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(DIALPLAN_MULTITENANT_XML);
+                          toast({ title: "Copiato!", description: "XML Multi-Tenant copiato negli appunti" });
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-1" /> Copia XML
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm">🐳 Comandi Docker per Applicare le Modifiche</h4>
+                    <div className="bg-zinc-950 text-zinc-100 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                      <pre>{DOCKER_DIALPLAN_COMMANDS}</pre>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(DOCKER_DIALPLAN_COMMANDS);
+                        toast({ title: "Copiato!", description: "Comandi Docker copiati negli appunti" });
+                      }}
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Copia Comandi
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
