@@ -233,7 +233,7 @@ export default function TelegramChats({ roleId, roleName, open, onClose }: Teleg
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate pl-10">
-                        {conv.last_message.substring(0, 80)}{conv.last_message.length > 80 ? "…" : ""}
+                        {conv.last_message ? `${conv.last_message.substring(0, 80)}${conv.last_message.length > 80 ? "…" : ""}` : "Nessun messaggio"}
                       </p>
                     </button>
                   ))}

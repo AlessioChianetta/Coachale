@@ -2919,23 +2919,47 @@ router.get("/telegram-conversations/:roleId", authenticateToken, requireAnyRole(
     const { roleId } = req.params;
 
     const result = await db.execute(sql`
-      SELECT DISTINCT ON (telegram_chat_id)
-        telegram_chat_id, chat_type, chat_title, sender_name, sender_username,
-        message as last_message, created_at as last_message_at,
-        (SELECT COUNT(*)::int FROM telegram_open_mode_messages t2
-         WHERE t2.consultant_id = telegram_open_mode_messages.consultant_id
-         AND t2.ai_role = telegram_open_mode_messages.ai_role
-         AND t2.telegram_chat_id = telegram_open_mode_messages.telegram_chat_id) as message_count
-      FROM telegram_open_mode_messages
-      WHERE consultant_id = ${consultantId}::uuid AND ai_role = ${roleId}
-      ORDER BY telegram_chat_id, created_at DESC
+      SELECT 
+        tcl.telegram_chat_id,
+        tcl.chat_type,
+        tcl.chat_title,
+        COALESCE(last_msg.sender_name, tcl.first_name) as sender_name,
+        COALESCE(last_msg.sender_username, tcl.username) as sender_username,
+        COALESCE(last_msg.message, onb.last_onboarding_message) as last_message,
+        COALESCE(last_msg.last_message_at, tcl.linked_at) as last_message_at,
+        COALESCE(last_msg.message_count, 0) + COALESCE(onb.onboarding_msg_count, 0) as message_count
+      FROM telegram_chat_links tcl
+      LEFT JOIN LATERAL (
+        SELECT 
+          sender_name, sender_username, message, created_at as last_message_at,
+          (SELECT COUNT(*)::int FROM telegram_open_mode_messages t2
+           WHERE t2.consultant_id = tcl.consultant_id
+             AND t2.ai_role = tcl.ai_role
+             AND t2.telegram_chat_id = tcl.telegram_chat_id) as message_count
+        FROM telegram_open_mode_messages tom
+        WHERE tom.consultant_id = tcl.consultant_id
+          AND tom.ai_role = tcl.ai_role
+          AND tom.telegram_chat_id = tcl.telegram_chat_id
+        ORDER BY tom.created_at DESC
+        LIMIT 1
+      ) last_msg ON true
+      LEFT JOIN LATERAL (
+        SELECT 
+          onboarding_conversation->-1->>'content' as last_onboarding_message,
+          jsonb_array_length(COALESCE(onboarding_conversation, '[]'::jsonb)) as onboarding_msg_count
+        FROM telegram_user_profiles tup
+        WHERE tup.consultant_id = tcl.consultant_id
+          AND tup.ai_role = tcl.ai_role
+          AND tup.telegram_chat_id = tcl.telegram_chat_id
+          AND tup.onboarding_conversation IS NOT NULL
+        LIMIT 1
+      ) onb ON true
+      WHERE tcl.consultant_id = ${consultantId}::uuid AND tcl.ai_role = ${roleId}
+        AND tcl.active = true
+      ORDER BY COALESCE(last_msg.last_message_at, tcl.linked_at) DESC
     `);
 
-    const conversations = (result.rows as any[]).sort((a, b) =>
-      new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-    );
-
-    res.json({ conversations });
+    res.json({ conversations: result.rows });
   } catch (error: any) {
     console.error("[TELEGRAM-CONVERSATIONS] Error:", error.message);
     return res.status(500).json({ error: "Failed to fetch conversations" });
@@ -2968,7 +2992,35 @@ router.get("/telegram-conversations/:roleId/:chatId/messages", authenticateToken
       `);
     }
 
-    const messages = (result.rows as any[]).reverse();
+    let messages = (result.rows as any[]).reverse();
+
+    if (messages.length === 0 && !before) {
+      const onboardingResult = await db.execute(sql`
+        SELECT onboarding_conversation, created_at, first_name
+        FROM telegram_user_profiles
+        WHERE consultant_id = ${consultantId} AND ai_role = ${roleId} AND telegram_chat_id = ${chatId}
+          AND onboarding_conversation IS NOT NULL
+        LIMIT 1
+      `);
+      if (onboardingResult.rows.length > 0) {
+        const profile = onboardingResult.rows[0] as any;
+        const conversation = typeof profile.onboarding_conversation === 'string' 
+          ? JSON.parse(profile.onboarding_conversation) 
+          : profile.onboarding_conversation;
+        if (Array.isArray(conversation)) {
+          const baseTime = new Date(profile.created_at).getTime();
+          messages = conversation.map((msg: any, idx: number) => ({
+            id: `onb_${idx}`,
+            sender_type: msg.role === 'assistant' ? 'agent' : 'user',
+            sender_name: msg.role === 'user' ? (profile.first_name || 'Utente') : null,
+            sender_username: null,
+            message: msg.content,
+            created_at: new Date(baseTime + idx * 30000).toISOString(),
+          }));
+        }
+      }
+    }
+
     res.json({ messages, hasMore: messages.length === limit });
   } catch (error: any) {
     console.error("[TELEGRAM-CONVERSATION-MESSAGES] Error:", error.message);
