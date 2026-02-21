@@ -1,0 +1,46 @@
+25:40 PM [express] GET /api/ai-autonomy/tasks 304 in 327ms :: {"tasks":[],"total":0,"page":1,"limi…
+6:25:40 PM [express] GET /api/ai-autonomy/tasks 304 in 341ms :: {"tasks":[],"total":0,"page":1,"limi…
+6:25:40 PM [express] GET /api/ai-autonomy/tasks-stats 200 in 341ms :: {"total":130,"active":0,"compl…
+6:25:40 PM [express] GET /api/ai-autonomy/blocks 304 in 354ms :: []
+6:25:41 PM [express] GET /api/ai-autonomy/tasks 200 in 1066ms :: {"tasks":[{"id":"auto_marco_1771693…
+6:25:49 PM [express] GET /api/ai-autonomy/telegram-conversations/marco 304 in 315ms :: {"conversatio…
+6:25:51 PM [express] GET /api/ai-autonomy/telegram-conversations/marco/7099356081/messages 304 in 30…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping...
+[TELEGRAM-MEDIA] Voice message received: 16s, audio/ogg
+6:26:00 PM [express] POST /api/telegram/webhook/1 200 in 101ms :: {"ok":true}
+📊 [TokenTracker] Buffered: telegram_audio_transcription | gemini-3-flash-preview | 882 tokens | $0.0015 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+[TELEGRAM-MEDIA] Transcribed audio: "Oh, senti coso, qua io non sto a perdere tempo, eh. Giuro che se continui così, giuro che ti prendo,..."
+[TELEGRAM] Incoming message from chat 786634897 (private): "[MESSAGGIO VOCALE - trascrizione]: Oh, senti coso, qua io non sto a perdere tempo, eh. Giuro che se "
+6:26:06 PM [express] POST /api/activity/session/heartbeat 200 in 305ms :: {"success":true,"lastActiv…
+[TELEGRAM-ONBOARDING] System prompt (marco, group=false, msgs=6):
+Sei MARCO, Executive Coach. Stai facendo l'onboarding di una persona nuova su Telegram.
+Il tuo stile: diretto, crudo, provocatorio, senza filtri. Non sei un assistente gentile - sei il coach che spinge oltre i limiti.
+
+OBIETTIVO: Conosci questa persona per poterla aiutare davvero. Devi raccogliere abbastanza informazioni per poi essere un coach efficace.
+
+COME PROCEDERE:
+- Presentati brevemente con il tuo stile al primo messaggio
+- Fai domande una alla volta, in modo naturale e provocatorio
+- Commenta OGNI risposta prima di fare la prossima domanda (provoca, sfida, approfondisci)
+- Decidi TU quali domande fare in base a quello che la persona ti dice
+- Se dice qualcosa di vago, insisti. Non accettare risposte generiche.
+- Adatta le domande alla situazione: un imprenditore riceverà domande d...
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+📊 [TokenTracker] Buffered: telegram_onboarding | gemini-3-flash-preview | 1605 tokens | $0.0027 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+[TELEGRAM-ONBOARDING] Onboarding step 3 for chat 786634897
+6:26:15 PM [express] GET /api/ai-autonomy/system-status 200 in 512ms :: {"is_active":true,"autonomy_…
+✅ [TokenTracker] Flushed 1 entries to DB
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+6:26:46 PM [express] GET /api/ai-autonomy/roles/status 304 in 1208ms :: {"alessia":{"effectiveLevel"…
+6:26:46 PM [express] GET /api/ai-autonomy/system-status 304 in 1144ms :: {"is_active":true,"autonomy…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⏳ [CronLock] Lock for "ai-task-scheduler" held by another process, skipping...
+[TELEGRAM-MEDIA] Voice message received: 27s, audio/ogg
+6:27:09 PM [express] POST /api/telegram/webhook/1 200 in 105ms :: {"ok":true}
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+6:27:17 PM [express] GET /api/ai-autonomy/system-status 200 in 513ms :: {"is_active":true,"autonomy_…
+📊 [TokenTracker] Buffered: telegram_audio_transcription | g
