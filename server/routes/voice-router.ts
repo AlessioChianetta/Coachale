@@ -484,6 +484,7 @@ router.get("/conversations", authenticateToken, requireAnyRole(["consultant", "s
           FROM ai_conversations ac
           WHERE ac.caller_phone IS NOT NULL AND ac.caller_phone != ''
             AND ac.mode = 'live_voice'
+            ${consultantId ? sql`AND ac.consultant_id = ${consultantId}` : sql``}
           GROUP BY ac.caller_phone
         ) combined
         GROUP BY phone
@@ -591,6 +592,7 @@ router.get("/conversations/:phone", authenticateToken, requireAnyRole(["consulta
       LEFT JOIN ai_messages m ON m.conversation_id = ac.id
       WHERE ac.caller_phone = ${phone}
         AND ac.mode = 'live_voice'
+        ${consultantId ? sql`AND ac.consultant_id = ${consultantId}` : sql``}
       GROUP BY ac.id
       ORDER BY ac.created_at ASC
     `);
@@ -671,6 +673,7 @@ router.delete("/conversations/:phone", authenticateToken, requireAnyRole(["consu
     const convIds = await db.execute(sql`
       SELECT id FROM ai_conversations 
       WHERE caller_phone = ${phone} AND mode = 'live_voice'
+        ${consultantId ? sql`AND consultant_id = ${consultantId}` : sql``}
     `);
     
     if (convIds.rows.length > 0) {
@@ -684,6 +687,7 @@ router.delete("/conversations/:phone", authenticateToken, requireAnyRole(["consu
       const acResult = await db.execute(sql`
         DELETE FROM ai_conversations 
         WHERE caller_phone = ${phone} AND mode = 'live_voice'
+          ${consultantId ? sql`AND consultant_id = ${consultantId}` : sql``}
       `);
       deletedAiConversations = acResult.rowCount || 0;
     }
