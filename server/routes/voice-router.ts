@@ -2322,6 +2322,18 @@ router.post("/outbound/trigger", authenticateToken, requireAnyRole(["consultant"
       return res.status(400).json({ error: "Invalid phone number format. Use extension (1000) or international (+393331234567)" });
     }
     
+    // Pre-flight: check if consultant has a caller ID configured
+    const callerCheck = await db.execute(sql`
+      SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+    `);
+    const callerRow = callerCheck.rows[0] as any;
+    if (!callerRow?.use_vps_number && !callerRow?.sip_caller_id) {
+      return res.status(400).json({ 
+        error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
+        code: "NO_CALLER_ID"
+      });
+    }
+
     const callId = generateScheduledCallId();
     
     // Get consultant retry config
@@ -2397,6 +2409,18 @@ router.post("/outbound/schedule", authenticateToken, requireAnyRole(["consultant
       return res.status(400).json({ error: "scheduledAt must be in the future" });
     }
     
+    // Pre-flight: check if consultant has a caller ID configured
+    const callerCheckSched = await db.execute(sql`
+      SELECT sip_caller_id, use_vps_number FROM users WHERE id = ${consultantId}
+    `);
+    const callerRowSched = callerCheckSched.rows[0] as any;
+    if (!callerRowSched?.use_vps_number && !callerRowSched?.sip_caller_id) {
+      return res.status(400).json({ 
+        error: "Nessun numero configurato per le chiamate in uscita. Configura il tuo numero nelle Impostazioni oppure attiva il numero VPS generico.",
+        code: "NO_CALLER_ID"
+      });
+    }
+
     const callId = generateScheduledCallId();
     
     // Get consultant retry config

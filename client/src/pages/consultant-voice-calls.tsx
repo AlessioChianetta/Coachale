@@ -1629,6 +1629,10 @@ export default function ConsultantVoiceCallsPage() {
       });
       if (!res.ok) {
         const err = await res.json();
+        if (err.code === 'NO_CALLER_ID') {
+          setShowNoNumberDialog(true);
+          throw new Error("__NO_CALLER_ID__");
+        }
         throw new Error(err.error || "Errore nell'avvio della chiamata");
       }
       return res.json();
@@ -1641,6 +1645,7 @@ export default function ConsultantVoiceCallsPage() {
       toast({ title: "Chiamata avviata!", description: `Chiamando ${data.targetPhone}...` });
     },
     onError: (err: Error) => {
+      if (err.message === "__NO_CALLER_ID__") return;
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     },
   });
@@ -1654,6 +1659,10 @@ export default function ConsultantVoiceCallsPage() {
       });
       if (!res.ok) {
         const err = await res.json();
+        if (err.code === 'NO_CALLER_ID') {
+          setShowNoNumberDialog(true);
+          throw new Error("__NO_CALLER_ID__");
+        }
         throw new Error(err.error || "Errore nella programmazione");
       }
       return res.json();
@@ -1672,6 +1681,7 @@ export default function ConsultantVoiceCallsPage() {
       });
     },
     onError: (err: Error) => {
+      if (err.message === "__NO_CALLER_ID__") return;
       toast({ title: "Errore", description: err.message, variant: "destructive" });
     },
   });
