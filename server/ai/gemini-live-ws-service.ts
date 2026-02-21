@@ -1015,6 +1015,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       const callerId = url.searchParams.get('callerId');
+      const calledNumber = url.searchParams.get('calledNumber');
       const scheduledCallIdParam = url.searchParams.get('scheduledCallId');
       if (!callerId) {
         console.error('❌ No callerId provided for phone_service mode');
@@ -1037,8 +1038,72 @@ async function getUserIdFromRequest(req: any): Promise<{
           return null;
         }
 
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // MULTI-TENANT NUMBER LOOKUP: calledNumber → consultant routing
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let resolvedConsultantId = decoded.consultantId;
+        let resolvedCalledNumber = calledNumber || '9999';
+        let numberConfig: any = null;
+
+        if (calledNumber) {
+          const normalizedCalledNumber = calledNumber.replace(/\s+/g, '').replace(/^00/, '+');
+          resolvedCalledNumber = normalizedCalledNumber;
+          const lookupStart = Date.now();
+          
+          const numberRows = await db.execute(sql`
+            SELECT id, phone_number, display_name, consultant_id, ai_mode, 
+                   max_concurrent_calls, is_active, greeting_text
+            FROM voice_numbers 
+            WHERE phone_number = ${normalizedCalledNumber} AND is_active = true
+            LIMIT 1
+          `);
+          console.log(`⏱️ [AUTH-DETAIL] voice_numbers lookup: ${Date.now() - lookupStart}ms`);
+
+          if (numberRows.rows.length === 0) {
+            console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
+            return null;
+          }
+
+          numberConfig = numberRows.rows[0] as any;
+          resolvedConsultantId = numberConfig.consultant_id;
+          console.log(`✅ [PHONE SERVICE] Number ${normalizedCalledNumber} → consultant ${resolvedConsultantId} (${numberConfig.display_name || 'unnamed'})`);
+
+          // Verify token ↔ consultant: JWT must match the number's consultant OR be a platform token
+          if (decoded.consultantId !== resolvedConsultantId && decoded.scope !== 'platform') {
+            console.error(`❌ [PHONE SERVICE] Token consultant ${decoded.consultantId} ≠ number consultant ${resolvedConsultantId} and not a platform token → REJECTING`);
+            return null;
+          }
+
+          // Check concurrent call capacity
+          const channelCheckStart = Date.now();
+          const maxChannels = numberConfig.max_concurrent_calls || 5;
+          const activeCallsResult = await db.execute(sql`
+            SELECT COUNT(*) as active_count 
+            FROM voice_calls 
+            WHERE consultant_id = ${resolvedConsultantId} AND status = 'talking'
+          `);
+          const activeCount = parseInt((activeCallsResult.rows[0] as any)?.active_count || '0', 10);
+          console.log(`⏱️ [AUTH-DETAIL] Channel check: ${Date.now() - channelCheckStart}ms (active: ${activeCount}/${maxChannels})`);
+
+          if (activeCount >= maxChannels) {
+            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${activeCount}/${maxChannels} active calls → CHANNELS FULL, REJECTING`);
+            return null;
+          }
+        } else {
+          console.log(`⚠️ [PHONE SERVICE] No calledNumber provided - using JWT consultantId as fallback: ${decoded.consultantId}`);
+          const fallbackChannelResult = await db.execute(sql`
+            SELECT COUNT(*) as active_count FROM voice_calls 
+            WHERE consultant_id = ${resolvedConsultantId} AND status = 'talking'
+          `);
+          const fallbackActiveCount = parseInt((fallbackChannelResult.rows[0] as any)?.active_count || '0', 10);
+          if (fallbackActiveCount >= 5) {
+            console.error(`❌ [PHONE SERVICE] Consultant ${resolvedConsultantId} has ${fallbackActiveCount}/5 active calls (fallback limit) → CHANNELS FULL, REJECTING`);
+            return null;
+          }
+        }
+
         const normalizedCallerId = callerId.replace(/\s+/g, '').replace(/^00/, '+');
-        console.log(`📞 [PHONE SERVICE] Incoming call from ${normalizedCallerId} for consultant ${decoded.consultantId}`);
+        console.log(`📞 [PHONE SERVICE] Incoming call from ${normalizedCallerId} for consultant ${resolvedConsultantId}`);
 
         let userId: string | null = null;
         let userRole = 'anonymous_caller';
@@ -1053,13 +1118,13 @@ async function getUserIdFromRequest(req: any): Promise<{
         // After:  ~400ms (1 parallel await = slowest query)
         const parallelStart = Date.now();
         const [userByPhone, voiceSettingsRows, scheduledCallResult] = await Promise.all([
-          storage.getUserByPhoneNumber(normalizedCallerId, decoded.consultantId)
+          storage.getUserByPhoneNumber(normalizedCallerId, resolvedConsultantId)
             .then(r => { console.log(`⏱️ [AUTH] userByPhone query: ${Date.now() - parallelStart}ms`); return r; })
             .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Caller lookup failed (${Date.now() - parallelStart}ms):`, err.message); return null; }),
 
           db.select({ voiceId: consultantAvailabilitySettings.voiceId })
             .from(consultantAvailabilitySettings)
-            .where(eq(consultantAvailabilitySettings.consultantId, decoded.consultantId))
+            .where(eq(consultantAvailabilitySettings.consultantId, resolvedConsultantId))
             .limit(1)
             .then(r => { console.log(`⏱️ [AUTH] voiceSettings query: ${Date.now() - parallelStart}ms`); return r; })
             .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Voice settings failed (${Date.now() - parallelStart}ms):`, err.message); return [] as any[]; }),
@@ -1069,7 +1134,7 @@ async function getUserIdFromRequest(req: any): Promise<{
                 SELECT id, call_instruction, instruction_type, target_phone 
                 FROM scheduled_voice_calls 
                 WHERE id = ${scheduledCallIdParam}
-                  AND consultant_id = ${decoded.consultantId}
+                  AND consultant_id = ${resolvedConsultantId}
                   AND status = 'calling'
                 LIMIT 1
               `).then(r => { console.log(`⏱️ [AUTH] scheduledCall query: ${Date.now() - parallelStart}ms`); return r; })
@@ -1110,7 +1175,7 @@ async function getUserIdFromRequest(req: any): Promise<{
             console.log(`🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
             
             if (outboundTargetPhone) {
-              const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
+              const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, resolvedConsultantId);
               if (userByTargetPhone) {
                 userId = userByTargetPhone.id;
                 userRole = userByTargetPhone.role;
@@ -1127,7 +1192,7 @@ async function getUserIdFromRequest(req: any): Promise<{
               const fallbackResult = await db.execute(sql`
                 SELECT target_phone FROM scheduled_voice_calls 
                 WHERE id = ${scheduledCallIdParam}
-                  AND consultant_id = ${decoded.consultantId}
+                  AND consultant_id = ${resolvedConsultantId}
                 LIMIT 1
               `);
               
@@ -1136,7 +1201,7 @@ async function getUserIdFromRequest(req: any): Promise<{
                 console.log(`🎯 [PHONE SERVICE] Fallback: found target_phone = ${outboundTargetPhone}`);
                 
                 if (outboundTargetPhone) {
-                  const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, decoded.consultantId);
+                  const userByTargetPhone = await storage.getUserByPhoneNumber(outboundTargetPhone, resolvedConsultantId);
                   if (userByTargetPhone) {
                     userId = userByTargetPhone.id;
                     userRole = userByTargetPhone.role;
@@ -1163,14 +1228,14 @@ async function getUserIdFromRequest(req: any): Promise<{
         db.insert(voiceCalls).values({
           id: voiceCallId,
           callerId: normalizedCallerId,
-          calledNumber: '9999',
+          calledNumber: resolvedCalledNumber,
           clientId: userId || null,
-          consultantId: decoded.consultantId,
+          consultantId: resolvedConsultantId,
           freeswitchUuid: freeswitchUuid,
           status: 'talking',
           startedAt: new Date(),
           answeredAt: new Date(),
-          aiMode: 'assistenza',
+          aiMode: numberConfig?.ai_mode || 'assistenza',
         }).then(() => {
           console.log(`📞 [PHONE SERVICE] Voice call record created: ${voiceCallId}`);
         }).catch(dbErr => {
@@ -1180,19 +1245,19 @@ async function getUserIdFromRequest(req: any): Promise<{
         activeVoiceCalls.set(voiceCallId, {
           id: voiceCallId,
           callerId: normalizedCallerId,
-          consultantId: decoded.consultantId,
+          consultantId: resolvedConsultantId,
           clientId: userId,
           startedAt: new Date(),
           status: 'talking',
         });
 
-        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - Consultant: ${decoded.consultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
+        console.log(`✅ WebSocket authenticated: Phone Service - CallerId: ${normalizedCallerId} - CalledNumber: ${resolvedCalledNumber} - Consultant: ${resolvedConsultantId}${userId ? ` - User: ${userId}` : ' - Anonymous'} - Voice: ${consultantVoice}${callInstruction ? ' - HAS INSTRUCTION' : ''}`);
         console.log(`⏱️ [AUTH-DETAIL] TOTAL auth phase: ${Date.now() - authPhaseStart}ms (JWT: sync, parallelQueries: ${Date.now() - parallelStart}ms, post-query logic: ${Date.now() - authPhaseStart - (Date.now() - parallelStart)}ms)`);
 
         return {
           userId: userId,
           role: userRole,
-          consultantId: decoded.consultantId,
+          consultantId: resolvedConsultantId,
           mode: 'assistenza' as const,
           consultantType: null,
           customPrompt: null,

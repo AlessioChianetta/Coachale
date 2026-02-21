@@ -8,6 +8,7 @@ const log = logger.child('REPLIT-WS');
 export interface ReplitClientOptions {
   sessionId: string;
   callerId: string;
+  calledNumber?: string;
 scheduledCallId?: string;
   mode?: string;
   voice?: string;
@@ -71,6 +72,10 @@ this.scheduledCallId = options.scheduledCallId;
     const connectStartTime = Date.now();
 
     let wsUrl = `${config.replit.wsUrl}?token=${config.replit.apiToken}&mode=${mode}&useFullPrompt=false&voice=${voice}&source=phone&callerId=${encodeURIComponent(this.callerId)}`;
+
+    if (this.options.calledNumber) {
+      wsUrl += `&calledNumber=${encodeURIComponent(this.options.calledNumber)}`;
+    }
 
 if (this.scheduledCallId) {
     wsUrl += `&scheduledCallId=${encodeURIComponent(this.scheduledCallId)}`;

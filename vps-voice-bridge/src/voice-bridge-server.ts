@@ -387,6 +387,7 @@ async function handleCallStart(ws: WebSocket, message: AudioStreamStartMessage):
     const replitClient = new ReplitWSClient({
       sessionId: session.id,
       callerId: message.caller_id,
+      calledNumber: message.called_number,
       scheduledCallId: message.call_id,
       onAudioResponse: (audio) => {
         if (!firstAudioReceived) {
