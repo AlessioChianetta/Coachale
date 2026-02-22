@@ -13,6 +13,7 @@ import { Eye, EyeOff, ArrowRight, Sparkles, Shield, Zap, TrendingUp, Briefcase, 
 import { loginSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { setToken, setAuthUser, isAuthenticated } from "@/lib/auth";
+import { preloadAfterLogin } from "@/lib/route-preloader";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -72,6 +73,7 @@ export default function Login() {
       if (data.user.role === "super_admin") {
         setLocation("/admin");
       } else if (data.user.role === "consultant") {
+        preloadAfterLogin('consultant');
         setLocation("/consultant");
       } else if (data.user.tier === "bronze" || data.user.tier === "silver") {
         // Bronze and Silver users go to agent selection page
@@ -99,6 +101,7 @@ export default function Login() {
         }
       } else {
         // Gold clients (Level 3)
+        preloadAfterLogin('client');
         setLocation("/client");
       }
     }, 100);

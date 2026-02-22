@@ -1,4 +1,5 @@
 import { cn, slugify } from "@/lib/utils";
+import { preloadOnHover, cancelHoverPreload } from "@/lib/route-preloader";
 import { Link, useLocation } from "wouter";
 import {
   Home,
@@ -746,6 +747,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                 : "border-transparent text-slate-500 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
+                            onMouseEnter={() => preloadOnHover(item.href)}
+                            onMouseLeave={() => cancelHoverPreload(item.href)}
                             onClick={handleLinkClick}
                           >
                             <Icon className={cn(
@@ -800,6 +803,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   )}
                   data-testid={`link-${slugify(item.name)}`}
                   data-tour={role === "client" ? `client-${slugify(item.name)}` : undefined}
+                  onMouseEnter={() => preloadOnHover(item.href)}
+                  onMouseLeave={() => cancelHoverPreload(item.href)}
                   onClick={(e) => {
                     if (hasChildren && !isCollapsed) {
                       e.preventDefault();
@@ -1008,6 +1013,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                           )}
                           data-testid={`link-${slugify(item.name)}`}
+                          onMouseEnter={() => preloadOnHover(item.href)}
+                          onMouseLeave={() => cancelHoverPreload(item.href)}
                           onClick={(e) => {
                             if (hasChildren) {
                               e.preventDefault();
