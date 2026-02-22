@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,10 @@ import {
   Check,
   Brain,
   ChevronRight,
-  Shield
+  Shield,
+  Loader2,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +52,9 @@ function isValidSlug(slug: string): boolean {
 export default function AgentLevel({ formData, onChange, errors }: AgentLevelProps) {
   const [slugError, setSlugError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [slugMessage, setSlugMessage] = useState<string | null>(null);
+  const slugCheckTimer = useRef<NodeJS.Timeout | null>(null);
   
   const levels: ("1" | "2" | "3")[] = formData.levels || [];
   const hasLevel1 = levels.includes("1");
@@ -57,10 +63,37 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
   const hasBothLevels = hasLevel1 && hasLevel2;
   const hasMultipleLevels = levels.length >= 2;
   
+  const checkSlugAvailability = useCallback(async (slug: string) => {
+    if (!slug || slug.length < 2) {
+      setSlugStatus('idle');
+      setSlugMessage(null);
+      return;
+    }
+    setSlugStatus('checking');
+    try {
+      const res = await fetch(`/api/whatsapp/config/check-slug/${encodeURIComponent(slug)}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (data.available) {
+        setSlugStatus('available');
+        setSlugMessage(data.message || 'Disponibile');
+      } else {
+        setSlugStatus('taken');
+        setSlugMessage(data.message || 'Non disponibile');
+      }
+    } catch {
+      setSlugStatus('idle');
+      setSlugMessage(null);
+    }
+  }, []);
+
   const handleLevelsChange = (newLevels: ("1" | "2" | "3")[]) => {
     onChange("levels", newLevels);
     if (!newLevels.includes("1")) {
       onChange("publicSlug", "");
+      setSlugStatus('idle');
+      setSlugMessage(null);
     }
   };
 
@@ -72,6 +105,15 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
       setSlugError("Lo slug è stato convertito in formato URL-safe");
     } else {
       setSlugError(null);
+    }
+
+    if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+    if (sanitized.length >= 2) {
+      setSlugStatus('checking');
+      slugCheckTimer.current = setTimeout(() => checkSlugAvailability(sanitized), 500);
+    } else {
+      setSlugStatus('idle');
+      setSlugMessage(null);
     }
   };
 
@@ -183,17 +225,42 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
                   <Globe className="h-3.5 w-3.5 text-amber-600" />
                   Slug URL Pubblico <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="publicSlug"
-                  value={formData.publicSlug || ""}
-                  onChange={(e) => handleSlugChange(e.target.value)}
-                  placeholder="es: silvia, marco-ai, assistente"
-                  className={cn(
-                    "text-base",
-                    (errors.publicSlug || slugError) && "border-amber-500 focus-visible:ring-amber-500"
+                <div className="relative">
+                  <Input
+                    id="publicSlug"
+                    value={formData.publicSlug || ""}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="es: silvia, marco-ai, assistente"
+                    className={cn(
+                      "text-base pr-9",
+                      slugStatus === 'taken' && "border-red-400 focus-visible:ring-red-400",
+                      slugStatus === 'available' && "border-green-400 focus-visible:ring-green-400",
+                      (errors.publicSlug || slugError) && slugStatus !== 'taken' && slugStatus !== 'available' && "border-amber-500 focus-visible:ring-amber-500"
+                    )}
+                  />
+                  {slugStatus === 'checking' && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
                   )}
-                />
-                {slugError && (
+                  {slugStatus === 'available' && (
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                  )}
+                  {slugStatus === 'taken' && (
+                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                  )}
+                </div>
+                {slugStatus === 'taken' && slugMessage && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 font-medium">
+                    <XCircle className="h-3 w-3" />
+                    {slugMessage}
+                  </p>
+                )}
+                {slugStatus === 'available' && slugMessage && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {slugMessage}
+                  </p>
+                )}
+                {slugError && slugStatus !== 'taken' && (
                   <p className="text-xs text-amber-600 flex items-center gap-1">
                     <Info className="h-3 w-3" />
                     {slugError}

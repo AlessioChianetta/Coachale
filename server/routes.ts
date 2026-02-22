@@ -15690,6 +15690,31 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  app.get("/api/whatsapp/config/check-slug/:slug", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const slug = req.params.slug?.toLowerCase().trim();
+      const consultantId = req.user!.id;
+      if (!slug) return res.json({ available: false, message: "Slug vuoto" });
+
+      const [existing] = await db
+        .select({ id: schema.consultantWhatsappConfig.id, consultantId: schema.consultantWhatsappConfig.consultantId })
+        .from(schema.consultantWhatsappConfig)
+        .where(eq(schema.consultantWhatsappConfig.publicSlug, slug))
+        .limit(1);
+
+      if (existing && existing.consultantId !== consultantId) {
+        return res.json({ available: false, message: "Questo slug è già in uso da un altro consulente" });
+      }
+      if (existing && existing.consultantId === consultantId) {
+        return res.json({ available: true, message: "Questo slug è già tuo" });
+      }
+      return res.json({ available: true });
+    } catch (err: any) {
+      console.error("[CHECK SLUG] Error:", err.message);
+      return res.status(500).json({ available: false, message: "Errore di verifica" });
+    }
+  });
+
   // WhatsApp configuration endpoints for consultants
   app.get("/api/whatsapp/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
