@@ -112,9 +112,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: true,
     alwaysVisible: true,
     items: [
-      { name: "Dashboard", href: "/consultant", icon: Home, color: "text-cyan-500" },
-      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "text-teal-500" },
-      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "text-emerald-500", badge: "NEW" },
+      { name: "Dashboard", href: "/consultant", icon: Home },
+      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles },
+      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap },
     ]
   },
   {
@@ -122,11 +122,11 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Users,
     defaultExpanded: true,
     items: [
-      { name: "Clienti", href: "/consultant/clients", icon: Users, badge: "12", color: "text-teal-500" },
-      { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "text-orange-500" },
-      { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "text-rose-500" },
-      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-teal-500" },
-      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3, color: "text-cyan-600", badge: "NEW" },
+      { name: "Clienti", href: "/consultant/clients", icon: Users },
+      { name: "Calendario", href: "/consultant/appointments", icon: Calendar },
+      { name: "Task", href: "/consultant/tasks", icon: ListTodo },
+      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles },
+      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3 },
     ]
   },
   {
@@ -134,11 +134,11 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Megaphone,
     defaultExpanded: true,
     items: [
-      { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "text-cyan-600", badge: "HUB" },
-      { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: Settings, color: "text-slate-500" },
-      { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "text-blue-500" },
-      { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "text-green-500", badge: "NEW" },
-      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot, color: "text-violet-500", badge: "AI" },
+      { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target },
+      { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: MessageSquare },
+      { name: "Email Hub", href: "/consultant/email-hub", icon: Mail },
+      { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone },
+      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot },
     ]
   },
   {
@@ -146,12 +146,12 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: PenLine,
     defaultExpanded: false,
     items: [
-      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid, color: "text-purple-500" },
-      { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "text-amber-500", badge: "AI" },
-      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "text-blue-500" },
-      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "text-orange-500" },
-      { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "text-violet-500" },
-      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap, color: "text-indigo-500", badge: "PRO" },
+      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid },
+      { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb },
+      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine },
+      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar },
+      { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette },
+      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap },
     ]
   },
   {
@@ -159,10 +159,10 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: GraduationCap,
     defaultExpanded: false,
     items: [
-      { name: "Università", href: "/consultant/university", icon: GraduationCap, color: "text-amber-500" },
-      { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList, color: "text-cyan-500" },
-      { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen, color: "text-teal-500" },
-      { name: "Corsi", href: "/consultant/library", icon: BookOpen, color: "text-teal-600" },
+      { name: "Università", href: "/consultant/university", icon: GraduationCap },
+      { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList },
+      { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen },
+      { name: "Corsi", href: "/consultant/library", icon: BookOpen },
     ]
   },
   {
@@ -170,8 +170,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Database,
     defaultExpanded: false,
     items: [
-      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "text-amber-500" },
-      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug, color: "text-cyan-500" },
+      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText },
+      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug },
     ]
   },
   {
@@ -179,9 +179,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Settings,
     defaultExpanded: false,
     items: [
-    
-      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-teal-500" },
-      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard, color: "text-emerald-500" },  
+      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key },
+      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard },
     ]
   },
   {
@@ -189,7 +188,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: BookOpen,
     defaultExpanded: false,
     items: [
-      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen, color: "text-rose-500", badge: "HUB" },
+      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen },
     ]
   },
   {
@@ -197,9 +196,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Sparkles,
     defaultExpanded: false,
     items: [
-      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-teal-500" },
-      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "text-emerald-500", badge: "RAG" },
-      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign, color: "text-amber-500" },
+      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles },
+      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch },
+      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign },
     ]
   }
 ];
@@ -711,65 +710,28 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           const isGridLayout = category.isGridLayout;
 
           return (
-            <div key={category.name}>
-              {/* Separator between categories (except first) */}
-              {idx > 0 && !isAlwaysVisible && (
-                <div className="group/sep relative h-4 my-1 mx-2 flex items-center cursor-default">
-                  <div className="absolute inset-x-0 h-px bg-slate-200 dark:bg-slate-700/50" />
-                  <div className="absolute left-0 h-px bg-gradient-to-r from-cyan-400 to-teal-400 w-0 group-hover/sep:w-full transition-all duration-500 ease-out" />
-                </div>
-              )}
-
+            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-1" : ""}>
               <div className="space-y-0.5">
                 {/* Category Header - hide for always visible sections */}
-                {!isAlwaysVisible && (() => {
-                  const CategoryIcon = category.icon;
-                  const categoryThemes: Record<string, { iconColor: string; textColor: string }> = {
-                    "LAVORO QUOTIDIANO": { iconColor: "text-teal-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "COMUNICAZIONE": { iconColor: "text-cyan-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "CONTENT STUDIO": { iconColor: "text-purple-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "FORMAZIONE": { iconColor: "text-amber-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "CERVELLO AI": { iconColor: "text-blue-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "IMPOSTAZIONI": { iconColor: "text-slate-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "GUIDE": { iconColor: "text-rose-500", textColor: "text-slate-800 dark:text-slate-200" },
-                    "AI AVANZATO": { iconColor: "text-emerald-500", textColor: "text-slate-800 dark:text-slate-200" },
-                  };
-                  const theme = categoryThemes[category.name] || { iconColor: "text-slate-400", textColor: "text-slate-500 dark:text-slate-400" };
-                  
-                  return (
-                    <button
-                      onClick={() => handleCategoryToggle(category.name)}
-                      className="w-full relative flex items-center justify-between px-3 py-2.5 mt-2 mb-1 group hover:bg-slate-100 dark:hover:bg-slate-800/50 rounded-lg transition-colors"
-                    >
-                      {/* Hover indicator bar */}
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-                      <div className="flex items-center gap-2">
-                        {CategoryIcon && (
-                          <CategoryIcon className={cn(
-                            "h-4.5 w-4.5 transition-all duration-200",
-                            theme.iconColor,
-                            "group-hover:scale-110"
-                          )} />
-                        )}
-                        <span className={cn(
-                          "text-xs font-bold uppercase tracking-wide",
-                          theme.textColor
-                        )}>
-                          {category.name}
-                        </span>
-                      </div>
-                      <ChevronRight className={cn(
-                        "h-3.5 w-3.5 text-slate-400 transition-transform duration-200",
-                        isCategoryExpanded && "rotate-90"
-                      )} />
-                    </button>
-                  );
-                })()}
+                {!isAlwaysVisible && (
+                  <button
+                    onClick={() => handleCategoryToggle(category.name)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 mt-2 mb-0.5 group rounded-md transition-colors"
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      {category.name}
+                    </span>
+                    <ChevronRight className={cn(
+                      "h-3 w-3 text-slate-300 dark:text-slate-600 transition-transform duration-200",
+                      isCategoryExpanded && "rotate-90"
+                    )} />
+                  </button>
+                )}
 
                 {/* Category Items */}
                 {(isCategoryExpanded || isAlwaysVisible) && (
                   <div className={cn(
-                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5 ml-6 border-l border-slate-200 dark:border-border pl-2"
+                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5"
                   )}>
                     {category.items.map((item) => {
                       const Icon = item.icon;
@@ -779,47 +741,31 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                              "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer border-l-2",
                               isActive
-                                ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                                ? "border-cyan-500 bg-cyan-50/70 dark:bg-cyan-950/25 text-slate-900 dark:text-white"
+                                : "border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 hover:text-slate-800 dark:hover:text-slate-200"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onClick={handleLinkClick}
                           >
-                            {/* Hover/Active indicator bar */}
-                            <div className={cn(
-                              "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
-                              isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                            )} />
-                            {/* Icon without box */}
                             <Icon className={cn(
-                              "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
+                              "h-[17px] w-[17px] flex-shrink-0 transition-colors duration-150",
                               isActive
-                                ? "text-cyan-500"
-                                : item.color || "text-slate-400 dark:text-slate-500"
+                                ? "text-cyan-600 dark:text-cyan-400"
+                                : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
                             )} />
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "font-medium truncate",
-                                isActive ? "font-semibold" : ""
+                                "truncate",
+                                isActive ? "font-semibold" : "font-medium"
                               )}>
                                 {item.name}
                               </span>
-                              
-                              {/* Badge with dot style */}
                               {item.badge && (
-                                <span className={cn(
-                                  "flex items-center gap-1 text-xs font-medium ml-1",
-                                  item.badge === "NEW" 
-                                    ? "text-emerald-500" 
-                                    : "text-slate-500 dark:text-slate-400"
-                                )}>
-                                  {item.badge !== "NEW" && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                                  )}
-                                  <span>{item.badge}</span>
+                                <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                  {item.badge}
                                 </span>
                               )}
                             </div>
@@ -1159,33 +1105,33 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
       {/* User info e logout - agganciato in basso */}
       {!isCollapsed && (
-      <div className="px-2 py-3 border-t border-slate-200 dark:border-border mt-auto">
-        <div className="flex items-center gap-2 px-2 py-2 rounded-lg">
-          <Avatar className="w-9 h-9 border-2 border-slate-200 dark:border-slate-600 flex-shrink-0">
+      <div className="px-3 py-3 border-t border-slate-200/80 dark:border-border mt-auto">
+        <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <Avatar className="w-8 h-8 border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
             <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+            <p className="text-sm font-semibold text-slate-800 dark:text-white truncate leading-tight">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-xs text-slate-600 dark:text-slate-400 capitalize">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {user?.role === 'consultant' ? 'Consulente' : 'Cliente'}
             </p>
           </div>
           {/* Action buttons - inline */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             {role === "consultant" && (
               <Link href="/consultant/profile-settings">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  title="Impostazioni"
+                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+                  title="Profilo"
                 >
-                  <UserCircle size={16} />
+                  <UserCircle size={15} />
                 </Button>
               </Link>
             )}
@@ -1194,31 +1140,31 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
                   title="Impostazioni"
                   data-tour="client-user-settings"
                 >
-                  <Settings size={16} />
+                  <Settings size={15} />
                 </Button>
               </Link>
             )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-slate-500 hover:text-yellow-600 dark:text-slate-400 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+              className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </Button>
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-8 w-8 text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+              className="h-7 w-7 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700"
               onClick={handleLogout}
               title="Logout"
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
             </Button>
           </div>
         </div>
