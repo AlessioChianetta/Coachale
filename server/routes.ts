@@ -15739,7 +15739,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               twilioAuthToken: null,
               twilioWhatsappNumber: null,
               autoResponseEnabled: true,
-              agentType: "informative_advisor" as const,
+              agentType: "proactive_setter" as const,
               workingHoursEnabled: false,
               businessName: null,
               businessDescription: "Assistenza e supporto clienti",
