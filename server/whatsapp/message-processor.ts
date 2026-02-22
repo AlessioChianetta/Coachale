@@ -1059,6 +1059,19 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       // Add WhatsApp-specific instructions for consultant
       systemPrompt += `\n\n📱 MODALITÀ WHATSAPP CONSULENTE:\nStai rispondendo via WhatsApp come consulente con accesso completo a tutti i dati CRM. Rispondi in modo professionale ma conciso. Puoi accedere a tutti i dati di clienti, esercizi, appuntamenti, lead, ecc. come se fossi dentro l'applicazione.`;
 
+      console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);
+      console.log(`║  👨‍💼 CONSULENTE - MAPPA DECISIONALE                             ║`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  📞 Telefono:           ${phoneNumber}`);
+      console.log(`║  🤖 Agente:             ${consultantConfig?.agentName || 'Default'}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  ⚡ DECISIONE`);
+      console.log(`║  ├─ Tipo utente:        CONSULENTE (proprietario)`);
+      console.log(`║  ├─ Prompt:             buildConsultantSystemPrompt (accesso totale)`);
+      console.log(`║  ├─ Accesso CRM:        SI (completo)`);
+      console.log(`║  └─ Flusso:             Consulente → dati completi + CRM`);
+      console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
+
     } else if (isLevelAgent) {
       console.log(`\n🎯 [LEVEL AGENT] Level agent detected - levels: ${JSON.stringify(consultantConfig.levels)}`);
       
@@ -1515,6 +1528,29 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
       }
+
+      // Decision map logging for client
+      const clientUserName = (() => {
+        try {
+          return (userContext as any)?.profile?.firstName || (userContext as any)?.profile?.fullName || effectiveUserId;
+        } catch { return effectiveUserId; }
+      })();
+      console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);
+      console.log(`║  👤 CLIENTE - MAPPA DECISIONALE                                ║`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  📞 Telefono:           ${phoneNumber}`);
+      console.log(`║  🤖 Agente:             ${consultantConfig?.agentName || 'Default'}`);
+      console.log(`║  👤 Utente:             ${clientUserName}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  ⚡ DECISIONE`);
+      console.log(`║  ├─ Tipo utente:        CLIENTE RICONOSCIUTO`);
+      console.log(`║  ├─ Prompt:             buildSystemPrompt (CRM completo)`);
+      console.log(`║  ├─ Accesso CRM:        SI (dati cliente, esercizi, consulenze)`);
+      console.log(`║  ├─ File Search:        ${willUseFileSearch ? 'SI (attivo)' : 'NO'}`);
+      console.log(`║  ├─ Concise Mode:       ${consultantConfig?.whatsappConciseMode ? 'SI (Customer Support)' : 'NO (standard)'}`);
+      console.log(`║  └─ Flusso:             Cliente → CRM + dati utente`);
+      console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
+
     } else {
       // For leads, detect intent for appointment booking
       console.log(`\n🔍 Detecting intent for lead message...`);
@@ -1832,6 +1868,23 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
         proactiveLeadData?.phoneNumber,
         phoneNumber
       );
+
+      // Decision map logging for lead
+      console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);
+      console.log(`║  🎯 LEAD - MAPPA DECISIONALE                                   ║`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  📞 Telefono:           ${phoneNumber}`);
+      console.log(`║  🤖 Agente:             ${consultantConfig?.agentName || 'Default'}`);
+      console.log(`║  👤 Profilo:            ${clientProfile ? `${clientProfile.profileType} (difficoltà: ${clientProfile.difficultyScore}/10)` : 'Non disponibile'}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  ⚡ DECISIONE`);
+      console.log(`║  ├─ Tipo utente:        LEAD (potenziale cliente)`);
+      console.log(`║  ├─ Prompt:             buildLeadSystemPrompt (vendita)`);
+      console.log(`║  ├─ Accesso CRM:        NO`);
+      console.log(`║  ├─ Booking attivo:     ${consultantConfig?.bookingEnabled !== false ? 'SI' : 'NO'}`);
+      console.log(`║  ├─ Proattivo:          ${isProactiveLead ? 'SI' : 'NO'}`);
+      console.log(`║  └─ Flusso:             Lead → vendita + prenotazione`);
+      console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
     }
 
     // Inject additional_context from recent outbound tasks for this phone number
