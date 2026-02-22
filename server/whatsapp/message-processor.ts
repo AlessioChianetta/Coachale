@@ -982,6 +982,10 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     
     const isLevelAgent = Array.isArray(consultantConfig?.levels) && consultantConfig.levels.length > 0;
     let sharedConversationId: string | null = null;
+    let levelAgentMessageLimitReached = false;
+    let levelAgentBronzeUserId: string | null = null;
+    let levelAgentMessagesUsed = 0;
+    let levelAgentMessageLimit = 15;
     
     // Pre-check results for File Search (shared across client path and file search setup)
     let preCheckStoreNames: string[] = [];
@@ -1063,9 +1067,16 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       const normalizePhone = (p: string) => p.replace(/[^0-9]/g, '');
       const phoneDigitsOnly = normalizePhone(phoneNumber);
       
+      let bronzeSearchResult = '❌ Non trovato';
+      let subscriptionSearchResult = '❌ Non trovato';
+      let platformUserResult = '❌ Non trovato';
+      
       try {
-        // Check bronze_users first
-        const [bronzeMatch] = await db.select({ id: bronzeUsers.id })
+        const [bronzeMatch] = await db.select({ 
+          id: bronzeUsers.id,
+          dailyMessagesUsed: bronzeUsers.dailyMessagesUsed,
+          dailyMessageLimit: bronzeUsers.dailyMessageLimit,
+        })
           .from(bronzeUsers)
           .where(and(
             eq(bronzeUsers.consultantId, consultantConfig.consultantId),
@@ -1075,10 +1086,12 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
         
         if (bronzeMatch) {
           userLevel = 1;
-          console.log(`📌 [LEVEL AGENT] Phone ${phoneNumber} matched bronze_users → level 1`);
+          levelAgentBronzeUserId = bronzeMatch.id;
+          levelAgentMessagesUsed = bronzeMatch.dailyMessagesUsed ?? 0;
+          levelAgentMessageLimit = bronzeMatch.dailyMessageLimit ?? 15;
+          bronzeSearchResult = `✅ Trovato → Bronze (livello 1) | Messaggi: ${levelAgentMessagesUsed}/${levelAgentMessageLimit}`;
         }
         
-        // Check client_level_subscriptions (overrides bronze if found)
         const [subscriptionMatch] = await db.select({ 
           id: clientLevelSubscriptions.id,
           level: clientLevelSubscriptions.level,
@@ -1092,16 +1105,29 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           .limit(1);
         
         if (subscriptionMatch) {
-          // Map levels: 2=Silver(2), 3=Gold(3), 4=Deluxe(3)
           const subLevel = subscriptionMatch.level;
           userLevel = subLevel === '2' ? 2 : subLevel === '3' || subLevel === '4' ? 3 : 2;
-          console.log(`📌 [LEVEL AGENT] Phone ${phoneNumber} matched subscription level ${subLevel} → userLevel ${userLevel}`);
+          const levelName = userLevel === 2 ? 'Silver' : userLevel === 3 ? 'Gold' : 'Bronze';
+          subscriptionSearchResult = `✅ Trovato → ${levelName} (livello ${userLevel})`;
+          levelAgentBronzeUserId = null;
+          levelAgentMessagesUsed = 0;
+          levelAgentMessageLimit = 0;
+        }
+        
+        const [platformUser] = await db.select({ 
+          id: users.id, 
+          fullName: users.fullName 
+        })
+          .from(users)
+          .where(sql`REGEXP_REPLACE(${users.phone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`)
+          .limit(1);
+        
+        if (platformUser) {
+          platformUserResult = `✅ ${platformUser.fullName || 'Utente'} (cliente)`;
         }
       } catch (err: any) {
         console.warn(`⚠️ [LEVEL AGENT] Error determining user level: ${err.message}`);
       }
-      
-      console.log(`🏷️ [LEVEL AGENT] Final user level: ${userLevel}`);
       
       // 2. Build prompt with overlays
       const { buildWhatsAppAgentPrompt } = await import('./agent-consultant-chat-service');
@@ -1126,13 +1152,15 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       }
       
-      console.log(`📝 [LEVEL AGENT] System prompt built (${systemPrompt.length} chars, overlay: ${overlayText.length} chars)`);
+      // Check message limit for Bronze users
+      if (levelAgentBronzeUserId && levelAgentMessagesUsed >= levelAgentMessageLimit) {
+        levelAgentMessageLimitReached = true;
+      }
       
       // 3. Conversation sharing - find/create manager_conversation
       try {
         let managerId: string | null = null;
         
-        // Check bronze_users first for managerId (using normalized phone comparison)
         const [bronzeUser] = await db.select({ id: bronzeUsers.id })
           .from(bronzeUsers)
           .where(and(
@@ -1177,10 +1205,8 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
               createdBy: consultantConfig.consultantId,
             }).returning({ id: whatsappAgentShares.id });
             existingShare = newShare;
-            console.log(`🆕 [LEVEL AGENT] Auto-created share for agent ${consultantConfig.id} (slug: ${autoSlug})`);
           }
           
-          // Search existing conversation using normalized phone comparison
           const [existingConv] = await db.select({ id: managerConversations.id })
             .from(managerConversations)
             .where(and(
@@ -1191,7 +1217,6 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           
           if (existingConv) {
             sharedConversationId = existingConv.id;
-            console.log(`📌 [LEVEL AGENT] Found existing shared conversation: ${sharedConversationId}`);
           } else {
             const [newConv] = await db.insert(managerConversations).values({
               managerId,
@@ -1202,10 +1227,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
               source: 'whatsapp',
             }).returning({ id: managerConversations.id });
             sharedConversationId = newConv.id;
-            console.log(`📌 [LEVEL AGENT] Created new shared conversation: ${sharedConversationId}`);
           }
-        } else {
-          console.log(`ℹ️ [LEVEL AGENT] No managerId found for phone ${phoneNumber} - anonymous user`);
         }
       } catch (err: any) {
         console.warn(`⚠️ [LEVEL AGENT] Error managing shared conversation: ${err.message}`);
@@ -1225,11 +1247,46 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
             .limit(20);
           
           sharedHistory = recentMessages.reverse();
-          console.log(`📚 [LEVEL AGENT] Loaded ${sharedHistory.length} shared history messages`);
         } catch (err: any) {
           console.warn(`⚠️ [LEVEL AGENT] Error loading shared history: ${err.message}`);
         }
       }
+      
+      // 5. Beautiful decision map logging
+      const levelName = userLevel === 1 ? 'Bronze' : userLevel === 2 ? 'Silver' : 'Gold';
+      const promptParts = ['Base'];
+      if (consultantConfig.levelPromptOverlay1) promptParts.push('Overlay L1');
+      if (userLevel >= 2 && consultantConfig.levelPromptOverlay2) promptParts.push('Overlay L2');
+      if (userLevel >= 3 && consultantConfig.levelPromptOverlay3) promptParts.push('Overlay L3');
+      
+      const o1 = consultantConfig.levelPromptOverlay1;
+      const o2 = consultantConfig.levelPromptOverlay2;
+      const o3 = consultantConfig.levelPromptOverlay3;
+      
+      console.log(`\n╔══════════════════════════════════════════════════════════════════╗`);
+      console.log(`║  🔍 LEVEL AGENT - MAPPA DECISIONALE                            ║`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  📞 Telefono:         ${phoneNumber}`);
+      console.log(`║  🤖 Agente:           ${consultantConfig.agentName || 'Unknown'}`);
+      console.log(`║  🏷️  Livelli config:   ${JSON.stringify(consultantConfig.levels)}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  🔎 RICERCA UTENTE`);
+      console.log(`║  ├─ bronze_users:               ${bronzeSearchResult}`);
+      console.log(`║  ├─ client_level_subscriptions:  ${subscriptionSearchResult}`);
+      console.log(`║  └─ users (cliente piattaforma): ${platformUserResult}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  ⚡ DECISIONE FINALE`);
+      console.log(`║  ├─ Livello assegnato:  ${userLevel} (${levelName}) ← il più alto trovato`);
+      console.log(`║  ├─ Prompt:            ${promptParts.join(' + ')}`);
+      console.log(`║  ├─ Accesso CRM:       NO (agente con livelli)`);
+      console.log(`║  ├─ Conv. condivisa:    ${sharedConversationId ? `SI → ${sharedConversationId}` : 'NO (utente anonimo)'}`);
+      console.log(`║  └─ Messaggi:           ${levelAgentBronzeUserId ? `${levelAgentMessagesUsed}/${levelAgentMessageLimit} usati (Bronze)${levelAgentMessageLimitReached ? ' ⛔ LIMITE RAGGIUNTO' : ''}` : 'N/A (non Bronze)'}`);
+      console.log(`╠══════════════════════════════════════════════════════════════════╣`);
+      console.log(`║  📊 OVERLAY APPLICATI`);
+      console.log(`║  ├─ L1: ${o1 ? `✅ "${o1.substring(0, 30)}..." (${o1.length} chars)` : '❌ Non configurato'}`);
+      console.log(`║  ├─ L2: ${userLevel >= 2 && o2 ? `✅ "${o2.substring(0, 30)}..." (${o2.length} chars)` : userLevel < 2 && o2 ? `⏭️  Non applicato (livello utente < 2)` : '❌ Non configurato'}`);
+      console.log(`║  └─ L3: ${userLevel >= 3 && o3 ? `✅ "${o3.substring(0, 30)}..." (${o3.length} chars)` : userLevel < 3 && o3 ? `⏭️  Non applicato (livello utente < 3)` : '❌ Non configurato'}`);
+      console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
 
     } else if (effectiveUserId) {
       // ⏱️ Context Building Timing
@@ -2109,6 +2166,67 @@ Segui attentamente o tieni a memoria queste informazioni.
     const _wpAgentSlug = (consultantConfig?.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const _wpAgentFeature = `whatsapp-agent:${_wpAgentSlug}`;
 
+    // Check if level agent message limit is reached - skip AI call entirely
+    if (levelAgentMessageLimitReached) {
+      console.log(`🚫 [LEVEL AGENT] Messaggio bloccato - limite raggiunto (${levelAgentMessagesUsed}/${levelAgentMessageLimit})`);
+      
+      const limitResponse = "⚠️ Hai raggiunto il limite di messaggi giornalieri per il tuo piano. Riprova domani o contatta il consulente per un upgrade del tuo abbonamento.";
+      
+      const [savedMessage] = await db
+        .insert(whatsappMessages)
+        .values({
+          conversationId: conversation.id,
+          messageText: limitResponse,
+          direction: "outbound",
+          sender: "ai",
+          metadata: { blockedByLimit: true }
+        })
+        .returning();
+
+      await sendWhatsAppMessage(
+        conversation.consultantId,
+        phoneNumber,
+        limitResponse,
+        savedMessage.id,
+        { conversationId: conversation.id }
+      );
+
+      if (sharedConversationId) {
+        try {
+          await db.insert(managerMessages).values({
+            conversationId: sharedConversationId,
+            role: 'user',
+            content: batchedText,
+            status: 'completed',
+          });
+          await db.insert(managerMessages).values({
+            conversationId: sharedConversationId,
+            role: 'assistant',
+            content: limitResponse,
+            status: 'completed',
+          });
+          await db.update(managerConversations)
+            .set({
+              messageCount: sql`${managerConversations.messageCount} + 2`,
+              lastMessageAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(managerConversations.id, sharedConversationId));
+        } catch (err: any) {
+          console.warn(`⚠️ [LEVEL AGENT] Error saving limit message to shared conversation: ${err.message}`);
+        }
+      }
+
+      await db
+        .update(whatsappConversations)
+        .set({ lastMessageAt: new Date(), lastMessageFrom: 'ai' })
+        .where(eq(whatsappConversations.id, conversation.id));
+
+      const totalTime = Math.round(performance.now() - timings.requestStart);
+      console.log(`⏱️ [TIMING REPORT] Total: ${totalTime}ms (blocked by message limit)`);
+      return;
+    }
+
     // Retry logic with exponential backoff and API key rotation
     const maxRetries = 3;
     let lastError: any;
@@ -2728,6 +2846,17 @@ Segui attentamente o tieni a memoria queste informazioni.
         console.log(`📨 [LEVEL AGENT] Saved messages to shared conversation ${sharedConversationId}`);
       } catch (err: any) {
         console.warn(`⚠️ [LEVEL AGENT] Error saving to shared conversation: ${err.message}`);
+      }
+    }
+
+    if (isLevelAgent && levelAgentBronzeUserId) {
+      try {
+        await db.update(bronzeUsers)
+          .set({ dailyMessagesUsed: sql`${bronzeUsers.dailyMessagesUsed} + 1` })
+          .where(eq(bronzeUsers.id, levelAgentBronzeUserId));
+        console.log(`📊 [LEVEL AGENT] Incrementato contatore messaggi Bronze: ${levelAgentMessagesUsed + 1}/${levelAgentMessageLimit}`);
+      } catch (err: any) {
+        console.warn(`⚠️ [LEVEL AGENT] Errore incremento contatore: ${err.message}`);
       }
     }
 

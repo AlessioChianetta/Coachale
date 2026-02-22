@@ -118,7 +118,8 @@ import {
   Linkedin,
   Share2,
   Camera,
-  Inbox
+  Inbox,
+  HelpCircle
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
@@ -832,6 +833,7 @@ export default function ConsultantWhatsAppPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [configToDelete, setConfigToDelete] = useState<WhatsAppConfig | null>(null);
   const [newApiKey, setNewApiKey] = useState("");
+  const [showRoutingGuide, setShowRoutingGuide] = useState(false);
   
   // Stati per gestione sottoscrizioni
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
@@ -1843,6 +1845,14 @@ export default function ConsultantWhatsAppPage() {
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <span className="text-xs text-green-300 font-medium">Operativi 24/7</span>
                 </div>
+                <Button 
+                  variant="secondary"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                  onClick={() => setShowRoutingGuide(true)}
+                >
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Guida Routing
+                </Button>
                 <Button 
                   variant="secondary"
                   className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
@@ -4806,6 +4816,172 @@ export default function ConsultantWhatsAppPage() {
       </AlertDialog>
 
       <ConsultantAIAssistant />
+
+      <Dialog open={showRoutingGuide} onOpenChange={setShowRoutingGuide}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <HelpCircle className="h-5 w-5 text-blue-500" />
+              Guida: Come vengono riconosciuti gli utenti su WhatsApp
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                Diagramma di Flusso
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-blue-600 font-bold text-xs">1</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-800">Messaggio WhatsApp in arrivo</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Il sistema identifica il numero di telefono del mittente</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-amber-600 font-bold text-xs">2</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-800">Sei tu il consulente?</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Se sei tu → accesso pieno a tutti i dati CRM come nell'app</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-purple-600 font-bold text-xs">3</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-800">L'agente ha livelli configurati?</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Se ha livelli (Bronze/Silver/Gold) → cerca il telefono negli utenti dell'agente per determinare il livello</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-green-600 font-bold text-xs">4</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-800">Agente standard (senza livelli)</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Flusso classico: clienti registrati → accesso CRM completo. Lead → prompt generico.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <h3 className="font-semibold text-slate-800 p-4 pb-2 flex items-center gap-2">
+                <Users className="h-4 w-4 text-indigo-600" />
+                Tabella Riconoscimento per Agenti con Livelli
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-y border-slate-200">
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Chi scrive</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Riconoscimento</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">Livello</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Prompt AI</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">CRM</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">Limite msg</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-medium">Sconosciuto</td>
+                      <td className="px-4 py-2.5 text-slate-500">Nessun match</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">Default (1)</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">Base + Overlay L1</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                    </tr>
+                    <tr className="hover:bg-amber-50/50">
+                      <td className="px-4 py-2.5 font-medium">Utente Bronze</td>
+                      <td className="px-4 py-2.5 text-amber-600">bronze_users</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">1 (Bronze)</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">Base + Overlay L1</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                      <td className="px-4 py-2.5 text-center text-green-600 font-medium">Si</td>
+                    </tr>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-2.5 font-medium">Utente Silver</td>
+                      <td className="px-4 py-2.5 text-slate-500">client_level_subscriptions</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-medium">2 (Silver)</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">Base + L1 + L2</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                      <td className="px-4 py-2.5 text-center text-slate-400">No</td>
+                    </tr>
+                    <tr className="hover:bg-yellow-50/50">
+                      <td className="px-4 py-2.5 font-medium">Utente Gold</td>
+                      <td className="px-4 py-2.5 text-yellow-600">client_level_subscriptions</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">3 (Gold)</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">Base + L1 + L2 + L3</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                      <td className="px-4 py-2.5 text-center text-slate-400">No</td>
+                    </tr>
+                    <tr className="hover:bg-blue-50/50">
+                      <td className="px-4 py-2.5 font-medium">Cliente registrato</td>
+                      <td className="px-4 py-2.5 text-blue-600">Cerca in utenti agente</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">Trovato o 1</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">Per livello trovato</td>
+                      <td className="px-4 py-2.5 text-center text-red-500">No</td>
+                      <td className="px-4 py-2.5 text-center text-slate-400">Per piano</td>
+                    </tr>
+                    <tr className="hover:bg-indigo-50/50">
+                      <td className="px-4 py-2.5 font-medium">Consulente</td>
+                      <td className="px-4 py-2.5 text-indigo-600">Prioritario</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">N/A</span></td>
+                      <td className="px-4 py-2.5 text-slate-500">CRM completo</td>
+                      <td className="px-4 py-2.5 text-center text-green-600 font-medium">Si</td>
+                      <td className="px-4 py-2.5 text-center text-slate-400">N/A</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-200">
+              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-amber-500" />
+                Come funzionano gli Overlay
+              </h3>
+              <div className="space-y-2 text-sm text-slate-600">
+                <p><span className="font-medium text-amber-700">Livello 1 (Bronze):</span> Istruzioni base + Overlay L1</p>
+                <p><span className="font-medium text-slate-600">Livello 2 (Silver):</span> Istruzioni base + Overlay L1 + Overlay L2 (additivo)</p>
+                <p><span className="font-medium text-yellow-700">Livello 3 (Gold):</span> Istruzioni base + Overlay L1 + Overlay L2 + Overlay L3 (additivo)</p>
+                <p className="mt-3 text-xs text-slate-500 italic">Ogni livello superiore include tutti gli overlay dei livelli precedenti. Vince sempre il livello piu alto trovato.</p>
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-xl p-5 border border-green-200">
+              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                Eccezione: Assistenza Clienti (Default)
+              </h3>
+              <p className="text-sm text-slate-600">
+                L'agente "Assistenza Clienti" (senza livelli) riconosce sempre i clienti registrati sulla piattaforma con accesso completo ai loro dati CRM (esercizi, appuntamenti, profilo). I lead vengono trattati con il prompt generico.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                <Bot className="h-4 w-4 text-blue-600" />
+                Debug: Log in Console
+              </h3>
+              <p className="text-sm text-slate-600">
+                Per ogni messaggio WhatsApp ricevuto da un agente con livelli, viene stampata una mappa decisionale completa nei log della console del server. Cerca "LEVEL AGENT - MAPPA DECISIONALE" nei log per vedere tutti i dettagli: telefono, livello assegnato, overlay applicati e stato messaggi.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </WhatsAppLayout>
   );
 }
