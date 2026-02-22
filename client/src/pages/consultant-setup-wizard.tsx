@@ -58,6 +58,9 @@ import {
   Instagram,
   CreditCard,
   Inbox,
+  Copy,
+  ArrowUpDown,
+  Users,
 } from "lucide-react";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
@@ -101,6 +104,8 @@ interface OnboardingStep {
   countLabel?: string;
   optional?: boolean;
   inlineConfig?: InlineConfig;
+  priority: 1 | 2 | 3 | 4 | 5;
+  sectionId?: string;
 }
 
 interface Section {
@@ -767,7 +772,278 @@ function ContextualBanner({
   );
 }
 
-const CREDENTIAL_NOTES_STEPS = ["vertex_ai", "smtp", "google_calendar", "twilio_config"];
+const CREDENTIAL_NOTES_STEPS = ["vertex_ai", "smtp", "google_calendar_consultant", "twilio_config"];
+
+// ─── NURTURING GENERATE BUTTON ──────────────────────────────────────────────
+
+function NurturingGenerateButton() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const { toast } = useToast();
+
+  const { data: countData, refetch: refetchCount } = useQuery<{ success: boolean; count: number; total: number }>({
+    queryKey: ["/api/lead-nurturing/templates/count"],
+    queryFn: async () => {
+      const res = await fetch("/api/lead-nurturing/templates/count", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const count = countData?.count ?? 0;
+  const total = countData?.total ?? 365;
+  const remaining = total - count;
+
+  const handleGenerate = async () => {
+    if (remaining <= 0) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/lead-nurturing/generate-remaining", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Generazione fallita");
+      setGenerated(true);
+      toast({ title: "Generazione avviata!", description: "Le email vengono generate in background. Torna tra qualche minuto." });
+      setTimeout(() => refetchCount(), 3000);
+    } catch (e: any) {
+      toast({ title: "Errore", description: e.message, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 p-4 rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">Email generate con AI</p>
+          <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">{count} / {total} email pronte</p>
+        </div>
+        <div className="w-24 h-2 bg-orange-200 dark:bg-orange-800 rounded-full overflow-hidden">
+          <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.round((count / total) * 100)}%` }} />
+        </div>
+      </div>
+      {remaining > 0 ? (
+        <Button
+          size="sm"
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white border-0 gap-2"
+          onClick={handleGenerate}
+          disabled={isGenerating || generated}
+        >
+          {isGenerating ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generazione in corso...</>
+          ) : generated ? (
+            <><Check className="h-3.5 w-3.5" />Generazione avviata!</>
+          ) : (
+            <><Sparkles className="h-3.5 w-3.5" />Genera le rimanenti {remaining} email con AI</>
+          )}
+        </Button>
+      ) : (
+        <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          Tutte le 365 email sono state generate!
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AGENT CALENDAR STATUS PANEL ────────────────────────────────────────────
+
+function AgentCalendarStatusPanel() {
+  const { data, isLoading } = useQuery<{ success: boolean; agents: Array<{ id: string; agentName: string; agentType: string; calendarConnected: boolean; googleCalendarEmail?: string }> }>({
+    queryKey: ["/api/whatsapp/agents/calendar-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/agents/calendar-status", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const agentTypeLabel: Record<string, string> = {
+    reactive_lead: "Inbound",
+    proactive_setter: "Outbound",
+    informative_advisor: "Consulenziale",
+  };
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />Caricamento agenti...
+      </div>
+    );
+  }
+
+  const agents = data?.agents ?? [];
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <Users className="h-4 w-4 text-slate-500" />
+        <span className="text-sm font-medium">Stato calendario per agente</span>
+      </div>
+      {agents.length === 0 ? (
+        <div className="p-4 text-sm text-muted-foreground">
+          Nessun agente trovato. Crea prima un agente WhatsApp.
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {agents.map(agent => (
+            <div key={agent.id} className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${agent.calendarConnected ? "bg-emerald-500" : "bg-slate-300"}`} />
+                <div>
+                  <p className="text-sm font-medium">{agent.agentName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {agentTypeLabel[agent.agentType] || agent.agentType}
+                    {agent.calendarConnected && agent.googleCalendarEmail && ` · ${agent.googleCalendarEmail}`}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className={`text-xs ${agent.calendarConnected ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-slate-500 border-slate-200 bg-slate-50"}`}>
+                {agent.calendarConnected ? "Connesso" : "Non connesso"}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-xs text-muted-foreground">Per collegare Google Calendar ad un agente, vai alla pagina Agenti WhatsApp e seleziona l'agente.</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── LEAD IMPORT WEBHOOK PANEL ───────────────────────────────────────────────
+
+function LeadImportWebhookPanel({ consultantId }: { consultantId?: string }) {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  const baseUrl = window.location.origin;
+  const webhookUrl = consultantId
+    ? `${baseUrl}/api/webhooks/lead-import/${consultantId}`
+    : "";
+
+  const handleCopy = async () => {
+    if (!webhookUrl) return;
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopied(true);
+      toast({ title: "URL copiato!", description: "Webhook URL copiato negli appunti." });
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast({ title: "Copia manuale", description: webhookUrl, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="mt-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <LinkIcon className="h-4 w-4 text-blue-500" />
+        <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Il tuo Webhook URL</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          readOnly
+          value={webhookUrl || "Caricamento..."}
+          className="h-8 text-xs font-mono bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-700"
+        />
+        <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-100">
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copiato" : "Copia"}
+        </Button>
+      </div>
+      <p className="text-xs text-blue-600 dark:text-blue-400">
+        Usa questo URL in <strong>Zapier</strong>, <strong>Make.com</strong>, <strong>n8n</strong> o qualsiasi CRM per inviare lead automaticamente.
+      </p>
+    </div>
+  );
+}
+
+// ─── PUBLIC LINKS PANEL ──────────────────────────────────────────────────────
+
+function PublicLinksPanel() {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const { data, isLoading } = useQuery<{ success: boolean; shares: Array<{ id: string; slug: string; agentName: string; isActive: boolean; publicUrl: string; agent?: { agentType?: string } }> }>({
+    queryKey: ["/api/whatsapp/agent-share"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/agent-share", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const agentTypeLabel: Record<string, string> = {
+    reactive_lead: "Inbound",
+    proactive_setter: "Outbound",
+    informative_advisor: "Consulenziale",
+  };
+
+  const handleCopy = async (url: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      toast({ title: "Link copiato!", description: "URL pubblico copiato negli appunti." });
+      setTimeout(() => setCopiedId(null), 2500);
+    } catch {
+      toast({ title: "Copia manuale", description: url });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />Caricamento link...
+      </div>
+    );
+  }
+
+  const shares = data?.shares?.filter(s => s.isActive) ?? [];
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+        <LinkIcon className="h-4 w-4 text-slate-500" />
+        <span className="text-sm font-medium">Link pubblici attivi</span>
+      </div>
+      {shares.length === 0 ? (
+        <div className="p-4 text-sm text-muted-foreground">
+          Nessun link pubblico trovato. Vai su Agenti WhatsApp → Condivisione per crearne uno.
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {shares.map(share => (
+            <div key={share.id} className="px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{share.agentName}</p>
+                  {share.agent?.agentType && (
+                    <Badge variant="outline" className="text-xs">{agentTypeLabel[share.agent.agentType] || share.agent.agentType}</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={share.publicUrl}
+                  className="h-7 text-xs font-mono bg-white dark:bg-slate-900"
+                />
+                <Button size="sm" variant="outline" onClick={() => handleCopy(share.publicUrl, share.id)} className="shrink-0 gap-1.5">
+                  {copiedId === share.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedId === share.id ? "Copiato" : "Copia"}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CredentialNotesCard({ stepId }: { stepId: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -1016,6 +1292,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "twilio_config",
           stepNumber: 1,
+          priority: 1,
           title: "Configurazione Twilio + WhatsApp",
           description: "Collega il tuo numero WhatsApp Business tramite Twilio per ricevere e inviare messaggi automatici",
           icon: <Phone className="h-4 w-4" />,
@@ -1045,6 +1322,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "approved_template",
           stepNumber: 2,
+          priority: 2,
           title: "Template WhatsApp Approvato",
           description: "Crea e fatti approvare almeno un template da Twilio per inviare messaggi proattivi",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -1056,6 +1334,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "inbound_agent",
           stepNumber: 3,
+          priority: 2,
           title: "Agente Inbound",
           description: "Crea un agente per gestire automaticamente le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -1065,6 +1344,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "public_agent_link",
           stepNumber: 4,
+          priority: 4,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -1076,6 +1356,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "instagram_dm",
           stepNumber: 5,
+          priority: 4,
           title: "Instagram Direct Messaging",
           description: "Collega il tuo account Instagram Business per gestire i DM con AI",
           icon: <Instagram className="h-4 w-4" />,
@@ -1085,17 +1366,18 @@ export default function ConsultantSetupWizard() {
           configLink: "/consultant/api-keys-unified?tab=instagram",
           testEndpoint: "/api/consultant/onboarding/test/instagram",
           inlineConfig: {
-            getEndpoint: "/api/consultant/api-keys-unified?tab=instagram",
+            getEndpoint: "/api/consultant/instagram-status",
             saveEndpoint: "",
             fields: [],
             oauthStart: "/consultant/api-keys-unified?tab=instagram",
-            oauthLabel: "Connetti Instagram Business →",
-            oauthStatusField: "hasInstagramConfigured",
+            oauthLabel: "Vai alla configurazione Instagram →",
+            oauthStatusField: "configured",
           },
         },
         {
           id: "lead_import",
           stepNumber: 6,
+          priority: 4,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -1108,6 +1390,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "first_campaign",
           stepNumber: 7,
+          priority: 4,
           title: "Prima Campagna Marketing",
           description: "Configura la tua prima campagna per contattare i lead automaticamente",
           icon: <Rocket className="h-4 w-4" />,
@@ -1129,23 +1412,32 @@ export default function ConsultantSetupWizard() {
         {
           id: "stripe_connect",
           stepNumber: 8,
-          title: "Stripe Connect",
-          description: "Collega il tuo account Stripe per ricevere pagamenti dagli abbonamenti dei clienti",
+          priority: 2,
+          title: "Stripe — API Keys",
+          description: "Collega il tuo account Stripe per gestire pagamenti e abbonamenti dei clienti",
           icon: <CreditCard className="h-4 w-4" />,
           status: getStripeStatus(status?.stripeAccountStatus, status?.hasStripeAccount),
           configLink: "/consultant/whatsapp?tab=licenses",
           inlineConfig: {
-            getEndpoint: "/consultant/whatsapp?tab=licenses",
-            saveEndpoint: "",
-            fields: [],
-            oauthStart: "/consultant/whatsapp?tab=licenses",
-            oauthLabel: "Collega Stripe per i pagamenti →",
-            oauthStatusField: "hasStripeAccount",
+            getEndpoint: "/api/consultant/stripe-settings",
+            saveEndpoint: "/api/consultant/stripe-settings",
+            saveMethod: "POST",
+            dataMapper: (d) => ({
+              stripeSecretKey: d.settings?.hasSecretKey ? "••••" : "",
+              stripeWebhookSecret: d.settings?.hasWebhookSecret ? "••••" : "",
+            }),
+            payloadMapper: (s) => ({ stripeSecretKey: s.stripeSecretKey, stripeWebhookSecret: s.stripeWebhookSecret }),
+            fields: [
+              { key: "stripeSecretKey", label: "Secret Key Stripe", type: "password", sensitive: true, placeholder: "sk_live_... o sk_test_...", hint: "Trovala su dashboard.stripe.com → Sviluppatori → Chiavi API" },
+              { key: "stripeWebhookSecret", label: "Webhook Secret", type: "password", sensitive: true, placeholder: "whsec_...", hint: "Generalo su dashboard.stripe.com → Sviluppatori → Webhook → Aggiungi endpoint" },
+            ],
+            usedBySteps: ["first_campaign"],
           },
         },
         {
           id: "outbound_agent",
           stepNumber: 9,
+          priority: 3,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo verso i lead",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -1155,6 +1447,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "consultative_agent",
           stepNumber: 10,
+          priority: 3,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -1164,6 +1457,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "first_summary_email",
           stepNumber: 11,
+          priority: 4,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -1175,6 +1469,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "video_meeting",
           stepNumber: 12,
+          priority: 3,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -1213,6 +1508,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "ai_autonomo",
           stepNumber: 13,
+          priority: 5,
           title: "AI Autonomo",
           description: "Attiva il sistema AI autonomo e completa almeno un task automatico generato dall'AI",
           icon: <Bot className="h-4 w-4" />,
@@ -1224,6 +1520,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "email_journey",
           stepNumber: 14,
+          priority: 3,
           title: "Email Journey",
           description: "Configura l'automazione email: scegli tra bozze o invio automatico e personalizza i template con l'AI",
           icon: <MailPlus className="h-4 w-4" />,
@@ -1233,6 +1530,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "nurturing_emails",
           stepNumber: 15,
+          priority: 3,
           title: "Email Nurturing 365",
           description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
           icon: <MailPlus className="h-4 w-4" />,
@@ -1240,10 +1538,26 @@ export default function ConsultantSetupWizard() {
           configLink: "/consultant/ai-config?tab=lead-nurturing",
           count: status?.nurturingEmailsCount,
           countLabel: "email",
+          inlineConfig: {
+            getEndpoint: "/api/lead-nurturing/config",
+            saveEndpoint: "/api/lead-nurturing/config",
+            saveMethod: "PUT",
+            dataMapper: (d) => ({
+              isEnabled: d.config?.isEnabled ?? d.config?.isActive ?? false,
+              sendHour: d.config?.sendHour ?? 9,
+            }),
+            payloadMapper: (s) => ({ isEnabled: s.isEnabled, sendHour: Number(s.sendHour) }),
+            fields: [
+              { key: "isEnabled", label: "Abilita invio automatico", type: "toggle" },
+              { key: "sendHour", label: "Ora di invio (0-23)", type: "number", placeholder: "9", hint: "Ora del giorno in cui vengono inviate le email (fuso Europe/Rome)" },
+            ],
+            usedBySteps: ["smtp", "email_hub"],
+          },
         },
         {
           id: "email_hub",
           stepNumber: 16,
+          priority: 2,
           title: "Email Hub",
           description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
           icon: <Inbox className="h-4 w-4" />,
@@ -1251,10 +1565,57 @@ export default function ConsultantSetupWizard() {
           configLink: "/consultant/email-hub",
           count: status?.emailHubAccountsCount,
           countLabel: "account",
+          inlineConfig: {
+            getEndpoint: "/api/email-hub/accounts",
+            saveEndpoint: "/api/email-hub/accounts",
+            saveMethod: "POST",
+            dataMapper: (d) => {
+              const acc = Array.isArray(d.data) ? d.data[0] : null;
+              return {
+                displayName: acc?.displayName || "",
+                emailAddress: acc?.emailAddress || "",
+                imapHost: acc?.imapHost || "imap.gmail.com",
+                imapPort: acc?.imapPort || 993,
+                imapUser: acc?.imapUser || "",
+                imapPassword: "",
+                smtpHost: acc?.smtpHost || "smtp.gmail.com",
+                smtpPort: acc?.smtpPort || 587,
+                smtpUser: acc?.smtpUser || "",
+                smtpPassword: "",
+              };
+            },
+            payloadMapper: (s) => ({
+              displayName: s.displayName,
+              emailAddress: s.emailAddress,
+              imapHost: s.imapHost,
+              imapPort: Number(s.imapPort),
+              imapUser: s.imapUser,
+              imapPassword: s.imapPassword,
+              smtpHost: s.smtpHost,
+              smtpPort: Number(s.smtpPort),
+              smtpUser: s.smtpUser,
+              smtpPassword: s.smtpPassword,
+              accountType: "full",
+            }),
+            fields: [
+              { key: "displayName", label: "Nome account", type: "text", placeholder: "Email principale" },
+              { key: "emailAddress", label: "Indirizzo email", type: "text", placeholder: "tuo@gmail.com" },
+              { key: "imapHost", label: "Server IMAP", type: "text", placeholder: "imap.gmail.com", hint: "Gmail: imap.gmail.com · Outlook: outlook.office365.com" },
+              { key: "imapPort", label: "Porta IMAP", type: "number", placeholder: "993" },
+              { key: "imapUser", label: "Utente IMAP", type: "text", placeholder: "tuo@gmail.com" },
+              { key: "imapPassword", label: "Password IMAP", type: "password", sensitive: true, hint: "Gmail: usa App Password (account.google.com/apppasswords)" },
+              { key: "smtpHost", label: "Server SMTP", type: "text", placeholder: "smtp.gmail.com" },
+              { key: "smtpPort", label: "Porta SMTP", type: "number", placeholder: "587" },
+              { key: "smtpUser", label: "Utente SMTP", type: "text", placeholder: "tuo@gmail.com" },
+              { key: "smtpPassword", label: "Password SMTP", type: "password", sensitive: true },
+            ],
+            usedBySteps: ["email_journey", "nurturing_emails", "first_summary_email"],
+          },
         },
         {
           id: "voice_calls",
           stepNumber: 17,
+          priority: 4,
           title: "Chiamate Voice (Alessia AI)",
           description: "Completa almeno una chiamata vocale con esito positivo tramite il sistema Alessia AI Phone",
           icon: <Phone className="h-4 w-4" />,
@@ -1276,6 +1637,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "first_course",
           stepNumber: 18,
+          priority: 5,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -1287,6 +1649,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "first_exercise",
           stepNumber: 19,
+          priority: 5,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -1298,6 +1661,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "knowledge_base",
           stepNumber: 20,
+          priority: 4,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -1310,6 +1674,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "ai_ideas",
           stepNumber: 21,
+          priority: 5,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -1321,6 +1686,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "whatsapp_template",
           stepNumber: 22,
+          priority: 5,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -1342,6 +1708,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "smtp",
           stepNumber: 23,
+          priority: 1,
           title: "Email SMTP",
           description: "Configura il server SMTP per inviare email automatiche ai tuoi clienti e lead",
           icon: <Mail className="h-4 w-4" />,
@@ -1377,16 +1744,16 @@ export default function ConsultantSetupWizard() {
           },
         },
         {
-          id: "google_calendar",
+          id: "google_calendar_consultant",
           stepNumber: 24,
-          title: "Google Calendar",
-          description: "Collega Google Calendar ai tuoi agenti per sincronizzare appuntamenti e consulenze",
+          priority: 2,
+          title: "Google Calendar Consulente",
+          description: "Collega il tuo Google Calendar personale per sincronizzare appuntamenti e prenotazioni con i clienti",
           icon: <Calendar className="h-4 w-4" />,
           status: status?.googleCalendarStatus || "pending",
           testedAt: status?.googleCalendarTestedAt,
           errorMessage: status?.googleCalendarErrorMessage,
-          configLink: "/consultant/whatsapp",
-          testEndpoint: "/api/consultant/onboarding/test/google-calendar",
+          configLink: "/consultant/appointments",
           inlineConfig: {
             getEndpoint: "/api/consultant/calendar/status",
             saveEndpoint: "",
@@ -1394,12 +1761,23 @@ export default function ConsultantSetupWizard() {
             oauthStart: "/api/consultant/calendar/oauth/start",
             oauthLabel: "Connetti Google Calendar →",
             oauthStatusField: "connected",
-            usedBySteps: ["inbound_agent", "outbound_agent", "video_meeting"],
+            usedBySteps: ["first_summary_email"],
           },
         },
         {
-          id: "vertex_ai",
+          id: "google_calendar_agents",
           stepNumber: 25,
+          priority: 3,
+          title: "Google Calendar Agenti WhatsApp",
+          description: "Collega Google Calendar a ciascun agente WhatsApp per la prenotazione automatica degli appuntamenti",
+          icon: <Calendar className="h-4 w-4" />,
+          status: "pending",
+          configLink: "/consultant/whatsapp",
+        },
+        {
+          id: "vertex_ai",
+          stepNumber: 26,
+          priority: 5,
           title: "AI Engine (Gemini)",
           description: "Pre-configurato dal sistema via Google AI Studio. Aggiungi una tua API Key Gemini personale per usare un account dedicato.",
           icon: <Sparkles className="h-4 w-4" />,
@@ -1446,14 +1824,17 @@ export default function ConsultantSetupWizard() {
     previousCompletedRef.current = completedSteps;
   }, [completedSteps, totalSteps]);
 
+  const [sortByPriority, setSortByPriority] = useState(false);
+
   const stepNameMap: Record<string, string> = {
     vertex_ai: "AI Engine (Gemini)",
     smtp: "Email SMTP",
-    google_calendar: "Google Calendar",
+    google_calendar_consultant: "Google Calendar Consulente",
+    google_calendar_agents: "Google Calendar Agenti",
     twilio_config: "Configurazione Twilio + WhatsApp",
     approved_template: "Template WhatsApp Approvato",
     first_campaign: "Prima Campagna",
-    stripe_connect: "Stripe Connect",
+    stripe_connect: "Stripe — API Keys",
     email_journey: "Email Journey",
     inbound_agent: "Agente Inbound",
     outbound_agent: "Agente Outbound",
@@ -1472,6 +1853,14 @@ export default function ConsultantSetupWizard() {
     voice_calls: "Chiamate Voice",
     ai_autonomo: "AI Autonomo",
     instagram_dm: "Instagram DM",
+  };
+
+  const PRIORITY_LABELS: Record<number, { label: string; bg: string; dot: string }> = {
+    1: { label: "🔴 Critica — Blocca tutto il resto", bg: "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800", dot: "bg-red-500" },
+    2: { label: "🟠 Alta — Funzioni core", bg: "bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800", dot: "bg-orange-500" },
+    3: { label: "🟡 Media — Automazione", bg: "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800", dot: "bg-amber-500" },
+    4: { label: "🟢 Normale — Espansione", bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800", dot: "bg-emerald-500" },
+    5: { label: "⚪ Opzionale — Ottimizzazione", bg: "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700", dot: "bg-slate-300" },
   };
 
   const handleTest = async (stepId: string, endpoint?: string) => {
@@ -1614,31 +2003,86 @@ export default function ConsultantSetupWizard() {
           {/* ── VISTA GRIGLIA (panoramica sezioni) ── */}
           {!currentSection && (
             <div className="flex-1 overflow-auto p-6">
-              <ContextualBanner
-                sections={sections}
-                completedSteps={completedSteps}
-                totalSteps={totalSteps}
-                onGoToSection={(id) => {
-                  const s = sections.find(x => x.id === id);
-                  if (s) autoSelectStep(s);
-                }}
-              />
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">
-                {sections.map((section, i) => (
-                  <motion.div
-                    key={section.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.07 }}
-                  >
-                    <SectionCard
-                      section={section}
-                      onClick={() => autoSelectStep(section)}
-                      isUrgent={urgentSectionId === section.id}
-                    />
-                  </motion.div>
-                ))}
+              <div className="flex items-center justify-between mb-4">
+                <ContextualBanner
+                  sections={sections}
+                  completedSteps={completedSteps}
+                  totalSteps={totalSteps}
+                  onGoToSection={(id) => {
+                    const s = sections.find(x => x.id === id);
+                    if (s) autoSelectStep(s);
+                  }}
+                />
+                <Button
+                  variant={sortByPriority ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSortByPriority(!sortByPriority)}
+                  className="ml-4 shrink-0 gap-2"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                  {sortByPriority ? "Sezioni" : "Per Priorità"}
+                </Button>
               </div>
+
+              {!sortByPriority ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {sections.map((section, i) => (
+                    <motion.div
+                      key={section.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                    >
+                      <SectionCard
+                        section={section}
+                        onClick={() => autoSelectStep(section)}
+                        isUrgent={urgentSectionId === section.id}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {[1, 2, 3, 4, 5].map(priority => {
+                    const stepsInPriority = sections.flatMap(section =>
+                      section.steps
+                        .filter(step => step.priority === priority)
+                        .map(step => ({ ...step, sectionId: section.id, sectionEmoji: section.emoji, sectionTitle: section.title }))
+                    );
+                    if (stepsInPriority.length === 0) return null;
+                    const pl = PRIORITY_LABELS[priority];
+                    return (
+                      <div key={priority} className={`rounded-2xl border p-4 ${pl.bg}`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`w-2.5 h-2.5 rounded-full ${pl.dot}`} />
+                          <h3 className="font-semibold text-sm">{pl.label}</h3>
+                          <Badge variant="outline" className="ml-auto text-xs">{stepsInPriority.length} step</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {stepsInPriority.map(step => {
+                            const s = sections.find(sec => sec.id === (step as any).sectionId)!;
+                            return (
+                              <motion.div
+                                key={step.id}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => { autoSelectStep(s); setActiveStep(step.id); }}
+                                className="cursor-pointer flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:shadow-sm transition-all"
+                              >
+                                <StepNumberBadge number={step.stepNumber} status={step.status} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate text-slate-700 dark:text-slate-300">{step.title}</p>
+                                  <p className="text-xs text-muted-foreground">{(step as any).sectionEmoji} {(step as any).sectionTitle}</p>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1829,6 +2273,38 @@ export default function ConsultantSetupWizard() {
                         </div>
                       )}
 
+                      {/* ── google_calendar_agents — pannello speciale senza form ── */}
+                      {activeStepData.id === "google_calendar_agents" && (
+                        <div className="space-y-2 mb-2">
+                          <h4 className="font-medium text-sm flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-indigo-500" />
+                            Stato Calendari per Agente
+                          </h4>
+                          <AgentCalendarStatusPanel />
+                        </div>
+                      )}
+
+                      {/* ── nurturing_emails — bottone genera 365 email ── */}
+                      {activeStepData.id === "nurturing_emails" && (
+                        <NurturingGenerateButton />
+                      )}
+
+                      {/* ── public_agent_link — lista link copiabili ── */}
+                      {activeStepData.id === "public_agent_link" && (
+                        <div className="space-y-2 mb-2">
+                          <h4 className="font-medium text-sm flex items-center gap-2">
+                            <LinkIcon className="h-4 w-4 text-indigo-500" />
+                            Link Pubblici
+                          </h4>
+                          <PublicLinksPanel />
+                        </div>
+                      )}
+
+                      {/* ── lead_import — webhook URL copiabile ── */}
+                      {activeStepData.id === "lead_import" && (
+                        <LeadImportWebhookPanel consultantId={status?.consultantId} />
+                      )}
+
                       {/* ── vertex_ai — banner "già attivo" ── */}
                       {activeStepData.id === "vertex_ai" && (
                         <Alert className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 mb-2">
@@ -1883,7 +2359,8 @@ export default function ConsultantSetupWizard() {
                               const stepMessages: Record<string, string> = {
                                 vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
                                 smtp: "Come configuro il server SMTP per inviare email automatiche ai clienti?",
-                                google_calendar: "Aiutami a collegare Google Calendar per sincronizzare gli appuntamenti.",
+                                google_calendar_consultant: "Aiutami a collegare il mio Google Calendar personale per sincronizzare gli appuntamenti con i clienti.",
+                                google_calendar_agents: "Come collego Google Calendar ai miei agenti WhatsApp per le prenotazioni automatiche?",
                                 twilio_config: "Come configuro Twilio per WhatsApp Business?",
                                 instagram_dm: "Come collego Instagram per ricevere e rispondere ai messaggi diretti con l'AI?",
                                 whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
@@ -1959,26 +2436,47 @@ export default function ConsultantSetupWizard() {
                         </>
                       )}
 
-                      {activeStep === "google_calendar" && (
+                      {activeStep === "google_calendar_consultant" && (
                         <>
                           <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
-                              Collegamento Google Calendar agli Agenti
+                              Google Calendar Personale del Consulente
                             </h4>
-                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                              <li>Vai alla sezione Dipendenti/Agenti WhatsApp</li>
-                              <li>Seleziona un agente dalla lista</li>
-                              <li>Nel pannello laterale, trova la sezione "Google Calendar"</li>
-                              <li>Clicca "Collega Google Calendar"</li>
-                              <li>Accedi con l'account Google dell'agente e autorizza</li>
-                            </ol>
-                            <p className="text-xs text-muted-foreground mt-3 italic">
-                              Ogni agente può avere il proprio Google Calendar per gestire appuntamenti separati.
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Questo calendario viene usato per sincronizzare i tuoi appuntamenti personali con i clienti — prenotazioni, consulenze e follow-up.
                             </p>
+                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                              <li>Clicca "Connetti Google Calendar" qui sopra</li>
+                              <li>Accedi con il tuo account Google personale</li>
+                              <li>Autorizza l'accesso al calendario</li>
+                              <li>Il sistema sincronizzerà automaticamente gli appuntamenti</li>
+                            </ol>
                           </div>
-                          <CredentialNotesCard stepId="google_calendar" />
+                          <CredentialNotesCard stepId="google_calendar_consultant" />
                         </>
+                      )}
+
+                      {activeStep === "google_calendar_agents" && (
+                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            Google Calendar degli Agenti WhatsApp
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Ogni agente WhatsApp può avere un proprio Google Calendar per gestire le prenotazioni automatiche degli appuntamenti. Questo è <strong>separato</strong> dal calendario del consulente.
+                          </p>
+                          <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                            <li>Vai alla pagina <strong>Agenti WhatsApp</strong></li>
+                            <li>Seleziona un agente dalla lista</li>
+                            <li>Nel pannello laterale trova la sezione "Google Calendar"</li>
+                            <li>Clicca "Collega Google Calendar" per quell'agente</li>
+                            <li>Autorizza l'account Google che vuoi usare per le prenotazioni</li>
+                          </ol>
+                          <p className="text-xs text-muted-foreground mt-3 italic">
+                            Ogni agente può usare un account Google diverso per calendari separati.
+                          </p>
+                        </div>
                       )}
 
                       {activeStep === "twilio_config" && (
@@ -2099,22 +2597,18 @@ export default function ConsultantSetupWizard() {
                         <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-indigo-600" />
-                            Come Collegare Stripe per Ricevere Pagamenti
+                            Due modi per configurare Stripe
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-3">
-                            <p className="font-medium text-foreground">💳 Perché serve Stripe?</p>
-                            <p>Stripe ti permette di ricevere pagamenti dai tuoi clienti per abbonamenti e licenze direttamente sul tuo conto.</p>
-                            
-                            <p className="font-medium text-foreground mt-4">🔧 Come collegarlo:</p>
-                            <ol className="list-decimal list-inside ml-2 space-y-2">
-                              <li>Vai su <strong>Gestione Agenti WhatsApp → tab Licenze</strong></li>
-                              <li>Clicca su <strong>"Collega Stripe"</strong></li>
-                              <li>Verrai reindirizzato a Stripe per creare/collegare un account</li>
-                              <li>Completa la verifica dell'identità richiesta da Stripe</li>
-                              <li>Una volta verificato, tornerai automaticamente alla piattaforma</li>
-                            </ol>
-                            
-                            <p className="font-medium text-foreground mt-4">📊 Stati possibili:</p>
+                            <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <p className="font-medium text-foreground mb-1">🔑 Opzione 1 — API Keys (qui sopra)</p>
+                              <p>Inserisci la Secret Key e il Webhook Secret per abilitare i pagamenti via API. È il metodo più rapido per iniziare.</p>
+                            </div>
+                            <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <p className="font-medium text-foreground mb-1">🏦 Opzione 2 — Stripe Connect (pagina Licenze)</p>
+                              <p>Per ricevere pagamenti direttamente sul tuo conto bancario dai clienti finali, usa "Apri impostazioni complete" → Collega Stripe.</p>
+                            </div>
+                            <p className="font-medium text-foreground mt-2">📊 Stati account Stripe Connect:</p>
                             <ul className="list-disc list-inside ml-2 space-y-1">
                               <li><strong>Pending</strong>: In attesa di verifica</li>
                               <li><strong>Restricted</strong>: Servono altri documenti</li>
@@ -2507,12 +3001,15 @@ export default function ConsultantSetupWizard() {
                             Import Lead Automatico
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-2">
-                            <p>Collega API esterne per importare lead automaticamente:</p>
+                            <p>Usa il tuo Webhook URL (mostrato sopra) per inviare lead automaticamente da:</p>
                             <ul className="list-disc list-inside ml-2 space-y-1">
-                              <li>CRM esterni (HubSpot, Salesforce, ecc.)</li>
-                              <li>Landing page e form</li>
-                              <li>Webhook personalizzati</li>
+                              <li><strong>Zapier</strong> — collega migliaia di app</li>
+                              <li><strong>Make.com</strong> — automazioni avanzate</li>
+                              <li><strong>n8n</strong> — automazioni self-hosted</li>
+                              <li><strong>CRM esterni</strong> — HubSpot, Salesforce, ecc.</li>
+                              <li><strong>Landing page e form</strong> — Typeform, HubSpot Form, ecc.</li>
                             </ul>
+                            <p className="text-xs italic mt-2">Il webhook accetta POST con campi: name, phone, email, source (opzionali).</p>
                           </div>
                         </div>
                       )}
