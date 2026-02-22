@@ -32,8 +32,28 @@ const ORBS = Array.from({ length: 4 }, (_, i) => ({
   delay: [0, 3, 6, 9][i],
 }));
 
+function useDarkMode() {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
+}
+
 export function PageTransition() {
   const { brandPrimaryColor, brandSecondaryColor, brandLogoUrl, brandName } = useBrandContext();
+  const isDark = useDarkMode();
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [messageFading, setMessageFading] = useState(false);
@@ -68,17 +88,48 @@ export function PageTransition() {
   const p1 = brandPrimaryColor;
   const p2 = brandSecondaryColor;
 
+  const theme = isDark
+    ? {
+        bg: "linear-gradient(135deg, #0a0f1e 0%, #0d1628 40%, #0f1a2e 70%, #0a1220 100%)",
+        orbOpacity1: "18",
+        orbOpacity2: "12",
+        particleColor: "#ffffff",
+        gridColor: `${p1}06`,
+        titleColor: "#ffffff",
+        titleShadow: `0 0 20px ${p1}80`,
+        textColor: `${p1}cc`,
+        separatorOpacity: "1",
+        cardBg: `linear-gradient(135deg, ${p1}25, ${p2}35)`,
+        cardBorder: `${p1}40`,
+        cardShadow: `0 0 40px ${p1}30, 0 0 80px ${p1}15, inset 0 1px 0 ${p1}20`,
+        progressTrack: `${p1}20`,
+        percentColor: `${p1}60`,
+        dotColor: p1,
+      }
+    : {
+        bg: "linear-gradient(135deg, #f0f9ff 0%, #e8f4fd 40%, #f0fdfa 70%, #f8fafc 100%)",
+        orbOpacity1: "22",
+        orbOpacity2: "16",
+        particleColor: p1,
+        gridColor: `${p1}08`,
+        titleColor: "#0f172a",
+        titleShadow: `0 0 0px transparent`,
+        textColor: `${p1}dd`,
+        separatorOpacity: "0.7",
+        cardBg: `linear-gradient(135deg, ${p1}18, ${p2}22)`,
+        cardBorder: `${p1}50`,
+        cardShadow: `0 0 30px ${p1}20, 0 4px 24px ${p1}15, inset 0 1px 0 ${p1}30`,
+        progressTrack: `${p1}15`,
+        percentColor: `${p1}80`,
+        dotColor: p1,
+      };
+
   return (
     <div
       style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease" }}
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden"
     >
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(135deg, #0a0f1e 0%, #0d1628 40%, #0f1a2e 70%, #0a1220 100%)`,
-        }}
-      />
+      <div className="absolute inset-0" style={{ background: theme.bg }} />
 
       {ORBS.map(orb => (
         <div
@@ -91,8 +142,8 @@ export function PageTransition() {
             height: orb.size,
             transform: "translate(-50%, -50%)",
             background: orb.id % 2 === 0
-              ? `radial-gradient(circle, ${p1}18 0%, transparent 70%)`
-              : `radial-gradient(circle, ${p2}12 0%, transparent 70%)`,
+              ? `radial-gradient(circle, ${p1}${theme.orbOpacity1} 0%, transparent 70%)`
+              : `radial-gradient(circle, ${p2}${theme.orbOpacity2} 0%, transparent 70%)`,
             animation: `orb-float ${orb.duration}s ease-in-out infinite`,
             animationDelay: `${orb.delay}s`,
           }}
@@ -108,8 +159,8 @@ export function PageTransition() {
             top: `${p.y}%`,
             width: p.size,
             height: p.size,
-            backgroundColor: p.id % 3 === 0 ? p1 : p.id % 3 === 1 ? p2 : "#ffffff",
-            opacity: p.opacity,
+            backgroundColor: p.id % 3 === 0 ? p1 : p.id % 3 === 1 ? p2 : theme.particleColor,
+            opacity: p.opacity * (isDark ? 1 : 0.5),
             animation: `particle-drift ${p.duration}s ease-in-out infinite`,
             animationDelay: `${p.delay}s`,
           }}
@@ -119,7 +170,7 @@ export function PageTransition() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, ${p1}06 40px, ${p1}06 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, ${p1}06 40px, ${p1}06 41px)`,
+          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, ${theme.gridColor} 40px, ${theme.gridColor} 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, ${theme.gridColor} 40px, ${theme.gridColor} 41px)`,
         }}
       />
 
@@ -144,8 +195,8 @@ export function PageTransition() {
               </filter>
             </defs>
 
-            <circle cx="80" cy="80" r="72" fill="none" stroke={`${p1}15`} strokeWidth="1" />
-            <circle cx="80" cy="80" r="60" fill="none" stroke={`${p2}10`} strokeWidth="1" />
+            <circle cx="80" cy="80" r="72" fill="none" stroke={`${p1}${isDark ? "15" : "20"}`} strokeWidth="1" />
+            <circle cx="80" cy="80" r="60" fill="none" stroke={`${p2}${isDark ? "10" : "15"}`} strokeWidth="1" />
 
             <circle
               cx="80" cy="80" r="72"
@@ -189,19 +240,17 @@ export function PageTransition() {
             style={{
               width: 84,
               height: 84,
-              background: `linear-gradient(135deg, ${p1}25, ${p2}35)`,
-              border: `1px solid ${p1}40`,
+              background: theme.cardBg,
+              border: `1px solid ${theme.cardBorder}`,
               backdropFilter: "blur(10px)",
-              boxShadow: `0 0 40px ${p1}30, 0 0 80px ${p1}15, inset 0 1px 0 ${p1}20`,
+              boxShadow: theme.cardShadow,
               transform: pulse ? "scale(1.05)" : "scale(1)",
               transition: "transform 0.3s ease",
             }}
           >
             <div
               className="absolute inset-0 rounded-2xl"
-              style={{
-                background: `radial-gradient(circle at 30% 30%, ${p1}20, transparent 60%)`,
-              }}
+              style={{ background: `radial-gradient(circle at 30% 30%, ${p1}20, transparent 60%)` }}
             />
             {brandLogoUrl ? (
               <img src={brandLogoUrl} alt={brandName} className="w-12 h-12 object-contain relative z-10" />
@@ -215,8 +264,8 @@ export function PageTransition() {
           <span
             className="text-xl font-bold tracking-widest uppercase"
             style={{
-              color: "#ffffff",
-              textShadow: `0 0 20px ${p1}80`,
+              color: theme.titleColor,
+              textShadow: theme.titleShadow,
               letterSpacing: "0.2em",
             }}
           >
@@ -228,6 +277,7 @@ export function PageTransition() {
             style={{
               background: `linear-gradient(90deg, transparent, ${p1}, transparent)`,
               boxShadow: `0 0 8px ${p1}60`,
+              opacity: theme.separatorOpacity,
             }}
           />
 
@@ -235,7 +285,7 @@ export function PageTransition() {
             <span
               className="text-sm font-medium"
               style={{
-                color: `${p1}cc`,
+                color: theme.textColor,
                 opacity: messageFading ? 0 : 1,
                 transform: messageFading ? "translateY(6px)" : "translateY(0)",
                 transition: "opacity 0.35s ease, transform 0.35s ease",
@@ -249,11 +299,7 @@ export function PageTransition() {
         <div className="flex flex-col items-center gap-2" style={{ width: 260 }}>
           <div
             className="relative overflow-hidden rounded-full"
-            style={{
-              width: 260,
-              height: 3,
-              background: `${p1}20`,
-            }}
+            style={{ width: 260, height: 3, background: theme.progressTrack }}
           >
             <div
               className="absolute left-0 top-0 h-full rounded-full"
@@ -274,10 +320,7 @@ export function PageTransition() {
             />
           </div>
 
-          <span
-            className="text-xs font-mono"
-            style={{ color: `${p1}60` }}
-          >
+          <span className="text-xs font-mono" style={{ color: theme.percentColor }}>
             {progress}%
           </span>
         </div>
@@ -290,7 +333,7 @@ export function PageTransition() {
               style={{
                 width: i === 2 ? 8 : i === 1 || i === 3 ? 5 : 3,
                 height: i === 2 ? 8 : i === 1 || i === 3 ? 5 : 3,
-                backgroundColor: p1,
+                backgroundColor: theme.dotColor,
                 animation: `wave-dot 1.4s ease-in-out infinite`,
                 animationDelay: `${i * 0.12}s`,
                 boxShadow: i === 2 ? `0 0 8px ${p1}` : "none",
