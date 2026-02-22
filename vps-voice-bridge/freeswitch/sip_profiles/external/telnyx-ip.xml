@@ -12,9 +12,19 @@
   SETUP RICHIESTO SU TELNYX:
   1. Vai su https://portal.telnyx.com → Networking → SIP Connections
   2. Crea una nuova connessione "IP Authentication"
-  3. Aggiungi l'IP pubblico del tuo VPS alla lista degli IP autorizzati
+  3. Aggiungi l'IP pubblico del tuo VPS (72.62.50.40) alla whitelist
   4. Configura il Outbound Voice Profile con i numeri DID acquistati
   5. Associa i DID alla connessione SIP
+  
+  TECH PREFIX:
+  Telnyx richiede il prefisso 0312 davanti al numero di destinazione
+  per le chiamate outbound. Il prefisso viene aggiunto nel dialplan
+  (02_outbound_trunk.xml), NON nel gateway.
+  
+  PROXY (scegli UNO):
+  - orbitale.sip.telnyx.com → dominio SIP dedicato (con Tech Prefix 0312)
+  - sip.telnyx.com → dominio generico Telnyx (senza Tech Prefix)
+  Cambia il valore di "proxy" qui sotto in base alla tua configurazione.
   
   PERCORSO DEPLOY:
   /usr/local/freeswitch/etc/freeswitch/sip_profiles/external/telnyx-ip.xml
@@ -28,8 +38,11 @@
 
 <include>
   <gateway name="telnyx-ip">
-    <!-- Telnyx SIP Proxy -->
-    <param name="proxy" value="sip.telnyx.com"/>
+    <!-- Telnyx SIP Proxy: scegli UNO dei due -->
+    <!-- Opzione 1: dominio dedicato (richiede Tech Prefix 0312 nel dialplan) -->
+    <param name="proxy" value="orbitale.sip.telnyx.com"/>
+    <!-- Opzione 2: dominio generico (senza Tech Prefix) -->
+    <!-- <param name="proxy" value="sip.telnyx.com"/> -->
     
     <!-- IP Auth: nessuna registrazione necessaria -->
     <param name="register" value="false"/>

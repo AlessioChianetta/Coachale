@@ -17,6 +17,12 @@
   3. Numeri italiani (39xxx, 0xxx) → Telnyx con failover Messagenet
   4. Numeri internazionali → Telnyx con failover Telnyx credentials
   
+  TECH PREFIX TELNYX:
+  Se usi orbitale.sip.telnyx.com, Telnyx richiede il prefisso 0312
+  davanti al numero di destinazione per le chiamate outbound.
+  Il prefisso viene aggiunto automaticamente nel bridge verso Telnyx.
+  Se usi sip.telnyx.com generico, rimuovi "0312" dalle righe bridge.
+  
   SICUREZZA:
   - Timeout massimo: 3600 secondi (1 ora) per prevenire frodi
   - hangup_after_bridge: libera risorse immediatamente
@@ -54,10 +60,30 @@
     un gateway specifico (es. per test o requisiti del cliente).
     ============================================================
   -->
-  <extension name="outbound_via_gateway">
-    <condition field="${sip_gateway}" expression="^(telnyx-ip|telnyx-credentials|messagenet-credentials|messagenet-ip)$">
+  <!-- Gateway Telnyx esplicito (con Tech Prefix 0312) -->
+  <extension name="outbound_via_telnyx_explicit">
+    <condition field="${sip_gateway}" expression="^(telnyx-ip|telnyx-credentials)$">
       <condition field="destination_number" expression="^(\+?[0-9]{4,15})$">
-        <action application="log" data="INFO [OUTBOUND] Gateway esplicito: ${sip_gateway} → ${destination_number} (caller: ${effective_caller_id_number})"/>
+        <action application="log" data="INFO [OUTBOUND] Gateway esplicito Telnyx: ${sip_gateway} → 0312${destination_number} (caller: ${effective_caller_id_number})"/>
+        
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="session_timeout=3600"/>
+        <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
+        <action application="set" data="sip_h_X-Alessia-CallType=outbound"/>
+        <action application="set" data="sip_h_X-Alessia-Gateway=${sip_gateway}"/>
+        <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata risposta: ${uuid} via ${sip_gateway} → ${destination_number}"/>
+        
+        <!-- Tech Prefix 0312 per orbitale.sip.telnyx.com -->
+        <action application="bridge" data="sofia/gateway/${sip_gateway}/0312${destination_number}"/>
+      </condition>
+    </condition>
+  </extension>
+
+  <!-- Gateway Messagenet esplicito (senza Tech Prefix) -->
+  <extension name="outbound_via_messagenet_explicit">
+    <condition field="${sip_gateway}" expression="^(messagenet-credentials|messagenet-ip)$">
+      <condition field="destination_number" expression="^(\+?[0-9]{4,15})$">
+        <action application="log" data="INFO [OUTBOUND] Gateway esplicito Messagenet: ${sip_gateway} → ${destination_number} (caller: ${effective_caller_id_number})"/>
         
         <action application="set" data="hangup_after_bridge=true"/>
         <action application="set" data="session_timeout=3600"/>
@@ -88,7 +114,8 @@
       <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata Italia risposta: ${uuid} → ${destination_number}"/>
       
       <action application="set" data="failure_causes=NORMAL_TEMPORARY_FAILURE,RECOVERY_ON_TIMER_EXPIRE,GATEWAY_DOWN,NO_ROUTE_DESTINATION"/>
-      <action application="bridge" data="sofia/gateway/telnyx-ip/${destination_number}|sofia/gateway/messagenet-credentials/${destination_number}"/>
+      <!-- Tech Prefix 0312 per Telnyx (orbitale.sip.telnyx.com), Messagenet senza prefisso -->
+      <action application="bridge" data="sofia/gateway/telnyx-ip/0312${destination_number}|sofia/gateway/messagenet-credentials/${destination_number}"/>
     </condition>
   </extension>
 
@@ -111,7 +138,8 @@
       <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata internazionale risposta: ${uuid} → ${destination_number}"/>
       
       <action application="set" data="failure_causes=NORMAL_TEMPORARY_FAILURE,RECOVERY_ON_TIMER_EXPIRE,GATEWAY_DOWN,NO_ROUTE_DESTINATION"/>
-      <action application="bridge" data="sofia/gateway/telnyx-ip/${destination_number}|sofia/gateway/telnyx-credentials/${destination_number}"/>
+      <!-- Tech Prefix 0312 per entrambi i gateway Telnyx (orbitale.sip.telnyx.com) -->
+      <action application="bridge" data="sofia/gateway/telnyx-ip/0312${destination_number}|sofia/gateway/telnyx-credentials/0312${destination_number}"/>
     </condition>
   </extension>
 
