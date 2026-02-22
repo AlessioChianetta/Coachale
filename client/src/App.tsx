@@ -7,6 +7,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PageLoader } from "@/components/page-loader";
+import { PageTransition } from "@/components/page-transition";
 import AuthGuard from "@/components/auth-guard";
 import RoleBasedRedirect from "@/components/role-based-redirect";
 import { TourProvider } from "@/contexts/TourContext";
@@ -15,6 +16,7 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { FloatingAlessiaChat } from "@/components/alessia/FloatingAlessiaChat";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
+import { preloadAfterLogin } from "@/lib/route-preloader";
 
 // Lazy load heavy components
 const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
@@ -183,9 +185,17 @@ function Router() {
     }
   }, [location, setLocation]);
 
+  useEffect(() => {
+    if (user?.role === 'consultant') {
+      preloadAfterLogin('consultant');
+    } else if (user?.role === 'client') {
+      preloadAfterLogin('client');
+    }
+  }, []);
+
   return (
     <>
-      <Suspense fallback={<PageLoader />}>
+      <Suspense fallback={<PageTransition />}>
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />

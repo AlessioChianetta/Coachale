@@ -1,5 +1,3 @@
-import { queryClient } from './queryClient';
-
 type PreloadFn = () => Promise<any>;
 
 const CONSULTANT_CHUNK_MAP: Record<string, PreloadFn> = {
@@ -43,38 +41,6 @@ const CLIENT_CHUNK_MAP: Record<string, PreloadFn> = {
   '/client/roadmap': () => import('@/pages/client-roadmap'),
 };
 
-const QUERY_PREFETCH_MAP: Record<string, string[][]> = {
-  '/consultant': [
-    ['/api/clients'],
-    ['/api/appointments/upcoming'],
-    ['/api/stats/consultant'],
-  ],
-  '/consultant/clients': [
-    ['/api/consultant/licenses'],
-    ['/api/departments'],
-  ],
-  '/consultant/tasks': [
-    ['/api/consultant-personal-tasks'],
-  ],
-  '/consultant/lead-hub': [
-    ['/api/proactive-leads'],
-    ['/api/campaigns'],
-  ],
-  '/consultant/ai-usage': [
-    ['/api/ai-usage/summary'],
-    ['/api/ai-usage/by-client'],
-  ],
-  '/consultant/whatsapp': [
-    ['/api/whatsapp/config'],
-  ],
-  '/consultant/email-hub': [
-    ['/api/email-hub/accounts'],
-  ],
-  '/consultant/appointments': [
-    ['/api/consultant/calendar/status'],
-  ],
-};
-
 const hoverTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 const ALL_CHUNK_MAP = { ...CONSULTANT_CHUNK_MAP, ...CLIENT_CHUNK_MAP };
@@ -84,10 +50,6 @@ export function preloadOnHover(href: string) {
   hoverTimers[href] = setTimeout(() => {
     delete hoverTimers[href];
     ALL_CHUNK_MAP[href]?.().catch(() => {});
-    const queries = QUERY_PREFETCH_MAP[href] ?? [];
-    queries.forEach(queryKey => {
-      queryClient.prefetchQuery({ queryKey, staleTime: Infinity }).catch(() => {});
-    });
   }, 150);
 }
 
@@ -102,13 +64,5 @@ export function preloadAfterLogin(role: 'consultant' | 'client') {
   setTimeout(() => {
     const chunkMap = role === 'consultant' ? CONSULTANT_CHUNK_MAP : CLIENT_CHUNK_MAP;
     Object.values(chunkMap).forEach(fn => fn().catch(() => {}));
-
-    if (role === 'consultant') {
-      Object.entries(QUERY_PREFETCH_MAP).forEach(([, queries]) => {
-        queries.forEach(queryKey => {
-          queryClient.prefetchQuery({ queryKey, staleTime: Infinity }).catch(() => {});
-        });
-      });
-    }
-  }, 1500);
+  }, 100);
 }
