@@ -133,6 +133,10 @@ router.post("/:slug/register", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Email e password sono obbligatori" });
     }
 
+    if (!phone || phone.replace(/[^0-9]/g, '').length < 8) {
+      return res.status(400).json({ error: "Il numero di telefono WhatsApp è obbligatorio (es: +39 333 1234567)" });
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: "Formato email non valido" });

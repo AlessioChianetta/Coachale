@@ -161,7 +161,7 @@ export default function BronzeAuth() {
           password: data.password,
           firstName: data.firstName || undefined,
           lastName: data.lastName || undefined,
-          phone: data.phone || undefined,
+          phone: data.phone,
         }),
       });
       if (!response.ok) {
@@ -231,6 +231,15 @@ export default function BronzeAuth() {
       toast({
         title: "Errore",
         description: "La password deve essere di almeno 6 caratteri",
+        variant: "destructive",
+      });
+      return;
+    }
+    const phoneDigits = registerForm.phone.replace(/[^0-9]/g, '');
+    if (!registerForm.phone.trim() || phoneDigits.length < 8) {
+      toast({
+        title: "Errore",
+        description: "Inserisci il tuo numero di telefono WhatsApp (es: +39 333 1234567). Serve per contattarti su WhatsApp.",
         variant: "destructive",
       });
       return;
@@ -402,7 +411,7 @@ export default function BronzeAuth() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="reg-phone">Telefono (opzionale)</Label>
+                    <Label htmlFor="reg-phone">Numero WhatsApp *</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
@@ -412,8 +421,12 @@ export default function BronzeAuth() {
                         className="pl-10"
                         value={registerForm.phone}
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, phone: e.target.value }))}
+                        required
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Inserisci il numero con cui usi WhatsApp. Servirà per comunicare con il consulente.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
