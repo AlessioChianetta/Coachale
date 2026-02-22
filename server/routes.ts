@@ -15726,7 +15726,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
         .orderBy(schema.consultantWhatsappConfig.createdAt);
 
-      const hasAssistenzaClienti = configs.some((c: any) => c.agentName === "Assistenza Clienti");
+      const hasAssistenzaClienti = configs.some((c: any) => c.isDefault === true);
       if (!hasAssistenzaClienti) {
         try {
           const [defaultAgent] = await db
@@ -15752,6 +15752,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               objectionHandlingEnabled: false,
               disqualificationEnabled: false,
               upsellingEnabled: false,
+              isDefault: true,
             })
             .returning();
           

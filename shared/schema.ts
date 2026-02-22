@@ -2959,6 +2959,11 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   roundRobinEnabled: boolean("round_robin_enabled").default(false).notNull(),
   bookingPoolId: varchar("booking_pool_id"),
 
+  // Default agent flag - marks the system-created "Assistenza Clienti" agent
+  // Only this agent receives full CRM access when a recognized client writes to it
+  // This flag is more robust than checking agentName (which could be renamed by the user)
+  isDefault: boolean("is_default").default(false).notNull(),
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

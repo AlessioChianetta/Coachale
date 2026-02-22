@@ -1301,7 +1301,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       console.log(`║  └─ L3: ${userLevel >= 3 && o3 ? `✅ "${o3.substring(0, 30)}..." (${o3.length} chars)` : userLevel < 3 && o3 ? `⏭️  Non applicato (livello utente < 3)` : '❌ Non configurato'}`);
       console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
 
-    } else if (effectiveUserId && consultantConfig?.agentName === 'Assistenza Clienti') {
+    } else if (effectiveUserId && consultantConfig?.isDefault === true) {
       // ⏱️ Context Building Timing
       timings.contextBuildStart = performance.now();
 
