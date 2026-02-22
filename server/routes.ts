@@ -15747,7 +15747,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               whatsappConciseMode: true,
               isDryRun: true,
               isActive: true,
-              isProactiveAgent: false,
+              isProactiveAgent: true,
               bookingEnabled: false,
               objectionHandlingEnabled: false,
               disqualificationEnabled: false,
@@ -18784,6 +18784,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           availabilityWorkingHours: source.availabilityWorkingHours,
           // File search
           fileSearchCategories: source.fileSearchCategories,
+          // Default lead proattivi (visibili in AgentInstructions per agenti proattivi)
+          defaultObiettivi: source.defaultObiettivi,
+          defaultDesideri: source.defaultDesideri,
+          defaultUncino: source.defaultUncino,
+          defaultIdealState: source.defaultIdealState,
           // Timestamp
           updatedAt: new Date(),
         })
