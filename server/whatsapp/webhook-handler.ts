@@ -741,6 +741,18 @@ export async function findOrCreateConversation(
     }
 
     if (conversation) {
+      // If the conversation was found via fallback (phone+consultantId) but its agentConfigId
+      // differs from the incoming one, the Twilio number was moved to a different agent.
+      // Update the conversation to point to the new agent.
+      if (agentConfigId && conversation.agentConfigId !== agentConfigId) {
+        console.log(`🔄 [AGENT SWITCH] Numero spostato su nuovo agente: ${conversation.agentConfigId} → ${agentConfigId}`);
+        [conversation] = await tx
+          .update(whatsappConversations)
+          .set({ agentConfigId })
+          .where(eq(whatsappConversations.id, conversation.id))
+          .returning();
+      }
+
       console.log(`✅ [CONVERSATION FOUND] id=${conversation.id}, agentConfigId=${conversation.agentConfigId}, isLead=${conversation.isLead}, isProactiveLead=${conversation.isProactiveLead}`);
 
       // Classify participant and update metadata if not already classified

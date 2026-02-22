@@ -18695,6 +18695,115 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
 
+  // POST /api/whatsapp/agents/:targetId/copy-from/:sourceId
+  // Copy configuration from one agent to another, preserving the target's name, credentials and status
+  app.post("/api/whatsapp/agents/:targetId/copy-from/:sourceId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { targetId, sourceId } = req.params;
+
+      if (targetId === sourceId) {
+        return res.status(400).json({ message: "Sorgente e destinatario non possono essere lo stesso agente" });
+      }
+
+      // Verify both configs belong to this consultant
+      const configs = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+            inArray(schema.consultantWhatsappConfig.id, [targetId, sourceId])
+          )
+        );
+
+      const source = configs.find((c) => c.id === sourceId);
+      const target = configs.find((c) => c.id === targetId);
+
+      if (!source) return res.status(404).json({ message: "Agente sorgente non trovato" });
+      if (!target) return res.status(404).json({ message: "Agente destinatario non trovato" });
+
+      // Copy configuration fields — preserve identity, credentials and status of target
+      const [updated] = await db
+        .update(schema.consultantWhatsappConfig)
+        .set({
+          // Business profile
+          businessName: source.businessName,
+          consultantDisplayName: source.consultantDisplayName,
+          businessDescription: source.businessDescription,
+          consultantBio: source.consultantBio,
+          professionalRole: source.professionalRole,
+          salesScript: source.salesScript,
+          // Strategy
+          vision: source.vision,
+          mission: source.mission,
+          values: source.values,
+          usp: source.usp,
+          whoWeHelp: source.whoWeHelp,
+          whoWeDontHelp: source.whoWeDontHelp,
+          whatWeDo: source.whatWeDo,
+          howWeDoIt: source.howWeDoIt,
+          // Authority & proof
+          softwareCreated: source.softwareCreated,
+          booksPublished: source.booksPublished,
+          yearsExperience: source.yearsExperience,
+          clientsHelped: source.clientsHelped,
+          resultsGenerated: source.resultsGenerated,
+          caseStudies: source.caseStudies,
+          // Services
+          servicesOffered: source.servicesOffered,
+          guarantees: source.guarantees,
+          // AI behavior
+          aiPersonality: source.aiPersonality,
+          agentType: source.agentType,
+          agentInstructions: source.agentInstructions,
+          agentInstructionsEnabled: source.agentInstructionsEnabled,
+          whatsappConciseMode: source.whatsappConciseMode,
+          selectedTemplate: source.selectedTemplate,
+          // Features
+          bookingEnabled: source.bookingEnabled,
+          objectionHandlingEnabled: source.objectionHandlingEnabled,
+          disqualificationEnabled: source.disqualificationEnabled,
+          upsellingEnabled: source.upsellingEnabled,
+          // Working hours
+          workingHoursEnabled: source.workingHoursEnabled,
+          workingHoursStart: source.workingHoursStart,
+          workingHoursEnd: source.workingHoursEnd,
+          workingDays: source.workingDays,
+          afterHoursMessage: source.afterHoursMessage,
+          // Business header
+          businessHeaderMode: source.businessHeaderMode,
+          customBusinessHeader: source.customBusinessHeader,
+          // Availability
+          availabilityTimezone: source.availabilityTimezone,
+          availabilityAppointmentDuration: source.availabilityAppointmentDuration,
+          availabilityBufferBefore: source.availabilityBufferBefore,
+          availabilityBufferAfter: source.availabilityBufferAfter,
+          availabilityMaxDaysAhead: source.availabilityMaxDaysAhead,
+          availabilityMinHoursNotice: source.availabilityMinHoursNotice,
+          availabilityWorkingHours: source.availabilityWorkingHours,
+          // File search
+          fileSearchCategories: source.fileSearchCategories,
+          // Timestamp
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.consultantWhatsappConfig.id, targetId))
+        .returning();
+
+      console.log(`📋 [COPY-FROM] Configurazione copiata: "${source.agentName}" → "${target.agentName}" (consultant: ${consultantId})`);
+
+      res.json({
+        success: true,
+        message: `Configurazione copiata da "${source.agentName}" a "${target.agentName}"`,
+        config: updated,
+      });
+    } catch (error: any) {
+      console.error("❌ Error copying agent config:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
   // AI Agents - Receptionist Metrics
   app.get("/api/ai-agents/receptionist-metrics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

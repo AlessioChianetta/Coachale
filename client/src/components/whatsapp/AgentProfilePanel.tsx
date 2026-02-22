@@ -88,6 +88,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 
 interface Agent {
@@ -404,6 +406,10 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [showShareManager, setShowShareManager] = useState(false);
 
+  // Stato dialog "Copia contenuto da agente"
+  const [showCopyFromDialog, setShowCopyFromDialog] = useState(false);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
+
   // Query per ottenere lo slug dell'agente per accesso dipendente
   const { data: agentShares } = useQuery<{ shares: Array<{ id: string; slug: string; publicUrl: string; isActive: boolean; revokedAt?: string | null; agent?: { id: string } }> }>({
     queryKey: ["/api/whatsapp/agent-share", selectedAgent?.id],
@@ -703,6 +709,55 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
         description: error.message || "Impossibile sincronizzare gli Ice Breakers"
       });
     }
+  });
+
+  // Query lista agenti per dialog "Copia contenuto da"
+  const { data: leaderboardAgents } = useQuery<Array<{
+    id: string;
+    name: string;
+    type: string;
+    businessName?: string | null;
+  }>>({
+    queryKey: ["/api/whatsapp/agents/leaderboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/agents/leaderboard", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: showCopyFromDialog,
+  });
+
+  // Mutation copia configurazione tra agenti
+  const copyFromMutation = useMutation({
+    mutationFn: async ({ targetId, sourceId }: { targetId: string; sourceId: string }) => {
+      const res = await fetch(`/api/whatsapp/agents/${targetId}/copy-from/${sourceId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Errore durante la copia");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const sourceName = leaderboardAgents?.find(a => a.id === selectedSourceId)?.name ?? "Sorgente";
+      toast({
+        title: "Configurazione copiata",
+        description: `Contenuto copiato da "${sourceName}" → "${selectedAgent?.name}"`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config", selectedAgent?.id] });
+      setShowCopyFromDialog(false);
+      setSelectedSourceId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: error.message || "Impossibile copiare la configurazione",
+      });
+    },
   });
 
   // Fetch Twitter configs
@@ -1298,10 +1353,20 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 rounded-xl">
+              <DropdownMenuContent align="end" className="w-52 rounded-xl">
                 <DropdownMenuItem onClick={() => onDuplicateAgent?.(selectedAgent.id)} className="gap-2 text-sm">
                   <Copy className="h-3.5 w-3.5" />
                   Duplica Agente
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedSourceId(null);
+                    setShowCopyFromDialog(true);
+                  }}
+                  className="gap-2 text-sm"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  Copia contenuto da...
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onDeleteAgent?.(selectedAgent.id)} className="gap-2 text-sm text-red-600 focus:text-red-700 focus:bg-red-50">
@@ -2560,6 +2625,100 @@ export function AgentProfilePanel({ selectedAgent, onDeleteAgent, onDuplicateAge
 
         </CardContent>
       </ScrollArea>
+
+      {/* Dialog: Copia contenuto da un altro agente */}
+      <Dialog
+        open={showCopyFromDialog}
+        onOpenChange={(open) => {
+          setShowCopyFromDialog(open);
+          if (!open) setSelectedSourceId(null);
+        }}
+      >
+        <DialogContent className="w-[95vw] max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle>Copia contenuto da un altro agente</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Il nome, le credenziali Twilio e il calendario di{" "}
+              <strong className="text-gray-700 dark:text-gray-300">{selectedAgent.name}</strong>{" "}
+              verranno mantenuti. Personalità, istruzioni e descrizione verranno sostituiti.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-56 rounded-lg border border-gray-100 dark:border-gray-800 mt-2">
+            <div className="p-1">
+              {(leaderboardAgents ?? [])
+                .filter((a) => a.id !== selectedAgent.id)
+                .map((agent) => (
+                  <button
+                    key={agent.id}
+                    onClick={() => setSelectedSourceId(agent.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                      selectedSourceId === agent.id
+                        ? "bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    }`}
+                  >
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                      {(agent.name ?? "?")[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{agent.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{agentTypeLabels[agent.type] ?? agent.type}</p>
+                    </div>
+                    {selectedSourceId === agent.id && (
+                      <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+              {(leaderboardAgents ?? []).filter((a) => a.id !== selectedAgent.id).length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-6">Nessun altro agente disponibile</p>
+              )}
+            </div>
+          </ScrollArea>
+
+          {selectedSourceId && (
+            <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 mt-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Questa azione sovrascriverà la configurazione di{" "}
+                <strong>{selectedAgent.name}</strong>. Non può essere annullata.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCopyFromDialog(false);
+                setSelectedSourceId(null);
+              }}
+            >
+              Annulla
+            </Button>
+            <Button
+              disabled={!selectedSourceId || copyFromMutation.isPending}
+              onClick={() => {
+                if (selectedSourceId) {
+                  copyFromMutation.mutate({ targetId: selectedAgent.id, sourceId: selectedSourceId });
+                }
+              }}
+            >
+              {copyFromMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Copio...
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Conferma e copia
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showShareManager} onOpenChange={setShowShareManager}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
