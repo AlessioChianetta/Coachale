@@ -1,0 +1,42 @@
+Ecco un testo chiaro e tecnico da inviare al tuo programmatore, insieme agli esempi di codice necessari per implementare l'autenticazione con Tech Prefix su FreeSwitch e Node.js.
+
+Messaggio per il Programmatore
+"Ciao, stiamo configurando il trunk SIP su Telnyx utilizzando l'autenticazione tramite IP Address + Tech Prefix.
+
+Il nostro IP pubblico abilitato è 72.62.50.40.
+Telnyx richiede che per ogni chiamata Outbound, il numero di destinazione sia preceduto dal prefisso 0312.
+
+Per le chiamate Inbound, Telnyx invierà le chiamate al nostro IP sulla porta 5060 (UDP). Dobbiamo assicurarci che FreeSwitch accetti le chiamate in ingresso per il dominio SIP orbitale.sip.telnyx.com o direttamente sull'IP."
+
+Implementazione Tecnica
+1. FreeSwitch (Dialplan Outbound)
+Nel file di configurazione del dialplan (es. directory/default.xml), la regola per instradare le chiamate verso Telnyx deve aggiungere il prefisso 0312 davanti al numero catturato.
+
+XML
+<extension name="telnyx_outbound">
+    <condition field="destination_number" expression="^(\+?\d+)$">
+        <action application="bridge" data="sofia/gateway/telnyx/0312$1"/>
+    </condition>
+</extension>
+2. Node.js (Generazione chiamata via ESL)
+Se utilizzi Node.js per comandare FreeSwitch tramite ESL (Event Socket Layer), la stringa di originate deve essere composta così:
+
+JavaScript
+const techPrefix = "0312";
+const destinationNumber = "+393331234567"; // Esempio numero cliente
+const gatewayName = "telnyx"; // Il nome del gateway definito in FreeSwitch
+
+// Costruzione della stringa di chiamata
+const dialString = `sofia/gateway/${gatewayName}/${techPrefix}${destinationNumber}`;
+
+// Comando da inviare a FreeSwitch
+const command = `originate ${dialString} &echo`; 
+
+console.log("Esecuzione chiamata con prefisso:", command);
+// client.execute('originate', dialString + ' &echo');
+Note Importanti per il Programmatore:
+Inbound (Entrata): Per ricevere le chiamate, il programmatore deve assicurarsi che il contesto public di FreeSwitch sia configurato per riconoscere i numeri (DID) acquistati su Telnyx.
+
+Formato Numeri: Telnyx si aspetta i numeri in formato E.164 (es. +39...). Il prefisso va messo prima del + o del numero (es: 0312+39...).
+
+Firewall: Verificare che la porta 5060 sia aperta per gli IP di Telnyx e che le porte RTP (solitamente 16384-32768) siano aperte per il flusso audio.
