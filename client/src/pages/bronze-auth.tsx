@@ -239,12 +239,13 @@ export default function BronzeAuth() {
     if (!registerForm.phone.trim() || phoneDigits.length < 8) {
       toast({
         title: "Errore",
-        description: "Inserisci il tuo numero di telefono WhatsApp (es: +39 333 1234567). Serve per contattarti su WhatsApp.",
+        description: "Inserisci il tuo numero di telefono WhatsApp (es: 333 1234567).",
         variant: "destructive",
       });
       return;
     }
-    registerMutation.mutate(registerForm);
+    const fullPhone = '+39' + phoneDigits;
+    registerMutation.mutate({ ...registerForm, phone: fullPhone });
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -413,19 +414,22 @@ export default function BronzeAuth() {
                   <div className="space-y-2">
                     <Label htmlFor="reg-phone">Numero WhatsApp *</Label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 font-medium select-none">+39</span>
                       <Input
                         id="reg-phone"
                         type="tel"
-                        placeholder="+39 333 1234567"
-                        className="pl-10"
+                        placeholder="333 1234567"
+                        className="pl-12"
                         value={registerForm.phone}
-                        onChange={(e) => setRegisterForm(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) => {
+                          let val = e.target.value.replace(/[^0-9\s]/g, '');
+                          setRegisterForm(prev => ({ ...prev, phone: val }));
+                        }}
                         required
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Inserisci il numero con cui usi WhatsApp. Servirà per comunicare con il consulente.
+                      Inserisci il numero con cui usi WhatsApp (senza prefisso, viene aggiunto automaticamente).
                     </p>
                   </div>
 
