@@ -436,6 +436,7 @@ export default function ConsultantAIUsagePage() {
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
   const [expandedUserFeatures, setExpandedUserFeatures] = useState<Set<string>>(new Set());
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
 
   const selectUser = (userId: string, userName: string, userRole: string) => {
     setSelectedUser({ id: userId, name: userName, role: userRole });
@@ -1422,21 +1423,46 @@ export default function ConsultantAIUsagePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Header + Search */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="flex-1">
-                        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Consumo per Utente</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">Clicca su una card per vedere il dettaglio delle funzionalità</p>
+                    {/* Header + Search + Filters */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1">
+                          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Consumo per Utente</h2>
+                          <p className="text-xs text-slate-500 mt-0.5">Clicca su una riga per vedere il dettaglio delle funzionalità</p>
+                        </div>
+                        <div className="relative w-full sm:w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Cerca utente..."
+                            value={userSearchQuery}
+                            onChange={e => setUserSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                          />
+                        </div>
                       </div>
-                      <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Cerca utente..."
-                          value={userSearchQuery}
-                          onChange={e => setUserSearchQuery(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                        />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {[
+                          { key: 'all', label: 'Tutti' },
+                          { key: 'consultant', label: 'Tu' },
+                          { key: 'sub_consultant', label: 'Consulente' },
+                          { key: 'bronze', label: 'Bronze' },
+                          { key: 'silver', label: 'Silver' },
+                          { key: 'gold', label: 'Gold' },
+                          { key: 'client', label: 'Cliente' },
+                        ].map(f => (
+                          <button
+                            key={f.key}
+                            onClick={() => setUserRoleFilter(f.key)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
+                              userRoleFilter === f.key
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white dark:bg-gray-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-gray-700 hover:border-indigo-300'
+                            }`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
@@ -1462,32 +1488,29 @@ export default function ConsultantAIUsagePage() {
                       );
                     })()}
 
-                    {/* Card grid */}
+                    {/* User list */}
                     {loadingClient ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-4 shadow-sm space-y-3">
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="h-10 w-10 rounded-full" />
-                              <div className="flex-1 space-y-1.5">
-                                <Skeleton className="h-4 w-28" />
-                                <Skeleton className="h-3 w-16" />
-                              </div>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-gray-700/50">
+                            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                            <div className="flex-1 space-y-1.5">
+                              <Skeleton className="h-3.5 w-32" />
+                              <Skeleton className="h-2.5 w-16" />
                             </div>
-                            <Skeleton className="h-2 w-full rounded-full" />
-                            <div className="grid grid-cols-3 gap-2">
-                              <Skeleton className="h-8" />
-                              <Skeleton className="h-8" />
-                              <Skeleton className="h-8" />
-                            </div>
+                            <Skeleton className="h-3 w-24 hidden sm:block" />
+                            <Skeleton className="h-3.5 w-14" />
+                            <Skeleton className="h-3.5 w-14" />
                           </div>
                         ))}
                       </div>
                     ) : (() => {
                       const maxCost = Math.max(...clientData.map((r: any) => r.totalCost || 0), 0.0001);
-                      const filtered = clientData.filter((r: any) =>
-                        !userSearchQuery || (r.clientName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
-                      );
+                      const filtered = clientData.filter((r: any) => {
+                        const matchSearch = !userSearchQuery || (r.clientName || '').toLowerCase().includes(userSearchQuery.toLowerCase());
+                        const matchRole = userRoleFilter === 'all' || r.clientRole === userRoleFilter;
+                        return matchSearch && matchRole;
+                      });
 
                       const getRoleConfig = (role: string) => {
                         switch (role) {
@@ -1516,86 +1539,99 @@ export default function ConsultantAIUsagePage() {
                       }
 
                       return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {filtered.map((row: any, i: number) => {
-                            const hasData = (row.totalTokens || 0) > 0;
-                            const userId = (row.clientRole === 'consultant' && !row.clientId) ? 'self' : row.clientId;
-                            const cfg = getRoleConfig(row.clientRole);
-                            const initials = getInitials(row.clientName || 'U');
-                            const pct = hasData ? Math.max(2, Math.round((row.totalCost / maxCost) * 100)) : 0;
-                            const lastSeen = row.lastUsed ? (() => {
-                              const d = new Date(row.lastUsed);
-                              const diff = Date.now() - d.getTime();
-                              const mins = Math.floor(diff / 60000);
-                              if (mins < 60) return `${mins}m fa`;
-                              const hrs = Math.floor(mins / 60);
-                              if (hrs < 24) return `${hrs}h fa`;
-                              return format(d, 'd MMM', { locale: it });
-                            })() : null;
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-slate-50/80 dark:bg-gray-800/60 border-b border-slate-100 dark:border-gray-700">
+                                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-[220px]">Utente</th>
+                                  <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden sm:table-cell">Funzione principale</th>
+                                  <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Token</th>
+                                  <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Costo</th>
+                                  <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hidden md:table-cell">Richieste</th>
+                                  <th className="px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400 w-[120px] hidden lg:table-cell">Uso relativo</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50 dark:divide-gray-700/50">
+                                {filtered.map((row: any, i: number) => {
+                                  const hasData = (row.totalTokens || 0) > 0;
+                                  const userId = (row.clientRole === 'consultant' && !row.clientId) ? 'self' : row.clientId;
+                                  const cfg = getRoleConfig(row.clientRole);
+                                  const initials = getInitials(row.clientName || 'U');
+                                  const pct = hasData ? Math.max(2, Math.round((row.totalCost / maxCost) * 100)) : 0;
+                                  const lastSeen = row.lastUsed ? (() => {
+                                    const d = new Date(row.lastUsed);
+                                    const diff = Date.now() - d.getTime();
+                                    const mins = Math.floor(diff / 60000);
+                                    if (mins < 60) return `${mins}m fa`;
+                                    const hrs = Math.floor(mins / 60);
+                                    if (hrs < 24) return `${hrs}h fa`;
+                                    return format(d, 'd MMM', { locale: it });
+                                  })() : null;
 
-                            return (
-                              <button
-                                key={`user-card-${i}`}
-                                onClick={() => userId && selectUser(userId, row.clientName || 'Sconosciuto', row.clientRole)}
-                                className="text-left bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-4 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-700 transition-all group"
-                              >
-                                {/* Header */}
-                                <div className="flex items-start gap-3 mb-3">
-                                  <div className={`w-10 h-10 rounded-full ${cfg.bg} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
-                                    {initials}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                      {row.clientName || 'Sconosciuto'}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                      <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
-                                        {cfg.label}
-                                      </span>
-                                      {lastSeen && (
-                                        <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                                          <Activity className="h-2.5 w-2.5" />
-                                          {lastSeen}
+                                  return (
+                                    <tr
+                                      key={`user-row-${i}`}
+                                      onClick={() => userId && selectUser(userId, row.clientName || 'Sconosciuto', row.clientRole)}
+                                      className="hover:bg-slate-50/80 dark:hover:bg-gray-700/40 cursor-pointer transition-colors group"
+                                    >
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2.5">
+                                          <div className={`w-8 h-8 rounded-full ${cfg.bg} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                                            {initials}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors max-w-[130px]">
+                                              {row.clientName || 'Sconosciuto'}
+                                            </p>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                              <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
+                                                {cfg.label}
+                                              </span>
+                                              {lastSeen && (
+                                                <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                                                  <Activity className="h-2.5 w-2.5" />
+                                                  {lastSeen}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-3 py-3 hidden sm:table-cell">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[180px] block">
+                                          {row.topFeature ? getFeatureLabel(row.topFeature) : '—'}
                                         </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Usage bar */}
-                                <div className="mb-3">
-                                  <div className="h-1.5 w-full bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className={`h-full ${cfg.barCls} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                                  </div>
-                                </div>
-
-                                {/* Stats row */}
-                                <div className="grid grid-cols-3 gap-2 text-center">
-                                  <div>
-                                    <p className="text-xs font-bold text-slate-900 dark:text-white font-mono">{hasData ? formatTokens(row.totalTokens) : '—'}</p>
-                                    <p className="text-[10px] text-slate-400">Token</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-bold text-amber-600 font-mono">{hasData ? formatCost(row.totalCost) : '—'}</p>
-                                    <p className="text-[10px] text-slate-400">Costo</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-bold text-slate-900 dark:text-white">{hasData ? row.requestCount : '—'}</p>
-                                    <p className="text-[10px] text-slate-400">Richieste</p>
-                                  </div>
-                                </div>
-
-                                {/* Top feature */}
-                                {row.topFeature && (
-                                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-gray-700">
-                                    <p className="text-[10px] text-slate-400 truncate">
-                                      Funzione principale: <span className="text-slate-600 dark:text-slate-300 font-medium">{getFeatureLabel(row.topFeature)}</span>
-                                    </p>
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
+                                      </td>
+                                      <td className="px-3 py-3 text-right">
+                                        <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
+                                          {hasData ? formatTokens(row.totalTokens) : '—'}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-3 text-right">
+                                        <span className="font-mono text-xs font-semibold text-amber-600">
+                                          {hasData ? formatCost(row.totalCost) : '—'}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-3 text-right hidden md:table-cell">
+                                        <span className="text-xs text-slate-600 dark:text-slate-300">
+                                          {hasData ? row.requestCount : '—'}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 hidden lg:table-cell">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                            <div className={`h-full ${cfg.barCls} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                                          </div>
+                                          <span className="text-[10px] text-slate-400 font-mono w-8 text-right">{pct}%</span>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       );
                     })()}
