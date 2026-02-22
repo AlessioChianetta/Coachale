@@ -7032,6 +7032,8 @@ export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
   allowAiToWriteFreeformMessages: boolean("allow_ai_to_write_freeform_messages").default(true).notNull(),
   logAiReasoning: boolean("log_ai_reasoning").default(true).notNull(),
 
+  aiAssistantName: text("ai_assistant_name"),
+
   isActive: boolean("is_active").default(false).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
