@@ -468,7 +468,7 @@ export async function* processConsultantAgentMessage(
         overlayText += '\n\n' + agentConfig.levelPromptOverlay3;
       }
       if (overlayText) {
-        systemPrompt += `\n\n${overlayText.trim()}`;
+        systemPrompt += `\n\n---\nISTRUZIONI SPECIFICHE PER IL LIVELLO DI QUESTO UTENTE\n\nL'utente con cui stai parlando ha accesso a un piano specifico che prevede un'esperienza personalizzata. Le seguenti istruzioni integrano e arricchiscono le tue linee guida principali: seguile in ogni risposta, in modo coerente con il tuo stile e la tua identità.\n\n${overlayText.trim()}\n---`;
         console.log(`🎯 [LEVEL OVERLAY] Injected overlay for level "${userLevel}" — ${overlayText.length} chars`);
       }
     }
