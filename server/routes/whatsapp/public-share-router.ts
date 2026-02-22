@@ -2049,7 +2049,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             managerPreferences,
             goldMemoryCtx,
             'public-chat',
-            tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined
+            tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined,
+            managerId || undefined
           )) {
             // Handle different event types from the generator
             if (event.type === 'promptBreakdown') {
@@ -2807,6 +2808,7 @@ router.post(
       let chunkCount = 0;
       
       const voiceTokenType = (req as any).tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined;
+      const voiceManagerId = (req as any).managerId as string | undefined;
       for await (const chunk of agentService.processConsultantAgentMessage(
         agentConfig.consultantId,
         conversation.id,
@@ -2816,7 +2818,8 @@ router.post(
         undefined,
         undefined,
         'public-chat',
-        voiceTokenType
+        voiceTokenType,
+        voiceManagerId
       )) {
         fullResponse += chunk;
         chunkCount++;

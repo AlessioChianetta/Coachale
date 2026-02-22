@@ -162,11 +162,15 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           END AS derived_client_id,
           CASE 
             WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
+            WHEN bu.id IS NOT NULL THEN bu.first_name || ' ' || bu.last_name
+            WHEN cls.id IS NOT NULL THEN cls.first_name || ' ' || cls.last_name
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
             ELSE u.first_name || ' ' || u.last_name
           END AS user_name,
           CASE 
             WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN 'sub_consultant'
+            WHEN bu.id IS NOT NULL THEN 'bronze'
+            WHEN cls.id IS NOT NULL THEN CASE cls.level WHEN '3' THEN 'gold' WHEN '2' THEN 'silver' ELSE 'silver' END
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN 'consultant'
             ELSE 'client'
           END AS client_role,
@@ -175,13 +179,15 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           t.created_at,
           t.feature
         FROM ai_token_usage t
-        LEFT JOIN users u ON t.client_id = u.id
+        LEFT JOIN users u ON t.client_id = u.id AND u.consultant_id = ${consultantId}
         LEFT JOIN users cu ON t.consultant_id = cu.id
         LEFT JOIN users sc ON t.consultant_id = sc.id AND t.consultant_id IN (SELECT id FROM sub_consultant_ids)
+        LEFT JOIN bronze_users bu ON t.client_id = bu.id AND bu.consultant_id = ${consultantId}
+        LEFT JOIN client_level_subscriptions cls ON t.client_id = cls.id AND cls.consultant_id = ${consultantId}
         WHERE (t.consultant_id = ${consultantId} OR t.consultant_id IN (SELECT id FROM sub_consultant_ids))
           AND t.created_at >= ${start}
           AND t.created_at <= ${end}
-          AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true)
+          AND (t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id OR u.is_active = true OR bu.id IS NOT NULL OR cls.id IS NOT NULL)
       ),
       usage_data AS (
         SELECT

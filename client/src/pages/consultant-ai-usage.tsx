@@ -21,7 +21,7 @@ import {
   Sparkles, Home, ListTodo, MessageSquare, Phone, Bot, Target,
   Lightbulb, PenLine, Palette, FileText, FileSearch, Video,
   BookOpen, HelpCircle, LayoutGrid, ChevronRight, ChevronDown, Code,
-  ArrowLeft, CalendarIcon, Menu, RefreshCw
+  ArrowLeft, CalendarIcon, Menu, RefreshCw, Search, Activity
 } from "lucide-react";
 import {
   AreaChart,
@@ -435,6 +435,7 @@ export default function ConsultantAIUsagePage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; role: string } | null>(null);
   const [expandedUserFeatures, setExpandedUserFeatures] = useState<Set<string>>(new Set());
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   const selectUser = (userId: string, userName: string, userRole: string) => {
     setSelectedUser({ id: userId, name: userName, role: userRole });
@@ -1420,71 +1421,185 @@ export default function ConsultantAIUsagePage() {
                     </Card>
                   </div>
                 ) : (
-                  <Card className="border-0 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base font-semibold">Consumo per Utente</CardTitle>
-                      <p className="text-xs text-slate-500 mt-1">Clicca su un utente per vedere il dettaglio completo delle funzionalità</p>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      {loadingClient ? (
-                        <div className="p-6 space-y-3">
-                          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                  <div className="space-y-4">
+                    {/* Header + Search */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1">
+                        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Consumo per Utente</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Clicca su una card per vedere il dettaglio delle funzionalità</p>
+                      </div>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Cerca utente..."
+                          value={userSearchQuery}
+                          onChange={e => setUserSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Summary strip */}
+                    {!loadingClient && clientData.length > 0 && (() => {
+                      const withData = clientData.filter((r: any) => (r.totalTokens || 0) > 0);
+                      const totalCostAll = clientData.reduce((s: number, r: any) => s + (r.totalCost || 0), 0);
+                      return (
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-3 text-center shadow-sm">
+                            <p className="text-xs text-slate-500 mb-1">Utenti attivi</p>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">{withData.length}</p>
+                          </div>
+                          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-3 text-center shadow-sm">
+                            <p className="text-xs text-slate-500 mb-1">Costo totale clienti</p>
+                            <p className="text-lg font-bold text-amber-600">{formatCost(totalCostAll)}</p>
+                          </div>
+                          <div className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-3 text-center shadow-sm">
+                            <p className="text-xs text-slate-500 mb-1">Media per utente</p>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">{withData.length > 0 ? formatCost(totalCostAll / withData.length) : '—'}</p>
+                          </div>
                         </div>
-                      ) : clientData.length > 0 ? (
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-slate-50/50 dark:bg-gray-800/50">
-                                <TableHead>Utente</TableHead>
-                                <TableHead className="w-[90px]">Tipo</TableHead>
-                                <TableHead>Funzione principale</TableHead>
-                                <TableHead className="text-right">Token</TableHead>
-                                <TableHead className="text-right">Costo</TableHead>
-                                <TableHead className="text-right">Richieste</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {clientData.map((row: any, i: number) => {
-                                const hasData = (row.totalTokens || 0) > 0;
-                                const userId = (row.clientRole === 'consultant' && !row.clientId) ? 'self' : row.clientId;
-                                return (
-                                  <TableRow
-                                    key={`user-${i}`}
-                                    className="cursor-pointer hover:bg-slate-50/80 dark:hover:bg-gray-800/50"
-                                    onClick={() => userId && selectUser(userId, row.clientName || 'Sconosciuto', row.clientRole)}
-                                  >
-                                    <TableCell className="font-medium">
-                                      <div className="flex items-center gap-2">
-                                        <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                                        {row.clientName || "—"}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      {row.clientRole === "consultant" ? (
-                                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-100 text-xs">Tu</Badge>
-                                      ) : row.clientRole === "sub_consultant" ? (
-                                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 text-xs">Consulente</Badge>
-                                      ) : (
-                                        <Badge variant="secondary" className="text-xs">Cliente</Badge>
+                      );
+                    })()}
+
+                    {/* Card grid */}
+                    {loadingClient ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-4 shadow-sm space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <div className="flex-1 space-y-1.5">
+                                <Skeleton className="h-4 w-28" />
+                                <Skeleton className="h-3 w-16" />
+                              </div>
+                            </div>
+                            <Skeleton className="h-2 w-full rounded-full" />
+                            <div className="grid grid-cols-3 gap-2">
+                              <Skeleton className="h-8" />
+                              <Skeleton className="h-8" />
+                              <Skeleton className="h-8" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (() => {
+                      const maxCost = Math.max(...clientData.map((r: any) => r.totalCost || 0), 0.0001);
+                      const filtered = clientData.filter((r: any) =>
+                        !userSearchQuery || (r.clientName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
+                      );
+
+                      const getRoleConfig = (role: string) => {
+                        switch (role) {
+                          case 'consultant': return { label: 'Tu', bg: 'bg-emerald-500', badgeCls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', barCls: 'bg-emerald-400' };
+                          case 'sub_consultant': return { label: 'Consulente', bg: 'bg-blue-500', badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', barCls: 'bg-blue-400' };
+                          case 'bronze': return { label: 'Bronze', bg: 'bg-amber-600', badgeCls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', barCls: 'bg-amber-500' };
+                          case 'silver': return { label: 'Silver', bg: 'bg-slate-400', badgeCls: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300', barCls: 'bg-slate-400' };
+                          case 'gold': return { label: 'Gold', bg: 'bg-yellow-500', badgeCls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300', barCls: 'bg-yellow-400' };
+                          default: return { label: 'Cliente', bg: 'bg-violet-500', badgeCls: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400', barCls: 'bg-violet-400' };
+                        }
+                      };
+
+                      const getInitials = (name: string) => {
+                        const parts = (name || '?').trim().split(' ').filter(Boolean);
+                        return parts.length >= 2
+                          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                          : (parts[0] || '?').slice(0, 2).toUpperCase();
+                      };
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="py-12 text-center text-slate-400 text-sm">
+                            {userSearchQuery ? `Nessun utente trovato per "${userSearchQuery}"` : 'Nessun dato disponibile'}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {filtered.map((row: any, i: number) => {
+                            const hasData = (row.totalTokens || 0) > 0;
+                            const userId = (row.clientRole === 'consultant' && !row.clientId) ? 'self' : row.clientId;
+                            const cfg = getRoleConfig(row.clientRole);
+                            const initials = getInitials(row.clientName || 'U');
+                            const pct = hasData ? Math.max(2, Math.round((row.totalCost / maxCost) * 100)) : 0;
+                            const lastSeen = row.lastUsed ? (() => {
+                              const d = new Date(row.lastUsed);
+                              const diff = Date.now() - d.getTime();
+                              const mins = Math.floor(diff / 60000);
+                              if (mins < 60) return `${mins}m fa`;
+                              const hrs = Math.floor(mins / 60);
+                              if (hrs < 24) return `${hrs}h fa`;
+                              return format(d, 'd MMM', { locale: it });
+                            })() : null;
+
+                            return (
+                              <button
+                                key={`user-card-${i}`}
+                                onClick={() => userId && selectUser(userId, row.clientName || 'Sconosciuto', row.clientRole)}
+                                className="text-left bg-white dark:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-700 p-4 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-700 transition-all group"
+                              >
+                                {/* Header */}
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className={`w-10 h-10 rounded-full ${cfg.bg} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                                    {initials}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                      {row.clientName || 'Sconosciuto'}
+                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                      <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cfg.badgeCls}`}>
+                                        {cfg.label}
+                                      </span>
+                                      {lastSeen && (
+                                        <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                                          <Activity className="h-2.5 w-2.5" />
+                                          {lastSeen}
+                                        </span>
                                       )}
-                                    </TableCell>
-                                    <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                                      {row.topFeature ? getFeatureLabel(row.topFeature) : "—"}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatTokens(row.totalTokens) : '—'}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{hasData ? formatCost(row.totalCost) : '—'}</TableCell>
-                                    <TableCell className="text-right text-sm">{hasData ? row.requestCount : '—'}</TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Usage bar */}
+                                <div className="mb-3">
+                                  <div className="h-1.5 w-full bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className={`h-full ${cfg.barCls} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                </div>
+
+                                {/* Stats row */}
+                                <div className="grid grid-cols-3 gap-2 text-center">
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white font-mono">{hasData ? formatTokens(row.totalTokens) : '—'}</p>
+                                    <p className="text-[10px] text-slate-400">Token</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-amber-600 font-mono">{hasData ? formatCost(row.totalCost) : '—'}</p>
+                                    <p className="text-[10px] text-slate-400">Costo</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white">{hasData ? row.requestCount : '—'}</p>
+                                    <p className="text-[10px] text-slate-400">Richieste</p>
+                                  </div>
+                                </div>
+
+                                {/* Top feature */}
+                                {row.topFeature && (
+                                  <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-gray-700">
+                                    <p className="text-[10px] text-slate-400 truncate">
+                                      Funzione principale: <span className="text-slate-600 dark:text-slate-300 font-medium">{getFeatureLabel(row.topFeature)}</span>
+                                    </p>
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
-                      ) : (
-                        <div className="p-8 text-center text-slate-400 text-sm">Nessun dato disponibile</div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      );
+                    })()}
+                  </div>
                 )}
               </TabsContent>
 

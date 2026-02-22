@@ -387,7 +387,8 @@ export async function* processConsultantAgentMessage(
   managerPreferences?: ManagerPreferences,
   goldMemory?: GoldMemoryContext,
   featureOverride?: string,
-  userLevel?: 'bronze' | 'silver' | 'gold' | 'manager'
+  userLevel?: 'bronze' | 'silver' | 'gold' | 'manager',
+  endUserId?: string
 ): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -696,6 +697,11 @@ APPLICA QUESTE PREFERENZE A TUTTE LE TUE RISPOSTE:
     const _agentSlug = (agentConfig.agentName || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const _featureKey = featureOverride ? `${featureOverride}:${_agentSlug}` : `whatsapp-agent:${_agentSlug}`;
     aiProvider.setFeature?.(_featureKey);
+    // Override clientId for token tracking when end user is identified (Bronze/Silver/Gold)
+    if (endUserId && (aiProvider.client as any)?.trackingContext) {
+      (aiProvider.client as any).trackingContext.clientId = endUserId;
+      console.log(`🏷️  [TOKEN TRACKING] clientId set to end-user: ${endUserId.slice(0, 8)}...`);
+    }
     console.log(`✅ AI Provider obtained: ${aiProvider.source} (${aiProvider.metadata.provider})`);
 
     // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
