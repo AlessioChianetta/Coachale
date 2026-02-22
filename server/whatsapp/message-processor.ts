@@ -984,6 +984,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     let sharedConversationId: string | null = null;
     let levelAgentMessageLimitReached = false;
     let levelAgentBronzeUserId: string | null = null;
+    let levelAgentEndUserId: string | null = null;
     let levelAgentMessagesUsed = 0;
     let levelAgentMessageLimit = 15;
     
@@ -1100,6 +1101,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
         if (bronzeMatch) {
           userLevel = 1;
           levelAgentBronzeUserId = bronzeMatch.id;
+          levelAgentEndUserId = bronzeMatch.id;
           levelAgentMessagesUsed = bronzeMatch.dailyMessagesUsed ?? 0;
           levelAgentMessageLimit = consultantConfig.dailyMessageLimit || bronzeMatch.dailyMessageLimit || 15;
           bronzeSearchResult = `✅ Trovato → Bronze (livello 1) | Messaggi: ${levelAgentMessagesUsed}/${levelAgentMessageLimit}`;
@@ -1122,6 +1124,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           userLevel = subLevel === '2' ? 2 : subLevel === '3' || subLevel === '4' ? 3 : 2;
           const levelName = userLevel === 2 ? 'Silver' : userLevel === 3 ? 'Gold' : 'Bronze';
           subscriptionSearchResult = `✅ Trovato → ${levelName} (livello ${userLevel})`;
+          levelAgentEndUserId = subscriptionMatch.id;
           levelAgentBronzeUserId = null;
           levelAgentMessagesUsed = 0;
           levelAgentMessageLimit = 0;
@@ -2369,7 +2372,7 @@ Segui attentamente o tieni a memoria queste informazioni.
               ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
               ...(fileSearchTool && { tools: [fileSearchTool] }),
             },
-          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio' });
+          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio', clientId: levelAgentEndUserId || undefined });
         }
 
         endTime = Date.now();
@@ -2588,7 +2591,7 @@ Segui attentamente o tieni a memoria queste informazioni.
             model: rm,
             contents: [...geminiMessages, { role: "user", parts: [{ text: retryPrompt }] }],
             config: { systemInstruction: systemPrompt },
-          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio' });
+          } as any, { consultantId: conversation.consultantId, feature: _wpAgentFeature, keySource: 'studio', clientId: levelAgentEndUserId || undefined });
         }
         let retryText = '';
         try {
