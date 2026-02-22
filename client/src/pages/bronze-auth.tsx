@@ -21,7 +21,8 @@ import {
   EyeOff,
   Mail,
   Lock,
-  User
+  User,
+  Phone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ export default function BronzeAuth() {
     confirmPassword: "",
     firstName: "",
     lastName: "",
+    phone: "",
   });
 
   const [loginForm, setLoginForm] = useState({
@@ -159,6 +161,7 @@ export default function BronzeAuth() {
           password: data.password,
           firstName: data.firstName || undefined,
           lastName: data.lastName || undefined,
+          phone: data.phone || undefined,
         }),
       });
       if (!response.ok) {
@@ -394,6 +397,21 @@ export default function BronzeAuth() {
                         placeholder="Rossi"
                         value={registerForm.lastName}
                         onChange={(e) => setRegisterForm(prev => ({ ...prev, lastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-phone">Telefono (opzionale)</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
+                        id="reg-phone"
+                        type="tel"
+                        placeholder="+39 333 1234567"
+                        className="pl-10"
+                        value={registerForm.phone}
+                        onChange={(e) => setRegisterForm(prev => ({ ...prev, phone: e.target.value }))}
                       />
                     </div>
                   </div>

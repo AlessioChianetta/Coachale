@@ -18,6 +18,10 @@ import {
   conversationStates,
   clientLevelSubscriptions,
   userRoleProfiles,
+  bronzeUsers,
+  managerConversations,
+  managerMessages,
+  whatsappAgentShares,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -976,6 +980,9 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     let clientProfile: any = null;
     let recentObjections: any[] = [];
     
+    const isLevelAgent = Array.isArray(consultantConfig?.levels) && consultantConfig.levels.length > 0;
+    let sharedConversationId: string | null = null;
+    
     // Pre-check results for File Search (shared across client path and file search setup)
     let preCheckStoreNames: string[] = [];
     let preCheckBreakdown: Array<{ storeDisplayName: string; totalDocs: number }> = [];
@@ -1047,6 +1054,182 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
 
       // Add WhatsApp-specific instructions for consultant
       systemPrompt += `\n\n📱 MODALITÀ WHATSAPP CONSULENTE:\nStai rispondendo via WhatsApp come consulente con accesso completo a tutti i dati CRM. Rispondi in modo professionale ma conciso. Puoi accedere a tutti i dati di clienti, esercizi, appuntamenti, lead, ecc. come se fossi dentro l'applicazione.`;
+
+    } else if (isLevelAgent) {
+      console.log(`\n🎯 [LEVEL AGENT] Level agent detected - levels: ${JSON.stringify(consultantConfig.levels)}`);
+      
+      // 1. Determine user level by phone number
+      let userLevel = 1; // Default: Bronze (anonymous)
+      const normalizePhone = (p: string) => p.replace(/[^0-9]/g, '');
+      const phoneDigitsOnly = normalizePhone(phoneNumber);
+      
+      try {
+        // Check bronze_users first
+        const [bronzeMatch] = await db.select({ id: bronzeUsers.id })
+          .from(bronzeUsers)
+          .where(and(
+            eq(bronzeUsers.consultantId, consultantConfig.consultantId),
+            sql`REGEXP_REPLACE(${bronzeUsers.phone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`
+          ))
+          .limit(1);
+        
+        if (bronzeMatch) {
+          userLevel = 1;
+          console.log(`📌 [LEVEL AGENT] Phone ${phoneNumber} matched bronze_users → level 1`);
+        }
+        
+        // Check client_level_subscriptions (overrides bronze if found)
+        const [subscriptionMatch] = await db.select({ 
+          id: clientLevelSubscriptions.id,
+          level: clientLevelSubscriptions.level,
+        })
+          .from(clientLevelSubscriptions)
+          .where(and(
+            eq(clientLevelSubscriptions.consultantId, consultantConfig.consultantId),
+            sql`REGEXP_REPLACE(${clientLevelSubscriptions.phone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`,
+            eq(clientLevelSubscriptions.status, 'active')
+          ))
+          .limit(1);
+        
+        if (subscriptionMatch) {
+          // Map levels: 2=Silver(2), 3=Gold(3), 4=Deluxe(3)
+          const subLevel = subscriptionMatch.level;
+          userLevel = subLevel === '2' ? 2 : subLevel === '3' || subLevel === '4' ? 3 : 2;
+          console.log(`📌 [LEVEL AGENT] Phone ${phoneNumber} matched subscription level ${subLevel} → userLevel ${userLevel}`);
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [LEVEL AGENT] Error determining user level: ${err.message}`);
+      }
+      
+      console.log(`🏷️ [LEVEL AGENT] Final user level: ${userLevel}`);
+      
+      // 2. Build prompt with overlays
+      const { buildWhatsAppAgentPrompt } = await import('./agent-consultant-chat-service');
+      const basePrompt = await buildWhatsAppAgentPrompt(consultantConfig);
+      
+      let overlayText = '';
+      if (consultantConfig.levelPromptOverlay1) {
+        overlayText += '\n\n' + consultantConfig.levelPromptOverlay1;
+      }
+      if (userLevel >= 2 && consultantConfig.levelPromptOverlay2) {
+        overlayText += '\n\n' + consultantConfig.levelPromptOverlay2;
+      }
+      if (userLevel >= 3 && consultantConfig.levelPromptOverlay3) {
+        overlayText += '\n\n' + consultantConfig.levelPromptOverlay3;
+      }
+      
+      systemPrompt = basePrompt;
+      if (overlayText) {
+        systemPrompt += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ISTRUZIONI SPECIFICHE PER IL TUO LIVELLO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${overlayText}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+      
+      console.log(`📝 [LEVEL AGENT] System prompt built (${systemPrompt.length} chars, overlay: ${overlayText.length} chars)`);
+      
+      // 3. Conversation sharing - find/create manager_conversation
+      try {
+        let managerId: string | null = null;
+        
+        // Check bronze_users first for managerId (using normalized phone comparison)
+        const [bronzeUser] = await db.select({ id: bronzeUsers.id })
+          .from(bronzeUsers)
+          .where(and(
+            eq(bronzeUsers.consultantId, consultantConfig.consultantId),
+            sql`REGEXP_REPLACE(${bronzeUsers.phone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`
+          ))
+          .limit(1);
+        
+        if (bronzeUser) {
+          managerId = bronzeUser.id;
+        } else {
+          const [subscription] = await db.select({ id: clientLevelSubscriptions.id })
+            .from(clientLevelSubscriptions)
+            .where(and(
+              eq(clientLevelSubscriptions.consultantId, consultantConfig.consultantId),
+              sql`REGEXP_REPLACE(${clientLevelSubscriptions.phone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`,
+              eq(clientLevelSubscriptions.status, 'active')
+            ))
+            .limit(1);
+          
+          if (subscription) {
+            managerId = subscription.id;
+          }
+        }
+        
+        if (managerId) {
+          let existingShare = await db.select({ id: whatsappAgentShares.id })
+            .from(whatsappAgentShares)
+            .where(eq(whatsappAgentShares.agentConfigId, consultantConfig.id))
+            .limit(1)
+            .then(rows => rows[0] || null);
+          
+          if (!existingShare) {
+            const autoSlug = `level-agent-${consultantConfig.id}-${nanoid(8)}`;
+            const [newShare] = await db.insert(whatsappAgentShares).values({
+              agentConfigId: consultantConfig.id,
+              consultantId: consultantConfig.consultantId,
+              agentName: consultantConfig.agentName || 'Level Agent',
+              slug: autoSlug,
+              accessType: 'public',
+              isActive: true,
+              createdBy: consultantConfig.consultantId,
+            }).returning({ id: whatsappAgentShares.id });
+            existingShare = newShare;
+            console.log(`🆕 [LEVEL AGENT] Auto-created share for agent ${consultantConfig.id} (slug: ${autoSlug})`);
+          }
+          
+          // Search existing conversation using normalized phone comparison
+          const [existingConv] = await db.select({ id: managerConversations.id })
+            .from(managerConversations)
+            .where(and(
+              eq(managerConversations.agentConfigId, consultantConfig.id),
+              sql`REGEXP_REPLACE(${managerConversations.whatsappPhone}, '[^0-9]', '', 'g') = ${phoneDigitsOnly}`
+            ))
+            .limit(1);
+          
+          if (existingConv) {
+            sharedConversationId = existingConv.id;
+            console.log(`📌 [LEVEL AGENT] Found existing shared conversation: ${sharedConversationId}`);
+          } else {
+            const [newConv] = await db.insert(managerConversations).values({
+              managerId,
+              shareId: existingShare.id,
+              agentConfigId: consultantConfig.id,
+              title: `WhatsApp - ${phoneNumber}`,
+              whatsappPhone: phoneNumber,
+              source: 'whatsapp',
+            }).returning({ id: managerConversations.id });
+            sharedConversationId = newConv.id;
+            console.log(`📌 [LEVEL AGENT] Created new shared conversation: ${sharedConversationId}`);
+          }
+        } else {
+          console.log(`ℹ️ [LEVEL AGENT] No managerId found for phone ${phoneNumber} - anonymous user`);
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [LEVEL AGENT] Error managing shared conversation: ${err.message}`);
+      }
+      
+      // 4. Load shared conversation history for AI context
+      let sharedHistory: Array<{ role: string; content: string }> = [];
+      if (sharedConversationId) {
+        try {
+          const recentMessages = await db.select({
+            role: managerMessages.role,
+            content: managerMessages.content,
+          })
+            .from(managerMessages)
+            .where(eq(managerMessages.conversationId, sharedConversationId))
+            .orderBy(desc(managerMessages.createdAt))
+            .limit(20);
+          
+          sharedHistory = recentMessages.reverse();
+          console.log(`📚 [LEVEL AGENT] Loaded ${sharedHistory.length} shared history messages`);
+        } catch (err: any) {
+          console.warn(`⚠️ [LEVEL AGENT] Error loading shared history: ${err.message}`);
+        }
+      }
 
     } else if (effectiveUserId) {
       // ⏱️ Context Building Timing
@@ -2519,6 +2702,34 @@ Segui attentamente o tieni a memoria queste informazioni.
     if (responseDecision.sendText && aiResponse) sentTypes.push('text');
     if (responseDecision.sendAudio && audioMediaUrl) sentTypes.push('audio');
     console.log(`✅ [STEP 10] WhatsApp message sent: ${sentTypes.join(' + ') || 'empty'}`);
+
+    // Step 10.3: Save to shared conversation if level agent
+    if (isLevelAgent && sharedConversationId) {
+      try {
+        await db.insert(managerMessages).values({
+          conversationId: sharedConversationId,
+          role: 'user',
+          content: batchedText,
+          status: 'completed',
+        });
+        await db.insert(managerMessages).values({
+          conversationId: sharedConversationId,
+          role: 'assistant',
+          content: aiResponse,
+          status: 'completed',
+        });
+        await db.update(managerConversations)
+          .set({
+            messageCount: sql`${managerConversations.messageCount} + 2`,
+            lastMessageAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(managerConversations.id, sharedConversationId));
+        console.log(`📨 [LEVEL AGENT] Saved messages to shared conversation ${sharedConversationId}`);
+      } catch (err: any) {
+        console.warn(`⚠️ [LEVEL AGENT] Error saving to shared conversation: ${err.message}`);
+      }
+    }
 
     // Step 10.5: Automatic appointment booking/modification/cancellation
     // CRITICAL: Booking logic only applies to LEADS when bookingEnabled=true

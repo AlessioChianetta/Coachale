@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import { MultiLevelSelector, LevelBadges } from "@/components/whatsapp/LevelBadge";
 import { 
   Users, 
@@ -73,7 +74,7 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
   };
 
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
-  const publicUrl = formData.publicSlug ? `${currentDomain}/ai/${formData.publicSlug}` : '';
+  const publicUrl = formData.publicSlug ? `${currentDomain}/agent/${formData.publicSlug}/chat` : '';
 
   return (
     <div className="space-y-6">
@@ -175,6 +176,23 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
               </div>
             </div>
 
+            <div className="space-y-3">
+              <Label htmlFor="levelPromptOverlay1" className="text-base font-medium">
+                Istruzioni AI per Livello Bronzo
+              </Label>
+              <Textarea
+                id="levelPromptOverlay1"
+                value={formData.levelPromptOverlay1 || ""}
+                onChange={(e) => onChange("levelPromptOverlay1", e.target.value)}
+                placeholder="Istruzioni specifiche per gli utenti Bronzo. Queste istruzioni saranno sempre attive per questo livello."
+                rows={4}
+                className="resize-y"
+              />
+              <p className="text-sm text-muted-foreground">
+                Queste istruzioni vengono aggiunte al prompt base dell'agente per tutti gli utenti Bronzo.
+              </p>
+            </div>
+
             <Alert className="border-amber-200 bg-amber-50">
               <AlertCircle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-800">
@@ -231,6 +249,23 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
               </div>
             </div>
 
+            <div className="space-y-3">
+              <Label htmlFor="levelPromptOverlay2" className="text-base font-medium">
+                Istruzioni AI Aggiuntive per Livello Argento
+              </Label>
+              <Textarea
+                id="levelPromptOverlay2"
+                value={formData.levelPromptOverlay2 || ""}
+                onChange={(e) => onChange("levelPromptOverlay2", e.target.value)}
+                placeholder="Istruzioni aggiuntive per gli utenti Argento. Si sommano alle istruzioni del Bronzo."
+                rows={4}
+                className="resize-y"
+              />
+              <p className="text-sm text-muted-foreground">
+                Gli utenti Argento riceveranno sia le istruzioni Bronzo che queste istruzioni aggiuntive (modello additivo).
+              </p>
+            </div>
+
             <Alert className="border-slate-300 bg-slate-50">
               <Info className="h-4 w-4 text-slate-600" />
               <AlertDescription className="text-slate-700">
@@ -285,6 +320,23 @@ export default function AgentLevel({ formData, onChange, errors }: AgentLevelPro
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="levelPromptOverlay3" className="text-base font-medium">
+                Istruzioni AI Aggiuntive per Livello Gold
+              </Label>
+              <Textarea
+                id="levelPromptOverlay3"
+                value={formData.levelPromptOverlay3 || ""}
+                onChange={(e) => onChange("levelPromptOverlay3", e.target.value)}
+                placeholder="Istruzioni aggiuntive per gli utenti Gold. Si sommano a Bronzo + Argento."
+                rows={4}
+                className="resize-y"
+              />
+              <p className="text-sm text-muted-foreground">
+                Gli utenti Gold riceveranno le istruzioni di tutti e tre i livelli (Bronzo + Argento + Gold).
+              </p>
             </div>
 
             <Alert className="border-yellow-300 bg-yellow-50">

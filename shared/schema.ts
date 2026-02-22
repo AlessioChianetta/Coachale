@@ -2938,6 +2938,9 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   levels: text("levels").array().$type<("1" | "2")[]>(), // Array di livelli: ["1"] = solo Bronze, ["2"] = solo Silver, ["1", "2"] = Bronze + Silver
   publicSlug: text("public_slug").unique(), // Slug per accesso pubblico Level 1 (es: "silvia" -> /ai/silvia)
   dailyMessageLimit: integer("daily_message_limit").default(15), // Limite messaggi giornaliero per Level 1
+  levelPromptOverlay1: text("level_prompt_overlay_1"), // Istruzioni AI aggiuntive per utenti Bronzo (Level 1). Sempre attive.
+  levelPromptOverlay2: text("level_prompt_overlay_2"), // Istruzioni AI aggiuntive per utenti Argento (Level 2). Si sommano a Level 1.
+  levelPromptOverlay3: text("level_prompt_overlay_3"), // Istruzioni AI aggiuntive per utenti Gold (Level 3). Si sommano a Level 1 + 2.
 
   // AI Assistant Suggestions - Generated personalized quick prompts based on agent brand voice
   aiAssistantSuggestions: jsonb("ai_assistant_suggestions").$type<Array<{
@@ -7379,6 +7382,9 @@ export const managerConversations = pgTable("manager_conversations", {
     ipAddress?: string;
     [key: string]: any;
   }>().default(sql`'{}'::jsonb`),
+  
+  whatsappPhone: varchar("whatsapp_phone"),
+  source: varchar("source").default("web"),
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

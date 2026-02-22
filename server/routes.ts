@@ -15803,6 +15803,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           instagramConfigId: config.instagramConfigId,
           ownInstagramConfigId: config.ownInstagramConfigId,
           dailyMessageLimit: config.dailyMessageLimit,
+          levelPromptOverlay1: config.levelPromptOverlay1,
+          levelPromptOverlay2: config.levelPromptOverlay2,
+          levelPromptOverlay3: config.levelPromptOverlay3,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         })),
@@ -15965,6 +15968,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           levels: config.levels,
           publicSlug: config.publicSlug,
           dailyMessageLimit: config.dailyMessageLimit,
+          levelPromptOverlay1: config.levelPromptOverlay1,
+          levelPromptOverlay2: config.levelPromptOverlay2,
+          levelPromptOverlay3: config.levelPromptOverlay3,
           // Booking Notification Configuration
           bookingNotificationEnabled: config.bookingNotificationEnabled,
           bookingNotificationPhone: config.bookingNotificationPhone,
@@ -16052,6 +16058,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         levels,
         publicSlug,
         dailyMessageLimit,
+        levelPromptOverlay1,
+        levelPromptOverlay2,
+        levelPromptOverlay3,
         // Booking Notification Configuration
         bookingNotificationEnabled,
         bookingNotificationPhone,
@@ -16219,6 +16228,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       }
       if (publicSlug !== undefined) updateData.publicSlug = publicSlug;
       if (dailyMessageLimit !== undefined) updateData.dailyMessageLimit = dailyMessageLimit;
+      if (levelPromptOverlay1 !== undefined) updateData.levelPromptOverlay1 = levelPromptOverlay1;
+      if (levelPromptOverlay2 !== undefined) updateData.levelPromptOverlay2 = levelPromptOverlay2;
+      if (levelPromptOverlay3 !== undefined) updateData.levelPromptOverlay3 = levelPromptOverlay3;
 
       // Booking Notification Configuration
       if (bookingNotificationEnabled !== undefined) updateData.bookingNotificationEnabled = bookingNotificationEnabled;
@@ -16671,6 +16683,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         levels,
         publicSlug,
         dailyMessageLimit,
+        levelPromptOverlay1,
+        levelPromptOverlay2,
+        levelPromptOverlay3,
         // Booking Notification Configuration
         bookingNotificationEnabled,
         bookingNotificationPhone,
@@ -16889,6 +16904,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           })(),
           publicSlug: publicSlug !== undefined ? publicSlug : existingConfig.publicSlug,
           dailyMessageLimit: dailyMessageLimit ?? existingConfig.dailyMessageLimit ?? 15,
+          levelPromptOverlay1: levelPromptOverlay1 !== undefined ? levelPromptOverlay1 : existingConfig.levelPromptOverlay1,
+          levelPromptOverlay2: levelPromptOverlay2 !== undefined ? levelPromptOverlay2 : existingConfig.levelPromptOverlay2,
+          levelPromptOverlay3: levelPromptOverlay3 !== undefined ? levelPromptOverlay3 : existingConfig.levelPromptOverlay3,
           // Booking Notification Configuration
           bookingNotificationEnabled: bookingNotificationEnabled ?? existingConfig.bookingNotificationEnabled ?? false,
           bookingNotificationPhone: bookingNotificationPhone !== undefined ? bookingNotificationPhone : existingConfig.bookingNotificationPhone,
@@ -17018,6 +17036,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
               : (level || null),
             publicSlug: publicSlug || null,
             dailyMessageLimit: dailyMessageLimit ?? 15,
+            levelPromptOverlay1: levelPromptOverlay1 || null,
+            levelPromptOverlay2: levelPromptOverlay2 || null,
+            levelPromptOverlay3: levelPromptOverlay3 || null,
             // Booking Notification Configuration
             bookingNotificationEnabled: bookingNotificationEnabled ?? false,
             bookingNotificationPhone: bookingNotificationPhone || null,

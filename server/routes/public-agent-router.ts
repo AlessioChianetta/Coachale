@@ -1149,6 +1149,37 @@ ${share.agentInstructions}
           systemPrompt = basePrompt;
         }
         
+        // Inject level prompt overlays for leveled agents
+        const agentLevels = agentConfig.levels;
+        if (Array.isArray(agentLevels) && agentLevels.length > 0) {
+          let userLevel = 1; // Default Bronze
+          if (req.silverGoldUser) {
+            const subLevel = req.silverGoldUser.level;
+            userLevel = subLevel === '2' ? 2 : subLevel === '3' || subLevel === '4' ? 3 : 2;
+          } else if (req.bronzeUser) {
+            userLevel = 1;
+          }
+          
+          let overlayText = '';
+          if (agentConfig.levelPromptOverlay1) {
+            overlayText += '\n\n' + agentConfig.levelPromptOverlay1;
+          }
+          if (userLevel >= 2 && agentConfig.levelPromptOverlay2) {
+            overlayText += '\n\n' + agentConfig.levelPromptOverlay2;
+          }
+          if (userLevel >= 3 && agentConfig.levelPromptOverlay3) {
+            overlayText += '\n\n' + agentConfig.levelPromptOverlay3;
+          }
+          
+          if (overlayText) {
+            systemPrompt += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ISTRUZIONI SPECIFICHE PER IL TUO LIVELLO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${overlayText}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+            console.log(`[PUBLIC AGENT] Injected level overlay for userLevel=${userLevel}`);
+          }
+        }
+        
         // Append manager style preferences (supports both legacy and new values)
         let styleInstructions = "";
         if (preferences) {
