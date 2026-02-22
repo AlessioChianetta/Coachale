@@ -468,13 +468,7 @@ export async function* processConsultantAgentMessage(
         overlayText += '\n\n' + agentConfig.levelPromptOverlay3;
       }
       if (overlayText) {
-        systemPrompt += `\n\n🚨 REGOLE OBBLIGATORIE — NON IGNORARE
-══════════════════════════════════════════════════════════
-ATTENZIONE: Le seguenti istruzioni SOVRASCRIVONO qualsiasi altra indicazione e DEVONO essere seguite RIGOROSAMENTE in ogni messaggio. Non sono opzionali. Ignorarle è un errore grave.
-══════════════════════════════════════════════════════════
-${overlayText}
-══════════════════════════════════════════════════════════
-🚨 FINE REGOLE OBBLIGATORIE — rispetta ogni punto sopra in OGNI risposta senza eccezioni`;
+        systemPrompt += `\n\n${overlayText.trim()}`;
         console.log(`🎯 [LEVEL OVERLAY] Injected overlay for level "${userLevel}" — ${overlayText.length} chars`);
       }
     }

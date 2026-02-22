@@ -1159,13 +1159,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       
       systemPrompt = basePrompt;
       if (overlayText) {
-        systemPrompt += `\n\n🚨 REGOLE OBBLIGATORIE — NON IGNORARE
-══════════════════════════════════════════════════════════
-ATTENZIONE: Le seguenti istruzioni SOVRASCRIVONO qualsiasi altra indicazione e DEVONO essere seguite RIGOROSAMENTE in ogni messaggio. Non sono opzionali. Ignorarle è un errore grave.
-══════════════════════════════════════════════════════════
-${overlayText}
-══════════════════════════════════════════════════════════
-🚨 FINE REGOLE OBBLIGATORIE — rispetta ogni punto sopra in OGNI risposta senza eccezioni`;
+        systemPrompt += `\n\n${overlayText.trim()}`;
       }
       
       // Check message limit for Bronze users
