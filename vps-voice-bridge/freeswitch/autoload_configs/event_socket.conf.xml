@@ -1,0 +1,41 @@
+<!--
+  ================================================================
+  event_socket.conf.xml - Event Socket Layer (ESL)
+  ================================================================
+  
+  L'Event Socket permette al Voice Bridge Node.js di controllare
+  FreeSWITCH: originare chiamate, gestire canali, ricevere eventi.
+  
+  ⚠️  SICUREZZA CRITICA:
+  - listen-ip DEVE essere 127.0.0.1 (solo localhost)
+  - NON cambiare MAI a 0.0.0.0 o all'IP pubblico del VPS
+  - Se esponi ESL pubblicamente, chiunque può fare chiamate
+    telefoniche a tue spese e controllare il tuo server
+  - La porta 8021 NON deve essere aperta nel firewall UFW
+  - ACL "loopback" limita ulteriormente a soli IP 127.0.0.0/8
+  
+  PASSWORD:
+  Cambia ESL_PASSWORD_CHANGE_ME con una password sicura.
+  Genera con: openssl rand -hex 32
+  La stessa password va configurata nel Voice Bridge (.env)
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/autoload_configs/event_socket.conf.xml
+  ================================================================
+-->
+
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <!-- Solo localhost: il Voice Bridge si connette da 127.0.0.1 -->
+    <param name="listen-ip" value="127.0.0.1"/>
+    
+    <!-- Porta standard ESL -->
+    <param name="listen-port" value="8021"/>
+    
+    <!-- ⚠️ CAMBIA QUESTA PASSWORD! Genera con: openssl rand -hex 32 -->
+    <param name="password" value="ESL_PASSWORD_CHANGE_ME"/>
+    
+    <!-- ACL aggiuntiva: accetta solo connessioni da loopback (127.0.0.0/8) -->
+    <param name="apply-inbound-acl" value="loopback"/>
+  </settings>
+</configuration>

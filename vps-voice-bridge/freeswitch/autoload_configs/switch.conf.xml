@@ -1,0 +1,98 @@
+<!--
+  ================================================================
+  switch.conf.xml - Configurazione Core FreeSWITCH
+  Ottimizzata per Alessia AI Voice Platform (100+ consulenti)
+  ================================================================
+  
+  PERFORMANCE TUNING:
+  Questa configurazione è ottimizzata per gestire 100+ chiamate
+  simultanee su un singolo VPS. I parametri chiave sono:
+  
+  - max-sessions: 2000 (margine per picchi)
+  - sessions-per-second: 100 (rate limiting)
+  - core-db su RAM disk (/dev/shm) per I/O veloce
+  - Log level "warning" per ridurre I/O disco
+  
+  ULIMITS RACCOMANDATI:
+  Aggiungi a /etc/security/limits.conf o al systemd service:
+    freeswitch  soft  nofile  999999
+    freeswitch  hard  nofile  999999
+    freeswitch  soft  nproc   unlimited
+    freeswitch  hard  nproc   unlimited
+  
+  Oppure nel Docker compose:
+    ulimits:
+      nofile:
+        soft: 999999
+        hard: 999999
+  
+  Se usi systemd per Docker:
+    LimitNOFILE=999999
+    LimitNPROC=unlimited
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/autoload_configs/switch.conf.xml
+  ================================================================
+-->
+
+<configuration name="switch.conf" description="Core Configuration">
+  <settings>
+
+    <!--
+      ============================================================
+      SESSIONI E LIMITI
+      max-sessions: numero massimo di chiamate contemporanee
+      sessions-per-second: rate limit per nuove chiamate
+      Per 100 consulenti con 1 chiamata ciascuno, 2000 è sufficiente
+      con ampio margine per picchi e code.
+      ============================================================
+    -->
+    <param name="max-sessions" value="2000"/>
+    <param name="sessions-per-second" value="100"/>
+
+    <!--
+      ============================================================
+      PORTE RTP (Media Audio)
+      Range: 16384-32768 (16384 porte disponibili)
+      Ogni chiamata usa 2 porte RTP (audio + RTCP)
+      16384 porte = fino a ~8000 chiamate simultanee
+      Deve corrispondere alle regole UFW firewall.
+      ============================================================
+    -->
+    <param name="rtp-start-port" value="16384"/>
+    <param name="rtp-end-port" value="32768"/>
+
+    <!--
+      ============================================================
+      DATABASE CORE
+      Usa /dev/shm (tmpfs RAM disk) per il database interno.
+      Questo elimina il collo di bottiglia I/O su disco e
+      velocizza enormemente le operazioni di lookup.
+      NOTA: I dati si perdono al riavvio, ma per il core.db
+      di FreeSWITCH questo è accettabile (dati transitori).
+      ============================================================
+    -->
+    <param name="core-db-name" value="/dev/shm/core.db"/>
+
+    <!--
+      ============================================================
+      LOGGING
+      In produzione usa "warning" per ridurre il volume dei log.
+      Per debug temporaneo, cambia a "info" o "debug".
+      max-log-file-size: 50 MB prima della rotazione.
+      ============================================================
+    -->
+    <param name="loglevel" value="warning"/>
+    <param name="max-log-file-size" value="52428800"/>
+
+    <!--
+      ============================================================
+      SICUREZZA
+      ZRTP disabilitato: non necessario per trunk SIP.
+      La sicurezza è gestita a livello di rete (VPN/firewall).
+      ============================================================
+    -->
+    <param name="rtp-enable-zrtp" value="false"/>
+
+  </settings>
+</configuration>

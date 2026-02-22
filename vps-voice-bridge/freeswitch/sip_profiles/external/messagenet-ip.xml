@@ -1,0 +1,53 @@
+<!--
+  ================================================================
+  Gateway: Messagenet - Autenticazione IP
+  ================================================================
+  
+  QUANDO USARE QUESTO FILE:
+  Usa questo gateway SOLO se hai concordato con il supporto Messagenet
+  la whitelistatura dell'IP del tuo VPS. Questa modalità è meno comune
+  rispetto all'autenticazione con credenziali ed è generalmente
+  disponibile solo per setup enterprise o accordi commerciali specifici.
+  
+  SETUP RICHIESTO:
+  1. Contatta il supporto Messagenet (support@messagenet.com)
+  2. Richiedi l'abilitazione dell'autenticazione IP per il tuo account
+  3. Fornisci l'IP pubblico statico del tuo VPS
+  4. Attendi la conferma di attivazione
+  
+  NOTA: Per la maggior parte degli utenti, il file
+  messagenet-credentials.xml è la scelta corretta.
+  
+  LIMITAZIONI MESSAGENET:
+  - NON supporta OPUS codec (solo G.711 e G.722)
+  - NON supporta TLS/SRTP
+  - NON supporta SIP REFER/302
+  - Range IP Messagenet: 109.233.128.0/21
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/sip_profiles/external/messagenet-ip.xml
+  ================================================================
+-->
+
+<include>
+  <gateway name="messagenet-ip">
+    <!-- Messagenet SIP Proxy -->
+    <param name="proxy" value="sip.messagenet.it"/>
+    
+    <!-- IP Auth: nessuna registrazione necessaria -->
+    <param name="register" value="false"/>
+    
+    <!-- Username e password non servono per IP auth -->
+    <param name="username" value="not-used"/>
+    <param name="password" value="not-used"/>
+    
+    <!-- Usa il caller ID originale nel campo From -->
+    <param name="caller-id-in-from" value="true"/>
+    
+    <!-- Codec: SOLO G.711 e G.722 (Messagenet NON supporta OPUS) -->
+    <param name="codec-prefs" value="PCMU,PCMA,G722"/>
+    
+    <!-- Contesto per le chiamate inbound da questo gateway -->
+    <param name="context" value="public"/>
+  </gateway>
+</include>

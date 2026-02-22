@@ -1,0 +1,35 @@
+<!--
+  ================================================================
+  Dialplan: ACL Security Check (Public Context)
+  ================================================================
+  
+  Questo file viene caricato PER PRIMO nel contesto public
+  (prefisso 00_) e verifica che l'IP sorgente della chiamata
+  sia nella lista dei provider SIP autorizzati.
+  
+  Se l'IP non è autorizzato, la chiamata viene rifiutata con
+  403 Forbidden e viene loggato un warning di sicurezza.
+  
+  IMPORTANTE: Questo è il PRIMO livello di difesa a livello SIP.
+  Anche se UFW e fail2ban sono attivi, questo controllo aggiunge
+  un ulteriore strato di sicurezza per prevenire:
+  - Toll fraud (frode telefonica)
+  - SIP scanning e brute force
+  - Chiamate non autorizzate
+  
+  ACL UTILIZZATA: trusted_providers (definita in acl.conf.xml)
+  Include: Telnyx + Messagenet
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/dialplan/public/00_acl_check.xml
+  ================================================================
+-->
+
+<include>
+  <extension name="acl_security_check" continue="true">
+    <condition field="${acl(${network_addr} trusted_providers)}" expression="false">
+      <action application="log" data="WARNING [SECURITY] Chiamata RIFIUTATA da IP non autorizzato: ${network_addr} → ${destination_number} (caller: ${caller_id_number})"/>
+      <action application="respond" data="403 Forbidden"/>
+    </condition>
+  </extension>
+</include>

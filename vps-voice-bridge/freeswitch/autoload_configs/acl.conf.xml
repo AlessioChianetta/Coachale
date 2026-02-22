@@ -1,0 +1,109 @@
+<!--
+  ================================================================
+  ACL (Access Control List) - Alessia AI Voice Platform
+  ================================================================
+  
+  Questo file definisce le liste di accesso IP per controllare
+  quali indirizzi possono inviare traffico SIP a FreeSWITCH.
+  
+  LIVELLI DI SICUREZZA (defense in depth):
+  1. UFW Firewall (livello OS) - blocca il traffico a livello rete
+  2. ACL FreeSWITCH (questo file) - blocca il traffico a livello SIP
+  3. fail2ban - blocca IP dopo tentativi falliti ripetuti
+  
+  Le ACL vengono controllate nel dialplan (00_acl_check.xml)
+  per rifiutare chiamate da IP non autorizzati.
+  
+  AGGIORNAMENTO IP:
+  Gli IP dei provider possono cambiare. Verifica periodicamente:
+  - Telnyx: https://support.telnyx.com/en/articles/ip-addresses
+  - Messagenet: https://helpcenter.messagenet.com
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/autoload_configs/acl.conf.xml
+  
+  RICARICA: docker exec -it freeswitch fs_cli -x "reloadacl"
+  VERIFICA: docker exec -it freeswitch fs_cli -x "acl telnyx 192.76.120.10"
+  ================================================================
+-->
+
+<configuration name="acl.conf" description="Network Lists">
+  <network-lists>
+
+    <!--
+      ============================================================
+      TELNYX - IP di segnalazione e media
+      Fonte: documentazione ufficiale Telnyx
+      Ultimo aggiornamento: Febbraio 2026
+      ============================================================
+    -->
+    <list name="telnyx" default="deny">
+      <!-- Segnalazione SIP (SIP signaling) -->
+      <node type="allow" cidr="192.76.120.0/24"/>
+
+      <!-- Media RTP (RTP media ranges) -->
+      <node type="allow" cidr="36.255.198.128/25"/>
+      <node type="allow" cidr="50.114.136.128/25"/>
+      <node type="allow" cidr="50.114.144.0/21"/>
+      <node type="allow" cidr="64.16.226.0/24"/>
+      <node type="allow" cidr="64.16.227.0/24"/>
+      <node type="allow" cidr="64.16.228.0/24"/>
+      <node type="allow" cidr="64.16.229.0/24"/>
+      <node type="allow" cidr="64.16.230.0/24"/>
+      <node type="allow" cidr="64.16.248.0/24"/>
+      <node type="allow" cidr="64.16.249.0/24"/>
+      <node type="allow" cidr="103.115.244.128/25"/>
+      <node type="allow" cidr="185.246.41.128/25"/>
+    </list>
+
+    <!--
+      ============================================================
+      MESSAGENET - IP di segnalazione e media
+      Range ufficiale: 109.233.128.0/21
+      Copre tutti gli IP dal 109.233.128.0 al 109.233.135.255
+      ============================================================
+    -->
+    <list name="messagenet" default="deny">
+      <node type="allow" cidr="109.233.128.0/21"/>
+    </list>
+
+    <!--
+      ============================================================
+      TRUSTED PROVIDERS - Lista combinata di tutti i provider SIP
+      Usata nel dialplan per verificare le chiamate inbound.
+      Se aggiungi un nuovo provider, aggiungilo anche qui.
+      ============================================================
+    -->
+    <list name="trusted_providers" default="deny">
+      <!-- Telnyx: segnalazione + media -->
+      <node type="allow" cidr="192.76.120.0/24"/>
+      <node type="allow" cidr="36.255.198.128/25"/>
+      <node type="allow" cidr="50.114.136.128/25"/>
+      <node type="allow" cidr="50.114.144.0/21"/>
+      <node type="allow" cidr="64.16.226.0/24"/>
+      <node type="allow" cidr="64.16.227.0/24"/>
+      <node type="allow" cidr="64.16.228.0/24"/>
+      <node type="allow" cidr="64.16.229.0/24"/>
+      <node type="allow" cidr="64.16.230.0/24"/>
+      <node type="allow" cidr="64.16.248.0/24"/>
+      <node type="allow" cidr="64.16.249.0/24"/>
+      <node type="allow" cidr="103.115.244.128/25"/>
+      <node type="allow" cidr="185.246.41.128/25"/>
+      <!-- Messagenet -->
+      <node type="allow" cidr="109.233.128.0/21"/>
+    </list>
+
+    <!--
+      ============================================================
+      LOOPBACK - Solo localhost
+      Usata per Event Socket Layer (ESL) e comunicazioni interne.
+      Il voice bridge Node.js si connette via 127.0.0.1:8021.
+      NON aggiungere IP esterni qui.
+      ============================================================
+    -->
+    <list name="loopback" default="deny">
+      <node type="allow" cidr="127.0.0.0/8"/>
+    </list>
+
+  </network-lists>
+</configuration>

@@ -1,0 +1,118 @@
+<!--
+  ================================================================
+  Dialplan: Outbound Trunk Routing - Alessia AI Voice Platform
+  ================================================================
+  
+  Gestisce le chiamate in USCITA originate dal Voice Bridge
+  via ESL (Event Socket Layer). Il bridge imposta le variabili:
+  
+  - sip_gateway: quale gateway usare (telnyx-ip, telnyx-credentials,
+                  messagenet-credentials, messagenet-ip)
+  - effective_caller_id_number: numero del consulente (caller ID)
+  - effective_caller_id_name: nome del consulente
+  
+  LOGICA DI ROUTING:
+  1. Se sip_gateway è specificato → usa quel gateway specifico
+  2. Numeri di emergenza italiani → sempre Messagenet
+  3. Numeri italiani (39xxx, 0xxx) → Telnyx con failover Messagenet
+  4. Numeri internazionali → Telnyx con failover Telnyx credentials
+  
+  SICUREZZA:
+  - Timeout massimo: 3600 secondi (1 ora) per prevenire frodi
+  - hangup_after_bridge: libera risorse immediatamente
+  - Log di ogni decisione di routing per audit
+  
+  PERCORSO DEPLOY:
+  /usr/local/freeswitch/etc/freeswitch/dialplan/default/02_outbound_trunk.xml
+  ================================================================
+-->
+
+<include>
+
+  <!--
+    ============================================================
+    EMERGENZA: Numeri di emergenza italiani
+    Priorità massima: devono essere instradati SEMPRE via Messagenet
+    (provider italiano) per garantire la localizzazione corretta.
+    ============================================================
+  -->
+  <extension name="outbound_emergency">
+    <condition field="destination_number" expression="^(112|113|115|118)$">
+      <action application="log" data="WARNING [OUTBOUND] Chiamata di EMERGENZA a ${destination_number} - routing via Messagenet"/>
+      
+      <action application="set" data="hangup_after_bridge=true"/>
+      <action application="set" data="call_timeout=120"/>
+      
+      <action application="bridge" data="sofia/gateway/messagenet-credentials/${destination_number}"/>
+    </condition>
+  </extension>
+
+  <!--
+    ============================================================
+    GATEWAY ESPLICITO: quando il bridge specifica il gateway
+    Il voice bridge può impostare sip_gateway per forzare
+    un gateway specifico (es. per test o requisiti del cliente).
+    ============================================================
+  -->
+  <extension name="outbound_via_gateway">
+    <condition field="${sip_gateway}" expression="^(telnyx-ip|telnyx-credentials|messagenet-credentials|messagenet-ip)$">
+      <condition field="destination_number" expression="^(\+?[0-9]{4,15})$">
+        <action application="log" data="INFO [OUTBOUND] Gateway esplicito: ${sip_gateway} → ${destination_number} (caller: ${effective_caller_id_number})"/>
+        
+        <action application="set" data="hangup_after_bridge=true"/>
+        <action application="set" data="session_timeout=3600"/>
+        <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
+        <action application="set" data="sip_h_X-Alessia-CallType=outbound"/>
+        <action application="set" data="sip_h_X-Alessia-Gateway=${sip_gateway}"/>
+        <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata risposta: ${uuid} via ${sip_gateway} → ${destination_number}"/>
+        
+        <action application="bridge" data="sofia/gateway/${sip_gateway}/${destination_number}"/>
+      </condition>
+    </condition>
+  </extension>
+
+  <!--
+    ============================================================
+    ITALIA: numeri che iniziano con +39, 39, o 0 (prefisso locale)
+    Routing: Telnyx (primario) → Messagenet (failover)
+    ============================================================
+  -->
+  <extension name="outbound_italy">
+    <condition field="destination_number" expression="^(\+?39[0-9]{8,12}|0[0-9]{5,11})$">
+      <action application="log" data="INFO [OUTBOUND] Chiamata ITALIA: ${destination_number} (caller: ${effective_caller_id_number}) → telnyx-ip [failover: messagenet-credentials]"/>
+      
+      <action application="set" data="hangup_after_bridge=true"/>
+      <action application="set" data="session_timeout=3600"/>
+      <action application="set" data="absolute_codec_string=PCMU,PCMA,G722"/>
+      <action application="set" data="sip_h_X-Alessia-CallType=outbound-italy"/>
+      <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata Italia risposta: ${uuid} → ${destination_number}"/>
+      
+      <action application="set" data="failure_causes=NORMAL_TEMPORARY_FAILURE,RECOVERY_ON_TIMER_EXPIRE,GATEWAY_DOWN,NO_ROUTE_DESTINATION"/>
+      <action application="bridge" data="sofia/gateway/telnyx-ip/${destination_number}|sofia/gateway/messagenet-credentials/${destination_number}"/>
+    </condition>
+  </extension>
+
+  <!--
+    ============================================================
+    INTERNAZIONALE: tutti gli altri numeri
+    Routing: Telnyx IP (primario) → Telnyx Credentials (failover)
+    Messagenet non viene usato per l'internazionale perché
+    le tariffe sono più alte e la copertura è limitata.
+    ============================================================
+  -->
+  <extension name="outbound_international">
+    <condition field="destination_number" expression="^(\+?[1-9][0-9]{4,14})$">
+      <action application="log" data="INFO [OUTBOUND] Chiamata INTERNAZIONALE: ${destination_number} (caller: ${effective_caller_id_number}) → telnyx-ip [failover: telnyx-credentials]"/>
+      
+      <action application="set" data="hangup_after_bridge=true"/>
+      <action application="set" data="session_timeout=3600"/>
+      <action application="set" data="absolute_codec_string=PCMU,PCMA,G722,OPUS"/>
+      <action application="set" data="sip_h_X-Alessia-CallType=outbound-international"/>
+      <action application="set" data="execute_on_answer=log INFO [OUTBOUND] Chiamata internazionale risposta: ${uuid} → ${destination_number}"/>
+      
+      <action application="set" data="failure_causes=NORMAL_TEMPORARY_FAILURE,RECOVERY_ON_TIMER_EXPIRE,GATEWAY_DOWN,NO_ROUTE_DESTINATION"/>
+      <action application="bridge" data="sofia/gateway/telnyx-ip/${destination_number}|sofia/gateway/telnyx-credentials/${destination_number}"/>
+    </condition>
+  </extension>
+
+</include>

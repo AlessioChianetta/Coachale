@@ -1,13 +1,28 @@
 <!--
-  Dialplan Multi-Tenant Alessia AI Voice
+  ================================================================
+  Dialplan Multi-Tenant Alessia AI Voice (Public Context)
+  ================================================================
   
   Versione consigliata per produzione multi-tenant.
   Accetta qualsiasi numero DID italiano/internazionale.
   Il bridge WebSocket identifica il consultant dal numero chiamato (called_number)
   cercando nella tabella voice_numbers della piattaforma.
   
+  PROVIDER CHE INSTRADANO QUI:
+  Le chiamate inbound arrivano da Telnyx e/o Messagenet tramite
+  i gateway configurati in sip_profiles/external/.
+  Il contesto "public" è quello di default per le chiamate esterne.
+  
+  FLUSSO CHIAMATA INBOUND:
+  1. Chiamata arriva da Telnyx/Messagenet → contesto public
+  2. 00_acl_check.xml verifica l'IP sorgente
+  3. Questo dialplan risponde e connette al WebSocket bridge
+  4. Il bridge identifica il consulente dal numero DID chiamato
+  5. Gemini AI gestisce la conversazione
+  
   Percorso: /usr/local/freeswitch/etc/freeswitch/dialplan/public/alessia-ai.xml
   Ricarica: docker exec -it freeswitch fs_cli -x "reloadxml"
+  ================================================================
 -->
 
 <include>
@@ -16,6 +31,17 @@
       <action application="answer"/>
       <action application="sleep" data="500"/>
       
+      <!-- Anti-fraud: header di tracking per identificare il tenant -->
+      <action application="set" data="sip_h_X-Alessia-Tenant=multitenant"/>
+      
+      <!-- Limiti di sicurezza: max 1 ora per chiamata -->
+      <action application="set" data="call_timeout=3600"/>
+      <action application="set" data="session_timeout=3600"/>
+      
+      <!-- Log chiamata alla risposta -->
+      <action application="set" data="execute_on_answer=log INFO [INBOUND] Chiamata risposta: ${uuid} da ${caller_id_number} a ${destination_number}"/>
+      
+      <!-- WebSocket bridge: autenticazione e connessione -->
       <action application="set" data='STREAM_EXTRA_HEADERS={"Authorization":"Bearer 7a8fad4d5ad94fe3bc342c1c1799b5ea"}'/>
       
       <action application="set" data="play_stream_name=websocket_audio"/>
