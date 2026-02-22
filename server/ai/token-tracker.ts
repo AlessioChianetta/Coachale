@@ -185,7 +185,7 @@ class TokenTracker {
       };
 
       this.buffer.push(entry);
-      console.log(`📊 [TokenTracker] Buffered: ${params.feature} | ${params.model} | ${totalTokens} tokens | $${costs.totalCost.toFixed(4)} | consultant=${params.consultantId} client=${params.clientId || 'self'}`);
+      console.log(`📊 [TokenTracker] Buffered: ${params.feature} | ${params.model} | ${totalTokens} tokens | $${costs.totalCost.toFixed(4)} | consultant=${params.consultantId} client=${params.clientId || 'self'}${params.callerRole ? ` role=${params.callerRole}` : ''}`);
 
       if (this.buffer.length >= this.MAX_BUFFER) {
         this.flush();

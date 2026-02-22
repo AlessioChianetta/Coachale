@@ -163,7 +163,7 @@ router.get("/by-client", authenticateToken, async (req: AuthRequest, res: Respon
           CASE 
             WHEN t.consultant_id != ${consultantId} AND t.consultant_id IN (SELECT id FROM sub_consultant_ids) THEN sc.first_name || ' ' || sc.last_name
             WHEN bu.id IS NOT NULL THEN bu.first_name || ' ' || bu.last_name
-            WHEN cls.id IS NOT NULL THEN cls.first_name || ' ' || cls.last_name
+            WHEN cls.id IS NOT NULL THEN COALESCE(cls.client_name, cls.client_email)
             WHEN t.client_id IS NULL OR t.client_id = '' OR t.client_id = t.consultant_id THEN cu.first_name || ' ' || cu.last_name
             ELSE u.first_name || ' ' || u.last_name
           END AS user_name,
