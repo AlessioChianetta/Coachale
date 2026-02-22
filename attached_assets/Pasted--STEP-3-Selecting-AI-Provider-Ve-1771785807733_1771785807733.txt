@@ -1,0 +1,181 @@
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: d5dce693-1828-4f53-ada4-6f5b62b542bd
+👤 User Type: CLIENT
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message b4e7f50b-df34-422d-94ed-5ca829a0b5d9: "Ciao..."
+🔄 [STEP 4b] Updated conversation lastMessageAt and unreadByConsultant (+1)
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+🔄 [NEXT-EVAL] Reset nextEvaluationAt for conversation d5dce693-1828-4f53-ada4-6f5b62b542bd (new inbound message)
+📸 [STEP 5] Building media context (1 messages)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: CLIENT
+💬 Message: "Ciao"
+
+╔══════════════════════════════════════════════════════════════════╗
+║  👤 CLIENTE → FLUSSO LEAD (agente non-support)                 ║
+╠══════════════════════════════════════════════════════════════════╣
+║  📞 Telefono:           +393519272875
+║  🤖 Agente:             Marco setter (proactive_setter)
+╠══════════════════════════════════════════════════════════════════╣
+║  ⚡ DECISIONE
+║  ├─ Tipo utente:        CLIENTE RICONOSCIUTO (agente non-support)
+║  ├─ Accesso CRM:        NO (CRM solo per agente default "Assistenza Clienti")
+║  └─ Flusso:             Reindirizzato → Lead (senza dati CRM)
+╚══════════════════════════════════════════════════════════════════╝
+
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+⏭️ [OBJECTION] Objection detection DISABLED (aligned with public share)
+👤 Fetching/creating lead profile...
+✅ Lead profile: difficult (difficulty: 8.5/10)
+⏭️ [APPOINTMENT SLOTS] Slots fetch DISABLED (bookingEnabled=false)
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=false, conversation.proactiveLeadId=null
+ℹ️ [PROACTIVE CHECK] This is a REACTIVE lead (isProactiveLead=false)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: true
+   agentInstructions length: 14957 chars
+   selectedTemplate: receptionist
+✅ [TEMPLATE ENGINE] Using CUSTOM TEMPLATE from database
+   Template preview: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RUOLO: RECEPTIONIST VIRTUALE (INBOUND)
+━━━━━━...
+   - Sender Phone Injected: +393519272875
+✅ [FEATURE BLOCKS] Conditional injection summary:
+   - Knowledge Base: DISABLED (no items)
+   - Booking: ENABLED
+   - Objection Handling: DISABLED (removed Dec 2025)
+   - Disqualification: ENABLED
+   - Upselling: DISABLED (no block yet)
+   - Sender Phone: INJECTED
+📤 [SYSTEM PROMPT] Ready (35172 chars): "📅 OGGI È: domenica 22 febbraio 2026  Sei l'assistente di Orbitale. Il cliente è un LEAD CALDO che h..."
+
+╔══════════════════════════════════════════════════════════════════╗
+║  🎯 LEAD - MAPPA DECISIONALE                                   ║
+╠══════════════════════════════════════════════════════════════════╣
+║  📞 Telefono:           +393519272875
+║  🤖 Agente:             Marco setter
+║  👤 Profilo:            difficult (difficoltà: 8.5/10)
+╠══════════════════════════════════════════════════════════════════╣
+║  ⚡ DECISIONE
+║  ├─ Tipo utente:        LEAD (potenziale cliente)
+║  ├─ Prompt:             buildLeadSystemPrompt (vendita)
+║  ├─ Accesso CRM:        NO
+║  ├─ Booking attivo:     SI
+║  ├─ Proattivo:          NO
+║  └─ Flusso:             Lead → vendita + prenotazione
+╚══════════════════════════════════════════════════════════════════╝
+
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 10 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~8,793 tokens (35,172 chars)
+   💬 User Message: ~1 tokens (4 chars)
+   📜 History: ~818 tokens (3,269 chars)
+   🔢 TOTALE INPUT: ~9,612 tokens
+
+[IMAP] Opened folder "INBOX.Sent": server reports 2 total messages
+[IMAP] Finished parsing 2 emails from "INBOX.Sent"
+[EMAIL-HUB AUTO] Fetched 2 emails from INBOX.Sent (sent)
+👤 [FILE SEARCH] User Alessio Chianetta is a CLIENT - enabling consultant store access
+🔐 [FILE SEARCH] Access check - Agent level: null, Client Gold: true, Source: client
+📚 [DIPENDENTE FILE SEARCH] Merged dipendente store "WhatsApp Agent: Marco setter" (1 docs) into client search
+✅ [FileSearch] Store name valid: fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+✅ [FileSearch] Store name valid: fileSearchStores/whatsapp-agent-marco-setter-o2sz4beuox1z
+👑 [FILE SEARCH] Gold client using semantic search (like AI Assistant)
+   📦 Stores: 2
+      1. fileSearchStores/private-store-client-e9c377-0qubcpy51a0r
+      2. fileSearchStores/whatsapp-agent-marco-setter-o2sz4beuox1z
+   📄 Total documents: 30
+   📊 Private Store - Client e9c37790: 29 docs
+   📊 Dipendente: Marco setter: 1 docs
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+[IMAP] Opened folder "INBOX.Drafts": server reports 0 total messages
+[EMAIL-HUB AUTO] Fetched 0 emails from INBOX.Drafts (drafts)
+📊 [TokenTracker] Buffered: whatsapp-agent:marco-setter | gemini-3-flash-preview | 10954 tokens | $0.0057 | consultant=0c73bbe5-51e1-4108-866b-6be7a52fce3b client=self
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1955ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+✅ response.text is a property - using it...
+📝 Extracted text length: 335
+📝 Extracted text preview: Ciao! 👋 Piacere di conoscerti, sono l'assistente di Orbitale. 
+
+Aiutiamo imprenditori, liberi professionisti e dipendenti a creare, gestire e proteggere il proprio denaro attraverso un metodo scienti
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [WHATSAPP AI] Token Breakdown for agent "Marco setter":
+   ├── System Prompt: 8,793 tokens
+   ├── Conversation History: 957 tokens
+   ├── User Message: 1 tokens
+   └── TOTAL INPUT: 9,751 tokens
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~84 tokens (335 chars)
+   🔢 TOTALE (input + output): ~9,696 tokens
+   ⏱️  Tempo di risposta: 1955ms
+   💰 Costo stimato: $0.019392 (input + output)
+
+✅ [STEP 8] Gemini response received: "Ciao! 👋 Piacere di conoscerti, sono l'assistente di Orbitale. 
+
+Aiutiamo imprenditori, liberi profe..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 670f440f-45e9-4448-8575-373acb391b11 (timing: 1955ms Gemini, 4698ms total)
+🔄 [STEP 9b] Updated conversation lastMessageAt (AI response)
+🎛️ [AUDIO DECISION] Mode: always_text, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=false, mode=always_text, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+[IMAP] Opened folder "INBOX.Trash": server reports 6 total messages
+✅ Using agent from existing conversation: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+📱 Using From number: whatsapp:+3935002201290 (Agent: Marco setter)
+📤 Sending WhatsApp message as plain text
+✅ [TokenTracker] Flushed 1 entries to DB
+[IMAP] Finished parsing 6 emails from "INBOX.Trash"
+[EMAIL-HUB AUTO] Fetched 6 emails from INBOX.Trash (trash)
+❌ [ERROR] Error processing pending messages:
+Error message: Twilio could not find a Channel with the specified From address
+Error stack: Error: Twilio could not find a Channel with the specified From address
+    at success (/home/runner/workspace/node_modules/twilio/lib/base/Version.js:79:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async sendWhatsAppMessage (/home/runner/workspace/server/whatsapp/twilio-client.ts:538:21)
+    at async processPendingMessages (/home/runner/workspace/server/whatsapp/message-processor.ts:2874:5)
+    at async processPendingMessagesWithRetry (/home/runner/workspace/server/whatsapp/message-processor.ts:517:5)
+    at async processConsultantQueue (/home/runner/workspace/server/whatsapp/message-processor.ts:496:9)
+    at async enqueueProcessing (/home/runner/workspace/server/whatsapp/message-processor.ts:472:5)
+    at async Timeout._onTimeout (/home/runner/workspace/server/whatsapp/message-processor.ts:449:5)
+🛟 [ERROR RECOVERY] Saving 1 inbound messages and marking as processed to prevent infinite loop
+✅ [ERROR RECOVERY] Marked 1 messages as processed with error info
+ℹ️ [ERROR RECOVERY] Messages are saved in DB. AI response failed but conversation history is preserved.
+⚠️ [ERROR] Processing failed but messages saved. Conversation can continue manually.
+[EMAIL-HUB AUTO] Initial sync complete: 0 emails imported
+[IMAP] Opened folder "[Gmail]/Posta inviata
