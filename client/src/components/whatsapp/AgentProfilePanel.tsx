@@ -61,7 +61,11 @@ import {
   Smartphone,
   AlertTriangle,
   ExternalLink,
-  MoreVertical
+  MoreVertical,
+  Crown,
+  ArrowRight,
+  Lightbulb,
+  MousePointerClick
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -237,15 +241,86 @@ function SkillBar({ name, level, description }: { name: string; level: number; d
 
 function PlaceholderPanel() {
   return (
-    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full flex items-center justify-center">
-      <CardContent className="text-center py-16">
-        <div className="w-16 h-16 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
-          <Bot className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full">
+      <CardContent className="p-6 flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex flex-col items-center text-center pt-6 pb-2">
+          <div className="relative mb-4">
+            <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-xl" />
+            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center shadow-sm">
+              <MousePointerClick className="h-7 w-7 text-blue-500 dark:text-blue-400" />
+            </div>
+          </div>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Seleziona un agente</h3>
+          <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
+            Clicca su un dipendente a sinistra per vedere statistiche, configurazione e opzioni
+          </p>
         </div>
-        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Seleziona un agente</h3>
-        <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
-          Clicca su un agente nella lista per visualizzare i dettagli e le statistiche
-        </p>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <Lightbulb className="h-3 w-3 text-amber-500" />
+            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Consigli</span>
+          </div>
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+        </div>
+
+        {/* Tip cards */}
+        <div className="space-y-3">
+          {/* Tip 1 - Assistenza Clienti */}
+          <div className="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-sm">
+                <Crown className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">Assistenza Clienti</span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300">DEFAULT</span>
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                  L'unico agente con accesso completo al CRM. Usalo per supporto clienti esistenti: esercizi, consulenze, progressi e dati personali.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tip 2 - Setter */}
+          <div className="relative overflow-hidden rounded-xl border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
+                <Target className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold text-green-800 dark:text-green-200">Setter per Appuntamenti</span>
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-400 leading-relaxed">
+                  Crea un agente Setter Proattivo per qualificare nuovi lead e fissare appuntamenti. Opera senza dati CRM, ideale per chi non è ancora cliente.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tip 3 - Multi agent */}
+          <div className="relative overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-sm">
+                <Users className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">Più Dipendenti, Più Canali</span>
+                </div>
+                <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
+                  Ogni dipendente può avere un numero WhatsApp dedicato, una personalità diversa e una knowledge base specifica per il suo ruolo.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
