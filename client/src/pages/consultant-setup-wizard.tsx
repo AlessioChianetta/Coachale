@@ -18,6 +18,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   Check,
@@ -59,6 +62,30 @@ import {
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
 
+interface InlineConfigField {
+  key: string;
+  label: string;
+  type: "text" | "password" | "number" | "toggle" | "select" | "textarea";
+  placeholder?: string;
+  hint?: string;
+  options?: { value: string; label: string }[];
+  sensitive?: boolean;
+  required?: boolean;
+}
+
+interface InlineConfig {
+  getEndpoint: string;
+  saveEndpoint: string;
+  saveMethod?: "POST" | "PUT";
+  fields: InlineConfigField[];
+  dataMapper?: (apiResponse: any) => Record<string, any>;
+  payloadMapper?: (formState: Record<string, any>) => any;
+  oauthStart?: string;
+  oauthStatusField?: string;
+  oauthLabel?: string;
+  usedBySteps?: string[];
+}
+
 interface OnboardingStep {
   id: string;
   stepNumber: number;
@@ -72,11 +99,17 @@ interface OnboardingStep {
   testEndpoint?: string;
   count?: number;
   countLabel?: string;
+  optional?: boolean;
+  inlineConfig?: InlineConfig;
 }
 
-interface Phase {
+interface Section {
   id: string;
+  emoji: string;
   title: string;
+  tagline: string;
+  color: string;
+  gradient: string;
   steps: OnboardingStep[];
 }
 
@@ -228,113 +261,6 @@ function StepCard({
   );
 }
 
-const phaseGradients = {
-  infrastructure: "from-indigo-500 to-violet-500",
-  whatsapp_agents: "from-indigo-500 to-violet-500",
-  content: "from-indigo-500 to-violet-500",
-  advanced: "from-indigo-500 to-violet-500",
-};
-
-const phaseBgGradients = {
-  infrastructure: "",
-  whatsapp_agents: "",
-  content: "",
-  advanced: "",
-};
-
-function PhaseSection({
-  phase,
-  activeStep,
-  onStepClick,
-  defaultOpen = false,
-}: {
-  phase: Phase;
-  activeStep: string;
-  onStepClick: (stepId: string) => void;
-  defaultOpen?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const completedCount = phase.steps.filter(s => s.status === "verified").length;
-  const totalCount = phase.steps.length;
-  const phaseProgress = Math.round((completedCount / totalCount) * 100);
-  const isComplete = phaseProgress === 100;
-  
-  const gradient = phaseGradients[phase.id as keyof typeof phaseGradients] || phaseGradients.infrastructure;
-  const bgGradient = phaseBgGradients[phase.id as keyof typeof phaseBgGradients] || phaseBgGradients.infrastructure;
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-3">
-      <CollapsibleTrigger className="w-full">
-        <motion.div 
-          className={`flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700`}
-          whileHover={{ scale: 1.01 }}
-          transition={{ type: "spring", stiffness: 400 }}
-        >
-          <div className="flex items-center gap-2">
-            <motion.div
-              animate={{ rotate: isOpen ? 90 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </motion.div>
-            <span className="font-semibold text-sm">{phase.title}</span>
-            {isComplete && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="text-lg"
-              >
-                🎉
-              </motion.span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <motion.span 
-              className="text-xs text-slate-600 font-medium"
-              key={completedCount}
-              initial={{ scale: 1.3 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500 }}
-            >
-              {completedCount}/{totalCount}
-            </motion.span>
-            <div className="w-20 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <motion.div 
-                className={`h-full bg-gradient-to-r ${gradient} rounded-full`}
-                initial={{ width: 0 }}
-                animate={{ width: `${phaseProgress}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-          </div>
-        </motion.div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <motion.div 
-          className="mt-2 space-y-0.5 pl-3"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {phase.steps.map((step, index) => (
-            <motion.div
-              key={step.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <StepCard
-                step={step}
-                isActive={activeStep === step.id}
-                onClick={() => onStepClick(step.id)}
-              />
-            </motion.div>
-          ))}
-        </motion.div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
 
 const triggerConfetti = () => {
   const count = 200;
@@ -370,6 +296,476 @@ const triggerMiniConfetti = () => {
     scalar: 0.8,
   });
 };
+
+// ─── INLINE CONFIG SUB-COMPONENTS ──────────────────────────────────────────
+
+function UsedByBadge({ stepIds, nameMap }: { stepIds: string[]; nameMap: Record<string, string> }) {
+  if (!stepIds.length) return null;
+  return (
+    <div className="flex items-start gap-2 text-xs p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+      <LinkIcon className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
+      <span>
+        <span className="font-medium text-blue-700 dark:text-blue-300">Usato anche da: </span>
+        <span className="text-blue-600 dark:text-blue-400">{stepIds.map(id => nameMap[id] || id).join(", ")}</span>
+      </span>
+    </div>
+  );
+}
+
+function InlineField({
+  field,
+  value,
+  onChange,
+  isConfigured,
+  isSensitiveEditing,
+  onStartSensitiveEdit,
+}: {
+  field: InlineConfigField;
+  value: any;
+  onChange: (v: any) => void;
+  isConfigured: boolean;
+  isSensitiveEditing: boolean;
+  onStartSensitiveEdit: () => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {field.type !== "toggle" && (
+        <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">{field.label}</Label>
+      )}
+
+      {field.type === "text" && (
+        <Input
+          value={value || ""}
+          onChange={e => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          className="h-8 text-sm font-mono"
+        />
+      )}
+
+      {field.type === "number" && (
+        <Input
+          type="number"
+          value={value || ""}
+          onChange={e => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          className="h-8 text-sm font-mono"
+        />
+      )}
+
+      {field.type === "textarea" && (
+        <Textarea
+          value={value || ""}
+          onChange={e => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          className="text-xs font-mono min-h-[80px]"
+        />
+      )}
+
+      {field.type === "password" && field.sensitive && isConfigured && !isSensitiveEditing ? (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-8 px-3 rounded-md border bg-slate-50 dark:bg-slate-800 flex items-center text-slate-400 text-sm font-mono">
+            ••••••••
+          </div>
+          <button
+            onClick={onStartSensitiveEdit}
+            className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 whitespace-nowrap"
+          >
+            Modifica
+          </button>
+        </div>
+      ) : field.type === "password" ? (
+        <div className="space-y-1">
+          <Input
+            type="password"
+            value={value || ""}
+            onChange={e => onChange(e.target.value)}
+            placeholder={field.placeholder || "••••••••"}
+            className="h-8 text-sm font-mono"
+          />
+          {field.sensitive && isConfigured && (
+            <p className="text-xs text-muted-foreground">Lascia vuoto per mantenere il valore salvato</p>
+          )}
+        </div>
+      ) : null}
+
+      {field.type === "toggle" && (
+        <div className="flex items-center justify-between py-1">
+          <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">{field.label}</Label>
+          <Switch
+            checked={value ?? false}
+            onCheckedChange={onChange}
+          />
+        </div>
+      )}
+
+      {field.type === "select" && field.options && (
+        <Select value={value || ""} onValueChange={onChange}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder={field.placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {field.hint && (
+        <p className="text-xs text-muted-foreground">{field.hint}</p>
+      )}
+    </div>
+  );
+}
+
+function InlineConfigPanel({
+  config,
+  stepId,
+  onSaveSuccess,
+  testEndpoint,
+  testingStep,
+  onTest,
+  nameMap,
+}: {
+  config: InlineConfig;
+  stepId: string;
+  onSaveSuccess: () => void;
+  testEndpoint?: string;
+  testingStep: string | null;
+  onTest: (stepId: string, endpoint?: string) => void;
+  nameMap: Record<string, string>;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [formState, setFormState] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isAlreadyConfigured, setIsAlreadyConfigured] = useState(false);
+  const [sensitiveEditing, setSensitiveEditing] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
+
+  // Query per dati esistenti (form fields) — abilitata solo per config non-OAuth
+  const { data: existingData, isLoading: isLoadingData } = useQuery({
+    queryKey: [`inline-config-${config.getEndpoint}`],
+    queryFn: async () => {
+      const res = await fetch(config.getEndpoint, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to load");
+      return res.json();
+    },
+    enabled: !!config.getEndpoint && !config.oauthStart,
+  });
+
+  // Query per stato OAuth — abilitata solo per config OAuth (sempre in cima, mai condizionale)
+  const { data: oauthData } = useQuery({
+    queryKey: [`oauth-status-${config.getEndpoint}`],
+    queryFn: async () => {
+      const res = await fetch(config.getEndpoint, { headers: getAuthHeaders() });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!config.getEndpoint && !!config.oauthStart,
+  });
+
+  useEffect(() => {
+    if (existingData && config.dataMapper) {
+      const mapped = config.dataMapper(existingData);
+      setFormState(mapped);
+      const hasValues = Object.entries(mapped).some(([, v]) => {
+        if (typeof v === "boolean") return true;
+        return v !== "" && v !== undefined && v !== null;
+      });
+      setIsAlreadyConfigured(hasValues);
+      if (hasValues) setIsExpanded(false);
+      else setIsExpanded(true);
+    }
+  }, [existingData]);
+
+  const handleSave = async () => {
+    if (!config.payloadMapper) return;
+    setIsSaving(true);
+    try {
+      const payload = config.payloadMapper(formState);
+      // Rimuovi campi password vuoti (mantenere valore salvato)
+      config.fields.forEach(f => {
+        if (f.sensitive && f.type === "password" && !sensitiveEditing.has(f.key)) {
+          if (!formState[f.key]) delete payload[f.key];
+        }
+      });
+      const res = await fetch(config.saveEndpoint, {
+        method: config.saveMethod || "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Errore nel salvataggio");
+      }
+      setSaveSuccess(true);
+      setIsAlreadyConfigured(true);
+      onSaveSuccess();
+      setTimeout(() => setSaveSuccess(false), 3000);
+      toast({ title: "Salvato!", description: "Configurazione aggiornata correttamente." });
+    } catch (e: any) {
+      toast({ title: "Errore", description: e.message || "Impossibile salvare", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Pannello OAuth — usa oauthData già caricata in cima (rules of hooks rispettate)
+  if (config.oauthStart) {
+    const isConnected = oauthData && config.oauthStatusField ? !!oauthData[config.oauthStatusField] : false;
+    return (
+      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-slate-300"}`} />
+            <div>
+              <p className="text-sm font-medium">{isConnected ? "Connesso" : "Non connesso"}</p>
+              {isConnected && oauthData?.email && (
+                <p className="text-xs text-muted-foreground">{oauthData.email}</p>
+              )}
+            </div>
+          </div>
+          <Button size="sm" onClick={() => window.location.href = config.oauthStart!} className="gap-1.5">
+            <ExternalLink className="h-3 w-3" />
+            {isConnected ? "Riconnetti" : config.oauthLabel || "Connetti"}
+          </Button>
+        </div>
+        {config.usedBySteps && config.usedBySteps.length > 0 && (
+          <div className="mt-3">
+            <UsedByBadge stepIds={config.usedBySteps} nameMap={nameMap} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Form inline collassabile
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isAlreadyConfigured ? "bg-emerald-500" : "bg-slate-300"}`} />
+          <span className="text-sm font-medium">
+            {isAlreadyConfigured ? "Già configurato — modifica" : "Configura direttamente qui"}
+          </span>
+          {isLoadingData && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            key="form"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="p-4 space-y-3 border-t border-slate-100 dark:border-slate-800">
+              {config.fields.map(field => (
+                <InlineField
+                  key={field.key}
+                  field={field}
+                  value={formState[field.key]}
+                  onChange={v => setFormState(s => ({ ...s, [field.key]: v }))}
+                  isConfigured={isAlreadyConfigured}
+                  isSensitiveEditing={sensitiveEditing.has(field.key)}
+                  onStartSensitiveEdit={() => setSensitiveEditing(prev => new Set([...prev, field.key]))}
+                />
+              ))}
+
+              {config.usedBySteps && config.usedBySteps.length > 0 && (
+                <UsedByBadge stepIds={config.usedBySteps} nameMap={nameMap} />
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`flex-1 transition-colors ${saveSuccess ? "bg-emerald-500 hover:bg-emerald-600" : ""}`}
+                >
+                  {isSaving ? (
+                    <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Salvataggio...</>
+                  ) : saveSuccess ? (
+                    <><Check className="h-3.5 w-3.5 mr-2" />Salvato</>
+                  ) : (
+                    "Salva credenziali"
+                  )}
+                </Button>
+                {testEndpoint && saveSuccess && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onTest(stepId, testEndpoint)}
+                    disabled={testingStep === stepId}
+                    className="gap-1.5"
+                  >
+                    {testingStep === stepId
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <RefreshCw className="h-3.5 w-3.5" />
+                    }
+                    Testa
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── SECTION CARD ──────────────────────────────────────────────────────────
+
+function SectionCard({
+  section,
+  onClick,
+  isUrgent,
+}: {
+  section: Section;
+  onClick: () => void;
+  isUrgent: boolean;
+}) {
+  const completed = section.steps.filter(s => s.status === "verified").length;
+  const total = section.steps.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const isComplete = pct === 100;
+  const barColor = pct < 30 ? "bg-red-500" : pct < 80 ? "bg-amber-500" : "bg-emerald-500";
+  const badgeColor = pct < 30 ? "text-red-600 border-red-200 bg-red-50" : pct < 80 ? "text-amber-600 border-amber-200 bg-amber-50" : "text-emerald-600 border-emerald-200 bg-emerald-50";
+
+  return (
+    <motion.div
+      onClick={onClick}
+      whileHover={{ y: -3, boxShadow: "0 8px 25px rgba(0,0,0,0.10)" }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="relative cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex flex-col gap-3 overflow-hidden select-none"
+    >
+      <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-[0.035] pointer-events-none`} />
+
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl leading-none">{section.emoji}</span>
+          <div>
+            <h2 className="font-bold text-base text-slate-800 dark:text-slate-100 leading-tight">{section.title}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{section.tagline}</p>
+          </div>
+        </div>
+        {isUrgent && !isComplete && (
+          <Badge className="text-xs bg-orange-500 text-white border-0 animate-pulse shrink-0">⚡ Inizia</Badge>
+        )}
+      </div>
+
+      <Separator className="opacity-50" />
+
+      {isComplete ? (
+        <div className="flex items-center justify-center gap-2 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+          <Check className="h-4 w-4" /> Sezione completata
+        </div>
+      ) : (
+        <>
+          <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              className={`h-full rounded-full ${barColor}`}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{completed}/{total} completati</span>
+            <Badge variant="outline" className={`font-mono text-xs ${badgeColor}`}>{pct}%</Badge>
+          </div>
+        </>
+      )}
+
+      <Button
+        size="sm"
+        className={`w-full mt-1 bg-gradient-to-r ${section.gradient} text-white border-0 hover:opacity-90`}
+      >
+        {isComplete ? "Rivedi →" : pct === 0 ? "Inizia →" : "Continua →"}
+      </Button>
+    </motion.div>
+  );
+}
+
+// ─── CONTEXTUAL BANNER ──────────────────────────────────────────────────────
+
+function ContextualBanner({
+  sections,
+  completedSteps,
+  totalSteps,
+  onGoToSection,
+}: {
+  sections: Section[];
+  completedSteps: number;
+  totalSteps: number;
+  onGoToSection: (id: string) => void;
+}) {
+  const section1 = sections[0];
+  const s1Completed = section1?.steps.filter(s => s.status === "verified").length ?? 0;
+  const s1Total = section1?.steps.length ?? 1;
+  const s1Pct = Math.round((s1Completed / s1Total) * 100);
+  const allComplete = completedSteps === totalSteps;
+
+  if (allComplete) {
+    return (
+      <div className="rounded-2xl p-4 border bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 flex items-center gap-4">
+        <span className="text-3xl">🎉</span>
+        <div>
+          <p className="font-semibold text-emerald-900 dark:text-emerald-100">Sistema completamente attivato!</p>
+          <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">La piattaforma lavora per te 24/7. Concentrati sui clienti.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (s1Pct < 50) {
+    return (
+      <div className="rounded-2xl p-4 border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 flex items-center gap-4">
+        <span className="text-3xl">⚡</span>
+        <div className="flex-1">
+          <p className="font-semibold text-blue-900 dark:text-blue-100">Inizia da qui per generare i primi lead</p>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">Attiva il sistema di acquisizione — ti bastano ~10 minuti. Poi i lead arrivano in automatico.</p>
+        </div>
+        <Button size="sm" onClick={() => onGoToSection("acquisition")} className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white border-0">
+          Vai →
+        </Button>
+      </div>
+    );
+  }
+
+  const globalPct = Math.round((completedSteps / totalSteps) * 100);
+  if (globalPct >= 70) {
+    return (
+      <div className="rounded-2xl p-4 border bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 flex items-center gap-4">
+        <span className="text-3xl">🔥</span>
+        <div>
+          <p className="font-semibold text-violet-900 dark:text-violet-100">Ottimo lavoro! Sei quasi al 100%</p>
+          <p className="text-sm text-violet-700 dark:text-violet-300 mt-0.5">Mancano solo {totalSteps - completedSteps} step per la piena automazione.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl p-4 border bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 flex items-center gap-4">
+      <span className="text-3xl">🚀</span>
+      <div>
+        <p className="font-semibold text-indigo-900 dark:text-indigo-100">La macchina sta girando!</p>
+        <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-0.5">Continua a completare le sezioni per sbloccare tutta l'automazione.</p>
+      </div>
+    </div>
+  );
+}
 
 const CREDENTIAL_NOTES_STEPS = ["vertex_ai", "smtp", "google_calendar", "twilio_config"];
 
@@ -532,7 +928,8 @@ function CredentialNotesCard({ stepId }: { stepId: string }) {
 }
 
 export default function ConsultantSetupWizard() {
-  const [activeStep, setActiveStep] = useState<string>("vertex_ai");
+  const [activeStep, setActiveStep] = useState<string>("twilio_config");
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [testingStep, setTestingStep] = useState<string | null>(null);
   const [isOnboardingMode, setIsOnboardingMode] = useState<boolean>(false);
   const previousCompletedRef = useRef<number>(0);
@@ -607,58 +1004,74 @@ export default function ConsultantSetupWizard() {
     return "pending";
   };
 
-  const phases: Phase[] = [
+  const sections: Section[] = [
     {
-      id: "infrastructure",
-      title: "FASE 1: Infrastruttura Base",
+      id: "acquisition",
+      emoji: "🚀",
+      title: "Acquisisci Clienti",
+      tagline: "Ricevi lead e gestisci le conversazioni in automatico",
+      color: "blue",
+      gradient: "from-blue-500 to-cyan-500",
       steps: [
         {
-          id: "vertex_ai",
-          stepNumber: 1,
-          title: "Vertex AI (Gemini)",
-          description: "Configura le credenziali Google Cloud per utilizzare Gemini come motore AI principale",
-          icon: <Sparkles className="h-4 w-4" />,
-          status: status?.vertexAiStatus || "pending",
-          testedAt: status?.vertexAiTestedAt,
-          errorMessage: status?.vertexAiErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=ai",
-          testEndpoint: "/api/consultant/onboarding/test/vertex-ai",
-        },
-        {
-          id: "smtp",
-          stepNumber: 2,
-          title: "Email SMTP",
-          description: "Configura il server SMTP per inviare email automatiche ai tuoi clienti e lead",
-          icon: <Mail className="h-4 w-4" />,
-          status: status?.smtpStatus || "pending",
-          testedAt: status?.smtpTestedAt,
-          errorMessage: status?.smtpErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=email",
-          testEndpoint: "/api/consultant/onboarding/test/smtp",
-        },
-        {
-          id: "google_calendar",
-          stepNumber: 3,
-          title: "Google Calendar",
-          description: "Collega Google Calendar ai tuoi agenti per sincronizzare appuntamenti e consulenze",
-          icon: <Calendar className="h-4 w-4" />,
-          status: status?.googleCalendarStatus || "pending",
-          testedAt: status?.googleCalendarTestedAt,
-          errorMessage: status?.googleCalendarErrorMessage,
-          configLink: "/consultant/whatsapp",
-          testEndpoint: "/api/consultant/onboarding/test/google-calendar",
-        },
-        {
           id: "twilio_config",
-          stepNumber: 4,
+          stepNumber: 1,
           title: "Configurazione Twilio + WhatsApp",
-          description: "Collega il tuo numero italiano a WhatsApp Business tramite Twilio",
+          description: "Collega il tuo numero WhatsApp Business tramite Twilio per ricevere e inviare messaggi automatici",
           icon: <Phone className="h-4 w-4" />,
           status: status?.hasTwilioConfiguredAgent ? "verified" : (status?.whatsappAiStatus || "pending"),
           testedAt: status?.twilioAgentTestedAt || status?.whatsappAiTestedAt,
           errorMessage: status?.twilioAgentErrorMessage || status?.whatsappAiErrorMessage,
           configLink: "/consultant/api-keys-unified?tab=twilio",
           testEndpoint: "/api/consultant/onboarding/test/twilio-agent",
+          inlineConfig: {
+            getEndpoint: "/api/consultant/twilio-settings",
+            saveEndpoint: "/api/consultant/twilio-settings",
+            saveMethod: "POST",
+            dataMapper: (d) => ({
+              accountSid: d.settings?.accountSid || d.accountSid || "",
+              authToken: "",
+              whatsappNumber: d.settings?.whatsappNumber || d.whatsappNumber || "",
+            }),
+            payloadMapper: (s) => ({ accountSid: s.accountSid, authToken: s.authToken, whatsappNumber: s.whatsappNumber }),
+            fields: [
+              { key: "accountSid", label: "Account SID", type: "text", placeholder: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", hint: "Trovalo su console.twilio.com → Dashboard" },
+              { key: "authToken", label: "Auth Token", type: "password", sensitive: true, hint: "Copia da Twilio Console — non viene mai rimostrato" },
+              { key: "whatsappNumber", label: "Numero WhatsApp", type: "text", placeholder: "whatsapp:+39XXXXXXXXXX", hint: "Formato: whatsapp:+39... (con prefisso paese)" },
+            ],
+            usedBySteps: ["approved_template", "inbound_agent", "outbound_agent", "consultative_agent", "first_campaign"],
+          },
+        },
+        {
+          id: "approved_template",
+          stepNumber: 2,
+          title: "Template WhatsApp Approvato",
+          description: "Crea e fatti approvare almeno un template da Twilio per inviare messaggi proattivi",
+          icon: <MessageSquare className="h-4 w-4" />,
+          status: status?.hasApprovedTemplate ? "verified" : (status?.hasCustomTemplate ? "configured" : "pending"),
+          configLink: "/consultant/whatsapp-templates",
+          count: status?.approvedTemplatesCount,
+          countLabel: "approvati",
+        },
+        {
+          id: "inbound_agent",
+          stepNumber: 3,
+          title: "Agente Inbound",
+          description: "Crea un agente per gestire automaticamente le richieste in entrata dei clienti",
+          icon: <ArrowDownToLine className="h-4 w-4" />,
+          status: status?.hasInboundAgent ? "verified" : "pending",
+          configLink: "/consultant/whatsapp",
+        },
+        {
+          id: "public_agent_link",
+          stepNumber: 4,
+          title: "Link Pubblico Agente",
+          description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
+          icon: <LinkIcon className="h-4 w-4" />,
+          status: status?.hasPublicAgentLink ? "verified" : "pending",
+          configLink: "/consultant/whatsapp-agents-chat",
+          count: status?.publicLinksCount,
+          countLabel: "link",
         },
         {
           id: "instagram_dm",
@@ -671,29 +1084,48 @@ export default function ConsultantSetupWizard() {
           errorMessage: status?.instagramErrorMessage,
           configLink: "/consultant/api-keys-unified?tab=instagram",
           testEndpoint: "/api/consultant/onboarding/test/instagram",
+          inlineConfig: {
+            getEndpoint: "/api/consultant/api-keys-unified?tab=instagram",
+            saveEndpoint: "",
+            fields: [],
+            oauthStart: "/consultant/api-keys-unified?tab=instagram",
+            oauthLabel: "Connetti Instagram Business →",
+            oauthStatusField: "hasInstagramConfigured",
+          },
         },
         {
-          id: "approved_template",
+          id: "lead_import",
           stepNumber: 6,
-          title: "Template WhatsApp Approvato",
-          description: "Crea e fatti approvare almeno un template da Twilio per inviare messaggi proattivi",
-          icon: <MessageSquare className="h-4 w-4" />,
-          status: status?.hasApprovedTemplate ? "verified" : (status?.hasCustomTemplate ? "configured" : "pending"),
-          configLink: "/consultant/whatsapp-templates",
-          count: status?.approvedTemplatesCount,
-          countLabel: "approvati",
+          title: "Import Lead",
+          description: "Configura API esterne per importare lead automaticamente nel sistema",
+          icon: <UserPlus className="h-4 w-4" />,
+          status: status?.leadImportStatus || "pending",
+          testedAt: status?.leadImportTestedAt,
+          errorMessage: status?.leadImportErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=lead-import",
+          testEndpoint: "/api/consultant/onboarding/test/lead-import",
         },
         {
           id: "first_campaign",
           stepNumber: 7,
-          title: "Crea la tua Prima Campagna",
-          description: "Configura la tua prima campagna marketing per contattare i lead automaticamente",
+          title: "Prima Campagna Marketing",
+          description: "Configura la tua prima campagna per contattare i lead automaticamente",
           icon: <Rocket className="h-4 w-4" />,
           status: status?.hasFirstCampaign ? "verified" : "pending",
           configLink: "/consultant/campaigns",
           count: status?.campaignsCount,
           countLabel: "campagne",
         },
+      ],
+    },
+    {
+      id: "sales",
+      emoji: "💰",
+      title: "Chiudi e Incassa",
+      tagline: "Converti i lead in clienti paganti",
+      color: "violet",
+      gradient: "from-violet-500 to-purple-500",
+      steps: [
         {
           id: "stripe_connect",
           stepNumber: 8,
@@ -702,49 +1134,82 @@ export default function ConsultantSetupWizard() {
           icon: <CreditCard className="h-4 w-4" />,
           status: getStripeStatus(status?.stripeAccountStatus, status?.hasStripeAccount),
           configLink: "/consultant/whatsapp?tab=licenses",
+          inlineConfig: {
+            getEndpoint: "/consultant/whatsapp?tab=licenses",
+            saveEndpoint: "",
+            fields: [],
+            oauthStart: "/consultant/whatsapp?tab=licenses",
+            oauthLabel: "Collega Stripe per i pagamenti →",
+            oauthStatusField: "hasStripeAccount",
+          },
         },
         {
-          id: "email_journey",
+          id: "outbound_agent",
           stepNumber: 9,
-          title: "Email Journey",
-          description: "Configura l'automazione email per i tuoi clienti: scegli tra bozze o invio automatico e personalizza i template con l'AI",
-          icon: <MailPlus className="h-4 w-4" />,
-          status: status?.hasEmailJourneyConfigured ? "verified" : "pending",
-          configLink: "/consultant/ai-config?tab=ai-email",
+          title: "Agente Outbound",
+          description: "Crea un agente per le campagne di contatto proattivo verso i lead",
+          icon: <ArrowUpFromLine className="h-4 w-4" />,
+          status: status?.hasOutboundAgent ? "verified" : "pending",
+          configLink: "/consultant/whatsapp",
         },
         {
-          id: "nurturing_emails",
+          id: "consultative_agent",
           stepNumber: 10,
-          title: "Email Nurturing 365",
-          description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
-          icon: <MailPlus className="h-4 w-4" />,
-          status: status?.hasNurturingEmails ? "verified" : "pending",
-          configLink: "/consultant/ai-config?tab=lead-nurturing",
-          count: status?.nurturingEmailsCount,
+          title: "Agente Consulenziale",
+          description: "Crea un agente specializzato per consulenze e supporto avanzato",
+          icon: <Briefcase className="h-4 w-4" />,
+          status: status?.hasConsultativeAgent ? "verified" : "pending",
+          configLink: "/consultant/whatsapp",
+        },
+        {
+          id: "first_summary_email",
+          stepNumber: 11,
+          title: "Prima Email Riassuntiva",
+          description: "Invia la tua prima email riassuntiva dopo una consulenza",
+          icon: <MailCheck className="h-4 w-4" />,
+          status: status?.hasFirstSummaryEmail ? "verified" : "pending",
+          configLink: "/consultant/appointments",
+          count: status?.summaryEmailsCount,
           countLabel: "email",
         },
         {
-          id: "email_hub",
-          stepNumber: 11,
-          title: "Email Hub",
-          description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
-          icon: <Inbox className="h-4 w-4" />,
-          status: status?.hasEmailHubAccount ? "verified" : "pending",
-          configLink: "/consultant/email-hub",
-          count: status?.emailHubAccountsCount,
-          countLabel: "account",
-        },
-        {
-          id: "voice_calls",
+          id: "video_meeting",
           stepNumber: 12,
-          title: "Chiamate Voice (Alessia AI)",
-          description: "Completa almeno una chiamata vocale con esito positivo tramite il sistema Alessia AI Phone",
-          icon: <Phone className="h-4 w-4" />,
-          status: status?.hasCompletedVoiceCall ? "verified" : "pending",
-          configLink: "/consultant/voice-calls",
-          count: status?.completedVoiceCallsCount,
-          countLabel: "chiamate completate",
+          title: "Video Meeting (TURN)",
+          description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
+          icon: <Video className="h-4 w-4" />,
+          status: status?.videoMeetingStatus || "pending",
+          testedAt: status?.videoMeetingTestedAt,
+          errorMessage: status?.videoMeetingErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=video-meeting",
+          testEndpoint: "/api/consultant/onboarding/test/video-meeting",
+          inlineConfig: {
+            getEndpoint: "/api/consultant/turn-config",
+            saveEndpoint: "/api/consultant/turn-config",
+            saveMethod: "POST",
+            dataMapper: (d) => ({
+              username: d.config?.username || d.username || "",
+              password: "",
+              enabled: d.config?.enabled ?? d.enabled ?? true,
+            }),
+            payloadMapper: (s) => ({ username: s.username, password: s.password, enabled: s.enabled }),
+            fields: [
+              { key: "username", label: "API Key Metered.ca", type: "text", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", hint: "Trovala su dashboard.metered.ca → API Keys" },
+              { key: "password", label: "Secret Key", type: "password", sensitive: true },
+              { key: "enabled", label: "Attiva TURN server", type: "toggle" },
+            ],
+          },
         },
+      ],
+    },
+    {
+      id: "ai_ops",
+      emoji: "🤖",
+      title: "AI Operativa",
+      tagline: "La piattaforma lavora per te in autonomia 24/7",
+      color: "indigo",
+      gradient: "from-indigo-500 to-blue-600",
+      steps: [
         {
           id: "ai_autonomo",
           stepNumber: 13,
@@ -756,53 +1221,95 @@ export default function ConsultantSetupWizard() {
           count: status?.completedAiTasksCount,
           countLabel: "task completati",
         },
+        {
+          id: "email_journey",
+          stepNumber: 14,
+          title: "Email Journey",
+          description: "Configura l'automazione email: scegli tra bozze o invio automatico e personalizza i template con l'AI",
+          icon: <MailPlus className="h-4 w-4" />,
+          status: status?.hasEmailJourneyConfigured ? "verified" : "pending",
+          configLink: "/consultant/ai-config?tab=ai-email",
+        },
+        {
+          id: "nurturing_emails",
+          stepNumber: 15,
+          title: "Email Nurturing 365",
+          description: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo",
+          icon: <MailPlus className="h-4 w-4" />,
+          status: status?.hasNurturingEmails ? "verified" : "pending",
+          configLink: "/consultant/ai-config?tab=lead-nurturing",
+          count: status?.nurturingEmailsCount,
+          countLabel: "email",
+        },
+        {
+          id: "email_hub",
+          stepNumber: 16,
+          title: "Email Hub",
+          description: "Collega il tuo account email per gestire inbox, invii automatici e risposte AI",
+          icon: <Inbox className="h-4 w-4" />,
+          status: status?.hasEmailHubAccount ? "verified" : "pending",
+          configLink: "/consultant/email-hub",
+          count: status?.emailHubAccountsCount,
+          countLabel: "account",
+        },
+        {
+          id: "voice_calls",
+          stepNumber: 17,
+          title: "Chiamate Voice (Alessia AI)",
+          description: "Completa almeno una chiamata vocale con esito positivo tramite il sistema Alessia AI Phone",
+          icon: <Phone className="h-4 w-4" />,
+          status: status?.hasCompletedVoiceCall ? "verified" : "pending",
+          configLink: "/consultant/voice-calls",
+          count: status?.completedVoiceCallsCount,
+          countLabel: "chiamate completate",
+        },
       ],
     },
     {
-      id: "whatsapp_agents",
-      title: "FASE 2: WhatsApp & Agenti",
+      id: "content",
+      emoji: "📚",
+      title: "Contenuti & Autorità",
+      tagline: "Educa i clienti e posizionati come esperto",
+      color: "amber",
+      gradient: "from-amber-500 to-orange-500",
       steps: [
         {
-          id: "inbound_agent",
-          stepNumber: 14,
-          title: "Agente Inbound",
-          description: "Crea un agente per gestire le richieste in entrata dei clienti",
-          icon: <ArrowDownToLine className="h-4 w-4" />,
-          status: status?.hasInboundAgent ? "verified" : "pending",
-          configLink: "/consultant/whatsapp",
+          id: "first_course",
+          stepNumber: 18,
+          title: "Primo Corso",
+          description: "Crea il tuo primo corso formativo per i clienti",
+          icon: <BookOpen className="h-4 w-4" />,
+          status: status?.hasCreatedCourse ? "verified" : "pending",
+          configLink: "/consultant/university",
+          count: status?.coursesCount,
+          countLabel: "corsi",
         },
         {
-          id: "outbound_agent",
-          stepNumber: 15,
-          title: "Agente Outbound",
-          description: "Crea un agente per le campagne di contatto proattivo",
-          icon: <ArrowUpFromLine className="h-4 w-4" />,
-          status: status?.hasOutboundAgent ? "verified" : "pending",
-          configLink: "/consultant/whatsapp",
+          id: "first_exercise",
+          stepNumber: 19,
+          title: "Primo Esercizio",
+          description: "Crea il tuo primo esercizio pratico per i clienti",
+          icon: <ClipboardList className="h-4 w-4" />,
+          status: status?.hasCreatedExercise ? "verified" : "pending",
+          configLink: "/consultant/exercises",
+          count: status?.exercisesCount,
+          countLabel: "esercizi",
         },
         {
-          id: "consultative_agent",
-          stepNumber: 16,
-          title: "Agente Consulenziale",
-          description: "Crea un agente specializzato per consulenze e supporto avanzato",
-          icon: <Briefcase className="h-4 w-4" />,
-          status: status?.hasConsultativeAgent ? "verified" : "pending",
-          configLink: "/consultant/whatsapp",
-        },
-        {
-          id: "public_agent_link",
-          stepNumber: 17,
-          title: "Link Pubblico Agente",
-          description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
-          icon: <LinkIcon className="h-4 w-4" />,
-          status: status?.hasPublicAgentLink ? "verified" : "pending",
-          configLink: "/consultant/whatsapp-agents-chat",
-          count: status?.publicLinksCount,
-          countLabel: "link",
+          id: "knowledge_base",
+          stepNumber: 20,
+          title: "Base di Conoscenza",
+          description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
+          icon: <FileText className="h-4 w-4" />,
+          status: status?.knowledgeBaseStatus || "pending",
+          configLink: "/consultant/knowledge-documents",
+          testEndpoint: "/api/consultant/onboarding/test/knowledge-base",
+          count: status?.knowledgeBaseDocumentsCount,
+          countLabel: "documenti",
         },
         {
           id: "ai_ideas",
-          stepNumber: 18,
+          stepNumber: 21,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -813,7 +1320,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 19,
+          stepNumber: 22,
           title: "Altri Template WhatsApp",
           description: "Crea altri template WhatsApp per diversi tipi di messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -825,89 +1332,104 @@ export default function ConsultantSetupWizard() {
       ],
     },
     {
-      id: "content",
-      title: "FASE 3: Contenuti",
+      id: "integrations",
+      emoji: "⚙️",
+      title: "Integrazioni & Sistema",
+      tagline: "Collega gli strumenti di base della piattaforma",
+      color: "slate",
+      gradient: "from-slate-500 to-gray-600",
       steps: [
         {
-          id: "first_course",
-          stepNumber: 20,
-          title: "Primo Corso",
-          description: "Crea il tuo primo corso formativo per i clienti",
-          icon: <BookOpen className="h-4 w-4" />,
-          status: status?.hasCreatedCourse ? "verified" : "pending",
-          configLink: "/consultant/university",
-          count: status?.coursesCount,
-          countLabel: "corsi",
-        },
-        {
-          id: "first_exercise",
-          stepNumber: 21,
-          title: "Primo Esercizio",
-          description: "Crea il tuo primo esercizio pratico per i clienti",
-          icon: <ClipboardList className="h-4 w-4" />,
-          status: status?.hasCreatedExercise ? "verified" : "pending",
-          configLink: "/consultant/exercises",
-          count: status?.exercisesCount,
-          countLabel: "esercizi",
-        },
-        {
-          id: "knowledge_base",
-          stepNumber: 22,
-          title: "Base di Conoscenza",
-          description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
-          icon: <FileText className="h-4 w-4" />,
-          status: status?.knowledgeBaseStatus || "pending",
-          configLink: "/consultant/knowledge-documents",
-          testEndpoint: "/api/consultant/onboarding/test/knowledge-base",
-          count: status?.knowledgeBaseDocumentsCount,
-          countLabel: "documenti",
-        },
-      ],
-    },
-    {
-      id: "advanced",
-      title: "FASE 4: Avanzato",
-      steps: [
-        {
-          id: "first_summary_email",
+          id: "smtp",
           stepNumber: 23,
-          title: "Prima Email Riassuntiva",
-          description: "Invia la tua prima email riassuntiva dopo una consulenza",
-          icon: <MailCheck className="h-4 w-4" />,
-          status: status?.hasFirstSummaryEmail ? "verified" : "pending",
-          configLink: "/consultant/appointments",
-          count: status?.summaryEmailsCount,
-          countLabel: "email",
+          title: "Email SMTP",
+          description: "Configura il server SMTP per inviare email automatiche ai tuoi clienti e lead",
+          icon: <Mail className="h-4 w-4" />,
+          status: status?.smtpStatus || "pending",
+          testedAt: status?.smtpTestedAt,
+          errorMessage: status?.smtpErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=email",
+          testEndpoint: "/api/consultant/onboarding/test/smtp",
+          inlineConfig: {
+            getEndpoint: "/api/consultant/smtp-settings",
+            saveEndpoint: "/api/consultant/smtp-settings",
+            saveMethod: "POST",
+            dataMapper: (d) => ({
+              host: d.smtpHost || d.host || "",
+              port: d.smtpPort || d.port || 587,
+              secure: d.smtpSecure ?? d.secure ?? true,
+              username: d.smtpUser || d.username || "",
+              password: "",
+              fromEmail: d.smtpFromEmail || d.fromEmail || "",
+              fromName: d.smtpFromName || d.fromName || "",
+            }),
+            payloadMapper: (s) => ({ host: s.host, port: Number(s.port), secure: s.secure, username: s.username, password: s.password, fromEmail: s.fromEmail, fromName: s.fromName }),
+            fields: [
+              { key: "host", label: "Server SMTP", type: "text", placeholder: "smtp.gmail.com", hint: "Gmail: smtp.gmail.com · Outlook: smtp.office365.com" },
+              { key: "port", label: "Porta", type: "number", placeholder: "587", hint: "587 per TLS · 465 per SSL" },
+              { key: "secure", label: "Usa SSL/TLS", type: "toggle" },
+              { key: "username", label: "Email / Username", type: "text", placeholder: "tuo@email.com" },
+              { key: "password", label: "Password / App Password", type: "password", sensitive: true, hint: "Gmail: genera App Password su account.google.com/apppasswords" },
+              { key: "fromEmail", label: "Email mittente", type: "text", placeholder: "noreply@tuodominio.com" },
+              { key: "fromName", label: "Nome mittente", type: "text", placeholder: "Il tuo nome o azienda" },
+            ],
+            usedBySteps: ["email_journey", "nurturing_emails", "first_summary_email"],
+          },
         },
         {
-          id: "video_meeting",
+          id: "google_calendar",
           stepNumber: 24,
-          title: "Video Meeting (TURN)",
-          description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
-          icon: <Video className="h-4 w-4" />,
-          status: status?.videoMeetingStatus || "pending",
-          testedAt: status?.videoMeetingTestedAt,
-          errorMessage: status?.videoMeetingErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=video-meeting",
-          testEndpoint: "/api/consultant/onboarding/test/video-meeting",
+          title: "Google Calendar",
+          description: "Collega Google Calendar ai tuoi agenti per sincronizzare appuntamenti e consulenze",
+          icon: <Calendar className="h-4 w-4" />,
+          status: status?.googleCalendarStatus || "pending",
+          testedAt: status?.googleCalendarTestedAt,
+          errorMessage: status?.googleCalendarErrorMessage,
+          configLink: "/consultant/whatsapp",
+          testEndpoint: "/api/consultant/onboarding/test/google-calendar",
+          inlineConfig: {
+            getEndpoint: "/api/consultant/calendar/status",
+            saveEndpoint: "",
+            fields: [],
+            oauthStart: "/api/consultant/calendar/oauth/start",
+            oauthLabel: "Connetti Google Calendar →",
+            oauthStatusField: "connected",
+            usedBySteps: ["inbound_agent", "outbound_agent", "video_meeting"],
+          },
         },
         {
-          id: "lead_import",
+          id: "vertex_ai",
           stepNumber: 25,
-          title: "Import Lead",
-          description: "Configura API esterne per importare lead automaticamente nel sistema",
-          icon: <UserPlus className="h-4 w-4" />,
-          status: status?.leadImportStatus || "pending",
-          testedAt: status?.leadImportTestedAt,
-          errorMessage: status?.leadImportErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=lead-import",
-          testEndpoint: "/api/consultant/onboarding/test/lead-import",
+          title: "AI Engine (Gemini)",
+          description: "Pre-configurato dal sistema via Google AI Studio. Aggiungi una tua API Key Gemini personale per usare un account dedicato.",
+          icon: <Sparkles className="h-4 w-4" />,
+          optional: true,
+          status: (status?.vertexAiStatus && status.vertexAiStatus !== "pending") ? status.vertexAiStatus : "verified",
+          testedAt: status?.vertexAiTestedAt,
+          errorMessage: status?.vertexAiErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=ai",
+          testEndpoint: "/api/consultant/onboarding/test/vertex-ai",
+          inlineConfig: {
+            getEndpoint: "/api/vertex-ai/settings",
+            saveEndpoint: "/api/vertex-ai/settings",
+            saveMethod: "POST",
+            dataMapper: (d) => ({
+              apiKey: d.settings?.[0]?.apiKey || "",
+              projectId: d.settings?.[0]?.projectId || "",
+            }),
+            payloadMapper: (s) => ({ apiKey: s.apiKey, projectId: s.projectId }),
+            fields: [
+              { key: "apiKey", label: "API Key Google AI Studio", type: "password", sensitive: true, hint: "Generala su aistudio.google.com → API Keys. NON obbligatoria se usi il provider condiviso." },
+              { key: "projectId", label: "Project ID (opzionale)", type: "text", placeholder: "my-gcp-project-id", hint: "Lascia vuoto se usi Google AI Studio (consigliato)" },
+            ],
+            usedBySteps: ["ai_autonomo", "email_journey", "nurturing_emails", "voice_calls"],
+          },
         },
       ],
     },
   ];
 
-  const allSteps = phases.flatMap(p => p.steps);
+  const allSteps = sections.flatMap(s => s.steps);
   const completedSteps = allSteps.filter(s => s.status === "verified").length;
   const totalSteps = allSteps.length;
   const progressPercent = Math.round((completedSteps / totalSteps) * 100);
@@ -925,7 +1447,7 @@ export default function ConsultantSetupWizard() {
   }, [completedSteps, totalSteps]);
 
   const stepNameMap: Record<string, string> = {
-    vertex_ai: "Vertex AI",
+    vertex_ai: "AI Engine (Gemini)",
     smtp: "Email SMTP",
     google_calendar: "Google Calendar",
     twilio_config: "Configurazione Twilio + WhatsApp",
@@ -946,7 +1468,10 @@ export default function ConsultantSetupWizard() {
     nurturing_emails: "Email Nurturing 365",
     email_hub: "Email Hub",
     video_meeting: "Video Meeting",
-    lead_import: "Lead Import",
+    lead_import: "Import Lead",
+    voice_calls: "Chiamate Voice",
+    ai_autonomo: "AI Autonomo",
+    instagram_dm: "Instagram DM",
   };
 
   const handleTest = async (stepId: string, endpoint?: string) => {
@@ -954,6 +1479,37 @@ export default function ConsultantSetupWizard() {
     setTestingStep(stepId);
     testMutation.mutate({ endpoint, stepName: stepNameMap[stepId] || stepId });
   };
+
+  const autoSelectStep = (section: Section) => {
+    const firstPending = section.steps.find(s => s.status !== "verified");
+    setActiveStep(firstPending?.id ?? section.steps[0].id);
+    setActiveSection(section.id);
+  };
+
+  const currentSection = activeSection ? sections.find(s => s.id === activeSection) ?? null : null;
+  const currentSectionIndex = currentSection ? sections.findIndex(s => s.id === currentSection.id) : -1;
+  const prevSection = currentSectionIndex > 0 ? sections[currentSectionIndex - 1] : null;
+  const nextSection = currentSectionIndex >= 0 && currentSectionIndex < sections.length - 1 ? sections[currentSectionIndex + 1] : null;
+
+  const urgentSectionId = sections
+    .filter(s => {
+      const pct = s.steps.length > 0
+        ? Math.round((s.steps.filter(x => x.status === "verified").length / s.steps.length) * 100)
+        : 100;
+      return pct < 50;
+    })
+    .sort((a, b) => {
+      const pa = a.steps.filter(x => x.status === "verified").length / a.steps.length;
+      const pb = b.steps.filter(x => x.status === "verified").length / b.steps.length;
+      return pa - pb;
+    })[0]?.id ?? null;
+
+  const subtitleText =
+    completedSteps === 0 ? "Inizia dall'acquisizione lead — ci vogliono 10 minuti"
+    : completedSteps < totalSteps * 0.3 ? "Stai costruendo la macchina — ottimo inizio!"
+    : completedSteps < totalSteps * 0.7 ? "Sei a metà — la piattaforma sta prendendo forma"
+    : completedSteps < totalSteps ? "Quasi pronto — ancora pochi step e sei al 100%"
+    : "Sistema completamente attivato 🎉";
 
   if (isLoading) {
     return (
@@ -969,60 +1525,55 @@ export default function ConsultantSetupWizard() {
       
       <main className="flex-1 overflow-hidden min-h-0">
         <div className="h-full flex flex-col min-h-0">
-          <motion.header 
-            className="relative overflow-hidden border-b px-6 py-5"
+          {/* ── HEADER ── */}
+          <motion.header
+            className="relative overflow-hidden border-b px-6 py-4 bg-white dark:bg-slate-900"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-transparent dark:from-indigo-500/20 dark:via-violet-500/10 dark:to-transparent" />
-            
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/8 via-violet-500/4 to-transparent dark:from-indigo-500/15 dark:via-violet-500/8 dark:to-transparent pointer-events-none" />
             <div className="relative flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-lg">
-                  <Rocket className="h-6 w-6 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-md">
+                  <Rocket className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <motion.h1 
-                    className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    Setup Iniziale Piattaforma
-                  </motion.h1>
-                  <motion.p 
-                    className="text-sm text-muted-foreground"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    {completedSteps >= totalSteps ? "Piattaforma completata! 🎉" : `Mancano solo ${totalSteps - completedSteps} step per completare la piattaforma`}
-                  </motion.p>
+                  <div className="flex items-center gap-2">
+                    {currentSection && (
+                      <button
+                        onClick={() => setActiveSection(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mr-1"
+                      >
+                        ← Panoramica
+                      </button>
+                    )}
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                      {currentSection ? (
+                        <span className="flex items-center gap-1.5">
+                          Centro di Attivazione
+                          <span className="text-slate-400 font-normal">/</span>
+                          <span>{currentSection.emoji} {currentSection.title}</span>
+                        </span>
+                      ) : "Centro di Attivazione"}
+                    </h1>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{subtitleText}</p>
                 </div>
                 <Button
                   size="sm"
                   variant={isOnboardingMode ? "default" : "outline"}
                   onClick={() => setIsOnboardingMode(!isOnboardingMode)}
-                  className="ml-4 gap-2"
+                  className="ml-3 gap-2"
                 >
                   <Bot className="h-4 w-4" />
-                  {isOnboardingMode ? "Onboarding Attivo" : "Assistente Onboarding"}
+                  {isOnboardingMode ? "Onboarding Attivo" : "Assistente AI"}
                 </Button>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Produzione</span>
-                </div>
               </div>
-              <motion.div 
-                className="flex items-center gap-6"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 }}
-              >
+              <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <motion.div 
-                    className="text-3xl font-bold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent"
+                  <motion.div
+                    className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent"
                     key={progressPercent}
                     initial={{ scale: 1.2 }}
                     animate={{ scale: 1 }}
@@ -1031,79 +1582,141 @@ export default function ConsultantSetupWizard() {
                     {progressPercent}%
                   </motion.div>
                   <div className="text-xs text-muted-foreground">
-                    <motion.span
-                      key={completedSteps}
-                      initial={{ opacity: 0.6 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                      className="text-indigo-600 dark:text-indigo-400 font-medium"
-                    >
-                      {completedSteps}/{totalSteps}
-                    </motion.span> step completati
+                    <span className="text-indigo-600 dark:text-indigo-400 font-medium">{completedSteps}/{totalSteps}</span> step
                   </div>
                 </div>
-                <div className="relative w-16 h-16">
-                  <svg className="w-16 h-16 transform -rotate-90">
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r="28"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      fill="none"
-                      className="text-gray-200 dark:text-gray-700"
-                    />
+                <div className="relative w-12 h-12">
+                  <svg className="w-12 h-12 transform -rotate-90">
+                    <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none" className="text-gray-200 dark:text-gray-700" />
                     <motion.circle
-                      cx="32"
-                      cy="32"
-                      r="28"
-                      stroke="url(#progressGradient)"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeLinecap="round"
-                      initial={{ strokeDasharray: "0 176" }}
-                      animate={{ strokeDasharray: `${(progressPercent / 100) * 176} 176` }}
+                      cx="24" cy="24" r="20"
+                      stroke="url(#pg2)"
+                      strokeWidth="3" fill="none" strokeLinecap="round"
+                      initial={{ strokeDasharray: "0 125.6" }}
+                      animate={{ strokeDasharray: `${(progressPercent / 100) * 125.6} 125.6` }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                     <defs>
-                      <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <linearGradient id="pg2" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#6C5CE7" />
-                        <stop offset="50%" stopColor="#8B7CF7" />
                         <stop offset="100%" stopColor="#A78BFA" />
                       </linearGradient>
                     </defs>
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <motion.span 
-                      className="text-xs font-semibold"
-                      key={completedSteps}
-                      initial={{ scale: 1.3 }}
-                      animate={{ scale: 1 }}
-                    >
-                      {completedSteps}
-                    </motion.span>
+                    <span className="text-xs font-semibold">{completedSteps}</span>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </div>
           </motion.header>
 
-          <div className={`flex-1 grid gap-0 overflow-hidden min-h-0 ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
-            <aside className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}>
-              <div className="px-4 pt-4 pb-2">
-                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Configurazione</span>
+          {/* ── VISTA GRIGLIA (panoramica sezioni) ── */}
+          {!currentSection && (
+            <div className="flex-1 overflow-auto p-6">
+              <ContextualBanner
+                sections={sections}
+                completedSteps={completedSteps}
+                totalSteps={totalSteps}
+                onGoToSection={(id) => {
+                  const s = sections.find(x => x.id === id);
+                  if (s) autoSelectStep(s);
+                }}
+              />
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">
+                {sections.map((section, i) => (
+                  <motion.div
+                    key={section.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07 }}
+                  >
+                    <SectionCard
+                      section={section}
+                      onClick={() => autoSelectStep(section)}
+                      isUrgent={urgentSectionId === section.id}
+                    />
+                  </motion.div>
+                ))}
               </div>
-              <ScrollArea className="flex-1 p-4">
-                {phases.map((phase, index) => (
-                  <PhaseSection
-                    key={phase.id}
-                    phase={phase}
-                    activeStep={activeStep}
-                    onStepClick={setActiveStep}
-                    defaultOpen={index === 0}
-                  />
+            </div>
+          )}
+
+          {/* ── VISTA DETTAGLIO SEZIONE ── */}
+          {currentSection && (
+          <div className={`flex-1 grid gap-0 overflow-hidden min-h-0 ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
+            {/* Sidebar sinistra sezione */}
+            <aside
+              className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}
+              style={{ borderTop: `3px solid` }}
+            >
+              {/* Header sezione */}
+              <div className="p-4 border-b bg-white dark:bg-slate-900" style={{ borderTop: `3px solid transparent`, backgroundImage: `linear-gradient(white, white), linear-gradient(to right, var(--section-color-start, #6366f1), var(--section-color-end, #8b5cf6))`, backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box" }}>
+                <button
+                  onClick={() => setActiveSection(null)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3"
+                >
+                  ← Tutte le sezioni
+                </button>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-2xl">{currentSection.emoji}</span>
+                  <div>
+                    <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{currentSection.title}</h2>
+                    <p className="text-xs text-muted-foreground">{currentSection.tagline}</p>
+                  </div>
+                </div>
+                {(() => {
+                  const sc = currentSection.steps.filter(s => s.status === "verified").length;
+                  const st = currentSection.steps.length;
+                  const sp = st > 0 ? Math.round((sc / st) * 100) : 0;
+                  return (
+                    <>
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <motion.div className={`h-full rounded-full bg-gradient-to-r ${currentSection.gradient}`} initial={{ width: 0 }} animate={{ width: `${sp}%` }} transition={{ duration: 0.5 }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{sc}/{st} completati · {sp}%</p>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Lista step */}
+              <ScrollArea className="flex-1 p-3">
+                {currentSection.steps.map((step, index) => (
+                  <motion.div
+                    key={step.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="mb-0.5"
+                  >
+                    <StepCard
+                      step={step}
+                      isActive={activeStep === step.id}
+                      onClick={() => setActiveStep(step.id)}
+                    />
+                    {step.optional && (
+                      <div className="ml-10 -mt-1 mb-1">
+                        <Badge variant="outline" className="text-xs text-slate-400 border-slate-200 bg-slate-50 dark:bg-slate-800">Opzionale</Badge>
+                      </div>
+                    )}
+                  </motion.div>
                 ))}
               </ScrollArea>
+
+              {/* Nav tra sezioni */}
+              <div className="border-t p-3 flex items-center justify-between bg-white dark:bg-slate-900">
+                {prevSection ? (
+                  <button onClick={() => autoSelectStep(prevSection)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    ‹ {prevSection.emoji} {prevSection.title}
+                  </button>
+                ) : <span />}
+                {nextSection && (
+                  <button onClick={() => autoSelectStep(nextSection)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 ml-auto">
+                    {nextSection.emoji} {nextSection.title} ›
+                  </button>
+                )}
+              </div>
             </aside>
 
             <section className={`${isOnboardingMode ? 'col-span-5' : 'col-span-8'} overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300`}>
@@ -1194,6 +1807,38 @@ export default function ConsultantSetupWizard() {
                             )}
                           </AnimatePresence>
 
+                      {/* ── CONFIGURAZIONE INLINE ── */}
+                      {activeStepData.inlineConfig && (
+                        <div className="space-y-2 mb-2">
+                          <h4 className="font-medium text-sm flex items-center gap-2">
+                            <Settings className="h-4 w-4 text-indigo-500" />
+                            Configurazione Diretta
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                              🔗 Inline
+                            </Badge>
+                          </h4>
+                          <InlineConfigPanel
+                            config={activeStepData.inlineConfig}
+                            stepId={activeStepData.id}
+                            onSaveSuccess={() => refetch()}
+                            testEndpoint={activeStepData.testEndpoint}
+                            testingStep={testingStep}
+                            onTest={handleTest}
+                            nameMap={stepNameMap}
+                          />
+                        </div>
+                      )}
+
+                      {/* ── vertex_ai — banner "già attivo" ── */}
+                      {activeStepData.id === "vertex_ai" && (
+                        <Alert className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 mb-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          <AlertDescription className="text-emerald-700 dark:text-emerald-300 text-sm">
+                            <strong>✅ AI già attiva</strong> sul tuo account tramite Google AI Studio pre-configurato dal sistema. Aggiungi una chiave personale solo se vuoi un account AI dedicato.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm">Azioni Disponibili</h4>
                         
@@ -1202,7 +1847,9 @@ export default function ConsultantSetupWizard() {
                             <Button className="w-full justify-between" variant="outline">
                               <span className="flex items-center gap-2">
                                 <Key className="h-4 w-4" />
-                                {activeStepData.status === "pending" ? "Configura" : "Modifica Configurazione"}
+                                {activeStepData.inlineConfig
+                                  ? "Apri impostazioni complete →"
+                                  : activeStepData.status === "pending" ? "Configura" : "Modifica Configurazione"}
                               </span>
                               <ExternalLink className="h-4 w-4" />
                             </Button>
@@ -1277,19 +1924,19 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "vertex_ai" && (
                         <>
-                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-blue-600" />
-                              Come ottenere le credenziali Vertex AI
+                              <Sparkles className="h-4 w-4 text-indigo-500" />
+                              Quando aggiungere una chiave personale?
                             </h4>
-                            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                              <li>Vai su <a href="https://console.cloud.google.com" target="_blank" rel="noopener" className="text-blue-600 underline">Google Cloud Console</a></li>
-                              <li>Crea un nuovo progetto o seleziona uno esistente</li>
-                              <li>Abilita l'API Vertex AI nel progetto</li>
-                              <li>Crea un Service Account con ruolo "Vertex AI User"</li>
-                              <li>Scarica il file JSON delle credenziali</li>
-                              <li>Copia il contenuto JSON nella configurazione</li>
-                            </ol>
+                            <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+                              <li>Vuoi un limite di utilizzo AI dedicato al tuo account</li>
+                              <li>Vuoi usare un modello Gemini specifico non disponibile nel piano condiviso</li>
+                              <li>Il SuperAdmin ti ha chiesto di configurare chiavi proprie</li>
+                            </ul>
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              Per ottenere una chiave API personale: vai su <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" className="text-blue-600 underline">aistudio.google.com</a> → crea chiave API → incollala nel form sopra.
+                            </p>
                           </div>
                           <CredentialNotesCard stepId="vertex_ai" />
                         </>
@@ -1919,6 +2566,7 @@ export default function ConsultantSetupWizard() {
               )}
             </AnimatePresence>
           </div>
+          )} {/* fine currentSection && */}
         </div>
       </main>
       {!isOnboardingMode && <ConsultantAIAssistant isOnboardingMode={false} />}
