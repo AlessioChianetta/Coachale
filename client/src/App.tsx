@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useTransition, useCallback } from "react";
+import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Switch, Route } from "wouter";
 import { useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -173,17 +174,32 @@ const ContentStudioAdVisage = lazy(() => import("@/pages/content-studio/advisage
 const ConsultantClientDataAnalysis = lazy(() => import("@/pages/consultant/ClientDataAnalysis"));
 const ClientMyDataAnalysis = lazy(() => import("@/pages/client/MyDataAnalysis"));
 
+function NavigationCompleter({ children, onReady }: { children: React.ReactNode; onReady: () => void }) {
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    if (isMountedRef.current) {
+      onReady();
+    }
+    isMountedRef.current = true;
+  });
+  return <>{children}</>;
+}
+
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
   const [location, rawSetLocation] = useLocation();
-  const [isPending, startTransition] = useTransition();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const navigate = useCallback((href: string) => {
-    startTransition(() => {
-      rawSetLocation(href);
-    });
-  }, [rawSetLocation]);
+    if (href === location) return;
+    flushSync(() => setIsNavigating(true));
+    rawSetLocation(href);
+  }, [rawSetLocation, location]);
+
+  const clearNavigation = useCallback(() => {
+    setIsNavigating(false);
+  }, []);
 
   useEffect(() => {
     // Immediate redirects for moved pages
@@ -203,9 +219,10 @@ function Router() {
   }, []);
 
   return (
-    <NavigationContext.Provider value={{ navigate, isPending }}>
-      {isPending && <NavigationOverlay />}
+    <NavigationContext.Provider value={{ navigate, isPending: isNavigating, setNavigating: setIsNavigating }}>
+      {isNavigating && <NavigationOverlay />}
       <Suspense fallback={<PageTransition />}>
+        <NavigationCompleter onReady={clearNavigation}>
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
@@ -995,6 +1012,7 @@ function Router() {
 
           <Route component={NotFound} />
         </Switch>
+        </NavigationCompleter>
       </Suspense>
 
       {isClient && !location.startsWith('/agent/') && !location.includes('/ai-assistant') && (

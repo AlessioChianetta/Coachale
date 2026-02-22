@@ -1,0 +1,27 @@
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=eEG3gi6Bl-uS' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+
+2
+App.tsx:178 Uncaught ReferenceError: useRef is not defined
+    at NavigationCompleter (App.tsx:178:24)
+injected.js:37 The above error occurred in the <NavigationCompleter> component:
+
+    at NavigationCompleter (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/App.tsx?t=1771798245861&v=5XqtzqyO335MPIcZEWA9h:329:32)
+    at Suspense
+    at Router (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/App.tsx?t=1771798245861&v=5XqtzqyO335MPIcZEWA9h:350:38)
+    at Provider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.d…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=68689dff:38:15)
+    at TooltipProvider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.d…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=68689dff:160:5)
+    at TourProvider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at QueryClientProvider (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=68689dff:3096:3)
+    at V (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=68689dff:44:25)
+    at J (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=68689dff:42:18)
+    at App (https://0bfa9b93-6384-4357-989e-4478fdfc8bca-00-bi67t6aep7ac.spock.replit.dev/src/App.tsx?t=1771798245861&v=5XqtzqyO335MPIcZEWA9h:2117:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=68689dff:19413 Uncaught ReferenceError: useRef is not defined
+    at NavigationCompleter (App.tsx:178:24)
