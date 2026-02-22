@@ -1,0 +1,247 @@
+Questa pagina non deve essere una checklist tecnica.
+Deve diventare:
+
+🧠 Centro di Attivazione della Piattaforma
+🚀 Setup guidato per obiettivi di business
+
+Quello che vuoi fare (giustamente) è passare da:
+
+“Ho collegato 13 cose”
+
+a
+
+“Ho attivato il mio sistema di acquisizione clienti in 10 minuti”
+
+Questo cambia completamente la percezione del prodotto.
+
+🎯 PROBLEMA ATTUALE
+
+Ora è organizzato per strumenti tecnici:
+
+SMTP
+
+Vertex
+
+Stripe
+
+Twilio
+
+ecc.
+
+Ma l’utente non pensa in strumenti.
+Pensa in obiettivi:
+
+Voglio acquisire lead
+
+Voglio vendere
+
+Voglio automatizzare
+
+Voglio fare nurturing
+
+Voglio fare consulenze AI
+
+Quindi dobbiamo ristrutturare per outcome.
+
+💎 NUOVA STRUTTURA – ORIENTATA A OBIETTIVI
+
+Invece di:
+
+FASE 1: Infrastruttura Base
+FASE 2: WhatsApp & Agenti
+FASE 3: Contenuti
+FASE 4: Avanzato
+
+Facciamo qualcosa di molto più potente.
+
+🧠 SEZIONE 1 — ATTIVA IL TUO SISTEMA DI ACQUISIZIONE
+
+Obiettivo:
+“Ricevo lead automaticamente”
+
+Dentro questa sezione:
+
+WhatsApp configurato
+
+Template WhatsApp approvato
+
+Agente Inbound attivo
+
+Link pubblico agente
+
+Import lead
+
+Instagram DM
+
+Twilio
+
+👉 Tutto ciò che serve per iniziare a ricevere contatti.
+
+💰 SEZIONE 2 — ATTIVA IL SISTEMA DI VENDITA
+
+Obiettivo:
+“Chiudo contratti e incasso”
+
+Dentro:
+
+Stripe Connect
+
+Prima Email Riassuntiva
+
+Video Meeting
+
+Agente Outbound
+
+Crea la tua Prima Campagna
+
+🤖 SEZIONE 3 — ATTIVA L’AI OPERATIVA
+
+Obiettivo:
+“La piattaforma lavora per me”
+
+Dentro:
+
+Vertex AI
+
+AI Autonomo
+
+Email Journey
+
+Email Nurturing 365
+
+Email Hub
+
+Chiamate Voice
+
+📚 SEZIONE 4 — COSTRUISCI AUTORITÀ E CONTENUTI
+
+Obiettivo:
+“Educo e converto”
+
+Dentro:
+
+Primo Corso
+
+Primo Esercizio
+
+Base di Conoscenza
+
+Idee AI Generate
+
+⚙️ SEZIONE 5 — INTEGRAZIONI & SISTEMA
+
+Obiettivo:
+“Tutto collegato”
+
+Dentro:
+
+Google Calendar
+
+Email SMTP
+
+TURN
+
+Configurazioni tecniche
+
+🚀 ORA LA PARTE PIÙ IMPORTANTE
+✨ Onboarding Centralizzato (come hai detto tu)
+
+Invece di andare in 15 schermate diverse:
+
+Facciamo:
+
+🧭 Modal “Configurazione Guidata”
+
+Schermata unica tipo wizard:
+
+STEP 1 – Dati Azienda
+STEP 2 – Collegamenti (Google, Stripe, WhatsApp, Make, ecc.)
+STEP 3 – AI & Automazioni
+STEP 4 – Campagna Base
+STEP 5 – Attivazione
+
+E tutti i dati inseriti qui:
+
+Salvati
+
+Riutilizzati
+
+Preconfigurano automaticamente:
+
+Email Hub
+
+Stripe
+
+WhatsApp
+
+AI
+
+Template
+
+Agenti
+
+👉 Questo è il salto da 2 giorni a 10 minuti.
+
+🧠 Esempio concreto: Make
+
+Aggiungi nella sezione:
+
+“Integrazioni Avanzate”
+
+Campo:
+
+API Key Make
+
+Webhook URL
+
+Template scenario predefiniti
+
+E quando li inserisce qui:
+→ Tutti gli agenti li trovano già configurati.
+
+Non deve più entrare in 10 schermate.
+
+🎨 Layout Nuovo Consigliato
+
+Invece di sidebar checklist lunga:
+
+Layout a CARD GRANDI per obiettivi:
+
+🚀 Attiva acquisizione clienti     [ 80% ]
+💰 Attiva sistema di vendita        [ 40% ]
+🤖 Attiva AI operativa              [ 60% ]
+📚 Costruisci contenuti             [ 100% ]
+⚙️ Integrazioni sistema             [ 70% ]
+
+Ogni card cliccabile.
+Dentro checklist pulita.
+Non tutto visibile insieme.
+
+Meno rumore.
+Più direzione.
+
+💡 UX MIGLIORE
+
+In alto:
+
+Progressione vera:
+
+“Se completi queste 3 cose inizi a generare lead oggi.”
+
+Non:
+“22/25 step completati.”
+
+Il numero non motiva.
+L’obiettivo sì.
+
+🎯 Cosa cambia a livello di percezione
+
+Da:
+
+Setup tecnico complesso
+
+A:
+
+Attiva il tuo sistema di business guidato
+
+Ed è un cambio enorme.
