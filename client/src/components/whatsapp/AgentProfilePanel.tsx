@@ -241,83 +241,107 @@ function SkillBar({ name, level, description }: { name: string; level: number; d
 
 function PlaceholderPanel() {
   return (
-    <Card className="bg-white dark:bg-gray-900 border-0 shadow-md rounded-2xl h-full">
-      <CardContent className="p-6 flex flex-col gap-5">
-        {/* Header */}
-        <div className="flex flex-col items-center text-center pt-6 pb-2">
-          <div className="relative mb-4">
-            <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-xl" />
-            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center shadow-sm">
-              <MousePointerClick className="h-7 w-7 text-blue-500 dark:text-blue-400" />
+    <Card className="border-0 shadow-md rounded-2xl h-full overflow-hidden relative bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-blue-950/20">
+      {/* Animated background blobs */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-400/10 to-purple-500/5 rounded-full blur-3xl" style={{ animation: 'pulse 4s ease-in-out infinite' }} />
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-amber-400/10 to-orange-500/5 rounded-full blur-3xl" style={{ animation: 'pulse 4s ease-in-out infinite', animationDelay: '2s' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-blue-400/5 to-cyan-400/5 rounded-full blur-3xl" style={{ animation: 'pulse 6s ease-in-out infinite', animationDelay: '1s' }} />
+
+      <CardContent className="p-6 flex flex-col gap-5 relative z-10">
+        {/* Animated hero */}
+        <div className="flex flex-col items-center text-center pt-4 pb-1">
+          <div className="relative mb-5">
+            {/* Outer pulsing ring */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/20 to-violet-400/20 blur-md" style={{ animation: 'ping 2.5s cubic-bezier(0,0,0.2,1) infinite', width: '80px', height: '80px', top: '-8px', left: '-8px' }} />
+            {/* Mid ring */}
+            <div className="absolute inset-0 rounded-2xl border-2 border-blue-200/60 dark:border-blue-700/40" style={{ animation: 'pulse 2s ease-in-out infinite', width: '72px', height: '72px', top: '-4px', left: '-4px' }} />
+            {/* Icon box */}
+            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <Bot className="h-8 w-8 text-white" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
+              {/* Live dot */}
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-white dark:border-gray-900" style={{ animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite' }} />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
             </div>
           </div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Seleziona un agente</h3>
-          <p className="text-sm text-gray-400 dark:text-gray-500 max-w-xs">
-            Clicca su un dipendente a sinistra per vedere statistiche, configurazione e opzioni
+
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+            Seleziona un agente
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs leading-relaxed">
+            Clicca su un dipendente a sinistra per vedere statistiche, configurazione e opzioni in tempo reale
           </p>
-        </div>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-            <Lightbulb className="h-3 w-3 text-amber-500" />
-            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Consigli</span>
+          {/* Animated arrow hint */}
+          <div className="flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">← Clicca dalla lista</span>
+            <MousePointerClick className="h-3.5 w-3.5 text-blue-500" style={{ animation: 'bounce 1.5s infinite' }} />
           </div>
-          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
         </div>
 
-        {/* Tip cards */}
-        <div className="space-y-3">
+        {/* Divider with sparkle */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-200 dark:to-gray-700" />
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 shadow-sm">
+            <Sparkles className="h-3 w-3 text-amber-500" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Guida rapida</span>
+          </div>
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-200 dark:to-gray-700" />
+        </div>
+
+        {/* Tip cards with staggered entrance feel */}
+        <div className="space-y-2.5">
           {/* Tip 1 - Assistenza Clienti */}
-          <div className="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/10 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-sm">
+          <div className="group relative overflow-hidden rounded-xl border border-amber-200/80 dark:border-amber-800/60 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50/50 dark:from-amber-900/20 dark:via-yellow-900/15 dark:to-orange-900/10 p-3.5 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-300 cursor-default">
+            {/* Shimmer effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-sm shadow-amber-500/30" style={{ animation: 'pulse 3s ease-in-out infinite' }}>
                 <Crown className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">Assistenza Clienti</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300">DEFAULT</span>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-sm font-bold text-amber-900 dark:text-amber-200">Assistenza Clienti</span>
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500 text-white tracking-wide">DEFAULT</span>
                 </div>
-                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                  L'unico agente con accesso completo al CRM. Usalo per supporto clienti esistenti: esercizi, consulenze, progressi e dati personali.
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
+                  Unico con accesso CRM completo — esercizi, consulenze e dati personali dei clienti
                 </p>
               </div>
+              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400" style={{ animation: 'ping 2s cubic-bezier(0,0,0.2,1) infinite' }} />
             </div>
           </div>
 
           {/* Tip 2 - Setter */}
-          <div className="relative overflow-hidden rounded-xl border border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/10 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
+          <div className="group relative overflow-hidden rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50/50 dark:from-emerald-900/20 dark:via-green-900/15 dark:to-teal-900/10 p-3.5 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 cursor-default" style={{ animationDelay: '150ms' }}>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-sm shadow-emerald-500/30" style={{ animation: 'pulse 3s ease-in-out infinite', animationDelay: '1s' }}>
                 <Target className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-green-800 dark:text-green-200">Setter per Appuntamenti</span>
-                </div>
-                <p className="text-xs text-green-700 dark:text-green-400 leading-relaxed">
-                  Crea un agente Setter Proattivo per qualificare nuovi lead e fissare appuntamenti. Opera senza dati CRM, ideale per chi non è ancora cliente.
+                <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200 mb-0.5">Setter Appuntamenti</p>
+                <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 leading-relaxed">
+                  Per lead e nuovi contatti — qualifica e prenota senza toccare il CRM
                 </p>
               </div>
+              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-400" style={{ animation: 'ping 2s cubic-bezier(0,0,0.2,1) infinite', animationDelay: '0.5s' }} />
             </div>
           </div>
 
           {/* Tip 3 - Multi agent */}
-          <div className="relative overflow-hidden rounded-xl border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-sm">
+          <div className="group relative overflow-hidden rounded-xl border border-violet-200/80 dark:border-violet-800/60 bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50/50 dark:from-violet-900/20 dark:via-purple-900/15 dark:to-indigo-900/10 p-3.5 hover:shadow-md hover:border-violet-300 dark:hover:border-violet-700 transition-all duration-300 cursor-default" style={{ animationDelay: '300ms' }}>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-sm shadow-violet-500/30" style={{ animation: 'pulse 3s ease-in-out infinite', animationDelay: '2s' }}>
                 <Users className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">Più Dipendenti, Più Canali</span>
-                </div>
-                <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed">
-                  Ogni dipendente può avere un numero WhatsApp dedicato, una personalità diversa e una knowledge base specifica per il suo ruolo.
+                <p className="text-sm font-bold text-violet-900 dark:text-violet-200 mb-0.5">Multi-canale</p>
+                <p className="text-xs text-violet-700/80 dark:text-violet-400/80 leading-relaxed">
+                  Ogni dipendente ha numero, personalità e knowledge base dedicati
                 </p>
               </div>
+              <div className="flex-shrink-0 w-2 h-2 rounded-full bg-violet-400" style={{ animation: 'ping 2s cubic-bezier(0,0,0.2,1) infinite', animationDelay: '1s' }} />
             </div>
           </div>
         </div>
