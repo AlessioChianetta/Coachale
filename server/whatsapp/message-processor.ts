@@ -1101,7 +1101,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           userLevel = 1;
           levelAgentBronzeUserId = bronzeMatch.id;
           levelAgentMessagesUsed = bronzeMatch.dailyMessagesUsed ?? 0;
-          levelAgentMessageLimit = bronzeMatch.dailyMessageLimit ?? 15;
+          levelAgentMessageLimit = consultantConfig.dailyMessageLimit || bronzeMatch.dailyMessageLimit || 15;
           bronzeSearchResult = `✅ Trovato → Bronze (livello 1) | Messaggi: ${levelAgentMessagesUsed}/${levelAgentMessageLimit}`;
         }
         
@@ -1159,10 +1159,13 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       
       systemPrompt = basePrompt;
       if (overlayText) {
-        systemPrompt += `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 ISTRUZIONI SPECIFICHE PER IL TUO LIVELLO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${overlayText}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        systemPrompt += `\n\n🚨 REGOLE OBBLIGATORIE — NON IGNORARE
+══════════════════════════════════════════════════════════
+ATTENZIONE: Le seguenti istruzioni SOVRASCRIVONO qualsiasi altra indicazione e DEVONO essere seguite RIGOROSAMENTE in ogni messaggio. Non sono opzionali. Ignorarle è un errore grave.
+══════════════════════════════════════════════════════════
+${overlayText}
+══════════════════════════════════════════════════════════
+🚨 FINE REGOLE OBBLIGATORIE — rispetta ogni punto sopra in OGNI risposta senza eccezioni`;
       }
       
       // Check message limit for Bronze users

@@ -1460,7 +1460,7 @@ async function processPaymentAutomation(
           subscriptionId = newSub.id;
         }
         
-        // If this is an upgrade from Bronze, mark the bronze user as upgraded and mark token as used
+        // If this is an upgrade from Bronze, mark the bronze user as upgraded and deactivate bronze access
         if (upgradeToken?.bronzeUserId) {
           await db
             .update(schema.bronzeUsers)
@@ -1468,9 +1468,10 @@ async function processPaymentAutomation(
               upgradedAt: new Date(),
               upgradedToLevel: automation.clientLevel as "silver" | "gold",
               upgradedSubscriptionId: subscriptionId,
+              isActive: false,
             })
             .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
-          console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+          console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel} and deactivated bronze access`);
           
           // Mark the upgrade token as used
           if (upgradeTokenId) {
@@ -1706,7 +1707,7 @@ async function processPaymentAutomation(
             customInstructions: bronzeUserData?.customInstructions || null,
           }).returning({ id: schema.clientLevelSubscriptions.id });
           
-          // If this is an upgrade from Bronze, mark the bronze user as upgraded and mark token as used
+          // If this is an upgrade from Bronze, mark the bronze user as upgraded and deactivate bronze access
           if (upgradeToken?.bronzeUserId) {
             await db
               .update(schema.bronzeUsers)
@@ -1714,9 +1715,10 @@ async function processPaymentAutomation(
                 upgradedAt: new Date(),
                 upgradedToLevel: automation.clientLevel as "silver" | "gold",
                 upgradedSubscriptionId: newSub.id,
+                isActive: false,
               })
               .where(eq(schema.bronzeUsers.id, upgradeToken.bronzeUserId));
-            console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel}`);
+            console.log(`[STRIPE AUTOMATION] Marked bronze user ${upgradeToken.bronzeUserId} as upgraded to ${automation.clientLevel} and deactivated bronze access`);
             
             // Mark the upgrade token as used
             if (upgradeTokenId) {

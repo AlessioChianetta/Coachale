@@ -1314,8 +1314,10 @@ router.post(
           .where(eq(schema.users.id, agentConfig.consultantId))
           .limit(1);
         
-        // Use consultant's configured limit, fallback to 100 (monthly max)
-        const monthlyLimit = (consultantData?.pricingPageConfig as any)?.level1DailyMessageLimit || 100;
+        // Use agent config limit first, then consultant's pricing settings, fallback to 100 (monthly max)
+        const monthlyLimit = agentConfig.dailyMessageLimit 
+          || (consultantData?.pricingPageConfig as any)?.level1DailyMessageLimit 
+          || 100;
         
         let monthlyUsed = freshBronzeUser.dailyMessagesUsed;
         
@@ -2046,7 +2048,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             bookingContextForAI,
             managerPreferences,
             goldMemoryCtx,
-            'public-chat'
+            'public-chat',
+            tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined
           )) {
             // Handle different event types from the generator
             if (event.type === 'promptBreakdown') {
@@ -2803,6 +2806,7 @@ router.post(
       let fullResponse = '';
       let chunkCount = 0;
       
+      const voiceTokenType = (req as any).tokenType as 'bronze' | 'silver' | 'gold' | 'manager' | undefined;
       for await (const chunk of agentService.processConsultantAgentMessage(
         agentConfig.consultantId,
         conversation.id,
@@ -2811,7 +2815,8 @@ router.post(
         undefined,
         undefined,
         undefined,
-        'public-chat'
+        'public-chat',
+        voiceTokenType
       )) {
         fullResponse += chunk;
         chunkCount++;

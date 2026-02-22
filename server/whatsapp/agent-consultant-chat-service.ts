@@ -386,7 +386,8 @@ export async function* processConsultantAgentMessage(
   bookingContext?: BookingContext,
   managerPreferences?: ManagerPreferences,
   goldMemory?: GoldMemoryContext,
-  featureOverride?: string
+  featureOverride?: string,
+  userLevel?: 'bronze' | 'silver' | 'gold' | 'manager'
 ): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -453,6 +454,30 @@ export async function* processConsultantAgentMessage(
     // Step 5: Build system prompt
     console.log('\n📝 [STEP 5] Building system prompt (loading knowledge base)...');
     let systemPrompt = await buildWhatsAppAgentPrompt(agentConfig);
+
+    // Inject level overlay instructions if user level is provided
+    if (userLevel && (agentConfig.levelPromptOverlay1 || agentConfig.levelPromptOverlay2 || agentConfig.levelPromptOverlay3)) {
+      let overlayText = '';
+      if (agentConfig.levelPromptOverlay1) {
+        overlayText += '\n\n' + agentConfig.levelPromptOverlay1;
+      }
+      if ((userLevel === 'silver' || userLevel === 'gold') && agentConfig.levelPromptOverlay2) {
+        overlayText += '\n\n' + agentConfig.levelPromptOverlay2;
+      }
+      if (userLevel === 'gold' && agentConfig.levelPromptOverlay3) {
+        overlayText += '\n\n' + agentConfig.levelPromptOverlay3;
+      }
+      if (overlayText) {
+        systemPrompt += `\n\n🚨 REGOLE OBBLIGATORIE — NON IGNORARE
+══════════════════════════════════════════════════════════
+ATTENZIONE: Le seguenti istruzioni SOVRASCRIVONO qualsiasi altra indicazione e DEVONO essere seguite RIGOROSAMENTE in ogni messaggio. Non sono opzionali. Ignorarle è un errore grave.
+══════════════════════════════════════════════════════════
+${overlayText}
+══════════════════════════════════════════════════════════
+🚨 FINE REGOLE OBBLIGATORIE — rispetta ogni punto sopra in OGNI risposta senza eccezioni`;
+        console.log(`🎯 [LEVEL OVERLAY] Injected overlay for level "${userLevel}" — ${overlayText.length} chars`);
+      }
+    }
     
     // Add pending modification context if present
     if (pendingModification) {
