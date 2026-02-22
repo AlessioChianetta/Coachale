@@ -1301,7 +1301,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       console.log(`║  └─ L3: ${userLevel >= 3 && o3 ? `✅ "${o3.substring(0, 30)}..." (${o3.length} chars)` : userLevel < 3 && o3 ? `⏭️  Non applicato (livello utente < 3)` : '❌ Non configurato'}`);
       console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
 
-    } else if (effectiveUserId && consultantConfig?.agentType === 'informative_advisor') {
+    } else if (effectiveUserId && consultantConfig?.agentName === 'Assistenza Clienti') {
       // ⏱️ Context Building Timing
       timings.contextBuildStart = performance.now();
 
@@ -1563,7 +1563,7 @@ Tu: "Hai consulenza giovedì 18 alle 15:00. Ti serve altro?"
         console.log(`╠══════════════════════════════════════════════════════════════════╣`);
         console.log(`║  ⚡ DECISIONE`);
         console.log(`║  ├─ Tipo utente:        CLIENTE RICONOSCIUTO (agente non-support)`);
-        console.log(`║  ├─ Accesso CRM:        NO (solo Assistenza Clienti ha CRM)`);
+        console.log(`║  ├─ Accesso CRM:        NO (CRM solo per agente default "Assistenza Clienti")`);
         console.log(`║  └─ Flusso:             Reindirizzato → Lead (senza dati CRM)`);
         console.log(`╚══════════════════════════════════════════════════════════════════╝\n`);
       }
