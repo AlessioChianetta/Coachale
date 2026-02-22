@@ -1,7 +1,6 @@
 import { cn, slugify } from "@/lib/utils";
 import { preloadOnHover, cancelHoverPreload } from "@/lib/route-preloader";
-import { useLocation } from "wouter";
-import { useNavigation } from "@/contexts/NavigationContext";
+import { Link, useLocation } from "wouter";
 import {
   Home,
   Users,
@@ -289,23 +288,6 @@ interface ProfileInfo {
   role: "consultant" | "client" | "super_admin";
   consultantId?: string | null;
   isDefault?: boolean;
-}
-
-function NavLink({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) {
-  const { navigate } = useNavigation();
-  return (
-    <a
-      href={href}
-      className={className}
-      onClick={(e) => {
-        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || e.button !== 0) return;
-        e.preventDefault();
-        navigate(href);
-      }}
-    >
-      {children}
-    </a>
-  );
 }
 
 export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole, defaultCollapsed = false, isCollapsed: controlledIsCollapsed, onCollapsedChange }: SidebarProps) {
@@ -666,7 +648,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               const ToolIcon = tool.icon;
               const isActive = isRouteActive(tool.href, location);
               return (
-                <NavLink key={tool.href} href={tool.href}>
+                <Link key={tool.href} href={tool.href}>
                   <div
                     className={cn(
                       "group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -691,7 +673,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">{tool.desc}</span>
                     </div>
                   </div>
-                </NavLink>
+                </Link>
               );
             })}
 
@@ -756,7 +738,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       const isActive = isRouteActive(item.href, location);
 
                       return (
-                        <NavLink key={item.href} href={item.href}>
+                        <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
                               "group flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px]",
@@ -790,7 +772,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               )}
                             </div>
                           </div>
-                        </NavLink>
+                        </Link>
                       );
                     })}
                   </div>
@@ -810,7 +792,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
           return (
             <div key={item.href}>
-              <NavLink href={item.href}>
+              <Link href={item.href}>
                 <div
                   className={cn(
                     "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -879,7 +861,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     </div>
                   )}
                 </div>
-              </NavLink>
+              </Link>
 
               {/* Submenu - Modern style */}
               {hasChildren && isExpanded && !isCollapsed && (
@@ -892,7 +874,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     const isChildActive = isRouteActive(child.href, location);
 
                     return (
-                      <NavLink key={child.href} href={child.href}>
+                      <Link key={child.href} href={child.href}>
                         <div
                           className={cn(
                             "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -926,7 +908,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             </span>
                           )}
                         </div>
-                      </NavLink>
+                      </Link>
                     );
                   })}
                 </div>
@@ -943,7 +925,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             </h3>
             <div className="space-y-0.5">
               {assignedAgents.map((agent) => (
-                <NavLink key={agent.id} href={`/agent/${agent.publicSlug}/chat`}>
+                <Link key={agent.id} href={`/agent/${agent.publicSlug}/chat`}>
                   <div
                     className={cn(
                       "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -957,7 +939,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     <Bot className="h-[18px] w-[18px] flex-shrink-0 text-violet-500" />
                     <span className="font-medium truncate">{agent.name}</span>
                   </div>
-                </NavLink>
+                </Link>
               ))}
             </div>
           </div>
@@ -970,7 +952,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               Dipendenti AI
             </h3>
             <div className="space-y-0.5">
-              <NavLink href={`/c/${consultantInfo.data.slug}/select-agent`}>
+              <Link href={`/c/${consultantInfo.data.slug}/select-agent`}>
                 <div
                   className={cn(
                     "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -984,7 +966,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   <Users className="h-[18px] w-[18px] flex-shrink-0 text-emerald-500" />
                   <span className="font-medium truncate">Dipendenti di {consultantInfo.data.consultantName}</span>
                 </div>
-              </NavLink>
+              </Link>
             </div>
           </div>
         )}
@@ -1022,7 +1004,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
                   return (
                     <div key={item.href}>
-                      <NavLink href={item.href}>
+                      <Link href={item.href}>
                         <div
                           className={cn(
                             "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -1076,7 +1058,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             )}
                           </div>
                         </div>
-                      </NavLink>
+                      </Link>
 
                       {hasChildren && isExpanded && (
                         <div className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-border pl-3">
@@ -1085,7 +1067,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             const isChildActive = isRouteActive(child.href, location);
 
                             return (
-                              <NavLink key={child.href} href={child.href}>
+                              <Link key={child.href} href={child.href}>
                                 <div
                                   className={cn(
                                     "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
@@ -1112,7 +1094,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                     isChildActive && "font-semibold"
                                   )}>{child.name}</span>
                                 </div>
-                              </NavLink>
+                              </Link>
                             );
                           })}
                         </div>
@@ -1148,7 +1130,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           {/* Action buttons - inline */}
           <div className="flex items-center gap-0.5 flex-shrink-0">
             {role === "consultant" && (
-              <NavLink href="/consultant/profile-settings">
+              <Link href="/consultant/profile-settings">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1157,10 +1139,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 >
                   <UserCircle size={15} />
                 </Button>
-              </NavLink>
+              </Link>
             )}
             {role === "client" && (
-              <NavLink href="/client/settings">
+              <Link href="/client/settings">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1170,7 +1152,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 >
                   <Settings size={15} />
                 </Button>
-              </NavLink>
+              </Link>
             )}
             <Button
               variant="ghost"

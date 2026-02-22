@@ -1,5 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
-import { flushSync } from "react-dom";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -18,8 +17,6 @@ import { FloatingAlessiaChat } from "@/components/alessia/FloatingAlessiaChat";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
 import { preloadAfterLogin } from "@/lib/route-preloader";
-import { NavigationContext } from "@/contexts/NavigationContext";
-import { NavigationOverlay } from "@/components/navigation-overlay";
 
 // Lazy load heavy components
 const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
@@ -174,41 +171,19 @@ const ContentStudioAdVisage = lazy(() => import("@/pages/content-studio/advisage
 const ConsultantClientDataAnalysis = lazy(() => import("@/pages/consultant/ClientDataAnalysis"));
 const ClientMyDataAnalysis = lazy(() => import("@/pages/client/MyDataAnalysis"));
 
-function NavigationCompleter({ children, onReady }: { children: React.ReactNode; onReady: () => void }) {
-  const isMountedRef = useRef(false);
-  useEffect(() => {
-    if (isMountedRef.current) {
-      onReady();
-    }
-    isMountedRef.current = true;
-  });
-  return <>{children}</>;
-}
-
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
-  const [location, rawSetLocation] = useLocation();
-  const [isNavigating, setIsNavigating] = useState(false);
-
-  const navigate = useCallback((href: string) => {
-    if (href === location) return;
-    flushSync(() => setIsNavigating(true));
-    rawSetLocation(href);
-  }, [rawSetLocation, location]);
-
-  const clearNavigation = useCallback(() => {
-    setIsNavigating(false);
-  }, []);
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     // Immediate redirects for moved pages
     if (location === "/consultant/calendar" || location === "/consultant/calendar-settings") {
-      rawSetLocation("/consultant/api-keys-unified?tab=calendar");
+      setLocation("/consultant/api-keys-unified?tab=calendar");
     } else if (location === "/consultant/ai-agents") {
-      rawSetLocation("/consultant/whatsapp?tab=system");
+      setLocation("/consultant/whatsapp?tab=system");
     }
-  }, [location, rawSetLocation]);
+  }, [location, setLocation]);
 
   useEffect(() => {
     if (user?.role === 'consultant') {
@@ -219,10 +194,8 @@ function Router() {
   }, []);
 
   return (
-    <NavigationContext.Provider value={{ navigate, isPending: isNavigating, setNavigating: setIsNavigating }}>
-      {isNavigating && <NavigationOverlay />}
+    <>
       <Suspense fallback={<PageTransition />}>
-        <NavigationCompleter onReady={clearNavigation}>
         <Switch>
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
@@ -1012,7 +985,6 @@ function Router() {
 
           <Route component={NotFound} />
         </Switch>
-        </NavigationCompleter>
       </Suspense>
 
       {isClient && !location.startsWith('/agent/') && !location.includes('/ai-assistant') && (
@@ -1022,7 +994,7 @@ function Router() {
       )}
 
       {isClient && !location.startsWith('/agent/') && !location.includes('/ai-assistant') && <FloatingAlessiaChat />}
-    </NavigationContext.Provider>
+    </>
   );
 }
 
