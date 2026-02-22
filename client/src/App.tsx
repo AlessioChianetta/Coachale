@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useTransition, useCallback } from "react";
 import { Switch, Route } from "wouter";
 import { useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,6 +17,8 @@ import { FloatingAlessiaChat } from "@/components/alessia/FloatingAlessiaChat";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
 import { preloadAfterLogin } from "@/lib/route-preloader";
+import { NavigationContext } from "@/contexts/NavigationContext";
+import { NavigationOverlay } from "@/components/navigation-overlay";
 
 // Lazy load heavy components
 const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
@@ -174,16 +176,23 @@ const ClientMyDataAnalysis = lazy(() => import("@/pages/client/MyDataAnalysis"))
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
-  const [location, setLocation] = useLocation();
+  const [location, rawSetLocation] = useLocation();
+  const [isPending, startTransition] = useTransition();
+
+  const navigate = useCallback((href: string) => {
+    startTransition(() => {
+      rawSetLocation(href);
+    });
+  }, [rawSetLocation]);
 
   useEffect(() => {
     // Immediate redirects for moved pages
     if (location === "/consultant/calendar" || location === "/consultant/calendar-settings") {
-      setLocation("/consultant/api-keys-unified?tab=calendar");
+      rawSetLocation("/consultant/api-keys-unified?tab=calendar");
     } else if (location === "/consultant/ai-agents") {
-      setLocation("/consultant/whatsapp?tab=system");
+      rawSetLocation("/consultant/whatsapp?tab=system");
     }
-  }, [location, setLocation]);
+  }, [location, rawSetLocation]);
 
   useEffect(() => {
     if (user?.role === 'consultant') {
@@ -194,7 +203,8 @@ function Router() {
   }, []);
 
   return (
-    <>
+    <NavigationContext.Provider value={{ navigate, isPending }}>
+      {isPending && <NavigationOverlay />}
       <Suspense fallback={<PageTransition />}>
         <Switch>
           <Route path="/login" component={Login} />
@@ -994,7 +1004,7 @@ function Router() {
       )}
 
       {isClient && !location.startsWith('/agent/') && !location.includes('/ai-assistant') && <FloatingAlessiaChat />}
-    </>
+    </NavigationContext.Provider>
   );
 }
 
