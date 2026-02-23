@@ -108,50 +108,46 @@ interface SidebarCategoryExtended extends SidebarCategory {
 
 const consultantCategories: SidebarCategoryExtended[] = [
   {
-    name: "CORE",
+    name: "PRINCIPALE",
     icon: Home,
     defaultExpanded: true,
     alwaysVisible: true,
     items: [
       { name: "Dashboard", href: "/consultant", icon: Home },
-      { name: "Clienti", href: "/consultant/clients", icon: Users },
-      { name: "Task", href: "/consultant/tasks", icon: ListTodo },
-      { name: "Calendario", href: "/consultant/appointments", icon: Calendar },
+      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles },
+      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap },
     ]
   },
   {
-    name: "AUTOMAZIONE",
-    icon: Zap,
+    name: "LAVORO QUOTIDIANO",
+    icon: Users,
     defaultExpanded: true,
     items: [
-      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles },
-      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot },
+      { name: "Clienti", href: "/consultant/clients", icon: Users },
+      { name: "Calendario", href: "/consultant/appointments", icon: Calendar },
+      { name: "Task", href: "/consultant/tasks", icon: ListTodo },
       { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles },
+      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3 },
+    ]
+  },
+  {
+    name: "COMUNICAZIONE",
+    icon: Megaphone,
+    defaultExpanded: true,
+    items: [
       { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target },
       { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: MessageSquare },
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail },
       { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone },
+      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot },
     ]
   },
   {
-    name: "ANALISI",
-    icon: BarChart3,
-    defaultExpanded: false,
-    items: [
-      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3 },
-      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText },
-      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug },
-      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles },
-      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch },
-      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign },
-    ]
-  },
-  {
-    name: "CONTENUTI",
+    name: "CONTENT STUDIO",
     icon: PenLine,
     defaultExpanded: false,
     items: [
-      { name: "Content Studio", href: "/consultant/content-studio", icon: LayoutGrid },
+      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid },
       { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb },
       { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine },
       { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar },
@@ -160,20 +156,52 @@ const consultantCategories: SidebarCategoryExtended[] = [
     ]
   },
   {
-    name: "SISTEMA",
-    icon: Settings,
+    name: "FORMAZIONE",
+    icon: GraduationCap,
     defaultExpanded: false,
     items: [
-      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap },
-      { name: "Impostazioni", href: "/consultant/api-keys-unified", icon: Key },
-      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard },
-      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen },
       { name: "Università", href: "/consultant/university", icon: GraduationCap },
       { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList },
       { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen },
       { name: "Corsi", href: "/consultant/library", icon: BookOpen },
     ]
   },
+  {
+    name: "CERVELLO AI",
+    icon: Database,
+    defaultExpanded: false,
+    items: [
+      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText },
+      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug },
+    ]
+  },
+  {
+    name: "IMPOSTAZIONI",
+    icon: Settings,
+    defaultExpanded: false,
+    items: [
+      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key },
+      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard },
+    ]
+  },
+  {
+    name: "GUIDE",
+    icon: BookOpen,
+    defaultExpanded: false,
+    items: [
+      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen },
+    ]
+  },
+  {
+    name: "AI AVANZATO",
+    icon: Sparkles,
+    defaultExpanded: false,
+    items: [
+      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles },
+      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch },
+      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign },
+    ]
+  }
 ];
 
 // Flatten consultant categories for backward compatibility (client views, collapsed views)
@@ -577,13 +605,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           )}
         </div>
         {categories && (
-          <div className="relative flex p-1 bg-gray-100 dark:bg-gray-800/60 rounded-xl">
+          <div className="flex gap-0.5 p-0.5 bg-muted/60 rounded-xl">
             <button
               onClick={() => setSidebarTab('platform')}
               className={cn(
-                "flex-1 py-2 px-3 text-xs font-semibold rounded-[10px] transition-all duration-200 relative z-10",
+                "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'platform'
-                  ? "bg-white dark:bg-gray-700 text-foreground shadow-sm"
+                  ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -592,9 +620,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <button
               onClick={() => setSidebarTab('tools')}
               className={cn(
-                "flex-1 py-2 px-3 text-xs font-semibold rounded-[10px] transition-all duration-200 relative z-10",
+                "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'tools'
-                  ? "bg-white dark:bg-gray-700 text-foreground shadow-sm"
+                  ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -688,13 +716,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {!isAlwaysVisible && (
                   <button
                     onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 mt-6 mb-2 group rounded-lg transition-colors hover:bg-gray-100/60 dark:hover:bg-gray-800/40"
+                    className="w-full flex items-center justify-between px-2 py-1 mt-4 mb-1 group rounded-md transition-colors"
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
                       {category.name}
                     </span>
                     <ChevronRight className={cn(
-                      "h-3 w-3 text-muted-foreground/30 transition-transform duration-200",
+                      "h-2.5 w-2.5 text-muted-foreground/40 transition-transform duration-200",
                       isCategoryExpanded && "rotate-90"
                     )} />
                   </button>
@@ -713,10 +741,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-xl transition-all duration-200 cursor-pointer border-l-[3px] min-h-[40px]",
+                              "group flex items-center gap-2.5 px-3 py-3 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px] min-h-[44px]",
                               isActive
-                                ? "border-primary bg-primary/5 dark:bg-primary/10 text-foreground"
-                                : "border-transparent text-muted-foreground hover:bg-gray-100/70 dark:hover:bg-gray-800/40 hover:text-foreground"
+                                ? "border-cyan-500 bg-primary/8 dark:bg-cyan-950/30 text-foreground shadow-sm"
+                                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
@@ -724,22 +752,25 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             onClick={handleLinkClick}
                           >
                             <Icon className={cn(
-                              "h-[16px] w-[16px] flex-shrink-0 transition-colors duration-200",
+                              "h-4 w-4 flex-shrink-0 transition-colors duration-200",
                               isActive
-                                ? "text-primary"
-                                : "text-muted-foreground/50 group-hover:text-muted-foreground"
+                                ? "text-cyan-600 dark:text-cyan-400"
+                                : "text-muted-foreground/60 group-hover:text-muted-foreground"
                             )} />
-                            <span className={cn(
-                              "truncate",
-                              isActive ? "font-semibold" : "font-medium"
-                            )}>
-                              {item.name}
-                            </span>
-                            {item.badge && (
-                              <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted/80 text-muted-foreground/70">
-                                {item.badge}
+
+                            <div className="flex-1 flex items-center justify-between min-w-0">
+                              <span className={cn(
+                                "text-[13.65px] truncate",
+                                isActive ? "font-semibold" : "font-medium"
+                              )}>
+                                {item.name}
                               </span>
-                            )}
+                              {item.badge && (
+                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </Link>
                       );
@@ -1185,7 +1216,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent
           side="left"
-          className="w-[85vw] max-w-[320px] p-0 bg-gray-50/95 dark:bg-gray-950/95 border-r border-border"
+          className="w-[85vw] max-w-[320px] p-0 bg-background border-r border-border"
           style={{ animationDuration: "200ms" }}
           data-testid="sidebar-mobile"
           data-tour="client-sidebar"
@@ -1235,7 +1266,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     <>
       {!isCollapsed && (
       <div 
-        className="hidden md:flex flex-col bg-gray-50/80 dark:bg-gray-950/60 border-r border-border/40 shadow-[2px_0_8px_-2px_rgba(0,0,0,0.05)] dark:shadow-[2px_0_8px_-2px_rgba(0,0,0,0.2)] p-4 transition-all duration-200 h-screen sticky top-0 w-72"
+        className="hidden md:flex flex-col bg-background border-r border-border p-4 transition-all duration-150 h-screen sticky top-0 w-72"
         data-testid="sidebar"
         data-tour="client-sidebar"
       >
