@@ -851,7 +851,8 @@ function NurturingGenerateButton() {
 // ─── AGENT CALENDAR STATUS PANEL ────────────────────────────────────────────
 
 function AgentCalendarStatusPanel() {
-  const { data, isLoading } = useQuery<{ success: boolean; agents: Array<{ id: string; agentName: string; agentType: string; calendarConnected: boolean; googleCalendarEmail?: string }> }>({
+  type AgentCalItem = { id: string; agentName: string; agentType: string; isActive?: boolean; calendarConnected: boolean; calendarEmail?: string; googleCalendarEmail?: string };
+  const { data, isLoading } = useQuery<AgentCalItem[] | { success: boolean; agents: AgentCalItem[] }>({
     queryKey: ["/api/whatsapp/agents/calendar-status"],
     queryFn: async () => {
       const res = await fetch("/api/whatsapp/agents/calendar-status", { headers: getAuthHeaders() });
@@ -864,6 +865,8 @@ function AgentCalendarStatusPanel() {
     reactive_lead: "Inbound",
     proactive_setter: "Outbound",
     informative_advisor: "Consulenziale",
+    round_robin: "Round Robin",
+    default: "Standard",
   };
 
   if (isLoading) {
@@ -874,7 +877,7 @@ function AgentCalendarStatusPanel() {
     );
   }
 
-  const agents = data?.agents ?? [];
+  const agents: AgentCalItem[] = Array.isArray(data) ? data : (data as any)?.agents ?? [];
 
   return (
     <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -896,7 +899,7 @@ function AgentCalendarStatusPanel() {
                   <p className="text-sm font-medium">{agent.agentName}</p>
                   <p className="text-xs text-muted-foreground">
                     {agentTypeLabel[agent.agentType] || agent.agentType}
-                    {agent.calendarConnected && agent.googleCalendarEmail && ` · ${agent.googleCalendarEmail}`}
+                    {agent.calendarConnected && (agent.calendarEmail || agent.googleCalendarEmail) && ` · ${agent.calendarEmail || agent.googleCalendarEmail}`}
                   </p>
                 </div>
               </div>

@@ -1,0 +1,74 @@
+qual è la prima cosa che dovrei fare per la mia attività
+
+AI Assistant
+Se guardiamo i numeri, hai una situazione particolare: 29 clienti totali ma ben 27 risultano inattivi, oltre a 307 bozze di email ferme e 37 esercizi che aspettano la tua revisione.
+La tua infrastruttura tecnica è quasi perfetta (4/4 Priorità Critiche completate), ma il business è "ingolfato".
+1
+La prima cosa che devi fare per sbloccare la tua attività oggi è
+1. Attiva Stripe (Priorità 2 - Chiudi e Incassa)
+Al momento è l'unico tassello mancante per rendere il tuo sistema una macchina da soldi automatica. Senza Stripe Connect, non puoi incassare le licenze dai tuoi clienti direttamente dalla piattaforma.
+Perché farlo ora: Se hai intenzione di riattivare quei 27 clienti o acquisirne di nuovi con gli agenti AI, devi avere il "tubo" dei pagamenti collegato.
+Dove cliccare: [Configurazione Licenze/Stripe](/consultant/whatsapp?tab=licenses)
+●
+Cosa serve: Un account Stripe attivo (se non lo hai, la procedura ti guiderà nella creazione).
+Ma se vuoi un consiglio da Consulente...
+Oltre alla tecnica, hai un problema di gestione del backlog. Se vuoi davvero far ripartire l'attività, subito dopo Stripe, fai questo:
+Svuota il "carico pendente" con l'AI:
+Vai nella [Tasklist dell'AI Autonomo](/consultant/ai-autonomy). Ho visto che ci sono diverse azioni di preparazione e analisi (come la "Strategia Cash Flow Hero" per le call del 26 e 27 febbraio) che aspettano solo la tua approvazione.
+L'AI ha già lavorato per te: approva quei task e lascia che il sistema inizi a mandare i follow-up e a preparare le tue vendite.
+Vuoi che ti guidi passo passo nella configurazione di Stripe o preferisci analizzare insieme perché quei 27 clienti si sono fermati?
+vorrei che mi spiegassi come ottimizzare i setup
+
+AI Assistant
+Ottimizzare il setup non significa solo "configurare", ma rendere la piattaforma una macchina che lavora al posto tuo. Avendo già completato i passaggi critici (Twilio, SMTP, Lead Import), ora dobbiamo passare dalla configurazione tecnica alla configurazione strategica.
+1
+Ecco i tre pilastri per ottimizzare i tuoi setup e farli rendere al massimo
+1. Ottimizzazione degli Agenti AI (La Personalità è tutto)
+Un errore comune è dare istruzioni vaghe. Per ottimizzare un agente (Inbound o Outbound), devi curare tre tab specifiche:
+Personalità (Tab 2): Non scrivere "sei un assistente". Scrivi: "Sei un Sales Setter esperto. Parli in modo asciutto, non usi emoji inutili, dai del tu ma mantieni un tono autorevole. Il tuo obiettivo è solo capire se il lead ha budget prima di proporre la call."
+Lo Script (Tab 3): Dividi la conversazione in micro-step (Apertura → Qualifica → Proposta → Booking). Se l'agente prova a vendere subito senza qualificare, il tasso di conversione crolla.
+Delay (Tab 5): Imposta un ritardo di risposta tra i 3 e i 7 secondi. Risposte istantanee urlano "sono un robot" e allontanano i lead di alto livello.
+Dove intervenire: [Gestione Agenti](/consultant/whatsapp)
+2. Ottimizzazione del "Cervello AI" (Knowledge Base)
+L'AI è intelligente quanto i dati che le dai.
+Carica Procedure, non solo Teoria: Invece di caricare solo i tuoi corsi, carica un PDF con le "Obiezioni Frequenti e come rispondere".
+Formato: Usa PDF puliti o testi diretti. Più documenti carichi nella [Knowledge Base](/consultant/knowledge-documents), più i tuoi agenti saranno precisi e meno "generici".
+3. Sincronizzazione dei Calendari
+Questa è la vera automazione. Se non colleghi il tuo Google Calendar sia al tuo profilo che ai singoli agenti, l'AI non potrà mai chiudere il cerchio.
+Ottimizzazione: Assicurati che ogni agente abbia il suo calendario collegato nella Tab 5 della sua configurazione. Questo permette all'AI di dire: "Ho visto che sei libero martedì alle 15, ti blocco il posto?" invece di mandare un link generico.
+Dove intervenire: [Configurazione Appuntamenti](/consultant/appointments)
+Il tuo prossimo passo operativo:
+Poiché hai già 29 clienti (di cui molti inattivi), l'ottimizzazione più urgente è quella del Nurturing.
+1
+Vai in [Email Nurturing 365](/consultant/ai-config?tab=lead-nurturing).
+2
+Assicurati che l'AI abbia generato le email basandosi sul tuo stile "Direct".
+3
+Attiva l'invio automatico per riagganciare quei 27 clienti dormienti senza che tu debba muovere un dito.
+Vuoi che entriamo nel dettaglio di come scrivere lo script per uno dei tuoi agenti o preferisci sistemare la Knowledge Base?
+quali mi mancano da fare
+
+AI Assistant
+Analizzando lo stato reale della tua piattaforma, hai fatto un lavoro eccellente sulle fondamenta (4/4 Priorità Critiche completate). Tuttavia, per avere un sistema pronto a scalare davvero, ti mancano questi passaggi:
+1. Stripe — Pagamenti (Priorità 2: ALTA)
+È lo step più importante che ti manca. Senza questo, la piattaforma non può gestire automaticamente gli incassi delle licenze dei tuoi clienti.
+Stato: ⚪ Da fare
+Azione: Collega il tuo account Stripe per attivare il revenue sharing e i pagamenti automatici.
+Link: [/consultant/whatsapp?tab=licenses](/consultant/whatsapp?tab=licenses)
+2. Video Meeting (TURN) (Priorità 5: ERRORE)
+Al momento il sistema rileva un errore sulla configurazione delle videochiamate. Questo significa che se programmi una consulenza, il link per il meeting potrebbe non funzionare correttamente.
+Stato: 🔴 Errore
+Azione: Devi configurare le chiavi di Metered.ca per garantire videochiamate WebRTC affidabili.
+Link: [/consultant/api-keys-unified?tab=video-meeting](/consultant/api-keys-unified?tab=video-meeting)
+3. Sincronizzazione Calendario (Integrazione Sistema)
+Sebbene tu abbia i calendari per gli agenti, il tuo calendario principale risulta non collegato correttamente o non sincronizzato per le disponibilità globali.
+Stato: ❌ Non attivo
+Azione: Collega il tuo Google Calendar personale per evitare sovrapposizioni e permettere all'AI di conoscere i tuoi impegni reali.
+Link: [/consultant/appointments](/consultant/appointments)
+Riassunto della tua situazione:
+Priorità 1 (Critica): 100% Completata (Ottimo!)
+Priorità 2 (Alta): 8/9 Completate (Manca solo Stripe)
+Priorità 3 & 4: 100% Completate.
+●
+Priorità 5: C'è un errore critico sul Video Meeting che va risolto.
+Il mio consiglio: Vai dritto su Stripe ora. È quello che trasforma la piattaforma da un centro di costo a un centro di ricavo. Vuoi che ti spieghi come fare l'onboarding con Stripe?
