@@ -577,7 +577,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {!isCollapsed && <div className="mb-5">
+      {!isCollapsed && <div className="mb-3">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-xl shadow-sm" style={{ background: `linear-gradient(135deg, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
@@ -605,13 +605,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           )}
         </div>
         {categories && (
-          <div className="flex gap-1 p-1 bg-gray-100/80 dark:bg-gray-800/60 rounded-xl mb-2">
+          <div className="flex gap-0.5 p-0.5 bg-muted/60 rounded-xl">
             <button
               onClick={() => setSidebarTab('platform')}
               className={cn(
-                "flex-1 py-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] rounded-[10px] transition-all duration-200",
+                "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'platform'
-                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
+                  ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -620,9 +620,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <button
               onClick={() => setSidebarTab('tools')}
               className={cn(
-                "flex-1 py-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] rounded-[10px] transition-all duration-200",
+                "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'tools'
-                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
+                  ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -676,10 +676,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             </div>
 
             <div
-              className="group flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-xl transition-all duration-200 cursor-pointer border-l-[3px] border-transparent text-muted-foreground hover:bg-gray-100/70 dark:hover:bg-gray-800/40 hover:text-foreground"
+              className="group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
             >
-              <BookOpen className="h-[16px] w-[16px] flex-shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors duration-200" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+              <div className="p-1.5 rounded-lg bg-muted">
+                <BookOpen className="h-4 w-4 text-purple-500" />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">NotebookLM</span>
@@ -693,7 +696,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       )}
 
       {/* Navigation Items - Modern SaaS Style */}
-      {!isCollapsed && (sidebarTab === 'platform' || !categories) && <nav ref={navRef} className="space-y-0.5 flex-1 overflow-y-auto pr-1 scrollbar-thin">
+      {!isCollapsed && (sidebarTab === 'platform' || !categories) && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
         {/* Render categorized sidebar for consultant */}
         {categories && !isCollapsed ? (categories as SidebarCategoryExtended[]).map((category, idx) => {
           const isCategoryExpanded = expandedCategories.has(category.name);
@@ -707,13 +710,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {!isAlwaysVisible && (
                   <button
                     onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-3 py-1.5 mt-6 mb-2 group rounded-lg transition-colors hover:bg-gray-100/60 dark:hover:bg-gray-800/30"
+                    className="w-full flex items-center justify-between px-2 py-1 mt-4 mb-1 group rounded-md transition-colors"
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
                       {category.name}
                     </span>
                     <ChevronRight className={cn(
-                      "h-2.5 w-2.5 text-muted-foreground/30 transition-transform duration-200",
+                      "h-2.5 w-2.5 text-muted-foreground/40 transition-transform duration-200",
                       isCategoryExpanded && "rotate-90"
                     )} />
                   </button>
@@ -732,10 +735,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-xl transition-all duration-200 cursor-pointer border-l-[3px] min-h-[40px]",
+                              "group flex items-center gap-2.5 px-3 py-3 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px] min-h-[44px]",
                               isActive
-                                ? "border-primary bg-primary/6 dark:bg-primary/8 text-foreground font-semibold"
-                                : "border-transparent text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                                ? "border-cyan-500 bg-primary/8 dark:bg-cyan-950/30 text-foreground shadow-sm"
+                                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
@@ -745,19 +748,19 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             <Icon className={cn(
                               "h-4 w-4 flex-shrink-0 transition-colors duration-200",
                               isActive
-                                ? "text-primary"
-                                : "text-muted-foreground/50 group-hover:text-muted-foreground/80"
+                                ? "text-cyan-600 dark:text-cyan-400"
+                                : "text-muted-foreground/60 group-hover:text-muted-foreground"
                             )} />
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "text-[13px] truncate",
-                                isActive ? "font-semibold" : "font-normal"
+                                "text-[13.65px] truncate",
+                                isActive ? "font-semibold" : "font-medium"
                               )}>
                                 {item.name}
                               </span>
                               {item.badge && (
-                                <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70">
+                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                                   {item.badge}
                                 </span>
                               )}
@@ -786,10 +789,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               <Link href={item.href}>
                 <div
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                     isActive
-                      ? "bg-primary/6 dark:bg-primary/8 text-foreground"
-                      : "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground",
+                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     isCollapsed && "justify-center px-2"
                   )}
                   data-testid={`link-${slugify(item.name)}`}
@@ -816,14 +819,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 >
                   {/* Hover/Active indicator bar */}
                   <div className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full transition-opacity duration-150",
+                    "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   )} />
                   {/* Icon without box */}
                   <Icon className={cn(
                     "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                     isActive
-                      ? "text-primary"
+                      ? "text-cyan-500"
                       : item.color || "text-muted-foreground/60"
                   )} />
 
@@ -857,7 +860,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* Submenu - Modern style */}
               {hasChildren && isExpanded && !isCollapsed && (
                 <div 
-                  className="ml-6 mt-0.5 space-y-0.5 border-l border-border/30 pl-3"
+                  className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-3"
                   data-tour={role === "client" ? `client-${slugify(item.name)}-submenu` : undefined}
                 >
                   {item.children!.map((child) => {
@@ -868,10 +871,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <Link key={child.href} href={child.href}>
                         <div
                           className={cn(
-                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
+                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                             isChildActive
-                              ? "bg-primary/6 dark:bg-primary/8 text-foreground"
-                              : "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                           data-testid={`link-${slugify(child.name)}`}
                           data-tour={role === "client" ? `client-submenu-${slugify(child.name)}` : undefined}
@@ -879,14 +882,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         >
                           {/* Hover/Active indicator bar */}
                           <div className={cn(
-                            "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full transition-opacity duration-150",
+                            "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
                             isChildActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                           )} />
                           <ChildIcon className={cn(
                             "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                             isChildActive
-                              ? "text-primary"
-                              : child.color || "text-muted-foreground/60 group-hover:text-primary"
+                              ? "text-cyan-500"
+                              : child.color || "text-muted-foreground/60 group-hover:text-cyan-500"
                           )} />
                           <span className={cn(
                             "font-medium",
@@ -910,8 +913,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* I Miei Agenti AI Section - Only for clients with assigned agents */}
         {role === "client" && assignedAgents.length > 0 && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-border/30">
-            <h3 className="px-3 mb-2 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.15em]">
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               I Miei Agenti AI
             </h3>
             <div className="space-y-0.5">
@@ -919,14 +922,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Link key={agent.id} href={`/agent/${agent.publicSlug}/chat`}>
                   <div
                     className={cn(
-                      "group relative flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
-                      "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                      "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                      "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     data-testid={`link-agent-${agent.publicSlug}`}
                     onClick={handleLinkClick}
                   >
                     {/* Hover indicator bar */}
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
                     <Bot className="h-[18px] w-[18px] flex-shrink-0 text-violet-500" />
                     <span className="font-medium truncate">{agent.name}</span>
                   </div>
@@ -938,22 +941,22 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Dipendenti AI del Consulente - Link to consultant's employee agents for Gold/Deluxe clients */}
         {role === "client" && consultantInfo?.success && consultantInfo.data?.slug && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-border/30">
-            <h3 className="px-3 mb-2 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-[0.15em]">
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Dipendenti AI
             </h3>
             <div className="space-y-0.5">
               <Link href={`/c/${consultantInfo.data.slug}/select-agent`}>
                 <div
                   className={cn(
-                    "group relative flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
-                    "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                    "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                   data-testid="link-consultant-agents"
                   onClick={handleLinkClick}
                 >
                   {/* Hover indicator bar */}
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
                   <Users className="h-[18px] w-[18px] flex-shrink-0 text-emerald-500" />
                   <span className="font-medium truncate">Dipendenti di {consultantInfo.data.consultantName}</span>
                 </div>
@@ -964,7 +967,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Pro Tools Section - Collapsible premium section for clients */}
         {role === "client" && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-border/30">
+          <div className="mt-3 pt-3 border-t border-border/50">
             <button
               onClick={() => setExpandedProTools(!expandedProTools)}
               className="w-full flex items-center justify-between px-3 py-1.5 group"
@@ -998,10 +1001,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       <Link href={item.href}>
                         <div
                           className={cn(
-                            "group relative flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
+                            "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                             isActive
-                              ? "bg-primary/6 dark:bg-primary/8 text-foreground"
-                              : "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                           data-testid={`link-${slugify(item.name)}`}
                           onMouseEnter={() => preloadOnHover(item.href)}
@@ -1025,13 +1028,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         >
                           {/* Hover/Active indicator bar */}
                           <div className={cn(
-                            "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full transition-opacity duration-150",
+                            "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
                             isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                           )} />
                           <Icon className={cn(
                             "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                             isActive
-                              ? "text-primary"
+                              ? "text-cyan-500"
                               : item.color || "text-muted-foreground/60"
                           )} />
                           <div className="flex-1 flex items-center justify-between min-w-0">
@@ -1052,7 +1055,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       </Link>
 
                       {hasChildren && isExpanded && (
-                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-border/30 pl-3">
+                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-3">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
                             const isChildActive = isRouteActive(child.href, location);
@@ -1061,24 +1064,24 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               <Link key={child.href} href={child.href}>
                                 <div
                                   className={cn(
-                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-xl transition-all duration-150 cursor-pointer",
+                                    "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                                     isChildActive
-                                      ? "bg-primary/6 dark:bg-primary/8 text-foreground"
-                                      : "text-muted-foreground hover:bg-gray-100/50 dark:hover:bg-gray-800/30 hover:text-foreground"
+                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                   )}
                                   data-testid={`link-${slugify(child.name)}`}
                                   onClick={handleLinkClick}
                                 >
                                   {/* Hover/Active indicator bar */}
                                   <div className={cn(
-                                    "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full transition-opacity duration-150",
+                                    "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
                                     isChildActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                                   )} />
                                   <ChildIcon className={cn(
                                     "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                                     isChildActive
-                                      ? "text-primary"
-                                      : child.color || "text-muted-foreground/60 group-hover:text-primary"
+                                      ? "text-cyan-500"
+                                      : child.color || "text-muted-foreground/60 group-hover:text-cyan-500"
                                   )} />
                                   <span className={cn(
                                     "font-medium",
@@ -1102,9 +1105,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
       {/* User info e logout - agganciato in basso */}
       {!isCollapsed && (
-      <div className="px-3 py-4 mt-auto border-t border-border/30">
-        <div className="flex items-center gap-3 px-3.5 py-3.5 rounded-2xl bg-white dark:bg-gray-800/80 border border-border/40 shadow-sm hover:shadow-md transition-all duration-200 cursor-default">
-          <Avatar className="w-9 h-9 border-2 border-primary/20 shadow-sm flex-shrink-0">
+      <div className="px-2 py-3 mt-auto">
+        <div className="flex items-center gap-2.5 px-3 py-3 rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-200">
+          <Avatar className="w-8 h-8 border-2 border-border shadow-sm flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
             <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
@@ -1168,16 +1171,16 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Role switcher se disponibile */}
         {showRoleSwitch && onRoleSwitch && (
-          <div className="bg-gray-100/80 dark:bg-gray-800/50 p-1 rounded-xl flex mt-3 mx-0.5">
+          <div className="bg-muted/60 p-1 rounded-lg flex mt-2 mx-1">
             <Button
               variant={currentRole === "consultant" ? "default" : "ghost"}
               size="sm"
               onClick={() => onRoleSwitch("consultant")}
               className={cn(
-                "flex-1 text-xs font-semibold rounded-[10px]",
+                "flex-1 text-xs font-semibold",
                 currentRole === "consultant" 
                   ? "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600" 
-                  : "hover:bg-white/60 dark:hover:bg-gray-700/40"
+                  : "hover:bg-muted"
               )}
             >
               Consulente
@@ -1187,10 +1190,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               size="sm"
               onClick={() => onRoleSwitch("client")}
               className={cn(
-                "flex-1 text-xs font-semibold rounded-[10px]",
+                "flex-1 text-xs font-semibold",
                 currentRole === "client" 
                   ? "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600" 
-                  : "hover:bg-white/60 dark:hover:bg-gray-700/40"
+                  : "hover:bg-muted"
               )}
             >
               Cliente
@@ -1207,7 +1210,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent
           side="left"
-          className="w-[85vw] max-w-[320px] p-0 bg-gray-50/95 dark:bg-gray-950/95 border-r border-border"
+          className="w-[85vw] max-w-[320px] p-0 bg-background border-r border-border"
           style={{ animationDuration: "200ms" }}
           data-testid="sidebar-mobile"
           data-tour="client-sidebar"
@@ -1244,7 +1247,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               <X size={16} />
             </Button>
           </div>
-          <div className="p-4 flex-1 h-[calc(100vh-4rem)] flex flex-col overflow-y-auto no-scrollbar">
+          <div className="p-3 flex-1 h-[calc(100vh-4rem)] flex flex-col overflow-y-auto no-scrollbar">
             <SidebarContent />
           </div>
         </SheetContent>
@@ -1257,7 +1260,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     <>
       {!isCollapsed && (
       <div 
-        className="hidden md:flex flex-col bg-gray-50/80 dark:bg-gray-950/60 border-r border-border/40 shadow-[2px_0_12px_-4px_rgba(0,0,0,0.06)] dark:shadow-[2px_0_12px_-4px_rgba(0,0,0,0.25)] px-4 py-5 transition-all duration-150 h-screen sticky top-0 w-72"
+        className="hidden md:flex flex-col bg-background border-r border-border p-4 transition-all duration-150 h-screen sticky top-0 w-72"
         data-testid="sidebar"
         data-tour="client-sidebar"
       >
