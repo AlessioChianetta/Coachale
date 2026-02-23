@@ -72,3 +72,22 @@ Standard riutilizzabile applicato a tutte le pagine. **Regola fondamentale: MAI 
 *   **FreeSWITCH**: Voice telephony integration.
 *   **Google Calendar API**: Appointment scheduling.
 *   **Publer**: Social media scheduling and publishing.
+
+## Configurazione Multi-Ambiente (Replit + VPS)
+
+Il progetto gira su due ambienti simultaneamente: **Replit (dev)** e **VPS Hostinger (produzione)**.
+
+### Variabili d'ambiente per i Webhook Telegram
+
+| Variabile | Replit | VPS Hostinger |
+|---|---|---|
+| `TELEGRAM_WEBHOOK_DOMAIN` | NON impostare (lascia vuota) | `tuodominio.com` |
+| `REPLIT_DOMAINS` | Auto-set da Replit | Non disponibile |
+| `SCHEDULERS_ENABLED` | `true` (default) | `false` |
+
+Su **Replit**: `REPLIT_DOMAINS` viene settato automaticamente dalla piattaforma con il dominio corrente.  
+Su **VPS**: aggiungere nel `.env` → `TELEGRAM_WEBHOOK_DOMAIN=tuodominio.com`
+
+### Auto-refresh Webhook all'avvio
+
+All'avvio del server (con 5s di delay), `refreshTelegramWebhooksOnStartup()` in `server/telegram/telegram-service.ts` ri-registra automaticamente tutti i bot Telegram con l'URL del dominio corrente. Questo elimina la necessità di aggiornamento manuale quando si cambia ambiente.

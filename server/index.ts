@@ -228,6 +228,16 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    // Auto-refresh Telegram webhooks 5s after startup (ensures routes are ready)
+    // Works automatically in both Replit (uses REPLIT_DOMAINS) and VPS (uses TELEGRAM_WEBHOOK_DOMAIN)
+    setTimeout(async () => {
+      try {
+        const { refreshTelegramWebhooksOnStartup } = await import("./telegram/telegram-service");
+        await refreshTelegramWebhooksOnStartup();
+      } catch (err: any) {
+        console.error('[STARTUP] Telegram webhook auto-refresh failed:', err.message);
+      }
+    }, 5000);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

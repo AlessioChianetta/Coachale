@@ -1824,3 +1824,61 @@ export async function notifyTaskViaTelegram(
     console.error(`[TELEGRAM-NOTIFY] Failed to notify ${event} for role ${roleId}:`, err.message);
   }
 }
+
+/**
+ * Auto-refresh all Telegram webhooks on server startup.
+ * Detects current domain from env vars (works for both Replit and VPS):
+ *   - TELEGRAM_WEBHOOK_DOMAIN  → set this on VPS (e.g. "tuodominio.com")
+ *   - REPLIT_DOMAINS           → auto-set by Replit platform
+ *   - REPLIT_DEV_DOMAIN        → auto-set by Replit (fallback)
+ */
+export async function refreshTelegramWebhooksOnStartup(): Promise<void> {
+  try {
+    const domain = process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || '';
+    if (!domain) {
+      console.warn('[TELEGRAM-STARTUP] No domain found (TELEGRAM_WEBHOOK_DOMAIN / REPLIT_DOMAINS not set) — skipping auto-refresh');
+      return;
+    }
+
+    const configs = await db.execute(sql`
+      SELECT id, ai_role, bot_token, webhook_url, webhook_secret, consultant_id
+      FROM telegram_bot_configs
+      WHERE enabled = true
+    `);
+
+    if (configs.rows.length === 0) {
+      console.log('[TELEGRAM-STARTUP] No enabled Telegram bots found — nothing to refresh');
+      return;
+    }
+
+    console.log(`[TELEGRAM-STARTUP] Auto-refreshing ${configs.rows.length} Telegram webhook(s) for domain: ${domain}`);
+
+    let updated = 0;
+    let skipped = 0;
+
+    for (const row of configs.rows as any[]) {
+      const newUrl = `https://${domain}/api/telegram/webhook/${row.id}`;
+
+      if (row.webhook_url === newUrl) {
+        skipped++;
+        continue;
+      }
+
+      const success = await setTelegramWebhook(row.bot_token, newUrl, row.webhook_secret);
+      if (success) {
+        await db.execute(sql`
+          UPDATE telegram_bot_configs SET webhook_url = ${newUrl}, updated_at = NOW()
+          WHERE id = ${row.id}
+        `);
+        console.log(`[TELEGRAM-STARTUP] ✅ ${row.ai_role}: ${row.webhook_url || 'none'} → ${newUrl}`);
+        updated++;
+      } else {
+        console.error(`[TELEGRAM-STARTUP] ❌ Failed to update webhook for role ${row.ai_role} (bot id: ${row.id})`);
+      }
+    }
+
+    console.log(`[TELEGRAM-STARTUP] Done — ${updated} updated, ${skipped} already current`);
+  } catch (err: any) {
+    console.error('[TELEGRAM-STARTUP] Error during webhook auto-refresh:', err.message);
+  }
+}
