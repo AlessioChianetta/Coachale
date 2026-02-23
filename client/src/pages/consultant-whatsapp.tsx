@@ -271,7 +271,7 @@ const accentColors = {
   indigo: {
     border: "border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600",
     ring: "ring-indigo-500/20",
-    badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+    badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 dark:bg-indigo-900/40 dark:text-indigo-300",
     button: "bg-indigo-600 hover:bg-indigo-700 text-white",
     text: "text-indigo-600 dark:text-indigo-400",
     iconBg: "bg-indigo-50 dark:bg-indigo-900/20",
@@ -431,7 +431,7 @@ function PartnerWebhookCard() {
             <Label className="font-medium">Canali di notifica:</Label>
             <p className="text-xs text-muted-foreground">Scegli uno o entrambi i canali per notificare il partner</p>
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-900/50">
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/50">
                 <Checkbox
                   id="notifyViaQueue"
                   checked={notifyViaQueue}
@@ -447,7 +447,7 @@ function PartnerWebhookCard() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 rounded-lg border bg-slate-50 dark:bg-slate-900/50">
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/50">
                 <Checkbox
                   id="notifyViaWebhook"
                   checked={notifyViaWebhook}
@@ -484,7 +484,7 @@ function PartnerWebhookCard() {
               </div>
             ) : (syncSourcesQuery.data?.data || []).length === 0 ? (
               <Alert className="bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-700">
-                <AlertTriangle className="h-4 w-4 text-slate-500" />
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                 <AlertDescription className="text-slate-600 dark:text-slate-400 text-sm">
                   Nessuna sorgente di sincronizzazione trovata. Creane una nella sezione "Sincronizzazione Dati" per collegare gli acquisti Stripe alla Partner Dashboard.
                 </AlertDescription>
@@ -561,7 +561,7 @@ function PartnerWebhookCard() {
                   onCheckedChange={(checked) => setNotifyOnSilver(checked as boolean)}
                 />
                 <Label htmlFor="notifySilver" className="flex items-center gap-1 text-sm cursor-pointer">
-                  <Shield className="h-4 w-4 text-slate-500" />
+                  <Shield className="h-4 w-4 text-muted-foreground" />
                   Acquisti Silver
                 </Label>
               </div>
@@ -572,7 +572,7 @@ function PartnerWebhookCard() {
             <div className="space-y-2">
               <Label>Secret Key (per firma HMAC-SHA256)</Label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 bg-slate-100 dark:bg-slate-800 px-3 py-2 rounded text-sm font-mono truncate">
+                <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono truncate">
                   {secretKey}
                 </code>
                 <Button variant="outline" size="sm" onClick={() => copyToClipboard(secretKey, "Secret Key")}>
@@ -659,7 +659,7 @@ function PartnerWebhookCard() {
               </div>
               <div className="mt-3 space-y-2">
                 <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Headers inviati con la richiesta:</p>
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 text-xs font-mono space-y-1">
+                <div className="bg-muted rounded-lg p-3 text-xs font-mono space-y-1">
                   <div><span className="text-blue-600 dark:text-blue-400">Content-Type:</span> application/json</div>
                   <div><span className="text-blue-600 dark:text-blue-400">X-Partner-Signature:</span> sha256=hmac_firma_del_payload</div>
                   <div><span className="text-blue-600 dark:text-blue-400">X-Partner-Timestamp:</span> {new Date().toISOString()}</div>
@@ -677,7 +677,7 @@ function PartnerWebhookCard() {
             <Label className="font-medium mb-2 block">Ultime Notifiche</Label>
             <div className="space-y-2">
               {logsQuery.data.logs.map((log: any) => (
-                <div key={log.id} className="flex items-center justify-between text-sm p-2 bg-slate-50 dark:bg-slate-800/50 rounded">
+                <div key={log.id} className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded">
                   <div className="flex items-center gap-2">
                     {log.success ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -712,7 +712,7 @@ function TeamMemberCard({ name, role, avatar, quote, accentColor, features, deta
   const colors = accentColors[accentColor];
 
   return (
-    <Card className={`relative bg-white dark:bg-gray-900 border ${colors.border} rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
+    <Card className={`relative bg-card border ${colors.border} rounded-2xl sm:hover:shadow-xl sm:hover:-translate-y-1 transition-all duration-200`}>
       <CardContent className="p-6">
         {/* Avatar */}
         <div className="flex justify-center mb-4">
@@ -723,23 +723,23 @@ function TeamMemberCard({ name, role, avatar, quote, accentColor, features, deta
 
         {/* Name & Role */}
         <div className="text-center mb-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{name}</h3>
+          <h3 className="text-xl font-bold text-foreground">{name}</h3>
           <Badge className={`mt-1 ${colors.badge}`}>{role}</Badge>
         </div>
 
         {/* Quote */}
-        <p className="text-sm text-gray-600 dark:text-gray-400 text-center italic mb-5 leading-relaxed">
+        <p className="text-sm text-muted-foreground text-center italic mb-5 leading-relaxed">
           "{quote}"
         </p>
 
         {/* Features */}
         <div className="space-y-2 mb-5">
           {features.map((feature, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
               <div className={`p-1.5 rounded-md ${colors.iconBg}`}>
                 <feature.icon className={`h-4 w-4 ${colors.text}`} />
               </div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{feature.label}</span>
+              <span className="text-sm font-medium text-foreground">{feature.label}</span>
             </div>
           ))}
         </div>
@@ -747,20 +747,20 @@ function TeamMemberCard({ name, role, avatar, quote, accentColor, features, deta
         {/* Expandable Details */}
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
-            <button className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-2 transition-colors">
+            <button className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-muted-foreground/40 py-2 transition-colors">
               <span>{isExpanded ? "Nascondi dettagli" : "Scopri di più"}</span>
               <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-800">
             <div className="space-y-2">
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">A chi mi rivolgo:</span> {details.audience}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">Cosa faccio:</span> {details.whatIDo}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 <span className="font-semibold text-gray-800 dark:text-gray-200">Come lo faccio:</span> {details.howIDoIt}
               </p>
             </div>
@@ -1819,9 +1819,9 @@ export default function ConsultantWhatsAppPage() {
     <WhatsAppLayout 
       showHeader={false}
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Unified Header with KPI */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-6 lg:p-8 text-white shadow-2xl">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
           <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl" />
@@ -1840,33 +1840,37 @@ export default function ConsultantWhatsAppPage() {
                 </div>
               </div>
               
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   <span className="text-xs text-green-300 font-medium">Operativi 24/7</span>
                 </div>
                 <Button 
                   variant="secondary"
-                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
+                  size="sm"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm hidden sm:inline-flex"
                   onClick={() => setShowRoutingGuide(true)}
                 >
-                  <HelpCircle className="h-4 w-4 mr-2" />
-                  Guida Routing
+                  <HelpCircle className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Guida Routing</span>
                 </Button>
                 <Button 
                   variant="secondary"
+                  size="sm"
                   className="bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-sm"
                   onClick={() => window.location.href = '/consultant/whatsapp-agents-chat'}
                 >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Chat Agenti
+                  <MessageCircle className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Chat Agenti</span>
                 </Button>
                 <Button 
+                  size="sm"
                   onClick={handleAddNew}
                   className="bg-white text-slate-900 hover:bg-blue-50 shadow-md font-semibold"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuovo Agente
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Nuovo Agente</span>
+                  <span className="sm:hidden">Nuovo</span>
                 </Button>
               </div>
             </div>
@@ -1930,49 +1934,49 @@ export default function ConsultantWhatsAppPage() {
 
         {/* Category Tabs */}
         <Tabs defaultValue={initialTab} className="space-y-6">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm p-1.5">
-            <TabsList className="grid w-full grid-cols-6 gap-1 bg-transparent h-auto p-0">
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5 overflow-x-auto no-scrollbar">
+            <TabsList className="flex w-full sm:grid sm:grid-cols-6 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
               <TabsTrigger 
                 value="custom" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Bot className="h-4 w-4 mr-2" />
-                Agenti Personalizzati
+                <Bot className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Agenti</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="system" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Users className="h-4 w-4 mr-2" />
-                Agenti di Sistema
+                <Users className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Sistema</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="ideas" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Lightbulb className="h-4 w-4 mr-2" />
-                Idee AI
+                <Lightbulb className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Idee AI</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="calendario" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                Calendario
+                <Calendar className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Calendario</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="employees" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Crown className="h-4 w-4 mr-2" />
-                Dipendenti AI
+                <Crown className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Dipendenti</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="licenses" 
-                className="py-2.5 px-4 rounded-xl text-sm font-medium data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
               >
-                <Key className="h-4 w-4 mr-2" />
-                Licenze
+                <Key className="h-4 w-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Licenze</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1980,16 +1984,16 @@ export default function ConsultantWhatsAppPage() {
           <TabsContent value="custom" className="space-y-6">
             {isLoading ? (
               <div className="flex justify-center items-center p-12">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/60" />
               </div>
             ) : configs.length === 0 ? (
-              <Card className="border-dashed border-2 border-gray-300 dark:border-gray-700">
+              <Card className="border-dashed border-2 border-border">
                 <CardContent className="flex flex-col items-center justify-center p-12">
-                  <Bot className="h-16 w-16 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  <Bot className="h-16 w-16 text-muted-foreground/60 mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     Nessun agente configurato
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-center mb-6">
+                  <p className="text-muted-foreground text-center mb-6">
                     Crea il tuo primo agente WhatsApp AI per iniziare a gestire conversazioni automatizzate.
                   </p>
                   <Button onClick={handleAddNew} className="bg-green-600 hover:bg-green-700">
@@ -2002,20 +2006,20 @@ export default function ConsultantWhatsAppPage() {
               <div className="space-y-6">
                 {/* Channel Summary Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                  <div className="relative group bg-card rounded-2xl border border-border p-4 sm:hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-xl bg-green-50 dark:bg-green-900/30">
                         <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">WhatsApp</span>
+                      <span className="text-sm font-semibold text-foreground">WhatsApp</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-2xl font-bold text-foreground">
                           {configs?.length || 0}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">dipendenti attivi</p>
+                        <p className="text-xs text-muted-foreground">dipendenti attivi</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
                         <div className="w-8 h-8 rounded-full border-2 border-green-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
@@ -2023,20 +2027,20 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                   </div>
 
-                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                  <div className="relative group bg-card rounded-2xl border border-border p-4 sm:hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500" />
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30">
                         <Instagram className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Instagram</span>
+                      <span className="text-sm font-semibold text-foreground">Instagram</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-2xl font-bold text-foreground">
                           {configs.filter((c: WhatsAppConfig) => c.instagramConfigId || c.ownInstagramConfigId).length}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">integrati con DM</p>
+                        <p className="text-xs text-muted-foreground">integrati con DM</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
                         <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
@@ -2044,20 +2048,20 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                   </div>
 
-                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                  <div className="relative group bg-card rounded-2xl border border-border p-4 sm:hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500" />
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30">
                         <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Sito Web</span>
+                      <span className="text-sm font-semibold text-foreground">Sito Web</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-2xl font-bold text-foreground">
                           {configs.filter((c: WhatsAppConfig) => c.publicSlug).length}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">condivisioni attive</p>
+                        <p className="text-xs text-muted-foreground">condivisioni attive</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
                         <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
@@ -2065,20 +2069,20 @@ export default function ConsultantWhatsAppPage() {
                     </div>
                   </div>
 
-                  <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                  <div className="relative group bg-card rounded-2xl border border-border p-4 sm:hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30">
                         <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Parla con il tuo dipendente</span>
+                      <span className="text-sm font-semibold text-foreground">Parla con il tuo dipendente</span>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <p className="text-2xl font-bold text-foreground">
                           {configs.filter((c: WhatsAppConfig) => c.enableInAIAssistant).length || 1}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">assistenti con memoria</p>
+                        <p className="text-xs text-muted-foreground">assistenti con memoria</p>
                       </div>
                       <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
                         <Brain className="h-5 w-5 text-amber-500" />
@@ -2126,10 +2130,10 @@ export default function ConsultantWhatsAppPage() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
                 <Users className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-3xl font-bold text-foreground">
                 Il Mio Team AI
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+              <p className="text-muted-foreground max-w-lg mx-auto">
                 Conosci i tuoi assistenti virtuali che lavorano per te 24/7
               </p>
             </div>
@@ -2157,12 +2161,12 @@ export default function ConsultantWhatsAppPage() {
                     <div className="flex-1 text-center lg:text-left space-y-4">
                       <div>
                         <div className="flex items-center justify-center lg:justify-start gap-3 mb-2">
-                          <h3 className="text-3xl font-bold text-gray-900 dark:text-white">Marco</h3>
+                          <h3 className="text-3xl font-bold text-foreground">Marco</h3>
                           <Badge className="bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 dark:from-amber-900/50 dark:to-yellow-900/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
                             CEO & Consulente Personale
                           </Badge>
                         </div>
-                        <p className="text-lg text-gray-600 dark:text-gray-300 italic">
+                        <p className="text-lg text-gray-600 dark:text-muted-foreground/40 italic">
                           "Sono il tuo consulente personale. Scrivi su WhatsApp a qualsiasi dipendente AI che hai creato e ti rispondo io, proprio come se fossi nella piattaforma."
                         </p>
                       </div>
@@ -2413,7 +2417,7 @@ export default function ConsultantWhatsAppPage() {
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Crea il tuo Dipendente AI
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                <p className="text-muted-foreground max-w-md mx-auto">
                   Descrivi cosa vuoi costruire e lascia che l'AI generi proposte personalizzate
                 </p>
               </div>
@@ -2421,16 +2425,16 @@ export default function ConsultantWhatsAppPage() {
               {/* Main Hero Input */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl" />
-                <div className="relative bg-white dark:bg-gray-900 rounded-2xl border-2 border-purple-200 dark:border-purple-800 shadow-xl p-6 space-y-4">
+                <div className="relative bg-card rounded-2xl border-2 border-purple-200 dark:border-purple-800 shadow-xl p-6 space-y-4">
                   <Textarea
                     placeholder="Cosa vuoi creare? Descrivi il tuo dipendente AI ideale...&#10;&#10;Es: Voglio un assistente che risponda ai clienti su WhatsApp, prenda appuntamenti e risponda alle domande frequenti sul mio studio dentistico..."
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                     rows={5}
-                    className="resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-transparent"
+                    className="resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground/50 dark:placeholder:text-muted-foreground bg-transparent"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">{textInput.length} caratteri</span>
+                    <span className="text-xs text-muted-foreground/60">{textInput.length} caratteri</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2489,17 +2493,17 @@ export default function ConsultantWhatsAppPage() {
               {/* Context Section - Documents & Knowledge Base */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Documents Upload Card */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                       <Upload className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900 dark:text-gray-100">Documenti</h4>
-                      <p className="text-xs text-gray-500">PDF, DOC, TXT, immagini</p>
+                      <p className="text-xs text-muted-foreground">PDF, DOC, TXT, immagini</p>
                     </div>
                   </div>
-                  <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 text-center hover:border-purple-400 transition-colors cursor-pointer bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg p-4 text-center hover:border-purple-400 transition-colors cursor-pointer bg-muted/30">
                     <input
                       type="file"
                       multiple
@@ -2513,7 +2517,7 @@ export default function ConsultantWhatsAppPage() {
                       }}
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         Trascina o <span className="text-purple-600 font-medium">sfoglia</span>
                       </p>
                     </label>
@@ -2538,23 +2542,23 @@ export default function ConsultantWhatsAppPage() {
                 </div>
 
                 {/* Knowledge Base Card */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+                <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                       <Database className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
                       <h4 className="font-medium text-gray-900 dark:text-gray-100">Knowledge Base</h4>
-                      <p className="text-xs text-gray-500">Documenti esistenti</p>
+                      <p className="text-xs text-muted-foreground">Documenti esistenti</p>
                     </div>
                   </div>
                   {knowledgeDocsQuery.isLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Caricamento...
                     </div>
                   ) : knowledgeDocs.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">Nessun documento</p>
+                    <p className="text-sm text-muted-foreground/60 py-4 text-center">Nessun documento</p>
                   ) : (
                     <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
                       {knowledgeDocs.map((doc: any) => (
@@ -2571,7 +2575,7 @@ export default function ConsultantWhatsAppPage() {
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all ${
                             selectedKnowledgeDocIds.includes(doc.id)
                               ? "bg-purple-100 text-purple-700 border border-purple-400 dark:bg-purple-900/30 dark:text-purple-300"
-                              : "bg-gray-50 text-gray-600 border border-gray-200 hover:border-purple-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
+                              : "bg-gray-50 text-muted-foreground border border-gray-200 hover:border-purple-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600"
                           }`}
                         >
                           {selectedKnowledgeDocIds.includes(doc.id) && <Check className="h-3 w-3" />}
@@ -2585,14 +2589,14 @@ export default function ConsultantWhatsAppPage() {
               </div>
 
               {/* URLs Card */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+              <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                     <Link className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">Siti Web</h4>
-                    <p className="text-xs text-gray-500">URL da analizzare (il contenuto viene estratto automaticamente)</p>
+                    <p className="text-xs text-muted-foreground">URL da analizzare (il contenuto viene estratto automaticamente)</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -2606,7 +2610,7 @@ export default function ConsultantWhatsAppPage() {
                           newUrls[index] = e.target.value;
                           setUrlInputs(newUrls);
                         }}
-                        className="text-sm h-10 bg-gray-50 dark:bg-gray-800"
+                        className="text-sm h-10 bg-muted"
                       />
                       {urlInputs.length > 1 && (
                         <Button
@@ -2615,7 +2619,7 @@ export default function ConsultantWhatsAppPage() {
                           onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
                           className="h-10 px-3"
                         >
-                          <Trash2 className="h-4 w-4 text-gray-400" />
+                          <Trash2 className="h-4 w-4 text-muted-foreground/60" />
                         </Button>
                       )}
                     </div>
@@ -2633,56 +2637,56 @@ export default function ConsultantWhatsAppPage() {
               </div>
 
               {/* Business Info Fields */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+              <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                     <Building2 className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">Informazioni Business</h4>
-                    <p className="text-xs text-gray-500">Opzionale - verranno estratte dal contesto se non fornite</p>
+                    <p className="text-xs text-muted-foreground">Opzionale - verranno estratte dal contesto se non fornite</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-500">Nome Business</Label>
+                    <Label className="text-sm text-muted-foreground">Nome Business</Label>
                     <Input
                       placeholder="Es: Studio Rossi & Partners"
                       value={businessNameInput}
                       onChange={(e) => setBusinessNameInput(e.target.value)}
-                      className="bg-gray-50 dark:bg-gray-800"
+                      className="bg-muted"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-500">Nome Consulente</Label>
+                    <Label className="text-sm text-muted-foreground">Nome Consulente</Label>
                     <Input
                       placeholder="Es: Marco Rossi"
                       value={consultantDisplayNameInput}
                       onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
-                      className="bg-gray-50 dark:bg-gray-800"
+                      className="bg-muted"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Agent Type Pills */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+              <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                     <Bot className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">Tipo di Agente</h4>
-                    <p className="text-xs text-gray-500">Seleziona uno o più tipi di agente da generare</p>
+                    <p className="text-xs text-muted-foreground">Seleziona uno o più tipi di agente da generare</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: "reactive_lead", label: "Inbound", icon: Phone, selectedClass: "bg-blue-100 text-blue-700 border-2 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600" },
+                    { id: "reactive_lead", label: "Inbound", icon: Phone, selectedClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-2 border-blue-400 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600" },
                     { id: "proactive_setter", label: "Outbound", icon: Target, selectedClass: "bg-green-100 text-green-700 border-2 border-green-400 dark:bg-green-900/30 dark:text-green-300 dark:border-green-600" },
                     { id: "informative_advisor", label: "Consulenziale", icon: MessageCircle, selectedClass: "bg-purple-100 text-purple-700 border-2 border-purple-400 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-600" },
                     { id: "customer_success", label: "Customer Success", icon: Heart, selectedClass: "bg-pink-100 text-pink-700 border-2 border-pink-400 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-600" },
-                    { id: "intake_coordinator", label: "Intake", icon: ClipboardCheck, selectedClass: "bg-amber-100 text-amber-700 border-2 border-amber-400 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600" },
+                    { id: "intake_coordinator", label: "Intake", icon: ClipboardCheck, selectedClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-2 border-amber-400 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600" },
                   ].map((agent) => {
                     const isSelected = selectedIntegrations.includes(agent.id);
                     const Icon = agent.icon;
@@ -2700,7 +2704,7 @@ export default function ConsultantWhatsAppPage() {
                         className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
                           isSelected
                             ? agent.selectedClass
-                            : "bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                            : "bg-gray-100 text-muted-foreground border-2 border-transparent hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
                         }`}
                       >
                         {isSelected && <Check className="h-3.5 w-3.5" />}
@@ -2714,7 +2718,7 @@ export default function ConsultantWhatsAppPage() {
 
               {/* Number of Ideas + Generate Button */}
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex items-center gap-3 text-sm text-gray-500">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span>Genera</span>
                   <Input
                     type="number"
@@ -2856,7 +2860,7 @@ export default function ConsultantWhatsAppPage() {
                                   <Badge 
                                     className={`text-xs ${
                                       idea.suggestedAgentType === 'reactive_lead' 
-                                        ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' 
+                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' 
                                         : idea.suggestedAgentType === 'proactive_setter'
                                         ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300'
                                         : idea.suggestedAgentType === 'informative_advisor'
@@ -2864,8 +2868,8 @@ export default function ConsultantWhatsAppPage() {
                                         : idea.suggestedAgentType === 'customer_success'
                                         ? 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-300'
                                         : idea.suggestedAgentType === 'intake_coordinator'
-                                        ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300'
-                                        : 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-900/30 dark:text-gray-300'
+                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300'
+                                        : 'bg-gray-100 text-foreground border-gray-300 dark:bg-gray-900/30 dark:text-muted-foreground/40'
                                     }`}
                                   >
                                     {idea.suggestedAgentType === 'reactive_lead' 
@@ -2892,23 +2896,23 @@ export default function ConsultantWhatsAppPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-muted-foreground">
                           {idea.description}
                         </p>
 
                         {idea.whoWeHelp && (
                           <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            <p className="text-xs font-semibold text-foreground">
                               👥 Chi aiutiamo:
                             </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               {idea.whoWeHelp}
                             </p>
                           </div>
                         )}
 
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          <p className="text-xs font-semibold text-foreground">
                             Integrazioni:
                           </p>
                           <div className="flex flex-wrap gap-1">
@@ -2926,12 +2930,12 @@ export default function ConsultantWhatsAppPage() {
 
                         {idea.useCases && idea.useCases.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            <p className="text-xs font-semibold text-foreground">
                               Casi d'uso:
                             </p>
                             <ul className="space-y-1">
                               {idea.useCases.slice(0, 3).map((useCase: string, idx: number) => (
-                                <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1">
+                                <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1">
                                   <ChevronRight className="h-3 w-3 mt-0.5 text-purple-500 flex-shrink-0" />
                                   <span>{useCase}</span>
                                 </li>
@@ -2990,7 +2994,7 @@ export default function ConsultantWhatsAppPage() {
                   {Object.entries(groupedSavedIdeas).map(([groupName, ideas]) => (
                     ideas.length > 0 && (
                       <div key={groupName} className="space-y-3">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           {groupName}
                           <Badge variant="outline" className="text-xs">
@@ -2999,7 +3003,7 @@ export default function ConsultantWhatsAppPage() {
                         </h4>
                         <div className="space-y-2">
                           {ideas.map((idea: any) => (
-                            <div key={idea.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border">
+                            <div key={idea.id} className="flex items-center justify-between bg-card p-3 rounded-lg border">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <Bot className="h-4 w-4 text-purple-600 flex-shrink-0" />
                                 <div className="min-w-0 flex-1">
@@ -3009,16 +3013,16 @@ export default function ConsultantWhatsAppPage() {
                                       <Badge 
                                         className={`text-xs ${
                                           idea.suggestedAgentType === 'reactive_lead' 
-                                            ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300' 
                                             : idea.suggestedAgentType === 'proactive_setter'
                                             ? 'bg-green-100 text-green-700 border-green-300'
                                             : idea.suggestedAgentType === 'informative_advisor'
                                             ? 'bg-purple-100 text-purple-700 border-purple-300'
                                             : idea.suggestedAgentType === 'customer_success'
-                                            ? 'bg-pink-100 text-pink-700 border-pink-300'
+                                            ? 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800'
                                             : idea.suggestedAgentType === 'intake_coordinator'
-                                            ? 'bg-amber-100 text-amber-700 border-amber-300'
-                                            : 'bg-gray-100 text-gray-700 border-gray-300'
+                                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300'
+                                            : 'bg-muted text-foreground border-border'
                                         }`}
                                       >
                                         {idea.suggestedAgentType === 'reactive_lead' 
@@ -3035,9 +3039,9 @@ export default function ConsultantWhatsAppPage() {
                                       </Badge>
                                     )}
                                   </div>
-                                  <p className="text-xs text-gray-500 truncate">{idea.description}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{idea.description}</p>
                                   {idea.createdAt && (
-                                    <p className="text-xs text-gray-400 mt-1">
+                                    <p className="text-xs text-muted-foreground/60 mt-1">
                                       {format(new Date(idea.createdAt), "d MMM yyyy, HH:mm", { locale: it })}
                                     </p>
                                   )}
@@ -3058,7 +3062,7 @@ export default function ConsultantWhatsAppPage() {
                                   onClick={() => deleteIdeaMutation.mutate(idea.id)}
                                 >
                                   {deleteIdeaMutation.isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/60" />
                                   ) : (
                                     <Trash2 className="h-4 w-4 text-red-500" />
                                   )}
@@ -3143,7 +3147,7 @@ export default function ConsultantWhatsAppPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <LevelBadge level="2" size="md" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span className="text-sm font-medium text-foreground">
                               Licenze Bronze
                             </span>
                           </div>
@@ -3151,7 +3155,7 @@ export default function ConsultantWhatsAppPage() {
                             {licenses.level2Used} attive - Illimitate
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           Puoi avere quante licenze Bronze desideri
                         </p>
                       </div>
@@ -3161,28 +3165,28 @@ export default function ConsultantWhatsAppPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <LevelBadge level="3" size="md" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <span className="text-sm font-medium text-foreground">
                               Licenze Silver
                             </span>
                           </div>
-                          <span className="text-sm font-semibold text-slate-600">
+                          <span className="text-sm font-semibold text-muted-foreground">
                             {licenses.level3Used} attive - Illimitate
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           Puoi avere quante licenze Silver desideri
                         </p>
                       </div>
 
                       {/* Summary */}
-                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="pt-4 border-t border-border">
                         <div className="grid grid-cols-2 gap-4 text-center">
                           <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
                             <p className="text-2xl font-bold text-amber-600">{licenses.level2Used}</p>
                             <p className="text-xs text-amber-700 dark:text-amber-400">Bronze attive</p>
                           </div>
-                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                            <p className="text-2xl font-bold text-slate-600">{licenses.level3Used}</p>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <p className="text-2xl font-bold text-muted-foreground">{licenses.level3Used}</p>
                             <p className="text-xs text-slate-700 dark:text-slate-400">Silver attive</p>
                           </div>
                         </div>
@@ -3216,7 +3220,7 @@ export default function ConsultantWhatsAppPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Badge className="bg-violet-100 text-violet-700">Clienti + Team</Badge>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <span className="text-sm font-medium text-foreground">
                           Licenze Totali
                         </span>
                       </div>
@@ -3321,13 +3325,13 @@ export default function ConsultantWhatsAppPage() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-blue-100 text-blue-700 border-blue-300">
+                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
                       Stripe Connect: {
                         [...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
                           .filter((u: any) => u.paymentSource === "stripe_connect" || !u.paymentSource).length
                       }
                     </Badge>
-                    <Badge className="bg-green-100 text-green-700 border-green-300">
+                    <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                       Link Diretto: {
                         [...(silverUsersQuery.data?.users || []), ...(goldUsersQuery.data?.users || [])]
                           .filter((u: any) => u.paymentSource === "direct_link").length
@@ -3371,9 +3375,9 @@ export default function ConsultantWhatsAppPage() {
                       
                       return stripeConnectUsers.length === 0 ? (
                         <div className="text-center py-8">
-                          <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-sm font-medium text-gray-500">Nessuna sottoscrizione via Stripe Connect</p>
-                          <p className="text-xs text-gray-400 mt-1">Le sottoscrizioni dalla pagina prezzi pubblica appariranno qui</p>
+                          <CreditCard className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                          <p className="text-sm font-medium text-muted-foreground">Nessuna sottoscrizione via Stripe Connect</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">Le sottoscrizioni dalla pagina prezzi pubblica appariranno qui</p>
                         </div>
                       ) : (
                         <div className="rounded-lg border">
@@ -3393,16 +3397,16 @@ export default function ConsultantWhatsAppPage() {
                                   <TableCell className="font-medium">{user.clientEmail}</TableCell>
                                   <TableCell>{user.clientName || "—"}</TableCell>
                                   <TableCell>
-                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700" : "bg-slate-100 text-slate-700"}>
+                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-muted text-foreground"}>
                                       {user.tier === "gold" ? "Oro" : "Argento"}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-foreground"}>
                                       {user.status === "active" ? "Attivo" : user.status}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-gray-500">
+                                  <TableCell className="text-muted-foreground">
                                     {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                   </TableCell>
                                 </TableRow>
@@ -3436,9 +3440,9 @@ export default function ConsultantWhatsAppPage() {
                       
                       return directLinkUsers.length === 0 ? (
                         <div className="text-center py-8">
-                          <Link className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-sm font-medium text-gray-500">Nessuna sottoscrizione via Link Diretto</p>
-                          <p className="text-xs text-gray-400 mt-1">Le sottoscrizioni dalle automazioni Stripe appariranno qui (100% commissione tua)</p>
+                          <Link className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                          <p className="text-sm font-medium text-muted-foreground">Nessuna sottoscrizione via Link Diretto</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">Le sottoscrizioni dalle automazioni Stripe appariranno qui (100% commissione tua)</p>
                         </div>
                       ) : (
                         <div className="rounded-lg border">
@@ -3458,16 +3462,16 @@ export default function ConsultantWhatsAppPage() {
                                   <TableCell className="font-medium">{user.clientEmail}</TableCell>
                                   <TableCell>{user.clientName || "—"}</TableCell>
                                   <TableCell>
-                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700" : "bg-slate-100 text-slate-700"}>
+                                    <Badge className={user.tier === "gold" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-muted text-foreground"}>
                                       {user.tier === "gold" ? "Oro" : "Argento"}
                                     </Badge>
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-foreground"}>
                                       {user.status === "active" ? "Attivo" : user.status}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-gray-500">
+                                  <TableCell className="text-muted-foreground">
                                     {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                   </TableCell>
                                 </TableRow>
@@ -3496,15 +3500,15 @@ export default function ConsultantWhatsAppPage() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="bg-amber-100 text-amber-700 border-amber-300">
+                    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
                       <Shield className="h-3 w-3 mr-1" />
                       Bronze ({userStatsQuery.data?.bronze?.total || 0})
                     </Badge>
-                    <Badge className="bg-slate-100 text-slate-700 border-slate-300">
+                    <Badge className="bg-muted text-foreground border-border">
                       <Shield className="h-3 w-3 mr-1" />
                       Argento ({userStatsQuery.data?.silver?.total || 0})
                     </Badge>
-                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
                       <Crown className="h-3 w-3 mr-1" />
                       Oro ({userStatsQuery.data?.gold?.total || 0})
                     </Badge>
@@ -3518,7 +3522,7 @@ export default function ConsultantWhatsAppPage() {
                       <Shield className="h-4 w-4 mr-2" />
                       Bronze (Gratuiti)
                     </TabsTrigger>
-                    <TabsTrigger value="silver" className="data-[state=active]:bg-slate-200 data-[state=active]:text-slate-800">
+                    <TabsTrigger value="silver" className="data-[state=active]:bg-muted data-[state=active]:text-foreground dark:data-[state=active]:bg-muted">
                       <Shield className="h-4 w-4 mr-2" />
                       Argento (Abbonati)
                     </TabsTrigger>
@@ -3560,8 +3564,8 @@ export default function ConsultantWhatsAppPage() {
                       </div>
                     ) : !bronzeUsersQuery.data?.users?.length ? (
                       <div className="text-center py-8">
-                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-sm font-medium text-gray-500">Nessun utente Bronze trovato</p>
+                        <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-muted-foreground">Nessun utente Bronze trovato</p>
                       </div>
                     ) : (
                       <>
@@ -3583,11 +3587,11 @@ export default function ConsultantWhatsAppPage() {
                                   <TableCell className="font-medium">{user.email}</TableCell>
                                   <TableCell>{user.firstName} {user.lastName}</TableCell>
                                   <TableCell>
-                                    <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                    <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-foreground"}>
                                       {user.isActive ? "Attivo" : "Inattivo"}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-gray-500">
+                                  <TableCell className="text-muted-foreground">
                                     {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy HH:mm", { locale: it }) : "Mai"}
                                   </TableCell>
                                   <TableCell className="text-right">
@@ -3626,13 +3630,13 @@ export default function ConsultantWhatsAppPage() {
                             <div key={user.id} className="p-4 border rounded-lg space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">{user.email}</span>
-                                <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                                <Badge variant={user.isActive ? "default" : "outline"} className={user.isActive ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-foreground"}>
                                   {user.isActive ? "Attivo" : "Inattivo"}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-600">{user.firstName} {user.lastName}</p>
+                              <p className="text-sm text-muted-foreground">{user.firstName} {user.lastName}</p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                   {user.lastLoginAt ? format(new Date(user.lastLoginAt), "d MMM yyyy", { locale: it }) : "Mai"}
                                 </span>
                                 <div className="flex items-center gap-1">
@@ -3673,7 +3677,7 @@ export default function ConsultantWhatsAppPage() {
                             >
                               Precedente
                             </Button>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               Pagina {bronzeCurrentPage} di {bronzeUsersQuery.data.totalPages}
                             </span>
                             <Button
@@ -3706,12 +3710,12 @@ export default function ConsultantWhatsAppPage() {
                     
                     {silverUsersQuery.isLoading ? (
                       <div className="flex items-center justify-center p-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
                     ) : !silverUsersQuery.data?.users?.length ? (
                       <div className="text-center py-8">
-                        <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-sm font-medium text-gray-500">Nessun utente Argento trovato</p>
+                        <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-muted-foreground">Nessun utente Argento trovato</p>
                       </div>
                     ) : (
                       <>
@@ -3733,11 +3737,11 @@ export default function ConsultantWhatsAppPage() {
                                   <TableCell className="font-medium">{user.clientEmail}</TableCell>
                                   <TableCell>{user.clientName || "—"}</TableCell>
                                   <TableCell>
-                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : user.status === "canceled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : user.status === "canceled" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-muted text-foreground"}>
                                       {user.status === "active" ? "Attivo" : user.status === "canceled" ? "Annullato" : user.status}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-gray-500">
+                                  <TableCell className="text-muted-foreground">
                                     {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                   </TableCell>
                                   <TableCell className="text-right">
@@ -3766,13 +3770,13 @@ export default function ConsultantWhatsAppPage() {
                             <div key={user.id} className="p-4 border rounded-lg space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">{user.clientEmail}</span>
-                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}>
                                   {user.status === "active" ? "Attivo" : "Annullato"}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-600">{user.clientName || "—"}</p>
+                              <p className="text-sm text-muted-foreground">{user.clientName || "—"}</p>
                               <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                   {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                 </span>
                                 <Button 
@@ -3803,7 +3807,7 @@ export default function ConsultantWhatsAppPage() {
                             >
                               Precedente
                             </Button>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               Pagina {silverCurrentPage} di {silverUsersQuery.data.totalPages}
                             </span>
                             <Button
@@ -3840,8 +3844,8 @@ export default function ConsultantWhatsAppPage() {
                       </div>
                     ) : !goldUsersQuery.data?.users?.length ? (
                       <div className="text-center py-8">
-                        <Crown className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-sm font-medium text-gray-500">Nessun utente Oro trovato</p>
+                        <Crown className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-muted-foreground">Nessun utente Oro trovato</p>
                       </div>
                     ) : (
                       <>
@@ -3863,11 +3867,11 @@ export default function ConsultantWhatsAppPage() {
                                   <TableCell className="font-medium">{user.clientEmail}</TableCell>
                                   <TableCell>{user.clientName || "—"}</TableCell>
                                   <TableCell>
-                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : user.status === "canceled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
+                                    <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : user.status === "canceled" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-muted text-foreground"}>
                                       {user.status === "active" ? "Attivo" : user.status === "canceled" ? "Annullato" : user.status}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-gray-500">
+                                  <TableCell className="text-muted-foreground">
                                     {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                                   </TableCell>
                                   <TableCell className="text-right">
@@ -3887,12 +3891,12 @@ export default function ConsultantWhatsAppPage() {
                             <div key={user.id} className="p-4 border rounded-lg space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">{user.clientEmail}</span>
-                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                                <Badge variant={user.status === "active" ? "default" : "outline"} className={user.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}>
                                   {user.status === "active" ? "Attivo" : "Annullato"}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-600">{user.clientName || "—"}</p>
-                              <span className="text-xs text-gray-500">
+                              <p className="text-sm text-muted-foreground">{user.clientName || "—"}</p>
+                              <span className="text-xs text-muted-foreground">
                                 {user.startDate ? format(new Date(user.startDate), "d MMM yyyy", { locale: it }) : "—"}
                               </span>
                             </div>
@@ -3910,7 +3914,7 @@ export default function ConsultantWhatsAppPage() {
                             >
                               Precedente
                             </Button>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               Pagina {goldCurrentPage} di {goldUsersQuery.data.totalPages}
                             </span>
                             <Button
@@ -4028,11 +4032,11 @@ export default function ConsultantWhatsAppPage() {
                   </div>
                 ) : subscriptions.length === 0 ? (
                   <div className="text-center py-12">
-                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
                       Nessuna sottoscrizione attiva
                     </p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
                       Quando i tuoi clienti acquisteranno una licenza Level 2 o Level 3, 
                       appariranno qui con tutti i dettagli della loro sottoscrizione.
                     </p>
@@ -4059,10 +4063,10 @@ export default function ConsultantWhatsAppPage() {
                             <TableCell className="font-medium">
                               {sub.clientName || "—"}
                             </TableCell>
-                            <TableCell className="text-gray-500">
+                            <TableCell className="text-muted-foreground">
                               {sub.clientEmail}
                             </TableCell>
-                            <TableCell className="text-gray-500">
+                            <TableCell className="text-muted-foreground">
                               {sub.phone || "—"}
                             </TableCell>
                             <TableCell>
@@ -4078,12 +4082,12 @@ export default function ConsultantWhatsAppPage() {
                                 variant={sub.status === "active" ? "default" : "outline"}
                                 className={
                                   sub.status === "active" 
-                                    ? "bg-green-100 text-green-700 border-green-300" 
+                                    ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" 
                                     : sub.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                    ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
                                     : sub.status === "canceled"
-                                    ? "bg-red-100 text-red-700 border-red-300"
-                                    : "bg-gray-100 text-gray-700 border-gray-300"
+                                    ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                                    : "bg-muted text-foreground border-border"
                                 }
                               >
                                 {sub.status === "active" ? "Attivo" 
@@ -4095,7 +4099,7 @@ export default function ConsultantWhatsAppPage() {
                                 {sub.stripe?.cancelAtPeriodEnd && " (in scadenza)"}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-gray-500">
+                            <TableCell className="text-muted-foreground">
                               {sub.stripe?.currentPeriodEnd 
                                 ? format(new Date(sub.stripe.currentPeriodEnd), "d MMM yyyy", { locale: it })
                                 : "—"}
@@ -4192,11 +4196,11 @@ export default function ConsultantWhatsAppPage() {
                   </div>
                 ) : !purchasesQuery.data?.length ? (
                   <div className="text-center py-8">
-                    <Receipt className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    <Receipt className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
                       Nessun acquisto effettuato
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Gli acquisti di licenze dipendenti appariranno qui
                     </p>
                   </div>
@@ -4227,10 +4231,10 @@ export default function ConsultantWhatsAppPage() {
                               <Badge 
                                 className={
                                   purchase.status === "completed" 
-                                    ? "bg-green-100 text-green-700" 
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                                     : purchase.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
+                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                 }
                               >
                                 {purchase.status === "completed" ? "Completato" 
@@ -4260,11 +4264,11 @@ export default function ConsultantWhatsAppPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8">
-                  <FileText className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  <FileText className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
+                  <p className="text-sm font-medium text-muted-foreground mb-2">
                     Nessuna fattura disponibile
                   </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                  <p className="text-xs text-muted-foreground mb-4">
                     Quando avrai transazioni attive, qui troverai il riepilogo mensile con le tue entrate, 
                     la quota piattaforma e i costi AI.
                   </p>
@@ -4293,7 +4297,7 @@ export default function ConsultantWhatsAppPage() {
                       <Input 
                         readOnly 
                         value={`${window.location.origin}/c/${consultantData.pricingPageSlug}/pricing`}
-                        className="flex-1 bg-white dark:bg-gray-800"
+                        className="flex-1 bg-card"
                       />
                       <Button 
                         variant="outline"
@@ -4330,11 +4334,11 @@ export default function ConsultantWhatsAppPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Link className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    <Link className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
                       Pagina prezzi non configurata
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+                    <p className="text-xs text-muted-foreground mb-4">
                       Configura la tua pagina prezzi pubblica per permettere ai clienti di acquistare sottoscrizioni.
                     </p>
                     <Button 
@@ -4499,7 +4503,7 @@ export default function ConsultantWhatsAppPage() {
                         }}
                       />
                       <Label htmlFor="tier-silver" className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-slate-600" />
+                        <Shield className="h-4 w-4 text-muted-foreground" />
                         Silver
                       </Label>
                     </div>
@@ -4614,19 +4618,19 @@ export default function ConsultantWhatsAppPage() {
               {/* Client Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Nome</p>
+                  <p className="text-sm text-muted-foreground">Nome</p>
                   <p className="font-medium">{selectedSubscription.clientName || "—"}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-muted-foreground">Email</p>
                   <p className="font-medium">{selectedSubscription.clientEmail}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Telefono</p>
+                  <p className="text-sm text-muted-foreground">Telefono</p>
                   <p className="font-medium">{selectedSubscription.phone || "—"}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Livello</p>
+                  <p className="text-sm text-muted-foreground">Livello</p>
                   <LevelBadge level={selectedSubscription.level} size="sm" />
                 </div>
               </div>
@@ -4639,7 +4643,7 @@ export default function ConsultantWhatsAppPage() {
                 </h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Importo</p>
+                    <p className="text-sm text-muted-foreground">Importo</p>
                     <p className="font-medium text-lg">
                       {selectedSubscription.stripe?.amount 
                         ? `€${(selectedSubscription.stripe.amount / 100).toFixed(2)}/${selectedSubscription.stripe.interval === 'year' ? 'anno' : 'mese'}` 
@@ -4647,14 +4651,14 @@ export default function ConsultantWhatsAppPage() {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Stato</p>
+                    <p className="text-sm text-muted-foreground">Stato</p>
                     <Badge 
                       className={
                         selectedSubscription.status === "active" 
-                          ? "bg-green-100 text-green-700" 
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
                           : selectedSubscription.status === "canceled"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-100 text-gray-700"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          : "bg-muted text-foreground"
                       }
                     >
                       {selectedSubscription.status === "active" ? "Attivo" 
@@ -4664,7 +4668,7 @@ export default function ConsultantWhatsAppPage() {
                     </Badge>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Data Inizio</p>
+                    <p className="text-sm text-muted-foreground">Data Inizio</p>
                     <p className="font-medium">
                       {selectedSubscription.startDate 
                         ? format(new Date(selectedSubscription.startDate), "d MMMM yyyy", { locale: it })
@@ -4672,7 +4676,7 @@ export default function ConsultantWhatsAppPage() {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Prossimo Rinnovo</p>
+                    <p className="text-sm text-muted-foreground">Prossimo Rinnovo</p>
                     <p className="font-medium">
                       {selectedSubscription.stripe?.currentPeriodEnd 
                         ? format(new Date(selectedSubscription.stripe.currentPeriodEnd), "d MMMM yyyy", { locale: it })
@@ -4680,7 +4684,7 @@ export default function ConsultantWhatsAppPage() {
                     </p>
                   </div>
                   <div className="space-y-1 col-span-2">
-                    <p className="text-sm text-gray-500">Totale Pagato</p>
+                    <p className="text-sm text-muted-foreground">Totale Pagato</p>
                     <p className="font-medium text-xl text-green-600">
                       €{((selectedSubscription.totalPaid || 0) / 100).toFixed(2)}
                     </p>
@@ -4697,17 +4701,17 @@ export default function ConsultantWhatsAppPage() {
                   </h4>
                   <div className="space-y-2">
                     {selectedSubscription.invoices.map((invoice: any) => (
-                      <div key={invoice.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div key={invoice.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex items-center gap-3">
                           <div>
                             <p className="font-medium">€{(invoice.amountPaid / 100).toFixed(2)}</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-muted-foreground">
                               {format(new Date(invoice.created), "d MMM yyyy", { locale: it })}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className={invoice.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                          <Badge className={invoice.status === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-foreground"}>
                             {invoice.status === "paid" ? "Pagata" : invoice.status}
                           </Badge>
                           {invoice.hostedInvoiceUrl && (
@@ -4827,154 +4831,154 @@ export default function ConsultantWhatsAppPage() {
           </DialogHeader>
           
           <div className="space-y-6 mt-4">
-            <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
-              <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <div className="bg-muted/50 rounded-xl p-5 border border-border">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-green-600" />
                 Diagramma di Flusso
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                <div className="flex items-start gap-3 p-3 bg-card rounded-lg border border-border">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-blue-600 font-bold text-xs">1</span>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-800">Messaggio WhatsApp in arrivo</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Il sistema identifica il numero di telefono del mittente</p>
+                    <p className="font-medium text-foreground">Messaggio WhatsApp in arrivo</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">Il sistema identifica il numero di telefono del mittente</p>
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
                   <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-amber-600 font-bold text-xs">2</span>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-800">Sei tu il consulente?</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Se sei tu → accesso pieno a tutti i dati CRM come nell'app</p>
+                    <p className="font-medium text-foreground">Sei tu il consulente?</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">Se sei tu → accesso pieno a tutti i dati CRM come nell'app</p>
                   </div>
                 </div>
                 
-                <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-start gap-3 p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
                   <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-purple-600 font-bold text-xs">3</span>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-800">L'agente ha livelli configurati?</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Se ha livelli (Bronze/Silver/Gold) → cerca il telefono negli utenti dell'agente per determinare il livello</p>
+                    <p className="font-medium text-foreground">L'agente ha livelli configurati?</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">Se ha livelli (Bronze/Silver/Gold) → cerca il telefono negli utenti dell'agente per determinare il livello</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <span className="text-green-600 font-bold text-xs">4</span>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-800">Agente standard (senza livelli)</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Flusso classico: clienti registrati → accesso CRM completo. Lead → prompt generico.</p>
+                    <p className="font-medium text-foreground">Agente standard (senza livelli)</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">Flusso classico: clienti registrati → accesso CRM completo. Lead → prompt generico.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <h3 className="font-semibold text-slate-800 p-4 pb-2 flex items-center gap-2">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <h3 className="font-semibold text-foreground p-4 pb-2 flex items-center gap-2">
                 <Users className="h-4 w-4 text-indigo-600" />
                 Tabella Riconoscimento per Agenti con Livelli
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 border-y border-slate-200">
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Chi scrive</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Riconoscimento</th>
-                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">Livello</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-700">Prompt AI</th>
-                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">CRM</th>
-                      <th className="text-center px-4 py-2.5 font-semibold text-slate-700">Limite msg</th>
+                    <tr className="bg-muted/50 border-y border-border">
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Chi scrive</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Riconoscimento</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-foreground">Livello</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Prompt AI</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-foreground">CRM</th>
+                      <th className="text-center px-4 py-2.5 font-semibold text-foreground">Limite msg</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50">
+                  <tbody className="divide-y divide-border/50">
+                    <tr className="hover:bg-muted/50">
                       <td className="px-4 py-2.5 font-medium">Sconosciuto</td>
-                      <td className="px-4 py-2.5 text-slate-500">Nessun match</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">Default (1)</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">Base + Overlay L1</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Nessun match</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">Default (1)</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Base + Overlay L1</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
                     </tr>
-                    <tr className="hover:bg-amber-50/50">
+                    <tr className="hover:bg-amber-50/50 dark:hover:bg-amber-950/10">
                       <td className="px-4 py-2.5 font-medium">Utente Bronze</td>
                       <td className="px-4 py-2.5 text-amber-600">bronze_users</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">1 (Bronze)</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">Base + Overlay L1</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-medium">1 (Bronze)</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Base + Overlay L1</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
                       <td className="px-4 py-2.5 text-center text-green-600 font-medium">Si</td>
                     </tr>
-                    <tr className="hover:bg-slate-50">
+                    <tr className="hover:bg-muted/50">
                       <td className="px-4 py-2.5 font-medium">Utente Silver</td>
-                      <td className="px-4 py-2.5 text-slate-500">client_level_subscriptions</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-medium">2 (Silver)</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">Base + L1 + L2</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">client_level_subscriptions</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">2 (Silver)</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Base + L1 + L2</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
-                      <td className="px-4 py-2.5 text-center text-slate-400">No</td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground/60">No</td>
                     </tr>
-                    <tr className="hover:bg-yellow-50/50">
+                    <tr className="hover:bg-yellow-50/50 dark:hover:bg-yellow-950/10">
                       <td className="px-4 py-2.5 font-medium">Utente Gold</td>
                       <td className="px-4 py-2.5 text-yellow-600">client_level_subscriptions</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">3 (Gold)</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">Base + L1 + L2 + L3</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-medium">3 (Gold)</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Base + L1 + L2 + L3</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
-                      <td className="px-4 py-2.5 text-center text-slate-400">No</td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground/60">No</td>
                     </tr>
-                    <tr className="hover:bg-blue-50/50">
+                    <tr className="hover:bg-blue-50/50 dark:hover:bg-blue-950/10">
                       <td className="px-4 py-2.5 font-medium">Cliente registrato</td>
                       <td className="px-4 py-2.5 text-blue-600">Cerca in utenti agente</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">Trovato o 1</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">Per livello trovato</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-medium">Trovato o 1</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">Per livello trovato</td>
                       <td className="px-4 py-2.5 text-center text-red-500">No</td>
-                      <td className="px-4 py-2.5 text-center text-slate-400">Per piano</td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground/60">Per piano</td>
                     </tr>
-                    <tr className="hover:bg-indigo-50/50">
+                    <tr className="hover:bg-indigo-50/50 dark:hover:bg-indigo-950/10">
                       <td className="px-4 py-2.5 font-medium">Consulente</td>
                       <td className="px-4 py-2.5 text-indigo-600">Prioritario</td>
-                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">N/A</span></td>
-                      <td className="px-4 py-2.5 text-slate-500">CRM completo</td>
+                      <td className="px-4 py-2.5 text-center"><span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs font-medium">N/A</span></td>
+                      <td className="px-4 py-2.5 text-muted-foreground">CRM completo</td>
                       <td className="px-4 py-2.5 text-center text-green-600 font-medium">Si</td>
-                      <td className="px-4 py-2.5 text-center text-slate-400">N/A</td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground/60">N/A</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-200">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 rounded-xl p-5 border border-amber-200 dark:border-amber-800">
+              <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <Crown className="h-4 w-4 text-amber-500" />
                 Come funzionano gli Overlay
               </h3>
-              <div className="space-y-2 text-sm text-slate-600">
+              <div className="space-y-2 text-sm text-muted-foreground">
                 <p><span className="font-medium text-amber-700">Livello 1 (Bronze):</span> Istruzioni base + Overlay L1</p>
-                <p><span className="font-medium text-slate-600">Livello 2 (Silver):</span> Istruzioni base + Overlay L1 + Overlay L2 (additivo)</p>
+                <p><span className="font-medium text-muted-foreground">Livello 2 (Silver):</span> Istruzioni base + Overlay L1 + Overlay L2 (additivo)</p>
                 <p><span className="font-medium text-yellow-700">Livello 3 (Gold):</span> Istruzioni base + Overlay L1 + Overlay L2 + Overlay L3 (additivo)</p>
-                <p className="mt-3 text-xs text-slate-500 italic">Ogni livello superiore include tutti gli overlay dei livelli precedenti. Vince sempre il livello piu alto trovato.</p>
+                <p className="mt-3 text-xs text-muted-foreground italic">Ogni livello superiore include tutti gli overlay dei livelli precedenti. Vince sempre il livello piu alto trovato.</p>
               </div>
             </div>
 
             <div className="bg-green-50 rounded-xl p-5 border border-green-200">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+              <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-green-600" />
                 Eccezione: Assistenza Clienti (Default)
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 L'agente "Assistenza Clienti" (senza livelli) riconosce sempre i clienti registrati sulla piattaforma con accesso completo ai loro dati CRM (esercizi, appuntamenti, profilo). I lead vengono trattati con il prompt generico.
               </p>
             </div>
 
             <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+              <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                 <Bot className="h-4 w-4 text-blue-600" />
                 Debug: Log in Console
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Per ogni messaggio WhatsApp ricevuto da un agente con livelli, viene stampata una mappa decisionale completa nei log della console del server. Cerca "LEVEL AGENT - MAPPA DECISIONALE" nei log per vedere tutti i dettagli: telefono, livello assegnato, overlay applicati e stato messaggi.
               </p>
             </div>
