@@ -136,7 +136,7 @@ export function WelcomeScreen({
   };
 
   return (
-    <div className="flex flex-col items-center flex-1 px-4 py-8 overflow-y-auto bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+    <div className="flex flex-col items-center flex-1 px-4 py-8 overflow-y-auto bg-background">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -180,7 +180,7 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2 text-center"
+          className="text-2xl md:text-3xl font-bold text-foreground mb-2 text-center"
         >
           {getGreeting()}{userName ? `, ${userName}` : ""}!
         </motion.h1>
@@ -189,7 +189,7 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-base md:text-lg text-slate-500/60 dark:text-slate-400/60 mb-3 text-center"
+          className="text-base md:text-lg text-muted-foreground/70 mb-3 text-center"
         >
           {agentName ? (
             <>Sono <span className="font-medium text-primary">{agentName}</span>, il tuo copilota AI per il business</>
@@ -205,7 +205,7 @@ export function WelcomeScreen({
           className="flex items-center gap-2 mb-8"
         >
           <Activity className="w-3 h-3 text-emerald-500" />
-          <span className="text-xs text-slate-400 dark:text-slate-500">Assistente attivo · Tutti i sistemi sincronizzati</span>
+          <span className="text-xs text-muted-foreground/70">Assistente attivo · Tutti i sistemi sincronizzati</span>
         </motion.div>
 
         {agentInfo && (
@@ -242,14 +242,13 @@ export function WelcomeScreen({
                   transition={{ delay: 0.5 + i * 0.1, duration: 0.3 }}
                   className={cn(
                     "flex flex-col items-center gap-3 p-5 rounded-xl",
-                    "bg-white dark:bg-slate-800/50",
-                    "border border-slate-200 dark:border-slate-700/50"
+                    "bg-card border border-border/60"
                   )}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 animate-pulse" />
+                  <div className="w-12 h-12 rounded-xl bg-muted animate-pulse" />
                   <div className="space-y-2 w-full">
-                    <div className="h-4 w-24 mx-auto bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                    <div className="h-3 w-32 mx-auto bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="h-4 w-24 mx-auto bg-muted rounded animate-pulse" />
+                    <div className="h-3 w-32 mx-auto bg-muted/60 rounded animate-pulse" />
                   </div>
                 </motion.div>
               ))}
@@ -257,7 +256,7 @@ export function WelcomeScreen({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.9 }}
-                className="col-span-full flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500 mt-2"
+                className="col-span-full flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2"
               >
                 <Loader2 className="w-3 h-3 animate-spin" />
                 <span>Generazione suggerimenti personalizzati...</span>
@@ -275,9 +274,8 @@ export function WelcomeScreen({
                 whileHover={{ y: -3 }}
                 className={cn(
                   "group relative flex flex-col items-start gap-3 p-5 rounded-xl",
-                  "bg-white dark:bg-slate-800/50",
-                  "border border-slate-200 dark:border-slate-700/50",
-                  "hover:border-primary/40 dark:hover:border-primary/40",
+                  "bg-card border border-border/60",
+                  "hover:border-primary/40",
                   "hover:shadow-lg hover:shadow-primary/5",
                   "transition-all duration-200",
                   "text-left",
@@ -294,14 +292,14 @@ export function WelcomeScreen({
                   <suggestion.icon className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0 w-full">
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                  <span className="text-sm font-bold text-foreground block mb-1">
                     {suggestion.label}
                   </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 line-clamp-2 leading-relaxed">
+                  <span className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                     {suggestion.prompt}
                   </span>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-300 dark:text-slate-600 absolute top-5 right-4 group-hover:text-primary transition-colors duration-200" />
+                <ArrowRight className="w-4 h-4 text-muted-foreground/40 absolute top-5 right-4 group-hover:text-primary transition-colors duration-200" />
               </motion.button>
             ))
           )}
@@ -314,7 +312,7 @@ export function WelcomeScreen({
           className="mt-8 flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20"
         >
           <Lightbulb className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-muted-foreground">
             Suggerimento: Chiedi un'analisi dei clienti inattivi per riattivare il tuo business
           </span>
         </motion.div>
@@ -323,7 +321,7 @@ export function WelcomeScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9, duration: 0.5 }}
-          className="mt-4 text-xs text-slate-400/60 dark:text-slate-500/60 text-center"
+          className="mt-4 text-xs text-muted-foreground/50 text-center"
         >
           Scrivi un messaggio o scegli uno dei suggerimenti sopra
         </motion.p>

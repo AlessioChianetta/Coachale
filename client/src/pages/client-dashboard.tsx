@@ -346,7 +346,7 @@ export default function ClientDashboard() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-4 w-full max-w-md">
-                        <div className="flex items-center gap-3 text-orange-700 dark:text-orange-300 bg-white/70 dark:bg-gray-800/30 px-6 py-4 rounded-xl shadow-md">
+                        <div className="flex items-center gap-3 text-orange-700 dark:text-orange-300 bg-card/80 px-6 py-4 rounded-xl shadow-md">
                           <Mail className="w-5 h-5 flex-shrink-0" />
                           <span className="font-medium">Contatta il tuo consulente per l'attivazione</span>
                         </div>

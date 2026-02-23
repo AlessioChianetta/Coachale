@@ -595,7 +595,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={() => setIsCollapsed(!isCollapsed)}
               data-tour={role === "client" ? "client-collapse-button" : undefined}
               title="Riduci sidebar"
@@ -605,14 +605,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           )}
         </div>
         {categories && (
-          <div className="flex gap-0.5 p-0.5 bg-slate-200/60 dark:bg-slate-700/40 rounded-xl">
+          <div className="flex gap-0.5 p-0.5 bg-muted/60 rounded-xl">
             <button
               onClick={() => setSidebarTab('platform')}
               className={cn(
                 "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'platform'
-                  ? "bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Piattaforma
@@ -622,8 +622,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               className={cn(
                 "flex-1 py-1.5 px-3 text-xs font-semibold rounded-lg transition-all duration-200",
                 sidebarTab === 'tools'
-                  ? "bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Strumenti
@@ -1134,7 +1134,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title="Profilo"
                 >
                   <UserCircle size={15} />
@@ -1146,7 +1146,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                   title="Impostazioni"
                   data-tour="client-user-settings"
                 >
@@ -1157,7 +1157,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-700"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             >
@@ -1166,7 +1166,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700"
+              className="h-7 w-7 text-muted-foreground hover:text-red-500 dark:hover:text-red-400 hover:bg-muted"
               onClick={handleLogout}
               title="Logout"
             >
@@ -1177,7 +1177,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Role switcher se disponibile */}
         {showRoleSwitch && onRoleSwitch && (
-          <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex mt-2 mx-1">
+          <div className="bg-muted/60 p-1 rounded-lg flex mt-2 mx-1">
             <Button
               variant={currentRole === "consultant" ? "default" : "ghost"}
               size="sm"
@@ -1186,7 +1186,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 "flex-1 text-xs font-semibold",
                 currentRole === "consultant" 
                   ? "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600" 
-                  : "hover:bg-slate-200 dark:hover:bg-slate-600"
+                  : "hover:bg-muted"
               )}
             >
               Consulente
@@ -1199,7 +1199,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 "flex-1 text-xs font-semibold",
                 currentRole === "client" 
                   ? "bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600" 
-                  : "hover:bg-slate-200 dark:hover:bg-slate-600"
+                  : "hover:bg-muted"
               )}
             >
               Cliente
@@ -1266,7 +1266,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
     <>
       {!isCollapsed && (
       <div 
-        className="hidden md:flex flex-col bg-slate-100/80 dark:bg-[hsl(222,20%,8%)] border-r border-slate-200/80 dark:border-border shadow-[1px_0_0_0_rgba(0,0,0,0.04)] p-4 transition-all duration-150 h-screen sticky top-0 w-72"
+        className="hidden md:flex flex-col bg-background border-r border-border p-4 transition-all duration-150 h-screen sticky top-0 w-72"
         data-testid="sidebar"
         data-tour="client-sidebar"
       >

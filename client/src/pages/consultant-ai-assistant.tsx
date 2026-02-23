@@ -552,7 +552,7 @@ export default function ConsultantAIAssistant() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="flex h-screen">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} isCollapsed={mainSidebarCollapsed} onCollapsedChange={setMainSidebarCollapsed} />
 
@@ -560,14 +560,15 @@ export default function ConsultantAIAssistant() {
           {(!isMobile || chatSidebarOpen) && (
             <div className={cn(
               "h-full",
-              isMobile && "absolute inset-0 z-50 w-full bg-slate-50 dark:bg-slate-900"
+              isMobile && "absolute inset-0 z-50 w-full bg-background"
             )}>
               {isMobile && (
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                  <h2 className="text-lg font-semibold">Conversazioni</h2>
+                <div className="flex items-center justify-between px-4 py-3 h-14 border-b border-border bg-background/98 backdrop-blur-sm shrink-0">
+                  <h2 className="text-base font-semibold">Conversazioni</h2>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="h-10 w-10 rounded-xl"
                     onClick={() => setChatSidebarOpen(false)}
                   >
                     <X className="h-5 w-5" />
@@ -596,19 +597,41 @@ export default function ConsultantAIAssistant() {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
-            {/* Agent Selection Header */}
-            <div className="border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm px-4 py-3 flex-shrink-0">
-              <div className="flex items-center justify-between max-w-4xl mx-auto">
-                <div className="flex items-center gap-3">
-                  <Bot className="h-5 w-5 text-[#6C5CE7] dark:text-[#8B7CF7]" />
-                  <Select
-                    value={selectedAgentId || "base"}
-                    onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
-                  >
-                    <SelectTrigger className="w-[280px] h-9 bg-white dark:bg-slate-800 border-slate-200/70 dark:border-slate-700">
-                      <SelectValue placeholder="Seleziona agente" />
-                    </SelectTrigger>
+          <div className="flex-1 flex flex-col bg-background overflow-hidden">
+            {/* Agent Selection Header — hamburger integrato su mobile */}
+            <div className="border-b border-border bg-background/80 backdrop-blur-sm px-3 py-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                {isMobile && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-xl flex-shrink-0"
+                      onClick={() => setLocation("/consultant")}
+                      title="Torna alla dashboard"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-xl flex-shrink-0"
+                      onClick={() => setChatSidebarOpen(true)}
+                      title="Lista conversazioni"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </>
+                )}
+                {!isMobile && <Bot className="h-5 w-5 text-primary flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                <Select
+                  value={selectedAgentId || "base"}
+                  onValueChange={(value) => setSelectedAgentId(value === "base" ? null : value)}
+                >
+                  <SelectTrigger className="w-full h-9 bg-card border-border">
+                    <SelectValue placeholder="Seleziona agente" />
+                  </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="base">
                         <div className="flex items-center gap-2">
@@ -630,13 +653,13 @@ export default function ConsultantAIAssistant() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => syncContextMutation.mutate()}
                     disabled={syncContextMutation.isPending}
-                    className="h-8 w-8 text-slate-500 hover:text-[#6C5CE7] dark:text-slate-400 dark:hover:text-[#8B7CF7]"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
                     title="Sincronizza contesto AI"
                   >
                     <RefreshCw className={cn("h-4 w-4", syncContextMutation.isPending && "animate-spin")} />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ interface AgentForAssistant {
 
 export default function ClientAIAssistant() {
   const isMobile = useIsMobile();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
@@ -530,7 +532,7 @@ export default function ClientAIAssistant() {
   }, [selectedAgentId]);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-slate-900 via-slate-900 to-slate-900' : 'from-slate-50 via-cyan-50/30 to-teal-50/20'}`}>
+    <div className="min-h-screen bg-background">
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} isCollapsed={mainSidebarCollapsed} onCollapsedChange={setMainSidebarCollapsed} />
 
@@ -538,14 +540,15 @@ export default function ClientAIAssistant() {
           {(!isMobile || chatSidebarOpen) && (
             <div className={cn(
               "h-full",
-              isMobile && "absolute inset-0 z-50 w-full bg-slate-50 dark:bg-slate-900"
+              isMobile && "absolute inset-0 z-50 w-full bg-background"
             )}>
               {isMobile && (
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                  <h2 className="text-lg font-semibold">Conversazioni</h2>
+                <div className="flex items-center justify-between px-4 py-3 h-14 border-b border-border bg-background/98 backdrop-blur-sm shrink-0">
+                  <h2 className="text-base font-semibold">Conversazioni</h2>
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="h-10 w-10 rounded-xl"
                     onClick={() => setChatSidebarOpen(false)}
                   >
                     <X className="h-5 w-5" />
@@ -573,17 +576,37 @@ export default function ClientAIAssistant() {
             </div>
           )}
 
-          <div className={`flex-1 flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
-            {/* Chat Header with Agent Selector and Preferences */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center shadow-md ring-2 ring-cyan-200/50 dark:ring-cyan-700/50">
-                  {selectedAgentId ? (
-                    <Bot className="h-4 w-4 text-white" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 text-white" />
-                  )}
+          <div className="flex-1 flex flex-col bg-background overflow-hidden">
+            {/* Chat Header — hamburger integrato su mobile + agent selector */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
+              {isMobile && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl flex-shrink-0"
+                    onClick={() => setLocation("/client")}
+                    title="Torna alla dashboard"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl flex-shrink-0"
+                    onClick={() => setChatSidebarOpen(true)}
+                    title="Lista conversazioni"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
+              {!isMobile && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                  {selectedAgentId ? <Bot className="h-4 w-4 text-white" /> : <Sparkles className="h-4 w-4 text-white" />}
                 </div>
+              )}
+              <div className="flex-1 min-w-0">
                 {availableAgents.length > 0 ? (
                   <Select 
                     value={selectedAgentId || "base"} 
@@ -593,12 +616,10 @@ export default function ClientAIAssistant() {
                       setAgentFilter(value);
                     }}
                   >
-                    <SelectTrigger className="w-auto min-w-[180px] h-9 border-0 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 focus:ring-0 shadow-none">
-                      <div className="flex flex-col items-start">
-                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                          <SelectValue />
-                        </span>
-                      </div>
+                    <SelectTrigger className="w-full h-9 border-0 bg-transparent hover:bg-muted/50 focus:ring-0 shadow-none px-0">
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        <SelectValue />
+                      </span>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="base">
@@ -618,14 +639,10 @@ export default function ClientAIAssistant() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div>
-                    <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Assistente AI
-                    </h2>
-                  </div>
+                  <h2 className="text-sm font-semibold text-foreground px-1">Assistente AI</h2>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <ConversationMemoryPopover mode="client" />
                 <AIPreferencesSheet />
               </div>
@@ -664,7 +681,7 @@ export default function ClientAIAssistant() {
                 </div>
               )}
 
-              <div className="pt-6 px-4 pb-4 bg-white dark:bg-slate-900 flex-shrink-0">
+              <div className="pt-6 px-4 pb-4 bg-background flex-shrink-0">
                 <div className="max-w-4xl mx-auto">
                   <InputArea
                     onSend={handleSendMessage}

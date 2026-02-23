@@ -151,7 +151,7 @@ export function ConversationSidebar({
 
   return (
     <div className={cn(
-      "h-full border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col transition-all duration-300 overflow-hidden",
+      "h-full border-r border-border bg-background flex flex-col transition-all duration-300 overflow-hidden",
       sidebarMinimized ? "w-16" : "w-72"
     )}>
       <div className="p-2 space-y-1.5 flex-shrink-0 overflow-hidden">
@@ -167,13 +167,13 @@ export function ConversationSidebar({
                 Nuova
               </Button>
               <div className="relative flex-1">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Cerca..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-7 pl-7 pr-2 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-md"
+                  className="h-7 pl-7 pr-2 text-xs bg-card border-border rounded-md"
                 />
               </div>
               <Button
@@ -184,7 +184,7 @@ export function ConversationSidebar({
                   "h-7 w-7 rounded-md",
                   filtersExpanded || activeFiltersCount > 0
                     ? "text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/30"
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Filter className="h-3.5 w-3.5" />
@@ -194,7 +194,7 @@ export function ConversationSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggleMinimize}
-                  className="h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-md"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
@@ -231,7 +231,7 @@ export function ConversationSidebar({
                           "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors",
                           activeFilter === option.value
                             ? "bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted"
                         )}
                       >
                         {option.icon}
@@ -242,9 +242,9 @@ export function ConversationSidebar({
 
                   {availableAgents.length > 0 && onAgentFilterChange && (
                     <Select value={agentFilter} onValueChange={onAgentFilterChange}>
-                      <SelectTrigger className="h-7 text-[11px] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-md">
+                      <SelectTrigger className="h-7 text-[11px] bg-card border-border rounded-md">
                         <div className="flex items-center gap-1.5">
-                          <Bot className="h-3 w-3 text-slate-400" />
+                          <Bot className="h-3 w-3 text-muted-foreground" />
                           <SelectValue placeholder="Tutti gli agenti" />
                         </div>
                       </SelectTrigger>
@@ -283,7 +283,7 @@ export function ConversationSidebar({
             onClick={onExpandMainSidebar}
             variant="outline"
             size="sm"
-            className="w-full h-8 flex items-center justify-center gap-2 text-xs font-medium border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="w-full h-8 flex items-center justify-center gap-2 text-xs font-medium border-border hover:bg-muted"
           >
             <Menu className="h-4 w-4" />
             <span>Menu principale</span>
@@ -307,7 +307,7 @@ export function ConversationSidebar({
         <ScrollArea className="flex-1 overflow-hidden">
           <div className="px-2 pb-4 overflow-hidden">
             <div className="px-2 py-1.5 mb-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Le tue chat
               </span>
             </div>
@@ -315,18 +315,18 @@ export function ConversationSidebar({
             {conversationsLoading ? (
               <div className="space-y-1 p-1">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 rounded-md bg-slate-200/50 dark:bg-slate-800/50 animate-pulse" />
+                  <div key={i} className="h-10 rounded-md bg-muted/50 animate-pulse" />
                 ))}
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-8 px-4">
-                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-slate-400 dark:text-slate-600" />
+                <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-muted flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-muted-foreground">
                   {searchQuery ? "Nessun risultato" : "Nessuna conversazione"}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
                   {searchQuery ? "Prova un altro termine" : "Inizia una nuova chat"}
                 </p>
               </div>
@@ -381,7 +381,7 @@ export function ConversationSidebar({
                         disabled={loadingConversationId === conversation.id}
                         className={cn(
                           "w-full text-left py-2 px-2 rounded-md transition-all duration-150 overflow-hidden",
-                          "hover:bg-slate-100 dark:hover:bg-slate-800/60",
+                          "hover:bg-muted/50",
                           selectedConversationId === conversation.id
                             ? "bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100/80 dark:hover:bg-cyan-900/30"
                             : "bg-transparent"
@@ -396,7 +396,7 @@ export function ConversationSidebar({
                               "text-sm overflow-hidden text-ellipsis whitespace-nowrap",
                               selectedConversationId === conversation.id
                                 ? "text-cyan-900 dark:text-cyan-100 font-medium"
-                                : "text-slate-700 dark:text-slate-300"
+                                : "text-foreground"
                             )}>
                               {conversation.title}
                             </p>
@@ -405,7 +405,7 @@ export function ConversationSidebar({
                             {loadingConversationId === conversation.id ? (
                               <div className="w-3 h-3 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              <span className="text-[10px] text-muted-foreground/70">
                                 {formatDate(conversation.updatedAt)}
                               </span>
                             )}
@@ -427,14 +427,14 @@ export function ConversationSidebar({
             variant="ghost"
             size="icon"
             onClick={onToggleMinimize}
-            className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
             title="Cerca"
           >
             <Search className="h-4 w-4" />
