@@ -188,11 +188,11 @@ interface OnboardingStatus {
 }
 
 const statusConfig = {
-  pending: { icon: Circle, color: "text-slate-400", bg: "bg-slate-100", badgeBg: "bg-slate-100", label: "Non configurato" },
+  pending: { icon: Circle, color: "text-muted-foreground", bg: "bg-muted", badgeBg: "bg-muted", label: "Non configurato" },
   configured: { icon: Clock, color: "text-indigo-500", bg: "bg-indigo-50", badgeBg: "bg-indigo-100", label: "In corso" },
   verified: { icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50", badgeBg: "bg-emerald-100", label: "Verificato" },
   error: { icon: XCircle, color: "text-red-500", bg: "bg-red-50", badgeBg: "bg-red-100", label: "Errore" },
-  skipped: { icon: Circle, color: "text-slate-400", bg: "bg-slate-100", badgeBg: "bg-slate-100", label: "Saltato" },
+  skipped: { icon: Circle, color: "text-muted-foreground", bg: "bg-muted", badgeBg: "bg-muted", label: "Saltato" },
 };
 
 function StatusBadge({ status }: { status: StepStatus }) {
@@ -217,8 +217,8 @@ function StatusBadge({ status }: { status: StepStatus }) {
 }
 
 function StepNumberBadge({ number, status }: { number: number; status: StepStatus }) {
-  const bgColor = status === "verified" ? "bg-emerald-500" : status === "configured" ? "bg-indigo-500" : "bg-slate-300";
-  const textColor = status === "pending" ? "text-slate-600" : "text-white";
+  const bgColor = status === "verified" ? "bg-emerald-500" : status === "configured" ? "bg-indigo-500" : "bg-muted-foreground/40";
+  const textColor = status === "pending" ? "text-foreground" : "text-white";
   
   return (
     <div 
@@ -249,7 +249,7 @@ function StepCard({
       className={`cursor-pointer px-3 py-2.5 rounded-xl transition-all overflow-hidden ${
         isActive
           ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800"
-          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+          : "hover:bg-muted/50"
       }`}
       onClick={onClick}
       whileTap={{ scale: 0.98 }}
@@ -257,10 +257,10 @@ function StepCard({
       <div className="flex items-center gap-2.5">
         <StepNumberBadge number={step.stepNumber} status={step.status} />
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate text-slate-700 dark:text-slate-300">{step.title}</h3>
+          <h3 className="font-medium text-sm truncate text-foreground">{step.title}</h3>
         </div>
         {step.count !== undefined && step.count > 0 && (
-          <span className="text-xs text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-muted-foreground font-medium bg-muted px-2 py-0.5 rounded-full">
             {step.count}
           </span>
         )}
@@ -338,7 +338,7 @@ function InlineField({
   return (
     <div className="space-y-1.5">
       {field.type !== "toggle" && (
-        <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">{field.label}</Label>
+        <Label className="text-xs font-medium text-foreground">{field.label}</Label>
       )}
 
       {field.type === "text" && (
@@ -371,7 +371,7 @@ function InlineField({
 
       {field.type === "password" && field.sensitive && isConfigured && !isSensitiveEditing ? (
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-8 px-3 rounded-md border bg-slate-50 dark:bg-slate-800 flex items-center text-slate-400 text-sm font-mono">
+          <div className="flex-1 h-8 px-3 rounded-md border bg-muted flex items-center text-muted-foreground text-sm font-mono">
             ••••••••
           </div>
           <button
@@ -398,7 +398,7 @@ function InlineField({
 
       {field.type === "toggle" && (
         <div className="flex items-center justify-between py-1">
-          <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">{field.label}</Label>
+          <Label className="text-xs font-medium text-foreground">{field.label}</Label>
           <Switch
             checked={value ?? false}
             onCheckedChange={onChange}
@@ -523,10 +523,10 @@ function InlineConfigPanel({
   if (config.oauthStart) {
     const isConnected = oauthData && config.oauthStatusField ? !!oauthData[config.oauthStatusField] : false;
     return (
-      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+      <div className="mt-3 p-4 rounded-xl border border-border bg-muted/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-slate-300"}`} />
+            <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
             <div>
               <p className="text-sm font-medium">{isConnected ? "Connesso" : "Non connesso"}</p>
               {isConnected && oauthData?.email && (
@@ -550,13 +550,13 @@ function InlineConfigPanel({
 
   // Form inline collassabile
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="mt-3 rounded-xl border border-border overflow-hidden">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 bg-muted/40 hover:bg-muted transition-colors text-left"
       >
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isAlreadyConfigured ? "bg-emerald-500" : "bg-slate-300"}`} />
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isAlreadyConfigured ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
           <span className="text-sm font-medium">
             {isAlreadyConfigured ? "Già configurato — modifica" : "Configura direttamente qui"}
           </span>
@@ -575,7 +575,7 @@ function InlineConfigPanel({
             transition={{ duration: 0.22 }}
             style={{ overflow: "hidden" }}
           >
-            <div className="p-4 space-y-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-4 space-y-3 border-t border-border/60">
               {config.fields.map(field => (
                 <InlineField
                   key={field.key}
@@ -655,7 +655,7 @@ function SectionCard({
       whileHover={{ y: -3, boxShadow: "0 8px 25px rgba(0,0,0,0.10)" }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="relative cursor-pointer rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 flex flex-col gap-3 overflow-hidden select-none"
+      className="relative cursor-pointer rounded-2xl border border-border bg-background p-5 flex flex-col gap-3 overflow-hidden select-none"
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-[0.035] pointer-events-none`} />
 
@@ -663,7 +663,7 @@ function SectionCard({
         <div className="flex items-center gap-3">
           <span className="text-3xl leading-none">{section.emoji}</span>
           <div>
-            <h2 className="font-bold text-base text-slate-800 dark:text-slate-100 leading-tight">{section.title}</h2>
+            <h2 className="font-bold text-base text-foreground leading-tight">{section.title}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">{section.tagline}</p>
           </div>
         </div>
@@ -680,7 +680,7 @@ function SectionCard({
         </div>
       ) : (
         <>
-          <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <motion.div
               className={`h-full rounded-full ${barColor}`}
               initial={{ width: 0 }}
@@ -875,7 +875,7 @@ function AgentCalendarStatusPanel() {
 
   if (isLoading) {
     return (
-      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="mt-3 p-4 rounded-xl border border-border bg-muted/40 flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />Caricamento agenti...
       </div>
     );
@@ -884,9 +884,9 @@ function AgentCalendarStatusPanel() {
   const agents: AgentCalItem[] = Array.isArray(data) ? data : (data as any)?.agents ?? [];
 
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-        <Users className="h-4 w-4 text-slate-500" />
+    <div className="mt-3 rounded-xl border border-border overflow-hidden">
+      <div className="px-4 py-3 bg-muted/40 border-b border-border/60 flex items-center gap-2">
+        <Users className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Stato calendario per agente</span>
       </div>
       {agents.length === 0 ? (
@@ -894,11 +894,11 @@ function AgentCalendarStatusPanel() {
           Nessun agente trovato. Crea prima un agente WhatsApp.
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="divide-y divide-border/60">
           {agents.map(agent => (
             <div key={agent.id} className="px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${agent.calendarConnected ? "bg-emerald-500" : "bg-slate-300"}`} />
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${agent.calendarConnected ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
                 <div>
                   <p className="text-sm font-medium">{agent.agentName}</p>
                   <p className="text-xs text-muted-foreground">
@@ -907,14 +907,14 @@ function AgentCalendarStatusPanel() {
                   </p>
                 </div>
               </div>
-              <Badge variant="outline" className={`text-xs ${agent.calendarConnected ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-slate-500 border-slate-200 bg-slate-50"}`}>
+              <Badge variant="outline" className={`text-xs ${agent.calendarConnected ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-muted-foreground border-border bg-muted/40"}`}>
                 {agent.calendarConnected ? "Connesso" : "Non connesso"}
               </Badge>
             </div>
           ))}
         </div>
       )}
-      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+      <div className="px-4 py-3 bg-muted/40 border-t border-border/60">
         <p className="text-xs text-muted-foreground">Per collegare Google Calendar ad un agente, vai alla pagina Agenti WhatsApp e seleziona l'agente.</p>
       </div>
     </div>
@@ -960,7 +960,7 @@ function LeadImportWebhookPanel({ consultantId }: { consultantId?: string }) {
           <Input
             readOnly
             value={webhookUrl || "Caricamento..."}
-            className="h-8 text-xs font-mono bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-700"
+            className="h-8 text-xs font-mono bg-background border-blue-200 dark:border-blue-700"
           />
           <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-100">
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -968,19 +968,19 @@ function LeadImportWebhookPanel({ consultantId }: { consultantId?: string }) {
           </Button>
         </div>
       </div>
-      <div className="px-4 py-3 bg-white/60 dark:bg-slate-800/40 border-t border-blue-100 dark:border-blue-900 space-y-1.5">
-        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Import Lead Automatico</p>
-        <p className="text-xs text-slate-500 dark:text-slate-500">
+      <div className="px-4 py-3 bg-background/60 border-t border-blue-200/40 dark:border-blue-900/40 space-y-1.5">
+        <p className="text-xs font-medium text-muted-foreground">Import Lead Automatico</p>
+        <p className="text-xs text-muted-foreground">
           Usa il tuo Webhook URL (mostrato sopra) per inviare lead automaticamente da:
         </p>
-        <ul className="text-xs text-slate-500 space-y-0.5 list-disc list-inside ml-1">
+        <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside ml-1">
           <li><strong>Zapier</strong> — collega qualsiasi app (Facebook Lead Ads, Google Sheets, ecc.)</li>
           <li><strong>Make.com</strong> — automazioni avanzate con logica condizionale</li>
           <li><strong>n8n</strong> — self-hosted, per chi preferisce privacy totale</li>
           <li>Qualsiasi CRM/form con supporto webhook HTTP POST</li>
         </ul>
-        <p className="text-xs text-slate-400 dark:text-slate-600 italic mt-1">
-          Il body della richiesta deve contenere almeno <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">phone</code> o <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">name</code>.
+        <p className="text-xs text-muted-foreground dark:text-muted-foreground italic mt-1">
+          Il body della richiesta deve contenere almeno <code className="bg-muted px-1 rounded">phone</code> o <code className="bg-muted px-1 rounded">name</code>.
         </p>
       </div>
     </div>
@@ -1021,7 +1021,7 @@ function PublicLinksPanel() {
 
   if (isLoading) {
     return (
-      <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="mt-3 p-4 rounded-xl border border-border bg-muted/40 flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />Caricamento link...
       </div>
     );
@@ -1030,9 +1030,9 @@ function PublicLinksPanel() {
   const shares = data?.shares?.filter(s => s.isActive) ?? [];
 
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-        <LinkIcon className="h-4 w-4 text-slate-500" />
+    <div className="mt-3 rounded-xl border border-border overflow-hidden">
+      <div className="px-4 py-3 bg-muted/40 border-b border-border/60 flex items-center gap-2">
+        <LinkIcon className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Link pubblici attivi</span>
       </div>
       {shares.length === 0 ? (
@@ -1040,7 +1040,7 @@ function PublicLinksPanel() {
           Nessun link pubblico trovato. Vai su Agenti WhatsApp → Condivisione per crearne uno.
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="divide-y divide-border/60">
           {shares.map(share => (
             <div key={share.id} className="px-4 py-3 space-y-2">
               <div className="flex items-center justify-between">
@@ -1055,7 +1055,7 @@ function PublicLinksPanel() {
                 <Input
                   readOnly
                   value={share.publicUrl}
-                  className="h-7 text-xs font-mono bg-white dark:bg-slate-900"
+                  className="h-7 text-xs font-mono bg-background"
                 />
                 <Button size="sm" variant="outline" onClick={() => handleCopy(share.publicUrl, share.id)} className="shrink-0 gap-1.5">
                   {copiedId === share.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -1176,7 +1176,7 @@ function CredentialNotesCard({ stepId }: { stepId: string }) {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-2 p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 space-y-4"
+            className="mt-2 p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-background space-y-4"
           >
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
@@ -1911,7 +1911,7 @@ export default function ConsultantSetupWizard() {
     2: { label: "Alta", sublabel: "Agenti · Campagne · Voce · Calendario · Pagamenti · Conoscenza", dot: "bg-orange-400", leftBorder: "border-l-orange-400", progressColor: "bg-orange-400" },
     3: { label: "Media", sublabel: "Automazione email & agenti secondari", dot: "bg-amber-400", leftBorder: "border-l-amber-400", progressColor: "bg-amber-400" },
     4: { label: "Normale", sublabel: "Canali aggiuntivi & features avanzate", dot: "bg-emerald-500", leftBorder: "border-l-emerald-500", progressColor: "bg-emerald-500" },
-    5: { label: "Opzionale", sublabel: "Contenuti, video meeting & ottimizzazione", dot: "bg-slate-400", leftBorder: "border-l-slate-400", progressColor: "bg-slate-400" },
+    5: { label: "Opzionale", sublabel: "Contenuti, video meeting & ottimizzazione", dot: "bg-muted-foreground/60", leftBorder: "border-l-muted-foreground/60", progressColor: "bg-muted-foreground/60" },
   };
 
   const handleTest = async (stepId: string, endpoint?: string) => {
@@ -2009,7 +2009,7 @@ export default function ConsultantSetupWizard() {
                       {currentSection ? (
                         <span className="flex items-center gap-1.5">
                           Centro di Attivazione
-                          <span className="text-slate-400 font-normal">/</span>
+                          <span className="text-muted-foreground font-normal">/</span>
                           <span>{currentSection.emoji} {currentSection.title}</span>
                         </span>
                       ) : "Centro di Attivazione"}
@@ -2125,20 +2125,20 @@ export default function ConsultantSetupWizard() {
                     return (
                       <div
                         key={priority}
-                        className={`rounded-xl border border-slate-100 dark:border-slate-800 border-l-4 ${pl.leftBorder} bg-white dark:bg-slate-900 overflow-hidden`}
+                        className={`rounded-xl border border-border/60 border-l-4 ${pl.leftBorder} bg-background overflow-hidden`}
                       >
                         {/* Header gruppo */}
                         <div className="px-4 pt-3 pb-2">
                           <div className="flex items-center gap-2.5">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${pl.dot}`} />
-                            <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">{pl.label}</span>
+                            <span className="font-semibold text-sm text-foreground">{pl.label}</span>
                             <span className="text-xs text-muted-foreground truncate">{pl.sublabel}</span>
                             <div className="ml-auto flex items-center gap-2 shrink-0">
                               <span className="text-xs text-muted-foreground">{completedCount}/{stepsInPriority.length}</span>
                             </div>
                           </div>
                           {/* Barra progresso sottile */}
-                          <div className="mt-2 h-0.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div className="mt-2 h-0.5 bg-muted rounded-full overflow-hidden">
                             <motion.div
                               className={`h-full rounded-full ${pl.progressColor}`}
                               initial={{ width: 0 }}
@@ -2162,8 +2162,8 @@ export default function ConsultantSetupWizard() {
                                 onClick={() => { autoSelectStep(s); setActiveStep(step.id); }}
                                 className={`cursor-pointer flex items-center gap-2.5 px-3 rounded-lg transition-all border ${
                                   isDone
-                                    ? "py-1.5 border-transparent bg-slate-50 dark:bg-slate-800/40 opacity-60 hover:opacity-80"
-                                    : "py-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:shadow-sm hover:border-slate-300"
+                                    ? "py-1.5 border-transparent bg-muted/40 opacity-60 hover:opacity-80"
+                                    : "py-2 border-border bg-background hover:shadow-sm hover:border-border"
                                 }`}
                               >
                                 {isDone ? (
@@ -2174,7 +2174,7 @@ export default function ConsultantSetupWizard() {
                                   <StepNumberBadge number={step.stepNumber} status={step.status} />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-xs font-medium truncate ${isDone ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-300"}`}>
+                                  <p className={`text-xs font-medium truncate ${isDone ? "text-muted-foreground" : "text-foreground"}`}>
                                     {step.title}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
@@ -2204,11 +2204,11 @@ export default function ConsultantSetupWizard() {
           <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden min-h-0">
             {/* Sidebar sinistra sezione */}
             <aside
-              className="col-span-4 border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300"
+              className="col-span-4 border-r bg-background overflow-hidden flex flex-col transition-all duration-300"
               style={{ borderTop: `3px solid` }}
             >
               {/* Header sezione */}
-              <div className="p-4 border-b bg-white dark:bg-slate-900" style={{ borderTop: `3px solid transparent`, backgroundImage: `linear-gradient(white, white), linear-gradient(to right, var(--section-color-start, #6366f1), var(--section-color-end, #8b5cf6))`, backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box" }}>
+              <div className="p-4 border-b bg-background" style={{ borderTop: `3px solid transparent`, backgroundImage: `linear-gradient(white, white), linear-gradient(to right, var(--section-color-start, #6366f1), var(--section-color-end, #8b5cf6))`, backgroundOrigin: "border-box", backgroundClip: "padding-box, border-box" }}>
                 <button
                   onClick={() => setActiveSection(null)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-3"
@@ -2218,7 +2218,7 @@ export default function ConsultantSetupWizard() {
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-2xl">{currentSection.emoji}</span>
                   <div>
-                    <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">{currentSection.title}</h2>
+                    <h2 className="font-bold text-sm text-foreground">{currentSection.title}</h2>
                     <p className="text-xs text-muted-foreground">{currentSection.tagline}</p>
                   </div>
                 </div>
@@ -2228,7 +2228,7 @@ export default function ConsultantSetupWizard() {
                   const sp = st > 0 ? Math.round((sc / st) * 100) : 0;
                   return (
                     <>
-                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                         <motion.div className={`h-full rounded-full bg-gradient-to-r ${currentSection.gradient}`} initial={{ width: 0 }} animate={{ width: `${sp}%` }} transition={{ duration: 0.5 }} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{sc}/{st} completati · {sp}%</p>
@@ -2254,7 +2254,7 @@ export default function ConsultantSetupWizard() {
                     />
                     {step.optional && (
                       <div className="ml-10 -mt-1 mb-1">
-                        <Badge variant="outline" className="text-xs text-slate-400 border-slate-200 bg-slate-50 dark:bg-slate-800">Opzionale</Badge>
+                        <Badge variant="outline" className="text-xs text-muted-foreground border-border bg-muted">Opzionale</Badge>
                       </div>
                     )}
                   </motion.div>
@@ -2262,7 +2262,7 @@ export default function ConsultantSetupWizard() {
               </ScrollArea>
 
               {/* Nav tra sezioni */}
-              <div className="border-t p-3 flex items-center justify-between bg-white dark:bg-slate-900">
+              <div className="border-t p-3 flex items-center justify-between bg-background">
                 {prevSection ? (
                   <button onClick={() => autoSelectStep(prevSection)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
                     ‹ {prevSection.emoji} {prevSection.title}
@@ -2276,7 +2276,7 @@ export default function ConsultantSetupWizard() {
               </div>
             </aside>
 
-            <section className="col-span-8 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300">
+            <section className="col-span-8 overflow-auto bg-muted/20 transition-all duration-300">
               <div className="p-8">
                 <AnimatePresence mode="wait">
                   {activeStepData && (
@@ -2287,7 +2287,7 @@ export default function ConsultantSetupWizard() {
                       exit={{ opacity: 0, y: -20, scale: 0.98 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <Card className="shadow-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                      <Card className="shadow-sm border border-border bg-background overflow-hidden">
                         <CardHeader className="pb-4 relative">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
@@ -2334,29 +2334,29 @@ export default function ConsultantSetupWizard() {
                                   <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
                                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                                     <div>
-                                      <p className="text-xs text-slate-500">Stato</p>
+                                      <p className="text-xs text-muted-foreground">Stato</p>
                                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Attivo</p>
                                     </div>
                                   </div>
                                   {activeStepData.testedAt && (
-                                    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                                      <Clock className="h-4 w-4 text-slate-400" />
+                                    <div className="flex items-center gap-2 p-3 bg-muted/40 rounded-xl">
+                                      <Clock className="h-4 w-4 text-muted-foreground" />
                                       <div>
-                                        <p className="text-xs text-slate-500">Ultimo test</p>
+                                        <p className="text-xs text-muted-foreground">Ultimo test</p>
                                         <p className="text-sm font-medium">{new Date(activeStepData.testedAt).toLocaleDateString('it-IT')}</p>
                                       </div>
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                                  <div className="flex items-center gap-2 p-3 bg-muted/40 rounded-xl">
                                     <Sparkles className="h-4 w-4 text-indigo-400" />
                                     <div>
-                                      <p className="text-xs text-slate-500">Performance</p>
+                                      <p className="text-xs text-muted-foreground">Performance</p>
                                       <p className="text-sm font-medium">OK</p>
                                     </div>
                                   </div>
                                 </div>
                                 {activeStepData.count !== undefined && activeStepData.count > 0 && (
-                                  <p className="text-xs text-slate-500 mt-2">
+                                  <p className="text-xs text-muted-foreground mt-2">
                                     Hai {activeStepData.count} {activeStepData.countLabel}
                                   </p>
                                 )}
@@ -2467,7 +2467,7 @@ export default function ConsultantSetupWizard() {
 
                           <Button 
                             variant="ghost"
-                            className="w-full border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                            className="w-full border-border hover:bg-muted"
                             onClick={() => {
                               const stepMessages: Record<string, string> = {
                                 vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
@@ -2514,7 +2514,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "vertex_ai" && (
                         <>
-                          <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                          <div className="mt-4 p-4 bg-muted/40 rounded-xl border border-border space-y-3">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Sparkles className="h-4 w-4 text-indigo-500" />
                               Quando aggiungere una chiave personale?
@@ -2534,7 +2534,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "smtp" && (
                         <>
-                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Mail className="h-4 w-4 text-blue-600" />
                               Configurazione SMTP Comune
@@ -2551,7 +2551,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "google_calendar_consultant" && (
                         <>
-                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
                               Google Calendar Personale del Consulente
@@ -2571,7 +2571,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "google_calendar_agents" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-blue-600" />
                             Google Calendar degli Agenti WhatsApp
@@ -2594,7 +2594,7 @@ export default function ConsultantSetupWizard() {
 
                       {activeStep === "twilio_config" && (
                         <>
-                          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                             <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                               <Phone className="h-4 w-4 text-blue-600" />
                               Configurazione Twilio + WhatsApp
@@ -2615,7 +2615,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "instagram_dm" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Instagram className="h-4 w-4 text-pink-600" />
                             Come Collegare Instagram Business
@@ -2645,7 +2645,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "approved_template" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-green-600" />
                             Come Creare e Far Approvare un Template WhatsApp
@@ -2672,7 +2672,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_campaign" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Rocket className="h-4 w-4 text-purple-600" />
                             Come Creare la Tua Prima Campagna Marketing
@@ -2707,17 +2707,17 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "stripe_connect" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-indigo-600" />
                             Due modi per configurare Stripe
                           </h4>
                           <div className="text-sm text-muted-foreground space-y-3">
-                            <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="p-3 bg-card rounded-lg border border-border">
                               <p className="font-medium text-foreground mb-1">🔑 Opzione 1 — API Keys (qui sopra)</p>
                               <p>Inserisci la Secret Key e il Webhook Secret per abilitare i pagamenti via API. È il metodo più rapido per iniziare.</p>
                             </div>
-                            <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <div className="p-3 bg-card rounded-lg border border-border">
                               <p className="font-medium text-foreground mb-1">🏦 Opzione 2 — Stripe Connect (pagina Licenze)</p>
                               <p>Per ricevere pagamenti direttamente sul tuo conto bancario dai clienti finali, usa "Apri impostazioni complete" → Collega Stripe.</p>
                             </div>
@@ -2732,7 +2732,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "email_journey" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailPlus className="h-4 w-4 text-cyan-600" />
                             Come Configurare l'Email Journey per i Clienti
@@ -2763,7 +2763,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "nurturing_emails" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailPlus className="h-4 w-4 text-orange-600" />
                             Email Nurturing 365: Un Anno di Email Automatiche
@@ -2792,7 +2792,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "email_hub" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Inbox className="h-4 w-4 text-teal-600" />
                             Email Hub: La Tua Casella Email Intelligente
@@ -2819,7 +2819,7 @@ export default function ConsultantSetupWizard() {
                             </ol>
                             
                             <p className="font-medium text-foreground mt-4">📧 Dati IMAP comuni:</p>
-                            <div className="bg-white dark:bg-slate-800 p-2 rounded text-xs">
+                            <div className="bg-card p-2 rounded text-xs">
                               <p><strong>Gmail:</strong> imap.gmail.com, porta 993</p>
                               <p><strong>Outlook:</strong> outlook.office365.com, porta 993</p>
                             </div>
@@ -2828,7 +2828,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "voice_calls" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Phone className="h-4 w-4 text-emerald-600" />
                             Chiamate Voice con Alessia AI
@@ -2853,7 +2853,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "ai_autonomo" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Bot className="h-4 w-4 text-purple-600" />
                             AI Autonomo: I Tuoi Dipendenti AI
@@ -2889,7 +2889,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "whatsapp_ai" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-blue-600" />
                             Credenziali AI per WhatsApp
@@ -2907,7 +2907,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "inbound_agent" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ArrowDownToLine className="h-4 w-4 text-blue-600" />
                             Agente Inbound
@@ -2925,7 +2925,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "outbound_agent" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ArrowUpFromLine className="h-4 w-4 text-blue-600" />
                             Agente Outbound
@@ -2943,7 +2943,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "consultative_agent" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Briefcase className="h-4 w-4 text-blue-600" />
                             Agente Consulenziale
@@ -2961,7 +2961,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "public_agent_link" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <LinkIcon className="h-4 w-4 text-blue-600" />
                             Link Pubblico Agente
@@ -2979,7 +2979,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "ai_ideas" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Lightbulb className="h-4 w-4 text-blue-600" />
                             Idee AI Generate
@@ -2998,7 +2998,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "whatsapp_template" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-blue-600" />
                             Template WhatsApp
@@ -3016,7 +3016,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_course" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <BookOpen className="h-4 w-4 text-blue-600" />
                             Crea il Tuo Primo Corso
@@ -3034,7 +3034,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_exercise" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <ClipboardList className="h-4 w-4 text-blue-600" />
                             Crea il Tuo Primo Esercizio
@@ -3052,7 +3052,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "knowledge_base" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <FileText className="h-4 w-4 text-blue-600" />
                             Base di Conoscenza AI
@@ -3071,7 +3071,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "first_summary_email" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <MailCheck className="h-4 w-4 text-blue-600" />
                             Email Riassuntiva Post-Consulenza
@@ -3090,7 +3090,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "video_meeting" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <Video className="h-4 w-4 text-blue-600" />
                             Server TURN con Metered.ca
@@ -3108,7 +3108,7 @@ export default function ConsultantSetupWizard() {
                       )}
 
                       {activeStep === "lead_import" && (
-                        <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="mt-8 p-4 bg-muted/40 rounded-xl border border-border">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
                             <UserPlus className="h-4 w-4 text-blue-600" />
                             Import Lead Automatico
@@ -3155,7 +3155,7 @@ export default function ConsultantSetupWizard() {
           flexDirection: "column",
           pointerEvents: isOnboardingMode ? "auto" : "none",
         }}
-        className="border-l bg-white dark:bg-slate-900 shadow-2xl"
+        className="border-l bg-background shadow-2xl"
       >
         {/* Header */}
         <div
@@ -3190,7 +3190,7 @@ export default function ConsultantSetupWizard() {
               <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Inizia da qui</p>
               <button
                 onClick={() => setChatStarted(true)}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="text-xs text-muted-foreground hover:text-muted-foreground dark:hover:text-foreground transition-colors"
               >
                 Nascondi
               </button>
@@ -3200,7 +3200,7 @@ export default function ConsultantSetupWizard() {
                 <button
                   key={i}
                   onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
-                  className="w-full text-left text-xs p-2.5 rounded-xl bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-150 leading-relaxed flex items-start gap-2.5 group shadow-sm"
+                  className="w-full text-left text-xs p-2.5 rounded-xl bg-card/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-foreground border border-border hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-150 leading-relaxed flex items-start gap-2.5 group shadow-sm"
                 >
                   <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 transition-colors">
                     {i + 1}
