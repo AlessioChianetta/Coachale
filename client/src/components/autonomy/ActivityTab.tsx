@@ -659,6 +659,19 @@ function ActivityTab({
       ' ore ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const reasoningLogsByRunId = React.useMemo(() => {
+    const map = new Map<string, any>();
+    if (reasoningLogsData?.logs) {
+      for (const log of reasoningLogsData.logs) {
+        if (log.run_id) {
+          const key = `${log.run_id}_${log.role_id}`;
+          map.set(key, log);
+        }
+      }
+    }
+    return map;
+  }, [reasoningLogsData]);
+
   const reasoningGroupedByCycle = React.useMemo(() => {
     if (!reasoningData?.activities) return { cycles: [], standalone: [] };
     const cycleMap = new Map<string, ActivityItem[]>();
@@ -909,6 +922,8 @@ function ActivityTab({
     } catch { eventData = {}; }
     const suggestions = Array.isArray(eventData.suggestions) ? eventData.suggestions : [];
     const roleId = item.ai_role || eventData.ai_role || '';
+    const cycleId = item.cycle_id || '';
+    const matchingReasoningLog = cycleId ? reasoningLogsByRunId.get(`${cycleId}_${roleId}`) : undefined;
     const roleProfile = AI_ROLE_PROFILES[roleId];
     const roleColorKey = ROLE_COLOR_MAP[roleId] || 'purple';
     const colors = AI_ROLE_ACCENT_COLORS[roleColorKey] || AI_ROLE_ACCENT_COLORS.purple;
@@ -968,6 +983,34 @@ function ActivityTab({
                 <p className="text-[10px] text-muted-foreground">Task creati</p>
               </div>
             </div>
+
+            {matchingReasoningLog && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5 text-violet-600" />
+                  Pensiero Intimo AI
+                </p>
+                <ReasoningSection icon={Eye} title="Osservazione" content={matchingReasoningLog.observation} color="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300" />
+                <ReasoningSection icon={Lightbulb} title="Riflessione" content={matchingReasoningLog.reflection} color="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300" />
+                <ReasoningSection icon={Target} title="Decisione" content={matchingReasoningLog.decision} color="bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300" />
+                <ReasoningSection icon={Brain} title="Auto-Revisione" content={matchingReasoningLog.self_review} color="bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300" />
+                {matchingReasoningLog.reasoning_mode === "deep_think" && (
+                  <ThinkingStepsTimeline steps={Array.isArray(matchingReasoningLog.thinking_steps) ? matchingReasoningLog.thinking_steps : []} />
+                )}
+                <TasksCreatedRejected tasksData={matchingReasoningLog.tasks_data} />
+                {(matchingReasoningLog.total_tokens > 0 || matchingReasoningLog.model_used) && (
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                    {matchingReasoningLog.total_tokens > 0 && <span>Token: {matchingReasoningLog.total_tokens?.toLocaleString("it-IT")}</span>}
+                    {matchingReasoningLog.model_used && <span>Modello: {matchingReasoningLog.model_used}</span>}
+                    {matchingReasoningLog.reasoning_mode && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {REASONING_MODE_LABELS[matchingReasoningLog.reasoning_mode] || matchingReasoningLog.reasoning_mode}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {eventData.overall_reasoning && (() => {
               const text = (eventData.overall_reasoning as string).trim();
@@ -1471,11 +1514,11 @@ function ActivityTab({
             )}
           </div>
 
-          {loadingReasoningLogs ? (
+          {loadingReasoning ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : !reasoningLogsData?.logs?.length ? (
+          ) : (reasoningGroupedByCycle.cycles.length === 0 && reasoningGroupedByCycle.standalone.length === 0) ? (
             <Card className="border border-border rounded-xl shadow-sm">
               <CardContent className="py-12 text-center">
                 <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1484,212 +1527,82 @@ function ActivityTab({
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {reasoningLogsData.logs.map((log: any) => {
-                const isExpanded = expandedReasoningCycles.has(log.id);
-                const roleColor = REASONING_ROLE_COLORS[log.role_id] || "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300";
-                const thinkingSteps = Array.isArray(log.thinking_steps) ? log.thinking_steps : [];
-                const formatDuration = (ms: number | null) => {
-                  if (!ms) return "—";
-                  if (ms < 1000) return `${ms}ms`;
-                  return `${(ms / 1000).toFixed(1)}s`;
-                };
-                const formatLogDate = (dateStr: string) => {
-                  try {
-                    return new Date(dateStr).toLocaleString("it-IT", {
-                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                    });
-                  } catch { return dateStr; }
-                };
-
+            <div className="space-y-4">
+              {reasoningGroupedByCycle.cycles.map((cycle) => {
+                const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
                 return (
-                  <Card
-                    key={log.id}
-                    className="border border-border rounded-xl shadow-sm transition-all hover:shadow-md"
-                  >
-                    <div
-                      className="flex items-center gap-3 p-4 cursor-pointer select-none"
-                      onClick={() => toggleReasoningCycle(log.id)}
+                  <div key={cycle.cycleId} className="space-y-3">
+                    <Card
+                      className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
+                      onClick={() => toggleReasoningCycle(cycle.cycleId)}
                     >
-                      <div className="flex-shrink-0">
-                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                      </div>
-                      <Badge variant="outline" className={`${roleColor} text-xs font-semibold`}>
-                        {log.role_name || log.role_id}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{formatLogDate(log.created_at)}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {REASONING_MODE_LABELS[log.reasoning_mode] || log.reasoning_mode || "Standard"}
-                      </Badge>
-                      <div className="ml-auto flex items-center gap-3 text-xs">
-                        {log.tasks_created > 0 && (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            {log.tasks_created}
-                          </span>
-                        )}
-                        {log.tasks_rejected > 0 && (
-                          <span className="flex items-center gap-1 text-red-500">
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            {log.tasks_rejected}
-                          </span>
-                        )}
-                        {log.duration_ms && (
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            {formatDuration(log.duration_ms)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                      <CardContent className="py-3 px-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                              <Brain className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">
+                                Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
+                              </p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
+                              </div>
+                            </div>
+                          </div>
+                          <ChevronDown className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            isExpanded && "rotate-180"
+                          )} />
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     {isExpanded && (
-                      <CardContent className="pt-0 pb-4 space-y-3">
-                        <ReasoningSection icon={Eye} title="Osservazione" content={log.observation} color="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300" />
-                        <ReasoningSection icon={Lightbulb} title="Riflessione" content={log.reflection} color="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300" />
-                        <ReasoningSection icon={Target} title="Decisione" content={log.decision} color="bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300" />
-                        <ReasoningSection icon={Brain} title="Auto-Revisione" content={log.self_review} color="bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300" />
-                        {log.overall_reasoning && !log.observation && !log.reflection && (
-                          <ReasoningSection icon={Brain} title="Ragionamento Generale" content={log.overall_reasoning} color="bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300" />
-                        )}
-                        {log.reasoning_mode === "deep_think" && <ThinkingStepsTimeline steps={thinkingSteps} />}
-                        <TasksCreatedRejected tasksData={log.tasks_data} />
-                        {(log.total_tokens > 0 || log.model_used) && (
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
-                            {log.total_tokens > 0 && <span>Token: {log.total_tokens?.toLocaleString("it-IT")}</span>}
-                            {log.model_used && <span>Modello: {log.model_used}</span>}
-                            {log.provider_used && <span>Provider: {log.provider_used}</span>}
-                          </div>
-                        )}
-                      </CardContent>
+                      <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
+                        {cycle.items.map((item: any) => renderReasoningCard(item))}
+                      </div>
                     )}
-                  </Card>
+                  </div>
                 );
               })}
-            </div>
-          )}
 
-          {reasoningLogsData?.pagination && reasoningLogsData.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
-                disabled={reasoningPage <= 1}
-                className="rounded-xl"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Precedente
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Pagina {reasoningLogsData.pagination.page} di {reasoningLogsData.pagination.totalPages} ({reasoningLogsData.pagination.total} totali)
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReasoningPage(Math.min(reasoningLogsData.pagination.totalPages, reasoningPage + 1))}
-                disabled={reasoningPage >= reasoningLogsData.pagination.totalPages}
-                className="rounded-xl"
-              >
-                Successiva
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          )}
+              {reasoningGroupedByCycle.standalone.map((item: any) => renderReasoningCard(item))}
 
-          {reasoningGroupedByCycle.cycles.length > 0 || reasoningGroupedByCycle.standalone.length > 0 ? (
-            <div className="space-y-4 pt-6 mt-6 border-t border-border">
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                <h3 className="text-base font-semibold">Storico Analisi per Ciclo</h3>
-                <Badge variant="outline" className="text-xs ml-auto">
-                  {reasoningGroupedByCycle.cycles.reduce((sum, c) => sum + c.items.length, 0) + reasoningGroupedByCycle.standalone.length} analisi
-                </Badge>
-              </div>
-
-              {loadingReasoning ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              {reasoningData && reasoningData.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
+                    disabled={reasoningPage <= 1}
+                    className="rounded-xl"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Precedente
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Pagina {reasoningData.page} di {reasoningData.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReasoningPage(Math.min(reasoningData.totalPages, reasoningPage + 1))}
+                    disabled={reasoningPage >= reasoningData.totalPages}
+                    className="rounded-xl"
+                  >
+                    Successiva
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  {reasoningGroupedByCycle.cycles.map((cycle) => {
-                    const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
-                    return (
-                      <div key={cycle.cycleId} className="space-y-3">
-                        <Card
-                          className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
-                          onClick={() => toggleReasoningCycle(cycle.cycleId)}
-                        >
-                          <CardContent className="py-3 px-5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                                  <Brain className="h-4 w-4" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold">
-                                    Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
-                                  </p>
-                                  <div className="flex items-center gap-3 mt-0.5">
-                                    <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
-                                    <span className="text-xs text-muted-foreground">·</span>
-                                    <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
-                                    <span className="text-xs text-muted-foreground">·</span>
-                                    <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <ChevronDown className={cn(
-                                "h-4 w-4 text-muted-foreground transition-transform",
-                                isExpanded && "rotate-180"
-                              )} />
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        {isExpanded && (
-                          <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
-                            {cycle.items.map((item: any) => renderReasoningCard(item))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {reasoningGroupedByCycle.standalone.map((item: any) => renderReasoningCard(item))}
-
-                  {reasoningData && reasoningData.totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-4 pt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
-                        disabled={reasoningPage <= 1}
-                        className="rounded-xl"
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Precedente
-                      </Button>
-                      <span className="text-sm text-muted-foreground">
-                        Pagina {reasoningData.page} di {reasoningData.totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setReasoningPage(Math.min(reasoningData.totalPages, reasoningPage + 1))}
-                        disabled={reasoningPage >= reasoningData.totalPages}
-                        className="rounded-xl"
-                      >
-                        Successiva
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  )}
-                </>
               )}
             </div>
-          ) : null}
+          )}
         </div>
       )}
 
