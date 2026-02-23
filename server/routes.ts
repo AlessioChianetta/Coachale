@@ -17377,40 +17377,13 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
-  // GET /api/whatsapp/agents/:agentId - Get full agent details for Brand Voice import
-  app.get("/api/whatsapp/agents/:agentId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-    try {
-      const consultantId = req.user!.id;
-      const agentId = req.params.agentId;
-
-      const [agent] = await db
-        .select()
-        .from(schema.consultantWhatsappConfig)
-        .where(
-          and(
-            eq(schema.consultantWhatsappConfig.id, agentId),
-            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
-          )
-        )
-        .limit(1);
-
-      if (!agent) {
-        return res.status(404).json({ message: "Agent not found" });
-      }
-
-      res.json(agent);
-    } catch (error: any) {
-      console.error("❌ Error fetching agent details:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   // ============================================================================
   // AGENT-SPECIFIC GOOGLE CALENDAR OAuth ENDPOINTS
   // Each agent can have its own Google Calendar for appointments
   // ============================================================================
 
   // GET /api/whatsapp/agents/calendar-status - Get all agents with their calendar status (dashboard)
+  // NOTE: This MUST be registered BEFORE /api/whatsapp/agents/:agentId to avoid Express treating "calendar-status" as an agentId
   app.get("/api/whatsapp/agents/calendar-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
@@ -17445,6 +17418,34 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       res.json(agentsWithCalendarStatus);
     } catch (error: any) {
       console.error("❌ Error fetching agents calendar status:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/agents/:agentId - Get full agent details for Brand Voice import
+  app.get("/api/whatsapp/agents/:agentId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentId = req.params.agentId;
+
+      const [agent] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.id, agentId),
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      res.json(agent);
+    } catch (error: any) {
+      console.error("❌ Error fetching agent details:", error);
       res.status(500).json({ message: error.message });
     }
   });
