@@ -339,7 +339,7 @@ export interface AIRoleDefinition {
 
 async function fetchAlessiaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
   const kbContext = await fetchAgentKbContext(consultantId, 'alessia');
-  if (clientIds.length === 0) return { consultations: [], voiceCalls: [], ...kbContext };
+  if (clientIds.length === 0) return { consultations: [], voiceCalls: [], clientFileSearchStores: [], whatsappConversations: [], aiAssistantChats: [], aiAssistantSummaries: [], ...kbContext };
 
   const clientIdsStr = clientIds.map(id => `'${id}'`).join(',');
 
@@ -365,9 +365,87 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
     LIMIT 30
   `);
 
+  const clientStoreResult = await db.execute(sql`
+    SELECT s.google_store_name, s.owner_id as client_id,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM file_search_stores s
+    JOIN users u ON u.id::text = s.owner_id
+    JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+    WHERE s.owner_type = 'client' AND s.is_active = true
+      AND u.consultant_id = ${consultantId}::text AND u.is_active = true
+    GROUP BY s.google_store_name, s.owner_id, u.first_name, u.last_name
+    ORDER BY u.first_name
+  `);
+
+  const whatsappResult = await db.execute(sql`
+    SELECT wc.id as conversation_id, wc.user_id as client_id, wc.phone_number,
+           wc.last_message_at, wc.last_message_from, wc.message_count,
+           u.first_name || ' ' || u.last_name as client_name,
+           (
+             SELECT json_agg(sub ORDER BY sub.sent_at DESC)
+             FROM (
+               SELECT wm.message_text, wm.direction, wm.sender, wm.sent_at
+               FROM whatsapp_messages wm
+               WHERE wm.conversation_id = wc.id
+                 AND wm.sent_at > NOW() - INTERVAL '60 days'
+               ORDER BY wm.sent_at DESC
+               LIMIT 15
+             ) sub
+           ) as recent_messages
+    FROM whatsapp_conversations wc
+    JOIN users u ON u.id::text = wc.user_id::text
+    WHERE wc.consultant_id = ${consultantId}::text
+      AND wc.is_active = true
+      AND wc.last_message_at > NOW() - INTERVAL '60 days'
+      AND wc.user_id IS NOT NULL
+    ORDER BY wc.last_message_at DESC
+    LIMIT 30
+  `);
+
+  const aiAssistantChatsResult = await db.execute(sql`
+    SELECT ac.id, ac.client_id, ac.mode, ac.title, ac.summary,
+           ac.last_message_at, ac.created_at,
+           u.first_name || ' ' || u.last_name as client_name,
+           (
+             SELECT json_agg(sub ORDER BY sub.created_at DESC)
+             FROM (
+               SELECT am.role, am.content, am.created_at
+               FROM ai_messages am
+               WHERE am.conversation_id = ac.id
+               ORDER BY am.created_at DESC
+               LIMIT 10
+             ) sub
+           ) as recent_messages
+    FROM ai_conversations ac
+    JOIN users u ON u.id::text = ac.client_id::text
+    WHERE ac.consultant_id = ${consultantId}::text
+      AND ac.client_id IS NOT NULL
+      AND ac.is_active = true
+      AND ac.last_message_at > NOW() - INTERVAL '60 days'
+    ORDER BY ac.last_message_at DESC
+    LIMIT 10
+  `);
+
+  const aiAssistantSummariesResult = await db.execute(sql`
+    SELECT ac.client_id, ac.title, ac.summary, ac.last_message_at, ac.mode,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM ai_conversations ac
+    JOIN users u ON u.id::text = ac.client_id::text
+    WHERE ac.consultant_id = ${consultantId}::text
+      AND ac.client_id IS NOT NULL
+      AND ac.summary IS NOT NULL AND ac.summary != ''
+      AND ac.last_message_at > NOW() - INTERVAL '60 days'
+    ORDER BY ac.last_message_at DESC
+    LIMIT 30
+  `);
+
   return {
     consultations: consultationsResult.rows,
     voiceCalls: voiceCallsResult.rows,
+    clientFileSearchStores: clientStoreResult.rows,
+    whatsappConversations: whatsappResult.rows,
+    aiAssistantChats: aiAssistantChatsResult.rows,
+    aiAssistantSummaries: aiAssistantSummariesResult.rows,
     ...kbContext,
   };
 }
@@ -933,6 +1011,42 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         instruction_preview: v.call_instruction?.substring(0, 150) || null,
       }));
 
+      const whatsappSummary = (roleData.whatsappConversations || []).map((wc: any) => ({
+        client: wc.client_name,
+        client_id: wc.client_id,
+        phone: wc.phone_number,
+        last_message_at: wc.last_message_at ? new Date(wc.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+        last_from: wc.last_message_from,
+        total_messages: wc.message_count,
+        recent_messages: (wc.recent_messages || []).slice(0, 10).map((m: any) => ({
+          text: m.message_text?.substring(0, 200),
+          direction: m.direction,
+          sender: m.sender,
+          date: m.sent_at ? new Date(m.sent_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
+        })),
+      }));
+
+      const aiChatsSummary = (roleData.aiAssistantChats || []).map((ac: any) => ({
+        client: ac.client_name,
+        client_id: ac.client_id,
+        title: ac.title,
+        mode: ac.mode,
+        last_message_at: ac.last_message_at ? new Date(ac.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+        recent_messages: (ac.recent_messages || []).slice(0, 6).map((m: any) => ({
+          role: m.role,
+          content: m.content?.substring(0, 300),
+          date: m.created_at ? new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
+        })),
+      }));
+
+      const aiSummariesList = (roleData.aiAssistantSummaries || []).map((s: any) => ({
+        client: s.client_name,
+        client_id: s.client_id,
+        title: s.title,
+        summary: s.summary?.substring(0, 300),
+        date: s.last_message_at ? new Date(s.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
+      }));
+
       return `Sei ALESSIA, Voice Consultant AI. Il tuo ruolo è analizzare lo storico delle consulenze e delle chiamate per identificare clienti che hanno bisogno di un contatto vocale proattivo.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
@@ -947,6 +1061,26 @@ ${consultationsSummary.length > 0 ? JSON.stringify(consultationsSummary, null, 2
 
 STORICO CHIAMATE AI RECENTI:
 ${callsSummary.length > 0 ? JSON.stringify(callsSummary, null, 2) : 'Nessuna chiamata AI recente'}
+
+STORE GLOBALE CONSULENZE CLIENTI (Note Consulenze + Email Journey):
+${(() => {
+  const fileSearchClients = (roleData.clientFileSearchStores || []);
+  const uniqueClients = [...new Map(fileSearchClients.map((c: any) => [c.client_id, c.client_name])).values()];
+  return uniqueClients.length > 0 
+    ? `Clienti con dati disponibili: ${uniqueClients.join(', ')}` 
+    : 'Nessun dato File Search disponibile';
+})()}
+Quando crei task per un cliente specifico, usa lo step "search_private_stores" per cercare nei loro documenti privati.
+REGOLE ANTI-ALLUCINAZIONE: Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026"). Cita SEMPRE la fonte. NON mescolare dati di clienti diversi. Se non trovi info su un cliente, dillo esplicitamente.
+
+CONVERSAZIONI WHATSAPP RECENTI (ultimi 60 giorni):
+${whatsappSummary.length > 0 ? JSON.stringify(whatsappSummary, null, 2) : 'Nessuna conversazione WhatsApp recente'}
+
+CHAT AI-ASSISTANT PIATTAFORMA (ultime 10 conversazioni):
+${aiChatsSummary.length > 0 ? JSON.stringify(aiChatsSummary, null, 2) : 'Nessuna chat AI-assistant recente'}
+
+RIASSUNTI CONVERSAZIONI AI-ASSISTANT (ultimi 2 mesi):
+${aiSummariesList.length > 0 ? JSON.stringify(aiSummariesList, null, 2) : 'Nessun riassunto disponibile'}
 
 ${buildTaskMemorySection(recentAllTasks, 'alessia', permanentBlocks, recentReasoningByRole)}
 

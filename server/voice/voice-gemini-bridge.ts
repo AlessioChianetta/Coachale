@@ -105,7 +105,7 @@ export class VoiceGeminiBridge extends EventEmitter {
         'general'
       );
     } else {
-      basePrompt = `Sei Alessia, un'assistente AI professionale e amichevole.
+      basePrompt = `Sei Alessia, una consulente AI professionale e amichevole.
 Parli in italiano con un tono caldo e naturale.
 Sei paziente, chiara e concisa nelle tue risposte.`;
     }

@@ -84,7 +84,7 @@ export class VoiceCallerLookup {
     };
 
     const greeting = voiceNumber.greetingText || 
-      'Buongiorno, sono Alessia, l\'assistente virtuale. Come posso aiutarti?';
+      `Buongiorno, sono Alessia, consulente di ${voiceNumber.displayName || 'il tuo consulente'}. Come posso aiutarti?`;
 
     return {
       callerInfo,
@@ -177,15 +177,15 @@ export class VoiceCallerLookup {
 
     if (callerInfo.isClient) {
       const firstName = callerInfo.name.split(' ')[0];
-      return `${timeGreeting} ${firstName}! Sono Alessia, l'assistente di ${voiceNumber.displayName || 'il tuo consulente'}. Come posso aiutarti oggi?`;
+      return `${timeGreeting} ${firstName}! Sono Alessia, consulente di ${voiceNumber.displayName || 'il tuo consulente'}. Come posso aiutarti oggi?`;
     }
 
     if (callerInfo.isRecognized) {
-      return `${timeGreeting}! Sono Alessia. Vedo che hai già un account. Come posso esserti utile?`;
+      return `${timeGreeting}! Sono Alessia, consulente di ${voiceNumber.displayName || 'il tuo consulente'}. Vedo che hai già un account. Come posso esserti utile?`;
     }
 
     return voiceNumber.greetingText || 
-      `${timeGreeting}! Sono Alessia, l'assistente virtuale. Come posso aiutarti?`;
+      `${timeGreeting}! Sono Alessia, consulente di ${voiceNumber.displayName || 'il tuo consulente'}. Come posso aiutarti?`;
   }
 
   async createLeadFromCall(callerId: string, consultantId: string): Promise<string | null> {
