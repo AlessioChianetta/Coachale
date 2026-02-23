@@ -3969,7 +3969,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
       // Use specialized onboarding agent prompt with dynamic status
       console.log(`🚀 [Onboarding Mode] Building specialized onboarding assistant prompt`);
       const onboardingGuide = buildOnboardingAgentPrompt(onboardingStatuses);
-      systemPrompt = onboardingGuide + '\n\n## Contesto Piattaforma\n' + buildConsultantSystemPrompt(consultantContext);
+      if (hasConsultantFileSearch) {
+        // Use lightweight prompt so file search instructions (incl. MANUALE-COMPLETO) are included
+        console.log(`🚀 [Onboarding Mode] File search active — using lightweight platform context`);
+        systemPrompt = onboardingGuide + '\n\n## Contesto Piattaforma\n' + buildLightweightConsultantSystemPrompt(consultantContext);
+      } else {
+        systemPrompt = onboardingGuide + '\n\n## Contesto Piattaforma\n' + buildConsultantSystemPrompt(consultantContext);
+      }
     } else if (hasConsultantFileSearch) {
       systemPrompt = buildLightweightConsultantSystemPrompt(consultantContext);
       console.log(`⚡ [FileSearch] Using lightweight system prompt`);
