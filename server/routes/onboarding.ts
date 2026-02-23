@@ -29,7 +29,6 @@ import {
   emailAccounts,
   voiceCalls,
   aiScheduledTasks,
-  whatsappGeminiApiKeys,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { ensureGeminiFileValid } from '../services/gemini-file-manager';
@@ -360,7 +359,7 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       }),
       db.query.users.findFirst({
         where: eq(users.id, consultantId),
-        columns: { useSuperadminVertex: true },
+        columns: { useSuperadminVertex: true, geminiApiKeys: true },
       }),
       db.query.consultantSmtpSettings.findFirst({
         where: eq(consultantSmtpSettings.consultantId, consultantId),
@@ -467,13 +466,8 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
           eq(aiScheduledTasks.consultantId, sql`${consultantId}::uuid`),
           eq(aiScheduledTasks.status, 'completed')
         )),
-      // whatsapp_ai: check if at least 1 personal Gemini API key configured
-      db.select({ count: count() })
-        .from(whatsappGeminiApiKeys)
-        .where(and(
-          eq(whatsappGeminiApiKeys.consultantId, consultantId),
-          eq(whatsappGeminiApiKeys.isActive, true)
-        )),
+      // whatsapp_ai: geminiApiKeys fetched directly from users table above (no separate query needed)
+      Promise.resolve(null),
     ]);
     
     const documentsCount = Number(docsResult[0]?.count || 0);
@@ -504,8 +498,8 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     const hasVoiceCall = Number(voiceCallsResult[0]?.count || 0) > 0;
     // ai autonomo
     const hasAiTask = Number(aiTasksResult[0]?.count || 0) > 0;
-    // whatsapp ai (personal gemini keys)
-    const hasWhatsappAi = Number(geminiKeysResult[0]?.count || 0) > 0;
+    // whatsapp ai (personal gemini keys stored in users.gemini_api_keys)
+    const hasWhatsappAi = Array.isArray(consultant?.geminiApiKeys) && consultant.geminiApiKeys.length > 0;
     // email journey: automation enabled or frequency set
     const hasEmailJourney = smtpSettings?.automationEnabled === true || 
       (smtpSettings?.emailFrequencyDays !== null && smtpSettings?.emailFrequencyDays !== undefined);
@@ -579,6 +573,37 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       { stepId: 'whatsapp_ai', status: hasWhatsappAi ? 'verified' : 'pending' },
     ];
     
+    // ── Riepilogo onboarding per console ─────────────────────────────────
+    const statusEmoji: Record<string, string> = { verified: '✅', configured: '🟡', pending: '⚪', error: '🔴', skipped: '⏭️' };
+    const byPriority: Record<number, { label: string; steps: typeof statuses }> = {
+      1: { label: 'CRITICA', steps: [] },
+      2: { label: 'ALTA', steps: [] },
+      3: { label: 'MEDIA', steps: [] },
+      4: { label: 'NORMALE', steps: [] },
+      5: { label: 'OPZIONALE', steps: [] },
+    };
+    const priorityMap: Record<string, number> = {
+      twilio: 1, smtp: 1, vertex_ai: 1, lead_import: 1,
+      whatsapp_template: 2, agent_inbound: 2, first_campaign: 2, agent_outbound: 2,
+      stripe_connect: 2, knowledge_base: 2, google_calendar: 2, google_calendar_agents: 2, voice_calls: 2,
+      agent_consultative: 3, email_journey: 3, nurturing_emails: 3,
+      ai_autonomo: 4, summary_email: 4, email_hub: 4, agent_public_link: 4, instagram: 4,
+      turn_config: 5, agent_ideas: 5, more_templates: 5, first_course: 5, first_exercise: 5, whatsapp_ai: 5,
+    };
+    for (const s of statuses) {
+      const p = priorityMap[s.stepId] || 5;
+      byPriority[p].steps.push(s);
+    }
+    const verified = statuses.filter(s => s.status === 'verified').length;
+    const errors = statuses.filter(s => s.status === 'error').length;
+    console.log(`\n📋 ONBOARDING STATUS — ${verified}/${statuses.length} completati${errors > 0 ? ` | ⚠️ ${errors} errori` : ''}`);
+    for (const [p, group] of Object.entries(byPriority)) {
+      const done = group.steps.filter(s => s.status === 'verified').length;
+      console.log(`  P${p} ${group.label}: ${done}/${group.steps.length}  ${group.steps.map(s => `${statusEmoji[s.status]}${s.stepId}`).join('  ')}`);
+    }
+    console.log('');
+    // ─────────────────────────────────────────────────────────────────────
+
     res.json({
       success: true,
       data: statuses,
