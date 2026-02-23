@@ -21,6 +21,8 @@ export interface AutonomySettings {
   role_autonomy_modes: Record<string, number>;
   role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
   whatsapp_template_ids: string[];
+  reasoning_mode: string;
+  role_reasoning_modes: Record<string, string>;
 }
 
 export interface RoleStatus {

@@ -49,6 +49,8 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         role_autonomy_modes: {},
         role_working_hours: {},
         whatsapp_template_ids: [],
+        reasoning_mode: 'structured',
+        role_reasoning_modes: {},
       });
     }
 
@@ -86,6 +88,8 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const roleAutonomyModes = JSON.stringify(body.role_autonomy_modes ?? {});
     const roleWorkingHours = JSON.stringify(body.role_working_hours ?? {});
     const whatsappTemplateIds = JSON.stringify(body.whatsapp_template_ids ?? []);
+    const reasoningMode = body.reasoning_mode ?? 'structured';
+    const roleReasoningModes = JSON.stringify(body.role_reasoning_modes ?? {});
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -93,13 +97,15 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         always_approve_actions, working_hours_start, working_hours_end, working_days,
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
-        role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids
+        role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids,
+        reasoning_mode, role_reasoning_modes
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
-        ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb
+        ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb,
+        ${reasoningMode}, ${roleReasoningModes}::jsonb
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -121,6 +127,8 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         role_autonomy_modes = EXCLUDED.role_autonomy_modes,
         role_working_hours = EXCLUDED.role_working_hours,
         whatsapp_template_ids = EXCLUDED.whatsapp_template_ids,
+        reasoning_mode = EXCLUDED.reasoning_mode,
+        role_reasoning_modes = EXCLUDED.role_reasoning_modes,
         updated_at = now()
       RETURNING *
     `);
@@ -4185,5 +4193,145 @@ REGOLE ANTI-ALLUCINAZIONE:
 
   return aiResponse;
 }
+
+router.get("/reasoning-logs", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const offset = (page - 1) * limit;
+    const roleFilter = req.query.role as string || null;
+    const modeFilter = req.query.mode as string || null;
+
+    let whereClause = sql`WHERE consultant_id = ${consultantId}::uuid`;
+    if (roleFilter) whereClause = sql`${whereClause} AND role_id = ${roleFilter}`;
+    if (modeFilter) whereClause = sql`${whereClause} AND reasoning_mode = ${modeFilter}`;
+
+    const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM ai_reasoning_logs ${whereClause}`);
+    const total = parseInt((countResult.rows[0] as any)?.total || '0');
+
+    const result = await db.execute(sql`
+      SELECT * FROM ai_reasoning_logs ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    return res.json({
+      logs: result.rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
+  } catch (error: any) {
+    console.error("[AI-REASONING] Error fetching logs:", error);
+    return res.status(500).json({ error: "Failed to fetch reasoning logs" });
+  }
+});
+
+router.get("/reasoning-logs/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+    const result = await db.execute(sql`
+      SELECT * FROM ai_reasoning_logs
+      WHERE id = ${id}::uuid AND consultant_id = ${consultantId}::uuid
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Reasoning log not found" });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error("[AI-REASONING] Error fetching log:", error);
+    return res.status(500).json({ error: "Failed to fetch reasoning log" });
+  }
+});
+
+router.get("/reasoning-stats", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const result = await db.execute(sql`
+      SELECT role_id, role_name, reasoning_mode,
+        COUNT(*) as total_runs,
+        SUM(tasks_created) as total_tasks_created,
+        SUM(tasks_rejected) as total_tasks_rejected,
+        AVG(duration_ms) as avg_duration_ms,
+        SUM(total_tokens) as total_tokens_used,
+        MAX(created_at) as last_run
+      FROM ai_reasoning_logs
+      WHERE consultant_id = ${consultantId}::uuid
+        AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY role_id, role_name, reasoning_mode
+      ORDER BY role_name
+    `);
+
+    return res.json({ stats: result.rows });
+  } catch (error: any) {
+    console.error("[AI-REASONING] Error fetching stats:", error);
+    return res.status(500).json({ error: "Failed to fetch reasoning stats" });
+  }
+});
+
+router.post("/tasks/bulk-action", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { action, taskIds } = req.body;
+    if (!action || !taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ error: "action and taskIds are required" });
+    }
+
+    if (taskIds.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 tasks per batch" });
+    }
+
+    let result;
+    switch (action) {
+      case 'approve':
+        result = await db.execute(sql`
+          UPDATE ai_scheduled_tasks 
+          SET status = 'approved', updated_at = now()
+          WHERE consultant_id = ${consultantId}
+            AND id = ANY(${taskIds}::text[])
+            AND status IN ('waiting_approval', 'scheduled')
+        `);
+        break;
+
+      case 'reject':
+        result = await db.execute(sql`
+          UPDATE ai_scheduled_tasks 
+          SET status = 'rejected', updated_at = now()
+          WHERE consultant_id = ${consultantId}
+            AND id = ANY(${taskIds}::text[])
+            AND status IN ('waiting_approval', 'scheduled', 'approved')
+        `);
+        break;
+
+      case 'delete':
+        result = await db.execute(sql`
+          DELETE FROM ai_scheduled_tasks 
+          WHERE consultant_id = ${consultantId}
+            AND id = ANY(${taskIds}::text[])
+            AND status IN ('waiting_approval', 'scheduled', 'rejected')
+        `);
+        break;
+
+      default:
+        return res.status(400).json({ error: `Invalid action: ${action}` });
+    }
+
+    return res.json({ success: true, action, affected: taskIds.length });
+  } catch (error: any) {
+    console.error("[AI-BULK] Error:", error);
+    return res.status(500).json({ error: "Failed to execute bulk action" });
+  }
+});
 
 export default router;

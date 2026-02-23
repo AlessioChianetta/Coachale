@@ -705,6 +705,95 @@ function ActivityTab({
     </motion.div>
   );
 
+  const renderFormattedText = (content: string) => {
+    const parts = content.split(/(\*\*(?:[^*]|\*(?!\*))+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return <strong key={i} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const parseStructuredReasoning = (text: string): { observation?: string; reflection?: string; decision?: string; selfReview?: string } | null => {
+    const hasStructured = /\*\*(Osservazione|Observation|Analisi Dati|Riflessione|Reflection|Decisione|Decision|Auto-revisione|Self.?Review|Priorit)/i.test(text);
+    if (!hasStructured) return null;
+
+    const result: Record<string, string> = {};
+
+    const sectionPatterns = [
+      { key: 'observation', patterns: [/\*\*(?:Osservazione|Observation|Analisi Dati)[:\s]*\*\*\s*/i] },
+      { key: 'reflection', patterns: [/\*\*(?:Riflessione|Reflection|Priorità|Priorit)[:\s]*\*\*\s*/i] },
+      { key: 'decision', patterns: [/\*\*(?:Decisione|Decision)[:\s]*\*\*\s*/i] },
+      { key: 'selfReview', patterns: [/\*\*(?:Auto-revisione|Auto revisione|Self.?Review|Revisione)[:\s]*\*\*\s*/i] },
+    ];
+
+    const allPatterns = sectionPatterns.flatMap(s => s.patterns);
+    const combinedPattern = new RegExp(allPatterns.map(p => p.source).join('|'), 'gi');
+    const parts = text.split(combinedPattern).filter(Boolean);
+    const headers = [...text.matchAll(combinedPattern)];
+
+    if (headers.length === 0) return null;
+
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i][0].toLowerCase();
+      const content = parts[i + 1]?.trim() || '';
+      if (!content) continue;
+
+      if (/osservazione|observation|analisi dati/i.test(header)) result.observation = content;
+      else if (/riflessione|reflection|priorit/i.test(header)) result.reflection = content;
+      else if (/decisione|decision/i.test(header)) result.decision = content;
+      else if (/auto.?revisione|self.?review|revisione/i.test(header)) result.selfReview = content;
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+  };
+
+  const getCategoryLabel = (cat?: string): string => {
+    const labels: Record<string, string> = {
+      followup: 'Follow-up',
+      outreach: 'Primo contatto',
+      reminder: 'Promemoria',
+      monitoring: 'Monitoraggio',
+      preparation: 'Preparazione',
+      analysis: 'Analisi',
+      report: 'Report',
+    };
+    return labels[cat || ''] || 'Task';
+  };
+
+  const getCategoryStyle = (cat?: string): string => {
+    const styles: Record<string, string> = {
+      followup: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400',
+      outreach: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400',
+      reminder: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400',
+      monitoring: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400',
+      preparation: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-400',
+      analysis: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400',
+      report: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/30 dark:text-slate-400',
+    };
+    return styles[cat || ''] || 'bg-muted text-muted-foreground';
+  };
+
+  const getCategoryIcon = (cat?: string): string => {
+    const icons: Record<string, string> = {
+      followup: '🔄',
+      outreach: '🟢',
+      reminder: '⏰',
+      monitoring: '📊',
+      preparation: '📋',
+      analysis: '🔍',
+      report: '📄',
+    };
+    return icons[cat || ''] || '📌';
+  };
+
+  const getPriorityStyle = (priority?: number): string => {
+    if (priority === 1) return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400';
+    if (priority === 2) return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400';
+    return 'bg-muted text-muted-foreground';
+  };
+
   const renderReasoningCard = (item: any) => {
     let eventData: any = {};
     try {
@@ -772,49 +861,103 @@ function ActivityTab({
               </div>
             </div>
 
-            {eventData.overall_reasoning && (
-              <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="text-xs font-bold mb-3 flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5" />
-                  Analisi
-                </p>
-                {(() => {
-                  const text = (eventData.overall_reasoning as string).trim();
-                  
-                  const renderFormattedText = (content: string) => {
-                    const parts = content.split(/(\*\*(?:[^*]|\*(?!\*))+\*\*)/g);
-                    return parts.map((part, i) => {
-                      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-                        return <strong key={i} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
-                      }
-                      return <span key={i}>{part}</span>;
-                    });
-                  };
+            {eventData.overall_reasoning && (() => {
+              const text = (eventData.overall_reasoning as string).trim();
+              const sections = parseStructuredReasoning(text);
 
-                  const cleaned = text.replace(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)/gm, (_m, _emoji, title) => {
+              if (sections) {
+                const renderSectionContent = (sectionText: string) => {
+                  const cleaned = sectionText.replace(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)/gm, (_m: string, _emoji: string, title: string) => {
                     const t = title.trim();
                     return t ? `**${t}**` : '';
                   });
-
                   const paragraphs = cleaned
                     .split(/\n\s*\n/g)
-                    .map(p => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
-                    .filter(p => p.length > 0);
-
-                  if (paragraphs.length === 0) {
-                    return <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{text}</p>;
-                  }
-
+                    .map((p: string) => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+                    .filter((p: string) => p.length > 0);
+                  if (paragraphs.length === 0) return <span>{sectionText}</span>;
                   return (
-                    <div className="text-sm text-muted-foreground leading-relaxed space-y-2.5">
-                      {paragraphs.map((para, i) => (
+                    <div className="space-y-1.5">
+                      {paragraphs.map((para: string, i: number) => (
                         <p key={i}>{renderFormattedText(para)}</p>
                       ))}
                     </div>
                   );
-                })()}
-              </div>
-            )}
+                };
+
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold flex items-center gap-1.5">
+                      <Brain className="h-3.5 w-3.5" />
+                      Ragionamento strutturato
+                    </p>
+                    {sections.observation && (
+                      <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/10 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                          <Eye className="h-3 w-3" />
+                          Osservazione
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.observation)}</div>
+                      </div>
+                    )}
+                    {sections.reflection && (
+                      <div className="rounded-xl border bg-purple-50/50 dark:bg-purple-950/10 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-purple-700 dark:text-purple-400">
+                          <Brain className="h-3 w-3" />
+                          Riflessione
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.reflection)}</div>
+                      </div>
+                    )}
+                    {sections.decision && (
+                      <div className="rounded-xl border bg-emerald-50/50 dark:bg-emerald-950/10 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                          <Target className="h-3 w-3" />
+                          Decisione
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.decision)}</div>
+                      </div>
+                    )}
+                    {sections.selfReview && (
+                      <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="h-3 w-3" />
+                          Auto-revisione
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.selfReview)}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const cleaned = text.replace(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)/gm, (_m: string, _emoji: string, title: string) => {
+                const t = title.trim();
+                return t ? `**${t}**` : '';
+              });
+              const paragraphs = cleaned
+                .split(/\n\s*\n/g)
+                .map((p: string) => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+                .filter((p: string) => p.length > 0);
+
+              return (
+                <div className="rounded-xl border bg-muted/20 p-4">
+                  <p className="text-xs font-bold mb-3 flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5" />
+                    Analisi
+                  </p>
+                  {paragraphs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{text}</p>
+                  ) : (
+                    <div className="text-sm text-muted-foreground leading-relaxed space-y-2.5">
+                      {paragraphs.map((para: string, i: number) => (
+                        <p key={i}>{renderFormattedText(para)}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {!eventData.overall_reasoning && (
               <div className="rounded-xl border bg-muted/20 p-4">
@@ -829,29 +972,28 @@ function ActivityTab({
             {suggestions.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-bold flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <ListChecks className="h-3.5 w-3.5" />
                   Azioni decise ({suggestions.length})
                 </p>
                 {suggestions.map((s: any, idx: number) => (
                   <div key={idx} className="rounded-xl border p-3 bg-card">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{s.client_name || 'N/A'}</span>
-                        {s.channel && s.channel !== 'none' && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : '💬 WhatsApp'}
-                          </Badge>
-                        )}
-                      </div>
-                      {s.priority && (
-                        <Badge className={cn("text-[10px]",
-                          s.priority === 1 ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400" :
-                          s.priority === 2 ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400" :
-                          "bg-muted text-muted-foreground"
-                        )}>
-                          {s.priority === 1 ? 'Urgente' : s.priority === 2 ? 'Alta' : 'Normale'}
+                    <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                      <Badge className={cn("text-[10px] px-1.5 py-0", getCategoryStyle(s.category))}>
+                        {getCategoryIcon(s.category)} {getCategoryLabel(s.category)}
+                      </Badge>
+                      {s.channel && s.channel !== 'none' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : s.channel === 'whatsapp' ? '💬 WhatsApp' : s.channel}
                         </Badge>
                       )}
+                      {s.priority && (
+                        <Badge className={cn("text-[10px] px-1.5 py-0", getPriorityStyle(s.priority))}>
+                          P{s.priority}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="font-semibold text-sm">{s.client_name || 'Generale'}</span>
                     </div>
                     <p className="text-sm mb-2">{s.instruction}</p>
                     {s.reasoning && (

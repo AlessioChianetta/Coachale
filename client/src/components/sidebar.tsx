@@ -140,6 +140,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail },
       { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone },
       { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot },
+      { name: "Ragionamenti AI", href: "/consultant/ai-reasoning", icon: Sparkles },
     ]
   },
   {

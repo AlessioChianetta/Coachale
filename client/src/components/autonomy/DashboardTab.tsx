@@ -137,10 +137,17 @@ function DashboardTab({
   const [isMerging, setIsMerging] = React.useState(false);
   const [executiveView, setExecutiveView] = React.useState(false);
   const [showAllActivity, setShowAllActivity] = React.useState(false);
+  const [selectedBulkIds, setSelectedBulkIds] = React.useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = React.useState(false);
+  const [bulkConfirmAction, setBulkConfirmAction] = React.useState<'reject' | 'delete' | null>(null);
 
   React.useEffect(() => {
     setShowAllActivity(false);
   }, [selectedTaskId]);
+
+  React.useEffect(() => {
+    setSelectedBulkIds(new Set());
+  }, [dashboardStatusFilter, dashboardCategoryFilter, dashboardRoleFilter, dashboardPage]);
 
   const fetchBlocks = React.useCallback(async () => {
     setBlocksLoading(true);
@@ -395,6 +402,51 @@ function DashboardTab({
       else next.add(taskId);
       return next;
     });
+  };
+
+  const toggleBulkSelect = (taskId: string) => {
+    setSelectedBulkIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const handleBulkAction = async (action: 'approve' | 'reject' | 'delete') => {
+    if (selectedBulkIds.size === 0) return;
+    setBulkActionLoading(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/tasks/bulk-action", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ action, taskIds: Array.from(selectedBulkIds) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Errore durante l'operazione");
+      }
+      const actionLabels: Record<string, string> = {
+        approve: "approvati",
+        reject: "rifiutati",
+        delete: "eliminati",
+      };
+      toast({
+        title: "Operazione completata",
+        description: `${selectedBulkIds.size} task ${actionLabels[action]}`,
+      });
+      setSelectedBulkIds(new Set());
+      setBulkConfirmAction(null);
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === "string" && key.includes("/api/ai-autonomy/");
+        },
+      });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message || "Impossibile completare l'operazione", variant: "destructive" });
+    }
+    setBulkActionLoading(false);
   };
 
   const [columnOrder, setColumnOrder] = React.useState<string[]>(() => {
@@ -1297,6 +1349,21 @@ function DashboardTab({
             <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] tabular-nums">
               {attentionTasks.length}
             </Badge>
+            <div className="ml-auto flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={selectedBulkIds.size > 0 && attentionTasks.every(t => selectedBulkIds.has(t.id))}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedBulkIds(new Set(attentionTasks.map(t => t.id)));
+                  } else {
+                    setSelectedBulkIds(new Set());
+                  }
+                }}
+                className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground">Seleziona tutti</span>
+            </div>
           </div>
           <div className="space-y-2">
             {attentionTasks.map((task, index) => {
@@ -1313,7 +1380,8 @@ function DashboardTab({
                     task.status === 'waiting_input' ? "border-l-orange-500 bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30" :
                     task.status === 'paused' ? "border-l-slate-400 bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800/30" :
                     "border-l-amber-500 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30",
-                    mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
+                    mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400",
+                    selectedBulkIds.has(task.id) && "ring-2 ring-blue-400 bg-blue-50/30 dark:bg-blue-950/20"
                   )}
                   onClick={() => {
                     if (mergeMode) {
@@ -1327,6 +1395,19 @@ function DashboardTab({
                     }
                   }}
                 >
+                  <input
+                    type="checkbox"
+                    checked={selectedBulkIds.has(task.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      const newSet = new Set(selectedBulkIds);
+                      if (e.target.checked) newSet.add(task.id);
+                      else newSet.delete(task.id);
+                      setSelectedBulkIds(newSet);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 rounded border-gray-300 cursor-pointer shrink-0"
+                  />
                   {mergeMode && (
                     <Checkbox checked={selectedMergeIds.has(task.id)} className="shrink-0" />
                   )}
@@ -3266,6 +3347,58 @@ function DashboardTab({
           )}
         </DialogContent>
       </Dialog>
+
+      {selectedBulkIds.size > 0 && !mergeMode && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+        >
+          <div className="flex items-center gap-3 bg-card border-2 border-blue-300 dark:border-blue-700 rounded-2xl shadow-2xl px-5 py-3">
+            <span className="text-sm font-semibold">{selectedBulkIds.size} selezionati</span>
+            <Separator orientation="vertical" className="h-6" />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedBulkIds(new Set())}
+            >
+              Deseleziona
+            </Button>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+              disabled={bulkActionLoading}
+              onClick={() => handleBulkAction('approve')}
+            >
+              {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ThumbsUp className="h-3.5 w-3.5" />}
+              Approva
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={bulkActionLoading}
+              onClick={() => handleBulkAction('reject')}
+            >
+              <Ban className="h-3.5 w-3.5 mr-1" />
+              Rifiuta
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={bulkActionLoading}
+              onClick={() => {
+                if (window.confirm(`Eliminare ${selectedBulkIds.size} task selezionati? Questa azione non può essere annullata.`)) {
+                  handleBulkAction('delete');
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Elimina
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {mergeMode && selectedMergeIds.size >= 2 && (
         <motion.div

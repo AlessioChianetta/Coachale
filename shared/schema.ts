@@ -10339,6 +10339,8 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   consultantEmail: varchar("consultant_email", { length: 255 }),
   consultantWhatsapp: varchar("consultant_whatsapp", { length: 30 }),
   whatsappTemplateIds: jsonb("whatsapp_template_ids").$type<string[]>().default(sql`'[]'::jsonb`),
+  reasoningMode: varchar("reasoning_mode", { length: 20 }).default("structured"),
+  roleReasoningModes: jsonb("role_reasoning_modes").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
@@ -10478,3 +10480,49 @@ export const aiTokenUsageDaily = pgTable("ai_token_usage_daily", {
 
 export type AITokenUsageDaily = typeof aiTokenUsageDaily.$inferSelect;
 export type InsertAITokenUsageDaily = typeof aiTokenUsageDaily.$inferInsert;
+
+export const aiReasoningLogs = pgTable("ai_reasoning_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: uuid("consultant_id").notNull(),
+  roleId: varchar("role_id", { length: 30 }).notNull(),
+  roleName: varchar("role_name", { length: 100 }).notNull(),
+  reasoningMode: varchar("reasoning_mode", { length: 20 }).notNull().default("structured"),
+  runId: varchar("run_id", { length: 100 }),
+  observation: text("observation"),
+  reflection: text("reflection"),
+  decision: text("decision"),
+  selfReview: text("self_review"),
+  overallReasoning: text("overall_reasoning"),
+  thinkingSteps: jsonb("thinking_steps").$type<Array<{
+    step: number;
+    type: string;
+    title: string;
+    content: string;
+    durationMs: number;
+    tokens: number;
+  }>>().default(sql`'[]'::jsonb`),
+  tasksCreated: integer("tasks_created").default(0),
+  tasksRejected: integer("tasks_rejected").default(0),
+  rejectedReasons: jsonb("rejected_reasons").$type<Array<{
+    task: string;
+    reason: string;
+  }>>().default(sql`'[]'::jsonb`),
+  tasksData: jsonb("tasks_data").$type<any[]>().default(sql`'[]'::jsonb`),
+  totalTokens: integer("total_tokens").default(0),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  durationMs: integer("duration_ms").default(0),
+  modelUsed: varchar("model_used", { length: 100 }),
+  providerUsed: varchar("provider_used", { length: 50 }),
+  status: varchar("status", { length: 20 }).default("completed"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_reasoning_logs_consultant").on(table.consultantId),
+  roleIdx: index("idx_reasoning_logs_role").on(table.roleId),
+  createdIdx: index("idx_reasoning_logs_created").on(table.createdAt),
+  modeIdx: index("idx_reasoning_logs_mode").on(table.reasoningMode),
+}));
+
+export type AIReasoningLog = typeof aiReasoningLogs.$inferSelect;
+export type InsertAIReasoningLog = typeof aiReasoningLogs.$inferInsert;

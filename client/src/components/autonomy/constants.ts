@@ -376,6 +376,8 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
   role_frequencies: {},
   role_autonomy_modes: {},
   role_working_hours: {},
+  reasoning_mode: "structured",
+  role_reasoning_modes: {},
 };
 
 export const EMPTY_NEW_TASK: NewTaskData = {

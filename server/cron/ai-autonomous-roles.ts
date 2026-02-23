@@ -4,6 +4,49 @@ import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
 import { FileSearchSyncService } from "../services/file-search-sync-service";
 
+export function wrapPromptWithStructuredReasoning(basePrompt: string, roleName: string): string {
+  let prompt = basePrompt;
+
+  const overallReasoningPatterns = [
+    /IMPORTANTE:\s*Il campo "overall_reasoning" è OBBLIGATORIO[^\n]*\n?[^\n]*/g,
+    /IMPORTANTE:\s*Il campo "overall_reasoning" è OBBLIGATORIO[^]*/m,
+  ];
+
+  const jsonFormatPattern = /Rispondi SOLO con JSON valido \(senza markdown, senza backtick\):\s*\n\{\s*\n\s*"overall_reasoning":\s*"[^"]*",?\s*\n\s*"tasks":\s*\[/;
+  
+  if (jsonFormatPattern.test(prompt)) {
+    prompt = prompt.replace(
+      /IMPORTANTE:\s*Il campo "overall_reasoning" è OBBLIGATORIO[^\n]*(?:\n[^\n]*){0,2}\n\nRispondi SOLO con JSON valido \(senza markdown, senza backtick\):\s*\n\{\s*\n\s*"overall_reasoning":\s*"[^"]*",?\s*\n\s*"tasks":/,
+      `Rispondi SOLO con JSON valido (senza markdown, senza backtick):\n{\n  "reasoning": {\n    "observation": "...",\n    "reflection": "...",\n    "decision": "...",\n    "self_review": "..."\n  },\n  "tasks":`
+    );
+  }
+
+  prompt += `\n\n--- FORMATO RAGIONAMENTO STRUTTURATO (OBBLIGATORIO) ---
+Il tuo output JSON DEVE contenere queste sezioni obbligatorie:
+
+{
+  "reasoning": {
+    "observation": "Descrivi COSA hai osservato nei dati. Quali pattern, anomalie, o informazioni rilevanti hai trovato? Elenca i dati chiave che hai analizzato.",
+    "reflection": "Rifletti sul SIGNIFICATO di ciò che hai osservato. Cosa implicano questi dati per i clienti? Quali opportunità o rischi hai identificato? Confronta con le tue analisi precedenti.",
+    "decision": "Spiega COSA hai deciso di fare e PERCHÉ. Per ogni task creato, giustifica la scelta. Per ogni cliente che hai considerato ma scartato, spiega il motivo.",
+    "self_review": "Auto-valutazione critica: I task che proponi sono davvero necessari? Sono duplicati di task esistenti? Il timing è appropriato? C'è qualcosa che potresti migliorare?"
+  },
+  "tasks": [
+    ... (formato tasks esistente invariato)
+  ]
+}
+
+REGOLE:
+- Il campo "reasoning" è OBBLIGATORIO, anche se non crei nessun task
+- Ogni sezione deve contenere almeno 2-3 frasi significative
+- "observation" deve citare dati specifici (nomi clienti, date, numeri)
+- "self_review" deve essere critica e onesta - se un task è borderline, dillo
+- NON ripetere il campo "overall_reasoning" — il ragionamento va tutto dentro "reasoning"
+--- FINE FORMATO RAGIONAMENTO ---`;
+
+  return prompt;
+}
+
 async function fetchAgentKbContext(consultantId: string, agentId: string): Promise<{ kbDocumentTitles: string[]; fileSearchStoreNames: string[]; hasPersonalClientStore: boolean }> {
   let kbDocumentTitles: string[] = [];
   let fileSearchStoreNames: string[] = [];

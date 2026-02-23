@@ -24,6 +24,47 @@ import { GoogleGenAI } from '@google/genai';
 import { FileSearchService } from '../ai/file-search-service';
 import { fetchSystemDocumentsForAgent } from '../services/system-prompt-documents-service';
 
+function isDuplicateTask(newInstruction: string, existingInstruction: string, newContactId?: string, existingContactId?: string): { isDuplicate: boolean; similarity: number; reason: string } {
+  if (newContactId && existingContactId && newContactId !== existingContactId) {
+    return { isDuplicate: false, similarity: 0, reason: '' };
+  }
+
+  const stopWords = new Set(['che', 'per', 'con', 'del', 'della', 'delle', 'dei', 'degli', 'una', 'uno', 'sono', 'come', 'questo', 'questa', 'anche', 'loro', 'più', 'alla', 'alle', 'allo', 'agli', 'nella', 'nelle', 'nello', 'negli', 'dalla', 'dalle', 'dallo', 'dagli', 'sulla', 'sulle', 'sullo', 'sugli', 'cliente', 'task', 'email', 'chiamata', 'contatto', 'messaggio', 'inviare', 'creare', 'fare']);
+
+  const extractKeywords = (text: string): Set<string> => {
+    return new Set(
+      text.toLowerCase()
+        .replace(/[^\w\sàèéìòù]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 3 && !stopWords.has(w))
+    );
+  };
+
+  const newKw = extractKeywords(newInstruction);
+  const existKw = extractKeywords(existingInstruction);
+
+  if (newKw.size === 0 || existKw.size === 0) {
+    return { isDuplicate: false, similarity: 0, reason: '' };
+  }
+
+  const intersection = new Set([...newKw].filter(k => existKw.has(k)));
+  const union = new Set([...newKw, ...existKw]);
+  const similarity = intersection.size / union.size;
+
+  const sameContact = newContactId && existingContactId && newContactId === existingContactId;
+  const threshold = sameContact ? 0.35 : 0.55;
+
+  if (similarity >= threshold) {
+    return {
+      isDuplicate: true,
+      similarity,
+      reason: `Keyword overlap ${(similarity * 100).toFixed(0)}% con task esistente (${sameContact ? 'stesso cliente' : 'cliente diverso'}). Keywords comuni: ${[...intersection].slice(0, 5).join(', ')}`
+    };
+  }
+
+  return { isDuplicate: false, similarity, reason: '' };
+}
+
 const CRON_JOB_NAME = 'ai-task-scheduler';
 const LOCK_DURATION_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -1482,6 +1523,243 @@ async function runAutonomousTaskGeneration(): Promise<void> {
   }
 }
 
+interface DeepThinkStep {
+  step: number;
+  type: string;
+  title: string;
+  content: string;
+  durationMs: number;
+  tokens: number;
+}
+
+interface DeepThinkResult {
+  parsed: { tasks: any[]; overall_reasoning?: string };
+  rawResponse: string;
+  steps: DeepThinkStep[];
+  overallReasoning: string;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  durationMs: number;
+}
+
+async function executeDeepThinkLoop(
+  aiClient: any,
+  model: string,
+  provider: string,
+  basePrompt: string,
+  role: any,
+  clientsList: any[],
+  roleData: Record<string, any>,
+  recentTasks: any[],
+  consultantId: string,
+  cycleId: string,
+  fileSearchTool: any,
+  useFileSearch: boolean
+): Promise<DeepThinkResult> {
+  const steps: DeepThinkStep[] = [];
+  let totalTokens = 0, inputTokens = 0, outputTokens = 0;
+  const startTime = Date.now();
+  const conversationHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Starting multi-step reasoning loop...`);
+
+  const step1Start = Date.now();
+  const step1Prompt = `${basePrompt}
+
+--- ISTRUZIONE STEP 1: ANALISI DATI ---
+Questo è il primo step del tuo processo di ragionamento approfondito.
+Analizza TUTTI i dati che ti ho fornito e produci un'analisi strutturata:
+1. Quali pattern noti nei dati dei clienti?
+2. Chi mostra segnali di bisogno di attenzione (e perché)?
+3. Quali opportunità di contatto/azione hai identificato?
+4. Ci sono rischi o situazioni critiche?
+
+NON generare ancora task. Concentrati solo sull'analisi.
+Rispondi in formato libero (testo), non JSON.`;
+
+  conversationHistory.push({ role: 'user', parts: [{ text: step1Prompt }] });
+
+  let step1Response = '';
+  try {
+    const resp = await aiClient.generateContent({
+      model,
+      contents: conversationHistory,
+      generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+    });
+    step1Response = resp.response?.text?.() || '';
+  } catch (e: any) {
+    step1Response = `Errore nell'analisi: ${e.message}`;
+  }
+
+  conversationHistory.push({ role: 'model', parts: [{ text: step1Response }] });
+  steps.push({
+    step: 1,
+    type: 'data_analysis',
+    title: 'Analisi Dati',
+    content: step1Response,
+    durationMs: Date.now() - step1Start,
+    tokens: 0,
+  });
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 (Analysis) done: ${step1Response.length} chars`);
+
+  const step2Start = Date.now();
+  conversationHistory.push({ role: 'user', parts: [{ text: `--- STEP 2: VALUTAZIONE PRIORITÀ ---
+Basandoti sulla tua analisi precedente, ora ordina per priorità i clienti/situazioni che richiedono azione.
+Per ogni cliente da contattare, spiega:
+- Perché è prioritario
+- Che tipo di azione suggeriresti
+- Quanto è urgente (1-5)
+- Quale canale sarebbe più appropriato
+
+Rispondi in formato libero (testo), non JSON.` }] });
+
+  let step2Response = '';
+  try {
+    const resp = await aiClient.generateContent({
+      model,
+      contents: conversationHistory,
+      generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+    });
+    step2Response = resp.response?.text?.() || '';
+  } catch (e: any) {
+    step2Response = `Errore nella prioritizzazione: ${e.message}`;
+  }
+
+  conversationHistory.push({ role: 'model', parts: [{ text: step2Response }] });
+  steps.push({
+    step: 2,
+    type: 'priority_assessment',
+    title: 'Valutazione Priorità',
+    content: step2Response,
+    durationMs: Date.now() - step2Start,
+    tokens: 0,
+  });
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 (Priorities) done: ${step2Response.length} chars`);
+
+  const step3Start = Date.now();
+  conversationHistory.push({ role: 'user', parts: [{ text: `--- STEP 3: GENERAZIONE TASK ---
+Ora genera i task concreti basati sulla tua analisi e prioritizzazione.
+Rispondi ESCLUSIVAMENTE con JSON valido nel seguente formato (senza markdown):
+{
+  "tasks": [
+    {
+      "contact_id": "uuid del cliente",
+      "contact_name": "Nome",
+      "ai_instruction": "Istruzione dettagliata...",
+      "task_category": "categoria",
+      "priority": 3,
+      "reasoning": "Motivazione basata sulla tua analisi precedente",
+      "preferred_channel": "canale",
+      "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM",
+      "scheduling_reason": "Motivo orario",
+      "tone": "professionale|informale|empatico"
+    }
+  ]
+}
+
+Genera SOLO task che hai realmente giustificato nei passaggi precedenti. Non inventare task nuovi che non hai analizzato.` }] });
+
+  let step3Response = '';
+  try {
+    const resp = await aiClient.generateContent({
+      model,
+      contents: conversationHistory,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: useFileSearch ? undefined : 'application/json' },
+    });
+    step3Response = resp.response?.text?.() || '';
+  } catch (e: any) {
+    step3Response = `{"tasks": []}`;
+  }
+
+  conversationHistory.push({ role: 'model', parts: [{ text: step3Response }] });
+  steps.push({
+    step: 3,
+    type: 'task_generation',
+    title: 'Generazione Task',
+    content: step3Response,
+    durationMs: Date.now() - step3Start,
+    tokens: 0,
+  });
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 3 (Generation) done: ${step3Response.length} chars`);
+
+  const step4Start = Date.now();
+  conversationHistory.push({ role: 'user', parts: [{ text: `--- STEP 4: AUTO-REVISIONE ---
+Rivedi criticamente i task che hai appena generato. Per ciascuno, rispondi:
+1. È davvero necessario o è ridondante con task esistenti?
+2. L'istruzione è sufficientemente specifica e actionable?
+3. Il timing e il canale sono appropriati?
+4. C'è rischio di duplicazione con task già in coda?
+
+Se qualche task non supera la tua revisione, rimuovilo e spiega perché.
+
+Rispondi con il JSON finale pulito:
+{
+  "review_notes": "Le tue note di revisione...",
+  "tasks": [ ... (solo i task che superano la revisione) ]
+}` }] });
+
+  let step4Response = '';
+  try {
+    const resp = await aiClient.generateContent({
+      model,
+      contents: conversationHistory,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: useFileSearch ? undefined : 'application/json' },
+    });
+    step4Response = resp.response?.text?.() || '';
+  } catch (e: any) {
+    step4Response = step3Response;
+  }
+
+  steps.push({
+    step: 4,
+    type: 'self_review',
+    title: 'Auto-Revisione',
+    content: step4Response,
+    durationMs: Date.now() - step4Start,
+    tokens: 0,
+  });
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 4 (Review) done: ${step4Response.length} chars`);
+
+  let finalParsed: { tasks: any[]; overall_reasoning?: string; review_notes?: string } = { tasks: [] };
+  for (const responseToTry of [step4Response, step3Response]) {
+    try {
+      let cleaned = responseToTry.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+      if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+      else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+      if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+      cleaned = cleaned.trim();
+
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        finalParsed = JSON.parse(jsonMatch[0]);
+        if (finalParsed.tasks && Array.isArray(finalParsed.tasks)) break;
+      }
+    } catch {}
+  }
+
+  const overallReasoning = [
+    `**Analisi Dati:** ${step1Response.substring(0, 500)}`,
+    `**Priorità:** ${step2Response.substring(0, 500)}`,
+    finalParsed.review_notes ? `**Revisione:** ${finalParsed.review_notes}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  const durationMs = Date.now() - startTime;
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Completed in ${durationMs}ms with ${steps.length} steps, ${finalParsed.tasks?.length || 0} final tasks`);
+
+  return {
+    parsed: { tasks: finalParsed.tasks || [], overall_reasoning: overallReasoning },
+    rawResponse: step4Response || step3Response,
+    steps,
+    overallReasoning,
+    totalTokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    durationMs,
+  };
+}
+
 async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean; onlyRoleId?: string }): Promise<number | SimulationResult> {
   const dryRun = options?.dryRun || false;
   const onlyRoleId = options?.onlyRoleId || null;
@@ -1592,57 +1870,71 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   console.log(`🧠 [AUTONOMOUS-GEN] Enriched ${clients.length} clients, proceeding to pending tasks...`);
 
   const pendingTasksResult = await db.execute(sql`
-    SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
+    SELECT contact_id::text as contact_id, ai_role FROM ai_scheduled_tasks
     WHERE consultant_id::text = ${cId}
       AND status IN ('scheduled', 'in_progress', 'retry_pending', 'waiting_approval', 'approved')
       AND contact_id IS NOT NULL
   `);
-  const clientsWithPendingTasks = new Set(
-    (pendingTasksResult.rows as any[]).map(r => r.contact_id)
-  );
+  const pendingTasksByRole: Record<string, Set<string>> = {};
+  for (const r of pendingTasksResult.rows as any[]) {
+    const role = r.ai_role || '__global__';
+    if (!pendingTasksByRole[role]) pendingTasksByRole[role] = new Set();
+    pendingTasksByRole[role].add(r.contact_id);
+  }
 
   const recentCompletedResult = await db.execute(sql`
-    SELECT contact_id::text as contact_id FROM ai_scheduled_tasks
+    SELECT contact_id::text as contact_id, ai_role FROM ai_scheduled_tasks
     WHERE consultant_id::text = ${cId}
       AND status = 'completed'
       AND completed_at > NOW() - INTERVAL '24 hours'
       AND contact_id IS NOT NULL
   `);
-  const clientsWithRecentCompletion = new Set(
-    (recentCompletedResult.rows as any[]).map(r => r.contact_id)
-  );
+  const completedTasksByRole: Record<string, Set<string>> = {};
+  for (const r of recentCompletedResult.rows as any[]) {
+    const role = r.ai_role || '__global__';
+    if (!completedTasksByRole[role]) completedTasksByRole[role] = new Set();
+    completedTasksByRole[role].add(r.contact_id);
+  }
 
-  const eligibleClients = clients.filter(c => {
-    const clientId = c.id?.toString();
-    if (!clientId) return false;
-    if (clientsWithPendingTasks.has(clientId)) return false;
-    if (clientsWithRecentCompletion.has(clientId)) return false;
-    return true;
-  });
+  function getEligibleClientsForRole(roleId: string) {
+    const rolePending = pendingTasksByRole[roleId] || new Set();
+    const roleCompleted = completedTasksByRole[roleId] || new Set();
+    return clients.filter(c => {
+      const clientId = c.id?.toString();
+      if (!clientId) return false;
+      if (rolePending.has(clientId)) return false;
+      if (roleCompleted.has(clientId)) return false;
+      return true;
+    });
+  }
 
-  const clientsList = eligibleClients.map(c => ({
-    id: c.id,
-    name: [c.first_name, c.last_name].filter(Boolean).join(' '),
-    email: c.email || 'N/A',
-    phone: c.phone_number || 'N/A',
-    last_consultation: c.last_consultation_date ? new Date(c.last_consultation_date).toISOString() : 'Mai',
-    last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
-  }));
+  function buildClientsList(filteredClients: any[]) {
+    return filteredClients.map(c => ({
+      id: c.id,
+      name: [c.first_name, c.last_name].filter(Boolean).join(' '),
+      email: c.email || 'N/A',
+      phone: c.phone_number || 'N/A',
+      last_consultation: c.last_consultation_date ? new Date(c.last_consultation_date).toISOString() : 'Mai',
+      last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
+    }));
+  }
 
-  const allClientsList = clients.map(c => ({
-    id: c.id,
-    name: [c.first_name, c.last_name].filter(Boolean).join(' '),
-    email: c.email || 'N/A',
-    phone: c.phone_number || 'N/A',
-    last_consultation: c.last_consultation_date ? new Date(c.last_consultation_date).toISOString() : 'Mai',
-    last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
-    has_pending_tasks: clientsWithPendingTasks.has(c.id?.toString()),
-    recently_completed: clientsWithRecentCompletion.has(c.id?.toString()),
-  }));
+  function buildAllClientsList(roleId: string) {
+    const rolePending = pendingTasksByRole[roleId] || new Set();
+    const roleCompleted = completedTasksByRole[roleId] || new Set();
+    return clients.map(c => ({
+      id: c.id,
+      name: [c.first_name, c.last_name].filter(Boolean).join(' '),
+      email: c.email || 'N/A',
+      phone: c.phone_number || 'N/A',
+      last_consultation: c.last_consultation_date ? new Date(c.last_consultation_date).toISOString() : 'Mai',
+      last_task: c.last_task_date ? new Date(c.last_task_date).toISOString() : 'Mai',
+      has_pending_tasks: rolePending.has(c.id?.toString()),
+      recently_completed: roleCompleted.has(c.id?.toString()),
+    }));
+  }
 
   const allClientIds = clients.map((c: any) => c.id?.toString()).filter(Boolean);
-
-  const clientIds = eligibleClients.map((c: any) => c.id?.toString()).filter(Boolean);
 
   const recentTasksResult = await db.execute(sql`
     SELECT t.contact_id::text as contact_id, t.contact_name, t.task_category, t.ai_instruction, t.status, t.completed_at, t.ai_role
@@ -1809,24 +2101,17 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
     await logActivity(consultantId, {
       event_type: 'autonomous_analysis',
       title: `Analisi multi-ruolo avviata: ${activeRoles.length} dipendenti AI attivi`,
-      description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${eligibleClients.length} clienti idonei su ${clients.length} totali.`,
+      description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${clients.length} clienti totali (filtro per-ruolo).`,
       icon: '🧠',
       severity: 'info',
       cycle_id: cycleId,
       event_data: {
         total_clients: clients.length,
-        eligible_clients: eligibleClients.length,
-        clients_with_pending_tasks: clientsWithPendingTasks.size,
-        clients_with_recent_completion: clientsWithRecentCompletion.size,
         active_roles: activeRoles.map(r => r.id),
         provider_name: providerName,
         provider_model: providerModel,
-        clients_list: clientsList.slice(0, 20),
         recent_tasks_summary: recentTasksSummary.slice(0, 10),
-        excluded_clients: {
-          with_pending_tasks: clientsWithPendingTasks.size,
-          with_recent_completion: clientsWithRecentCompletion.size,
-        },
+        filter_mode: 'per-role',
       },
     });
   }
@@ -1835,15 +2120,22 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   for (const role of activeRoles) {
     try {
-      if (role.id !== 'nova' && role.id !== 'marco' && eligibleClients.length === 0) {
-        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No eligible clients, skipping`);
+      const roleEligibleClients = getEligibleClientsForRole(role.id);
+      const roleClientsList = buildClientsList(roleEligibleClients);
+      const roleAllClientsList = buildAllClientsList(role.id);
+      const roleClientIds = roleEligibleClients.map((c: any) => c.id?.toString()).filter(Boolean);
+      const rolePendingCount = (pendingTasksByRole[role.id] || new Set()).size;
+      const roleCompletedCount = (completedTasksByRole[role.id] || new Set()).size;
+
+      if (role.id !== 'nova' && role.id !== 'marco' && roleEligibleClients.length === 0) {
+        console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No eligible clients for this role (pending: ${rolePendingCount}, completed24h: ${roleCompletedCount}), skipping`);
         if (dryRun) {
           simulationRoles.push({
             roleId: role.id,
             roleName: role.name,
             skipped: true,
-            skipReason: 'Nessun cliente idoneo disponibile',
-            dataAnalyzed: { totalClients: clients.length, eligibleClients: 0, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            skipReason: `Nessun cliente idoneo per ${role.name} (${rolePendingCount} con task pendenti di questo ruolo, ${roleCompletedCount} completati <24h)`,
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: 0, clientsWithPendingTasks: rolePendingCount, clientsWithRecentCompletion: roleCompletedCount, clientsList: [], roleSpecificData: {} },
             promptSent: '',
             aiResponse: null,
             providerUsed: providerName,
@@ -1861,7 +2153,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             roleName: role.name,
             skipped: true,
             skipReason: 'Fuori dall\'orario di lavoro specifico del ruolo',
-            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: roleEligibleClients.length, clientsWithPendingTasks: rolePendingCount, clientsWithRecentCompletion: roleCompletedCount, clientsList: [], roleSpecificData: {} },
             promptSent: '',
             aiResponse: null,
             providerUsed: providerName,
@@ -1881,7 +2173,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             roleName: role.name,
             skipped: true,
             skipReason: `Livello di autonomia del ruolo troppo basso (${effectiveRoleLevel}/10). Serve almeno livello 2 per generare task.`,
-            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: roleEligibleClients.length, clientsWithPendingTasks: rolePendingCount, clientsWithRecentCompletion: roleCompletedCount, clientsList: [], roleSpecificData: {} },
             promptSent: '',
             aiResponse: null,
             providerUsed: providerName,
@@ -1900,7 +2192,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
             roleName: role.name,
             skipped: true,
             skipReason: `Il canale "${channelRequired}" è disabilitato nelle impostazioni`,
-            dataAnalyzed: { totalClients: clients.length, eligibleClients: eligibleClients.length, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList, roleSpecificData: {} },
+            dataAnalyzed: { totalClients: clients.length, eligibleClients: roleEligibleClients.length, clientsWithPendingTasks: rolePendingCount, clientsWithRecentCompletion: roleCompletedCount, clientsList: roleClientsList, roleSpecificData: {} },
             promptSent: '',
             aiResponse: null,
             providerUsed: providerName,
@@ -1947,8 +2239,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
       const rolesWithFullClientList = ['marco', 'nova'];
       const useFullClientList = rolesWithFullClientList.includes(role.id);
-      const effectiveClientsList = useFullClientList ? allClientsList : clientsList;
-      const effectiveClientIds = useFullClientList ? allClientIds : clientIds;
+      const effectiveClientsList = useFullClientList ? roleAllClientsList : roleClientsList;
+      const effectiveClientIds = useFullClientList ? allClientIds : roleClientIds;
 
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Fetching role-specific data... (clients: ${effectiveClientIds.length}/${clients.length}${useFullClientList ? ' [FULL]' : ' [FILTERED]'})`);
       let roleData: Record<string, any>;
@@ -1992,6 +2284,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         permanentBlocks,
         recentReasoningByRole,
       });
+
+      const reasoningMode = (settings as any).reasoning_mode || 'structured';
+      const roleReasoningMode = (settings as any).role_reasoning_modes?.[role.id] || reasoningMode;
+      if (roleReasoningMode === 'structured') {
+        const { wrapPromptWithStructuredReasoning } = await import('./ai-autonomous-roles');
+        prompt = wrapPromptWithStructuredReasoning(prompt, role.name);
+      }
 
       const activeTasksForRole = freshAllTasksSummary.filter(t => 
         t.role === role.id && ['scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress'].includes(t.status)
@@ -2165,7 +2464,47 @@ Non utilizzare altri tipi di documento da quel store privato.
       }
 
       let responseText: string | undefined;
+      let parsed: { tasks: AutonomousSuggestedTask[], overall_reasoning?: string } = { tasks: [] };
       const useFileSearch = !!agentFileSearchTool;
+      let deepThinkUsed = false;
+      const reasoningRunId = cycleId || `run_${Date.now()}`;
+
+      if (roleReasoningMode === 'deep_think') {
+        deepThinkUsed = true;
+        try {
+          const deepResult = await executeDeepThinkLoop(
+            aiClient!, providerModel, providerName, prompt, role,
+            effectiveClientsList, roleData, recentTasksSummary,
+            consultantId, cycleId || `cycle_${Date.now()}`,
+            agentFileSearchTool, useFileSearch
+          );
+
+          parsed = deepResult.parsed;
+          responseText = deepResult.rawResponse;
+
+          try {
+            await db.execute(sql`
+              INSERT INTO ai_reasoning_logs (consultant_id, role_id, role_name, reasoning_mode, run_id,
+                overall_reasoning, thinking_steps,
+                total_tokens, input_tokens, output_tokens, duration_ms,
+                model_used, provider_used, status)
+              VALUES (${consultantId}::uuid, ${role.id}, ${role.name}, 'deep_think', ${reasoningRunId},
+                ${deepResult.overallReasoning || null},
+                ${JSON.stringify(deepResult.steps)}::jsonb,
+                ${deepResult.totalTokens}, ${deepResult.inputTokens}, ${deepResult.outputTokens},
+                ${deepResult.durationMs},
+                ${providerModel}, ${providerName}, 'completed')
+            `);
+          } catch (logErr: any) {
+            console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to save deep think reasoning log: ${logErr.message}`);
+          }
+        } catch (deepErr: any) {
+          console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Deep Think failed: ${deepErr.message}`);
+          deepThinkUsed = false;
+        }
+      }
+
+      if (!deepThinkUsed) {
       for (let attempt = 0; attempt <= 2; attempt++) {
         try {
           const response = await aiClient!.generateContent({
@@ -2274,8 +2613,7 @@ Non utilizzare altri tipi di documento da quel store privato.
         }
       }
 
-      let parsed: { tasks: AutonomousSuggestedTask[], overall_reasoning?: string };
-      let cleaned = responseText.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
+      let cleaned = responseText!.replace(/^\uFEFF/, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '').trim();
       if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
       else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
       if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
@@ -2387,6 +2725,34 @@ Non utilizzare altri tipi di documento da quel store privato.
         }
       }
 
+      const reasoningData = (parsed as any).reasoning || {};
+      const overallReasoning = parsed.overall_reasoning || 
+        [reasoningData.observation, reasoningData.reflection, reasoningData.decision].filter(Boolean).join('\n\n');
+      if (!parsed.overall_reasoning && overallReasoning) {
+        parsed.overall_reasoning = overallReasoning;
+      }
+
+      try {
+        await db.execute(sql`
+          INSERT INTO ai_reasoning_logs (consultant_id, role_id, role_name, reasoning_mode, run_id,
+            observation, reflection, decision, self_review, overall_reasoning,
+            model_used, provider_used, status)
+          VALUES (${consultantId}::uuid, ${role.id}, ${role.name}, ${roleReasoningMode}, ${reasoningRunId},
+            ${reasoningData.observation || null}, ${reasoningData.reflection || null}, 
+            ${reasoningData.decision || null}, ${reasoningData.self_review || null},
+            ${overallReasoning || null},
+            ${providerModel}, ${providerName}, 'completed')
+        `);
+      } catch (reasoningLogErr: any) {
+        console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to save reasoning log: ${reasoningLogErr.message}`);
+      }
+      } // end if (!deepThinkUsed)
+
+      let totalCreatedForRole = 0;
+      let totalRejectedForRole = 0;
+      const rejectedReasons: Array<{ contact_name: string; reason: string }> = [];
+      const createdTasksData: Array<{ task_id: string; contact_name: string; category: string; channel: string }> = [];
+
       if (!dryRun) {
         await logActivity(consultantId, {
           event_type: 'autonomous_analysis',
@@ -2411,25 +2777,37 @@ Non utilizzare altri tipi di documento da quel store privato.
               channel: t.preferred_channel,
               priority: t.priority,
             })),
-            clients_list: clientsList.slice(0, 20),
+            clients_list: roleClientsList.slice(0, 20),
             role_specific_data: roleData,
             excluded_clients: {
-              with_pending_tasks: clientsWithPendingTasks.size,
-              with_recent_completion: clientsWithRecentCompletion.size,
+              with_pending_tasks: rolePendingCount,
+              with_recent_completion: roleCompletedCount,
             },
             recent_tasks_summary: recentTasksSummary.slice(0, 10),
             total_clients: clients.length,
-            eligible_clients: eligibleClients.length,
+            eligible_clients: roleEligibleClients.length,
           },
         });
       }
 
       const tasksToProcess = (parsed.tasks && Array.isArray(parsed.tasks)) ? parsed.tasks.slice(0, role.maxTasksPerRun) : [];
 
+      const existingRoleTasks = await db.execute(sql`
+        SELECT id, ai_instruction, task_category, contact_id, 
+               contact_name, status, created_at
+        FROM ai_scheduled_tasks 
+        WHERE consultant_id = ${sql.raw(`'${consultantId}'::uuid`)}
+          AND ai_role = ${role.id}
+          AND status IN ('scheduled', 'waiting_approval', 'approved', 'deferred', 'in_progress')
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+      const existingTasks = existingRoleTasks.rows as any[];
+
       if (dryRun) {
         const tasksWouldCreate = tasksToProcess
           .filter(t => t.ai_instruction)
-          .filter(t => !(t.contact_id && (clientsWithPendingTasks.has(t.contact_id) || clientsWithRecentCompletion.has(t.contact_id))))
+          .filter(t => !(t.contact_id && ((pendingTasksByRole[role.id] || new Set()).has(t.contact_id) || (completedTasksByRole[role.id] || new Set()).has(t.contact_id))))
           .filter(t => {
             if (!t.contact_id || permanentBlocks.length === 0) return true;
             return !permanentBlocks.some(b => {
@@ -2442,6 +2820,17 @@ Non utilizzare altri tipi di documento da quel store privato.
           .filter(t => {
             const cat = t.task_category || role.categories[0] || 'followup';
             if (settings.allowed_task_categories && settings.allowed_task_categories.length > 0 && !settings.allowed_task_categories.includes(cat)) return false;
+            return true;
+          })
+          .filter(t => {
+            if (!t.ai_instruction || existingTasks.length === 0) return true;
+            const dupResult = existingTasks.map(et => isDuplicateTask(
+              t.ai_instruction,
+              et.ai_instruction || '',
+              t.contact_id,
+              et.contact_id
+            )).find(r => r.isDuplicate);
+            if (dupResult) return false;
             return true;
           })
           .map(t => ({
@@ -2463,10 +2852,10 @@ Non utilizzare altri tipi di documento da quel store privato.
           skipped: false,
           dataAnalyzed: {
             totalClients: clients.length,
-            eligibleClients: eligibleClients.length,
-            clientsWithPendingTasks: clientsWithPendingTasks.size,
-            clientsWithRecentCompletion: clientsWithRecentCompletion.size,
-            clientsList,
+            eligibleClients: roleEligibleClients.length,
+            clientsWithPendingTasks: rolePendingCount,
+            clientsWithRecentCompletion: roleCompletedCount,
+            clientsList: roleClientsList,
             roleSpecificData: roleData,
           },
           promptSent: prompt,
@@ -2481,24 +2870,53 @@ Non utilizzare altri tipi di documento da quel store privato.
         });
 
         totalCreated += tasksWouldCreate.length;
+        totalCreatedForRole = tasksWouldCreate.length;
+        try {
+          await db.execute(sql`
+            UPDATE ai_reasoning_logs 
+            SET tasks_created = ${totalCreatedForRole}, tasks_rejected = ${totalRejectedForRole},
+                rejected_reasons = ${JSON.stringify(rejectedReasons)}::jsonb,
+                tasks_data = ${JSON.stringify(tasksWouldCreate.map((t: any) => ({ contact_name: t.contactName, category: t.category, channel: t.channel })))}::jsonb
+            WHERE run_id = ${reasoningRunId} AND role_id = ${role.id} AND consultant_id = ${consultantId}::uuid
+          `);
+        } catch {}
       } else {
         if (!parsed.tasks || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
           console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] No tasks suggested`);
+          try {
+            await db.execute(sql`
+              UPDATE ai_reasoning_logs 
+              SET tasks_created = 0, tasks_rejected = 0,
+                  rejected_reasons = '[]'::jsonb,
+                  tasks_data = '[]'::jsonb
+              WHERE run_id = ${reasoningRunId} AND role_id = ${role.id} AND consultant_id = ${consultantId}::uuid
+            `);
+          } catch {}
           continue;
         }
 
         for (const suggestedTask of tasksToProcess) {
           try {
-            if (!suggestedTask.ai_instruction) continue;
+            if (!suggestedTask.ai_instruction) {
+              totalRejectedForRole++;
+              rejectedReasons.push({ contact_name: suggestedTask.contact_name || 'N/A', reason: 'missing ai_instruction' });
+              continue;
+            }
 
             // Check if task category is in allowed categories
             const taskCat = suggestedTask.task_category || role.categories[0] || 'followup';
             if (settings.allowed_task_categories && settings.allowed_task_categories.length > 0 && !settings.allowed_task_categories.includes(taskCat)) {
               console.log(`🚫 [AUTONOMOUS-GEN] [${role.name}] Task category "${taskCat}" not in allowed categories, skipping`);
+              totalRejectedForRole++;
+              rejectedReasons.push({ contact_name: suggestedTask.contact_name || 'N/A', reason: `category "${taskCat}" not allowed` });
               continue;
             }
 
-            if (suggestedTask.contact_id && (clientsWithPendingTasks.has(suggestedTask.contact_id) || clientsWithRecentCompletion.has(suggestedTask.contact_id))) {
+            const rolePendingSet = pendingTasksByRole[role.id] || new Set();
+            const roleCompletedSet = completedTasksByRole[role.id] || new Set();
+            if (suggestedTask.contact_id && (rolePendingSet.has(suggestedTask.contact_id) || roleCompletedSet.has(suggestedTask.contact_id))) {
+              totalRejectedForRole++;
+              rejectedReasons.push({ contact_name: suggestedTask.contact_name || 'N/A', reason: 'pending or recently completed task exists' });
               continue;
             }
 
@@ -2511,6 +2929,24 @@ Non utilizzare altri tipi di documento da quel store privato.
               });
               if (isBlocked) {
                 console.log(`🚫 [AUTONOMOUS-GEN] [${role.name}] Task for ${suggestedTask.contact_name} blocked by permanent block rule`);
+                totalRejectedForRole++;
+                rejectedReasons.push({ contact_name: suggestedTask.contact_name || 'N/A', reason: 'permanent block rule' });
+                continue;
+              }
+            }
+
+            if (suggestedTask.ai_instruction && existingTasks.length > 0) {
+              const dupResult = existingTasks.map(et => isDuplicateTask(
+                suggestedTask.ai_instruction,
+                et.ai_instruction || '',
+                suggestedTask.contact_id,
+                et.contact_id
+              )).find(r => r.isDuplicate);
+
+              if (dupResult) {
+                console.log(`🔄 [AUTONOMOUS-GEN] [${role.name}] Duplicate task skipped for ${suggestedTask.contact_name}: ${dupResult.reason}`);
+                totalRejectedForRole++;
+                rejectedReasons.push({ contact_name: suggestedTask.contact_name || 'N/A', reason: `Duplicato: ${dupResult.reason}` });
                 continue;
               }
             }
@@ -2707,9 +3143,17 @@ Non utilizzare altri tipi di documento da quel store privato.
             ).catch(() => {});
 
             if (suggestedTask.contact_id) {
-              clientsWithPendingTasks.add(suggestedTask.contact_id);
+              if (!pendingTasksByRole[role.id]) pendingTasksByRole[role.id] = new Set();
+              pendingTasksByRole[role.id].add(suggestedTask.contact_id);
             }
             totalCreated++;
+            totalCreatedForRole++;
+            createdTasksData.push({
+              task_id: taskId,
+              contact_name: suggestedTask.contact_name || 'N/A',
+              category: suggestedTask.task_category || role.categories[0] || 'followup',
+              channel: suggestedTask.preferred_channel || role.preferredChannels[0] || 'none',
+            });
 
             console.log(`✅ [AUTONOMOUS-GEN] [${role.name}] Created task ${taskId} for ${suggestedTask.contact_name} (${suggestedTask.task_category})`);
           } catch (error: any) {
@@ -2717,6 +3161,17 @@ Non utilizzare altri tipi di documento da quel store privato.
           }
         }
       }
+
+      try {
+        await db.execute(sql`
+          UPDATE ai_reasoning_logs 
+          SET tasks_created = ${totalCreatedForRole}, tasks_rejected = ${totalRejectedForRole},
+              rejected_reasons = ${JSON.stringify(rejectedReasons)}::jsonb,
+              tasks_data = ${JSON.stringify(createdTasksData)}::jsonb
+          WHERE run_id = ${reasoningRunId} AND role_id = ${role.id} AND consultant_id = ${consultantId}::uuid
+        `);
+      } catch {}
+
     } catch (error: any) {
       console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Error:`, error.message);
       if (dryRun) {
@@ -2724,7 +3179,7 @@ Non utilizzare altri tipi di documento da quel store privato.
           roleId: role.id,
           roleName: role.name,
           skipped: false,
-          dataAnalyzed: { totalClients: clients?.length || 0, eligibleClients: 0, clientsWithPendingTasks: clientsWithPendingTasks.size, clientsWithRecentCompletion: clientsWithRecentCompletion.size, clientsList: [], roleSpecificData: {} },
+          dataAnalyzed: { totalClients: clients?.length || 0, eligibleClients: 0, clientsWithPendingTasks: rolePendingCount, clientsWithRecentCompletion: roleCompletedCount, clientsList: [], roleSpecificData: {} },
           promptSent: '',
           aiResponse: null,
           error: error.message,

@@ -2056,6 +2056,43 @@ function SettingsTab({
                     </SelectContent>
                   </Select>
                 </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Brain className="h-4 w-4" />
+                    Modalità ragionamento predefinita
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Come gli agenti AI strutturano il loro processo di analisi e decisione
+                  </p>
+                  <Select
+                    value={settings.reasoning_mode || "structured"}
+                    onValueChange={(val) => setSettings(prev => ({ ...prev, reasoning_mode: val }))}
+                  >
+                    <SelectTrigger className="w-full max-w-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="structured">
+                        <div className="flex flex-col">
+                          <span>Strutturato</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="deep_think">
+                        <div className="flex flex-col">
+                          <span>Deep Think</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground">
+                    {(settings.reasoning_mode || "structured") === "structured"
+                      ? "Analisi con sezioni obbligatorie: osservazione, riflessione, decisione, auto-revisione"
+                      : "Loop agentico multi-step con analisi approfondita iterativa"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -2793,6 +2830,53 @@ function SettingsTab({
                                       <p className="text-[10px] text-muted-foreground">
                                         Segue il livello globale ({settings.autonomy_level}): {settings.autonomy_level >= 4 ? 'esegue da solo' : settings.autonomy_level >= 2 ? 'propone e chiede approvazione' : 'solo task manuali'}
                                       </p>
+                                    )}
+                                  </div>
+
+                                  <div className="rounded-lg border border-border p-3 space-y-2">
+                                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                                      <Brain className="h-3 w-3" />
+                                      Modalità di ragionamento
+                                    </p>
+                                    <Select
+                                      value={settings.role_reasoning_modes?.[role.id] || settings.reasoning_mode || "structured"}
+                                      onValueChange={(val) => {
+                                        setSettings(prev => ({
+                                          ...prev,
+                                          role_reasoning_modes: {
+                                            ...prev.role_reasoning_modes,
+                                            [role.id]: val,
+                                          },
+                                        }));
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 text-xs rounded-lg">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="structured">Strutturato</SelectItem>
+                                        <SelectItem value="deep_think">Deep Think</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {(settings.role_reasoning_modes?.[role.id] || settings.reasoning_mode || "structured") === "structured"
+                                        ? "Analisi con sezioni obbligatorie: osservazione, riflessione, decisione, auto-revisione"
+                                        : "Loop agentico multi-step con analisi approfondita iterativa"}
+                                    </p>
+                                    {settings.role_reasoning_modes?.[role.id] && settings.role_reasoning_modes[role.id] !== (settings.reasoning_mode || "structured") && (
+                                      <button
+                                        className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSettings(prev => {
+                                            const newModes = { ...prev.role_reasoning_modes };
+                                            delete newModes[role.id];
+                                            return { ...prev, role_reasoning_modes: newModes };
+                                          });
+                                        }}
+                                      >
+                                        Ripristina predefinito globale
+                                      </button>
                                     )}
                                   </div>
 
