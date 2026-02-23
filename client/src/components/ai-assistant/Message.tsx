@@ -1,5 +1,5 @@
 import React from "react";
-import { Bot, User } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { ThinkingBubble } from "./ThinkingBubble";
@@ -253,8 +253,18 @@ export function Message({ message, onActionClick }: MessageProps) {
           <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-br-md px-4 py-3 shadow-sm border border-slate-200/50 dark:border-slate-600/30">
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
           </div>
-          <div className="flex-shrink-0 h-7 w-7 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-600 flex items-center justify-center shadow-sm ring-2 ring-white dark:ring-slate-800">
-            <User className="h-3.5 w-3.5 text-white" />
+          <div className="flex-shrink-0 h-8 w-8 rounded-full overflow-hidden shadow-sm ring-2 ring-white dark:ring-slate-800">
+            <img
+              src="/avatars/user-avatar.png"
+              alt="Tu"
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                const t = e.currentTarget;
+                t.style.display = 'none';
+                t.parentElement!.classList.add('bg-gradient-to-br', 'from-slate-400', 'to-slate-500', 'flex', 'items-center', 'justify-center');
+                t.parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+              }}
+            />
           </div>
         </div>
       </div>
@@ -267,11 +277,26 @@ export function Message({ message, onActionClick }: MessageProps) {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
-          <Bot className="h-4 w-4 text-white" />
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex-shrink-0 h-9 w-9 rounded-full overflow-hidden shadow-md ring-2 ring-violet-200 dark:ring-violet-800">
+          <img
+            src="/avatars/simone-avatar.png"
+            alt="Simone"
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              const t = e.currentTarget;
+              t.style.display = 'none';
+              const parent = t.parentElement!;
+              parent.classList.remove('overflow-hidden');
+              parent.classList.add('bg-gradient-to-br', 'from-violet-500', 'to-purple-600', 'flex', 'items-center', 'justify-center');
+              parent.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/><path d="M2 21a10 10 0 0 1 20 0"/></svg>';
+            }}
+          />
         </div>
-        <span className="font-semibold text-gray-900 dark:text-white text-sm">AI Assistant</span>
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Simone</p>
+          <p className="text-xs text-violet-500 dark:text-violet-400 leading-tight">AI Advisor</p>
+        </div>
       </div>
 
       <div className="flex-1 min-w-0 max-w-full overflow-hidden flex flex-col">
