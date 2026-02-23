@@ -498,24 +498,83 @@ function ReasoningSection({ icon: Icon, title, content, color, dominant }: { ico
 
 function ThinkingStepsTimeline({ steps }: { steps: any[] }) {
   if (!steps || steps.length === 0) return null;
+
+  const stepLabels: Record<string, string> = {
+    data_analysis: "Analisi Dati",
+    priority_assessment: "Valutazione Priorità",
+    task_generation: "Generazione Task",
+    self_review: "Auto-Revisione",
+  };
+
   return (
-    <div className="rounded-xl border p-3 bg-violet-50/50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800">
-      <div className="flex items-center gap-2 mb-3 font-semibold text-sm text-violet-800 dark:text-violet-300">
-        <Brain className="h-4 w-4" />
-        Passaggi di Pensiero ({steps.length})
+    <div className="rounded-2xl border border-border/60 shadow-sm bg-card/80 backdrop-blur-sm p-6 space-y-5">
+      <div className="flex items-center gap-2">
+        <Brain className="h-5 w-5 text-muted-foreground" />
+        <h3 className="text-base font-semibold">Processo di Ragionamento Deep Think</h3>
       </div>
-      <div className="relative pl-6 space-y-3">
-        <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-violet-300 dark:bg-violet-700" />
-        {steps.map((step: any, idx: number) => (
-          <div key={idx} className="relative">
-            <div className="absolute -left-[18px] top-1 w-3 h-3 rounded-full bg-violet-500 border-2 border-white dark:border-background" />
-            <div className="text-sm">
-              {step.title && <span className="font-medium text-violet-800 dark:text-violet-300">{step.title}: </span>}
-              <span className="text-violet-700 dark:text-violet-400">{step.content || step.text || JSON.stringify(step)}</span>
-            </div>
+
+      <details className="group">
+        <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-muted/50 transition-colors">
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          <span className="text-[15px] font-medium">Pipeline di Ragionamento</span>
+          <span className="text-xs text-muted-foreground ml-1">
+            ({steps.length} step)
+          </span>
+        </summary>
+
+        <div className="mt-4 ml-0">
+          {/* Horizontal Pipeline */}
+          <div className="flex flex-wrap items-start gap-0 mb-6">
+            {steps.map((step: any, idx: number) => {
+              const isLast = idx === steps.length - 1;
+              const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
+
+              return (
+                <div key={step.step || idx} className="flex items-start">
+                  <div className="flex flex-col items-center" style={{ minWidth: '90px' }}>
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                    )}>
+                      <CheckCircle className="h-4 w-4" />
+                    </div>
+                    <p className="text-[11px] mt-2 text-center leading-tight max-w-[90px] text-emerald-700 dark:text-emerald-400 font-medium">
+                      {label}
+                    </p>
+                  </div>
+                  {!isLast && (
+                    <div className="h-[2px] mt-4 w-6 shrink-0 bg-emerald-500" />
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+
+          {/* Expanded Step Content */}
+          <div className="space-y-3 mt-4">
+            {steps.map((step: any, idx: number) => {
+              const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
+              const durationSeconds = step.durationMs ? (step.durationMs / 1000).toFixed(2) : '0';
+
+              return (
+                <div key={step.step || idx} className={cn(
+                  "bg-card p-3 border-l-2 border-l-violet-500"
+                )}>
+                  <div className="flex items-center gap-2 mb-2 font-semibold text-sm">
+                    <span>{label}</span>
+                    <span className="text-xs text-muted-foreground">({durationSeconds}s)</span>
+                  </div>
+                  <p className="leading-7 text-muted-foreground text-sm whitespace-pre-wrap">
+                    {step.content || step.text || JSON.stringify(step)}
+                  </p>
+                  {step.tokens && (
+                    <span className="text-xs text-muted-foreground mt-2 block">Token: {step.tokens}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -527,17 +586,16 @@ function TasksCreatedRejected({ tasksData }: { tasksData: any }) {
   if (created.length === 0 && rejected.length === 0) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {created.length > 0 && (
-        <div className="rounded-xl border p-3 bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-          <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-green-800 dark:text-green-300">
-            <CheckCircle className="h-4 w-4" />
+        <div className="bg-card border border-border/60 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3 font-semibold text-sm">
+            <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             Task Creati ({created.length})
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {created.map((task: any, idx: number) => (
-              <div key={idx} className="text-sm text-green-700 dark:text-green-400 flex items-start gap-1.5">
-                <span className="text-green-500 mt-0.5">•</span>
+              <div key={idx} className="bg-card border-l-2 border-l-emerald-500 p-3 text-sm text-muted-foreground">
                 <span>{task.title || task.name || JSON.stringify(task)}</span>
               </div>
             ))}
@@ -545,20 +603,19 @@ function TasksCreatedRejected({ tasksData }: { tasksData: any }) {
         </div>
       )}
       {rejected.length > 0 && (
-        <div className="rounded-xl border p-3 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-          <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-red-800 dark:text-red-300">
-            <AlertTriangle className="h-4 w-4" />
+        <div className="bg-card border border-border/60 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3 font-semibold text-sm">
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
             Task Scartati per Duplicazione ({rejected.length})
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {rejected.map((task: any, idx: number) => (
-              <div key={idx} className="text-sm text-red-700 dark:text-red-400">
-                <div className="flex items-start gap-1.5">
-                  <span className="text-red-500 mt-0.5">•</span>
+              <div key={idx} className="bg-card border-l-2 border-l-red-500 p-3">
+                <div className="text-sm text-muted-foreground">
                   <span>{task.title || task.name || task.task || JSON.stringify(task)}</span>
                 </div>
                 {task.reason && (
-                  <div className="ml-4 text-xs text-red-500 dark:text-red-400 italic mt-0.5">Motivo: {task.reason}</div>
+                  <div className="text-xs text-muted-foreground italic mt-1.5">Motivo: {task.reason}</div>
                 )}
               </div>
             ))}
