@@ -153,9 +153,9 @@ Quando hai capito le esigenze, proponi naturalmente:
 - NON fare subito un pitch commerciale
 - NON essere invadente con domande
 - NON parlare di prezzi senza aver capito le esigenze
-- NON essere meno energico solo perché non è un cliente`
+- NON essere meno energico solo perché non è un cliente
 
-Sii energico come sempre. NON essere formale. NON fare subito pitch commerciali. NON parlare di prezzi senza aver capito le esigenze.
+Sii energico come sempre. NON essere formale. NON fare subito pitch commerciali. NON parlare di prezzi senza aver capito le esigenze.`
 }`;
 
     return basePrompt + voiceInstructions;
