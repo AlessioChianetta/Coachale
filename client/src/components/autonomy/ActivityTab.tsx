@@ -453,6 +453,8 @@ interface ActivityTabProps {
   reasoningStatsData: any;
   reasoningModeFilter: string;
   setReasoningModeFilter: (mode: string) => void;
+  reasoningData: ActivityResponse | undefined;
+  loadingReasoning: boolean;
 }
 
 const REASONING_ROLE_COLORS: Record<string, string> = {
@@ -584,6 +586,7 @@ function ActivityTab({
   onClearOldFeed, clearingOldFeed,
   reasoningLogsData, loadingReasoningLogs, reasoningStatsData,
   reasoningModeFilter, setReasoningModeFilter,
+  reasoningData, loadingReasoning,
 }: ActivityTabProps) {
   const { toast } = useToast();
   const [openCycleId, setOpenCycleId] = React.useState<string | null>(null);
@@ -655,6 +658,41 @@ function ActivityTab({
     return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
       ' ore ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const reasoningGroupedByCycle = React.useMemo(() => {
+    if (!reasoningData?.activities) return { cycles: [], standalone: [] };
+    const cycleMap = new Map<string, ActivityItem[]>();
+    const standalone: ActivityItem[] = [];
+    for (const item of reasoningData.activities) {
+      if (item.cycle_id) {
+        if (!cycleMap.has(item.cycle_id)) cycleMap.set(item.cycle_id, []);
+        cycleMap.get(item.cycle_id)!.push(item);
+      } else {
+        standalone.push(item);
+      }
+    }
+    const cycles = Array.from(cycleMap.entries()).map(([cycleId, items]) => {
+      let totalEligible = 0;
+      let totalTasks = 0;
+      for (const item of items) {
+        let ed: any = {};
+        try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+        totalEligible += (ed.eligible_clients || 0);
+        const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
+        totalTasks += sug.length;
+      }
+      return {
+        cycleId,
+        items,
+        firstTime: items[0]?.created_at,
+        shortId: cycleId.slice(-5),
+        totalRoles: items.length,
+        totalEligible,
+        totalTasks,
+      };
+    });
+    return { cycles, standalone };
+  }, [reasoningData?.activities]);
 
   const renderActivityCard = (item: ActivityItem) => (
     <motion.div
@@ -1558,6 +1596,100 @@ function ActivityTab({
               </Button>
             </div>
           )}
+
+          {reasoningGroupedByCycle.cycles.length > 0 || reasoningGroupedByCycle.standalone.length > 0 ? (
+            <div className="space-y-4 pt-6 mt-6 border-t border-border">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold">Storico Analisi per Ciclo</h3>
+                <Badge variant="outline" className="text-xs ml-auto">
+                  {reasoningGroupedByCycle.cycles.reduce((sum, c) => sum + c.items.length, 0) + reasoningGroupedByCycle.standalone.length} analisi
+                </Badge>
+              </div>
+
+              {loadingReasoning ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <>
+                  {reasoningGroupedByCycle.cycles.map((cycle) => {
+                    const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
+                    return (
+                      <div key={cycle.cycleId} className="space-y-3">
+                        <Card
+                          className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
+                          onClick={() => toggleReasoningCycle(cycle.cycleId)}
+                        >
+                          <CardContent className="py-3 px-5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                                  <Brain className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold">
+                                    Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
+                                  </p>
+                                  <div className="flex items-center gap-3 mt-0.5">
+                                    <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
+                                    <span className="text-xs text-muted-foreground">·</span>
+                                    <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <ChevronDown className={cn(
+                                "h-4 w-4 text-muted-foreground transition-transform",
+                                isExpanded && "rotate-180"
+                              )} />
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {isExpanded && (
+                          <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
+                            {cycle.items.map((item: any) => renderReasoningCard(item))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {reasoningGroupedByCycle.standalone.map((item: any) => renderReasoningCard(item))}
+
+                  {reasoningData && reasoningData.totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 pt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
+                        disabled={reasoningPage <= 1}
+                        className="rounded-xl"
+                      >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Precedente
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Pagina {reasoningData.page} di {reasoningData.totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReasoningPage(Math.min(reasoningData.totalPages, reasoningPage + 1))}
+                        disabled={reasoningPage >= reasoningData.totalPages}
+                        className="rounded-xl"
+                      >
+                        Successiva
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
 

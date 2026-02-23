@@ -166,6 +166,22 @@ export default function ConsultantAIAutonomyPage() {
     enabled: activitySubTab === "reasoning",
   });
 
+  const { data: reasoningData, isLoading: loadingReasoning } = useQuery<ActivityResponse>({
+    queryKey: ["ai-reasoning-activity", reasoningPage, reasoningRole],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        event_type: 'autonomous_analysis',
+        page: String(reasoningPage),
+        limit: '100',
+      });
+      if (reasoningRole !== 'all') params.set('ai_role', reasoningRole);
+      const res = await fetch(`/api/ai-autonomy/activity?${params.toString()}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch reasoning data");
+      return res.json();
+    },
+    enabled: activitySubTab === "reasoning",
+  });
+
   const { data: reasoningStatsData } = useQuery<any>({
     queryKey: ["/api/ai-autonomy/reasoning-stats"],
     queryFn: async () => {
@@ -714,6 +730,8 @@ export default function ConsultantAIAutonomyPage() {
                     reasoningStatsData={reasoningStatsData}
                     reasoningModeFilter={reasoningModeFilter}
                     setReasoningModeFilter={setReasoningModeFilter}
+                    reasoningData={reasoningData}
+                    loadingReasoning={loadingReasoning}
                   />
                 </TabsContent>
 
