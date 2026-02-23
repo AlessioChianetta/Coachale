@@ -1238,16 +1238,16 @@ export default function ConsultantSetupWizard() {
   const previousCompletedRef = useRef<number>(0);
 
   const ONBOARDING_SUGGESTIONS = [
-    "Da dove inizio? Quali sono i primi step critici da completare?",
+    "Da dove inizio? Quali sono i primi step critici?",
+    "Cosa fa esattamente l'agente inbound e quando conviene usarlo?",
+    "Qual è la differenza tra agente outbound e campagna WhatsApp?",
+    "Come funziona l'AI Autonomo e cosa può fare per me ogni giorno?",
     "Come configuro Twilio per WhatsApp Business?",
-    "Come configuro l'email SMTP per le comunicazioni automatiche?",
-    "Come importo i lead nella piattaforma?",
-    "Come creo un agente inbound per rispondere su WhatsApp?",
-    "Come creo la mia prima campagna marketing?",
-    "Come collego Google Calendar per gestire gli appuntamenti?",
-    "Come funziona la Knowledge Base? Che documenti carico?",
-    "Come collego Stripe per ricevere i pagamenti?",
-    "Come funziona Alessia AI Phone per le chiamate vocali?",
+    "Cosa devo caricare nella Knowledge Base per far funzionare bene gli agenti?",
+    "Come funziona l'Email Journey dopo una consulenza?",
+    "Quando ha senso usare le chiamate vocali AI?",
+    "Come collego Stripe per incassare automaticamente?",
+    "Ho un problema con uno step, mi aiuti a risolverlo?",
   ];
   const { toast } = useToast();
 
