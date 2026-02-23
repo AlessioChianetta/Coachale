@@ -1,0 +1,140 @@
+Voglio ridisegnare completamente la sidebar della piattaforma in stile SaaS Premium Enterprise.
+
+Obiettivo:
+renderla più moderna, più leggibile, meno piatta, con gerarchia chiara e maggiore percezione di qualità.
+
+🎯 1️⃣ STRUTTURA GENERALE
+
+La sidebar deve:
+
+Avere background leggermente diverso dal contenuto principale (non identico)
+
+Essere visivamente separata dal main content (ombra soft o lieve contrasto)
+
+Essere più ariosa (più spazio verticale tra voci)
+
+Ridurre la densità visiva
+
+Non deve sembrare un elenco tecnico, ma una navigazione strutturata.
+
+🎨 2️⃣ STILE VISIVO
+
+Palette neutra e coerente:
+
+Testo primario scuro
+
+Testo secondario slate/grigio
+
+Icone monocromatiche
+
+Nessun arcobaleno di colori
+
+Attivo:
+
+Border-left 3px primary
+
+Background molto soft primary
+
+Testo semi-bold
+
+Icona primary
+
+Hover:
+
+Background leggero
+
+Transizione 0.2s
+
+Icona leggermente più scura
+
+Radius elementi: 12–14px
+Spacing verticale maggiore tra gruppi.
+
+🧠 3️⃣ GERARCHIA SEZIONI
+
+Le macro sezioni devono essere chiaramente distinguibili.
+
+Ogni gruppo deve avere:
+
+Titolo uppercase leggermente più piccolo
+
+Letter spacing leggermente aumentato
+
+Opacità ridotta
+
+Spazio sopra e sotto maggiore
+
+Separare con spazio, NON con troppe linee.
+
+
+✨ 5️⃣ RIDURRE RUMORE VISIVO
+
+Eliminare o ridurre:
+
+Badge NEW troppo evidenti
+
+Troppe etichette colorate
+
+Pallini inutili
+
+Linee divisorie pesanti
+
+Se serve indicatore, usare badge piccoli e discreti.
+
+🔁 6️⃣ TOGGLE PIATTAFORMA / STRUMENTI
+
+Rendere il toggle:
+
+Più integrato
+
+Stile pill moderna
+
+Con animazione fluida
+
+Stato attivo chiaro
+
+Deve sembrare un cambio di contesto, non solo un tab.
+
+👤 7️⃣ PROFILO UTENTE IN BASSO
+
+Rendere il blocco utente più curato:
+
+Card con radius 14px
+
+Leggera shadow
+
+Avatar più evidente
+
+Allineamento migliore icone
+
+Hover sul blocco intero
+
+Deve sembrare un modulo, non un footer tecnico.
+
+📐 8️⃣ RESPONSIVE E COMPATTA
+
+Prevedere modalità collapsed:
+
+Solo icone
+
+Tooltip su hover
+
+Transizione fluida
+
+🎯 RISULTATO ATTESO
+
+La sidebar deve comunicare:
+
+Piattaforma AI professionale
+
+Struttura chiara
+
+Eleganza minimal
+
+Coerenza visiva
+
+Meno rumore
+
+Più autorevolezza
+
+Non deve sembrare un gestionale tecnico.

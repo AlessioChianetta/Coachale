@@ -651,23 +651,17 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <Link key={tool.href} href={tool.href}>
                   <div
                     className={cn(
-                      "group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                      "group flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-xl transition-all duration-200 cursor-pointer border-l-[3px]",
                       isActive
-                        ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "border-primary bg-primary/5 dark:bg-primary/10 text-foreground"
+                        : "border-transparent text-muted-foreground hover:bg-gray-100/70 dark:hover:bg-gray-800/40 hover:text-foreground"
                     )}
                     onClick={handleLinkClick}
                   >
-                    <div className={cn(
-                      "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
-                      isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    <ToolIcon className={cn(
+                      "h-[16px] w-[16px] flex-shrink-0 transition-colors duration-200",
+                      isActive ? "text-primary" : "text-muted-foreground/50 group-hover:text-muted-foreground"
                     )} />
-                    <div className={cn(
-                      "p-1.5 rounded-lg",
-                      isActive ? "bg-cyan-100 dark:bg-cyan-900/30" : "bg-muted"
-                    )}>
-                      <ToolIcon className={cn("h-4 w-4", isActive ? "text-cyan-500" : tool.color)} />
-                    </div>
                     <div className="flex-1 min-w-0">
                       <span className={cn("font-medium block truncate", isActive && "font-semibold")}>{tool.name}</span>
                       <span className="text-[11px] text-muted-foreground/60 truncate block">{tool.desc}</span>
