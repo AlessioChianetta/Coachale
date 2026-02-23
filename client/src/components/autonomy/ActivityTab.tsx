@@ -996,6 +996,23 @@ function ActivityTab({
           </div>
 
           <CardContent className="py-4 px-5 space-y-4">
+            {(() => {
+              console.log('[ActivityTab DEBUG]', {
+                itemId: item.id,
+                roleId,
+                cycleId: item.cycle_id,
+                hasMatchingReasoningLog: !!matchingReasoningLog,
+                matchingReasoningLogKeys: matchingReasoningLog ? Object.keys(matchingReasoningLog) : null,
+                matchingReasoningLogObservation: matchingReasoningLog?.observation?.substring(0, 80),
+                matchingReasoningLogReflection: matchingReasoningLog?.reflection?.substring(0, 80),
+                matchingReasoningLogDecision: matchingReasoningLog?.decision?.substring(0, 80),
+                matchingReasoningLogSelfReview: matchingReasoningLog?.self_review?.substring(0, 80),
+                hasOverallReasoning: !!eventData.overall_reasoning,
+                overallReasoningPreview: eventData.overall_reasoning ? (eventData.overall_reasoning as string).substring(0, 80) : null,
+                eventDataKeys: Object.keys(eventData),
+              });
+              return null;
+            })()}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="bg-muted/40 rounded-xl p-2.5">
                 <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
