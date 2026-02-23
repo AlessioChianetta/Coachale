@@ -40,8 +40,8 @@ export default function ConsultantAIAutonomyPage() {
   const [simulationResult, setSimulationResult] = useState<any>(null);
   const [simulationLoading, setSimulationLoading] = useState(false);
   const [reasoningPage, setReasoningPage] = useState(1);
-  const [reasoningPeriod, setReasoningPeriod] = useState<string>("all");
   const [reasoningRole, setReasoningRole] = useState<string>("all");
+  const [reasoningModeFilter, setReasoningModeFilter] = useState<string>("all");
 
   const [dashboardPage, setDashboardPage] = useState(1);
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState<string>("all");
@@ -155,18 +155,22 @@ export default function ConsultantAIAutonomyPage() {
     enabled: activeTab === "activity",
   });
 
-  const { data: reasoningData, isLoading: loadingReasoning } = useQuery<ActivityResponse>({
-    queryKey: ["ai-reasoning", reasoningPage, reasoningPeriod, reasoningRole],
+  const reasoningLogsUrl = `/api/ai-autonomy/reasoning-logs?page=${reasoningPage}&limit=20${reasoningRole !== "all" ? `&role=${reasoningRole}` : ""}${reasoningModeFilter !== "all" ? `&mode=${reasoningModeFilter}` : ""}`;
+  const { data: reasoningLogsData, isLoading: loadingReasoningLogs } = useQuery<any>({
+    queryKey: [reasoningLogsUrl],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        event_type: 'autonomous_analysis',
-        page: String(reasoningPage),
-        limit: '100',
-      });
-      if (reasoningPeriod !== 'all') params.set('period', reasoningPeriod);
-      if (reasoningRole !== 'all') params.set('ai_role', reasoningRole);
-      const res = await fetch(`/api/ai-autonomy/activity?${params.toString()}`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("Failed to fetch reasoning data");
+      const res = await fetch(reasoningLogsUrl, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch reasoning logs");
+      return res.json();
+    },
+    enabled: activitySubTab === "reasoning",
+  });
+
+  const { data: reasoningStatsData } = useQuery<any>({
+    queryKey: ["/api/ai-autonomy/reasoning-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai-autonomy/reasoning-stats", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch reasoning stats");
       return res.json();
     },
     enabled: activitySubTab === "reasoning",
@@ -695,12 +699,8 @@ export default function ConsultantAIAutonomyPage() {
                     onMarkRead={(id) => markReadMutation.mutate(id)}
                     onMarkAllRead={() => markAllReadMutation.mutate()}
                     unreadCount={unreadCount}
-                    reasoningData={reasoningData}
-                    loadingReasoning={loadingReasoning}
                     reasoningPage={reasoningPage}
                     setReasoningPage={setReasoningPage}
-                    reasoningPeriod={reasoningPeriod}
-                    setReasoningPeriod={setReasoningPeriod}
                     reasoningRole={reasoningRole}
                     setReasoningRole={setReasoningRole}
                     simulationResult={simulationResult}
@@ -709,6 +709,11 @@ export default function ConsultantAIAutonomyPage() {
                     setSimulationLoading={setSimulationLoading}
                     onClearOldFeed={() => clearOldFeedMutation.mutate()}
                     clearingOldFeed={clearOldFeedMutation.isPending}
+                    reasoningLogsData={reasoningLogsData}
+                    loadingReasoningLogs={loadingReasoningLogs}
+                    reasoningStatsData={reasoningStatsData}
+                    reasoningModeFilter={reasoningModeFilter}
+                    setReasoningModeFilter={setReasoningModeFilter}
                   />
                 </TabsContent>
 

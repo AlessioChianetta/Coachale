@@ -51,7 +51,7 @@ const ConsultantAIAssistant = lazy(() => import("@/pages/consultant-ai-assistant
 const ConsultantAISettings = lazy(() => import("@/pages/consultant-ai-settings"));
 const ConsultantVoiceSettings = lazy(() => import("@/pages/consultant-voice-settings"));
 const ConsultantAIAutonomy = lazy(() => import("@/pages/consultant-ai-autonomy"));
-const ConsultantAIReasoning = lazy(() => import("@/pages/consultant-ai-reasoning"));
+
 const EmployeeProfilePage = lazy(() => import("@/components/autonomy/EmployeeProfilePage"));
 const ConsultantVoiceCalls = lazy(() => import("@/pages/consultant-voice-calls"));
 const ConsultantVoiceCallDetail = lazy(() => import("@/pages/consultant-voice-call-detail"));
@@ -492,11 +492,6 @@ function Router() {
             </AuthGuard>
           </Route>
 
-          <Route path="/consultant/ai-reasoning">
-            <AuthGuard requiredRole="consultant">
-              <ConsultantAIReasoning />
-            </AuthGuard>
-          </Route>
 
           <Route path="/consultant/ai-autonomy">
             <AuthGuard requiredRole="consultant">

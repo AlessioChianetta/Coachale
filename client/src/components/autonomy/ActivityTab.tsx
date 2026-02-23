@@ -438,12 +438,8 @@ interface ActivityTabProps {
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   unreadCount: number;
-  reasoningData: ActivityResponse | undefined;
-  loadingReasoning: boolean;
   reasoningPage: number;
   setReasoningPage: (page: number) => void;
-  reasoningPeriod: string;
-  setReasoningPeriod: (period: string) => void;
   reasoningRole: string;
   setReasoningRole: (role: string) => void;
   simulationResult: any;
@@ -452,6 +448,113 @@ interface ActivityTabProps {
   setSimulationLoading: (loading: boolean) => void;
   onClearOldFeed: () => void;
   clearingOldFeed: boolean;
+  reasoningLogsData: any;
+  loadingReasoningLogs: boolean;
+  reasoningStatsData: any;
+  reasoningModeFilter: string;
+  setReasoningModeFilter: (mode: string) => void;
+}
+
+const REASONING_ROLE_COLORS: Record<string, string> = {
+  alessia: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-950/30 dark:text-pink-300 dark:border-pink-800",
+  millie: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800",
+  echo: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800",
+  nova: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800",
+  stella: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800",
+  iris: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-300 dark:border-cyan-800",
+  marco: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800",
+  personalizza: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950/30 dark:text-gray-300 dark:border-gray-800",
+};
+
+const REASONING_MODE_LABELS: Record<string, string> = {
+  structured: "Strutturato",
+  deep_think: "Deep Think",
+};
+
+function ReasoningSection({ icon: Icon, title, content, color }: { icon: any; title: string; content: string | null; color: string }) {
+  if (!content) return null;
+  return (
+    <div className={`rounded-xl border p-3 ${color}`}>
+      <div className="flex items-center gap-2 mb-2 font-semibold text-sm">
+        <Icon className="h-4 w-4" />
+        {title}
+      </div>
+      <p className="text-sm whitespace-pre-wrap leading-relaxed">{content}</p>
+    </div>
+  );
+}
+
+function ThinkingStepsTimeline({ steps }: { steps: any[] }) {
+  if (!steps || steps.length === 0) return null;
+  return (
+    <div className="rounded-xl border p-3 bg-violet-50/50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800">
+      <div className="flex items-center gap-2 mb-3 font-semibold text-sm text-violet-800 dark:text-violet-300">
+        <Brain className="h-4 w-4" />
+        Passaggi di Pensiero ({steps.length})
+      </div>
+      <div className="relative pl-6 space-y-3">
+        <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-violet-300 dark:bg-violet-700" />
+        {steps.map((step: any, idx: number) => (
+          <div key={idx} className="relative">
+            <div className="absolute -left-[18px] top-1 w-3 h-3 rounded-full bg-violet-500 border-2 border-white dark:border-background" />
+            <div className="text-sm">
+              {step.title && <span className="font-medium text-violet-800 dark:text-violet-300">{step.title}: </span>}
+              <span className="text-violet-700 dark:text-violet-400">{step.content || step.text || JSON.stringify(step)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TasksCreatedRejected({ tasksData }: { tasksData: any }) {
+  if (!tasksData) return null;
+  const created = tasksData.created || tasksData.tasks_created || [];
+  const rejected = tasksData.rejected || tasksData.tasks_rejected || [];
+  if (created.length === 0 && rejected.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {created.length > 0 && (
+        <div className="rounded-xl border p-3 bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-green-800 dark:text-green-300">
+            <CheckCircle className="h-4 w-4" />
+            Task Creati ({created.length})
+          </div>
+          <div className="space-y-1">
+            {created.map((task: any, idx: number) => (
+              <div key={idx} className="text-sm text-green-700 dark:text-green-400 flex items-start gap-1.5">
+                <span className="text-green-500 mt-0.5">•</span>
+                <span>{task.title || task.name || JSON.stringify(task)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {rejected.length > 0 && (
+        <div className="rounded-xl border p-3 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+          <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-red-800 dark:text-red-300">
+            <AlertTriangle className="h-4 w-4" />
+            Task Scartati per Duplicazione ({rejected.length})
+          </div>
+          <div className="space-y-1.5">
+            {rejected.map((task: any, idx: number) => (
+              <div key={idx} className="text-sm text-red-700 dark:text-red-400">
+                <div className="flex items-start gap-1.5">
+                  <span className="text-red-500 mt-0.5">•</span>
+                  <span>{task.title || task.name || task.task || JSON.stringify(task)}</span>
+                </div>
+                {task.reason && (
+                  <div className="ml-4 text-xs text-red-500 dark:text-red-400 italic mt-0.5">Motivo: {task.reason}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 const ROLE_COLOR_MAP: Record<string, string> = {
@@ -475,10 +578,12 @@ function ActivityTab({
   severityFilter, setSeverityFilter,
   activitySubTab, setActivitySubTab,
   onMarkRead, onMarkAllRead, unreadCount,
-  reasoningData, loadingReasoning, reasoningPage, setReasoningPage,
-  reasoningPeriod, setReasoningPeriod, reasoningRole, setReasoningRole,
+  reasoningPage, setReasoningPage,
+  reasoningRole, setReasoningRole,
   simulationResult, setSimulationResult, simulationLoading, setSimulationLoading,
   onClearOldFeed, clearingOldFeed,
+  reasoningLogsData, loadingReasoningLogs, reasoningStatsData,
+  reasoningModeFilter, setReasoningModeFilter,
 }: ActivityTabProps) {
   const { toast } = useToast();
   const [openCycleId, setOpenCycleId] = React.useState<string | null>(null);
@@ -535,41 +640,6 @@ function ActivityTab({
     }));
     return { cycles, standalone };
   }, [activityData?.activities]);
-
-  const reasoningGroupedByCycle = React.useMemo(() => {
-    if (!reasoningData?.activities) return { cycles: [], standalone: [] };
-    const cycleMap = new Map<string, ActivityItem[]>();
-    const standalone: ActivityItem[] = [];
-    for (const item of reasoningData.activities) {
-      if (item.cycle_id) {
-        if (!cycleMap.has(item.cycle_id)) cycleMap.set(item.cycle_id, []);
-        cycleMap.get(item.cycle_id)!.push(item);
-      } else {
-        standalone.push(item);
-      }
-    }
-    const cycles = Array.from(cycleMap.entries()).map(([cycleId, items]) => {
-      let totalEligible = 0;
-      let totalTasks = 0;
-      for (const item of items) {
-        let ed: any = {};
-        try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
-        totalEligible += (ed.eligible_clients || 0);
-        const sug = Array.isArray(ed.suggestions) ? ed.suggestions : [];
-        totalTasks += sug.length;
-      }
-      return {
-        cycleId,
-        items,
-        firstTime: items[0]?.created_at,
-        shortId: cycleId.slice(-5),
-        totalRoles: items.length,
-        totalEligible,
-        totalTasks,
-      };
-    });
-    return { cycles, standalone };
-  }, [reasoningData?.activities]);
 
   const toggleReasoningCycle = (cycleId: string) => {
     setExpandedReasoningCycles(prev => {
@@ -1266,18 +1336,70 @@ function ActivityTab({
 
       {activitySubTab === "reasoning" && (
         <div className="space-y-4">
+          {reasoningStatsData?.stats && (() => {
+            const stats = reasoningStatsData.stats || [];
+            const totalRuns = stats.reduce((sum: number, s: any) => sum + parseInt(s.total_runs || "0"), 0);
+            const totalCreated = stats.reduce((sum: number, s: any) => sum + parseInt(s.total_tasks_created || "0"), 0);
+            const totalRejected = stats.reduce((sum: number, s: any) => sum + parseInt(s.total_tasks_rejected || "0"), 0);
+            const avgDuration = stats.length > 0
+              ? stats.reduce((sum: number, s: any) => sum + parseFloat(s.avg_duration_ms || "0"), 0) / stats.length
+              : 0;
+            const formatDur = (ms: number) => {
+              if (!ms) return "—";
+              if (ms < 1000) return `${Math.round(ms)}ms`;
+              return `${(ms / 1000).toFixed(1)}s`;
+            };
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Card className="border border-border rounded-xl shadow-sm">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-violet-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{totalRuns}</p>
+                        <p className="text-[10px] text-muted-foreground">Esecuzioni Totali</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-border rounded-xl shadow-sm">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{totalCreated}</p>
+                        <p className="text-[10px] text-muted-foreground">Task Creati</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-border rounded-xl shadow-sm">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="text-2xl font-bold">{totalRejected}</p>
+                        <p className="text-[10px] text-muted-foreground">Scartati (Duplicati)</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border border-border rounded-xl shadow-sm">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <p className="text-2xl font-bold">{formatDur(avgDuration)}</p>
+                        <p className="text-[10px] text-muted-foreground">Durata Media</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={reasoningPeriod} onValueChange={(v) => { setReasoningPeriod(v); setReasoningPage(1); }}>
-              <SelectTrigger className="w-[150px] h-9 text-sm rounded-xl">
-                <SelectValue placeholder="Periodo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti i periodi</SelectItem>
-                <SelectItem value="today">Oggi</SelectItem>
-                <SelectItem value="week">Ultima settimana</SelectItem>
-                <SelectItem value="month">Ultimo mese</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={reasoningRole} onValueChange={(v) => { setReasoningRole(v); setReasoningPage(1); }}>
               <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl">
                 <SelectValue placeholder="Ruolo AI" />
@@ -1294,101 +1416,147 @@ function ActivityTab({
                 <SelectItem value="personalizza">Personalizza</SelectItem>
               </SelectContent>
             </Select>
-            {(reasoningPeriod !== 'all' || reasoningRole !== 'all') && (
-              <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground" onClick={() => { setReasoningPeriod('all'); setReasoningRole('all'); setReasoningPage(1); }}>
+            <Select value={reasoningModeFilter} onValueChange={(v) => { setReasoningModeFilter(v); setReasoningPage(1); }}>
+              <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl">
+                <SelectValue placeholder="Modalità" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte le modalità</SelectItem>
+                <SelectItem value="structured">Strutturato</SelectItem>
+                <SelectItem value="deep_think">Deep Think</SelectItem>
+              </SelectContent>
+            </Select>
+            {(reasoningRole !== 'all' || reasoningModeFilter !== 'all') && (
+              <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground" onClick={() => { setReasoningRole('all'); setReasoningModeFilter('all'); setReasoningPage(1); }}>
                 Rimuovi filtri
               </Button>
             )}
           </div>
-          {loadingReasoning ? (
+
+          {loadingReasoningLogs ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : !reasoningData?.activities?.length ? (
+          ) : !reasoningLogsData?.logs?.length ? (
             <Card className="border border-border rounded-xl shadow-sm">
               <CardContent className="py-12 text-center">
                 <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground">Nessuna analisi ancora.</p>
-                <p className="text-xs text-muted-foreground mt-1">Quando i dipendenti AI analizzano i tuoi dati, qui vedrai il loro ragionamento completo.</p>
+                <p className="text-sm text-muted-foreground">Nessun ragionamento registrato ancora.</p>
+                <p className="text-xs text-muted-foreground mt-1">Quando i dipendenti AI analizzano i tuoi dati, qui vedrai il loro processo di pensiero completo.</p>
               </CardContent>
             </Card>
           ) : (
-            <>
-              {reasoningGroupedByCycle.cycles.map((cycle) => {
-                const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
+            <div className="space-y-3">
+              {reasoningLogsData.logs.map((log: any) => {
+                const isExpanded = expandedReasoningCycles.has(log.id);
+                const roleColor = REASONING_ROLE_COLORS[log.role_id] || "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300";
+                const thinkingSteps = Array.isArray(log.thinking_steps) ? log.thinking_steps : [];
+                const formatDuration = (ms: number | null) => {
+                  if (!ms) return "—";
+                  if (ms < 1000) return `${ms}ms`;
+                  return `${(ms / 1000).toFixed(1)}s`;
+                };
+                const formatLogDate = (dateStr: string) => {
+                  try {
+                    return new Date(dateStr).toLocaleString("it-IT", {
+                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    });
+                  } catch { return dateStr; }
+                };
 
                 return (
-                  <div key={cycle.cycleId} className="space-y-3">
-                    <Card
-                      className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
-                      onClick={() => toggleReasoningCycle(cycle.cycleId)}
+                  <Card
+                    key={log.id}
+                    className="border border-border rounded-xl shadow-sm transition-all hover:shadow-md"
+                  >
+                    <div
+                      className="flex items-center gap-3 p-4 cursor-pointer select-none"
+                      onClick={() => toggleReasoningCycle(log.id)}
                     >
-                      <CardContent className="py-3 px-5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                              <Brain className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold">
-                                Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
-                              </p>
-                              <div className="flex items-center gap-3 mt-0.5">
-                                <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
-                                <span className="text-xs text-muted-foreground">·</span>
-                                <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
-                                <span className="text-xs text-muted-foreground">·</span>
-                                <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
-                              </div>
-                            </div>
-                          </div>
-                          <ChevronDown className={cn(
-                            "h-4 w-4 text-muted-foreground transition-transform",
-                            isExpanded && "rotate-180"
-                          )} />
-                        </div>
-                      </CardContent>
-                    </Card>
+                      <div className="flex-shrink-0">
+                        {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                      </div>
+                      <Badge variant="outline" className={`${roleColor} text-xs font-semibold`}>
+                        {log.role_name || log.role_id}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{formatLogDate(log.created_at)}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {REASONING_MODE_LABELS[log.reasoning_mode] || log.reasoning_mode || "Standard"}
+                      </Badge>
+                      <div className="ml-auto flex items-center gap-3 text-xs">
+                        {log.tasks_created > 0 && (
+                          <span className="flex items-center gap-1 text-green-600">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            {log.tasks_created}
+                          </span>
+                        )}
+                        {log.tasks_rejected > 0 && (
+                          <span className="flex items-center gap-1 text-red-500">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {log.tasks_rejected}
+                          </span>
+                        )}
+                        {log.duration_ms && (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatDuration(log.duration_ms)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
                     {isExpanded && (
-                      <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
-                        {cycle.items.map((item: any) => renderReasoningCard(item))}
-                      </div>
+                      <CardContent className="pt-0 pb-4 space-y-3">
+                        <ReasoningSection icon={Eye} title="Osservazione" content={log.observation} color="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300" />
+                        <ReasoningSection icon={Lightbulb} title="Riflessione" content={log.reflection} color="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300" />
+                        <ReasoningSection icon={Target} title="Decisione" content={log.decision} color="bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300" />
+                        <ReasoningSection icon={Brain} title="Auto-Revisione" content={log.self_review} color="bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300" />
+                        {log.overall_reasoning && !log.observation && !log.reflection && (
+                          <ReasoningSection icon={Brain} title="Ragionamento Generale" content={log.overall_reasoning} color="bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300" />
+                        )}
+                        {log.reasoning_mode === "deep_think" && <ThinkingStepsTimeline steps={thinkingSteps} />}
+                        <TasksCreatedRejected tasksData={log.tasks_data} />
+                        {(log.total_tokens > 0 || log.model_used) && (
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                            {log.total_tokens > 0 && <span>Token: {log.total_tokens?.toLocaleString("it-IT")}</span>}
+                            {log.model_used && <span>Modello: {log.model_used}</span>}
+                            {log.provider_used && <span>Provider: {log.provider_used}</span>}
+                          </div>
+                        )}
+                      </CardContent>
                     )}
-                  </div>
+                  </Card>
                 );
               })}
+            </div>
+          )}
 
-              {reasoningGroupedByCycle.standalone.map((item: any) => renderReasoningCard(item))}
-
-              {reasoningData && reasoningData.totalPages > 1 && (
-                <div className="flex items-center justify-center gap-4 pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
-                    disabled={reasoningPage <= 1}
-                    className="rounded-xl"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Precedente
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Pagina {reasoningData.page} di {reasoningData.totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setReasoningPage(Math.min(reasoningData.totalPages, reasoningPage + 1))}
-                    disabled={reasoningPage >= reasoningData.totalPages}
-                    className="rounded-xl"
-                  >
-                    Successiva
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </>
+          {reasoningLogsData?.pagination && reasoningLogsData.pagination.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReasoningPage(Math.max(1, reasoningPage - 1))}
+                disabled={reasoningPage <= 1}
+                className="rounded-xl"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Precedente
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Pagina {reasoningLogsData.pagination.page} di {reasoningLogsData.pagination.totalPages} ({reasoningLogsData.pagination.total} totali)
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setReasoningPage(Math.min(reasoningLogsData.pagination.totalPages, reasoningPage + 1))}
+                disabled={reasoningPage >= reasoningLogsData.pagination.totalPages}
+                className="rounded-xl"
+              >
+                Successiva
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           )}
         </div>
       )}
