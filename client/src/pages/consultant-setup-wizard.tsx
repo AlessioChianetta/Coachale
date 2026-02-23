@@ -3118,72 +3118,97 @@ export default function ConsultantSetupWizard() {
       </main>
       {!isOnboardingMode && <ConsultantAIAssistant isOnboardingMode={false} />}
 
-      {/* ── PANNELLO AI ONBOARDING — fixed overlay indipendente dal layout ── */}
-      <AnimatePresence>
-        {isOnboardingMode && (
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            style={{
-              position: "fixed",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: "24rem",
-              zIndex: 40,
-              display: "flex",
-              flexDirection: "column",
-            }}
-            className="border-l bg-white dark:bg-slate-900 shadow-2xl"
+      {/* ── PANNELLO AI ONBOARDING — always mounted, slide in/out via CSS ── */}
+      <motion.aside
+        animate={{ x: isOnboardingMode ? 0 : "100%" }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: "24rem",
+          zIndex: 40,
+          display: "flex",
+          flexDirection: "column",
+          pointerEvents: isOnboardingMode ? "auto" : "none",
+        }}
+        className="border-l bg-white dark:bg-slate-900 shadow-2xl"
+      >
+        {/* Header */}
+        <div
+          className="shrink-0 px-4 py-3 flex items-center justify-between"
+          style={{
+            background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm leading-tight">Assistente Onboarding</p>
+              <p className="text-indigo-200 text-xs leading-tight">Sono qui per guidarti</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/10"
+            onClick={() => setIsOnboardingMode(false)}
           >
-            <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900 shrink-0">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-indigo-600" />
-                <span className="font-semibold text-sm">Assistente Onboarding</span>
-              </div>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOnboardingMode(false)}>
-                <X className="h-4 w-4" />
-              </Button>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Suggestions */}
+        {!chatStarted && (
+          <div className="shrink-0 border-b border-indigo-100 dark:border-indigo-900/40 bg-gradient-to-b from-indigo-50/80 to-white dark:from-indigo-950/30 dark:to-slate-900 overflow-y-auto" style={{ maxHeight: "18rem" }}>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Inizia da qui</p>
+              <button
+                onClick={() => setChatStarted(true)}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Nascondi
+              </button>
             </div>
-            {!chatStarted && (
-              <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto shrink-0" style={{ maxHeight: "18rem" }}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
-                  <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
-                </div>
-                {ONBOARDING_SUGGESTIONS.map((q, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
-                    className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <ChatPanel
-                key={chatKey}
-                isOpen={true}
-                onClose={() => setIsOnboardingMode(false)}
-                mode="assistenza"
-                setMode={() => {}}
-                consultantType="finanziario"
-                setConsultantType={() => {}}
-                isConsultantMode={true}
-                isOnboardingMode={true}
-                embedded={true}
-                onboardingStatuses={onboardingStatusesForAI?.data}
-                autoMessage={pendingAutoMessage}
-                onAutoMessageSent={() => setPendingAutoMessage(null)}
-              />
+            <div className="px-3 pb-3 space-y-1.5">
+              {ONBOARDING_SUGGESTIONS.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
+                  className="w-full text-left text-xs p-2.5 rounded-xl bg-white dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-150 leading-relaxed flex items-start gap-2.5 group shadow-sm"
+                >
+                  <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 transition-colors">
+                    {i + 1}
+                  </span>
+                  <span>{q}</span>
+                </button>
+              ))}
             </div>
-          </motion.aside>
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* ChatPanel */}
+        <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <ChatPanel
+            key={chatKey}
+            isOpen={true}
+            onClose={() => setIsOnboardingMode(false)}
+            mode="assistenza"
+            setMode={() => {}}
+            consultantType="finanziario"
+            setConsultantType={() => {}}
+            isConsultantMode={true}
+            isOnboardingMode={true}
+            embedded={true}
+            onboardingStatuses={onboardingStatusesForAI?.data}
+            autoMessage={pendingAutoMessage}
+            onAutoMessageSent={() => setPendingAutoMessage(null)}
+          />
+        </div>
+      </motion.aside>
     </div>
   );
 }
