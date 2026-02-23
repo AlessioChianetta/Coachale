@@ -242,13 +242,12 @@ function StepCard({
 
   return (
     <motion.div
-      className={`cursor-pointer px-3 py-2.5 rounded-xl transition-all ${
+      className={`cursor-pointer px-3 py-2.5 rounded-xl transition-all overflow-hidden ${
         isActive
           ? "bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
       }`}
       onClick={onClick}
-      whileHover={{ x: 2 }}
       whileTap={{ scale: 0.98 }}
     >
       <div className="flex items-center gap-2.5">
@@ -939,25 +938,44 @@ function LeadImportWebhookPanel({ consultantId }: { consultantId?: string }) {
   };
 
   return (
-    <div className="mt-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <LinkIcon className="h-4 w-4 text-blue-500" />
-        <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Il tuo Webhook URL</span>
+    <div className="mt-3 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 overflow-hidden">
+      <div className="px-4 pt-4 pb-3 space-y-3">
+        <div className="flex items-start gap-2">
+          <LinkIcon className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">URL di ricezione lead</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+              Questo è il tuo endpoint personale. Configuralo su <strong>Zapier</strong>, <strong>Make.com</strong>, <strong>n8n</strong> o il tuo CRM — ogni volta che un contatto compila un form o viene registrato nel tuo CRM, il lead arriva automaticamente qui.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            readOnly
+            value={webhookUrl || "Caricamento..."}
+            className="h-8 text-xs font-mono bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-700"
+          />
+          <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-100">
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? "Copiato" : "Copia"}
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Input
-          readOnly
-          value={webhookUrl || "Caricamento..."}
-          className="h-8 text-xs font-mono bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-700"
-        />
-        <Button size="sm" variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5 border-blue-200 text-blue-700 hover:bg-blue-100">
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          {copied ? "Copiato" : "Copia"}
-        </Button>
+      <div className="px-4 py-3 bg-white/60 dark:bg-slate-800/40 border-t border-blue-100 dark:border-blue-900 space-y-1.5">
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Import Lead Automatico</p>
+        <p className="text-xs text-slate-500 dark:text-slate-500">
+          Usa il tuo Webhook URL (mostrato sopra) per inviare lead automaticamente da:
+        </p>
+        <ul className="text-xs text-slate-500 space-y-0.5 list-disc list-inside ml-1">
+          <li><strong>Zapier</strong> — collega qualsiasi app (Facebook Lead Ads, Google Sheets, ecc.)</li>
+          <li><strong>Make.com</strong> — automazioni avanzate con logica condizionale</li>
+          <li><strong>n8n</strong> — self-hosted, per chi preferisce privacy totale</li>
+          <li>Qualsiasi CRM/form con supporto webhook HTTP POST</li>
+        </ul>
+        <p className="text-xs text-slate-400 dark:text-slate-600 italic mt-1">
+          Il body della richiesta deve contenere almeno <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">phone</code> o <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">name</code>.
+        </p>
       </div>
-      <p className="text-xs text-blue-600 dark:text-blue-400">
-        Usa questo URL in <strong>Zapier</strong>, <strong>Make.com</strong>, <strong>n8n</strong> o qualsiasi CRM per inviare lead automaticamente.
-      </p>
     </div>
   );
 }
