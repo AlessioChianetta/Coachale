@@ -2172,10 +2172,11 @@ export default function ConsultantSetupWizard() {
               {isOnboardingMode && (
                 <motion.aside
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
+                  animate={{ width: "24rem", opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="w-96 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
+                  style={{ minWidth: 0, flexShrink: 0 }}
+                  className="border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
                 >
                   <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
                     <div className="flex items-center gap-2">

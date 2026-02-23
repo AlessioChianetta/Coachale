@@ -764,6 +764,7 @@ export function ChatPanel({
                       </div>
                     </div>
 
+                    {!isOnboardingMode && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                         Azioni rapide
@@ -782,6 +783,7 @@ export function ChatPanel({
                         />
                       )}
                     </div>
+                    )}
                   </div>
                 </ScrollArea>
               ) : (
@@ -1000,6 +1002,7 @@ export function ChatPanel({
                       )}
 
                       {/* Quick Actions - Hostinger Style */}
+                      {!isOnboardingMode && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                           Azioni rapide
@@ -1020,6 +1023,7 @@ export function ChatPanel({
                           />
                         )}
                       </div>
+                      )}
                     </div>
                   </ScrollArea>
                 ) : (
