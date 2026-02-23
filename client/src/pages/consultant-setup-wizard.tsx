@@ -5,6 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
+import Navbar from "@/components/navbar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
+import { cn } from "@/lib/utils";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { ChatPanel } from "@/components/ai-assistant/ChatPanel";
 import { X } from "lucide-react";
@@ -1225,6 +1229,10 @@ function CredentialNotesCard({ stepId }: { stepId: string }) {
 }
 
 export default function ConsultantSetupWizard() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
+
   const [activeStep, setActiveStep] = useState<string>("twilio_config");
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [testingStep, setTestingStep] = useState<string | null>(null);
@@ -1945,27 +1953,38 @@ export default function ConsultantSetupWizard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <Sidebar role="consultant" />
+    <div className={cn("min-h-screen flex flex-col bg-background", !isMobile && "h-screen")}>
+      {isMobile && (
+        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+      )}
+      <div className={cn("flex flex-1", isMobile ? "min-h-0" : "min-h-0 overflow-hidden")}>
+      <Sidebar
+        role="consultant"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        showRoleSwitch={showRoleSwitch}
+        currentRole={currentRole}
+        onRoleSwitch={handleRoleSwitch}
+      />
       
       <main
-        className="flex-1 overflow-hidden min-h-0"
+        className={cn("flex-1 min-h-0", isMobile ? "overflow-auto" : "overflow-hidden")}
         style={{
-          paddingRight: isOnboardingMode ? "24rem" : "0",
+          paddingRight: !isMobile && isOnboardingMode ? "24rem" : "0",
           transition: "padding-right 0.3s ease",
         }}
       >
-        <div className="h-full flex flex-col min-h-0">
+        <div className={cn("flex flex-col min-h-0", isMobile ? "" : "h-full")}>
           {/* ── HEADER ── */}
           <motion.header
-            className="relative overflow-hidden border-b px-6 py-4 bg-white dark:bg-slate-900"
+            className="relative overflow-hidden border-b px-4 sm:px-6 py-3 sm:py-4 bg-background"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -3212,6 +3231,7 @@ export default function ConsultantSetupWizard() {
           />
         </div>
       </motion.aside>
+      </div>
     </div>
   );
 }
