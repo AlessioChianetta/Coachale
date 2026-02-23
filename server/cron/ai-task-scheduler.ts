@@ -1883,9 +1883,10 @@ Rispondi con il JSON finale pulito:
   };
 }
 
-async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean; onlyRoleId?: string }): Promise<number | SimulationResult> {
+async function generateTasksForConsultant(consultantId: string, options?: { dryRun?: boolean; onlyRoleId?: string; forceRun?: boolean }): Promise<number | SimulationResult> {
   const dryRun = options?.dryRun || false;
   const onlyRoleId = options?.onlyRoleId || null;
+  const forceRun = options?.forceRun || false;
   console.log(`🧠 [AUTONOMOUS-GEN] Starting generateTasksForConsultant for ${consultantId} (dryRun=${dryRun})`);
   const settings = await getAutonomySettings(consultantId);
   console.log(`🧠 [AUTONOMOUS-GEN] Settings loaded OK for ${consultantId}`);
@@ -2343,7 +2344,7 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       }
 
       const configuredFrequencyMinutes = parseInt(roleFrequencies[role.id] || '30', 10);
-      if (!dryRun && role.id !== 'marco') {
+      if (!dryRun && !forceRun && role.id !== 'marco') {
         const lastRunResult = await db.execute(sql`
           SELECT created_at FROM ai_activity_log
           WHERE consultant_id::text = ${cId}
@@ -3549,7 +3550,7 @@ export { scheduleNextRecurrence, calculateNextDate };
 
 export async function triggerAutonomousGenerationForConsultant(consultantId: string, roleId?: string): Promise<{ tasksGenerated: number; error?: string }> {
   try {
-    const tasksGenerated = await generateTasksForConsultant(consultantId, { onlyRoleId: roleId }) as number;
+    const tasksGenerated = await generateTasksForConsultant(consultantId, { onlyRoleId: roleId, forceRun: true }) as number;
     return { tasksGenerated };
   } catch (error: any) {
     console.error(`❌ [AUTONOMOUS-GEN] Manual trigger error for ${consultantId}:`, error.message);
