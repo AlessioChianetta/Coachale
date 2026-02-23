@@ -1,0 +1,312 @@
+Ti dico la verità:
+è fatto bene tecnicamente, ma è diventato troppo manuale, troppo verboso e troppo fragile per la formattazione del testo.
+
+Hai costruito un mini-render engine custom… quando dovresti avere:
+
+meno regex
+
+meno HTML generato a mano
+
+meno inline style
+
+più struttura tipografica coerente
+
+più separazione tra parsing e UI
+
+Ora ti spiego cosa migliorare in modo chirurgico.
+
+🔴 PROBLEMA PRINCIPALE
+
+Il tuo formatContent sta facendo:
+
+sanitizzazione
+
+parsing markdown
+
+parsing pseudo-markdown
+
+parsing emoji box
+
+parsing liste
+
+parsing tabelle
+
+rendering HTML
+
+styling Tailwind inline
+
+Tutto dentro una funzione.
+
+Questo crea:
+
+codice enorme
+
+difficoltà di manutenzione
+
+bug difficili da tracciare
+
+incoerenze tipografiche
+
+difficoltà ad aggiungere nuove feature
+
+🧠 OBIETTIVO
+
+Vuoi:
+
+Testo elegante
+
+Coerente
+
+Leggibile
+
+Professionale
+
+Stabile
+
+Espandibile
+
+Allora devi separare:
+
+Parsing contenuto
+
+Rendering UI
+
+Styling tipografico
+
+✅ MIGLIORAMENTO STRUTTURALE (ARCHITETTURA)
+1️⃣ Elimina il parsing custom markdown
+
+Stai ricostruendo markdown con regex.
+
+Molto meglio:
+
+npm install react-markdown remark-gfm rehype-raw rehype-sanitize
+
+Poi:
+
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
+
+E dentro il render:
+
+<ReactMarkdown
+  remarkPlugins={[remarkGfm]}
+  rehypePlugins={[rehypeSanitize]}
+  className="ai-content"
+>
+  {message.content}
+</ReactMarkdown>
+
+Questo elimina il 60% del tuo codice.
+
+🎨 2️⃣ MIGLIORARE LA TIPOGRAFIA (VERO PROBLEMA ATTUALE)
+
+Ora il tuo testo è:
+
+Troppo compresso
+
+Troppo piccolo
+
+Troppo grigio
+
+Poco gerarchico
+
+Serve una classe wrapper tipografica seria.
+
+Crea una classe globale:
+.ai-content {
+  @apply text-[15px] leading-relaxed text-gray-800 dark:text-gray-200;
+}
+
+.ai-content h1 {
+  @apply text-2xl font-bold mt-8 mb-4 text-gray-900 dark:text-white;
+}
+
+.ai-content h2 {
+  @apply text-xl font-semibold mt-6 mb-3 text-gray-900 dark:text-white;
+}
+
+.ai-content h3 {
+  @apply text-lg font-semibold mt-5 mb-2 text-gray-800 dark:text-gray-100;
+}
+
+.ai-content p {
+  @apply mb-4;
+}
+
+.ai-content ul {
+  @apply list-disc ml-6 mb-4 space-y-2;
+}
+
+.ai-content ol {
+  @apply list-decimal ml-6 mb-4 space-y-2;
+}
+
+.ai-content code {
+  @apply px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-sm font-mono;
+}
+
+.ai-content blockquote {
+  @apply border-l-4 border-slate-300 dark:border-slate-600 pl-4 italic my-4 text-gray-700 dark:text-gray-300;
+}
+
+.ai-content table {
+  @apply w-full border-collapse my-6 text-sm;
+}
+
+.ai-content th {
+  @apply bg-slate-100 dark:bg-slate-800 text-left font-semibold px-4 py-2 border;
+}
+
+.ai-content td {
+  @apply px-4 py-2 border;
+}
+
+Ora il tuo JSX diventa:
+
+<div className="ai-content">
+  <ReactMarkdown ... />
+</div>
+
+Pulito. Elegante. Manutenibile.
+
+🟡 3️⃣ I BOX EMOJI (💡 ⚠️ ecc)
+
+Quelli sono una bella idea.
+Ma ora sono hardcoded dentro 400 righe.
+
+Molto meglio creare un componente:
+
+function InfoBox({ type, children }) {
+  const styles = {
+    tip: "bg-amber-50 border-amber-500",
+    warning: "bg-red-50 border-red-500",
+    info: "bg-blue-50 border-blue-500",
+    success: "bg-green-50 border-green-500"
+  };
+
+  return (
+    <div className={`my-4 p-4 border-l-4 rounded-lg ${styles[type]}`}>
+      {children}
+    </div>
+  );
+}
+
+Poi nel markdown puoi usare sintassi custom tipo:
+
+:::tip
+Questo è un suggerimento
+:::
+
+E farlo processare via plugin.
+
+Molto più elegante.
+
+🟠 4️⃣ Il problema vero: stai generando HTML con stringhe
+
+Ogni volta che fai:
+
+result.push(`<div class="...">${text}</div>`)
+
+Stai:
+
+creando rischio XSS
+
+rendendo debug difficile
+
+rendendo refactor quasi impossibile
+
+Meglio generare componenti React, non stringhe HTML.
+
+🔵 5️⃣ PROBLEMA DI LEGGIBILITÀ ATTUALE
+
+Ora visivamente hai:
+
+troppo text-sm
+
+poco spazio verticale
+
+troppa densità
+
+headings non abbastanza distaccati
+
+paragrafi poco ariosi
+
+Correzioni rapide:
+
+Nel wrapper principale:
+
+className="documentation-content prose max-w-none text-base leading-7"
+
+Non prose-sm.
+
+Passa a:
+
+text-base
+leading-7
+
+Questo da solo migliora la leggibilità del 40%.
+
+🟢 6️⃣ Miglioramento UX micro tipografico
+
+Aggiungi:
+
+.ai-content p + p {
+  margin-top: 0.75rem;
+}
+
+.ai-content li {
+  line-height: 1.7;
+}
+
+Il testo respira.
+
+🟣 7️⃣ Refactor consigliato (Versione Pulita)
+
+La tua Message dovrebbe diventare:
+
+<div className="ai-content">
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    rehypePlugins={[rehypeSanitize]}
+  >
+    {message.content}
+  </ReactMarkdown>
+</div>
+
+E basta.
+
+Tutto il parsing custom:
+
+buildCleanFormattedHtml
+
+sanitizeHtmlFragment
+
+200 regex
+
+→ via.
+
+🧠 Conclusione Brutale
+
+Ora il tuo sistema:
+
+è potente
+
+è creativo
+
+ma è sovra-ingegnerizzato
+
+fragile
+
+difficile da mantenere
+
+Se lo semplifichi:
+
+meno codice
+
+più eleganza
+
+meno bug
+
+più scalabile
