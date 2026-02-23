@@ -1377,7 +1377,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "lead_import",
           stepNumber: 6,
-          priority: 4,
+          priority: 1,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -1390,7 +1390,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "first_campaign",
           stepNumber: 7,
-          priority: 4,
+          priority: 2,
           title: "Prima Campagna Marketing",
           description: "Configura la tua prima campagna per contattare i lead automaticamente",
           icon: <Rocket className="h-4 w-4" />,
@@ -1437,7 +1437,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "outbound_agent",
           stepNumber: 9,
-          priority: 3,
+          priority: 2,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo verso i lead",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -1469,7 +1469,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "video_meeting",
           stepNumber: 12,
-          priority: 3,
+          priority: 5,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -1508,7 +1508,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "ai_autonomo",
           stepNumber: 13,
-          priority: 5,
+          priority: 4,
           title: "AI Autonomo",
           description: "Attiva il sistema AI autonomo e completa almeno un task automatico generato dall'AI",
           icon: <Bot className="h-4 w-4" />,
@@ -1615,7 +1615,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "voice_calls",
           stepNumber: 17,
-          priority: 4,
+          priority: 2,
           title: "Chiamate Voice (Alessia AI)",
           description: "Completa almeno una chiamata vocale con esito positivo tramite il sistema Alessia AI Phone",
           icon: <Phone className="h-4 w-4" />,
@@ -1661,7 +1661,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "knowledge_base",
           stepNumber: 20,
-          priority: 4,
+          priority: 2,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -1767,7 +1767,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "google_calendar_agents",
           stepNumber: 25,
-          priority: 3,
+          priority: 2,
           title: "Google Calendar Agenti WhatsApp",
           description: "Collega Google Calendar a ciascun agente WhatsApp per la prenotazione automatica degli appuntamenti",
           icon: <Calendar className="h-4 w-4" />,
@@ -1777,7 +1777,7 @@ export default function ConsultantSetupWizard() {
         {
           id: "vertex_ai",
           stepNumber: 26,
-          priority: 5,
+          priority: 1,
           title: "AI Engine (Gemini)",
           description: "Pre-configurato dal sistema via Google AI Studio. Aggiungi una tua API Key Gemini personale per usare un account dedicato.",
           icon: <Sparkles className="h-4 w-4" />,
@@ -1855,12 +1855,12 @@ export default function ConsultantSetupWizard() {
     instagram_dm: "Instagram DM",
   };
 
-  const PRIORITY_LABELS: Record<number, { label: string; bg: string; dot: string }> = {
-    1: { label: "🔴 Critica — Blocca tutto il resto", bg: "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800", dot: "bg-red-500" },
-    2: { label: "🟠 Alta — Funzioni core", bg: "bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800", dot: "bg-orange-500" },
-    3: { label: "🟡 Media — Automazione", bg: "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800", dot: "bg-amber-500" },
-    4: { label: "🟢 Normale — Espansione", bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800", dot: "bg-emerald-500" },
-    5: { label: "⚪ Opzionale — Ottimizzazione", bg: "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700", dot: "bg-slate-300" },
+  const PRIORITY_LABELS: Record<number, { label: string; sublabel: string; dot: string; leftBorder: string; progressColor: string }> = {
+    1: { label: "Critica", sublabel: "Twilio · SMTP · AI Engine · Import Lead", dot: "bg-rose-500", leftBorder: "border-l-rose-500", progressColor: "bg-rose-500" },
+    2: { label: "Alta", sublabel: "Agenti · Campagne · Voce · Calendario · Pagamenti · Conoscenza", dot: "bg-orange-400", leftBorder: "border-l-orange-400", progressColor: "bg-orange-400" },
+    3: { label: "Media", sublabel: "Automazione email & agenti secondari", dot: "bg-amber-400", leftBorder: "border-l-amber-400", progressColor: "bg-amber-400" },
+    4: { label: "Normale", sublabel: "Canali aggiuntivi & features avanzate", dot: "bg-emerald-500", leftBorder: "border-l-emerald-500", progressColor: "bg-emerald-500" },
+    5: { label: "Opzionale", sublabel: "Contenuti, video meeting & ottimizzazione", dot: "bg-slate-400", leftBorder: "border-l-slate-400", progressColor: "bg-slate-400" },
   };
 
   const handleTest = async (stepId: string, endpoint?: string) => {
@@ -2042,7 +2042,7 @@ export default function ConsultantSetupWizard() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-5">
+                <div className="space-y-3">
                   {[1, 2, 3, 4, 5].map(priority => {
                     const stepsInPriority = sections.flatMap(section =>
                       section.steps
@@ -2051,29 +2051,72 @@ export default function ConsultantSetupWizard() {
                     );
                     if (stepsInPriority.length === 0) return null;
                     const pl = PRIORITY_LABELS[priority];
+                    const completedCount = stepsInPriority.filter(s => s.status === "verified").length;
+                    const progressPct = stepsInPriority.length > 0 ? Math.round((completedCount / stepsInPriority.length) * 100) : 0;
                     return (
-                      <div key={priority} className={`rounded-2xl border p-4 ${pl.bg}`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${pl.dot}`} />
-                          <h3 className="font-semibold text-sm">{pl.label}</h3>
-                          <Badge variant="outline" className="ml-auto text-xs">{stepsInPriority.length} step</Badge>
+                      <div
+                        key={priority}
+                        className={`rounded-xl border border-slate-100 dark:border-slate-800 border-l-4 ${pl.leftBorder} bg-white dark:bg-slate-900 overflow-hidden`}
+                      >
+                        {/* Header gruppo */}
+                        <div className="px-4 pt-3 pb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${pl.dot}`} />
+                            <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">{pl.label}</span>
+                            <span className="text-xs text-muted-foreground truncate">{pl.sublabel}</span>
+                            <div className="ml-auto flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted-foreground">{completedCount}/{stepsInPriority.length}</span>
+                            </div>
+                          </div>
+                          {/* Barra progresso sottile */}
+                          <div className="mt-2 h-0.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <motion.div
+                              className={`h-full rounded-full ${pl.progressColor}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${progressPct}%` }}
+                              transition={{ duration: 0.6, ease: "easeOut" }}
+                            />
+                          </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+
+                        {/* Griglia step */}
+                        <div className="px-3 pb-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                           {stepsInPriority.map(step => {
                             const s = sections.find(sec => sec.id === (step as any).sectionId)!;
+                            const isDone = step.status === "verified";
+                            const isRequired = priority === 1 && !isDone;
                             return (
                               <motion.div
                                 key={step.id}
-                                whileHover={{ scale: 1.02 }}
+                                whileHover={{ scale: isDone ? 1 : 1.01 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => { autoSelectStep(s); setActiveStep(step.id); }}
-                                className="cursor-pointer flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:shadow-sm transition-all"
+                                className={`cursor-pointer flex items-center gap-2.5 px-3 rounded-lg transition-all border ${
+                                  isDone
+                                    ? "py-1.5 border-transparent bg-slate-50 dark:bg-slate-800/40 opacity-60 hover:opacity-80"
+                                    : "py-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:shadow-sm hover:border-slate-300"
+                                }`}
                               >
-                                <StepNumberBadge number={step.stepNumber} status={step.status} />
+                                {isDone ? (
+                                  <div className="w-5 h-5 shrink-0 rounded-full border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                  </div>
+                                ) : (
+                                  <StepNumberBadge number={step.stepNumber} status={step.status} />
+                                )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate text-slate-700 dark:text-slate-300">{step.title}</p>
-                                  <p className="text-xs text-muted-foreground">{(step as any).sectionEmoji} {(step as any).sectionTitle}</p>
+                                  <p className={`text-xs font-medium truncate ${isDone ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-300"}`}>
+                                    {step.title}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {(step as any).sectionEmoji} {(step as any).sectionTitle}
+                                  </p>
                                 </div>
+                                {isRequired && (
+                                  <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 font-medium">
+                                    ⚡
+                                  </span>
+                                )}
                               </motion.div>
                             );
                           })}
