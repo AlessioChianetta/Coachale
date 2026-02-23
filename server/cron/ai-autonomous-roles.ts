@@ -4,10 +4,11 @@ import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
 import { FileSearchSyncService } from "../services/file-search-sync-service";
 
-async function fetchAgentKbContext(consultantId: string, agentId: string): Promise<{ kbDocumentTitles: string[]; fileSearchStoreNames: string[] }> {
+async function fetchAgentKbContext(consultantId: string, agentId: string): Promise<{ kbDocumentTitles: string[]; fileSearchStoreNames: string[]; hasPersonalClientStore: boolean }> {
   let kbDocumentTitles: string[] = [];
   let fileSearchStoreNames: string[] = [];
   let needsFileSearch = false;
+  let hasPersonalClientStore = false;
 
   try {
     const assignmentsResult = await db.execute(sql`
@@ -53,11 +54,33 @@ async function fetchAgentKbContext(consultantId: string, agentId: string): Promi
       }
       console.log(`🗂️ [${agentId.toUpperCase()}] Analysis: File Search stores loaded: ${fileSearchStoreNames.length} stores (agent+consultant) for ${kbDocumentTitles.length} docs`);
     }
+
+    // Check if consultant is also a client of another consultant
+    // If so, include their personal client store (restricted to email_journey, daily_reflection, consultation)
+    const consultantUserResult = await db.execute(sql`
+      SELECT consultant_id FROM users WHERE id = ${consultantId} LIMIT 1
+    `);
+    const parentConsultantId = (consultantUserResult.rows[0] as any)?.consultant_id;
+    if (parentConsultantId && parentConsultantId !== consultantId) {
+      const clientStoreResult = await db.execute(sql`
+        SELECT google_store_name FROM file_search_stores
+        WHERE owner_type = 'client' AND owner_id = ${consultantId} AND is_active = true
+        LIMIT 1
+      `);
+      const clientStoreName = (clientStoreResult.rows[0] as any)?.google_store_name;
+      if (clientStoreName) {
+        if (!fileSearchStoreNames.includes(clientStoreName)) {
+          fileSearchStoreNames.push(clientStoreName);
+        }
+        hasPersonalClientStore = true;
+        console.log(`🔗 [${agentId.toUpperCase()}] Consultant is also a client — added personal client store (email_journey, daily_reflection, consultation)`);
+      }
+    }
   } catch (err: any) {
     console.error(`⚠️ [${agentId.toUpperCase()}] Failed to fetch KB context: ${err.message}`);
   }
 
-  return { kbDocumentTitles, fileSearchStoreNames };
+  return { kbDocumentTitles, fileSearchStoreNames, hasPersonalClientStore };
 }
 
 interface AgentContextForPrompt {

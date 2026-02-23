@@ -1498,6 +1498,22 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   const simulationRoles: SimulationRoleResult[] = [];
 
   const cId = safeTextParam(consultantId);
+
+  // Check if this consultant is also a client of another consultant
+  // If so, their personal client store (email_journey, daily_reflection, consultation) will be
+  // included in file search by fetchAgentKbContext, and we need the instruction in each agent's prompt
+  let consultantParentId: string | null = null;
+  try {
+    const parentLookup = await db.execute(sql`SELECT consultant_id FROM users WHERE id = ${consultantId} LIMIT 1`);
+    const parentId = (parentLookup.rows[0] as any)?.consultant_id;
+    if (parentId && parentId !== consultantId) {
+      consultantParentId = parentId;
+      console.log(`🔗 [AUTONOMOUS-GEN] Consultant ${consultantId} is also a client of ${consultantParentId} — personal store will be included`);
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [AUTONOMOUS-GEN] Failed to check parent consultant: ${err.message}`);
+  }
+
   const enabledRolesResult = await db.execute(sql`
     SELECT enabled_roles FROM ai_autonomy_settings WHERE consultant_id::text = ${cId} LIMIT 1
   `);
@@ -2084,6 +2100,21 @@ FORMATO JSON quando è un task nuovo (come prima):
         }
       } catch (sysDocErr: any) {
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Error fetching system docs: ${sysDocErr.message}`);
+      }
+
+      // T005: If consultant is also a client of another consultant, inject personal store filtering instruction
+      // The personal client store (email_journey, daily_reflection, consultation) is already included
+      // in fileSearchStoreNames by fetchAgentKbContext — here we add the prompt-level filter instruction
+      if (consultantParentId) {
+        prompt = prompt + `\n\n--- NOTA SUL TUO STORE PERSONALE DA CLIENTE ---
+Il consulente per cui lavori è anche cliente di un altro consulente e ha accesso al suo store privato personale.
+Da quello store, usa ESCLUSIVAMENTE documenti di questi tipi:
+- Progressi Email Journey (percorso email personale del consulente)
+- Riflessioni giornaliere (journaling personale del consulente)
+- Note consulenze personali (sessioni del consulente come cliente)
+Non utilizzare altri tipi di documento da quel store privato.
+--- FINE NOTA STORE PERSONALE ---`;
+        console.log(`🔗 [AUTONOMOUS-GEN] [${role.name}] Injected personal client store filter instruction`);
       }
 
       let agentFileSearchTool: any = null;

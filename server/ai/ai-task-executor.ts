@@ -550,6 +550,29 @@ async function handleSearchPrivateStores(
     }
   }
 
+  // T006: If consultant is also a client of another consultant, include their personal client store
+  // (email_journey, daily_reflection, consultation — enforced at prompt level)
+  let consultantParentId: string | null = null;
+  try {
+    const parentLookup = await db.execute(sql`SELECT consultant_id FROM users WHERE id = ${task.consultant_id} LIMIT 1`);
+    const parentId = (parentLookup.rows[0] as any)?.consultant_id;
+    if (parentId && parentId !== task.consultant_id) {
+      consultantParentId = parentId;
+      const clientStoreResult = await db.execute(sql`
+        SELECT google_store_name FROM file_search_stores
+        WHERE owner_type = 'client' AND owner_id = ${task.consultant_id} AND is_active = true
+        LIMIT 1
+      `);
+      const clientStoreName = (clientStoreResult.rows[0] as any)?.google_store_name;
+      if (clientStoreName && !storeNames.includes(clientStoreName)) {
+        storeNames.push(clientStoreName);
+        console.log(`${LOG_PREFIX} Added personal client store (consultant is also a client of ${consultantParentId})`);
+      }
+    }
+  } catch (err: any) {
+    console.warn(`${LOG_PREFIX} Failed to check consultant parent: ${err.message}`);
+  }
+
   storeNames = [...new Set(storeNames)];
 
   if (storeNames.length === 0) {
@@ -566,7 +589,7 @@ async function handleSearchPrivateStores(
 
   let breakdown: any[] = [];
   try {
-    const breakdownResult = await fileSearchService.getStoreBreakdownForGeneration(task.consultant_id, 'consultant');
+    const breakdownResult = await fileSearchService.getStoreBreakdownForGeneration(task.consultant_id, 'consultant', consultantParentId || undefined);
     breakdown = breakdownResult.breakdown;
   } catch (err: any) {
     console.warn(`${LOG_PREFIX} Failed to get store breakdown: ${err.message}`);
@@ -617,12 +640,22 @@ async function handleSearchPrivateStores(
     ? `${rolePersonality}\nCerca nei documenti privati informazioni rilevanti per questo task.`
     : `Sei un assistente AI per consulenti. Cerca nei documenti privati informazioni rilevanti per questo task.`;
 
+  const personalClientStoreNote = consultantParentId
+    ? `\n\nNOTA IMPORTANTE SULLO STORE PERSONALE:
+Il consulente è anche cliente di un altro consulente e ha un store privato personale.
+Da quello store, considera ESCLUSIVAMENTE documenti di questi tipi:
+- Progressi Email Journey (percorso email personale del consulente)
+- Riflessioni giornaliere (journaling personale del consulente)
+- Note consulenze personali (sessioni del consulente come cliente)
+Non usare altri tipi di documento da quel store privato.`
+    : '';
+
   const searchPrompt = `${searchIdentity}
 
 ISTRUZIONE TASK: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 CATEGORIA: ${task.task_category}
-CONTATTO: ${task.contact_name || 'N/A'}
+CONTATTO: ${task.contact_name || 'N/A'}${personalClientStoreNote}
 
 Cerca specificamente:
 1. Note di consulenze passate con questo contatto

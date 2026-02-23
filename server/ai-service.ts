@@ -3855,9 +3855,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
 
     // 🔍 FILE SEARCH: Check if consultant has FileSearchStore with ACTUAL DOCUMENTS
     // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
+    // Pass consultant.consultantId so that, if the consultant is also a client of another consultant,
+    // their personal client store (email_journey, daily_reflection, consultation) is included
+    const consultantParentId = consultant.consultantId || undefined;
     const { storeNames: consultantFileSearchStoreNames, breakdown: consultantFileSearchBreakdown } = await fileSearchService.getStoreBreakdownForGeneration(
       consultantId,
-      'consultant'
+      'consultant',
+      consultantParentId
     );
     // FIX: Only consider File Search active if stores have actual documents
     const totalConsultantDocsInStores = consultantFileSearchBreakdown.reduce((sum, store) => sum + store.totalDocs, 0);
@@ -3986,6 +3990,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     // Append agent context if available
     if (agentContext) {
       systemPrompt = systemPrompt + '\n\n' + agentContext;
+    }
+
+    // If consultant is also a client of another consultant, add instructions about their personal client store
+    // The store includes email_journey, daily_reflection, and consultation docs — restrict AI to only those
+    if (consultantParentId && consultantFileSearchBreakdown.some(s => s.ownerType === 'client')) {
+      systemPrompt = systemPrompt + `\n\n## Il tuo percorso personale come cliente\nHai accesso al tuo store privato come cliente di un altro consulente. Da quello store, considera ESCLUSIVAMENTE documenti di questi tipi:\n- Progressi Email Journey (il tuo percorso email personale)\n- Riflessioni giornaliere (il tuo journaling personale)\n- Note delle tue consulenze personali (le tue sessioni come cliente)\nIgnora qualsiasi altro tipo di documento proveniente da quello store privato.`;
+      console.log(`🔗 [FileSearch] Consultant ${consultantId} is also a client — added personal client store prompt instruction`);
     }
     
     // Append user preferences if available
