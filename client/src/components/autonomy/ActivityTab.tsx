@@ -1060,6 +1060,16 @@ function ActivityTab({
               <p className="text-xs opacity-80">{roleProfile?.role || ''}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {matchingReasoningLog?.reasoning_mode && (
+                <Badge className={cn(
+                  "text-[10px] px-2.5 py-0.5 font-bold border shadow-sm",
+                  matchingReasoningLog.reasoning_mode === 'deep_think'
+                    ? "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-900/60 dark:text-violet-300 dark:border-violet-600"
+                    : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700"
+                )}>
+                  {matchingReasoningLog.reasoning_mode === 'deep_think' ? '🧠 Deep Think' : '⚡ Strutturato'}
+                </Badge>
+              )}
               <span className="text-xs opacity-70">{timeStr}</span>
               {!item.is_read && (
                 <Button

@@ -47,6 +47,8 @@ export interface AutonomySettings {
   role_frequencies: Record<string, string>;
   role_autonomy_modes: Record<string, number>;
   role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
+  reasoning_mode: string;
+  role_reasoning_modes: Record<string, string>;
 }
 
 export interface DailyActionCounts {
@@ -119,6 +121,8 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   role_frequencies: {},
   role_autonomy_modes: {},
   role_working_hours: {},
+  reasoning_mode: 'structured',
+  role_reasoning_modes: {},
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,6 +177,8 @@ export async function getAutonomySettings(consultantId: string): Promise<Autonom
       role_frequencies: row.role_frequencies ?? DEFAULT_AUTONOMY_SETTINGS.role_frequencies,
       role_autonomy_modes: row.role_autonomy_modes ?? DEFAULT_AUTONOMY_SETTINGS.role_autonomy_modes,
       role_working_hours: row.role_working_hours ?? DEFAULT_AUTONOMY_SETTINGS.role_working_hours,
+      reasoning_mode: row.reasoning_mode ?? DEFAULT_AUTONOMY_SETTINGS.reasoning_mode,
+      role_reasoning_modes: row.role_reasoning_modes ?? DEFAULT_AUTONOMY_SETTINGS.role_reasoning_modes,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Error fetching autonomy settings:`, error.message);
