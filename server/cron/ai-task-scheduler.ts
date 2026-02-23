@@ -2726,10 +2726,29 @@ Non utilizzare altri tipi di documento da quel store privato.
       }
 
       const reasoningData = (parsed as any).reasoning || {};
-      const overallReasoning = parsed.overall_reasoning || 
+      let overallReasoning = parsed.overall_reasoning || 
         [reasoningData.observation, reasoningData.reflection, reasoningData.decision].filter(Boolean).join('\n\n');
       if (!parsed.overall_reasoning && overallReasoning) {
         parsed.overall_reasoning = overallReasoning;
+      }
+
+      if (role.id === 'marco') {
+        const hasMarcoEmojis = overallReasoning && /📊|⚠️|💡|🎯/.test(overallReasoning);
+        if (!hasMarcoEmojis && reasoningData.observation) {
+          const marcoOverall = [
+            reasoningData.observation ? `📊 Quadro generale\n${reasoningData.observation}` : '',
+            reasoningData.reflection ? `⚠️ Criticità e problemi\n${reasoningData.reflection}` : '',
+            reasoningData.decision ? `💡 Opportunità e leve strategiche\n${reasoningData.decision}` : '',
+            reasoningData.self_review ? `🎯 Cosa devi fare\n${reasoningData.self_review}` : '',
+          ].filter(Boolean).join('\n\n');
+          if (marcoOverall) {
+            overallReasoning = marcoOverall;
+            parsed.overall_reasoning = marcoOverall;
+            console.log(`🔄 [AUTONOMOUS-GEN] [Marco] Rebuilt overall_reasoning with 📊/⚠️/💡/🎯 sections from structured reasoning`);
+          }
+        } else if (hasMarcoEmojis) {
+          console.log(`✅ [AUTONOMOUS-GEN] [Marco] overall_reasoning already has 📊/⚠️/💡/🎯 sections — preserved`);
+        }
       }
 
       try {
