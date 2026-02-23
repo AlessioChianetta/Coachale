@@ -676,13 +676,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             </div>
 
             <div
-              className="group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="group flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-xl transition-all duration-200 cursor-pointer border-l-[3px] border-transparent text-muted-foreground hover:bg-gray-100/70 dark:hover:bg-gray-800/40 hover:text-foreground"
               onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
             >
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-              <div className="p-1.5 rounded-lg bg-muted">
-                <BookOpen className="h-4 w-4 text-purple-500" />
-              </div>
+              <BookOpen className="h-[16px] w-[16px] flex-shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors duration-200" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">NotebookLM</span>
