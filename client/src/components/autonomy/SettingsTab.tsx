@@ -2531,79 +2531,79 @@ function SettingsTab({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className={cn(
-                          "relative rounded-xl border-2 overflow-hidden bg-white dark:bg-gray-900 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300",
-                          colors.border,
+                          "relative rounded-2xl border overflow-hidden bg-white dark:bg-gray-900 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300",
+                          role.enabled ? "border-gray-200 dark:border-gray-700/60" : "border-gray-200/60 dark:border-gray-800",
                           !role.enabled && "opacity-50 grayscale"
                         )}
                       >
                         <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradientClass}`} />
-                        <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
-                          <div className={cn("w-12 h-12 rounded-full overflow-hidden ring-2 shrink-0", colors.ring)}>
+                        <div className="flex items-start gap-4 sm:gap-5 p-4 sm:p-5 cursor-pointer" onClick={() => setExpandedRole(isExpanded ? null : role.id)}>
+                          <div className={cn("w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden ring-2 shrink-0 mt-0.5", colors.ring)}>
                             {profile?.avatar ? (
                               <img src={profile.avatar} alt={role.name} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full bg-muted flex items-center justify-center text-lg">
+                              <div className="w-full h-full bg-muted flex items-center justify-center text-xl">
                                 {role.id === 'personalizza' ? '⚙️' : '🤖'}
                               </div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm">{role.name}</span>
-                              <Badge className={cn("text-xs rounded-lg", colors.badge)}>
+                              <span className="font-bold text-base">{role.name}</span>
+                              <Badge className={cn("text-xs rounded-full px-2.5", colors.badge)}>
                                 {profile?.role || role.shortDescription}
                               </Badge>
-                              {role.total_tasks_30d > 0 && (
-                                <Badge variant="outline" className="text-xs rounded-lg">{role.total_tasks_30d} task (30gg)</Badge>
-                              )}
                             </div>
                             {profile?.quote && (
-                              <p className="text-xs text-muted-foreground mt-0.5 italic">"{profile.quote}"</p>
+                              <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">"{profile.quote}"</p>
                             )}
-                            {roleStatuses?.[role.id] && (
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className={cn("text-[10px] rounded-lg px-1.5 py-0",
-                                  roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700" :
-                                  roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700" :
-                                  roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 dark:text-red-400 dark:border-red-700" :
-                                  "text-muted-foreground border-muted"
-                                )}>
-                                  {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
-                                   roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
-                                   roleStatuses[role.id].status === 'off' ? '○ Off' :
-                                   roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
-                                   roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
-                                   '○ Disabilitato'}
-                                </Badge>
-                                <Badge variant="outline" className="text-[10px] rounded-lg px-1.5 py-0">
-                                  Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
-                                </Badge>
-                                {roleStatuses[role.id].lastExecution && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    Ultimo: {new Date(roleStatuses[role.id].lastExecution!.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                              {roleStatuses?.[role.id] && (
+                                <>
+                                  <Badge variant="outline" className={cn("text-[10px] rounded-full px-2 py-0.5",
+                                    roleStatuses[role.id].status === 'attivo' ? "text-emerald-600 border-emerald-300 bg-emerald-50/50 dark:text-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/20" :
+                                    roleStatuses[role.id].status === 'fuori_orario' ? "text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-700 dark:bg-amber-950/20" :
+                                    roleStatuses[role.id].status === 'disabilitato' || roleStatuses[role.id].status === 'off' ? "text-red-600 border-red-300 bg-red-50/50 dark:text-red-400 dark:border-red-700 dark:bg-red-950/20" :
+                                    "text-muted-foreground border-muted"
+                                  )}>
+                                    {roleStatuses[role.id].status === 'attivo' ? '● Attivo' :
+                                     roleStatuses[role.id].status === 'fuori_orario' ? '◐ Fuori orario' :
+                                     roleStatuses[role.id].status === 'off' ? '○ Off' :
+                                     roleStatuses[role.id].status === 'solo_manuale' ? '◑ Solo manuale' :
+                                     roleStatuses[role.id].status === 'sistema_spento' ? '○ Sistema spento' :
+                                     '○ Disabilitato'}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
+                                    Lv. {roleStatuses[role.id].effectiveLevel}{roleStatuses[role.id].hasCustomLevel ? '' : ' (globale)'}
+                                  </Badge>
+                                </>
+                              )}
                               {role.preferredChannels.map(ch => (
-                                <Badge key={ch} variant="outline" className="text-xs px-1.5 py-0 rounded-lg">
+                                <Badge key={ch} variant="outline" className="text-[10px] rounded-full px-2 py-0.5">
                                   {channelLabel[ch] || ch}
                                 </Badge>
                               ))}
+                              {role.total_tasks_30d > 0 && (
+                                <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5">{role.total_tasks_30d} task (30gg)</Badge>
+                              )}
+                              {roleStatuses?.[role.id]?.lastExecution && (
+                                <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                                  Ultimo: {new Date(roleStatuses[role.id].lastExecution!.at).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
                             </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 pt-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0"
+                              className="h-8 w-8 p-0 rounded-full"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/consultant/ai-autonomy/employee/${role.id}`);
                               }}
                             >
-                              <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              <Eye className="h-4 w-4 text-muted-foreground" />
                             </Button>
                             <Switch
                               checked={role.enabled}
@@ -2622,132 +2622,222 @@ function SettingsTab({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.2 }}
-                            className="border-t px-4 pb-4"
+                            className="border-t border-gray-100 dark:border-gray-800 bg-muted/20"
                           >
-                            <div className="pt-4 space-y-4">
-                              <div className="rounded-xl border border-border p-3">
-                                <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                                  <ArrowRight className="h-3 w-3" />
-                                  Flusso di lavoro
-                                </p>
-                                <p className="text-sm">{caps.workflow}</p>
-                              </div>
+                            <div className="px-4 sm:px-5 pb-5 pt-4">
+                              <Tabs defaultValue="profilo" className="w-full">
+                                <TabsList className="bg-muted/40 rounded-full p-0.5 h-auto mb-5">
+                                  <TabsTrigger value="profilo" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
+                                    <User className="h-3.5 w-3.5 mr-1.5" />
+                                    Profilo
+                                  </TabsTrigger>
+                                  <TabsTrigger value="autonomia" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
+                                    <Shield className="h-3.5 w-3.5 mr-1.5" />
+                                    Autonomia
+                                  </TabsTrigger>
+                                  <TabsTrigger value="integrazioni" className="text-xs h-8 rounded-full px-4 data-[state=active]:shadow-sm">
+                                    <Cog className="h-3.5 w-3.5 mr-1.5" />
+                                    Integrazioni
+                                  </TabsTrigger>
+                                </TabsList>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
-                                    <CheckCircle className="h-4 w-4" />
-                                    Cosa sa fare
-                                  </p>
-                                  <div className="space-y-1.5">
-                                    {caps.canDo.map((item, idx) => (
-                                      <div key={idx} className="flex items-start gap-2 text-sm">
-                                        <span className="shrink-0 text-sm">{item.icon}</span>
-                                        <span>{item.text}</span>
-                                      </div>
-                                    ))}
+                                <TabsContent value="profilo" className="mt-0 space-y-6">
+                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-4">
+                                    <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                      Flusso di lavoro
+                                    </p>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">{caps.workflow}</p>
                                   </div>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-red-500 dark:text-red-400 mb-2 flex items-center gap-1.5">
-                                    <XCircle className="h-4 w-4" />
-                                    Cosa NON sa fare
-                                  </p>
-                                  <div className="space-y-1.5">
-                                    {caps.cantDo.map((item, idx) => (
-                                      <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                        <span className="shrink-0 text-sm">{item.icon}</span>
-                                        <span>{item.text}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
 
-                              {systemPrompts?.[role.id] && (
-                                <div className="border-t pt-3">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs rounded-lg gap-1.5"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setShowPromptForRole(showPromptForRole === role.id ? null : role.id);
-                                    }}
-                                  >
-                                    <Eye className="h-3.5 w-3.5" />
-                                    {showPromptForRole === role.id ? "Nascondi System Prompt" : "Vedi System Prompt"}
-                                    {showPromptForRole === role.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                  </Button>
-                                  {showPromptForRole === role.id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: "auto" }}
-                                      transition={{ duration: 0.2 }}
-                                      className="mt-3"
-                                    >
-                                      <div className="rounded-xl border border-border bg-muted/30 p-4">
-                                        <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                                          <Brain className="h-3.5 w-3.5" />
-                                          System Prompt completo di {systemPrompts[role.id].name}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground mb-3 italic">
-                                          Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
-                                        </p>
-                                        <pre className="text-xs whitespace-pre-wrap font-mono bg-background rounded-lg p-3 border border-border max-h-[400px] overflow-y-auto leading-relaxed">
-                                          {systemPrompts[role.id].systemPromptTemplate}
-                                        </pre>
+                                  <div className="space-y-5">
+                                    <div>
+                                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-2">
+                                        <CheckCircle className="h-4 w-4" />
+                                        Cosa sa fare
+                                        <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">{caps.canDo.length} capacità</Badge>
+                                      </p>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {caps.canDo.map((item, idx) => (
+                                          <div key={idx} className="flex items-center gap-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3.5 py-2.5">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 text-sm">
+                                              {item.icon}
+                                            </div>
+                                            <span className="text-sm">{item.text}</span>
+                                          </div>
+                                        ))}
                                       </div>
-                                    </motion.div>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-red-500 dark:text-red-400 mb-3 flex items-center gap-2">
+                                        <XCircle className="h-4 w-4" />
+                                        Cosa NON sa fare
+                                        <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0 text-red-500 border-red-300 dark:text-red-400 dark:border-red-700">{caps.cantDo.length} limitazioni</Badge>
+                                      </p>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {caps.cantDo.map((item, idx) => (
+                                          <div key={idx} className="flex items-center gap-3 rounded-xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 px-3.5 py-2.5">
+                                            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0 text-sm">
+                                              {item.icon}
+                                            </div>
+                                            <span className="text-sm text-muted-foreground">{item.text}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {systemPrompts?.[role.id] && (
+                                    <div className="pt-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs rounded-xl gap-1.5"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setShowPromptForRole(showPromptForRole === role.id ? null : role.id);
+                                        }}
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                        {showPromptForRole === role.id ? "Nascondi System Prompt" : "Vedi System Prompt"}
+                                        {showPromptForRole === role.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                      </Button>
+                                      {showPromptForRole === role.id && (
+                                        <motion.div
+                                          initial={{ opacity: 0, height: 0 }}
+                                          animate={{ opacity: 1, height: "auto" }}
+                                          transition={{ duration: 0.2 }}
+                                          className="mt-3"
+                                        >
+                                          <div className="rounded-xl border border-border bg-muted/30 p-4">
+                                            <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                                              <Brain className="h-3.5 w-3.5" />
+                                              System Prompt completo di {systemPrompts[role.id].name}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground mb-3 italic">
+                                              Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
+                                            </p>
+                                            <pre className="text-xs whitespace-pre-wrap font-mono bg-background rounded-lg p-3 border border-border max-h-[400px] overflow-y-auto leading-relaxed">
+                                              {systemPrompts[role.id].systemPromptTemplate}
+                                            </pre>
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </div>
                                   )}
-                                </div>
-                              )}
 
-                              <div className="space-y-3 pt-2 border-t">
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                                  <span>Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
-                                  <span>•</span>
-                                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                    <Timer className="h-3 w-3" />
-                                    <Select
-                                      value={settings.role_frequencies[role.id] || "30"}
-                                      onValueChange={(value) => {
-                                        setSettings(prev => ({
-                                          ...prev,
-                                          role_frequencies: {
-                                            ...prev.role_frequencies,
-                                            [role.id]: value,
-                                          },
-                                        }));
+                                  <div className="flex items-center gap-3 pt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                                    <Button
+                                      size="sm"
+                                      className="h-9 text-xs rounded-xl gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTriggerRole(role.id, role.name);
+                                      }}
+                                      disabled={triggeringRoleId === role.id}
+                                    >
+                                      {triggeringRoleId === role.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Play className="h-3.5 w-3.5" />
+                                      )}
+                                      {triggeringRoleId === role.id ? 'Avvio in corso...' : `Avvia ora`}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-9 text-xs rounded-xl gap-2 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setChatOpenRoleId(role.id);
                                       }}
                                     >
-                                      <SelectTrigger className="h-7 w-[160px] text-xs rounded-lg border-border">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="15">Ogni 15 minuti</SelectItem>
-                                        <SelectItem value="30">Ogni 30 minuti</SelectItem>
-                                        <SelectItem value="60">Ogni ora</SelectItem>
-                                        <SelectItem value="120">Ogni 2 ore</SelectItem>
-                                        <SelectItem value="240">Ogni 4 ore</SelectItem>
-                                        <SelectItem value="480">Ogni 8 ore</SelectItem>
-                                        <SelectItem value="1440">Una volta al giorno</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      Chatta
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-9 text-xs rounded-xl gap-2 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTelegramChatsRoleId(role.id);
+                                      }}
+                                    >
+                                      <Send className="h-3.5 w-3.5" />
+                                      Telegram
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-9 text-xs rounded-xl gap-2 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
+                                      }}
+                                    >
+                                      <Brain className="h-3.5 w-3.5" />
+                                      Memoria
+                                    </Button>
+                                    {triggerRoleResult[role.id] && (
+                                      <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
+                                        {triggerRoleResult[role.id].success
+                                          ? `${triggerRoleResult[role.id].tasks} task generati`
+                                          : (triggerRoleResult[role.id].error || 'Errore')}
+                                      </span>
+                                    )}
                                   </div>
-                                  {role.total_tasks_30d > 0 && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
-                                    </>
-                                  )}
-                                </div>
+                                </TabsContent>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3" onClick={(e) => e.stopPropagation()}>
-                                  <div className="rounded-xl border border-border p-4 space-y-3">
+                                <TabsContent value="autonomia" className="mt-0 space-y-6" onClick={(e) => e.stopPropagation()}>
+                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-4 space-y-3">
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                                      <div className="flex items-center gap-1.5">
+                                        <ListTodo className="h-3.5 w-3.5" />
+                                        <span className="text-sm font-medium text-foreground">Max {role.id === 'personalizza' ? '3' : role.id === 'nova' ? '1' : '2'} task per ciclo</span>
+                                      </div>
+                                      {role.total_tasks_30d > 0 && (
+                                        <>
+                                          <span className="text-muted-foreground/40">•</span>
+                                          <span>{role.total_tasks_30d} task creati negli ultimi 30 giorni</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <span className="text-sm font-medium">Frequenza:</span>
+                                      <Select
+                                        value={settings.role_frequencies[role.id] || "30"}
+                                        onValueChange={(value) => {
+                                          setSettings(prev => ({
+                                            ...prev,
+                                            role_frequencies: {
+                                              ...prev.role_frequencies,
+                                              [role.id]: value,
+                                            },
+                                          }));
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 w-[180px] text-xs rounded-xl border-border">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="15">Ogni 15 minuti</SelectItem>
+                                          <SelectItem value="30">Ogni 30 minuti</SelectItem>
+                                          <SelectItem value="60">Ogni ora</SelectItem>
+                                          <SelectItem value="120">Ogni 2 ore</SelectItem>
+                                          <SelectItem value="240">Ogni 4 ore</SelectItem>
+                                          <SelectItem value="480">Ogni 8 ore</SelectItem>
+                                          <SelectItem value="1440">Una volta al giorno</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-4">
                                     <div className="flex items-center justify-between">
-                                      <p className="text-xs font-semibold flex items-center gap-1.5">
-                                        <Shield className="h-3.5 w-3.5" />
+                                      <p className="text-sm font-semibold flex items-center gap-2">
+                                        <Shield className="h-4 w-4" />
                                         Livello di Autonomia
                                       </p>
                                       <div className="flex items-center gap-2">
@@ -2771,10 +2861,10 @@ function SettingsTab({
                                       </div>
                                     </div>
                                     {(settings.role_autonomy_modes[role.id] !== undefined && settings.role_autonomy_modes[role.id] !== null) ? (
-                                      <div className="space-y-2">
+                                      <div className="space-y-3">
                                         <div className="flex items-center justify-between">
                                           <span className="text-xs text-muted-foreground">Livello personalizzato</span>
-                                          <Badge className={cn("rounded-lg text-xs", getAutonomyBadgeColor(settings.role_autonomy_modes[role.id]))}>
+                                          <Badge className={cn("rounded-full text-xs px-2.5", getAutonomyBadgeColor(settings.role_autonomy_modes[role.id]))}>
                                             {settings.role_autonomy_modes[role.id]}/10
                                           </Badge>
                                         </div>
@@ -2801,7 +2891,7 @@ function SettingsTab({
                                           <span className="text-[10px] text-orange-600">7-9</span>
                                           <span className="text-[10px] text-red-600">10</span>
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground">
                                           {settings.role_autonomy_modes[role.id] === 0 ? `${role.name} è spento, non farà nulla`
                                             : settings.role_autonomy_modes[role.id] <= 1 ? `${role.name} eseguirà solo task manuali creati da te`
                                             : settings.role_autonomy_modes[role.id] <= 3 ? `${role.name} proporrà task ma chiederà approvazione`
@@ -2814,7 +2904,7 @@ function SettingsTab({
                                           <Button 
                                             size="sm" 
                                             variant="ghost" 
-                                            className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary"
+                                            className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               onSave();
@@ -2827,15 +2917,15 @@ function SettingsTab({
                                         </div>
                                       </div>
                                     ) : (
-                                      <p className="text-[10px] text-muted-foreground">
+                                      <p className="text-xs text-muted-foreground">
                                         Segue il livello globale ({settings.autonomy_level}): {settings.autonomy_level >= 4 ? 'esegue da solo' : settings.autonomy_level >= 2 ? 'propone e chiede approvazione' : 'solo task manuali'}
                                       </p>
                                     )}
                                   </div>
 
-                                  <div className="rounded-lg border border-border p-3 space-y-2">
-                                    <p className="text-xs font-semibold flex items-center gap-1.5">
-                                      <Brain className="h-3 w-3" />
+                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                                    <p className="text-sm font-semibold flex items-center gap-2">
+                                      <Brain className="h-4 w-4" />
                                       Modalità di ragionamento
                                     </p>
                                     <Select
@@ -2850,7 +2940,7 @@ function SettingsTab({
                                         }));
                                       }}
                                     >
-                                      <SelectTrigger className="h-7 text-xs rounded-lg">
+                                      <SelectTrigger className="h-8 text-xs rounded-xl">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -2858,7 +2948,7 @@ function SettingsTab({
                                         <SelectItem value="deep_think">Deep Think</SelectItem>
                                       </SelectContent>
                                     </Select>
-                                    <p className="text-[10px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                       {(settings.role_reasoning_modes?.[role.id] || settings.reasoning_mode || "structured") === "structured"
                                         ? "Analisi con sezioni obbligatorie: osservazione, riflessione, decisione, auto-revisione"
                                         : "Loop agentico multi-step con analisi approfondita iterativa"}
@@ -2866,7 +2956,7 @@ function SettingsTab({
                                     <div className="flex items-center justify-between pt-1">
                                       {settings.role_reasoning_modes?.[role.id] && settings.role_reasoning_modes[role.id] !== (settings.reasoning_mode || "structured") && (
                                         <button
-                                          className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                          className="text-xs text-muted-foreground hover:text-foreground underline"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setSettings(prev => {
@@ -2882,7 +2972,7 @@ function SettingsTab({
                                       <Button 
                                         size="sm" 
                                         variant="ghost" 
-                                        className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary ml-auto"
+                                        className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary ml-auto rounded-xl"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           onSave();
@@ -2895,10 +2985,10 @@ function SettingsTab({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-lg border border-border p-3 space-y-2">
+                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                                     <div className="flex items-center justify-between">
-                                      <p className="text-xs font-semibold flex items-center gap-1.5">
-                                        <Clock className="h-3 w-3" />
+                                      <p className="text-sm font-semibold flex items-center gap-2">
+                                        <Clock className="h-4 w-4" />
                                         Orario specifico
                                       </p>
                                       <Switch
@@ -2921,7 +3011,7 @@ function SettingsTab({
                                       />
                                     </div>
                                     {settings.role_working_hours[role.id] ? (
-                                      <div className="space-y-2">
+                                      <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                           <Input
                                             type="time"
@@ -2935,7 +3025,7 @@ function SettingsTab({
                                                 },
                                               }));
                                             }}
-                                            className="h-7 text-xs rounded-lg w-24"
+                                            className="h-8 text-xs rounded-xl w-28"
                                           />
                                           <span className="text-xs text-muted-foreground">-</span>
                                           <Input
@@ -2950,16 +3040,16 @@ function SettingsTab({
                                                 },
                                               }));
                                             }}
-                                            className="h-7 text-xs rounded-lg w-24"
+                                            className="h-8 text-xs rounded-xl w-28"
                                           />
                                         </div>
-                                        <div className="flex flex-wrap gap-1">
+                                        <div className="flex flex-wrap gap-1.5">
                                           {DAYS_OF_WEEK.map((day) => (
                                             <button
                                               key={day.value}
                                               type="button"
                                               className={cn(
-                                                "text-[10px] px-1.5 py-0.5 rounded border transition-colors",
+                                                "text-[10px] px-2 py-1 rounded-full border transition-colors",
                                                 settings.role_working_hours[role.id]?.days?.includes(day.value)
                                                   ? "bg-primary text-primary-foreground border-primary"
                                                   : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
@@ -2988,7 +3078,7 @@ function SettingsTab({
                                           <Button 
                                             size="sm" 
                                             variant="ghost" 
-                                            className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary"
+                                            className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               onSave();
@@ -3001,79 +3091,18 @@ function SettingsTab({
                                         </div>
                                       </div>
                                     ) : (
-                                      <p className="text-[10px] text-muted-foreground">
+                                      <p className="text-xs text-muted-foreground">
                                         Usa orario globale ({settings.working_hours_start} - {settings.working_hours_end})
                                       </p>
                                     )}
                                   </div>
-                                </div>
-                              </div>
+                                </TabsContent>
 
-                              <div className="flex items-center gap-3 pt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs rounded-lg gap-1.5 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:text-indigo-700 dark:hover:text-indigo-300"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleTriggerRole(role.id, role.name);
-                                  }}
-                                  disabled={triggeringRoleId === role.id}
-                                >
-                                  {triggeringRoleId === role.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Play className="h-3.5 w-3.5" />
-                                  )}
-                                  {triggeringRoleId === role.id ? 'Avvio in corso...' : `Avvia ${role.name} ora`}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs rounded-lg gap-1.5 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-300"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setChatOpenRoleId(role.id);
-                                  }}
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                  Chatta con {role.name}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs rounded-lg gap-1.5 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-700 dark:hover:text-blue-300"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTelegramChatsRoleId(role.id);
-                                  }}
-                                >
-                                  <Send className="h-3.5 w-3.5" />
-                                  Chat Telegram
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs rounded-lg gap-1.5 border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-700 dark:hover:text-purple-300"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setMemoryOpenRoleId(memoryOpenRoleId === role.id ? null : role.id);
-                                  }}
-                                >
-                                  <Brain className="h-3.5 w-3.5" />
-                                  Memoria
-                                </Button>
-                                {triggerRoleResult[role.id] && (
-                                  <span className={cn("text-xs", triggerRoleResult[role.id].success ? "text-emerald-600" : "text-red-500")}>
-                                    {triggerRoleResult[role.id].success
-                                      ? `${triggerRoleResult[role.id].tasks} task generati`
-                                      : (triggerRoleResult[role.id].error || 'Errore')}
-                                  </span>
-                                )}
-                              </div>
-
-                              <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
-                              <TelegramConfig roleId={role.id} roleName={role.name} />
+                                <TabsContent value="integrazioni" className="mt-0 space-y-6">
+                                  <AgentContextEditor roleId={role.id} roleName={role.name} kbDocuments={kbDocuments} />
+                                  <TelegramConfig roleId={role.id} roleName={role.name} />
+                                </TabsContent>
+                              </Tabs>
                             </div>
                           </motion.div>
                         )}
