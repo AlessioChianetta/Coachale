@@ -26,8 +26,6 @@ import {
   ArrowRight
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { KPICard } from "@/components/ui/kpi-card";
-import { SectionHeader } from "@/components/ui/section-header";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
 import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
 import { useLocation } from "wouter";
@@ -411,77 +409,88 @@ export default function ConsultantDashboard() {
               </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="animate-fadeInUp-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI Bubbles */}
+            <div className="animate-fadeInUp-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {kpiCards.map((kpi, index) => {
-                const iconBgMap = [
-                  "bg-blue-500/10", "bg-amber-500/10", "bg-emerald-500/10", "bg-red-500/10"
+                const bubbleGradients = [
+                  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                 ];
+                const bubbleShadows = [
+                  '0 8px 24px rgba(59,130,246,0.35)',
+                  '0 8px 24px rgba(245,158,11,0.35)',
+                  '0 8px 24px rgba(16,185,129,0.35)',
+                  '0 8px 24px rgba(239,68,68,0.35)',
+                ];
+                const IconComponent = kpi.icon;
                 return (
-                  <KPICard
-                    key={index}
-                    title={kpi.title}
-                    value={kpi.value}
-                    icon={kpi.icon as any}
-                    iconColor={kpi.color}
-                    iconBg={iconBgMap[index]}
-                    pulse={index === 3}
-                  />
+                  <div key={index} className="flex flex-col items-center gap-2.5 py-1">
+                    <div
+                      className="relative w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center text-white"
+                      style={{ background: bubbleGradients[index], boxShadow: bubbleShadows[index] }}
+                    >
+                      <IconComponent className="h-3.5 w-3.5 opacity-75 mb-0.5" />
+                      <span className="text-xl sm:text-2xl font-black leading-none tracking-tight">{kpi.value}</span>
+                    </div>
+                    <p className="text-[11px] text-center text-muted-foreground/70 font-medium leading-tight px-1">{kpi.title}</p>
+                  </div>
                 );
               })}
             </div>
 
-            {/* AI Daily Briefing */}
-            <div className="animate-fadeInUp-2 relative overflow-hidden rounded-2xl shadow-xl"
-              style={{
-                background: 'linear-gradient(135deg, #6C5CE7 0%, #a29bfe 40%, #6C5CE7 70%, #fd79a8 100%)',
-              }}
-            >
-              <div className="absolute inset-0 shimmer-bg pointer-events-none" />
-              <div className="absolute top-3 right-4 opacity-20">
-                <Sparkles className="h-24 w-24 text-white" style={{ animation: 'sparkle 4s ease-in-out infinite' }} />
-              </div>
-              <div className="relative p-6 sm:p-8">
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm">
-                      <Sparkles className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-white">Briefing AI Giornaliero</h2>
-                      <p className="text-white/50 text-xs">Analisi intelligente della tua giornata</p>
-                    </div>
+            {/* AI Briefing - Compact, dark-mode-friendly */}
+            <div className="animate-fadeInUp-2 rounded-2xl overflow-hidden border border-border/50 shadow-sm bg-card">
+              {/* Gradient header strip */}
+              <div
+                className="flex items-center justify-between px-4 py-2.5 shimmer-bg"
+                style={{ background: 'linear-gradient(135deg, #6C5CE7 0%, #9b8cf5 60%, #c084fc 100%)' }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-white/15">
+                    <Sparkles className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <Button
-                    size="sm"
-                    className="bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm gap-2 rounded-xl"
-                    onClick={() => refetchInsights()}
-                    disabled={loadingInsights}
-                  >
-                    <RotateCcw className={cn("h-4 w-4", loadingInsights && "animate-spin")} />
-                    <span className="hidden sm:inline">Genera Briefing</span>
-                  </Button>
+                  <div>
+                    <h2 className="text-sm font-bold text-white leading-none">Briefing AI Giornaliero</h2>
+                    {aiInsights?.generatedAt && (
+                      <p className="text-white/50 text-[10px] mt-0.5">
+                        Aggiornato alle {format(new Date(aiInsights.generatedAt), 'HH:mm', { locale: it })}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs bg-white/15 hover:bg-white/25 text-white border-0 gap-1.5 rounded-lg"
+                  onClick={() => refetchInsights()}
+                  disabled={loadingInsights}
+                >
+                  <RotateCcw className={cn("h-3 w-3", loadingInsights && "animate-spin")} />
+                  <span className="hidden sm:inline">Aggiorna</span>
+                </Button>
+              </div>
 
+              {/* Content body — uses card bg, dark mode safe */}
+              <div className="px-4 py-3">
                 {loadingInsights ? (
-                  <div className="space-y-3">
-                    <div className="h-4 bg-white/20 rounded-full animate-pulse w-4/5" />
-                    <div className="h-4 bg-white/15 rounded-full animate-pulse w-3/5" />
-                    <div className="h-4 bg-white/10 rounded-full animate-pulse w-2/5" />
-                    <div className="flex gap-2 mt-4">
-                      <div className="h-7 w-24 bg-white/15 rounded-full animate-pulse" />
-                      <div className="h-7 w-32 bg-white/15 rounded-full animate-pulse" />
-                      <div className="h-7 w-20 bg-white/15 rounded-full animate-pulse" />
+                  <div className="space-y-2">
+                    <div className="h-3.5 bg-muted animate-pulse rounded-full w-4/5" />
+                    <div className="h-3 bg-muted animate-pulse rounded-full w-3/5" />
+                    <div className="flex gap-1.5 mt-3">
+                      <div className="h-5 w-20 bg-muted animate-pulse rounded-full" />
+                      <div className="h-5 w-28 bg-muted animate-pulse rounded-full" />
+                      <div className="h-5 w-16 bg-muted animate-pulse rounded-full" />
                     </div>
                   </div>
                 ) : aiInsights?.summary ? (
-                  <div className="space-y-4">
-                    <p className="text-white/90 text-sm sm:text-base leading-relaxed max-w-3xl">{aiInsights.summary}</p>
+                  <div className="space-y-2.5">
+                    <p className="text-sm text-foreground/80 leading-relaxed">{aiInsights.summary}</p>
                     {aiInsights.highlights?.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {aiInsights.highlights.map((h, i) => (
-                          <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/12 text-white/90 text-xs backdrop-blur-sm border border-white/10">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/8 dark:bg-primary/15 text-primary text-[11px] font-medium border border-primary/15">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
                             {h}
                           </span>
                         ))}
@@ -489,31 +498,33 @@ export default function ConsultantDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center py-4 gap-3">
-                    <div className="p-3 rounded-2xl bg-white/10">
-                      <Sparkles className="h-8 w-8 text-white/60" />
-                    </div>
-                    <p className="text-white/50 text-sm">Clicca "Genera Briefing" per il tuo riepilogo AI</p>
+                  <div className="flex items-center gap-2.5 py-1 text-muted-foreground/60">
+                    <Sparkles className="h-4 w-4 shrink-0 text-primary/50" />
+                    <p className="text-sm">Clicca "Aggiorna" per il tuo briefing AI personalizzato</p>
                   </div>
                 )}
               </div>
 
+              {/* Priorities - compact, inside card */}
               {aiInsights?.priorities && aiInsights.priorities.length > 0 && (
-                <div className="bg-background/95 backdrop-blur-sm p-5 sm:p-6 space-y-3 border-t border-border/50">
-                  <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">Priorità del giorno</p>
-                  {aiInsights.priorities.map((p, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
-                      <div className={cn("mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0",
-                        i === 0 ? "bg-red-400" : i === 1 ? "bg-yellow-400" : "bg-primary"
-                      )}>
-                        {i + 1}
+                <div className="px-4 pb-3 border-t border-border/40">
+                  <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-2 pt-2.5">Priorità del giorno</p>
+                  <div className="space-y-1.5">
+                    {aiInsights.priorities.map((p, i) => (
+                      <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <div className={cn(
+                          "mt-0.5 w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black text-white shrink-0",
+                          i === 0 ? "bg-red-400" : i === 1 ? "bg-amber-400" : "bg-primary/70"
+                        )}>
+                          {i + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground/90 leading-snug">{p.title}</p>
+                          <p className="text-[11px] text-muted-foreground/60 mt-0.5 leading-snug">{p.reason}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold">{p.title}</p>
-                        <p className="text-xs text-muted-foreground/60 mt-0.5">{p.reason}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

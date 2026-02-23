@@ -5810,10 +5810,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const pendingExercises = assignments.filter(a => a.status === "pending" || a.status === "returned");
       const completedExercises = assignments.filter(a => a.status === "completed");
+      const inProgressExercises = assignments.filter(a => a.status === "in_progress");
       const upcomingConsultations = consultations
         .filter(c => new Date(c.scheduledAt) > new Date())
         .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
         .slice(0, 5);
+      const todayConsultations = consultations.filter(c => {
+        const d = new Date(c.scheduledAt);
+        const today = new Date();
+        return d.toDateString() === today.toDateString();
+      });
+
+      // Fetch additional context: leads, AI tasks, email journey
+      const [leadsResult, aiTasksResult, emailJourneyResult] = await Promise.allSettled([
+        db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(CASE WHEN priority_score >= 70 THEN 1 END) as high_priority,
+            COUNT(CASE WHEN last_contact_at > NOW() - INTERVAL '7 days' THEN 1 END) as contacted_recently
+          FROM proactive_leads 
+          WHERE consultant_id = ${consultantId} AND is_active = true
+        `),
+        db.execute(sql`
+          SELECT 
+            COUNT(*) as total,
+            COUNT(CASE WHEN status IN ('scheduled', 'in_progress') THEN 1 END) as active,
+            COUNT(CASE WHEN status = 'completed' AND created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as completed_today
+          FROM ai_scheduled_tasks 
+          WHERE consultant_id = ${consultantId}
+        `),
+        db.execute(sql`
+          SELECT 
+            COUNT(DISTINCT ej.id) as campaigns,
+            COUNT(CASE WHEN ejs.status = 'active' THEN 1 END) as active_sequences
+          FROM email_journeys ej
+          LEFT JOIN email_journey_subscriptions ejs ON ejs.journey_id = ej.id
+          WHERE ej.consultant_id = ${consultantId}
+          LIMIT 1
+        `),
+      ]);
+
+      const leadsData = leadsResult.status === 'fulfilled' ? (leadsResult.value.rows[0] as any) : null;
+      const aiTasksData = aiTasksResult.status === 'fulfilled' ? (aiTasksResult.value.rows[0] as any) : null;
+      const emailData = emailJourneyResult.status === 'fulfilled' ? (emailJourneyResult.value.rows[0] as any) : null;
+
+      const completionRate = assignments.length > 0 ? Math.round((completedExercises.length / assignments.length) * 100) : 0;
 
       const today = new Date();
       const dayName = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'][today.getDay()];
@@ -5821,36 +5862,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const dataContext = `
 DATA DEL CONSULENTE (${dayName} ${today.getDate()} ${monthName} ${today.getFullYear()}):
-- Nome consulente: ${req.user!.firstName || 'Consulente'}
-- Clienti attivi totali: ${clients.length}
-- Esercizi in attesa di revisione: ${pendingExercises.length}
-- Esercizi completati: ${completedExercises.length} su ${assignments.length} totali
+- Nome: ${req.user!.firstName || 'Consulente'}
+
+CLIENTI & ESERCIZI:
+- Clienti attivi: ${clients.length}
+- Esercizi in attesa revisione: ${pendingExercises.length} (+ ${inProgressExercises.length} in corso)
+- Esercizi completati: ${completedExercises.length}/${assignments.length} (${completionRate}% tasso completamento)
+- Consulenze oggi: ${todayConsultations.length}
 - Prossime consulenze: ${upcomingConsultations.length > 0 ? upcomingConsultations.map(c => {
   const d = new Date(c.scheduledAt);
-  return `${d.getDate()}/${d.getMonth()+1} ore ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const clientName = clients.find((cl: any) => cl.id === c.clientId);
+  const name = clientName ? ` con ${(clientName as any).firstName}` : '';
+  return `${d.getDate()}/${d.getMonth()+1} ore ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}${name}`;
 }).join(', ') : 'nessuna in programma'}
-- Clienti recenti (ultimi 5): ${clients.slice(0, 5).map((c: any) => `${c.firstName} ${c.lastName}`).join(', ') || 'nessuno'}
+
+LEAD HUB:
+- Lead totali: ${leadsData?.total || 0}
+- Lead alta priorità (score ≥70): ${leadsData?.high_priority || 0}
+- Contattati nell'ultima settimana: ${leadsData?.contacted_recently || 0}
+
+AI DIPENDENTI:
+- Task AI attivi: ${aiTasksData?.active || 0}
+- Task AI completati oggi: ${aiTasksData?.completed_today || 0}
+
+EMAIL JOURNEY:
+- Campagne email: ${emailData?.campaigns || 0}
+- Sequenze attive: ${emailData?.active_sequences || 0}
 `;
 
-      const prompt = `Sei l'assistente AI di un consulente finanziario italiano. Genera un briefing giornaliero CONCISO e AZIONABILE.
+      const prompt = `Sei l'assistente AI di un consulente. Genera un briefing giornaliero INTELLIGENTE, SPECIFICO e AZIONABILE basato SOLO sui dati reali.
 
 ${dataContext}
 
-RISPONDI SOLO con un JSON valido nel seguente formato:
+RISPONDI SOLO con un JSON valido:
 {
-  "summary": "Una frase di briefing giornaliero personalizzata (max 30 parole)",
-  "highlights": ["punto chiave 1", "punto chiave 2", "punto chiave 3"],
+  "summary": "Briefing personalizzato e specifico in 1-2 frasi (usa i numeri reali, evidenzia cosa è più urgente oggi)",
+  "highlights": ["insight specifico con numero 1", "insight specifico con numero 2", "insight specifico con numero 3"],
   "priorities": [
-    {"title": "azione prioritaria", "reason": "perché è importante", "type": "exercise|client|appointment|general"}
+    {"title": "azione concreta da fare", "reason": "impatto specifico sul business", "type": "exercise|client|appointment|lead|general"}
   ]
 }
 
-REGOLE:
+REGOLE IMPORTANTI:
 - Massimo 3 highlights e 3 priorities
-- Sii specifico con numeri reali
-- Tono professionale ma amichevole
-- Se non ci sono cose urgenti, suggerisci azioni proattive
-- NON inventare dati, usa SOLO quelli forniti`;
+- Usa SEMPRE i numeri reali nei testi (es. "481 esercizi in attesa", non "molti esercizi")
+- Collega i dati tra loro (es. alta % completamento + appuntamento imminente = cliente pronto per upgrade)
+- Sii diretto e business-oriented
+- Identifica il VERO problema/opportunità del giorno, non generare cose ovvie
+- Se i lead alta priorità > 3, segnalalo come urgente
+- NON inventare dati`;
 
       const { quickGenerate } = await import("./ai/provider-factory");
       
