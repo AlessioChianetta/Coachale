@@ -5942,7 +5942,9 @@ REGOLE IMPORTANTI:
       }
 
       try {
-        const insights = JSON.parse(jsonMatch[0]);
+        // Remove trailing commas before ] or } (common LLM JSON issue)
+        const cleanedJson = jsonMatch[0].replace(/,\s*([}\]])/g, '$1');
+        const insights = JSON.parse(cleanedJson);
         insights.generatedAt = new Date().toISOString();
         res.json(insights);
       } catch (parseErr: any) {
