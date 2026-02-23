@@ -1310,5 +1310,58 @@
   }
 }
 
+/* ============================================================
+   MOBILE + DARK MODE STANDARD
+   Utility classes condivise su tutte le pagine.
+   Usa sempre queste classi invece di inventare pattern locali.
+   ============================================================ */
+@layer components {
+  /* Layout pagina standard: padding e spacing coerenti mobile/desktop */
+  .page-container {
+    @apply px-5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8;
+  }
+
+  /* Card piatta senza ombra aggressiva — usa CSS vars, dark mode automatico */
+  .flat-card {
+    @apply bg-background rounded-2xl;
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+
+  /* Card su sfondo leggermente tinted */
+  .flat-card-muted {
+    @apply bg-muted rounded-2xl;
+    border: 1px solid hsl(var(--border) / 0.4);
+  }
+
+  /* Hero section standard (greeting, header di pagina) */
+  .mobile-hero {
+    @apply p-5 sm:p-8 rounded-2xl;
+  }
+
+  /* List item / nav link con touch target garantito (min 44px) */
+  .touch-item {
+    @apply min-h-[44px] flex items-center gap-3;
+  }
+
+  /* Label di sezione uppercase sottile */
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-widest text-muted-foreground;
+  }
+
+  /* Safe area padding bottom per iOS notch */
+  .pb-safe {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+  }
+
+  /* Nasconde scrollbar ma mantiene scroll funzionante */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 
 

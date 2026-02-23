@@ -38,6 +38,30 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **Radix UI**: Accessible UI primitives.
 *   **Google Fonts**: Inter, Poppins, DM Sans, Fira Code.
 *   **Lucide React**: Iconography.
+
+# Mobile & Dark Mode Design System (Revolut-style)
+
+Standard riutilizzabile applicato a tutte le pagine. **Regola fondamentale: MAI `bg-white`/`bg-gray-X` senza `dark:` counterpart — SEMPRE CSS vars (`bg-background`, `bg-card`, `text-foreground`, `border-border`).**
+
+## CSS Utilities (`client/src/index.css` — `@layer components`)
+- `.page-container` — padding standard pagina (px-5 sm:px-6 lg:px-8, py-6 sm:py-8, space-y-6 sm:space-y-8)
+- `.flat-card` — card base (bg-background, border-border/60, rounded-2xl, shadow-sm)
+- `.flat-card-muted` — variante muted (bg-muted/40, border-border/40)
+- `.touch-item` — list/nav item touch target (min-h-[44px], flex items-center, gap-3)
+- `.section-label` — etichetta sezione (11px, uppercase, tracking-widest, text-muted-foreground)
+- `.pb-safe` — safe area iOS bottom (max(1.5rem, env(safe-area-inset-bottom)))
+- `.no-scrollbar` — scroll senza barra visibile
+
+## Componenti Condivisi
+- `client/src/components/layout/PageLayout.tsx` — wrapper universale (gestisce Navbar + Sidebar + sidebarOpen internamente). Props: `role`, `children`, `className`, `noPadding`
+- `client/src/components/ui/kpi-card.tsx` — card metrica (KPICard). Props: `title`, `value`, `icon`, `iconColor`, `iconBg`, `delta`, `deltaPositive`, `onClick`, `pulse`
+- `client/src/components/ui/section-header.tsx` — header sezione (SectionHeader). Props: `icon`, `iconColor`, `iconBg`, `title`, `badge`, `action`
+
+## Pagine Aggiornate
+- **Navbar** (`client/src/components/navbar.tsx`): h-14, brand logo centrato, avatar utente, CSS vars
+- **Sidebar** (`client/src/components/sidebar.tsx`): Sheet w-[85vw] max-w-[320px], touch targets 44px, CSS vars
+- **Consultant Dashboard** (`client/src/pages/consultant-dashboard.tsx`): usa PageLayout + KPICard + SectionHeader
+- **Client Dashboard** (`client/src/pages/client-dashboard.tsx`): usa PageLayout, rimosso boilerplate sidebar/mobile
 *   **Google Gemini API**: Powers AI features.
 *   **Percorso Capitale API**: Financial management system.
 *   **Fathom**: Consultation recording and transcription.

@@ -741,10 +741,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px]",
+                              "group flex items-center gap-2.5 px-3 py-3 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px] min-h-[44px]",
                               isActive
-                                ? "border-cyan-500 bg-white dark:bg-cyan-950/30 text-slate-900 dark:text-white shadow-sm"
-                                : "border-transparent text-slate-500 dark:text-slate-400 hover:bg-white/70 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
+                                ? "border-cyan-500 bg-primary/8 dark:bg-cyan-950/30 text-foreground shadow-sm"
+                                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
@@ -1112,7 +1112,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {/* User info e logout - agganciato in basso */}
       {!isCollapsed && (
       <div className="px-2 py-3 mt-auto">
-        <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl bg-white dark:bg-slate-800/80 shadow-sm hover:shadow-md border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200">
+        <div className="flex items-center gap-2.5 px-3 py-3 rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-200">
           <Avatar className="w-8 h-8 border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
             <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs">
@@ -1214,25 +1214,46 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="left" className="w-80 p-0 bg-slate-50 dark:bg-[hsl(222,18%,6%)]" style={{ animationDuration: "250ms" }} data-testid="sidebar-mobile" data-tour="client-sidebar">
-          <SheetHeader className="p-6 pb-4 border-b border-slate-200 dark:border-border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-            <SheetTitle className="text-left flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
+        <SheetContent
+          side="left"
+          className="w-[85vw] max-w-[320px] p-0 bg-background border-r border-border"
+          style={{ animationDuration: "200ms" }}
+          data-testid="sidebar-mobile"
+          data-tour="client-sidebar"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>{brandName}</SheetTitle>
+          </SheetHeader>
+          {/* Header minimale — logo + nome + close */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${brandPrimaryColor}, ${brandSecondaryColor})` }}
+              >
                 {brandLogoUrl ? (
-                  <img src={brandLogoUrl} alt={brandName} className="h-6 w-6 rounded" />
+                  <img src={brandLogoUrl} alt={brandName} className="h-5 w-5 rounded" />
                 ) : (
-                  <Home className="text-white" size={18} />
+                  <Home className="text-white" size={14} />
                 )}
               </div>
-              <div>
-                <span className="font-bold text-lg bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brandPrimaryColor}, ${brandSecondaryColor})` }}>
-                  {brandName}
-                </span>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">Platform</p>
-              </div>
-            </SheetTitle>
-          </SheetHeader>
-          <div className="p-4 h-[calc(100vh-5rem)] flex flex-col overflow-y-auto">
+              <span
+                className="font-bold text-base bg-clip-text text-transparent leading-tight"
+                style={{ backgroundImage: `linear-gradient(to right, ${brandPrimaryColor}, ${brandSecondaryColor})` }}
+              >
+                {brandName}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
+              onClick={onClose}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+          <div className="p-3 flex-1 h-[calc(100vh-4rem)] flex flex-col overflow-y-auto no-scrollbar">
             <SidebarContent />
           </div>
         </SheetContent>

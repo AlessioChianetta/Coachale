@@ -18,7 +18,6 @@ import {
   Library,
   GraduationCap,
   Sparkles,
-  Menu,
   AlertCircle,
   Mail,
   LogOut,
@@ -33,18 +32,15 @@ import {
   Settings,
   Gift
 } from "lucide-react";
-import Sidebar from "@/components/sidebar";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { getAuthHeaders, getAuthUser, logout } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useRoleSwitch } from "@/hooks/use-role-switch";
 import BadgeDisplay from "@/components/BadgeDisplay";
 import { usePageContext } from "@/hooks/use-page-context";
 import { useToast } from "@/hooks/use-toast";
 import { useTour } from "@/contexts/TourContext";
-import { PlayCircle } from "lucide-react";
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { driverConfig } from '@/lib/tour/driver-config';
@@ -72,25 +68,15 @@ interface KPICard {
 }
 
 export default function ClientDashboard() {
-  const isMobile = useIsMobile();
   const user = getAuthUser();
   const [, setLocation] = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const { toast } = useToast();
   const { startTour, hasCompletedTour } = useTour();
-  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const pageContext = usePageContext();
 
   const handleStartPlatformTour = () => {
-    if (isMobile) {
-      setSidebarOpen(true);
-      setTimeout(() => {
-        startTour();
-      }, 300);
-    } else {
-      startTour();
-    }
+    startTour();
   };
 
   const { data: stats } = useQuery({
@@ -341,19 +327,7 @@ export default function ClientDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20" data-testid="client-dashboard">
-      <div className="flex h-screen">
-        <Sidebar 
-          role="client" 
-          isOpen={sidebarOpen} 
-          onClose={() => setSidebarOpen(false)} 
-          showRoleSwitch={showRoleSwitch} 
-          currentRole={currentRole} 
-          onRoleSwitch={handleRoleSwitch} 
-        />
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <PageLayout role="client">
             
             {user?.isActive === false ? (
               <div className="max-w-4xl mx-auto mt-12">
@@ -393,14 +367,6 @@ export default function ClientDashboard() {
               <>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSidebarOpen(true)}
-                      className="md:hidden"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
                     <span className="text-3xl">👋</span>
                     <div>
                       <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
@@ -716,12 +682,8 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="h-8" />
               </>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

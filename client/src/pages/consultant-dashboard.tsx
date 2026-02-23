@@ -1,10 +1,9 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { 
   Users, 
   Calendar,
@@ -14,7 +13,6 @@ import {
   Phone,
   Sparkles,
   Target,
-  ArrowRight,
   AlertCircle,
   Clock,
   FileText,
@@ -24,13 +22,13 @@ import {
   CheckCircle,
   RotateCcw,
   Activity,
-  Gift
+  Gift,
+  ArrowRight
 } from "lucide-react";
-import Navbar from "@/components/navbar";
-import Sidebar from "@/components/sidebar";
+import { PageLayout } from "@/components/layout/PageLayout";
+import { KPICard } from "@/components/ui/kpi-card";
+import { SectionHeader } from "@/components/ui/section-header";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -58,10 +56,7 @@ interface KPICard {
 }
 
 export default function ConsultantDashboard() {
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const user = getAuthUser();
 
   const {
@@ -323,13 +318,6 @@ export default function ConsultantDashboard() {
     }
   };
 
-  const kpiGlowColors = [
-    "hover:shadow-blue-500/20 hover:border-blue-500/30",
-    "hover:shadow-yellow-400/20 hover:border-yellow-400/30",
-    "hover:shadow-emerald-500/20 hover:border-emerald-500/30",
-    "hover:shadow-red-400/20 hover:border-red-400/30",
-  ];
-
   const sparklinePoints = useMemo(() => {
     const base = exerciseProgress.completed || 3;
     return [
@@ -363,7 +351,7 @@ export default function ConsultantDashboard() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20" data-testid="consultant-dashboard">
+    <PageLayout role="consultant">
       <style>{`
         @keyframes shimmer {
           0% { background-position: -200% 0; }
@@ -373,50 +361,24 @@ export default function ConsultantDashboard() {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
         @keyframes sparkle {
           0%, 100% { opacity: 0.4; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.2); }
         }
-        .animate-fadeInUp {
-          animation: fadeInUp 0.5s ease-out forwards;
-        }
-        .animate-fadeInUp-1 { animation: fadeInUp 0.5s ease-out 0.05s forwards; opacity: 0; }
-        .animate-fadeInUp-2 { animation: fadeInUp 0.5s ease-out 0.1s forwards; opacity: 0; }
-        .animate-fadeInUp-3 { animation: fadeInUp 0.5s ease-out 0.15s forwards; opacity: 0; }
-        .animate-fadeInUp-4 { animation: fadeInUp 0.5s ease-out 0.2s forwards; opacity: 0; }
-        .animate-fadeInUp-5 { animation: fadeInUp 0.5s ease-out 0.25s forwards; opacity: 0; }
-        .animate-fadeInUp-6 { animation: fadeInUp 0.5s ease-out 0.3s forwards; opacity: 0; }
-        .animate-fadeInUp-7 { animation: fadeInUp 0.5s ease-out 0.35s forwards; opacity: 0; }
+        .animate-fadeInUp { animation: fadeInUp 0.4s ease-out forwards; }
+        .animate-fadeInUp-1 { animation: fadeInUp 0.4s ease-out 0.04s forwards; opacity: 0; }
+        .animate-fadeInUp-2 { animation: fadeInUp 0.4s ease-out 0.08s forwards; opacity: 0; }
+        .animate-fadeInUp-3 { animation: fadeInUp 0.4s ease-out 0.12s forwards; opacity: 0; }
+        .animate-fadeInUp-4 { animation: fadeInUp 0.4s ease-out 0.16s forwards; opacity: 0; }
+        .animate-fadeInUp-5 { animation: fadeInUp 0.4s ease-out 0.20s forwards; opacity: 0; }
+        .animate-fadeInUp-6 { animation: fadeInUp 0.4s ease-out 0.24s forwards; opacity: 0; }
+        .animate-fadeInUp-7 { animation: fadeInUp 0.4s ease-out 0.28s forwards; opacity: 0; }
         .shimmer-bg {
           background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
           background-size: 200% 100%;
           animation: shimmer 3s ease-in-out infinite;
         }
-        .kpi-hover {
-          transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-        }
-        .kpi-hover:hover {
-          transform: translateY(-4px);
-        }
       `}</style>
-
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar 
-          role="consultant" 
-          isOpen={sidebarOpen} 
-          onClose={() => setSidebarOpen(false)} 
-          showRoleSwitch={showRoleSwitch} 
-          currentRole={currentRole} 
-          onRoleSwitch={handleRoleSwitch} 
-        />
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             
             {/* Hero Section - Glassmorphism */}
             <div className="animate-fadeInUp relative overflow-hidden rounded-2xl p-6 sm:p-8"
@@ -451,34 +413,22 @@ export default function ConsultantDashboard() {
 
             {/* KPI Cards */}
             <div className="animate-fadeInUp-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {kpiCards.map((kpi, index) => (
-                <Card 
-                  key={index}
-                  className={cn(
-                    "kpi-hover relative overflow-hidden border border-transparent shadow-md cursor-default",
-                    `bg-gradient-to-br ${kpi.bgGradient}`,
-                    kpiGlowColors[index]
-                  )}
-                  style={{ borderRadius: '16px' }}
-                >
-                  <CardContent className="p-5 sm:p-6">
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">{kpi.title}</p>
-                        <div className="p-2 rounded-xl bg-background/60 backdrop-blur-sm shadow-sm">
-                          <kpi.icon className={cn("h-4 w-4", kpi.color)} />
-                        </div>
-                      </div>
-                      <p className={cn(
-                        "text-4xl sm:text-5xl font-bold tracking-tight",
-                        index === 3 && "animate-pulse"
-                      )} style={index === 3 ? { animationDuration: '3s' } : undefined}>
-                        {kpi.value}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {kpiCards.map((kpi, index) => {
+                const iconBgMap = [
+                  "bg-blue-500/10", "bg-amber-500/10", "bg-emerald-500/10", "bg-red-500/10"
+                ];
+                return (
+                  <KPICard
+                    key={index}
+                    title={kpi.title}
+                    value={kpi.value}
+                    icon={kpi.icon as any}
+                    iconColor={kpi.color}
+                    iconBg={iconBgMap[index]}
+                    pulse={index === 3}
+                  />
+                );
+              })}
             </div>
 
             {/* AI Daily Briefing */}
@@ -863,10 +813,6 @@ export default function ConsultantDashboard() {
               <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-pink-500 transition-all" />
             </button>
 
-            <div className="h-8" />
-          </div>
-        </div>
-      </div>
-    </div>
+    </PageLayout>
   );
 }
