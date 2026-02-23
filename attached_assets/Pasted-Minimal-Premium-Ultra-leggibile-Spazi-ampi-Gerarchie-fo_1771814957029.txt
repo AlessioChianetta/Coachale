@@ -1,0 +1,296 @@
+Minimal
+
+Premium
+
+Ultra leggibile
+
+Spazi ampi
+
+Gerarchie forti
+
+Micro-animazioni fluide
+
+Pochissimo rumore visivo
+
+Ti do le regole vere, non teoria generica.
+
+🔥 1. REGOLA FONDAMENTALE: UNA SOLA COSA PER SCHERMATA
+
+Su mobile non si “mostra tutto”.
+Si guida l’utente.
+
+Ogni schermata deve rispondere a:
+
+Qual è l’azione principale qui?
+
+Revolut fa sempre questo:
+
+Dashboard → vedere saldo
+
+Card → gestire carta
+
+Pagamenti → inviare soldi
+
+Se hai:
+
+5 box
+
+3 CTA
+
+8 badge
+
+2 metriche
+
+Hai già perso.
+
+📐 2. SPAZIATURA = LUSSO
+
+Errore classico:
+
+Troppo compresso
+
+Troppi elementi vicini
+
+Troppo testo
+
+Revolut usa:
+
+padding orizzontale: 20–24px
+spacing verticale sezioni: 32–40px
+spacing interna card: 16–20px
+
+Regola:
+
+Se sembra leggermente troppo arioso… è giusto.
+
+🧠 3. GERARCHIA TIPOGRAFICA SEMPLICE
+
+Massimo 3 livelli.
+
+Titolo principale
+
+24–28px
+
+font-bold
+
+Sezione
+
+16–18px
+
+font-semibold
+
+Corpo
+
+14–15px
+
+line-height alto (1.6+)
+
+MAI:
+
+5 pesi diversi
+
+7 dimensioni diverse
+
+🎨 4. COLORE USATO CON DISCIPLINA
+
+Revolut:
+
+Base neutra
+
+1 colore primario
+
+Verde per positivo
+
+Rosso per negativo
+
+Fine.
+
+Errore SaaS:
+
+Blu + Viola + Verde + Arancio + Azzurro + Badge vari
+
+Mobile = meno colori.
+
+🧱 5. CARD PIATTE O SUPER SOFT
+
+Revolut non usa ombre aggressive.
+
+Meglio:
+
+background leggermente diverso
+
+border soft
+
+ombra quasi invisibile
+
+Esempio:
+
+bg-white
+border border-gray-200
+rounded-2xl
+
+O in dark:
+
+bg-slate-900
+border border-slate-700
+
+Niente ombre giganti.
+
+👆 6. TOUCH TARGET SACRI
+
+Tutto deve essere tappabile bene.
+
+Minimo:
+
+44px altezza
+
+16px padding interno
+
+Se un bottone è alto 32px → è sbagliato.
+
+⚡ 7. ANIMAZIONI MICRO, NON SPETTACOLO
+
+Revolut:
+
+fade
+
+slide
+
+scale leggera
+
+200ms max
+
+Mai animazioni lunghe.
+Mai bounce.
+Mai eccessive.
+
+🧩 8. LISTE MOBILE FATTE BENE
+
+Errore comune:
+
+Tabelle adattate male
+
+Troppo testo
+
+Formato giusto mobile:
+
+Nome cliente
+Email piccola grigia
+
+Valore 3000€   Stato (badge)
+Data piccola
+
+Non 6 colonne.
+
+📊 9. DASHBOARD MOBILE: SOLO KPI ESSENZIALI
+
+Non:
+
+8 card metriche
+
+Meglio:
+
+2 principali
+
+1 secondaria
+
+Scroll
+
+Revolut mostra:
+
+saldo
+
+movimento recente
+
+Fine.
+
+📱 10. NAVIGAZIONE MOBILE = CHIARA
+
+Tre modelli top:
+
+Bottom tab bar (come Revolut)
+
+Drawer minimal
+
+Stack navigazione stile iOS
+
+Se è app business → bottom tab spesso migliore.
+
+🧊 11. DENSITÀ VISIVA
+
+Mobile premium = respirare.
+
+Spazio tra sezioni:
+
+32px minimo
+
+Spazio tra elementi:
+
+12–16px
+
+Mai 4px, 6px, 8px ovunque.
+
+💎 12. PULIZIA VISIVA
+
+Chiediti sempre:
+
+Questo bordo serve?
+
+Questo badge serve?
+
+Questo icon serve?
+
+Questa label serve?
+
+Se non è essenziale → togli.
+
+🧠 13. LAYOUT PREMIUM MOBILE STRUTTURA BASE
+
+Struttura ideale:
+
+[Header grande]
+Titolo
+Sottotitolo soft
+
+[Primary Card grande]
+
+[Sezione 1]
+Card
+
+[Sezione 2]
+Lista
+
+[CTA sticky in basso]
+🚫 ERRORI CHE ROVINANO IL MOBILE
+
+Troppi gradienti
+
+Ombre forti
+
+Troppi badge colorati
+
+Troppe icone
+
+Testo piccolo
+
+Tabelle
+
+4 CTA nella stessa schermata
+
+🟢 SE VUOI STILE REVOLUT DAVVERO
+
+Allora devi avere:
+
+Fondo molto pulito
+
+Elementi centrali grandi
+
+Micro dettagli raffinati
+
+Animazioni morbide
+
+Icone sottili
+
+Spazio generoso
+
+È più minimal di quanto pensi.
