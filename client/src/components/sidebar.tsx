@@ -605,14 +605,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           )}
         </div>
         {categories && (
-          <div className="flex gap-1 p-1 bg-gray-200/60 dark:bg-gray-800/60 rounded-xl mb-2">
+          <div className="flex gap-1 p-1 bg-gray-100/80 dark:bg-gray-800/60 rounded-xl mb-2">
             <button
               onClick={() => setSidebarTab('platform')}
               className={cn(
-                "flex-1 py-2 px-3 text-xs rounded-[10px] transition-all duration-200",
+                "flex-1 py-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] rounded-[10px] transition-all duration-200",
                 sidebarTab === 'platform'
-                  ? "bg-white dark:bg-gray-800 text-foreground shadow-sm font-semibold"
-                  : "text-muted-foreground hover:text-foreground font-medium"
+                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Piattaforma
@@ -620,10 +620,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             <button
               onClick={() => setSidebarTab('tools')}
               className={cn(
-                "flex-1 py-2 px-3 text-xs rounded-[10px] transition-all duration-200",
+                "flex-1 py-2 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] rounded-[10px] transition-all duration-200",
                 sidebarTab === 'tools'
-                  ? "bg-white dark:bg-gray-800 text-foreground shadow-sm font-semibold"
-                  : "text-muted-foreground hover:text-foreground font-medium"
+                  ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               Strumenti
