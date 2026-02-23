@@ -69,6 +69,7 @@ import { getAuthUser, logout, getToken, setToken, setAuthUser } from "@/lib/auth
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { useAutonomyNotifications } from "@/contexts/AutonomyNotificationContext";
 
 interface SidebarItem {
   name: string;
@@ -573,6 +574,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
 
 
+  const { isAnalysisActive, activeRoleName, newResultsCount, clearNewResults } = useAutonomyNotifications();
   const { brandName, brandLogoUrl, brandPrimaryColor, brandSecondaryColor } = useBrandContext();
 
   const SidebarContent = () => (
@@ -730,6 +732,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = isRouteActive(item.href, location);
+                      const isAIAutonomo = item.name === "AI Autonomo";
+                      const showPulse = isAIAutonomo && isAnalysisActive;
+                      const showBadge = isAIAutonomo && newResultsCount > 0;
 
                       return (
                         <Link key={item.href} href={item.href}>
@@ -743,14 +748,24 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
                             onMouseLeave={() => cancelHoverPreload(item.href)}
-                            onClick={handleLinkClick}
+                            onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
                           >
-                            <Icon className={cn(
-                              "h-4 w-4 flex-shrink-0 transition-colors duration-200",
-                              isActive
-                                ? "text-cyan-600 dark:text-cyan-400"
-                                : "text-muted-foreground/60 group-hover:text-muted-foreground"
-                            )} />
+                            <div className="relative flex-shrink-0">
+                              <Icon className={cn(
+                                "h-4 w-4 transition-colors duration-200",
+                                showPulse
+                                  ? "text-emerald-500 dark:text-emerald-400"
+                                  : isActive
+                                    ? "text-cyan-600 dark:text-cyan-400"
+                                    : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                              )} />
+                              {showPulse && (
+                                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                </span>
+                              )}
+                            </div>
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
@@ -759,11 +774,15 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               )}>
                                 {item.name}
                               </span>
-                              {item.badge && (
+                              {showBadge ? (
+                                <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white min-w-[18px] text-center">
+                                  {newResultsCount}
+                                </span>
+                              ) : item.badge ? (
                                 <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                                   {item.badge}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </Link>
@@ -783,6 +802,9 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           const isActive = isRouteActive(item.href, location) || 
             (hasChildren && item.children!.some(child => isRouteActive(child.href, location)));
           const isExpanded = expandedItems.has(item.name);
+          const isAIAutonomo = item.name === "AI Autonomo";
+          const showPulse = isAIAutonomo && isAnalysisActive;
+          const showBadge = isAIAutonomo && newResultsCount > 0;
 
           return (
             <div key={item.href}>
@@ -800,6 +822,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   onMouseEnter={() => preloadOnHover(item.href)}
                   onMouseLeave={() => cancelHoverPreload(item.href)}
                   onClick={(e) => {
+                    if (isAIAutonomo) clearNewResults();
                     if (hasChildren && !isCollapsed) {
                       e.preventDefault();
                       setExpandedItems(prev => {
@@ -822,13 +845,22 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     "absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full transition-opacity duration-150",
                     isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   )} />
-                  {/* Icon without box */}
-                  <Icon className={cn(
-                    "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
-                    isActive
-                      ? "text-cyan-500"
-                      : item.color || "text-muted-foreground/60"
-                  )} />
+                  <div className="relative flex-shrink-0">
+                    <Icon className={cn(
+                      "h-[18px] w-[18px] transition-colors duration-150",
+                      showPulse
+                        ? "text-emerald-500 dark:text-emerald-400"
+                        : isActive
+                          ? "text-cyan-500"
+                          : item.color || "text-muted-foreground/60"
+                    )} />
+                    {showPulse && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                    )}
+                  </div>
 
                   {!isCollapsed && (
                     <div className="flex-1 flex items-center justify-between min-w-0">
@@ -839,12 +871,16 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         {item.name}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        {item.badge && (
+                        {showBadge ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white min-w-[18px] text-center">
+                            {newResultsCount}
+                          </span>
+                        ) : item.badge ? (
                           <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                             <span>{item.badge}</span>
                           </span>
-                        )}
+                        ) : null}
                         {hasChildren && (
                           <ChevronRight className={cn(
                             "h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground/40",
