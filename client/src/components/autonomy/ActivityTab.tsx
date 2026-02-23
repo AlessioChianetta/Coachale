@@ -1666,34 +1666,43 @@ function ActivityTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 border-b pb-3">
-        <Button
-          variant={activitySubTab === "all" ? "default" : "outline"}
-          size="sm"
+      <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-xl border border-border/50 w-fit">
+        <button
           onClick={() => setActivitySubTab("all")}
-          className="gap-1.5 rounded-xl"
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+            activitySubTab === "all"
+              ? "bg-background text-foreground shadow-sm border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
         >
           <Activity className="h-3.5 w-3.5" />
           Tutti
-        </Button>
-        <Button
-          variant={activitySubTab === "reasoning" ? "default" : "outline"}
-          size="sm"
+        </button>
+        <button
           onClick={() => { setActivitySubTab("reasoning"); setReasoningPage(1); }}
-          className="gap-1.5 rounded-xl"
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+            activitySubTab === "reasoning"
+              ? "bg-background text-foreground shadow-sm border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
         >
           <Brain className="h-3.5 w-3.5" />
           Ragionamento AI
-        </Button>
-        <Button
-          variant={activitySubTab === "simulation" ? "default" : "outline"}
-          size="sm"
+        </button>
+        <button
           onClick={() => setActivitySubTab("simulation")}
-          className="gap-1.5 rounded-xl"
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+            activitySubTab === "simulation"
+              ? "bg-background text-foreground shadow-sm border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+          )}
         >
           <Zap className="h-3.5 w-3.5" />
           Simulazione
-        </Button>
+        </button>
       </div>
 
       {activitySubTab === "all" && (
@@ -1954,64 +1963,95 @@ function ActivityTab({
             const avgDuration = stats.length > 0
               ? stats.reduce((sum: number, s: any) => sum + parseFloat(s.avg_duration_ms || "0"), 0) / stats.length
               : 0;
+            const conversionRate = totalRuns > 0 ? Math.round((totalCreated / totalRuns) * 100) : 0;
+            const rejectRate = totalRuns > 0 ? Math.round((totalRejected / totalRuns) * 100) : 0;
             const formatDur = (ms: number) => {
               if (!ms) return "—";
               if (ms < 1000) return `${Math.round(ms)}ms`;
-              return `${(ms / 1000).toFixed(1)}s`;
+              if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+              return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
             };
+
+            const systemHealth = totalRuns === 0 ? 'idle' : 
+              (conversionRate >= 30 && rejectRate <= 20) ? 'optimal' :
+              (conversionRate >= 15 || rejectRate <= 40) ? 'normal' : 'attention';
+
+            const healthConfig = {
+              optimal: { label: 'Performance ottimale', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-200 dark:border-emerald-800', icon: <CheckCircle className="h-4 w-4" /> },
+              normal: { label: 'Nella norma', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-200 dark:border-blue-800', icon: <Activity className="h-4 w-4" /> },
+              attention: { label: 'Richiede attenzione', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-200 dark:border-amber-800', icon: <AlertTriangle className="h-4 w-4" /> },
+              idle: { label: 'In attesa', color: 'text-muted-foreground', bg: 'bg-muted/30', border: 'border-border', icon: <Clock className="h-4 w-4" /> },
+            };
+            const health = healthConfig[systemHealth];
+
             return (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Card className="border border-border rounded-xl shadow-sm">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-violet-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{totalRuns}</p>
-                        <p className="text-[10px] text-muted-foreground">Esecuzioni Totali</p>
+              <div className="space-y-3">
+                <div className={cn("flex items-center gap-2.5 px-4 py-2.5 rounded-xl border", health.bg, health.border)}>
+                  <div className={health.color}>{health.icon}</div>
+                  <span className={cn("text-sm font-semibold", health.color)}>{health.label}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{totalRuns} analisi completate</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="relative overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800/60 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/40 dark:to-card p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/50">
+                        <Activity className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                       </div>
+                      <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300 uppercase tracking-wide">Esecuzioni</span>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border border-border rounded-xl shadow-sm">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-2xl font-bold">{totalCreated}</p>
-                        <p className="text-[10px] text-muted-foreground">Task Creati</p>
+                    <p className="text-3xl font-bold text-foreground">{totalRuns}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">cicli di analisi completati</p>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-card p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                        <CheckCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
+                      <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">Task Creati</span>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border border-border rounded-xl shadow-sm">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-red-500" />
-                      <div>
-                        <p className="text-2xl font-bold">{totalRejected}</p>
-                        <p className="text-[10px] text-muted-foreground">Scartati (Duplicati)</p>
+                    <p className="text-3xl font-bold text-foreground">{totalCreated}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">{conversionRate}%</span> conversione
+                    </p>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-xl border border-red-200 dark:border-red-800/60 bg-gradient-to-br from-red-50 to-white dark:from-red-950/40 dark:to-card p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/50">
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
                       </div>
+                      <span className="text-[11px] font-medium text-red-700 dark:text-red-300 uppercase tracking-wide">Scartati</span>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border border-border rounded-xl shadow-sm">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-amber-500" />
-                      <div>
-                        <p className="text-2xl font-bold">{formatDur(avgDuration)}</p>
-                        <p className="text-[10px] text-muted-foreground">Durata Media</p>
+                    <p className="text-3xl font-bold text-foreground">{totalRejected}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <span className="font-semibold text-red-500 dark:text-red-400">{rejectRate}%</span> duplicati
+                    </p>
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/40 dark:to-card p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                        <Zap className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
                       </div>
+                      <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wide">Velocità</span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-3xl font-bold text-foreground">{formatDur(avgDuration)}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">durata media per analisi</p>
+                  </div>
+                </div>
               </div>
             );
           })()}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
+              <Search className="h-3.5 w-3.5" />
+              <span className="font-medium">Filtra:</span>
+            </div>
             <Select value={reasoningRole} onValueChange={(v) => { setReasoningRole(v); setReasoningPage(1); }}>
-              <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl">
+              <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl border-dashed">
                 <SelectValue placeholder="Ruolo AI" />
               </SelectTrigger>
               <SelectContent>
@@ -2027,17 +2067,18 @@ function ActivityTab({
               </SelectContent>
             </Select>
             <Select value={reasoningModeFilter} onValueChange={(v) => { setReasoningModeFilter(v); setReasoningPage(1); }}>
-              <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl">
+              <SelectTrigger className="w-[170px] h-9 text-sm rounded-xl border-dashed">
                 <SelectValue placeholder="Modalità" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutte le modalità</SelectItem>
-                <SelectItem value="structured">Strutturato</SelectItem>
-                <SelectItem value="deep_think">Deep Think</SelectItem>
+                <SelectItem value="structured">⚡ Strutturato</SelectItem>
+                <SelectItem value="deep_think">🧠 Deep Think</SelectItem>
               </SelectContent>
             </Select>
             {(reasoningRole !== 'all' || reasoningModeFilter !== 'all') && (
-              <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground" onClick={() => { setReasoningRole('all'); setReasoningModeFilter('all'); setReasoningPage(1); }}>
+              <Button variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground gap-1 hover:text-red-600" onClick={() => { setReasoningRole('all'); setReasoningModeFilter('all'); setReasoningPage(1); }}>
+                <span className="text-sm">✕</span>
                 Rimuovi filtri
               </Button>
             )}
@@ -2057,47 +2098,108 @@ function ActivityTab({
             </Card>
           ) : (
             <div className="space-y-4">
-              {reasoningGroupedByCycle.cycles.map((cycle) => {
+              {reasoningGroupedByCycle.cycles.map((cycle, cycleIdx) => {
                 const isExpanded = expandedReasoningCycles.has(cycle.cycleId);
+                const isFirst = cycleIdx === 0;
+                const hasActions = cycle.totalTasks > 0;
+                const hasErrors = cycle.items.some((item: any) => {
+                  let ed: any = {};
+                  try { ed = typeof item.event_data === 'string' ? JSON.parse(item.event_data) : (item.event_data || {}); } catch { ed = {}; }
+                  return ed.error || item.severity === 'error';
+                });
+
+                const cycleStatus = hasErrors ? 'error' : hasActions ? 'action' : 'clean';
+                const statusConfig = {
+                  action: { label: 'Azioni generate', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300', borderColor: 'border-l-emerald-500', icon: <Sparkles className="h-3.5 w-3.5" /> },
+                  error: { label: 'Richiede attenzione', badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-red-300', borderColor: 'border-l-red-500', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+                  clean: { label: 'Nessuna azione', badge: 'bg-slate-100 text-slate-600 dark:bg-slate-800/40 dark:text-slate-400 border-slate-300', borderColor: 'border-l-slate-300 dark:border-l-slate-600', icon: <CheckCircle className="h-3.5 w-3.5" /> },
+                };
+                const sc = statusConfig[cycleStatus];
+
                 return (
-                  <div key={cycle.cycleId} className="space-y-3">
+                  <motion.div
+                    key={cycle.cycleId}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: cycleIdx * 0.05 }}
+                    className="space-y-3"
+                  >
                     <Card
-                      className="border border-border rounded-xl shadow-sm cursor-pointer transition-colors hover:bg-muted/30 border-l-4 border-l-primary"
+                      className={cn(
+                        "rounded-xl shadow-sm cursor-pointer transition-all duration-200 border-l-4",
+                        sc.borderColor,
+                        isFirst && "ring-1 ring-violet-200 dark:ring-violet-800/40 shadow-md",
+                        isExpanded ? "bg-card shadow-md" : "hover:shadow-md hover:bg-muted/20",
+                      )}
                       onClick={() => toggleReasoningCycle(cycle.cycleId)}
                     >
-                      <CardContent className="py-3 px-5">
+                      <CardContent className="py-3.5 px-5">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className={cn(
+                              "p-2 rounded-xl shrink-0",
+                              hasActions ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400" :
+                              hasErrors ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" :
+                              "bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400"
+                            )}>
                               <Brain className="h-4 w-4" />
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold">
-                                Ciclo di Analisi #{cycle.shortId} — {formatCycleDate(cycle.firstTime)}
-                              </p>
-                              <div className="flex items-center gap-3 mt-0.5">
-                                <span className="text-xs text-muted-foreground">{cycle.totalRoles} ruoli analizzati</span>
-                                <span className="text-xs text-muted-foreground">·</span>
-                                <span className="text-xs text-muted-foreground">{cycle.totalEligible} clienti idonei</span>
-                                <span className="text-xs text-muted-foreground">·</span>
-                                <span className="text-xs text-muted-foreground">{cycle.totalTasks} task creati</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold text-foreground">
+                                  Ciclo #{cycle.shortId}
+                                </p>
+                                {isFirst && (
+                                  <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-violet-300 text-[10px] px-1.5 py-0">
+                                    Ultimo
+                                  </Badge>
+                                )}
+                                <Badge className={cn("text-[10px] px-1.5 py-0 border", sc.badge)}>
+                                  {sc.icon}
+                                  <span className="ml-1">{sc.label}</span>
+                                </Badge>
                               </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {formatCycleDate(cycle.firstTime)}
+                              </p>
                             </div>
                           </div>
-                          <ChevronDown className={cn(
-                            "h-4 w-4 text-muted-foreground transition-transform",
-                            isExpanded && "rotate-180"
-                          )} />
+
+                          <div className="flex items-center gap-4 shrink-0 ml-3">
+                            <div className="hidden sm:flex items-center gap-3 text-xs">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Users className="h-3 w-3" />
+                                <span className="font-medium">{cycle.totalRoles}</span>
+                                <span>ruoli</span>
+                              </div>
+                              <div className="w-px h-4 bg-border" />
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Target className="h-3 w-3" />
+                                <span className="font-medium">{cycle.totalEligible}</span>
+                                <span>idonei</span>
+                              </div>
+                              <div className="w-px h-4 bg-border" />
+                              <div className={cn("flex items-center gap-1", hasActions ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-muted-foreground")}>
+                                <ListChecks className="h-3 w-3" />
+                                <span className="font-medium">{cycle.totalTasks}</span>
+                                <span>task</span>
+                              </div>
+                            </div>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                              isExpanded && "rotate-180"
+                            )} />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
 
                     {isExpanded && (
-                      <div className="pl-4 border-l-2 border-l-primary/20 ml-3 space-y-3">
+                      <div className="pl-4 border-l-2 border-l-violet-200 dark:border-l-violet-800/40 ml-3 space-y-3">
                         {cycle.items.map((item: any) => renderReasoningCard(item))}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
 
