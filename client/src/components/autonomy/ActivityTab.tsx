@@ -473,15 +473,25 @@ const REASONING_MODE_LABELS: Record<string, string> = {
   deep_think: "Deep Think",
 };
 
-function ReasoningSection({ icon: Icon, title, content, color }: { icon: any; title: string; content: string | null; color: string }) {
+function ReasoningSection({ icon: Icon, title, content, color, dominant }: { icon: any; title: string; content: string | null; color: string; dominant?: boolean }) {
   if (!content) return null;
   return (
-    <div className={`rounded-xl border p-3 ${color}`}>
-      <div className="flex items-center gap-2 mb-2 font-semibold text-sm">
-        <Icon className="h-4 w-4" />
+    <div className={cn(
+      "bg-card p-3",
+      dominant ? "border-l-4" : "border-l-2",
+      color
+    )}>
+      <div className={cn(
+        "flex items-center gap-2 mb-2 font-semibold",
+        dominant ? "text-sm" : "text-xs"
+      )}>
+        <Icon className={cn(dominant ? "h-4 w-4" : "h-3.5 w-3.5")} />
         {title}
       </div>
-      <p className="text-sm whitespace-pre-wrap leading-relaxed">{content}</p>
+      <p className={cn(
+        "whitespace-pre-wrap leading-7 text-muted-foreground",
+        dominant ? "text-sm" : "text-xs"
+      )}>{content}</p>
     </div>
   );
 }
@@ -995,50 +1005,55 @@ function ActivityTab({
             </div>
           </div>
 
-          <CardContent className="py-4 px-5 space-y-4">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="bg-muted/40 rounded-xl p-2.5">
-                <p className="text-lg font-bold">{eventData.total_clients || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Clienti analizzati</p>
+          <CardContent className="py-5 px-5 space-y-6">
+            {/* ── EXECUTIVE SUMMARY ── */}
+            <div className="space-y-3">
+              <p className="uppercase tracking-wide text-[11px] font-semibold text-muted-foreground">Executive Summary</p>
+              <div className="flex items-center divide-x divide-border">
+                <div className="flex-1 pr-4">
+                  <p className="text-xl font-bold leading-none">{eventData.total_clients || 0}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Clienti analizzati</p>
+                </div>
+                <div className="flex-1 px-4">
+                  <p className="text-xl font-bold leading-none">{eventData.eligible_clients || 0}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Idonei</p>
+                </div>
+                <div className="flex-1 pl-4">
+                  <p className="text-xl font-bold leading-none">{suggestions.length}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">Task creati</p>
+                </div>
               </div>
-              <div className="bg-muted/40 rounded-xl p-2.5">
-                <p className="text-lg font-bold">{eventData.eligible_clients || 0}</p>
-                <p className="text-[10px] text-muted-foreground">Idonei</p>
-              </div>
-              <div className="bg-muted/40 rounded-xl p-2.5">
-                <p className="text-lg font-bold">{suggestions.length}</p>
-                <p className="text-[10px] text-muted-foreground">Task creati</p>
-              </div>
+
+              {matchingReasoningLog && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                    Pensiero Intimo AI
+                  </p>
+                  <ReasoningSection icon={Eye} title="Osservazione" content={matchingReasoningLog.observation} color="border-l-blue-500 dark:border-l-blue-400 text-blue-700 dark:text-blue-300" />
+                  <ReasoningSection icon={Lightbulb} title="Riflessione" content={matchingReasoningLog.reflection} color="border-l-amber-500 dark:border-l-amber-400 text-amber-700 dark:text-amber-300" />
+                  <ReasoningSection icon={Target} title="Decisione" content={matchingReasoningLog.decision} color="border-l-emerald-500 dark:border-l-emerald-400 text-emerald-700 dark:text-emerald-300" dominant />
+                  <ReasoningSection icon={Brain} title="Auto-Revisione" content={matchingReasoningLog.self_review} color="border-l-purple-500 dark:border-l-purple-400 text-purple-700 dark:text-purple-300" />
+                  {matchingReasoningLog.reasoning_mode === "deep_think" && (
+                    <ThinkingStepsTimeline steps={Array.isArray(matchingReasoningLog.thinking_steps) ? matchingReasoningLog.thinking_steps : []} />
+                  )}
+                  <TasksCreatedRejected tasksData={matchingReasoningLog.tasks_data} />
+                  {(matchingReasoningLog.total_tokens > 0 || matchingReasoningLog.model_used) && (
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+                      {matchingReasoningLog.total_tokens > 0 && <span>Token: {matchingReasoningLog.total_tokens?.toLocaleString("it-IT")}</span>}
+                      {matchingReasoningLog.model_used && <span>Modello: {matchingReasoningLog.model_used}</span>}
+                      {matchingReasoningLog.reasoning_mode && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {REASONING_MODE_LABELS[matchingReasoningLog.reasoning_mode] || matchingReasoningLog.reasoning_mode}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {matchingReasoningLog && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-violet-600" />
-                  Pensiero Intimo AI
-                </p>
-                <ReasoningSection icon={Eye} title="Osservazione" content={matchingReasoningLog.observation} color="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300" />
-                <ReasoningSection icon={Lightbulb} title="Riflessione" content={matchingReasoningLog.reflection} color="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300" />
-                <ReasoningSection icon={Target} title="Decisione" content={matchingReasoningLog.decision} color="bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300" />
-                <ReasoningSection icon={Brain} title="Auto-Revisione" content={matchingReasoningLog.self_review} color="bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300" />
-                {matchingReasoningLog.reasoning_mode === "deep_think" && (
-                  <ThinkingStepsTimeline steps={Array.isArray(matchingReasoningLog.thinking_steps) ? matchingReasoningLog.thinking_steps : []} />
-                )}
-                <TasksCreatedRejected tasksData={matchingReasoningLog.tasks_data} />
-                {(matchingReasoningLog.total_tokens > 0 || matchingReasoningLog.model_used) && (
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
-                    {matchingReasoningLog.total_tokens > 0 && <span>Token: {matchingReasoningLog.total_tokens?.toLocaleString("it-IT")}</span>}
-                    {matchingReasoningLog.model_used && <span>Modello: {matchingReasoningLog.model_used}</span>}
-                    {matchingReasoningLog.reasoning_mode && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        {REASONING_MODE_LABELS[matchingReasoningLog.reasoning_mode] || matchingReasoningLog.reasoning_mode}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
+            {/* ── ANALISI STRATEGICA ── */}
             {eventData.overall_reasoning && (() => {
               const text = (eventData.overall_reasoning as string).trim();
               const marcoSections = parseMarcoReasoning(text);
@@ -1049,9 +1064,9 @@ function ActivityTab({
                     .split(/\n\s*\n/g)
                     .map((p: string) => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
                     .filter((p: string) => p.length > 0);
-                  if (paragraphs.length === 0) return <span className="text-xs text-muted-foreground leading-relaxed">{content}</span>;
+                  if (paragraphs.length === 0) return <span className="text-xs text-muted-foreground leading-7">{content}</span>;
                   return (
-                    <div className="text-xs text-muted-foreground leading-relaxed space-y-1.5">
+                    <div className="text-xs text-muted-foreground leading-7 space-y-1.5">
                       {paragraphs.map((para: string, i: number) => (
                         <p key={i}>{renderFormattedText(para)}</p>
                       ))}
@@ -1059,15 +1074,34 @@ function ActivityTab({
                   );
                 };
 
+                const renderCosaDeviFareSection = (content: string) => {
+                  const items = content
+                    .split(/(?<=[.!?])\s+/)
+                    .map((s: string) => s.trim())
+                    .filter((s: string) => s.length > 5);
+                  if (items.length <= 1) return renderMarcoSection(content);
+                  return (
+                    <div className="space-y-2">
+                      {items.map((item: string, i: number) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                          <p className="text-xs text-muted-foreground leading-7">{renderFormattedText(item)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                };
+
                 return (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold flex items-center gap-1.5">
+                  <div className="space-y-3">
+                    <p className="uppercase tracking-wide text-[11px] font-semibold text-muted-foreground">Analisi Strategica</p>
+                    <p className="text-sm font-semibold flex items-center gap-1.5">
                       <TrendingUp className="h-3.5 w-3.5" />
                       Analisi Executive Coach
                     </p>
                     {marcoSections.quadroGenerale && (
-                      <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800 p-3">
-                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                      <div className="border-l-2 border-l-blue-500 dark:border-l-blue-400 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1.5 flex items-center gap-1 text-blue-700 dark:text-blue-400">
                           <BarChart3 className="h-3 w-3" />
                           Quadro generale
                         </p>
@@ -1075,8 +1109,8 @@ function ActivityTab({
                       </div>
                     )}
                     {marcoSections.criticita && (
-                      <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800 p-3">
-                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                      <div className="border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1.5 flex items-center gap-1 text-amber-700 dark:text-amber-400">
                           <AlertTriangle className="h-3 w-3" />
                           Criticità e problemi
                         </p>
@@ -1084,8 +1118,8 @@ function ActivityTab({
                       </div>
                     )}
                     {marcoSections.opportunita && (
-                      <div className="rounded-xl border bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800 p-3">
-                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                      <div className="border-l-2 border-l-emerald-500 dark:border-l-emerald-400 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                           <Lightbulb className="h-3 w-3" />
                           Opportunità e leve strategiche
                         </p>
@@ -1093,12 +1127,12 @@ function ActivityTab({
                       </div>
                     )}
                     {marcoSections.cosaDevi && (
-                      <div className="rounded-xl border bg-violet-50/50 dark:bg-violet-950/10 border-violet-200 dark:border-violet-800 p-3">
-                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-violet-700 dark:text-violet-400">
-                          <Target className="h-3 w-3" />
+                      <div className="border-l-4 border-l-violet-500 dark:border-l-violet-400 bg-card p-3">
+                        <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-violet-700 dark:text-violet-400">
+                          <Target className="h-4 w-4" />
                           Cosa devi fare
                         </p>
-                        {renderMarcoSection(marcoSections.cosaDevi)}
+                        {renderCosaDeviFareSection(marcoSections.cosaDevi)}
                       </div>
                     )}
                   </div>
@@ -1111,148 +1145,159 @@ function ActivityTab({
                 .filter((p: string) => p.length > 0);
 
               return (
-                <div className="rounded-xl border bg-muted/20 p-4">
-                  <p className="text-xs font-bold mb-3 flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    Analisi Executive Coach
-                  </p>
-                  {paragraphs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{text}</p>
-                  ) : (
-                    <div className="text-sm text-muted-foreground leading-relaxed space-y-2.5">
-                      {paragraphs.map((para: string, i: number) => (
-                        <p key={i}>{renderFormattedText(para)}</p>
-                      ))}
-                    </div>
-                  )}
+                <div className="space-y-3">
+                  <p className="uppercase tracking-wide text-[11px] font-semibold text-muted-foreground">Analisi Strategica</p>
+                  <div className="border-l-2 border-l-muted-foreground/30 bg-card p-4">
+                    <p className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Analisi Executive Coach
+                    </p>
+                    {paragraphs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground leading-7 whitespace-pre-line">{text}</p>
+                    ) : (
+                      <div className="text-sm text-muted-foreground leading-7 space-y-2.5">
+                        {paragraphs.map((para: string, i: number) => (
+                          <p key={i}>{renderFormattedText(para)}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })()}
 
             {!eventData.overall_reasoning && (
-              <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5" />
-                  Risultato analisi
-                </p>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
+              <div className="space-y-3">
+                <p className="uppercase tracking-wide text-[11px] font-semibold text-muted-foreground">Analisi Strategica</p>
+                <div className="border-l-2 border-l-muted-foreground/30 bg-card p-4">
+                  <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5" />
+                    Risultato analisi
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-7">{item.description}</p>
+                </div>
               </div>
             )}
 
-            {suggestions.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold flex items-center gap-1.5">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  Azioni decise ({suggestions.length})
-                </p>
-                {suggestions.map((s: any, idx: number) => (
-                  <div key={idx} className="rounded-xl border p-3 bg-card">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                      <Badge className={cn("text-[10px] px-1.5 py-0", getCategoryStyle(s.category))}>
-                        {getCategoryIcon(s.category)} {getCategoryLabel(s.category)}
-                      </Badge>
-                      {s.channel && s.channel !== 'none' && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : s.channel === 'whatsapp' ? '💬 WhatsApp' : s.channel}
+            {/* ── AZIONI OPERATIVE ── */}
+            <div className="space-y-3">
+              <p className="uppercase tracking-wide text-[11px] font-semibold text-muted-foreground">Azioni Operative</p>
+
+              {suggestions.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Azioni decise ({suggestions.length})
+                  </p>
+                  {suggestions.map((s: any, idx: number) => (
+                    <div key={idx} className="border-l-2 border-l-primary/40 bg-card p-3">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                        <Badge className={cn("text-[10px] px-1.5 py-0", getCategoryStyle(s.category))}>
+                          {getCategoryIcon(s.category)} {getCategoryLabel(s.category)}
                         </Badge>
-                      )}
-                      {s.priority && (
-                        <Badge className={cn("text-[10px] px-1.5 py-0", getPriorityStyle(s.priority))}>
-                          P{s.priority}
-                        </Badge>
+                        {s.channel && s.channel !== 'none' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            {s.channel === 'voice' ? '📞 Chiamata' : s.channel === 'email' ? '📧 Email' : s.channel === 'whatsapp' ? '💬 WhatsApp' : s.channel}
+                          </Badge>
+                        )}
+                        {s.priority && (
+                          <Badge className={cn("text-[10px] px-1.5 py-0", getPriorityStyle(s.priority))}>
+                            P{s.priority}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="font-semibold text-sm">{s.client_name || 'Generale'}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed mb-2 whitespace-normal break-words">{s.instruction}</p>
+                      {s.reasoning && (
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/20 rounded p-2">
+                          <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span className="leading-relaxed"><strong>Perché:</strong> {s.reasoning}</span>
+                        </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="font-semibold text-sm">{s.client_name || 'Generale'}</span>
-                    </div>
-                    <p className="text-sm mb-2">{s.instruction}</p>
-                    {s.reasoning && (
-                      <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/30 rounded-xl p-2">
-                        <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
-                        <span><strong>Perché:</strong> {s.reasoning}</span>
+                  ))}
+                </div>
+              )}
+
+              {suggestions.length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground border-l-2 border-l-emerald-500 bg-card p-3">
+                  <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <span className="leading-relaxed">Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
+                </div>
+              )}
+
+              {eventData.clients_list && (
+                <details className="text-xs group">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1">
+                    <Database className="h-3 w-3" />
+                    Base dati utilizzata
+                    <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    {eventData.clients_list && (
+                      <div className="border-l-2 border-l-muted-foreground/20 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1.5 flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          Clienti analizzati ({eventData.clients_list.length}{eventData.total_clients ? ` di ${eventData.total_clients}` : ''})
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {eventData.clients_list.map((c: any, i: number) => (
+                            <Badge key={i} variant="outline" className="text-[10px]">
+                              {c.name || c.first_name || `ID: ${c.id?.substring(0, 8)}`}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {eventData.excluded_clients && (
+                      <div className="border-l-2 border-l-amber-400/50 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                          <Search className="h-3 w-3" />
+                          Clienti esclusi
+                        </p>
+                        <div className="flex gap-3 text-[10px] text-muted-foreground">
+                          <span>Con task pendenti: {eventData.excluded_clients.with_pending_tasks || 0}</span>
+                          <span>Completati di recente: {eventData.excluded_clients.with_recent_completion || 0}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {eventData.role_specific_data && (
+                      <div className="border-l-2 border-l-muted-foreground/20 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1.5 flex items-center gap-1">
+                          <Database className="h-3 w-3" />
+                          Dati ruolo-specifici
+                        </p>
+                        <RoleSpecificDataRenderer data={eventData.role_specific_data} roleId={roleId} />
+                      </div>
+                    )}
+
+                    {eventData.recent_tasks_summary && eventData.recent_tasks_summary.length > 0 && (
+                      <div className="border-l-2 border-l-muted-foreground/20 bg-card p-3">
+                        <p className="text-xs font-semibold mb-1 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Task recenti ({eventData.recent_tasks_summary.length})
+                        </p>
+                        <div className="space-y-1">
+                          {eventData.recent_tasks_summary.map((t: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                              <span className="font-medium">{t.contact_name || 'N/A'}</span>
+                              <span>·</span>
+                              <span>{t.task_category || t.category}</span>
+                              <span>·</span>
+                              <span>{t.status}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {eventData.clients_list && (
-              <details className="text-xs group">
-                <summary className="cursor-pointer text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1">
-                  <Database className="h-3 w-3" />
-                  Base dati utilizzata
-                  <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                </summary>
-                <div className="mt-2 space-y-2">
-                  {eventData.clients_list && (
-                    <div className="rounded-xl border bg-muted/20 p-3">
-                      <p className="text-xs font-semibold mb-1.5 flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        Clienti analizzati ({eventData.clients_list.length}{eventData.total_clients ? ` di ${eventData.total_clients}` : ''})
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {eventData.clients_list.map((c: any, i: number) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">
-                            {c.name || c.first_name || `ID: ${c.id?.substring(0, 8)}`}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {eventData.excluded_clients && (
-                    <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 p-3">
-                      <p className="text-xs font-semibold mb-1 flex items-center gap-1">
-                        <Search className="h-3 w-3" />
-                        Clienti esclusi
-                      </p>
-                      <div className="flex gap-3 text-[10px] text-muted-foreground">
-                        <span>Con task pendenti: {eventData.excluded_clients.with_pending_tasks || 0}</span>
-                        <span>Completati di recente: {eventData.excluded_clients.with_recent_completion || 0}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {eventData.role_specific_data && (
-                    <div className="rounded-xl border bg-muted/20 p-3">
-                      <p className="text-xs font-semibold mb-1.5 flex items-center gap-1">
-                        <Database className="h-3 w-3" />
-                        Dati ruolo-specifici
-                      </p>
-                      <RoleSpecificDataRenderer data={eventData.role_specific_data} roleId={roleId} />
-                    </div>
-                  )}
-
-                  {eventData.recent_tasks_summary && eventData.recent_tasks_summary.length > 0 && (
-                    <div className="rounded-xl border bg-muted/20 p-3">
-                      <p className="text-xs font-semibold mb-1 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Task recenti ({eventData.recent_tasks_summary.length})
-                      </p>
-                      <div className="space-y-1">
-                        {eventData.recent_tasks_summary.map((t: any, i: number) => (
-                          <div key={i} className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                            <span className="font-medium">{t.contact_name || 'N/A'}</span>
-                            <span>·</span>
-                            <span>{t.task_category || t.category}</span>
-                            <span>·</span>
-                            <span>{t.status}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </details>
-            )}
-
-            {suggestions.length === 0 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 rounded-xl p-3">
-                <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                <span>Nessuna azione necessaria al momento. Tutti i clienti sono seguiti correttamente.</span>
-              </div>
-            )}
+                </details>
+              )}
+            </div>
           </CardContent>
         </Card>
       </motion.div>
