@@ -378,63 +378,54 @@ export default function ConsultantDashboard() {
         }
       `}</style>
             
-            {/* Hero Section - Glassmorphism */}
-            <div className="animate-fadeInUp relative overflow-hidden rounded-2xl p-6 sm:p-8"
-              style={{
-                background: 'linear-gradient(135deg, rgba(108,92,231,0.08) 0%, rgba(0,184,148,0.06) 50%, rgba(253,203,110,0.04) 100%)',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              <div className="absolute inset-0 shimmer-bg pointer-events-none" style={{ opacity: 0.5 }} />
-              <div className="relative flex items-center gap-4 sm:gap-6">
-                <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-primary/30 ring-offset-2 ring-offset-background shadow-lg">
-                  <AvatarFallback
-                    className="text-lg sm:text-xl font-bold bg-gradient-to-br from-primary to-violet-400 text-white"
-                  >
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/60 bg-clip-text">
-                    {getGreeting()}, {user?.firstName || 'Consulente'}
-                  </h1>
-                  <p className="text-muted-foreground/60 text-sm mt-1">
-                    Ecco cosa succede oggi nel tuo business
-                  </p>
-                </div>
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="text-xs font-medium text-emerald-500">↑ +12% rispetto a ieri</span>
-                </div>
+            {/* Hero Section - Compact */}
+            <div className="animate-fadeInUp flex items-center gap-3 px-1 py-0.5">
+              <Avatar className="h-9 w-9 ring-2 ring-primary/25 ring-offset-1 ring-offset-background shadow-sm shrink-0">
+                <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary to-violet-400 text-white">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold tracking-tight text-foreground leading-none">
+                  {getGreeting()}, {user?.firstName || 'Consulente'} 👋
+                </h1>
+                <p className="text-muted-foreground/55 text-xs mt-0.5">
+                  Ecco cosa succede oggi nel tuo business
+                </p>
               </div>
             </div>
 
-            {/* KPI Bubbles */}
-            <div className="animate-fadeInUp-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* KPI Cards - Rectangular */}
+            <div className="animate-fadeInUp-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {kpiCards.map((kpi, index) => {
-                const bubbleGradients = [
+                const cardGradients = [
                   'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                   'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                   'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                 ];
-                const bubbleShadows = [
-                  '0 8px 24px rgba(59,130,246,0.35)',
-                  '0 8px 24px rgba(245,158,11,0.35)',
-                  '0 8px 24px rgba(16,185,129,0.35)',
-                  '0 8px 24px rgba(239,68,68,0.35)',
+                const cardShadows = [
+                  '0 4px 16px rgba(59,130,246,0.30)',
+                  '0 4px 16px rgba(245,158,11,0.30)',
+                  '0 4px 16px rgba(16,185,129,0.30)',
+                  '0 4px 16px rgba(239,68,68,0.30)',
                 ];
                 const IconComponent = kpi.icon;
                 return (
-                  <div key={index} className="flex flex-col items-center gap-2.5 py-1">
-                    <div
-                      className="relative w-[4.5rem] h-[4.5rem] sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center text-white"
-                      style={{ background: bubbleGradients[index], boxShadow: bubbleShadows[index] }}
-                    >
-                      <IconComponent className="h-3.5 w-3.5 opacity-75 mb-0.5" />
-                      <span className="text-xl sm:text-2xl font-black leading-none tracking-tight">{kpi.value}</span>
+                  <div
+                    key={index}
+                    className="relative overflow-hidden rounded-xl p-4 text-white flex flex-col justify-between min-h-[90px]"
+                    style={{ background: cardGradients[index], boxShadow: cardShadows[index] }}
+                  >
+                    <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-4 translate-x-4"
+                      style={{ background: 'rgba(255,255,255,0.6)' }} />
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80 leading-tight pr-1">{kpi.title}</p>
+                      <div className="p-1.5 rounded-lg bg-white/20 shrink-0">
+                        <IconComponent className="h-3.5 w-3.5" />
+                      </div>
                     </div>
-                    <p className="text-[11px] text-center text-muted-foreground/70 font-medium leading-tight px-1">{kpi.title}</p>
+                    <p className="text-3xl font-black leading-none tracking-tight mt-2">{kpi.value}</p>
                   </div>
                 );
               })}
@@ -477,22 +468,22 @@ export default function ConsultantDashboard() {
                   <div className="space-y-2">
                     <div className="h-3.5 bg-muted animate-pulse rounded-full w-4/5" />
                     <div className="h-3 bg-muted animate-pulse rounded-full w-3/5" />
-                    <div className="flex gap-1.5 mt-3">
-                      <div className="h-5 w-20 bg-muted animate-pulse rounded-full" />
-                      <div className="h-5 w-28 bg-muted animate-pulse rounded-full" />
-                      <div className="h-5 w-16 bg-muted animate-pulse rounded-full" />
+                    <div className="space-y-1.5 mt-3">
+                      <div className="h-3 bg-muted animate-pulse rounded-full w-full" />
+                      <div className="h-3 bg-muted animate-pulse rounded-full w-11/12" />
+                      <div className="h-3 bg-muted animate-pulse rounded-full w-4/5" />
                     </div>
                   </div>
                 ) : aiInsights?.summary ? (
                   <div className="space-y-2.5">
                     <p className="text-sm text-foreground/80 leading-relaxed">{aiInsights.summary}</p>
                     {aiInsights.highlights?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="space-y-1">
                         {aiInsights.highlights.map((h, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/8 dark:bg-primary/15 text-primary text-[11px] font-medium border border-primary/15">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
-                            {h}
-                          </span>
+                          <div key={i} className="flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
+                            <p className="text-xs text-foreground/70 leading-snug">{h}</p>
+                          </div>
                         ))}
                       </div>
                     )}
