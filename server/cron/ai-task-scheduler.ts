@@ -23,6 +23,7 @@ import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, G
 import { GoogleGenAI } from '@google/genai';
 import { FileSearchService } from '../ai/file-search-service';
 import { fetchSystemDocumentsForAgent } from '../services/system-prompt-documents-service';
+import { emitReasoningEvent } from '../sse/reasoning-stream';
 
 function isDuplicateTask(newInstruction: string, existingInstruction: string, newContactId?: string, existingContactId?: string): { isDuplicate: boolean; similarity: number; reason: string } {
   if (newContactId && existingContactId && newContactId !== existingContactId) {
@@ -1581,6 +1582,18 @@ Rispondi in formato libero (testo), non JSON.`;
 
   conversationHistory.push({ role: 'user', parts: [{ text: step1Prompt }] });
 
+  emitReasoningEvent(consultantId, {
+    type: 'step_start',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 1,
+    stepTitle: 'Analisi Dati',
+    stepType: 'data_analysis',
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
+
   let step1Response = '';
   try {
     const resp = await aiClient.generateContent({
@@ -1602,6 +1615,19 @@ Rispondi in formato libero (testo), non JSON.`;
     durationMs: Date.now() - step1Start,
     tokens: 0,
   });
+  emitReasoningEvent(consultantId, {
+    type: 'step_complete',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 1,
+    stepTitle: 'Analisi Dati',
+    stepType: 'data_analysis',
+    stepContent: step1Response.substring(0, 300),
+    stepDurationMs: Date.now() - step1Start,
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 (Analysis) done: ${step1Response.length} chars, duration: ${Date.now() - step1Start}ms`);
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 preview: ${step1Response.substring(0, 200)}...`);
 
@@ -1615,6 +1641,18 @@ Per ogni cliente da contattare, spiega:
 - Quale canale sarebbe più appropriato
 
 Rispondi in formato libero (testo), non JSON.` }] });
+
+  emitReasoningEvent(consultantId, {
+    type: 'step_start',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 2,
+    stepTitle: 'Valutazione Priorità',
+    stepType: 'priority_assessment',
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
 
   let step2Response = '';
   try {
@@ -1636,6 +1674,19 @@ Rispondi in formato libero (testo), non JSON.` }] });
     content: step2Response,
     durationMs: Date.now() - step2Start,
     tokens: 0,
+  });
+  emitReasoningEvent(consultantId, {
+    type: 'step_complete',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 2,
+    stepTitle: 'Valutazione Priorità',
+    stepType: 'priority_assessment',
+    stepContent: step2Response.substring(0, 300),
+    stepDurationMs: Date.now() - step2Start,
+    totalSteps: 4,
+    timestamp: Date.now(),
   });
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 (Priorities) done: ${step2Response.length} chars, duration: ${Date.now() - step2Start}ms`);
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 preview: ${step2Response.substring(0, 200)}...`);
@@ -1664,6 +1715,18 @@ Rispondi ESCLUSIVAMENTE con JSON valido nel seguente formato (senza markdown):
 
 Genera SOLO task che hai realmente giustificato nei passaggi precedenti. Non inventare task nuovi che non hai analizzato.` }] });
 
+  emitReasoningEvent(consultantId, {
+    type: 'step_start',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 3,
+    stepTitle: 'Generazione Task',
+    stepType: 'task_generation',
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
+
   let step3Response = '';
   try {
     const resp = await aiClient.generateContent({
@@ -1685,6 +1748,19 @@ Genera SOLO task che hai realmente giustificato nei passaggi precedenti. Non inv
     durationMs: Date.now() - step3Start,
     tokens: 0,
   });
+  emitReasoningEvent(consultantId, {
+    type: 'step_complete',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 3,
+    stepTitle: 'Generazione Task',
+    stepType: 'task_generation',
+    stepContent: step3Response.substring(0, 300),
+    stepDurationMs: Date.now() - step3Start,
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 3 (Generation) done: ${step3Response.length} chars`);
 
   const step4Start = Date.now();
@@ -1702,6 +1778,18 @@ Rispondi con il JSON finale pulito:
   "review_notes": "Le tue note di revisione...",
   "tasks": [ ... (solo i task che superano la revisione) ]
 }` }] });
+
+  emitReasoningEvent(consultantId, {
+    type: 'step_start',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 4,
+    stepTitle: 'Auto-Revisione',
+    stepType: 'self_review',
+    totalSteps: 4,
+    timestamp: Date.now(),
+  });
 
   let step4Response = '';
   try {
@@ -1722,6 +1810,19 @@ Rispondi con il JSON finale pulito:
     content: step4Response,
     durationMs: Date.now() - step4Start,
     tokens: 0,
+  });
+  emitReasoningEvent(consultantId, {
+    type: 'step_complete',
+    cycleId,
+    roleId: role.id,
+    roleName: role.name,
+    stepNumber: 4,
+    stepTitle: 'Auto-Revisione',
+    stepType: 'self_review',
+    stepContent: step4Response.substring(0, 300),
+    stepDurationMs: Date.now() - step4Start,
+    totalSteps: 4,
+    timestamp: Date.now(),
   });
   console.log(`🧠 [DEEP-THINK] [${role.name}] Step 4 (Review) done: ${step4Response.length} chars`);
 
@@ -2121,6 +2222,13 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
   const roleFrequencies: Record<string, string> = settings.role_frequencies || {};
 
+  emitReasoningEvent(consultantId, {
+    type: 'cycle_start',
+    cycleId: cycleId || `cycle_${Date.now()}`,
+    timestamp: Date.now(),
+    totalSteps: activeRoles.length,
+  });
+
   for (const role of activeRoles) {
     try {
       const roleEligibleClients = getEligibleClientsForRole(role.id);
@@ -2292,6 +2400,14 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
       const roleReasoningMode = settings.role_reasoning_modes?.[role.id] || reasoningMode;
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Reasoning mode: roleSpecific=${settings.role_reasoning_modes?.[role.id] || 'NOT SET'}, global=${reasoningMode}, effective=${roleReasoningMode}`);
       console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] role_reasoning_modes object:`, JSON.stringify(settings.role_reasoning_modes || {}));
+      emitReasoningEvent(consultantId, {
+        type: 'role_start',
+        cycleId: cycleId || '',
+        roleId: role.id,
+        roleName: role.name,
+        reasoningMode: roleReasoningMode,
+        timestamp: Date.now(),
+      });
       if (roleReasoningMode === 'structured') {
         const { wrapPromptWithStructuredReasoning } = await import('./ai-autonomous-roles');
         prompt = wrapPromptWithStructuredReasoning(prompt, role.name);
@@ -2503,6 +2619,15 @@ Non utilizzare altri tipi di documento da quel store privato.
           } catch (logErr: any) {
             console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to save deep think reasoning log: ${logErr.message}`);
           }
+          emitReasoningEvent(consultantId, {
+            type: 'role_complete',
+            cycleId: cycleId || '',
+            roleId: role.id,
+            roleName: role.name,
+            reasoningMode: roleReasoningMode,
+            tasksGenerated: parsed.tasks?.length || 0,
+            timestamp: Date.now(),
+          });
         } catch (deepErr: any) {
           console.error(`❌ [AUTONOMOUS-GEN] [${role.name}] Deep Think failed: ${deepErr.message}`);
           deepThinkUsed = false;
@@ -2770,6 +2895,15 @@ Non utilizzare altri tipi di documento da quel store privato.
       } catch (reasoningLogErr: any) {
         console.warn(`⚠️ [AUTONOMOUS-GEN] [${role.name}] Failed to save reasoning log: ${reasoningLogErr.message}`);
       }
+      emitReasoningEvent(consultantId, {
+        type: 'role_complete',
+        cycleId: cycleId || '',
+        roleId: role.id,
+        roleName: role.name,
+        reasoningMode: roleReasoningMode,
+        tasksGenerated: parsed.tasks?.length || 0,
+        timestamp: Date.now(),
+      });
       } // end if (!deepThinkUsed)
 
       let totalCreatedForRole = 0;
@@ -3223,6 +3357,13 @@ Non utilizzare altri tipi di documento da quel store privato.
       }
     }
   }
+
+  emitReasoningEvent(consultantId, {
+    type: 'cycle_complete',
+    cycleId: cycleId || '',
+    tasksGenerated: totalCreated,
+    timestamp: Date.now(),
+  });
 
   console.log(`🧠 [AUTONOMOUS-GEN] Total: ${totalCreated} tasks ${dryRun ? 'would be' : ''} created across ${activeRoles.length} roles for consultant ${consultantId}`);
 

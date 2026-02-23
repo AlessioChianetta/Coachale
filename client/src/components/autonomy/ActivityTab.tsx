@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import type { ActivityResponse, ActivityItem } from "./types";
 import { getActivityIcon, getSeverityBadge, getRelativeTime } from "./utils";
 import { AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS } from "./constants";
@@ -496,6 +497,146 @@ function ReasoningSection({ icon: Icon, title, content, color, dominant }: { ico
   );
 }
 
+function formatNarrativeText(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  let bulletBuffer: string[] = [];
+
+  const flushBullets = () => {
+    if (bulletBuffer.length > 0) {
+      elements.push(
+        <ul key={`ul-${elements.length}`} className="list-disc list-inside space-y-0.5 text-muted-foreground text-sm pl-2">
+          {bulletBuffer.map((b, i) => <li key={i}>{renderInlineBold(b)}</li>)}
+        </ul>
+      );
+      bulletBuffer = [];
+    }
+  };
+
+  const renderInlineBold = (str: string): React.ReactNode => {
+    const parts = str.split(/\*\*(.*?)\*\*/g);
+    if (parts.length === 1) return str;
+    return parts.map((part, i) =>
+      i % 2 === 1
+        ? <strong key={i} className="text-foreground font-semibold">{part}</strong>
+        : part
+    );
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushBullets();
+      continue;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      flushBullets();
+      elements.push(
+        <p key={`h-${i}`} className="font-bold text-foreground mt-3 mb-1">{trimmed.slice(4)}</p>
+      );
+    } else if (/^\*\s/.test(trimmed) || /^-\s/.test(trimmed)) {
+      bulletBuffer.push(trimmed.replace(/^[\*\-]\s/, ''));
+    } else {
+      flushBullets();
+      elements.push(
+        <p key={`p-${i}`} className="text-sm text-muted-foreground leading-7">{renderInlineBold(trimmed)}</p>
+      );
+    }
+  }
+  flushBullets();
+  return elements;
+}
+
+function renderStepContent(step: any): React.ReactNode {
+  const rawContent = step.content || step.text || '';
+  if (!rawContent && typeof step === 'object') {
+    return <p className="leading-7 text-muted-foreground text-sm whitespace-pre-wrap pl-8">{JSON.stringify(step, null, 2)}</p>;
+  }
+
+  const contentStr = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent, null, 2);
+
+  const priorityLabels: Record<number, { label: string; variant: string }> = {
+    10: { label: 'Critica', variant: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300' },
+    9: { label: 'Molto Alta', variant: 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300' },
+    8: { label: 'Alta', variant: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300' },
+    7: { label: 'Media-Alta', variant: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300' },
+    6: { label: 'Media', variant: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' },
+    5: { label: 'Normale', variant: 'bg-slate-100 text-slate-800 dark:bg-slate-950/40 dark:text-slate-300' },
+  };
+
+  if (step.type === 'task_generation' || step.type === 'self_review') {
+    let narrativeText = '';
+    let jsonData: any = null;
+
+    const jsonMatch = contentStr.match(/\n(\{[\s\S]*\})\s*$/);
+    if (jsonMatch) {
+      narrativeText = contentStr.slice(0, jsonMatch.index || 0).trim();
+      try {
+        jsonData = JSON.parse(jsonMatch[1]);
+      } catch {}
+    }
+
+    if (!jsonData) {
+      try {
+        jsonData = JSON.parse(contentStr);
+      } catch {}
+    }
+
+    if (jsonData) {
+      const tasks = Array.isArray(jsonData.tasks) ? jsonData.tasks : [];
+      const reviewNotes = jsonData.review_notes;
+
+      return (
+        <div className="pl-8 space-y-3">
+          {narrativeText && (
+            <div className="space-y-1">{formatNarrativeText(narrativeText)}</div>
+          )}
+          {reviewNotes && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">📝 Note di revisione</p>
+              <p className="text-sm text-muted-foreground">{reviewNotes}</p>
+            </div>
+          )}
+          {tasks.length > 0 && (
+            <div className="space-y-2">
+              {tasks.map((task: any, i: number) => {
+                const prio = priorityLabels[task.priority] || { label: `P${task.priority || '?'}`, variant: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300' };
+                return (
+                  <div key={i} className="border rounded-lg p-3 bg-muted/20 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">{task.contact_name || 'Follow-up'}</span>
+                      <Badge className={cn("text-[10px] px-2 py-0.5 border", prio.variant)}>{prio.label}</Badge>
+                    </div>
+                    {task.ai_instruction && <p className="text-sm text-muted-foreground">{task.ai_instruction}</p>}
+                    {task.reasoning && <p className="text-xs text-muted-foreground italic">Perché: {task.reasoning}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return <div className="pl-8 space-y-1">{formatNarrativeText(contentStr)}</div>;
+  }
+
+  if (step.type === 'data_analysis' || step.type === 'priority_assessment') {
+    let textOnly = contentStr;
+    const trailingJsonMatch = textOnly.match(/\n(\{[\s\S]*\})\s*$/);
+    if (trailingJsonMatch) {
+      textOnly = textOnly.slice(0, trailingJsonMatch.index || 0).trim();
+    }
+    return <div className="pl-8 space-y-1">{formatNarrativeText(textOnly)}</div>;
+  }
+
+  return <div className="pl-8 space-y-1">{formatNarrativeText(contentStr)}</div>;
+}
+
 function ThinkingStepsTimeline({ steps }: { steps: any[] }) {
   if (!steps || steps.length === 0) return null;
 
@@ -576,9 +717,7 @@ function ThinkingStepsTimeline({ steps }: { steps: any[] }) {
                   <span className="font-bold text-sm">{label}</span>
                   <span className="text-xs text-muted-foreground ml-auto">⏱ {durationSeconds}s</span>
                 </div>
-                <p className="leading-7 text-muted-foreground text-sm whitespace-pre-wrap pl-8">
-                  {step.content || step.text || JSON.stringify(step)}
-                </p>
+                {renderStepContent(step)}
                 {step.tokens > 0 && (
                   <span className="text-xs text-muted-foreground mt-2 block pl-8">Token: {step.tokens.toLocaleString('it-IT')}</span>
                 )}
@@ -672,6 +811,148 @@ function ActivityTab({
   const [expandedReasoningCycles, setExpandedReasoningCycles] = React.useState<Set<string>>(new Set());
   const [promptModalData, setPromptModalData] = React.useState<{ title: string; prompt: string } | null>(null);
   const [loadingPrompt, setLoadingPrompt] = React.useState(false);
+  const queryClient = useQueryClient();
+
+  const [sseStatus, setSseStatus] = React.useState<'disconnected' | 'connected' | 'error'>('disconnected');
+  const [liveProgress, setLiveProgress] = React.useState<{
+    cycleId: string;
+    activeRoleId: string;
+    activeRoleName: string;
+    reasoningMode: string;
+    currentStep: number;
+    currentStepTitle: string;
+    completedSteps: Array<{ stepNumber: number; title: string; durationMs: number; preview: string }>;
+    completedRoles: string[];
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (activitySubTab !== 'reasoning') {
+      setSseStatus('disconnected');
+      setLiveProgress(null);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    let eventSource: EventSource | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout>;
+
+    const connect = () => {
+      eventSource = new EventSource(`/api/ai-autonomy/reasoning-stream?token=${token}`);
+
+      eventSource.onopen = () => {
+        console.log('📡 [SSE] Connected to reasoning stream');
+        setSseStatus('connected');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          switch (data.type) {
+            case 'connected':
+              setSseStatus('connected');
+              break;
+
+            case 'cycle_start':
+              setLiveProgress({
+                cycleId: data.cycleId,
+                activeRoleId: '',
+                activeRoleName: '',
+                reasoningMode: '',
+                currentStep: 0,
+                currentStepTitle: 'Inizializzazione...',
+                completedSteps: [],
+                completedRoles: [],
+              });
+              break;
+
+            case 'role_start':
+              setLiveProgress(prev => prev ? {
+                ...prev,
+                activeRoleId: data.roleId || '',
+                activeRoleName: data.roleName || '',
+                reasoningMode: data.reasoningMode || 'structured',
+                currentStep: 0,
+                currentStepTitle: 'Preparazione dati...',
+                completedSteps: [],
+              } : null);
+              break;
+
+            case 'step_start':
+              setLiveProgress(prev => prev ? {
+                ...prev,
+                currentStep: data.stepNumber || 0,
+                currentStepTitle: data.stepTitle || '',
+              } : null);
+              break;
+
+            case 'step_complete':
+              setLiveProgress(prev => prev ? {
+                ...prev,
+                currentStep: data.stepNumber || 0,
+                currentStepTitle: data.stepTitle || '',
+                completedSteps: [
+                  ...prev.completedSteps,
+                  {
+                    stepNumber: data.stepNumber || 0,
+                    title: data.stepTitle || '',
+                    durationMs: data.stepDurationMs || 0,
+                    preview: data.stepContent || '',
+                  },
+                ],
+              } : null);
+              break;
+
+            case 'role_complete':
+              setLiveProgress(prev => prev ? {
+                ...prev,
+                completedRoles: [...prev.completedRoles, data.roleId || ''],
+                activeRoleId: '',
+                activeRoleName: '',
+                currentStep: 0,
+                currentStepTitle: '',
+                completedSteps: [],
+              } : null);
+              queryClient.invalidateQueries({ queryKey: ['/api/ai-autonomy/reasoning-stats'] });
+              break;
+
+            case 'cycle_complete':
+              setLiveProgress(null);
+              queryClient.invalidateQueries({ queryKey: ['/api/ai-autonomy/reasoning-stats'] });
+              setTimeout(() => {
+                queryClient.invalidateQueries({ predicate: (query) => {
+                  const key = query.queryKey[0];
+                  return typeof key === 'string' && (
+                    key.includes('reasoning-logs') ||
+                    key.includes('ai-reasoning-activity') ||
+                    key.includes('/api/ai-autonomy/activity')
+                  );
+                }});
+              }, 1500);
+              break;
+          }
+        } catch (err) {
+          console.warn('📡 [SSE] Parse error:', err);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setSseStatus('error');
+        eventSource?.close();
+        retryTimeout = setTimeout(connect, 5000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      eventSource?.close();
+      clearTimeout(retryTimeout);
+      setSseStatus('disconnected');
+    };
+  }, [activitySubTab, queryClient]);
 
   const handleDownloadPrompt = (title: string, prompt: string) => {
     const blob = new Blob([prompt], { type: 'text/plain;charset=utf-8' });
@@ -1560,6 +1841,111 @@ function ActivityTab({
 
       {activitySubTab === "reasoning" && (
         <div className="space-y-4">
+          {liveProgress && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border-2 border-violet-400 dark:border-violet-600 shadow-lg bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/40 dark:via-purple-950/30 dark:to-indigo-950/30 p-5 ring-1 ring-violet-300/50 dark:ring-violet-700/30"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="relative">
+                  <div className="p-2.5 rounded-xl bg-violet-100 dark:bg-violet-900/50">
+                    <Brain className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-violet-500"></span>
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-bold text-violet-900 dark:text-violet-200">
+                    Analisi in corso...
+                  </h3>
+                  <p className="text-xs text-violet-600 dark:text-violet-400">
+                    {liveProgress.activeRoleName ? (
+                      <>
+                        <span className="font-semibold">{liveProgress.activeRoleName}</span>
+                        {liveProgress.reasoningMode === 'deep_think' ? ' · Deep Think' : ' · Strutturato'}
+                        {liveProgress.currentStepTitle && ` · ${liveProgress.currentStepTitle}`}
+                      </>
+                    ) : liveProgress.completedRoles.length > 0 ? (
+                      `${liveProgress.completedRoles.length} ruoli completati, in attesa del prossimo...`
+                    ) : (
+                      'Preparazione ciclo di analisi...'
+                    )}
+                  </p>
+                </div>
+                {liveProgress.completedRoles.length > 0 && (
+                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300 text-xs">
+                    {liveProgress.completedRoles.length} ruoli completati
+                  </Badge>
+                )}
+              </div>
+
+              {liveProgress.reasoningMode === 'deep_think' && liveProgress.activeRoleName && (
+                <div className="flex items-center justify-center gap-0 py-2">
+                  {['Analisi Dati', 'Valutazione Priorità', 'Generazione Task', 'Auto-Revisione'].map((label, idx) => {
+                    const stepNum = idx + 1;
+                    const isCompleted = liveProgress.completedSteps.some(s => s.stepNumber === stepNum);
+                    const isActive = liveProgress.currentStep === stepNum && !isCompleted;
+                    const isPending = !isCompleted && !isActive;
+                    const isLast = idx === 3;
+
+                    return (
+                      <div key={label} className="flex items-center">
+                        <div className="flex flex-col items-center" style={{ minWidth: '100px' }}>
+                          <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500",
+                            isCompleted && "bg-emerald-500 border-emerald-400 text-white shadow-md shadow-emerald-500/25",
+                            isActive && "bg-violet-500 border-violet-400 text-white shadow-md shadow-violet-500/25 animate-pulse",
+                            isPending && "bg-muted border-border text-muted-foreground"
+                          )}>
+                            {isCompleted ? (
+                              <CheckCircle className="h-5 w-5" />
+                            ) : isActive ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <span className="text-xs font-bold">{stepNum}</span>
+                            )}
+                          </div>
+                          <p className={cn(
+                            "text-[10px] mt-1.5 text-center leading-tight max-w-[100px] font-medium",
+                            isCompleted && "text-emerald-700 dark:text-emerald-400",
+                            isActive && "text-violet-700 dark:text-violet-400 font-semibold",
+                            isPending && "text-muted-foreground"
+                          )}>
+                            {label}
+                          </p>
+                          {isCompleted && liveProgress.completedSteps.find(s => s.stepNumber === stepNum) && (
+                            <p className="text-[9px] text-muted-foreground">
+                              {((liveProgress.completedSteps.find(s => s.stepNumber === stepNum)?.durationMs || 0) / 1000).toFixed(1)}s
+                            </p>
+                          )}
+                        </div>
+                        {!isLast && (
+                          <div className={cn(
+                            "h-[2px] w-6 shrink-0 rounded-full -mt-5 transition-colors duration-500",
+                            isCompleted ? "bg-emerald-400" : "bg-border"
+                          )} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {liveProgress.reasoningMode !== 'deep_think' && liveProgress.activeRoleName && (
+                <div className="flex items-center gap-3 px-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  <div className="flex-1 h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Analisi strutturata</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {reasoningStatsData?.stats && (() => {
             const stats = reasoningStatsData.stats || [];
             const totalRuns = stats.reduce((sum: number, s: any) => sum + parseInt(s.total_runs || "0"), 0);

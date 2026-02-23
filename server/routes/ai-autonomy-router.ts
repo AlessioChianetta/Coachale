@@ -10,11 +10,48 @@ import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/a
 import { getTemplatesByDirection } from '../voice/voice-templates';
 import { AI_ROLES } from "../cron/ai-autonomous-roles";
 import { upload } from "../middleware/upload";
+import { addReasoningClient, removeReasoningClient } from "../sse/reasoning-stream";
 import fs from 'fs';
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 
 const router = Router();
+
+router.get("/reasoning-stream", async (req: Request, res: Response) => {
+  const token = (req.query.token as string) || req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return res.status(401).end();
+
+  try {
+    const jwt = await import('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
+    const decoded = jwt.default.verify(token, JWT_SECRET) as any;
+    const consultantId = decoded.userId || decoded.id;
+    if (!consultantId) return res.status(401).end();
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: Date.now() })}\n\n`);
+
+    addReasoningClient(consultantId, res);
+
+    const keepAlive = setInterval(() => {
+      try { res.write(': ping\n\n'); } catch { clearInterval(keepAlive); }
+    }, 30000);
+
+    req.on('close', () => {
+      clearInterval(keepAlive);
+      removeReasoningClient(consultantId, res);
+    });
+  } catch (err) {
+    console.error('📡 [SSE] Auth error:', err);
+    return res.status(401).end();
+  }
+});
 
 router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
