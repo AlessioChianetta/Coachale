@@ -483,7 +483,7 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
              SELECT COUNT(*) FROM scheduled_voice_calls svc
              WHERE svc.consultant_id = ${consultantId}::text
                AND svc.target_phone IN (
-                 SELECT phone FROM users WHERE id::text = c.client_id
+                 SELECT phone_number FROM users WHERE id::text = c.client_id
                )
                AND svc.scheduled_at > c.scheduled_at
                AND svc.scheduled_at < c.scheduled_at + INTERVAL '48 hours'
