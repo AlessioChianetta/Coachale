@@ -506,73 +506,85 @@ function ThinkingStepsTimeline({ steps }: { steps: any[] }) {
     self_review: "Auto-Revisione",
   };
 
+  const totalDuration = steps.reduce((sum: number, s: any) => sum + (s.durationMs || 0), 0);
+
   return (
-    <div className="rounded-2xl border border-border/60 shadow-sm bg-card/80 backdrop-blur-sm p-6 space-y-5">
-      <div className="flex items-center gap-2">
-        <Brain className="h-5 w-5 text-muted-foreground" />
-        <h3 className="text-base font-semibold">Processo di Ragionamento Deep Think</h3>
+    <div className="rounded-2xl border-2 border-violet-300 dark:border-violet-700 shadow-lg bg-gradient-to-br from-violet-50/80 to-card dark:from-violet-950/30 dark:to-card p-6 space-y-5 ring-1 ring-violet-200/50 dark:ring-violet-800/30">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-violet-100 dark:bg-violet-900/50">
+            <Brain className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Processo Deep Think</h3>
+            <p className="text-xs text-muted-foreground">{steps.length} fasi di ragionamento · {(totalDuration / 1000).toFixed(1)}s totali</p>
+          </div>
+        </div>
+        <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 border-violet-300 dark:border-violet-700 text-xs px-3 py-1">
+          Deep Think
+        </Badge>
+      </div>
+
+      <div className="flex items-center justify-center gap-0 py-4 px-2">
+        {steps.map((step: any, idx: number) => {
+          const isLast = idx === steps.length - 1;
+          const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
+          const durationSec = step.durationMs ? (step.durationMs / 1000).toFixed(1) : '0';
+
+          return (
+            <div key={step.step || idx} className="flex items-center">
+              <div className="flex flex-col items-center" style={{ minWidth: '110px' }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center border-3 bg-emerald-500 border-emerald-400 text-white shadow-md shadow-emerald-500/25">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <p className="text-xs mt-2.5 text-center leading-snug max-w-[110px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                  {label}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{durationSec}s</p>
+              </div>
+              {!isLast && (
+                <div className="h-[3px] w-8 shrink-0 bg-emerald-400 dark:bg-emerald-500 rounded-full -mt-6" />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <details className="group">
-        <summary className="cursor-pointer select-none flex items-center gap-2 py-2 px-3 rounded-xl hover:bg-muted/50 transition-colors">
-          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          <span className="text-[15px] font-medium">Pipeline di Ragionamento</span>
-          <span className="text-xs text-muted-foreground ml-1">
-            ({steps.length} step)
-          </span>
+        <summary className="cursor-pointer select-none flex items-center gap-2 py-2.5 px-4 rounded-xl bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors border border-violet-200 dark:border-violet-800">
+          <ChevronDown className="h-4 w-4 text-violet-500 transition-transform group-open:rotate-180" />
+          <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">Dettaglio ragionamento per fase</span>
         </summary>
 
-        <div className="mt-4 ml-0">
-          {/* Horizontal Pipeline */}
-          <div className="flex flex-wrap items-start gap-0 mb-6">
-            {steps.map((step: any, idx: number) => {
-              const isLast = idx === steps.length - 1;
-              const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
+        <div className="space-y-3 mt-4">
+          {steps.map((step: any, idx: number) => {
+            const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
+            const durationSeconds = step.durationMs ? (step.durationMs / 1000).toFixed(2) : '0';
+            const stepColors = [
+              'border-l-blue-500',
+              'border-l-amber-500',
+              'border-l-emerald-500',
+              'border-l-violet-500',
+            ];
 
-              return (
-                <div key={step.step || idx} className="flex items-start">
-                  <div className="flex flex-col items-center" style={{ minWidth: '90px' }}>
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                    )}>
-                      <CheckCircle className="h-4 w-4" />
-                    </div>
-                    <p className="text-[11px] mt-2 text-center leading-tight max-w-[90px] text-emerald-700 dark:text-emerald-400 font-medium">
-                      {label}
-                    </p>
-                  </div>
-                  {!isLast && (
-                    <div className="h-[2px] mt-4 w-6 shrink-0 bg-emerald-500" />
-                  )}
+            return (
+              <div key={step.step || idx} className={cn(
+                "bg-card rounded-lg p-4 border-l-4", stepColors[idx % 4]
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                  <span className="font-bold text-sm">{label}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">⏱ {durationSeconds}s</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Expanded Step Content */}
-          <div className="space-y-3 mt-4">
-            {steps.map((step: any, idx: number) => {
-              const label = step.title || stepLabels[step.type] || `Step ${step.step || idx + 1}`;
-              const durationSeconds = step.durationMs ? (step.durationMs / 1000).toFixed(2) : '0';
-
-              return (
-                <div key={step.step || idx} className={cn(
-                  "bg-card p-3 border-l-2 border-l-violet-500"
-                )}>
-                  <div className="flex items-center gap-2 mb-2 font-semibold text-sm">
-                    <span>{label}</span>
-                    <span className="text-xs text-muted-foreground">({durationSeconds}s)</span>
-                  </div>
-                  <p className="leading-7 text-muted-foreground text-sm whitespace-pre-wrap">
-                    {step.content || step.text || JSON.stringify(step)}
-                  </p>
-                  {step.tokens && (
-                    <span className="text-xs text-muted-foreground mt-2 block">Token: {step.tokens}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                <p className="leading-7 text-muted-foreground text-sm whitespace-pre-wrap pl-8">
+                  {step.content || step.text || JSON.stringify(step)}
+                </p>
+                {step.tokens > 0 && (
+                  <span className="text-xs text-muted-foreground mt-2 block pl-8">Token: {step.tokens.toLocaleString('it-IT')}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </details>
     </div>
