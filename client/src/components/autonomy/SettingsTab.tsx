@@ -88,7 +88,7 @@ const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: s
 
 function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string; roleName: string; kbDocuments: KbDocument[] }) {
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAutoContext, setShowAutoContext] = useState(false);
@@ -240,11 +240,9 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
     });
   };
 
-  const toggleOpen = () => {
-    const next = !isOpen;
-    setIsOpen(next);
-    if (next) loadContext();
-  };
+  useEffect(() => {
+    loadContext();
+  }, []);
 
   const hasFocusItems = ctx.focusPriorities.length > 0;
   const hasKbDocs = ctx.linkedKbDocumentIds.length > 0;
@@ -262,62 +260,41 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
   const autoContextItems = AGENT_AUTO_CONTEXT[roleId] || [];
 
   return (
-    <div className="border-t pt-3 mt-3" onClick={(e) => e.stopPropagation()}>
-      <button
-        onClick={toggleOpen}
-        className="w-full flex items-center justify-between text-left group"
-      >
-        <div className="flex items-center gap-2">
-          <Target className="h-3.5 w-3.5 text-indigo-500" />
-          <span className="text-xs font-semibold">Contesto & Priorità</span>
-          {loaded && (
-            <span className="text-[10px] text-muted-foreground">{summaryText}</span>
-          )}
-        </div>
-        {isOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-      </button>
-
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          transition={{ duration: 0.2 }}
-          className="mt-3 space-y-4"
-        >
+    <div className="space-y-6" onClick={(e) => e.stopPropagation()}>
           {loading ? (
-            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
             <>
               {autoContextItems.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-emerald-50/30 to-white dark:from-emerald-950/10 dark:to-gray-900/50 p-5 space-y-3">
                   <button
                     onClick={() => setShowAutoContext(!showAutoContext)}
                     className="w-full flex items-center justify-between"
                   >
-                    <Label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                      <Eye className="h-3.5 w-3.5 text-emerald-500" />
+                    <Label className="text-sm font-semibold flex items-center gap-1.5 cursor-pointer">
+                      <Eye className="h-4 w-4 text-emerald-500" />
                       Dati che {roleName} legge automaticamente
                     </Label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-emerald-600 font-medium">{autoContextItems.length} fonti</span>
-                      {showAutoContext ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{autoContextItems.length} fonti</span>
+                      {showAutoContext ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                     </div>
                   </button>
                   {showAutoContext && (
-                    <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-800/30 rounded-lg p-2.5 space-y-2">
-                      <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                    <div className="space-y-3">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400">
                         Questi dati vengono letti dal database ad ogni ciclo di analisi. Non devi inserirli manualmente.
                       </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {autoContextItems.map((group) => (
-                          <div key={group.label} className="bg-white/70 dark:bg-gray-900/50 rounded-md p-2 border border-emerald-100 dark:border-emerald-900/30">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="text-xs">{group.icon}</span>
-                              <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300">{group.label}</span>
+                          <div key={group.label} className="bg-white/70 dark:bg-gray-900/50 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="text-sm">{group.icon}</span>
+                              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">{group.label}</span>
                             </div>
                             <ul className="space-y-0.5">
                               {group.items.map((item, i) => (
-                                <li key={i} className="text-[9px] text-emerald-700/80 dark:text-emerald-400/80 flex items-start gap-1">
+                                <li key={i} className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 flex items-start gap-1">
                                   <span className="text-emerald-400 mt-[1px] shrink-0">•</span>
                                   <span>{item}</span>
                                 </li>
@@ -331,29 +308,36 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <Flag className="h-3.5 w-3.5 text-indigo-500" />
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <Flag className="h-4 w-4 text-indigo-500" />
                     Priorità di focus (in ordine)
                   </Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFocus} className="h-7 text-[10px] rounded-lg">
-                    <Plus className="h-3 w-3 mr-1" />
+                  <Button type="button" variant="outline" size="sm" onClick={addFocus} className="h-8 text-xs rounded-xl">
+                    <Plus className="h-3.5 w-3.5 mr-1" />
                     Aggiungi
                   </Button>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Su cosa deve concentrarsi {roleName}? L'ordine determina la priorità.
                   </p>
-                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium shrink-0">System Prompt</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium shrink-0">System Prompt</span>
                 </div>
                 {ctx.focusPriorities.length === 0 ? (
-                  <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
-                    Nessuna priorità definita — {roleName} seguirà il comportamento predefinito
+                  <div className="py-8 flex flex-col items-center gap-3 border border-dashed border-border/60 rounded-xl">
+                    <Target className="h-8 w-8 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">
+                      Nessuna priorità definita — {roleName} seguirà il comportamento predefinito
+                    </p>
+                    <Button type="button" variant="outline" size="sm" onClick={addFocus} className="h-8 text-xs rounded-xl">
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Aggiungi priorità
+                    </Button>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {ctx.focusPriorities.map((item, idx) => (
                       <div key={item.id} className="flex items-center gap-2 group">
                         <div className="flex flex-col gap-0.5 shrink-0">
@@ -364,7 +348,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                             <ChevronDown className="h-3 w-3" />
                           </button>
                         </div>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-md shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
+                        <Badge variant="outline" className="text-xs px-1.5 py-0 rounded-lg shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
                         <Input
                           value={item.text}
                           onChange={(e) => {
@@ -373,10 +357,10 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                             setCtx(prev => ({ ...prev, focusPriorities: updated }));
                           }}
                           placeholder={idx === 0 ? "Es: Aumentare MRR, acquisire 10 nuovi clienti..." : "Es: Ridurre churn, migliorare onboarding..."}
-                          className="h-7 text-xs rounded-lg flex-1"
+                          className="h-8 text-xs rounded-xl flex-1"
                         />
                         <button onClick={() => removeFocus(item.id)} className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
@@ -384,16 +368,16 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold flex items-center gap-1.5">
-                    <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                  <Label className="text-sm font-semibold flex items-center gap-1.5">
+                    <Lightbulb className="h-4 w-4 text-amber-500" />
                     Contesto personalizzato
                   </Label>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium">System Prompt</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 font-medium">System Prompt</span>
                     <span className={cn(
-                      "text-[8px] px-1.5 py-0.5 rounded font-medium tabular-nums",
+                      "text-[9px] px-1.5 py-0.5 rounded-full font-medium tabular-nums",
                       Math.ceil(ctx.customContext.length / 4) > 3000
                         ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                         : Math.ceil(ctx.customContext.length / 4) > 2400
@@ -414,14 +398,14 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                     }
                   }}
                   placeholder={`Roadmap, note strategiche, istruzioni specifiche per ${roleName}...`}
-                  rows={3}
+                  rows={5}
                   className={cn(
-                    "rounded-lg text-xs resize-none",
+                    "rounded-xl text-xs resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
                     Math.ceil(ctx.customContext.length / 4) > 2400 && "border-amber-300 dark:border-amber-700"
                   )}
                 />
                 {Math.ceil(ctx.customContext.length / 4) > 2400 && (
-                  <p className="text-[10px] text-amber-600">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
                     {Math.ceil(ctx.customContext.length / 4) > 3000
                       ? "Limite di 3.000 token raggiunto. Riduci il testo."
                       : "Ti stai avvicinando al limite di 3.000 token."}
@@ -429,26 +413,27 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Stile report</Label>
-                <Select value={ctx.reportStyle || "bilanciato"} onValueChange={(v) => setCtx(prev => ({ ...prev, reportStyle: v as any }))}>
-                  <SelectTrigger className="h-8 text-xs rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sintetico">Sintetico</SelectItem>
-                    <SelectItem value="bilanciato">Bilanciato</SelectItem>
-                    <SelectItem value="dettagliato">Dettagliato</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-2">
+                  <Label className="text-sm font-semibold">Stile report</Label>
+                  <Select value={ctx.reportStyle || "bilanciato"} onValueChange={(v) => setCtx(prev => ({ ...prev, reportStyle: v as any }))}>
+                    <SelectTrigger className="h-8 text-xs rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sintetico">Sintetico</SelectItem>
+                      <SelectItem value="bilanciato">Bilanciato</SelectItem>
+                      <SelectItem value="dettagliato">Dettagliato</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
               {(() => {
                 const connectedAgents = whatsappAgents.filter(a => a.hasTwilio && a.isActive !== false);
                 return (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <MessageSquare className="h-3.5 w-3.5 text-green-500" />
+                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-2">
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <MessageSquare className="h-4 w-4 text-green-500" />
                       Agente WhatsApp predefinito
                     </Label>
                     {connectedAgents.length > 0 ? (
@@ -457,7 +442,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                           value={(ctx as any).defaultWhatsappAgentId || "_auto"}
                           onValueChange={(v) => setCtx(prev => ({ ...prev, defaultWhatsappAgentId: v === "_auto" ? undefined : v } as any))}
                         >
-                          <SelectTrigger className="h-8 text-xs rounded-lg">
+                          <SelectTrigger className="h-8 text-xs rounded-xl">
                             <SelectValue placeholder="Automatico" />
                           </SelectTrigger>
                           <SelectContent>
@@ -469,20 +454,21 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-[10px] text-muted-foreground">
-                          L'agente WhatsApp che {roleName} userà per inviare messaggi. Solo agenti con Twilio collegato.
+                        <p className="text-xs text-muted-foreground">
+                          L'agente WhatsApp che {roleName} userà per inviare messaggi.
                         </p>
                       </>
                     ) : (
-                      <p className="text-[10px] text-muted-foreground italic">
+                      <p className="text-xs text-muted-foreground italic">
                         {whatsappAgents.length > 0
-                          ? "Nessun agente ha Twilio collegato. Collega le credenziali Twilio nella sezione WhatsApp."
-                          : "Nessun agente WhatsApp configurato. Configura un agente nella sezione WhatsApp."}
+                          ? "Nessun agente ha Twilio collegato."
+                          : "Nessun agente WhatsApp configurato."}
                       </p>
                     )}
                   </div>
                 );
               })()}
+              </div>
 
               {kbDocuments.length > 0 && (() => {
                 const linkedDocs = kbDocuments.filter(d => ctx.linkedKbDocumentIds.includes(d.id));
@@ -491,16 +477,16 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 const effectiveKbMode = forcedFileSearch ? 'file_search' : (ctx.kbInjectionMode || 'system_prompt');
 
                 return (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <FileText className="h-3.5 w-3.5 text-blue-500" />
+                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <FileText className="h-4 w-4 text-blue-500" />
                       Documenti Knowledge Base
                     </Label>
-                    <div className="space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2">
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto border border-border/40 rounded-xl p-2.5">
                       {kbDocuments.map((doc) => {
                         const isLinked = ctx.linkedKbDocumentIds.includes(doc.id);
                         return (
-                          <label key={doc.id} className={cn("flex items-center gap-2 p-1.5 rounded-md cursor-pointer transition-all text-xs", isLinked ? "bg-indigo-50 dark:bg-indigo-950/20" : "hover:bg-muted/50")}>
+                          <label key={doc.id} className={cn("flex items-center gap-2 p-2.5 rounded-xl cursor-pointer transition-colors text-xs", isLinked ? "bg-indigo-50/50 dark:bg-indigo-950/20" : "hover:bg-indigo-50/50 dark:hover:bg-indigo-950/10")}>
                             <Checkbox
                               checked={isLinked}
                               onCheckedChange={(checked) => {
@@ -513,54 +499,54 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                               }}
                             />
                             <span className="truncate">{doc.title}</span>
-                            <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{doc.file_type.toUpperCase()}</span>
+                            <span className="rounded-full px-2 py-0.5 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-medium ml-auto shrink-0">{doc.file_type.toUpperCase()}</span>
                           </label>
                         );
                       })}
                     </div>
 
                     {ctx.linkedKbDocumentIds.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] text-indigo-600 font-medium">{ctx.linkedKbDocumentIds.length} documento/i collegato/i</p>
-                          <span className="text-[8px] text-muted-foreground tabular-nums">~{totalKbTokens.toLocaleString()} token stimati</span>
+                          <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{ctx.linkedKbDocumentIds.length} documento/i collegato/i</p>
+                          <span className="text-[9px] text-muted-foreground tabular-nums">~{totalKbTokens.toLocaleString()} token stimati</span>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <Label className="text-[10px] font-medium text-muted-foreground shrink-0">Iniezione KB:</Label>
-                          <div className="flex gap-1">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs font-medium text-muted-foreground shrink-0">Iniezione KB:</Label>
+                          <div className="flex gap-1.5">
                             <button
                               onClick={() => !forcedFileSearch && setCtx(prev => ({ ...prev, kbInjectionMode: 'system_prompt' }))}
                               disabled={forcedFileSearch}
                               className={cn(
-                                "text-[9px] px-2 py-1 rounded-md border transition-all",
+                                "text-xs px-2.5 py-1 rounded-xl border transition-all",
                                 effectiveKbMode === 'system_prompt'
                                   ? "border-violet-400 bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300 font-semibold"
                                   : "border-gray-200 dark:border-gray-700 text-muted-foreground",
                                 forcedFileSearch && "opacity-40 cursor-not-allowed"
                               )}
                             >
-                              <Brain className="h-2.5 w-2.5 inline mr-0.5" />
+                              <Brain className="h-3 w-3 inline mr-0.5" />
                               System Prompt
                             </button>
                             <button
                               onClick={() => setCtx(prev => ({ ...prev, kbInjectionMode: 'file_search' }))}
                               className={cn(
-                                "text-[9px] px-2 py-1 rounded-md border transition-all",
+                                "text-xs px-2.5 py-1 rounded-xl border transition-all",
                                 effectiveKbMode === 'file_search'
                                   ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 font-semibold"
                                   : "border-gray-200 dark:border-gray-700 text-muted-foreground"
                               )}
                             >
-                              <FileText className="h-2.5 w-2.5 inline mr-0.5" />
+                              <FileText className="h-3 w-3 inline mr-0.5" />
                               File Search
                             </button>
                           </div>
                         </div>
 
                         {forcedFileSearch && (
-                          <p className="text-[9px] text-amber-600 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3 shrink-0" />
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                             Documenti superiori a 5.000 token — File Search forzato automaticamente
                           </p>
                         )}
@@ -571,20 +557,20 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
               })()}
 
               {roleId === 'marco' && (
-                <div className="space-y-2">
+                <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                   <button
                     onClick={toggleMarcoSection}
                     className="w-full flex items-center justify-between"
                   >
-                    <Label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                      <Target className="h-3.5 w-3.5 text-orange-500" />
+                    <Label className="text-sm font-semibold flex items-center gap-1.5 cursor-pointer">
+                      <Target className="h-4 w-4 text-orange-500" />
                       🎯 Strategia & Obiettivi
                     </Label>
                     <div className="flex items-center gap-1.5">
                       {marcoLoaded && marcoCtx.objectives.length > 0 && (
-                        <span className="text-[10px] text-orange-600 font-medium">{marcoCtx.objectives.length} obiettivi</span>
+                        <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">{marcoCtx.objectives.length} obiettivi</span>
                       )}
-                      {marcoOpen ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                      {marcoOpen ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
                     </div>
                   </button>
 
@@ -593,35 +579,38 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       transition={{ duration: 0.2 }}
-                      className="space-y-4 pl-1"
+                      className="space-y-4"
                     >
                       {marcoLoading ? (
                         <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                       ) : (
                         <>
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                                <Flag className="h-3.5 w-3.5 text-orange-500" />
+                              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                                <Flag className="h-4 w-4 text-orange-500" />
                                 Obiettivi Strategici
                               </Label>
-                              <Button type="button" variant="outline" size="sm" onClick={addObjective} className="h-7 text-[10px] rounded-lg">
-                                <Plus className="h-3 w-3 mr-1" />
+                              <Button type="button" variant="outline" size="sm" onClick={addObjective} className="h-8 text-xs rounded-xl">
+                                <Plus className="h-3.5 w-3.5 mr-1" />
                                 Aggiungi obiettivo
                               </Button>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Definisci gli obiettivi strategici che Marco deve monitorare e su cui basare le analisi.
                             </p>
                             {marcoCtx.objectives.length === 0 ? (
-                              <div className="text-[10px] text-muted-foreground italic py-2 text-center border border-dashed rounded-lg">
-                                Nessun obiettivo definito — Marco seguirà il comportamento predefinito
+                              <div className="py-6 flex flex-col items-center gap-3 border border-dashed border-border/60 rounded-xl">
+                                <Flag className="h-7 w-7 text-muted-foreground/30" />
+                                <p className="text-xs text-muted-foreground">
+                                  Nessun obiettivo definito — Marco seguirà il comportamento predefinito
+                                </p>
                               </div>
                             ) : (
                               <div className="space-y-2">
                                 {marcoCtx.objectives.map((obj, idx) => (
                                   <div key={obj.id} className="flex items-center gap-2 group">
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 rounded-md shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
+                                    <Badge variant="outline" className="text-xs px-1.5 py-0 rounded-lg shrink-0 tabular-nums w-5 justify-center">{idx + 1}</Badge>
                                     <Input
                                       value={obj.name}
                                       onChange={(e) => {
@@ -630,7 +619,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                                         setMarcoCtx(prev => ({ ...prev, objectives: updated }));
                                       }}
                                       placeholder="Es: Aumentare MRR del 20%"
-                                      className="h-7 text-xs rounded-lg flex-1"
+                                      className="h-8 text-xs rounded-xl flex-1"
                                     />
                                     <Input
                                       type="date"
@@ -640,7 +629,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                                         updated[idx] = { ...updated[idx], deadline: e.target.value || null };
                                         setMarcoCtx(prev => ({ ...prev, objectives: updated }));
                                       }}
-                                      className="h-7 text-[10px] rounded-lg w-32 shrink-0"
+                                      className="h-8 text-xs rounded-xl w-32 shrink-0"
                                     />
                                     <Select
                                       value={obj.priority}
@@ -650,7 +639,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                                         setMarcoCtx(prev => ({ ...prev, objectives: updated }));
                                       }}
                                     >
-                                      <SelectTrigger className="h-7 text-[10px] rounded-lg w-24 shrink-0">
+                                      <SelectTrigger className="h-8 text-xs rounded-xl w-24 shrink-0">
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -660,7 +649,7 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                                       </SelectContent>
                                     </Select>
                                     <button onClick={() => removeObjective(obj.id)} className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Trash2 className="h-3 w-3" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 ))}
@@ -669,11 +658,11 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-xs font-semibold flex items-center gap-1.5">
-                              <FileText className="h-3.5 w-3.5 text-blue-500" />
+                            <Label className="text-sm font-semibold flex items-center gap-1.5">
+                              <FileText className="h-4 w-4 text-blue-500" />
                               Roadmap / Note Strategiche
                             </Label>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Scrivi la roadmap, le milestone e le note strategiche che Marco deve considerare nelle analisi.
                             </p>
                             <Textarea
@@ -681,28 +670,28 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                               onChange={(e) => setMarcoCtx(prev => ({ ...prev, roadmap: e.target.value }))}
                               placeholder="Es: Q1 2026 — lancio nuovo prodotto. Q2 — espansione mercato tedesco..."
                               rows={4}
-                              className="rounded-lg text-xs resize-none"
+                              className="rounded-xl text-xs resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-xs font-semibold flex items-center gap-1.5">
-                              <Target className="h-3.5 w-3.5 text-indigo-500" />
+                            <Label className="text-sm font-semibold flex items-center gap-1.5">
+                              <Target className="h-4 w-4 text-indigo-500" />
                               Focus Report
                             </Label>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               Su cosa Marco deve focalizzare i report e le analisi periodiche.
                             </p>
                             <Input
                               value={marcoCtx.reportFocus}
                               onChange={(e) => setMarcoCtx(prev => ({ ...prev, reportFocus: e.target.value }))}
                               placeholder="Es: Conversioni lead, retention clienti, performance team vendite"
-                              className="h-7 text-xs rounded-lg"
+                              className="h-8 text-xs rounded-xl"
                             />
                           </div>
 
                           <div className="flex justify-end">
-                            <Button onClick={saveMarcoContext} disabled={marcoSaving} size="sm" variant="outline" className="h-8 text-xs rounded-lg border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950/20">
+                            <Button onClick={saveMarcoContext} disabled={marcoSaving} size="sm" variant="outline" className="h-8 text-xs rounded-xl border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950/20">
                               {marcoSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                               Salva Strategia Marco
                             </Button>
@@ -714,28 +703,26 @@ function AgentContextEditor({ roleId, roleName, kbDocuments }: { roleId: string;
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-gray-500" />
+              <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   I tuoi contatti
                 </Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Input value={contacts.phone} onChange={(e) => setContacts(p => ({ ...p, phone: e.target.value }))} placeholder="Telefono" className="h-7 text-[10px] rounded-lg" />
-                  <Input value={contacts.whatsapp} onChange={(e) => setContacts(p => ({ ...p, whatsapp: e.target.value }))} placeholder="WhatsApp" className="h-7 text-[10px] rounded-lg" />
-                  <Input value={contacts.email} onChange={(e) => setContacts(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="h-7 text-[10px] rounded-lg" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Input value={contacts.phone} onChange={(e) => setContacts(p => ({ ...p, phone: e.target.value }))} placeholder="Telefono" className="h-8 text-xs rounded-xl" />
+                  <Input value={contacts.whatsapp} onChange={(e) => setContacts(p => ({ ...p, whatsapp: e.target.value }))} placeholder="WhatsApp" className="h-8 text-xs rounded-xl" />
+                  <Input value={contacts.email} onChange={(e) => setContacts(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="h-8 text-xs rounded-xl" />
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={saveContext} disabled={saving} size="sm" className="h-8 text-xs rounded-lg">
-                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                <Button onClick={saveContext} disabled={saving} className="h-10 text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
+                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                   Salva Contesto
                 </Button>
               </div>
             </>
           )}
-        </motion.div>
-      )}
     </div>
   );
 }
@@ -2642,7 +2629,7 @@ function SettingsTab({
                                 </TabsList>
 
                                 <TabsContent value="profilo" className="mt-0 space-y-6">
-                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-4">
+                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5">
                                     <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                                       <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                                       Flusso di lavoro
@@ -2652,11 +2639,11 @@ function SettingsTab({
 
                                   <div className="space-y-5">
                                     <div>
-                                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-2">
+                                      <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 mb-3 flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4" />
                                         Cosa sa fare
-                                        <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">{caps.canDo.length} capacità</Badge>
-                                      </p>
+                                        <Badge variant="outline" className="text-xs rounded-full px-2 py-0 text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">{caps.canDo.length} capacità</Badge>
+                                      </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {caps.canDo.map((item, idx) => (
                                           <div key={idx} className="flex items-center gap-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3.5 py-2.5">
@@ -2669,11 +2656,11 @@ function SettingsTab({
                                       </div>
                                     </div>
                                     <div>
-                                      <p className="text-sm font-semibold text-red-500 dark:text-red-400 mb-3 flex items-center gap-2">
+                                      <div className="text-sm font-semibold text-red-500 dark:text-red-400 mb-3 flex items-center gap-2">
                                         <XCircle className="h-4 w-4" />
                                         Cosa NON sa fare
-                                        <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0 text-red-500 border-red-300 dark:text-red-400 dark:border-red-700">{caps.cantDo.length} limitazioni</Badge>
-                                      </p>
+                                        <Badge variant="outline" className="text-xs rounded-full px-2 py-0 text-red-500 border-red-300 dark:text-red-400 dark:border-red-700">{caps.cantDo.length} limitazioni</Badge>
+                                      </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {caps.cantDo.map((item, idx) => (
                                           <div key={idx} className="flex items-center gap-3 rounded-xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 px-3.5 py-2.5">
@@ -2709,15 +2696,15 @@ function SettingsTab({
                                           transition={{ duration: 0.2 }}
                                           className="mt-3"
                                         >
-                                          <div className="rounded-xl border border-border bg-muted/30 p-4">
+                                          <div className="rounded-2xl border border-border/40 bg-muted/30 dark:bg-gray-900/50 p-4">
                                             <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
                                               <Brain className="h-3.5 w-3.5" />
                                               System Prompt completo di {systemPrompts[role.id].name}
                                             </p>
-                                            <p className="text-[10px] text-muted-foreground mb-3 italic">
+                                            <p className="text-xs text-muted-foreground mb-3 italic">
                                               Questo è il prompt che guida il comportamento di {systemPrompts[role.id].name}. Le sezioni con "--" vengono riempite dinamicamente ad ogni ciclo con dati reali.
                                             </p>
-                                            <pre className="text-xs whitespace-pre-wrap font-mono bg-background rounded-lg p-3 border border-border max-h-[400px] overflow-y-auto leading-relaxed">
+                                            <pre className="text-xs whitespace-pre-wrap font-mono bg-background dark:bg-gray-950 rounded-xl p-3 border border-border/40 max-h-[400px] overflow-y-auto leading-relaxed">
                                               {systemPrompts[role.id].systemPromptTemplate}
                                             </pre>
                                           </div>
@@ -2790,7 +2777,7 @@ function SettingsTab({
                                 </TabsContent>
 
                                 <TabsContent value="autonomia" className="mt-0 space-y-6" onClick={(e) => e.stopPropagation()}>
-                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-4 space-y-3">
+                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                       <div className="flex items-center gap-1.5">
                                         <ListTodo className="h-3.5 w-3.5" />
@@ -2834,7 +2821,7 @@ function SettingsTab({
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-4">
+                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-4">
                                     <div className="flex items-center justify-between">
                                       <p className="text-sm font-semibold flex items-center gap-2">
                                         <Shield className="h-4 w-4" />
@@ -2885,11 +2872,11 @@ function SettingsTab({
                                           className="w-full"
                                         />
                                         <div className="flex justify-between">
-                                          <span className="text-[10px] text-muted-foreground">0 Off</span>
-                                          <span className="text-[10px] text-emerald-600">1-3</span>
-                                          <span className="text-[10px] text-amber-600">4-6</span>
-                                          <span className="text-[10px] text-orange-600">7-9</span>
-                                          <span className="text-[10px] text-red-600">10</span>
+                                          <span className="text-xs text-muted-foreground">0 Off</span>
+                                          <span className="text-xs text-emerald-600 dark:text-emerald-400">1-3</span>
+                                          <span className="text-xs text-amber-600 dark:text-amber-400">4-6</span>
+                                          <span className="text-xs text-orange-600 dark:text-orange-400">7-9</span>
+                                          <span className="text-xs text-red-600 dark:text-red-400">10</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                           {settings.role_autonomy_modes[role.id] === 0 ? `${role.name} è spento, non farà nulla`
@@ -2904,14 +2891,14 @@ function SettingsTab({
                                           <Button 
                                             size="sm" 
                                             variant="ghost" 
-                                            className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
+                                            className="h-8 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               onSave();
                                             }}
                                             disabled={isSaving}
                                           >
-                                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
                                             Salva
                                           </Button>
                                         </div>
@@ -2923,7 +2910,7 @@ function SettingsTab({
                                     )}
                                   </div>
 
-                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                                     <p className="text-sm font-semibold flex items-center gap-2">
                                       <Brain className="h-4 w-4" />
                                       Modalità di ragionamento
@@ -2972,20 +2959,20 @@ function SettingsTab({
                                       <Button 
                                         size="sm" 
                                         variant="ghost" 
-                                        className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary ml-auto rounded-xl"
+                                        className="h-8 text-xs px-3 hover:bg-primary/10 hover:text-primary ml-auto rounded-xl"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           onSave();
                                         }}
                                         disabled={isSaving}
                                       >
-                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
                                         Salva
                                       </Button>
                                     </div>
                                   </div>
 
-                                  <div className="rounded-xl border border-border/60 bg-white dark:bg-gray-900/50 p-5 space-y-3">
+                                  <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-3">
                                     <div className="flex items-center justify-between">
                                       <p className="text-sm font-semibold flex items-center gap-2">
                                         <Clock className="h-4 w-4" />
@@ -3049,10 +3036,10 @@ function SettingsTab({
                                               key={day.value}
                                               type="button"
                                               className={cn(
-                                                "text-[10px] px-2 py-1 rounded-full border transition-colors",
+                                                "text-xs px-2.5 py-1 rounded-full border transition-colors",
                                                 settings.role_working_hours[role.id]?.days?.includes(day.value)
                                                   ? "bg-primary text-primary-foreground border-primary"
-                                                  : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                                                  : "bg-muted text-muted-foreground border-border hover:bg-muted/80 dark:bg-gray-800 dark:border-gray-700"
                                               )}
                                               onClick={() => {
                                                 setSettings(prev => {
@@ -3078,14 +3065,14 @@ function SettingsTab({
                                           <Button 
                                             size="sm" 
                                             variant="ghost" 
-                                            className="h-7 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
+                                            className="h-8 text-xs px-3 hover:bg-primary/10 hover:text-primary rounded-xl"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               onSave();
                                             }}
                                             disabled={isSaving}
                                           >
-                                            {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
                                             Salva
                                           </Button>
                                         </div>

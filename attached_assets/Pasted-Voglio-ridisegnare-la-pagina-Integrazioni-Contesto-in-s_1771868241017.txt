@@ -1,0 +1,197 @@
+Voglio ridisegnare la pagina “Integrazioni / Contesto” in stile SaaS Premium Enterprise.
+
+Obiettivo:
+trasformare una pagina lunga e piatta in un pannello modulare, chiaro, con forte gerarchia visiva e migliore leggibilità.
+
+1️⃣ STRUTTURA A SEZIONI CHIARE
+
+Riorganizza la pagina in macro blocchi separati:
+
+Contesto & Priorità
+
+Knowledge Base
+
+Contatti di riferimento
+
+Integrazione Telegram
+
+Ogni macro blocco deve essere una card con:
+
+radius 16px
+
+padding 24–28px
+
+shadow molto soft
+
+titolo grande e ben leggibile
+
+sottotitolo descrittivo
+
+Non usare solo linee divisorie.
+
+2️⃣ MIGLIORARE GERARCHIA VISIVA
+
+Attualmente tutto ha lo stesso peso.
+
+Modifiche:
+
+Titoli sezione 18px bold
+
+Label secondarie più leggere
+
+Spazio verticale maggiore tra sezioni
+
+Ridurre l’uso di grigio medio
+
+Deve essere chiaro cosa è:
+
+Strategico (contesto)
+
+Operativo (priorità)
+
+Tecnico (telegram)
+
+3️⃣ PRIORITÀ DI FOCUS
+
+La zona “Priorità di focus” ora sembra vuota e spenta.
+
+Rendila:
+
+con box stato vuoto elegante
+
+icona informativa
+
+testo più chiaro
+
+bottone “Aggiungi priorità” più visibile
+
+Se non ci sono priorità, mostra stato empty state ben progettato.
+
+4️⃣ CONTENUTO PERSONALIZZATO
+
+L’area textarea deve sembrare importante.
+
+Modifiche:
+
+Altezza maggiore
+
+Border più definito
+
+Focus con glow soft primary
+
+Contatore token meno invasivo
+
+Deve sembrare un campo strategico, non una nota qualsiasi.
+
+5️⃣ KNOWLEDGE BASE
+
+Ora è una lista piatta.
+
+Migliorala:
+
+Ogni documento come riga card
+
+Icona file più visibile
+
+Badge formato (TXT, DOCX) più elegante
+
+Hover leggero
+
+Rendere selezione più chiara.
+
+6️⃣ INTEGRAZIONE TELEGRAM
+
+Questa è la parte più debole visivamente.
+
+Rendila un vero modulo tecnico con:
+
+Stato connessione grande (Connesso / Non connesso)
+
+Icona Telegram visibile
+
+Sezione guida comprimibile (accordion)
+
+Token field più largo
+
+Pulsanti Test e Salva più evidenti
+
+Separare chiaramente:
+
+Configurazione tecnica
+
+Stato bot
+
+Modalità operativa
+
+7️⃣ TOGGLE E CONTROLLI
+
+Attualmente troppo piccoli e neutri.
+
+Modifiche:
+
+Toggle leggermente più grandi
+
+Spaziatura maggiore
+
+Label più leggibili
+
+Micro animazione attivazione
+
+8️⃣ RIDURRE DENSITÀ
+
+Ridurre:
+
+Box dentro box
+
+Linee superflue
+
+Elementi grigi troppo simili
+
+Usare:
+
+Più spazio
+
+Meno bordi
+
+Più aria
+
+9️⃣ FOOTER AZIONI
+
+Il bottone “Salva Contesto” deve essere:
+
+Primario
+
+Più grande
+
+Radius 12–14px
+
+Leggera shadow
+
+Hover più evidente
+
+🎨 STILE
+
+Palette neutra elegante:
+Primary: blu/indigo soft
+Text primary: scuro
+Text secondary: slate
+Background: bianco
+Shadow: molto morbida
+
+Niente colori casuali.
+
+RISULTATO ATTESO
+
+La pagina deve sembrare:
+
+Pannello di controllo professionale
+
+Non un modulo tecnico
+
+Strutturata per livelli
+
+Più ariosa
+
+Più leggibile
+
+Più enterprise
