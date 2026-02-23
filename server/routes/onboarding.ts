@@ -25,9 +25,11 @@ import {
   consultantInstagramConfig,
   consultantLicenses,
   leadNurturingTemplates,
+  leadNurturingConfig,
   emailAccounts,
   voiceCalls,
   aiScheduledTasks,
+  whatsappGeminiApiKeys,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray, isNotNull, ne } from 'drizzle-orm';
 import { ensureGeminiFileValid } from '../services/gemini-file-manager';
@@ -343,7 +345,12 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       leadImportConfigResult,
       agentCalendarResult,
       instagramConfig,
-      license
+      license,
+      nurturingConfigResult,
+      emailHubResult,
+      voiceCallsResult,
+      aiTasksResult,
+      geminiKeysResult,
     ] = await Promise.all([
       db.query.consultantOnboardingStatus.findFirst({
         where: eq(consultantOnboardingStatus.consultantId, consultantId),
@@ -420,6 +427,7 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
         .from(externalApiConfigs)
         .where(eq(externalApiConfigs.consultantId, consultantId))
         .limit(1),
+      // google_calendar_agents: agents with Google Calendar connected
       db.select({ id: consultantWhatsappConfig.id })
         .from(consultantWhatsappConfig)
         .where(and(
@@ -432,7 +440,40 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       }),
       db.query.consultantLicenses.findFirst({
         where: eq(consultantLicenses.consultantId, consultantId),
+      }),
+      // nurturing_emails: check if 365 templates generated
+      db.select({
+        templatesGenerated: leadNurturingConfig.templatesGenerated,
+        templatesCount: leadNurturingConfig.templatesCount,
       })
+        .from(leadNurturingConfig)
+        .where(eq(leadNurturingConfig.consultantId, consultantId))
+        .limit(1),
+      // email_hub: check if at least 1 email account linked
+      db.select({ count: count() })
+        .from(emailAccounts)
+        .where(eq(emailAccounts.consultantId, consultantId)),
+      // voice_calls: check if at least 1 completed voice call
+      db.select({ count: count() })
+        .from(voiceCalls)
+        .where(and(
+          eq(voiceCalls.consultantId, consultantId),
+          eq(voiceCalls.status, 'completed')
+        )),
+      // ai_autonomo: check if at least 1 AI scheduled task completed
+      db.select({ count: count() })
+        .from(aiScheduledTasks)
+        .where(and(
+          eq(aiScheduledTasks.consultantId, sql`${consultantId}::uuid`),
+          eq(aiScheduledTasks.status, 'completed')
+        )),
+      // whatsapp_ai: check if at least 1 personal Gemini API key configured
+      db.select({ count: count() })
+        .from(whatsappGeminiApiKeys)
+        .where(and(
+          eq(whatsappGeminiApiKeys.consultantId, consultantId),
+          eq(whatsappGeminiApiKeys.isActive, true)
+        )),
     ]);
     
     const documentsCount = Number(docsResult[0]?.count || 0);
@@ -447,19 +488,38 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
     const hasMoreTemplates = Number(moreTemplatesResult[0]?.count || 0) > 1;
     const hasCampaign = Number(campaignsResult[0]?.count || 0) > 0;
     const hasLeadImport = leadImportConfigResult.length > 0;
-    const hasCalendar = agentCalendarResult.length > 0;
+    // google_calendar_agents: agents with Google Calendar connected
+    const hasAgentCalendar = agentCalendarResult.length > 0;
+    // google_calendar (consultant's personal): check onboarding status or google auth token
+    const hasConsultantCalendar = !!onboardingStatus?.googleCalendarStatus && onboardingStatus.googleCalendarStatus !== 'pending';
     const hasInstagram = !!(instagramConfig?.instagramPageId && instagramConfig?.pageAccessToken);
     const hasStripeAccount = !!license?.stripeAccountId;
     const stripeAccountStatus = license?.stripeAccountStatus;
+    // nurturing: 365 templates generated
+    const nurturingConfig = nurturingConfigResult[0];
+    const hasNurturingEmails = nurturingConfig?.templatesGenerated === true && (nurturingConfig?.templatesCount || 0) >= 10;
+    // email hub
+    const hasEmailHub = Number(emailHubResult[0]?.count || 0) > 0;
+    // voice calls
+    const hasVoiceCall = Number(voiceCallsResult[0]?.count || 0) > 0;
+    // ai autonomo
+    const hasAiTask = Number(aiTasksResult[0]?.count || 0) > 0;
+    // whatsapp ai (personal gemini keys)
+    const hasWhatsappAi = Number(geminiKeysResult[0]?.count || 0) > 0;
+    // email journey: automation enabled or frequency set
+    const hasEmailJourney = smtpSettings?.automationEnabled === true || 
+      (smtpSettings?.emailFrequencyDays !== null && smtpSettings?.emailFrequencyDays !== undefined);
     
     type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
     type OnboardingStepId = 
-      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'twilio' | 'instagram' | 'whatsapp_template' | 'first_campaign'
+      | 'vertex_ai' | 'smtp' | 'google_calendar' | 'google_calendar_agents' | 'twilio' | 'instagram'
+      | 'whatsapp_template' | 'first_campaign' | 'whatsapp_ai'
       | 'agent_inbound' | 'agent_outbound' | 'agent_consultative' | 'agent_public_link' | 'agent_ideas' | 'more_templates'
       | 'first_course' | 'first_exercise' | 'knowledge_base'
-      | 'summary_email' | 'turn_config' | 'lead_import' | 'stripe_connect';
+      | 'summary_email' | 'turn_config' | 'lead_import' | 'stripe_connect'
+      | 'email_journey' | 'nurturing_emails' | 'email_hub' | 'voice_calls' | 'ai_autonomo';
     
-    interface OnboardingStatus {
+    interface OnboardingStatusEntry {
       stepId: OnboardingStepId;
       status: OnboardingStepStatus;
     }
@@ -484,27 +544,39 @@ router.get('/status/for-ai', authenticateToken, requireRole('consultant'), async
       return 'pending';
     };
     
-    const statuses: OnboardingStatus[] = [
-      { stepId: 'vertex_ai', status: getStepStatus(onboardingStatus?.vertexAiStatus, !!vertexSettings?.projectId || !!consultant?.useSuperadminVertex) },
-      { stepId: 'smtp', status: getStepStatus(onboardingStatus?.smtpStatus, !!smtpSettings?.smtpHost) },
-      { stepId: 'google_calendar', status: getStepStatus(onboardingStatus?.googleCalendarStatus, hasCalendar) },
+    const statuses: OnboardingStatusEntry[] = [
+      // Priority 1 - Critical
       { stepId: 'twilio', status: hasTwilio ? 'verified' : 'pending' },
-      { stepId: 'instagram', status: hasInstagram ? 'verified' : 'pending' },
+      { stepId: 'smtp', status: getStepStatus(onboardingStatus?.smtpStatus, !!smtpSettings?.smtpHost) },
+      { stepId: 'vertex_ai', status: getStepStatus(onboardingStatus?.vertexAiStatus, !!vertexSettings?.projectId || !!consultant?.useSuperadminVertex) },
+      { stepId: 'lead_import', status: getStepStatus(onboardingStatus?.leadImportStatus, hasLeadImport) },
+      // Priority 2 - High
       { stepId: 'whatsapp_template', status: hasApprovedTemplate ? 'verified' : 'pending' },
-      { stepId: 'first_campaign', status: hasCampaign ? 'verified' : 'pending' },
       { stepId: 'agent_inbound', status: (agentTypeMap.get('reactive_lead') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'first_campaign', status: hasCampaign ? 'verified' : 'pending' },
       { stepId: 'agent_outbound', status: (agentTypeMap.get('proactive_setter') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'stripe_connect', status: getStripeStatus() },
+      { stepId: 'knowledge_base', status: documentsCount > 0 ? 'verified' : 'pending' },
+      { stepId: 'google_calendar', status: getStepStatus(onboardingStatus?.googleCalendarStatus, hasConsultantCalendar) },
+      { stepId: 'google_calendar_agents', status: hasAgentCalendar ? 'verified' : 'pending' },
+      { stepId: 'voice_calls', status: hasVoiceCall ? 'verified' : 'pending' },
+      // Priority 3 - Medium
       { stepId: 'agent_consultative', status: (agentTypeMap.get('informative_advisor') || 0) > 0 ? 'verified' : 'pending' },
+      { stepId: 'email_journey', status: hasEmailJourney ? 'verified' : 'pending' },
+      { stepId: 'nurturing_emails', status: hasNurturingEmails ? 'verified' : 'pending' },
+      // Priority 4 - Normal
+      { stepId: 'ai_autonomo', status: hasAiTask ? 'verified' : 'pending' },
+      { stepId: 'summary_email', status: hasSummaryEmail ? 'verified' : 'pending' },
+      { stepId: 'email_hub', status: hasEmailHub ? 'verified' : 'pending' },
       { stepId: 'agent_public_link', status: hasPublicLink ? 'verified' : 'pending' },
+      { stepId: 'instagram', status: hasInstagram ? 'verified' : 'pending' },
+      // Priority 5 - Optional
+      { stepId: 'turn_config', status: getStepStatus(onboardingStatus?.videoMeetingStatus, !!turnConfig?.usernameEncrypted) },
       { stepId: 'agent_ideas', status: hasIdeas ? 'verified' : 'pending' },
       { stepId: 'more_templates', status: hasMoreTemplates ? 'verified' : 'pending' },
       { stepId: 'first_course', status: hasCourse ? 'verified' : 'pending' },
       { stepId: 'first_exercise', status: hasExercise ? 'verified' : 'pending' },
-      { stepId: 'knowledge_base', status: documentsCount > 0 ? 'verified' : 'pending' },
-      { stepId: 'summary_email', status: hasSummaryEmail ? 'verified' : 'pending' },
-      { stepId: 'turn_config', status: getStepStatus(onboardingStatus?.videoMeetingStatus, !!turnConfig?.usernameEncrypted) },
-      { stepId: 'lead_import', status: getStepStatus(onboardingStatus?.leadImportStatus, hasLeadImport) },
-      { stepId: 'stripe_connect', status: getStripeStatus() },
+      { stepId: 'whatsapp_ai', status: hasWhatsappAi ? 'verified' : 'pending' },
     ];
     
     res.json({

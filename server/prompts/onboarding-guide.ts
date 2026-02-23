@@ -1,32 +1,45 @@
 import { consultantGuides } from "../consultant-guides";
 
 export type OnboardingStepId = 
-  | 'vertex_ai' 
-  | 'smtp' 
-  | 'google_calendar' 
-  | 'twilio' 
-  | 'instagram'
-  | 'whatsapp_template' 
-  | 'first_campaign'
+  // Priority 1 - Critical
+  | 'twilio'
+  | 'smtp'
+  | 'vertex_ai'
+  | 'lead_import'
+  // Priority 2 - High
+  | 'whatsapp_template'
   | 'agent_inbound'
+  | 'first_campaign'
   | 'agent_outbound'
+  | 'stripe_connect'
+  | 'knowledge_base'
+  | 'google_calendar'
+  | 'google_calendar_agents'
+  | 'voice_calls'
+  // Priority 3 - Medium
   | 'agent_consultative'
+  | 'email_journey'
+  | 'nurturing_emails'
+  // Priority 4 - Normal
+  | 'ai_autonomo'
+  | 'summary_email'
+  | 'email_hub'
   | 'agent_public_link'
+  | 'instagram'
+  // Priority 5 - Optional
+  | 'turn_config'
   | 'agent_ideas'
   | 'more_templates'
   | 'first_course'
   | 'first_exercise'
-  | 'knowledge_base'
-  | 'summary_email'
-  | 'turn_config'
-  | 'lead_import'
-  | 'stripe_connect';
+  | 'whatsapp_ai';
 
 export type OnboardingStepStatus = 'pending' | 'configured' | 'verified' | 'error' | 'skipped';
 
 export interface OnboardingStepInfo {
   id: OnboardingStepId;
-  phase: 1 | 2 | 3 | 4;
+  priority: 1 | 2 | 3 | 4 | 5;
+  section: string;
   title: string;
   content: string;
   isRequired: boolean;
@@ -36,200 +49,408 @@ export interface OnboardingStepInfo {
 }
 
 export const onboardingSteps: OnboardingStepInfo[] = [
+  // ─── PRIORITY 1 — CRITICA ────────────────────────────────────────────────
   {
-    id: 'vertex_ai',
-    phase: 1,
-    title: '1.1 Vertex AI (Obbligatorio)',
-    content: "Configura l'intelligenza artificiale che alimenta l'assistente AI, la generazione email e l'analisi clienti. Vai su Impostazioni → API Esterne → Google Vertex AI.",
+    id: 'twilio',
+    priority: 1,
+    section: 'Acquisisci Clienti',
+    title: 'Configurazione Twilio + WhatsApp',
+    content: "Collega il tuo numero WhatsApp Business tramite Twilio. Senza questo, nessun agente AI può inviare o ricevere messaggi WhatsApp.",
     isRequired: true,
-    actionHref: '/consultant/api-keys-unified?tab=ai',
-    tips: ['Richiede un progetto Google Cloud con Vertex AI abilitato', 'Scarica il file JSON delle credenziali service account'],
-    warnings: ["Senza Vertex AI, l'assistente AI e molte funzionalità non funzioneranno"]
+    actionHref: '/consultant/api-keys-unified?tab=twilio',
+    tips: [
+      'Crea account su twilio.com e richiedi WhatsApp Business API',
+      'Inserisci Account SID, Auth Token e numero WhatsApp',
+      "L'approvazione Meta può richiedere 1-3 giorni lavorativi"
+    ],
+    warnings: ['Senza Twilio nessun agente WhatsApp può funzionare']
   },
   {
     id: 'smtp',
-    phase: 1,
-    title: '1.2 SMTP Email (Obbligatorio)',
-    content: 'Configura il server email per inviare email ai clienti, email di follow-up dopo le consulenze e il journey email automatico.',
+    priority: 1,
+    section: 'Integrazioni & Sistema',
+    title: 'Email SMTP',
+    content: "Configura il server SMTP per inviare email automatiche ai clienti, email di follow-up dopo le consulenze, e il journey email automatico.",
     isRequired: true,
     actionHref: '/consultant/api-keys-unified?tab=email',
-    tips: ['Puoi usare Gmail, Outlook, o qualsiasi provider SMTP', "Per Gmail: abilita 'App Password' nelle impostazioni sicurezza Google"],
+    tips: [
+      'Gmail: smtp.gmail.com porta 587, abilita App Password',
+      'Outlook: smtp.office365.com porta 587',
+      'Qualsiasi provider SMTP personalizzato funziona'
+    ],
     warnings: ['Senza SMTP non puoi inviare email ai clienti']
   },
   {
-    id: 'google_calendar',
-    phase: 1,
-    title: '1.3 Google Calendar (Opzionale)',
-    content: 'Collega Google Calendar ai tuoi agenti WhatsApp per sincronizzare automaticamente gli appuntamenti prenotati.',
+    id: 'vertex_ai',
+    priority: 1,
+    section: 'Integrazioni & Sistema',
+    title: 'AI Engine (Gemini)',
+    content: "L'AI è già attiva sul tuo account tramite Google AI Studio pre-configurato dal SuperAdmin. Puoi aggiungere una tua chiave Gemini personale per avere un account AI dedicato con limiti separati.",
     isRequired: false,
-    actionHref: '/consultant/whatsapp',
-    tips: ['Ogni agente può avere il proprio Google Calendar', "Collega il calendario dal pannello laterale dell'agente"]
-  },
-  {
-    id: 'twilio',
-    phase: 1,
-    title: '1.4 Configurazione Twilio + WhatsApp (Obbligatorio per WhatsApp)',
-    content: "Configura Twilio per abilitare l'invio e ricezione di messaggi WhatsApp. Necessario per usare gli agenti AI e le campagne marketing.",
-    isRequired: true,
-    actionHref: '/consultant/api-keys-unified?tab=twilio',
-    tips: ['Crea account su twilio.com', 'Richiedi WhatsApp Business API', 'Inserisci Account SID, Auth Token e numero WhatsApp'],
-    warnings: ['Processo di approvazione Meta può richiedere alcuni giorni', 'Senza Twilio non puoi usare WhatsApp']
-  },
-  {
-    id: 'instagram',
-    phase: 1,
-    title: '1.5 Instagram Direct Messaging (Opzionale)',
-    content: "Collega il tuo account Instagram Business per gestire i DM con AI. L'agente può rispondere automaticamente ai messaggi diretti.",
-    isRequired: false,
-    actionHref: '/consultant/whatsapp',
-    tips: ['Richiede un account Instagram Business collegato a una pagina Facebook', 'Configurazione separata per ogni agente WhatsApp'],
-  },
-  {
-    id: 'whatsapp_template',
-    phase: 1,
-    title: '1.5 Template WhatsApp Approvato (ESSENZIALE)',
-    content: 'Crea e fai approvare almeno un template WhatsApp da Twilio. I template sono OBBLIGATORI per inviare messaggi proattivi ai lead.',
-    isRequired: true,
-    actionHref: '/consultant/whatsapp-templates',
-    tips: ["Crea un template con categoria 'Primo Contatto' o 'Setter'", 'Usa variabili come {{1}} per personalizzare i messaggi', "L'approvazione Twilio richiede da pochi minuti a 24 ore"],
-    warnings: ['SENZA TEMPLATE APPROVATO non puoi inviare messaggi proattivi', 'I template rifiutati devono essere corretti e ri-sottomessi']
-  },
-  {
-    id: 'first_campaign',
-    phase: 1,
-    title: '1.6 Crea la tua Prima Campagna (ESSENZIALE)',
-    content: 'Configura la tua prima campagna marketing usando il wizard a 3 step. La campagna collega: Fonti Lead → Template WhatsApp → Agente AI.',
-    isRequired: true,
-    actionHref: '/consultant/campaigns',
-    tips: ['Scegli un nome descrittivo per la campagna', "Seleziona l'agente WhatsApp che gestirà le conversazioni", 'Scegli il template approvato per il primo messaggio'],
-    warnings: ['Richiede almeno un template approvato', "L'agente deve avere Twilio configurato"]
-  },
-  {
-    id: 'stripe_connect',
-    phase: 1,
-    title: '1.8 Stripe Connect (Opzionale)',
-    content: 'Collega il tuo account Stripe per ricevere pagamenti dai clienti direttamente sulla piattaforma.',
-    isRequired: false,
-    actionHref: '/consultant/licenze',
-    tips: ['Richiede un account Stripe verificato', 'I pagamenti vengono trasferiti automaticamente sul tuo conto'],
-  },
-  {
-    id: 'agent_inbound',
-    phase: 2,
-    title: '2.1 Agente Inbound',
-    content: "L'agente Inbound risponde automaticamente ai lead che ti contattano. Gestisce domande frequenti, qualifica i lead e può prenotare appuntamenti.",
-    isRequired: false,
-    actionHref: '/consultant/whatsapp/agent/new?type=inbound',
-    tips: ['Ideale per rispondere 24/7 senza intervento manuale', 'Personalizza il tono e le risposte'],
-    warnings: ['Richiede Twilio configurato']
-  },
-  {
-    id: 'agent_outbound',
-    phase: 2,
-    title: '2.2 Agente Outbound',
-    content: "L'agente Outbound contatta proattivamente i lead delle tue campagne. Segue script personalizzati per qualificare e convertire.",
-    isRequired: false,
-    actionHref: '/consultant/whatsapp/agent/new?type=outbound',
-    tips: ['Usalo con le campagne marketing', "Definisci 'uncini' per catturare l'attenzione"]
-  },
-  {
-    id: 'agent_consultative',
-    phase: 2,
-    title: '2.3 Agente Consulenziale',
-    content: "L'agente Consultivo assiste durante le sessioni con i clienti. Può rispondere a domande tecniche usando la knowledge base.",
-    isRequired: false,
-    actionHref: '/consultant/whatsapp/agent/new?type=consultative',
-    tips: ['Collega alla Knowledge Base per risposte accurate', 'Utile per supporto post-consulenza']
-  },
-  {
-    id: 'agent_public_link',
-    phase: 2,
-    title: '2.4 Link Pubblico Agente',
-    content: 'Una volta creato un agente, genera un link pubblico che i potenziali clienti possono usare per iniziare una conversazione con il tuo bot.',
-    isRequired: false,
-    actionHref: '/consultant/whatsapp-agents-chat',
-    tips: ['Il link può essere condiviso su social, sito web, biglietti da visita', 'Il lead viene automaticamente aggiunto alla pipeline']
-  },
-  {
-    id: 'agent_ideas',
-    phase: 2,
-    title: '2.5 Idee AI Generate',
-    content: "L'AI può generare idee creative per i tuoi agenti basandosi sul tuo settore e target.",
-    isRequired: false,
-    actionHref: '/consultant/whatsapp?tab=ideas',
-    tips: ["Descrivi il tuo target e l'AI suggerirà contenuti", 'Puoi modificare e personalizzare i suggerimenti']
-  },
-  {
-    id: 'more_templates',
-    phase: 2,
-    title: '2.6 Altri Template WhatsApp',
-    content: 'Crea template aggiuntivi per follow-up, promemoria appuntamenti, e altre comunicazioni automatiche.',
-    isRequired: false,
-    actionHref: '/consultant/whatsapp-templates',
-    tips: ['Usa categorie diverse: Follow-up, Appuntamenti, Generale', 'Ogni template deve essere approvato da Twilio']
-  },
-  {
-    id: 'first_course',
-    phase: 3,
-    title: '3.1 Primo Corso',
-    content: 'Crea il tuo primo corso formativo per i clienti. Struttura in moduli e lezioni con video, testo e quiz.',
-    isRequired: false,
-    actionHref: '/consultant/university',
-    tips: ['I clienti possono seguire i corsi dalla loro area', 'Traccia i progressi e il completamento']
-  },
-  {
-    id: 'first_exercise',
-    phase: 3,
-    title: '3.2 Primo Esercizio',
-    content: 'Crea esercizi pratici che i clienti devono completare. Ricevi notifiche quando vengono consegnati per la revisione.',
-    isRequired: false,
-    actionHref: '/consultant/exercise-templates',
-    tips: ['Gli esercizi aiutano i clienti ad applicare quanto appreso', 'Puoi impostare scadenze e priorità']
-  },
-  {
-    id: 'knowledge_base',
-    phase: 3,
-    title: '3.3 Base di Conoscenza',
-    content: "Carica documenti, PDF, e contenuti che l'AI userà per rispondere alle domande. Più informazioni carichi, più accurate saranno le risposte.",
-    isRequired: false,
-    actionHref: '/consultant/knowledge-documents',
-    tips: ['Carica PDF, documenti Word, o testo', "L'AI indicizza automaticamente i contenuti", "Usato sia dall'assistente che dagli agenti WhatsApp"]
-  },
-  {
-    id: 'summary_email',
-    phase: 4,
-    title: '4.1 Prima Email Riassuntiva',
-    content: "Dopo una consulenza, genera automaticamente un'email di riepilogo con i punti chiave discussi e i prossimi passi.",
-    isRequired: false,
-    actionHref: '/consultant/appointments',
-    tips: ["L'AI genera la bozza basandosi sulle note della consulenza", 'Puoi modificare prima di inviare']
-  },
-  {
-    id: 'turn_config',
-    phase: 4,
-    title: '4.2 Video Meeting (TURN)',
-    content: 'Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti.',
-    isRequired: false,
-    actionHref: '/consultant/api-keys-unified?tab=video-meeting',
-    tips: ['I link Meet vengono generati automaticamente per le consulenze', 'Integrazione con Fathom per trascrizioni automatiche']
+    actionHref: '/consultant/api-keys-unified?tab=ai',
+    tips: [
+      "L'AI funziona già senza configurazione aggiuntiva",
+      'Aggiungi chiave personale solo se vuoi un limite di utilizzo dedicato',
+      'Ottieni la chiave su aistudio.google.com → Crea chiave API'
+    ],
   },
   {
     id: 'lead_import',
-    phase: 4,
-    title: '4.3 Import Lead Automatico',
-    content: 'Configura API esterne per importare lead automaticamente da altre piattaforme nel sistema.',
-    isRequired: false,
+    priority: 1,
+    section: 'Acquisisci Clienti',
+    title: 'Import Lead Automatico',
+    content: "Configura il webhook per ricevere lead automaticamente da strumenti di marketing come Zapier, Make.com, n8n, Facebook Ads e Google Ads.",
+    isRequired: true,
     actionHref: '/consultant/api-keys-unified?tab=lead-import',
-    tips: ['Connetti fonti come Facebook Ads, Google Ads, landing page']
-  }
+    tips: [
+      'Il tuo webhook URL personale è nella pagina di configurazione',
+      'Compatibile con Zapier, Make.com, n8n e qualsiasi piattaforma con HTTP webhook',
+      'I lead ricevuti entrano automaticamente nella pipeline e vengono contattati dagli agenti'
+    ],
+  },
+
+  // ─── PRIORITY 2 — ALTA ───────────────────────────────────────────────────
+  {
+    id: 'whatsapp_template',
+    priority: 2,
+    section: 'Acquisisci Clienti',
+    title: 'Template WhatsApp Approvato',
+    content: "Crea e fai approvare da Twilio almeno un template WhatsApp. I template sono obbligatori per inviare il primo messaggio proattivo ai lead — senza di essi non puoi avviare conversazioni.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp-templates',
+    tips: [
+      "Crea template con categoria 'Primo Contatto' o 'Setter'",
+      "Usa variabili come {{1}} per personalizzare il nome del lead",
+      "L'approvazione Twilio richiede da pochi minuti a 24 ore"
+    ],
+    warnings: ['Senza template approvato non puoi inviare messaggi proattivi ai lead']
+  },
+  {
+    id: 'agent_inbound',
+    priority: 2,
+    section: 'Acquisisci Clienti',
+    title: 'Agente Inbound',
+    content: "L'agente Inbound risponde automaticamente 24/7 ai lead che ti contattano su WhatsApp. Gestisce domande frequenti, qualifica i lead e può prenotare appuntamenti nel calendario.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp',
+    tips: [
+      'Ideale per gestire i lead in entrata senza intervento manuale',
+      'Personalizza il nome, la personalità e il tono dell\'agente',
+      'Collegalo al tuo Google Calendar per prenotazioni automatiche'
+    ],
+    warnings: ['Richiede Twilio configurato']
+  },
+  {
+    id: 'first_campaign',
+    priority: 2,
+    section: 'Acquisisci Clienti',
+    title: 'Prima Campagna Marketing',
+    content: "Configura la tua prima campagna marketing collegando fonti lead → template WhatsApp → agente AI. Ogni lead importato dal webhook verrà contattato automaticamente con il template scelto.",
+    isRequired: false,
+    actionHref: '/consultant/campaigns',
+    tips: [
+      'Scegli un nome descrittivo per la campagna',
+      'Seleziona il template approvato da usare per il primo messaggio',
+      'Assegna l\'agente outbound che gestirà le conversazioni'
+    ],
+    warnings: ['Richiede almeno un template WhatsApp approvato e un agente configurato']
+  },
+  {
+    id: 'agent_outbound',
+    priority: 2,
+    section: 'Chiudi e Incassa',
+    title: 'Agente Outbound',
+    content: "L'agente Outbound contatta proattivamente i lead delle campagne. Segue script personalizzati per qualificare i lead e convertirli in appuntamenti o vendite.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp',
+    tips: [
+      'Usalo insieme alle campagne marketing',
+      "Definisci 'uncini' efficaci per catturare l'attenzione del lead",
+      "L'agente usa il template approvato per il primo contatto"
+    ],
+  },
+  {
+    id: 'stripe_connect',
+    priority: 2,
+    section: 'Chiudi e Incassa',
+    title: 'Stripe — Pagamenti',
+    content: "Collega il tuo account Stripe per ricevere pagamenti dagli abbonamenti dei clienti direttamente sulla piattaforma, con revenue sharing automatico.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp?tab=licenses',
+    tips: [
+      'Completa l\'onboarding Stripe per ricevere pagamenti',
+      'Gestisci le licenze dei tuoi clienti dalla sezione Licenze',
+      'Traccia i guadagni dalla dashboard'
+    ],
+  },
+  {
+    id: 'knowledge_base',
+    priority: 2,
+    section: 'Contenuti & Autorità',
+    title: 'Base di Conoscenza',
+    content: "Carica documenti, PDF, e contenuti che l'AI userà per rispondere alle domande dei clienti. Più materiale carichi, più accurate saranno le risposte degli agenti.",
+    isRequired: false,
+    actionHref: '/consultant/knowledge-documents',
+    tips: [
+      'Carica PDF, documenti Word, presentazioni, testo libero',
+      "L'AI indicizza automaticamente e usa i contenuti per rispondere",
+      "Usato sia dall'AI Assistant che dagli agenti WhatsApp"
+    ],
+  },
+  {
+    id: 'google_calendar',
+    priority: 2,
+    section: 'Integrazioni & Sistema',
+    title: 'Google Calendar Consulente',
+    content: "Collega il tuo Google Calendar personale per sincronizzare automaticamente gli appuntamenti con i clienti — prenotazioni, consulenze e follow-up.",
+    isRequired: false,
+    actionHref: '/consultant/appointments',
+    tips: [
+      'Clicca "Connetti Google Calendar" nella pagina appuntamenti',
+      'Autorizza il tuo account Google personale',
+      'Gli appuntamenti si sincronizzano automaticamente in entrambe le direzioni'
+    ],
+  },
+  {
+    id: 'google_calendar_agents',
+    priority: 2,
+    section: 'Integrazioni & Sistema',
+    title: 'Google Calendar Agenti WhatsApp',
+    content: "Collega Google Calendar a ciascun agente WhatsApp per la prenotazione automatica degli appuntamenti durante le conversazioni. Ogni agente può usare un account Google diverso.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp',
+    tips: [
+      'Vai su Agenti WhatsApp → seleziona un agente → sezione Google Calendar',
+      'Ogni agente può avere il proprio account Google per calendari separati',
+      'Permette ai lead di prenotare appuntamenti direttamente via WhatsApp'
+    ],
+  },
+  {
+    id: 'voice_calls',
+    priority: 2,
+    section: 'AI Operativa',
+    title: 'Chiamate Voice (Alessia AI)',
+    content: "Completa almeno una chiamata vocale con il sistema Alessia AI Phone. La voce AI chiama i lead e conduce conversazioni di qualificazione o vendita in autonomia.",
+    isRequired: false,
+    actionHref: '/consultant/ai-phone',
+    tips: [
+      'Configura prima il sistema Voice nelle impostazioni',
+      'Alessia chiama i lead e gestisce la conversazione con AI',
+      "Richiede un numero telefonico Twilio con capacità voice"
+    ],
+  },
+
+  // ─── PRIORITY 3 — MEDIA ──────────────────────────────────────────────────
+  {
+    id: 'agent_consultative',
+    priority: 3,
+    section: 'Chiudi e Incassa',
+    title: 'Agente Consulenziale',
+    content: "L'agente Consulenziale assiste durante le sessioni con i clienti e risponde a domande tecniche usando la Knowledge Base. Utile per il supporto post-consulenza.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp',
+    tips: [
+      'Collegalo alla Knowledge Base per risposte accurate e personalizzate',
+      'Utile per supporto post-consulenza e domande frequenti dei clienti attivi',
+      'Può rispondere in autonomia senza intervenire manualmente'
+    ],
+  },
+  {
+    id: 'email_journey',
+    priority: 3,
+    section: 'AI Operativa',
+    title: 'Email Journey',
+    content: "Configura l'automazione email per i tuoi clienti. Scegli tra modalità bozza (approvazione manuale prima dell'invio) o invio automatico. Personalizza i 31 template con l'AI.",
+    isRequired: false,
+    actionHref: '/consultant/ai-config?tab=ai-email',
+    tips: [
+      "Attiva 'Automation Generale' per abilitare l'invio automatico",
+      'Imposta la frequenza in giorni tra un\'email e l\'altra',
+      "Modifica i 31 template con l'AI per adattarli al tuo brand"
+    ],
+    warnings: ['Richiede SMTP configurato']
+  },
+  {
+    id: 'nurturing_emails',
+    priority: 3,
+    section: 'AI Operativa',
+    title: 'Email Nurturing 365',
+    content: "Genera 365 email automatiche per nutrire i tuoi lead nel tempo. L'AI crea contenuti personalizzati basati sul tuo brand, settore e stile comunicativo.",
+    isRequired: false,
+    actionHref: '/consultant/ai-config?tab=lead-nurturing',
+    tips: [
+      'Genera tutte le 365 email con un singolo click',
+      'Personalizza topic, tono e stile del brand prima della generazione',
+      'Le email partono automaticamente ogni giorno ai lead nella pipeline'
+    ],
+    warnings: ['Richiede SMTP configurato']
+  },
+
+  // ─── PRIORITY 4 — NORMALE ────────────────────────────────────────────────
+  {
+    id: 'ai_autonomo',
+    priority: 4,
+    section: 'AI Operativa',
+    title: 'AI Autonomo',
+    content: "Attiva il sistema AI Autonomo e completa almeno un task automatico generato dall'AI. Il sistema analizza i tuoi clienti e genera task di follow-up, analisi e azioni proattive.",
+    isRequired: false,
+    actionHref: '/consultant/ai-autonomy',
+    tips: [
+      "L'AI genera task automatici basati sul contesto dei tuoi clienti",
+      'Puoi eseguire i task manualmente o lasciarli all\'AI',
+      'Inizia con task semplici come analisi lead o promemoria follow-up'
+    ],
+  },
+  {
+    id: 'summary_email',
+    priority: 4,
+    section: 'Chiudi e Incassa',
+    title: 'Prima Email Riassuntiva',
+    content: "Dopo una consulenza, genera automaticamente un'email di riepilogo con i punti chiave discussi, le decisioni prese e i prossimi passi. Inviala al cliente in pochi secondi.",
+    isRequired: false,
+    actionHref: '/consultant/appointments',
+    tips: [
+      "L'AI genera la bozza basandosi sulle note e la trascrizione della consulenza",
+      'Puoi modificare la bozza prima di inviarla',
+      'Completa una consulenza e usa il pulsante "Genera Email Riassuntiva"'
+    ],
+  },
+  {
+    id: 'email_hub',
+    priority: 4,
+    section: 'AI Operativa',
+    title: 'Email Hub',
+    content: "Collega il tuo account email (IMAP/SMTP) per gestire inbox, invii automatici e risposte AI in un hub centralizzato. L'AI può rispondere alle email usando la Knowledge Base.",
+    isRequired: false,
+    actionHref: '/consultant/email-hub',
+    tips: [
+      'Supporta IMAP per ricevere e sincronizzare le email in entrata',
+      "L'AI può rispondere automaticamente usando la Knowledge Base",
+      'Sincronizzazione automatica in background'
+    ],
+  },
+  {
+    id: 'agent_public_link',
+    priority: 4,
+    section: 'Acquisisci Clienti',
+    title: 'Link Pubblico Agente',
+    content: "Genera un link pubblico per i tuoi agenti WhatsApp che i potenziali clienti possono usare per iniziare una conversazione con il bot. Condividilo su social, sito web e biglietti da visita.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp-agents-chat',
+    tips: [
+      'Il link avvia automaticamente una chat WhatsApp con il tuo agente',
+      'Il lead viene automaticamente aggiunto alla pipeline quando scrive',
+      'Puoi creare link separati per diversi agenti o campagne'
+    ],
+  },
+  {
+    id: 'instagram',
+    priority: 4,
+    section: 'Acquisisci Clienti',
+    title: 'Instagram Direct Messaging',
+    content: "Collega il tuo account Instagram Business per ricevere e rispondere ai messaggi diretti con l'AI. Richiede una pagina Facebook collegata a un account Instagram Business.",
+    isRequired: false,
+    actionHref: '/consultant/api-keys-unified?tab=instagram',
+    tips: [
+      'Richiede account Instagram Business collegato a pagina Facebook',
+      "L'AI risponde automaticamente ai DM con il tuo tono e stile",
+      'Configura tramite Meta Business Suite'
+    ],
+  },
+
+  // ─── PRIORITY 5 — OPZIONALE ──────────────────────────────────────────────
+  {
+    id: 'turn_config',
+    priority: 5,
+    section: 'Chiudi e Incassa',
+    title: 'Video Meeting (TURN)',
+    content: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti. I link Meet vengono generati automaticamente per le consulenze programmate.",
+    isRequired: false,
+    actionHref: '/consultant/api-keys-unified?tab=video-meeting',
+    tips: [
+      'Crea account su metered.ca e inserisci username e API key',
+      'I link Meet vengono generati automaticamente per ogni consulenza',
+      'Integrazione con Fathom per trascrizioni automatiche delle videochiamate'
+    ],
+  },
+  {
+    id: 'agent_ideas',
+    priority: 5,
+    section: 'Contenuti & Autorità',
+    title: 'Idee AI Generate',
+    content: "Genera idee creative per i tuoi agenti WhatsApp usando l'intelligenza artificiale. Descrivi il tuo settore e target, e l'AI suggerirà script, messaggi e strategie.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp?tab=ideas',
+    tips: [
+      "Descrivi il tuo target e l'AI suggerirà contenuti specifici",
+      'Puoi modificare e personalizzare ogni suggerimento prima di usarlo',
+      'Utile per creare varianti di messaggi per test A/B'
+    ],
+  },
+  {
+    id: 'more_templates',
+    priority: 5,
+    section: 'Contenuti & Autorità',
+    title: 'Altri Template WhatsApp',
+    content: "Crea template aggiuntivi per follow-up, promemoria appuntamenti, e altre comunicazioni automatiche. Ogni template deve essere approvato da Twilio prima di poter essere usato.",
+    isRequired: false,
+    actionHref: '/consultant/whatsapp-templates',
+    tips: [
+      'Usa categorie diverse: Follow-up, Appuntamenti, Generale',
+      'Crea template per ogni fase del customer journey',
+      "L'approvazione Twilio richiede da pochi minuti a 24 ore"
+    ],
+  },
+  {
+    id: 'first_course',
+    priority: 5,
+    section: 'Contenuti & Autorità',
+    title: 'Primo Corso',
+    content: "Crea il tuo primo corso formativo per i clienti. Struttura il percorso in anni, trimestri, moduli e lezioni con video, testo e quiz.",
+    isRequired: false,
+    actionHref: '/consultant/university',
+    tips: [
+      'I clienti seguono i corsi dalla loro area personale',
+      'Traccia i progressi e il completamento di ogni lezione',
+      'Puoi assegnare corsi specifici a clienti specifici'
+    ],
+  },
+  {
+    id: 'first_exercise',
+    priority: 5,
+    section: 'Contenuti & Autorità',
+    title: 'Primo Esercizio',
+    content: "Crea esercizi pratici che i clienti devono completare e consegnare. Ricevi notifiche quando vengono consegnati per la revisione e fornisci feedback.",
+    isRequired: false,
+    actionHref: '/consultant/exercise-templates',
+    tips: [
+      'Gli esercizi aiutano i clienti ad applicare quanto appreso nelle consulenze',
+      'Puoi impostare scadenze e priorità',
+      'Ricevi notifiche push quando un cliente consegna un esercizio'
+    ],
+  },
+  {
+    id: 'whatsapp_ai',
+    priority: 5,
+    section: 'Integrazioni & Sistema',
+    title: 'Chiavi AI Personali (Agenti)',
+    content: "Aggiungi chiavi API Gemini personali per gli agenti WhatsApp. Permette agli agenti di usare un account AI separato con limiti dedicati, indipendente dall'account principale.",
+    isRequired: false,
+    actionHref: '/consultant/api-keys-unified?tab=ai',
+    tips: [
+      'Utile se gli agenti WhatsApp fanno molte conversazioni e vuoi separare i limiti AI',
+      'Aggiungi fino a 10 chiavi — il sistema le usa in rotazione automatica',
+      'Ottieni chiavi su aistudio.google.com → Crea chiave API'
+    ],
+  },
 ];
 
 export function getOnboardingStepById(id: OnboardingStepId): OnboardingStepInfo | undefined {
   return onboardingSteps.find(step => step.id === id);
 }
 
-export function getOnboardingStepsByPhase(phase: 1 | 2 | 3 | 4): OnboardingStepInfo[] {
-  return onboardingSteps.filter(step => step.phase === phase);
+export function getOnboardingStepsByPriority(priority: 1 | 2 | 3 | 4 | 5): OnboardingStepInfo[] {
+  return onboardingSteps.filter(step => step.priority === priority);
 }
 
 export function getRequiredSteps(): OnboardingStepInfo[] {
@@ -251,87 +472,110 @@ export function formatOnboardingGuideForPrompt(statuses?: OnboardingStatus[]): s
     error: '🔴',
     skipped: '⏭️'
   };
-  
+
+  const priorityLabels: Record<number, string> = {
+    1: 'CRITICA — senza questi il sistema non funziona',
+    2: 'ALTA — sblocca le funzionalità core di acquisizione e vendita',
+    3: 'MEDIA — automazione email e agenti avanzati',
+    4: 'NORMALE — canali aggiuntivi e features avanzate',
+    5: 'OPZIONALE — contenuti, ottimizzazioni e personalizzazioni',
+  };
+
   const lines: string[] = [
     '# MODALITÀ ONBOARDING ATTIVA',
     '',
-    '⚠️ ISTRUZIONE PRIORITARIA: Sei l\'Assistente Onboarding. Aiuti a configurare la piattaforma.',
+    '⚠️ ISTRUZIONE PRIORITARIA: Sei l\'Assistente Onboarding. Il tuo unico obiettivo è aiutare il consulente a configurare la piattaforma step per step.',
     '',
     '## STILE DI COMUNICAZIONE',
-    '- Risposte BREVI e SEMPLICI (max 3-4 frasi per punto)',
-    '- NO liste lunghe, NO spiegazioni dettagliate non richieste',
-    '- Usa un tono amichevole e diretto, come un collega',
-    '- Indica UN solo passo alla volta, non tutti insieme',
-    '- Se l\'utente chiede "cosa devo fare", indica SOLO il prossimo step da completare',
+    '- Risposte BREVI e PRATICHE (max 3-4 frasi per punto)',
+    '- Indica UN solo passo alla volta — mai tutto insieme',
+    '- Se l\'utente chiede "cosa devo fare", indica SOLO il prossimo step pending più importante',
+    '- Usa tono amichevole e diretto, come un collega esperto',
     '- Evita emoji eccessive (max 1-2 per messaggio)',
     '',
     '## ESEMPIO DI RISPOSTA IDEALE',
-    'Utente: "non so cosa devo fare"',
-    'Risposta: "Iniziamo dalla cosa più importante: configurare l\'AI. Vai in Impostazioni → API Esterne → Vertex AI e inserisci le tue credenziali Google Cloud. Ti serve aiuto per ottenerle?"',
+    'Utente: "da dove inizio?"',
+    'Risposta: "Inizia da Twilio — collega il tuo numero WhatsApp Business. Vai su Impostazioni → API Esterne → Twilio e inserisci Account SID, Auth Token e numero. Hai già un account Twilio?"',
     '',
-    '## Le 4 Fasi del Setup',
-    ''
+    '## IMPORTANTE: Vertex AI / AI Engine',
+    "L'AI è GIÀ ATTIVA sul sistema tramite Google AI Studio configurato dal SuperAdmin. NON dire mai al consulente che 'senza Vertex AI l'AI non funziona' — è falso. Vertex AI personale è un'opzione per chi vuole un account dedicato, non un requisito.",
+    '',
+    '## STATO ATTUALE DEL SETUP',
+    '',
   ];
-  
-  for (let phase = 1; phase <= 4; phase++) {
-    const phaseNames: Record<number, string> = {
-      1: 'INFRASTRUTTURA BASE + WHATSAPP',
-      2: 'AGENTI WHATSAPP AVANZATI',
-      3: 'CONTENUTI',
-      4: 'AVANZATO'
-    };
+
+  // Group steps by priority and show status
+  for (let priority = 1; priority <= 5; priority++) {
+    const prioritySteps = getOnboardingStepsByPriority(priority as 1 | 2 | 3 | 4 | 5);
+    const completedInGroup = prioritySteps.filter(step => statusMap.get(step.id) === 'verified').length;
     
-    const phaseIcons: Record<number, string> = {
-      1: '🔧',
-      2: '🤖',
-      3: '📚',
-      4: '⚡'
-    };
-    
-    lines.push(`### ${phaseIcons[phase]} FASE ${phase}: ${phaseNames[phase]}`);
+    lines.push(`### PRIORITÀ ${priority}: ${priorityLabels[priority]}`);
+    lines.push(`Completati: ${completedInGroup}/${prioritySteps.length}`);
     lines.push('');
     
-    const phaseSteps = getOnboardingStepsByPhase(phase as 1 | 2 | 3 | 4);
-    for (const step of phaseSteps) {
+    for (const step of prioritySteps) {
       const status = statusMap.get(step.id) || 'pending';
       const emoji = statusEmoji[status];
-      const requiredTag = step.isRequired ? ' [OBBLIGATORIO]' : '';
+      const requiredTag = step.isRequired ? ' [RICHIESTO]' : '';
       
-      lines.push(`${emoji} **${step.title}**${requiredTag}`);
+      lines.push(`${emoji} **${step.title}**${requiredTag} — *${step.section}*`);
       lines.push(`   ${step.content}`);
       
-      if (step.tips && step.tips.length > 0) {
-        lines.push(`   💡 Tips: ${step.tips.join(' | ')}`);
-      }
-      
-      if (step.warnings && step.warnings.length > 0) {
-        lines.push(`   ⚠️ Attenzione: ${step.warnings.join(' | ')}`);
-      }
-      
       if (step.actionHref) {
-        lines.push(`   🔗 Link: ${step.actionHref}`);
+        lines.push(`   🔗 ${step.actionHref}`);
+      }
+      
+      if (status === 'error') {
+        lines.push(`   ⚠️ ERRORE — aiuta il consulente a risolvere questo problema`);
       }
       
       lines.push('');
     }
   }
+
+  // Dynamic "next step" suggestion
+  lines.push('## PROSSIMO STEP CONSIGLIATO');
+  lines.push('');
   
-  lines.push('## Come Aiutare l\'Utente');
+  // Find first pending in priority order
+  let nextStep: OnboardingStepInfo | undefined;
+  let nextStepStatus: OnboardingStepStatus = 'pending';
+  
+  for (let priority = 1; priority <= 5; priority++) {
+    const prioritySteps = getOnboardingStepsByPriority(priority as 1 | 2 | 3 | 4 | 5);
+    const pendingInGroup = prioritySteps.filter(step => {
+      const s = statusMap.get(step.id) || 'pending';
+      return s !== 'verified' && s !== 'skipped';
+    });
+    
+    if (pendingInGroup.length > 0) {
+      nextStep = pendingInGroup[0];
+      nextStepStatus = statusMap.get(nextStep.id) || 'pending';
+      break;
+    }
+  }
+  
+  if (nextStep) {
+    const statusEmj = statusEmoji[nextStepStatus];
+    lines.push(`Il prossimo step da completare è: ${statusEmj} **${nextStep.title}** (Priorità ${nextStep.priority})`);
+    lines.push(`Sezione: ${nextStep.section}`);
+    lines.push(`Link diretto: ${nextStep.actionHref || 'vedi impostazioni'}`);
+    if (nextStep.tips && nextStep.tips.length > 0) {
+      lines.push(`Suggerimento: ${nextStep.tips[0]}`);
+    }
+  } else {
+    lines.push('🎉 Tutti gli step completati! Il sistema è completamente configurato.');
+  }
+  
   lines.push('');
-  lines.push('1. **Identifica lo stato attuale**: Guarda quali step sono ✅ completati e quali ⚪ da fare');
-  lines.push('2. **Suggerisci il prossimo passo**: Indica lo step successivo più importante');
-  lines.push('3. **Fornisci istruzioni dettagliate**: Spiega come completare ogni step');
-  lines.push('4. **Risolvi problemi**: Se uno step ha 🔴 errore, aiuta a risolverlo');
-  lines.push('5. **Usa i link**: Indica il percorso esatto per raggiungere la pagina di configurazione');
+  lines.push('## COME AIUTARE IL CONSULENTE');
   lines.push('');
-  lines.push('## Priorità');
-  lines.push('');
-  lines.push('Gli step OBBLIGATORI della Fase 1 devono essere completati per primi:');
-  lines.push('1. Vertex AI - senza questo l\'AI non funziona');
-  lines.push('2. SMTP - necessario per inviare email');
-  lines.push('3. Twilio + WhatsApp - necessario per gli agenti');
-  lines.push('4. Template WhatsApp approvato - necessario per messaggi proattivi');
-  lines.push('5. Prima Campagna - per iniziare a contattare lead');
+  lines.push('1. **Identifica lo stato**: Guarda quali step sono ✅ completati e ⚪ da fare');
+  lines.push('2. **Suggerisci il prossimo**: Indica SOLO il prossimo step più importante, non tutti');
+  lines.push('3. **Istruzioni pratiche**: Spiega esattamente dove cliccare e cosa inserire');
+  lines.push('4. **Risolvi errori**: Se uno step ha 🔴 errore, aiuta a identificare e risolvere il problema');
+  lines.push('5. **Usa i link**: Indica sempre il percorso esatto per raggiungere la pagina di configurazione');
+  lines.push('6. **Non esagerare**: Se il consulente chiede di uno step specifico, rispondi SOLO su quello');
   
   return lines.join('\n');
 }
