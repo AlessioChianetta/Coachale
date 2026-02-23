@@ -1952,7 +1952,13 @@ export default function ConsultantSetupWizard() {
     <div className="min-h-screen flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <Sidebar role="consultant" />
       
-      <main className="flex-1 overflow-hidden min-h-0">
+      <main
+        className="flex-1 overflow-hidden min-h-0"
+        style={{
+          paddingRight: isOnboardingMode ? "24rem" : "0",
+          transition: "padding-right 0.3s ease",
+        }}
+      >
         <div className="h-full flex flex-col min-h-0">
           {/* ── HEADER ── */}
           <motion.header
@@ -2168,71 +2174,15 @@ export default function ConsultantSetupWizard() {
                 </div>
               )}
             </div>
-            <AnimatePresence>
-              {isOnboardingMode && (
-                <motion.aside
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "24rem", opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  style={{ minWidth: 0, flexShrink: 0, height: "100%" }}
-                  className="border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
-                >
-                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-indigo-600" />
-                      <span className="font-semibold text-sm">Assistente Onboarding</span>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOnboardingMode(false)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {!chatStarted && (
-                    <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto max-h-72">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
-                        <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
-                      </div>
-                      {ONBOARDING_SUGGESTIONS.map((q, i) => (
-                        <button
-                          key={i}
-                          onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
-                          className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-hidden min-h-0">
-                    <ChatPanel
-                      key={chatKey}
-                      isOpen={true}
-                      onClose={() => setIsOnboardingMode(false)}
-                      mode="assistenza"
-                      setMode={() => {}}
-                      consultantType="finanziario"
-                      setConsultantType={() => {}}
-                      isConsultantMode={true}
-                      isOnboardingMode={true}
-                      embedded={true}
-                      onboardingStatuses={onboardingStatusesForAI?.data}
-                      autoMessage={pendingAutoMessage}
-                      onAutoMessageSent={() => setPendingAutoMessage(null)}
-                    />
-                  </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
             </div>
           )}
 
           {/* ── VISTA DETTAGLIO SEZIONE ── */}
           {currentSection && (
-          <div className={`flex-1 grid gap-0 overflow-hidden min-h-0 ${isOnboardingMode ? 'grid-cols-12' : 'grid-cols-12'}`}>
+          <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden min-h-0">
             {/* Sidebar sinistra sezione */}
             <aside
-              className={`${isOnboardingMode ? 'col-span-3' : 'col-span-4'} border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300`}
+              className="col-span-4 border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all duration-300"
               style={{ borderTop: `3px solid` }}
             >
               {/* Header sezione */}
@@ -2304,7 +2254,7 @@ export default function ConsultantSetupWizard() {
               </div>
             </aside>
 
-            <section className={`${isOnboardingMode ? 'col-span-5' : 'col-span-8'} overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300`}>
+            <section className="col-span-8 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50 transition-all duration-300">
               <div className="p-8">
                 <AnimatePresence mode="wait">
                   {activeStepData && (
@@ -3162,73 +3112,78 @@ export default function ConsultantSetupWizard() {
               </div>
             </section>
 
-            {/* Onboarding AI Assistant Panel */}
-            <AnimatePresence>
-              {isOnboardingMode && (
-                <motion.aside
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  style={{ height: "100%" }}
-                  className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
-                >
-                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-indigo-600" />
-                      <span className="font-semibold text-sm">Assistente Onboarding</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setIsOnboardingMode(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {!chatStarted && (
-                    <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto max-h-72">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
-                        <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
-                      </div>
-                      {ONBOARDING_SUGGESTIONS.map((q, i) => (
-                        <button
-                          key={i}
-                          onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
-                          className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-hidden min-h-0">
-                    <ChatPanel
-                      key={chatKey}
-                      isOpen={true}
-                      onClose={() => setIsOnboardingMode(false)}
-                      mode="assistenza"
-                      setMode={() => {}}
-                      consultantType="finanziario"
-                      setConsultantType={() => {}}
-                      isConsultantMode={true}
-                      isOnboardingMode={true}
-                      embedded={true}
-                      onboardingStatuses={onboardingStatusesForAI?.data}
-                      autoMessage={pendingAutoMessage}
-                      onAutoMessageSent={() => setPendingAutoMessage(null)}
-                    />
-                  </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
           </div>
           )} {/* fine currentSection && */}
         </div>
       </main>
       {!isOnboardingMode && <ConsultantAIAssistant isOnboardingMode={false} />}
+
+      {/* ── PANNELLO AI ONBOARDING — fixed overlay indipendente dal layout ── */}
+      <AnimatePresence>
+        {isOnboardingMode && (
+          <motion.aside
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{
+              position: "fixed",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: "24rem",
+              zIndex: 40,
+              display: "flex",
+              flexDirection: "column",
+            }}
+            className="border-l bg-white dark:bg-slate-900 shadow-2xl"
+          >
+            <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900 shrink-0">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-indigo-600" />
+                <span className="font-semibold text-sm">Assistente Onboarding</span>
+              </div>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOnboardingMode(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {!chatStarted && (
+              <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto shrink-0" style={{ maxHeight: "18rem" }}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
+                  <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
+                </div>
+                {ONBOARDING_SUGGESTIONS.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
+                    className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <ChatPanel
+                key={chatKey}
+                isOpen={true}
+                onClose={() => setIsOnboardingMode(false)}
+                mode="assistenza"
+                setMode={() => {}}
+                consultantType="finanziario"
+                setConsultantType={() => {}}
+                isConsultantMode={true}
+                isOnboardingMode={true}
+                embedded={true}
+                onboardingStatuses={onboardingStatusesForAI?.data}
+                autoMessage={pendingAutoMessage}
+                onAutoMessageSent={() => setPendingAutoMessage(null)}
+              />
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
