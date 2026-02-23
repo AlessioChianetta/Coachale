@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Message } from "./Message";
-import { motion } from "framer-motion";
+import { ThinkingBubble } from "./ThinkingBubble";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface CodeExecution {
   language: string;
@@ -31,7 +32,6 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages, isTyping, onActionClick }: MessageListProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(messages.length);
   const userScrolledUpRef = useRef(false);
@@ -44,7 +44,9 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: "smooth" });
+    }
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -68,6 +70,10 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
     prevMessagesLengthRef.current = messages.length;
   }, [messages, isTyping, scrollToBottom]);
 
+  const lastMessage = messages[messages.length - 1];
+  const alreadyShowingProcessing = lastMessage?.status === "processing" || lastMessage?.isThinking;
+  const showTypingIndicator = isTyping && !alreadyShowingProcessing;
+
   return (
     <div 
       ref={containerRef}
@@ -89,7 +95,19 @@ export function MessageList({ messages, isTyping, onActionClick }: MessageListPr
             <Message message={message} onActionClick={onActionClick} />
           </motion.div>
         ))}
-        <div ref={messagesEndRef} />
+        <AnimatePresence>
+          {showTypingIndicator && (
+            <motion.div
+              key="typing-indicator"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ThinkingBubble isThinking={true} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
