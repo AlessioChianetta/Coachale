@@ -371,6 +371,18 @@ export class VoiceCallManager extends EventEmitter {
           createdAt: event.timestamp,
         });
       }
+
+      void import('./voice-feedback-loop').then(({ processCallFeedback }) => {
+        processCallFeedback({
+          callId: call.id,
+          consultantId: call.consultantId,
+          clientId: call.callerInfo?.clientId || null,
+          transcript: call.transcript.join('\n'),
+          duration,
+          outcome: endCause,
+          callerInfo: call.callerInfo,
+        });
+      }).catch(err => console.error(`[CallManager] Feedback loop error:`, err));
     } catch (error) {
       console.error(`[CallManager] Error updating call in database:`, error);
     }

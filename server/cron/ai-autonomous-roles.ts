@@ -339,7 +339,7 @@ export interface AIRoleDefinition {
 
 async function fetchAlessiaData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
   const kbContext = await fetchAgentKbContext(consultantId, 'alessia');
-  if (clientIds.length === 0) return { consultations: [], voiceCalls: [], clientFileSearchStores: [], whatsappConversations: [], aiAssistantChats: [], aiAssistantSummaries: [], ...kbContext };
+  if (clientIds.length === 0) return { consultations: [], voiceCalls: [], clientFileSearchStores: [], whatsappConversations: [], aiAssistantChats: [], aiAssistantSummaries: [], clientMemories: [], clientObjectives: [], postConsultationFlags: [], ...kbContext };
 
   const clientIdsStr = clientIds.map(id => `'${id}'`).join(',');
 
@@ -439,6 +439,65 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
     LIMIT 30
   `);
 
+  const clientMemoriesResult = await db.execute(sql`
+    SELECT acm.client_id, acm.interaction_type, acm.interaction_date,
+           acm.summary, acm.client_said, acm.client_promises, acm.next_steps,
+           acm.sentiment, acm.objective_achieved, acm.objective_notes,
+           acm.follow_up_needed, acm.follow_up_date,
+           acm.ai_self_evaluation,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM alessia_client_memory acm
+    JOIN users u ON u.id::text = acm.client_id::text
+    WHERE acm.consultant_id = ${consultantId}::text
+    ORDER BY acm.interaction_date DESC
+    LIMIT 50
+  `);
+
+  const clientObjectivesResult = await db.execute(sql`
+    SELECT aco.id, aco.client_id, aco.title, aco.description, aco.deadline,
+           aco.priority, aco.status, aco.progress_notes, aco.last_checked_at,
+           u.first_name || ' ' || u.last_name as client_name
+    FROM alessia_client_objectives aco
+    JOIN users u ON u.id::text = aco.client_id::text
+    WHERE aco.consultant_id = ${consultantId}::text
+      AND aco.status IN ('active', 'in_progress')
+    ORDER BY
+      CASE aco.priority WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'bassa' THEN 3 END,
+      aco.deadline ASC NULLS LAST
+    LIMIT 30
+  `);
+
+  const postConsultationResult = await db.execute(sql`
+    SELECT c.id as consultation_id, c.client_id, c.scheduled_at, c.duration, c.notes,
+           c.summary_email, c.status,
+           u.first_name || ' ' || u.last_name as client_name,
+           (
+             SELECT COUNT(*) FROM alessia_client_memory acm
+             WHERE acm.client_id::text = c.client_id
+               AND acm.consultant_id = ${consultantId}::text
+               AND acm.interaction_type IN ('post_consultation', 'voice_call')
+               AND acm.interaction_date > c.scheduled_at
+               AND acm.interaction_date < c.scheduled_at + INTERVAL '48 hours'
+           ) as follow_up_count,
+           (
+             SELECT COUNT(*) FROM scheduled_voice_calls svc
+             WHERE svc.consultant_id = ${consultantId}::text
+               AND svc.target_phone IN (
+                 SELECT phone FROM users WHERE id::text = c.client_id
+               )
+               AND svc.scheduled_at > c.scheduled_at
+               AND svc.scheduled_at < c.scheduled_at + INTERVAL '48 hours'
+               AND svc.status IN ('completed', 'scheduled')
+           ) as scheduled_call_count
+    FROM consultations c
+    JOIN users u ON u.id::text = c.client_id
+    WHERE c.consultant_id = ${consultantId}::text
+      AND c.status = 'completed'
+      AND c.scheduled_at > NOW() - INTERVAL '3 days'
+      AND c.scheduled_at < NOW()
+    ORDER BY c.scheduled_at DESC
+  `);
+
   return {
     consultations: consultationsResult.rows,
     voiceCalls: voiceCallsResult.rows,
@@ -446,6 +505,9 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
     whatsappConversations: whatsappResult.rows,
     aiAssistantChats: aiAssistantChatsResult.rows,
     aiAssistantSummaries: aiAssistantSummariesResult.rows,
+    clientMemories: clientMemoriesResult.rows,
+    clientObjectives: clientObjectivesResult.rows,
+    postConsultationFlags: postConsultationResult.rows,
     ...kbContext,
   };
 }
@@ -1047,22 +1109,86 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         date: s.last_message_at ? new Date(s.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
       }));
 
-      return `Sei ALESSIA, Voice Consultant AI. Il tuo ruolo è analizzare lo storico delle consulenze e delle chiamate per identificare clienti che hanno bisogno di un contatto vocale proattivo.
+      const clientMemoriesByClient: Record<string, any[]> = {};
+      (roleData.clientMemories || []).forEach((m: any) => {
+        const key = m.client_name || m.client_id;
+        if (!clientMemoriesByClient[key]) clientMemoriesByClient[key] = [];
+        clientMemoriesByClient[key].push({
+          type: m.interaction_type,
+          date: m.interaction_date ? new Date(m.interaction_date).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+          summary: m.summary?.substring(0, 300),
+          client_said: m.client_said?.substring(0, 200),
+          promises: m.client_promises || [],
+          next_steps: m.next_steps || [],
+          sentiment: m.sentiment,
+          objective_achieved: m.objective_achieved,
+          follow_up_needed: m.follow_up_needed,
+          self_eval: m.ai_self_evaluation,
+        });
+      });
+
+      const objectivesList = (roleData.clientObjectives || []).map((o: any) => ({
+        id: o.id,
+        client: o.client_name,
+        client_id: o.client_id,
+        title: o.title,
+        description: o.description?.substring(0, 200),
+        deadline: o.deadline ? new Date(o.deadline).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
+        priority: o.priority,
+        status: o.status,
+        last_checked: o.last_checked_at ? new Date(o.last_checked_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'mai',
+        progress: (o.progress_notes || []).slice(-3),
+      }));
+
+      const pendingPostConsultation = (roleData.postConsultationFlags || [])
+        .filter((pc: any) => parseInt(pc.follow_up_count) === 0 && parseInt(pc.scheduled_call_count) === 0)
+        .map((pc: any) => ({
+          consultation_id: pc.consultation_id,
+          client: pc.client_name,
+          client_id: pc.client_id,
+          consultation_date: new Date(pc.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          hours_since: Math.round((Date.now() - new Date(pc.scheduled_at).getTime()) / (1000 * 60 * 60)),
+          notes_preview: pc.notes?.substring(0, 200) || null,
+          summary_preview: pc.summary_email?.substring(0, 200) || null,
+        }));
+
+      return `Sei ALESSIA, Voice Consultant AI — la collega che conosce ogni cliente a fondo. Il tuo ruolo è analizzare le interazioni passate, gli obiettivi attivi, e la memoria delle tue chiamate per decidere chi contattare e con quale scopo preciso.
 
 DATA/ORA ATTUALE: ${romeTimeStr}
 
-IL TUO FOCUS: Chiamate di follow-up, check-in post-consulenza, supporto proattivo via telefono.
+IL TUO FOCUS: Chiamate di follow-up, check-in post-consulenza, supporto proattivo via telefono, verifica progressi obiettivi.
 
-CLIENTI ATTIVI (che necessitano attenzione):
+═══ CLIENTI ATTIVI ═══
 ${JSON.stringify(clientsList, null, 2)}
 
-STORICO CONSULENZE RECENTI:
+═══ LA TUA MEMORIA (SCHEDE CLIENTE) ═══
+Queste sono le tue note dalle interazioni precedenti con ogni cliente. USALE per non ripetere domande, ricordare promesse fatte, e costruire continuità nelle conversazioni.
+${Object.keys(clientMemoriesByClient).length > 0 
+  ? Object.entries(clientMemoriesByClient).map(([client, memories]) => 
+    `📋 ${client}:\n${JSON.stringify(memories, null, 2)}`
+  ).join('\n\n')
+  : 'Nessuna memoria precedente — questa è la prima volta che analizzi questi clienti. Dopo ogni chiamata, la tua scheda verrà aggiornata automaticamente.'}
+
+═══ OBIETTIVI ATTIVI PER CLIENTE ═══
+Questi sono obiettivi specifici impostati dal consulente. DEVI verificarne i progressi nelle chiamate e segnalare se un obiettivo è a rischio scadenza.
+${objectivesList.length > 0 ? JSON.stringify(objectivesList, null, 2) : 'Nessun obiettivo attivo al momento.'}
+${objectivesList.filter((o: any) => o.deadline && new Date(o.deadline) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)).length > 0 
+  ? `⚠️ ATTENZIONE: ${objectivesList.filter((o: any) => o.deadline && new Date(o.deadline) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)).length} obiettivo/i in scadenza entro 14 giorni! Priorità ALTA per verificare i progressi.`
+  : ''}
+
+═══ 🚨 CONSULENZE SENZA FOLLOW-UP (POST-CONSULENZA AUTOMATICA) ═══
+Queste consulenze sono state completate ma il cliente NON è stato ancora ricontattato. Il follow-up post-consulenza è OBBLIGATORIO entro 48h.
+${pendingPostConsultation.length > 0 
+  ? JSON.stringify(pendingPostConsultation, null, 2) + '\n⚠️ PRIORITÀ MASSIMA: Questi clienti devono essere chiamati PRIMA di qualsiasi altro contatto.'
+  : '✅ Tutti i follow-up post-consulenza sono stati completati.'}
+
+═══ STORICO CONSULENZE RECENTI ═══
 ${consultationsSummary.length > 0 ? JSON.stringify(consultationsSummary, null, 2) : 'Nessuna consulenza recente'}
 
-STORICO CHIAMATE AI RECENTI:
+═══ STORICO CHIAMATE AI RECENTI ═══
 ${callsSummary.length > 0 ? JSON.stringify(callsSummary, null, 2) : 'Nessuna chiamata AI recente'}
 
-STORE GLOBALE CONSULENZE CLIENTI (Note Consulenze + Email Journey):
+═══ STORE GLOBALE CONSULENZE CLIENTI ═══
 ${(() => {
   const fileSearchClients = (roleData.clientFileSearchStores || []);
   const uniqueClients = [...new Map(fileSearchClients.map((c: any) => [c.client_id, c.client_name])).values()];
@@ -1070,67 +1196,92 @@ ${(() => {
     ? `Clienti con dati disponibili: ${uniqueClients.join(', ')}` 
     : 'Nessun dato File Search disponibile';
 })()}
-Quando crei task per un cliente specifico, usa lo step "search_private_stores" per cercare nei loro documenti privati.
-REGOLE ANTI-ALLUCINAZIONE: Ogni documento ha il nome del cliente nel titolo (es. "[CLIENTE: Mario Rossi] - Consulenza - 15/02/2026"). Cita SEMPRE la fonte. NON mescolare dati di clienti diversi. Se non trovi info su un cliente, dillo esplicitamente.
+Usa lo step "search_private_stores" per cercare nei documenti privati di un cliente.
 
-CONVERSAZIONI WHATSAPP RECENTI (ultimi 60 giorni):
+═══ CONVERSAZIONI WHATSAPP (ultimi 60 giorni) ═══
 ${whatsappSummary.length > 0 ? JSON.stringify(whatsappSummary, null, 2) : 'Nessuna conversazione WhatsApp recente'}
 
-CHAT AI-ASSISTANT PIATTAFORMA (ultime 10 conversazioni):
+═══ CHAT AI-ASSISTANT PIATTAFORMA ═══
 ${aiChatsSummary.length > 0 ? JSON.stringify(aiChatsSummary, null, 2) : 'Nessuna chat AI-assistant recente'}
 
-RIASSUNTI CONVERSAZIONI AI-ASSISTANT (ultimi 2 mesi):
+═══ RIASSUNTI AI-ASSISTANT (ultimi 2 mesi) ═══
 ${aiSummariesList.length > 0 ? JSON.stringify(aiSummariesList, null, 2) : 'Nessun riassunto disponibile'}
 
 ${buildTaskMemorySection(recentAllTasks, 'alessia', permanentBlocks, recentReasoningByRole)}
 
-ISTRUZIONI PERSONALIZZATE DEL CONSULENTE:
+═══ ISTRUZIONI PERSONALIZZATE DEL CONSULENTE ═══
 ${settings.custom_instructions || 'Nessuna istruzione personalizzata'}
 
-REGOLE DI ALESSIA:
-1. Suggerisci MASSIMO 2 task di tipo chiamata vocale
-2. Priorità di contatto:
-   - Clienti con consulenza recente (ultimi 7 giorni) ma SENZA follow-up → check-in post-consulenza
-   - Clienti che non sentono da >2 settimane → chiamata proattiva di supporto
-   - Clienti con note che indicano difficoltà o dubbi → chiamata di supporto mirato
-3. L'ai_instruction DEVE essere dettagliata e includere:
-   - Cosa è stato discusso nell'ultima consulenza (se disponibile)
-   - Punti specifici da toccare nella chiamata
-   - Tono da usare (empatico, professionale, motivazionale)
-   - Obiettivo specifico della chiamata
-4. Il campo preferred_channel DEVE essere "voice"
-5. Non suggerire chiamate a clienti già chiamati negli ultimi 3 giorni
-6. Usa le categorie: followup, reminder
-7. PROGRAMMAZIONE ORARIO (scheduled_for): Suggerisci SEMPRE un orario specifico per l'esecuzione del task nel formato "YYYY-MM-DDTHH:MM". Regole:
-   - Per urgency "oggi": scegli uno slot nelle prossime ore lavorative, evitando consulenze già programmate
-   - Per urgency "settimana": scegli un giorno/ora nei prossimi 3-5 giorni lavorativi
-   - Per urgency "normale": scegli uno slot ragionevole entro 1-2 giorni
-   - Per chiamate vocali: preferisci fasce 10:00-12:00 o 15:00-17:00
-   - Per WhatsApp: preferisci fasce 09:00-12:00 o 14:00-18:00
-   - Per email: qualsiasi orario lavorativo va bene
+═══ REGOLE DI ALESSIA ═══
+1. Suggerisci MASSIMO 2 task di tipo chiamata vocale per ciclo.
+
+2. GERARCHIA DI PRIORITÀ (in ordine):
+   A) 🚨 POST-CONSULENZA OBBLIGATORIA: Clienti con consulenza completata senza follow-up entro 48h → PRIORITÀ ASSOLUTA
+   B) 📌 OBIETTIVI IN SCADENZA: Clienti con obiettivi attivi in scadenza entro 14 giorni → verifica progressi
+   C) 📋 FOLLOW-UP CON MEMORIA: Clienti con promesse/next_steps pendenti dalla tua ultima chiamata → verifica che abbiano fatto ciò che avevano promesso
+   D) 🔇 CLIENTI SILENTI: Clienti che non interagiscono da >2 settimane su nessun canale → check-in proattivo
+   E) 💭 SUPPORTO MIRATO: Clienti con note che indicano difficoltà, dubbi o sentiment negativo → chiamata empatica
+
+3. SCRIPT DI CHIAMATA DINAMICO — L'ai_instruction DEVE seguire questo formato strutturato:
+   ---
+   TIPO CHIAMATA: [post_consulenza | verifica_obiettivo | follow_up_promesse | check_in_proattivo | supporto_mirato]
+
+   APERTURA: [Frase di apertura personalizzata basata sulla memoria — es. "L'ultima volta mi aveva detto che avrebbe [promessa]. Come è andata?"]
+
+   PUNTI DA TOCCARE:
+   1. [Punto specifico basato su dati reali]
+   2. [Punto specifico]
+   3. [Punto specifico]
+
+   OBIETTIVO DELLA CHIAMATA: [Cosa deve essere raggiunto — es. "Verificare che il cliente abbia completato il piano pensione" o "Capire se ha dubbi dopo la consulenza"]
+
+   TONO: [empatico | professionale | motivazionale | rassicurante]
+
+   CONTESTO DALLA MEMORIA: [Riassunto delle interazioni precedenti rilevanti — cosa ha detto il cliente, cosa ha promesso, come si sentiva]
+
+   CHIUSURA: [Come concludere — es. "Confermare i prossimi passi e fissare una data per il prossimo check-in"]
+   ---
+
+4. USA LA MEMORIA: Quando prepari l'ai_instruction, DEVI consultare la tua memoria del cliente per:
+   - NON ripetere domande già fatte
+   - Fare riferimento a ciò che il cliente ha detto/promesso nell'interazione precedente
+   - Adattare il tono al sentiment rilevato in passato
+   - Citare progressi o problemi specifici dalla storia
+
+5. Il campo preferred_channel DEVE essere "voice"
+6. Non suggerire chiamate a clienti già chiamati negli ultimi 3 giorni
+7. Usa le categorie: followup, reminder
+
+8. PROGRAMMAZIONE ORARIO (scheduled_for): Formato "YYYY-MM-DDTHH:MM". Regole:
+   - Post-consulenza obbligatoria: entro 24-48h dalla consulenza, fascia 10:00-12:00 o 15:00-17:00
+   - Verifica obiettivi in scadenza: urgency "oggi" se scade entro 7 giorni
+   - Per urgency "oggi": slot nelle prossime ore lavorative
+   - Per urgency "settimana": 3-5 giorni lavorativi
+   - Per urgency "normale": entro 1-2 giorni
    - Non programmare MAI prima delle 08:30 o dopo le 19:00
    - Evita sovrapposizioni con consulenze già in programma
-   - Il campo scheduling_reason deve spiegare brevemente perché hai scelto quell'orario
 
-IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Devi SEMPRE spiegare il tuo ragionamento completo, anche se non suggerisci alcun task. Descrivi: cosa hai analizzato, quali dati hai valutato, quale conclusione hai raggiunto e perché.
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Spiega: cosa hai analizzato dalla tua memoria, quali obiettivi hai verificato, quali follow-up post-consulenza sono pendenti, e perché hai scelto questi clienti.
 
 Rispondi SOLO con JSON valido (senza markdown, senza backtick):
 {
-  "overall_reasoning": "Spiegazione dettagliata della tua analisi: quali dati hai valutato, quali clienti hai considerato, perché hai deciso di creare (o non creare) task. Se non crei task, spiega chiaramente il motivo (es: tutti i clienti sono già seguiti, nessuna urgenza, etc.)",
+  "overall_reasoning": "Spiegazione dettagliata: memoria consultata, obiettivi verificati, post-consulenza pendenti, motivo delle scelte",
   "tasks": [
     {
       "contact_id": "uuid del cliente",
       "contact_name": "Nome del cliente",
       "contact_phone": "+39...",
-      "ai_instruction": "Istruzione dettagliata per la chiamata...",
+      "ai_instruction": "SCRIPT STRUTTURATO con TIPO, APERTURA, PUNTI, OBIETTIVO, TONO, CONTESTO MEMORIA, CHIUSURA",
       "task_category": "followup|reminder",
       "priority": 3,
-      "reasoning": "Motivazione basata sui dati analizzati",
+      "reasoning": "Motivazione basata su memoria + obiettivi + dati analizzati",
       "preferred_channel": "voice",
       "urgency": "normale|oggi|settimana",
       "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
       "scheduling_reason": "Motivazione dell'orario scelto",
-      "tone": "professionale|informale|empatico"
+      "tone": "professionale|informale|empatico|rassicurante|motivazionale",
+      "call_type": "post_consulenza|verifica_obiettivo|follow_up_promesse|check_in_proattivo|supporto_mirato",
+      "objective_id": "uuid dell'obiettivo se la chiamata è legata a un obiettivo specifico (opzionale)"
     }
   ]
 }`;

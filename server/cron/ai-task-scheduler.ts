@@ -1334,6 +1334,25 @@ async function cleanupStuckCallingCalls(): Promise<void> {
                 taskCategory: taskDetail.task_category,
               })
             ).catch(() => {});
+
+            if (taskDetail.ai_role === 'alessia') {
+              const transcriptResult = await db.execute(sql`
+                SELECT full_transcript, client_id FROM voice_calls WHERE id = ${voiceCall.id}
+              `);
+              const vcData = transcriptResult.rows[0] as any;
+              if (vcData?.full_transcript && vcData?.client_id) {
+                void import("../voice/voice-feedback-loop").then(({ processCallFeedback }) => {
+                  processCallFeedback({
+                    callId: voiceCall.id,
+                    consultantId: taskDetail.consultant_id,
+                    clientId: vcData.client_id,
+                    transcript: vcData.full_transcript,
+                    duration: voiceCall.duration_seconds || 0,
+                    outcome: voiceCall.outcome || 'completed',
+                  });
+                }).catch(() => {});
+              }
+            }
           }
         }
       } else {

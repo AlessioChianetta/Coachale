@@ -10526,3 +10526,68 @@ export const aiReasoningLogs = pgTable("ai_reasoning_logs", {
 
 export type AIReasoningLog = typeof aiReasoningLogs.$inferSelect;
 export type InsertAIReasoningLog = typeof aiReasoningLogs.$inferInsert;
+
+// Alessia Client Memory - persistent memory per client interaction
+export const alessiaClientMemory = pgTable("alessia_client_memory", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  clientId: varchar("client_id").notNull().references(() => users.id),
+  interactionType: varchar("interaction_type", { length: 50 }).notNull().default("voice_call"),
+  interactionDate: timestamp("interaction_date", { withTimezone: true }).notNull().default(sql`now()`),
+  callId: varchar("call_id"),
+  summary: text("summary").notNull(),
+  clientSaid: text("client_said"),
+  clientPromises: jsonb("client_promises").$type<string[]>().default(sql`'[]'::jsonb`),
+  nextSteps: jsonb("next_steps").$type<string[]>().default(sql`'[]'::jsonb`),
+  sentiment: varchar("sentiment", { length: 20 }),
+  objectiveAchieved: boolean("objective_achieved"),
+  objectiveNotes: text("objective_notes"),
+  followUpNeeded: boolean("follow_up_needed").default(false),
+  followUpDate: timestamp("follow_up_date", { withTimezone: true }),
+  aiSelfEvaluation: jsonb("ai_self_evaluation").$type<{
+    objective_reached: boolean;
+    client_satisfaction: 'positive' | 'neutral' | 'negative' | 'unknown';
+    key_insights: string[];
+    improvements: string[];
+    next_call_suggestions: string[];
+  }>(),
+  sourceTranscript: text("source_transcript"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_alessia_memory_consultant").on(table.consultantId),
+  clientIdx: index("idx_alessia_memory_client").on(table.clientId),
+  dateIdx: index("idx_alessia_memory_date").on(table.interactionDate),
+  consultantClientIdx: index("idx_alessia_memory_consultant_client").on(table.consultantId, table.clientId),
+}));
+
+export type AlessiaClientMemory = typeof alessiaClientMemory.$inferSelect;
+export type InsertAlessiaClientMemory = typeof alessiaClientMemory.$inferInsert;
+
+// Alessia Client Objectives - measurable goals per client
+export const alessiaClientObjectives = pgTable("alessia_client_objectives", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().references(() => users.id),
+  clientId: varchar("client_id").notNull().references(() => users.id),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  deadline: timestamp("deadline", { withTimezone: true }),
+  priority: varchar("priority", { length: 10 }).notNull().default("media"),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  progressNotes: jsonb("progress_notes").$type<Array<{
+    date: string;
+    note: string;
+    source: string;
+  }>>().default(sql`'[]'::jsonb`),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("idx_alessia_objectives_consultant").on(table.consultantId),
+  clientIdx: index("idx_alessia_objectives_client").on(table.consultantId, table.clientId),
+  statusIdx: index("idx_alessia_objectives_status").on(table.status),
+}));
+
+export type AlessiaClientObjective = typeof alessiaClientObjectives.$inferSelect;
+export type InsertAlessiaClientObjective = typeof alessiaClientObjectives.$inferInsert;
