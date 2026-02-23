@@ -2175,7 +2175,7 @@ export default function ConsultantSetupWizard() {
                   animate={{ width: "24rem", opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  style={{ minWidth: 0, flexShrink: 0 }}
+                  style={{ minWidth: 0, flexShrink: 0, height: "100%" }}
                   className="border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
                 >
                   <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
@@ -3166,10 +3166,11 @@ export default function ConsultantSetupWizard() {
             <AnimatePresence>
               {isOnboardingMode && (
                 <motion.aside
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
+                  style={{ height: "100%" }}
                   className="col-span-4 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
                 >
                   <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
