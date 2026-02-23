@@ -1563,6 +1563,7 @@ async function executeDeepThinkLoop(
   const conversationHistory: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
   console.log(`🧠 [DEEP-THINK] [${role.name}] Starting multi-step reasoning loop...`);
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Clients count: ${clientsList.length}, Recent tasks: ${recentTasks.length}, Model: ${model}, Provider: ${provider}`);
 
   const step1Start = Date.now();
   const step1Prompt = `${basePrompt}
@@ -1601,7 +1602,8 @@ Rispondi in formato libero (testo), non JSON.`;
     durationMs: Date.now() - step1Start,
     tokens: 0,
   });
-  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 (Analysis) done: ${step1Response.length} chars`);
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 (Analysis) done: ${step1Response.length} chars, duration: ${Date.now() - step1Start}ms`);
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 1 preview: ${step1Response.substring(0, 200)}...`);
 
   const step2Start = Date.now();
   conversationHistory.push({ role: 'user', parts: [{ text: `--- STEP 2: VALUTAZIONE PRIORITÀ ---
@@ -1635,7 +1637,8 @@ Rispondi in formato libero (testo), non JSON.` }] });
     durationMs: Date.now() - step2Start,
     tokens: 0,
   });
-  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 (Priorities) done: ${step2Response.length} chars`);
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 (Priorities) done: ${step2Response.length} chars, duration: ${Date.now() - step2Start}ms`);
+  console.log(`🧠 [DEEP-THINK] [${role.name}] Step 2 preview: ${step2Response.substring(0, 200)}...`);
 
   const step3Start = Date.now();
   conversationHistory.push({ role: 'user', parts: [{ text: `--- STEP 3: GENERAZIONE TASK ---
