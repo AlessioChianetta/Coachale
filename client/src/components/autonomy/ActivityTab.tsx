@@ -870,6 +870,33 @@ function ActivityTab({
     return Object.keys(result).length > 0 ? result : null;
   };
 
+  const parseMarcoReasoning = (text: string): { quadroGenerale?: string; criticita?: string; opportunita?: string; cosaDevi?: string } | null => {
+    const markers = ['📊', '⚠️', '💡', '🎯'];
+    const found = markers.filter(m => text.includes(m));
+    if (found.length < 2) return null;
+
+    const result: Record<string, string> = {};
+    const regex = /^(📊|⚠️|💡|🎯)\s*[^\n]*/gm;
+    const matches = [...text.matchAll(regex)];
+    if (matches.length < 2) return null;
+
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const emoji = match[1];
+      const startIdx = match.index! + match[0].length;
+      const endIdx = i + 1 < matches.length ? matches[i + 1].index! : text.length;
+      const content = text.slice(startIdx, endIdx).trim();
+      if (!content) continue;
+
+      if (emoji === '📊') result.quadroGenerale = content;
+      else if (emoji === '⚠️') result.criticita = content;
+      else if (emoji === '💡') result.opportunita = content;
+      else if (emoji === '🎯') result.cosaDevi = content;
+    }
+
+    return Object.keys(result).length >= 2 ? result : null;
+  };
+
   const getCategoryLabel = (cat?: string): string => {
     const labels: Record<string, string> = {
       followup: 'Follow-up',
@@ -1014,68 +1041,116 @@ function ActivityTab({
 
             {eventData.overall_reasoning && (() => {
               const text = (eventData.overall_reasoning as string).trim();
-              const sections = parseStructuredReasoning(text);
+              const structuredSections = parseStructuredReasoning(text);
 
-              if (sections) {
-                const renderSectionContent = (sectionText: string) => {
-                  const cleaned = sectionText.replace(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)/gm, (_m: string, _emoji: string, title: string) => {
-                    const t = title.trim();
-                    return t ? `**${t}**` : '';
-                  });
-                  const paragraphs = cleaned
-                    .split(/\n\s*\n/g)
-                    .map((p: string) => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
-                    .filter((p: string) => p.length > 0);
-                  if (paragraphs.length === 0) return <span>{sectionText}</span>;
-                  return (
-                    <div className="space-y-1.5">
-                      {paragraphs.map((para: string, i: number) => (
-                        <p key={i}>{renderFormattedText(para)}</p>
-                      ))}
-                    </div>
-                  );
-                };
+              const renderSectionContent = (sectionText: string) => {
+                const cleaned = sectionText.replace(/^(📊|⚠️?|💡|🎯)\s*([^\n]*)/gm, (_m: string, _emoji: string, title: string) => {
+                  const t = title.trim();
+                  return t ? `**${t}**` : '';
+                });
+                const paragraphs = cleaned
+                  .split(/\n\s*\n/g)
+                  .map((p: string) => p.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+                  .filter((p: string) => p.length > 0);
+                if (paragraphs.length === 0) return <span>{sectionText}</span>;
+                return (
+                  <div className="space-y-1.5">
+                    {paragraphs.map((para: string, i: number) => (
+                      <p key={i}>{renderFormattedText(para)}</p>
+                    ))}
+                  </div>
+                );
+              };
 
+              if (structuredSections) {
                 return (
                   <div className="space-y-2">
                     <p className="text-xs font-bold flex items-center gap-1.5">
                       <Brain className="h-3.5 w-3.5" />
                       Ragionamento strutturato
                     </p>
-                    {sections.observation && (
+                    {structuredSections.observation && (
                       <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/10 p-3">
                         <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-blue-700 dark:text-blue-400">
                           <Eye className="h-3 w-3" />
                           Osservazione
                         </p>
-                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.observation)}</div>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(structuredSections.observation)}</div>
                       </div>
                     )}
-                    {sections.reflection && (
+                    {structuredSections.reflection && (
                       <div className="rounded-xl border bg-purple-50/50 dark:bg-purple-950/10 p-3">
                         <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-purple-700 dark:text-purple-400">
                           <Brain className="h-3 w-3" />
                           Riflessione
                         </p>
-                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.reflection)}</div>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(structuredSections.reflection)}</div>
                       </div>
                     )}
-                    {sections.decision && (
+                    {structuredSections.decision && (
                       <div className="rounded-xl border bg-emerald-50/50 dark:bg-emerald-950/10 p-3">
                         <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                           <Target className="h-3 w-3" />
                           Decisione
                         </p>
-                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.decision)}</div>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(structuredSections.decision)}</div>
                       </div>
                     )}
-                    {sections.selfReview && (
+                    {structuredSections.selfReview && (
                       <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 p-3">
                         <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-amber-700 dark:text-amber-400">
                           <AlertTriangle className="h-3 w-3" />
                           Auto-revisione
                         </p>
-                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(sections.selfReview)}</div>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(structuredSections.selfReview)}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const marcoSections = parseMarcoReasoning(text);
+              if (marcoSections) {
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Analisi Executive Coach
+                    </p>
+                    {marcoSections.quadroGenerale && (
+                      <div className="rounded-xl border bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-800 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                          <BarChart3 className="h-3 w-3" />
+                          📊 Quadro generale
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(marcoSections.quadroGenerale)}</div>
+                      </div>
+                    )}
+                    {marcoSections.criticita && (
+                      <div className="rounded-xl border bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                          <AlertTriangle className="h-3 w-3" />
+                          ⚠️ Criticità e problemi
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(marcoSections.criticita)}</div>
+                      </div>
+                    )}
+                    {marcoSections.opportunita && (
+                      <div className="rounded-xl border bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                          <Lightbulb className="h-3 w-3" />
+                          💡 Opportunità e leve strategiche
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(marcoSections.opportunita)}</div>
+                      </div>
+                    )}
+                    {marcoSections.cosaDevi && (
+                      <div className="rounded-xl border bg-violet-50/50 dark:bg-violet-950/10 border-violet-200 dark:border-violet-800 p-3">
+                        <p className="text-[10px] font-bold mb-1.5 flex items-center gap-1 text-violet-700 dark:text-violet-400">
+                          <Target className="h-3 w-3" />
+                          🎯 Cosa devi fare
+                        </p>
+                        <div className="text-xs text-muted-foreground leading-relaxed">{renderSectionContent(marcoSections.cosaDevi)}</div>
                       </div>
                     )}
                   </div>
