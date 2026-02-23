@@ -1,0 +1,189 @@
+Il problema è che è troppo carico visivamente per essere una “roadmap”.
+
+Adesso comunica:
+
+Checklist lunga e colorata
+
+Dovrebbe comunicare:
+
+Percorso guidato strategico verso il 100%
+
+Ti dico cosa sistemerei in modo preciso 👇
+
+🔎 COSA STONA ORA
+1️⃣ Troppi colori contemporaneamente
+
+Hai:
+
+Viola header
+
+Rosso (Critica)
+
+Arancio (Alta)
+
+Giallo (Media)
+
+Verde (Normale)
+
+Grigio (Opzionale)
+
+È una scala logica, ma visivamente è troppo intensa.
+
+Sembra un pannello KPI finanziario, non un percorso guidato.
+
+2️⃣ Box dentro box dentro box
+
+Ogni sezione ha:
+
+Border colorato
+
+Background colorato
+
+Badge step
+
+Card interne
+
+Badge numerici
+
+Icone verdi
+
+È tutto un po’ “compresso”.
+
+3️⃣ Le card interne sono tutte uguali
+
+Non capisci:
+
+cosa è già completato
+
+cosa è bloccante
+
+cosa è importante
+
+cosa è opzionale
+
+Tutto ha lo stesso peso visivo.
+
+4️⃣ Il progresso 85% è troppo piccolo
+
+Quella percentuale in alto dovrebbe essere il protagonista.
+
+Adesso è quasi un dettaglio.
+
+💎 COME LO RENDEREI PREMIUM
+🎯 1️⃣ Trasformalo in ROADMAP VERTICALE STRATEGICA
+
+Invece di blocchi pieni colorati:
+
+Sezioni più leggere
+
+Solo un indicatore colore (dot o linea laterale)
+
+Background neutro
+
+Esempio concetto:
+
+| ● Critica |
+| ● Alta |
+| ● Media |
+| ● Normale |
+| ● Opzionale |
+
+Colore solo nel bullet, non nel box intero.
+
+🧠 2️⃣ Riduci drasticamente i background colorati
+
+Elimina:
+
+Riempimenti rosati
+
+Riempimenti arancio
+
+Riempimenti verdi
+
+Usa:
+
+Bianco
+
+Border soft
+
+Dot colorato per categoria
+
+Molto più elegante.
+
+🏆 3️⃣ Rendi il progresso il vero protagonista
+
+In alto:
+
+Percentuale grande (32px)
+
+Barra progressione orizzontale elegante
+
+“4 step mancanti” evidenziato
+
+Deve sembrare un obiettivo da raggiungere.
+
+🧩 4️⃣ Card step più intelligenti
+
+Ora ogni step ha:
+
+✔ icona verde
+✔ titolo
+✔ categoria
+
+Ma visivamente non c’è gerarchia.
+
+Miglioramento:
+
+Completati → più compatti
+
+Non completati → più visibili
+
+Bloccanti → piccolo tag “Richiesto”
+
+E magari:
+
+Hover con descrizione
+
+Micro animazione completamento
+
+✨ 5️⃣ Riduci il verde
+
+Il verde dei check è molto dominante.
+
+Se tutto è verde, niente è importante.
+
+Puoi:
+
+Check più piccoli
+
+Verde più soft
+
+Solo outline
+
+🧊 6️⃣ Sezioni meno “alert”
+
+La sezione “Critica — Blocca tutto il resto” ora sembra un errore.
+
+Meglio:
+
+Icona ⚠ discreta
+
+Titolo bold
+
+Sottotitolo spiegazione
+
+Nessun fondo rosato
+
+Deve sembrare strategica, non allarmante.
+
+📈 DOPO IL RESTYLING
+
+Passa da:
+
+Checklist tecnica
+
+A:
+
+Percorso strategico di attivazione
+
+Ed è un cambio enorme di percezione.
