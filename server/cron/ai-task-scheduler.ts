@@ -2290,6 +2290,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
 
       const reasoningMode = (settings as any).reasoning_mode || 'structured';
       const roleReasoningMode = (settings as any).role_reasoning_modes?.[role.id] || reasoningMode;
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] Reasoning mode: roleSpecific=${(settings as any).role_reasoning_modes?.[role.id] || 'NOT SET'}, global=${reasoningMode}, effective=${roleReasoningMode}`);
+      console.log(`🧠 [AUTONOMOUS-GEN] [${role.name}] role_reasoning_modes object:`, JSON.stringify((settings as any).role_reasoning_modes || {}));
       if (roleReasoningMode === 'structured') {
         const { wrapPromptWithStructuredReasoning } = await import('./ai-autonomous-roles');
         prompt = wrapPromptWithStructuredReasoning(prompt, role.name);
