@@ -418,8 +418,9 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
            ) as recent_messages
     FROM ai_conversations ac
     JOIN users u ON u.id::text = ac.client_id::text
-    WHERE ac.consultant_id = ${consultantId}::text
-      AND ac.client_id IS NOT NULL
+    WHERE ac.client_id IN (
+      SELECT id::text FROM users WHERE consultant_id = ${consultantId} AND role = 'client'
+    )
       AND ac.is_active = true
       AND ac.last_message_at > NOW() - INTERVAL '60 days'
     ORDER BY ac.last_message_at DESC
@@ -431,8 +432,9 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
            u.first_name || ' ' || u.last_name as client_name
     FROM ai_conversations ac
     JOIN users u ON u.id::text = ac.client_id::text
-    WHERE ac.consultant_id = ${consultantId}::text
-      AND ac.client_id IS NOT NULL
+    WHERE ac.client_id IN (
+      SELECT id::text FROM users WHERE consultant_id = ${consultantId} AND role = 'client'
+    )
       AND ac.summary IS NOT NULL AND ac.summary != ''
       AND ac.last_message_at > NOW() - INTERVAL '60 days'
     ORDER BY ac.last_message_at DESC
@@ -1062,7 +1064,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         has_notes: !!c.notes,
         has_transcript: !!c.transcript,
         has_summary: !!c.summary_email,
-        notes_preview: c.notes?.substring(0, 200) || null,
+        notes_preview: c.notes?.substring(0, 400) || null,
       }));
 
       const callsSummary = (roleData.voiceCalls || []).map((v: any) => ({
@@ -1070,7 +1072,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         date: new Date(v.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         status: v.status,
         duration_sec: v.duration_seconds,
-        instruction_preview: v.call_instruction?.substring(0, 150) || null,
+        instruction_preview: v.call_instruction?.substring(0, 300) || null,
       }));
 
       const whatsappSummary = (roleData.whatsappConversations || []).map((wc: any) => ({
@@ -1081,7 +1083,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         last_from: wc.last_message_from,
         total_messages: wc.message_count,
         recent_messages: (wc.recent_messages || []).slice(0, 10).map((m: any) => ({
-          text: m.message_text?.substring(0, 200),
+          text: m.message_text?.substring(0, 500),
           direction: m.direction,
           sender: m.sender,
           date: m.sent_at ? new Date(m.sent_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
@@ -1096,7 +1098,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         last_message_at: ac.last_message_at ? new Date(ac.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
         recent_messages: (ac.recent_messages || []).slice(0, 6).map((m: any) => ({
           role: m.role,
-          content: m.content?.substring(0, 300),
+          content: m.content?.substring(0, 500),
           date: m.created_at ? new Date(m.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
         })),
       }));
@@ -1105,7 +1107,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         client: s.client_name,
         client_id: s.client_id,
         title: s.title,
-        summary: s.summary?.substring(0, 300),
+        summary: s.summary?.substring(0, 500),
         date: s.last_message_at ? new Date(s.last_message_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
       }));
 
@@ -1116,8 +1118,8 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         clientMemoriesByClient[key].push({
           type: m.interaction_type,
           date: m.interaction_date ? new Date(m.interaction_date).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
-          summary: m.summary?.substring(0, 300),
-          client_said: m.client_said?.substring(0, 200),
+          summary: m.summary?.substring(0, 500),
+          client_said: m.client_said?.substring(0, 400),
           promises: m.client_promises || [],
           next_steps: m.next_steps || [],
           sentiment: m.sentiment,
@@ -1132,7 +1134,7 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
         client: o.client_name,
         client_id: o.client_id,
         title: o.title,
-        description: o.description?.substring(0, 200),
+        description: o.description?.substring(0, 400),
         deadline: o.deadline ? new Date(o.deadline).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
         priority: o.priority,
         status: o.status,
@@ -1148,8 +1150,8 @@ export const AI_ROLES: Record<string, AIRoleDefinition> = {
           client_id: pc.client_id,
           consultation_date: new Date(pc.scheduled_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
           hours_since: Math.round((Date.now() - new Date(pc.scheduled_at).getTime()) / (1000 * 60 * 60)),
-          notes_preview: pc.notes?.substring(0, 200) || null,
-          summary_preview: pc.summary_email?.substring(0, 200) || null,
+          notes_preview: pc.notes?.substring(0, 400) || null,
+          summary_preview: pc.summary_email?.substring(0, 400) || null,
         }));
 
       return `Sei ALESSIA, Voice Consultant AI — la collega che conosce ogni cliente a fondo. Il tuo ruolo è analizzare le interazioni passate, gli obiettivi attivi, e la memoria delle tue chiamate per decidere chi contattare e con quale scopo preciso.
