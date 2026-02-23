@@ -1403,26 +1403,21 @@ export class FileSearchService {
         )
       );
       
-      // PRIVACY FIX: Include ALL client private stores for this consultant
+      // Always include ALL client private stores for this consultant (using subquery to avoid pre-fetch guard)
       // This allows consultants to search across all their clients' consultations,
       // exercise responses, and other private data that's now properly isolated
-      // Get clients for this consultant and include their stores
-      const consultantClients = await db.query.users.findMany({
-        where: eq(users.consultantId, userId),
-        columns: { id: true },
-      });
-      
-      if (consultantClients.length > 0) {
-        const clientIds = consultantClients.map(c => c.id);
-        conditions.push(
-          and(
-            inArray(fileSearchStores.ownerId, clientIds),
-            eq(fileSearchStores.ownerType, 'client'),
-            eq(fileSearchStores.isActive, true)
-          )
-        );
-        console.log(`🔐 [FileSearch] Consultant ${userId} - including ${clientIds.length} client private stores`);
-      }
+      conditions.push(
+        and(
+          inArray(
+            fileSearchStores.ownerId,
+            db.select({ id: users.id }).from(users).where(eq(users.consultantId, userId))
+          ),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+      console.log(`🔐 [FileSearch] Consultant ${userId} - client private stores always included (subquery)`);
+
       
       // If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
       // include ONLY their own private client store (email_journey, daily_reflection, consultation — enforced at prompt level)
@@ -1527,6 +1522,19 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
+      // Always include ALL client private stores for this consultant (using subquery)
+      conditions.push(
+        and(
+          inArray(
+            fileSearchStores.ownerId,
+            db.select({ id: users.id }).from(users).where(eq(users.consultantId, userId))
+          ),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+      console.log(`🔐 [FileSearch] getStoreBreakdownForGeneration: Consultant ${userId} - client private stores always included (subquery)`);
+
       // If consultant is also a client of another consultant, include ONLY their own private client store
       // NOTE: the parent consultant's store (ownerType: 'consultant', ownerId: consultantId) is intentionally NOT included
       if (consultantId && consultantId !== userId) {
