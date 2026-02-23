@@ -718,7 +718,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     onClick={() => handleCategoryToggle(category.name)}
                     className="w-full flex items-center justify-between px-2 py-1 mt-4 mb-1 group rounded-md transition-colors"
                   >
-                    <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400/80 dark:text-slate-500/80">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400/80 dark:text-slate-500/80">
                       {category.name}
                     </span>
                     <ChevronRight className={cn(
@@ -760,13 +760,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "text-[13px] truncate",
+                                "text-[13.65px] truncate",
                                 isActive ? "font-semibold" : "font-medium"
                               )}>
                                 {item.name}
                               </span>
                               {item.badge && (
-                                <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
                                   {item.badge}
                                 </span>
                               )}

@@ -1521,7 +1521,7 @@ export default function ConsultantApiKeysUnified() {
           ...getAuthHeaders(),
           "Content-Type": "application/json" 
         },
-        body: JSON.stringify({ useSuperAdminGemini: newValue }),
+        body: JSON.stringify({ useSuperadminGemini: newValue }),
       });
       if (!response.ok) throw new Error("Errore nel salvataggio");
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/gemini-preference"] });
