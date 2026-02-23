@@ -3944,7 +3944,15 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
 7. NON inventare dati
 8. Usa grassetto SOLO per 1-2 parole chiave, non per intere frasi
 9. Se devi dire più cose, spezzale in messaggi separati mentalmente (usa paragrafi brevi)
-10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}`;
+10. Reagisci al messaggio come farebbe la TUA personalità su Telegram${marcoTelegramExtra}${groupExtra}
+
+AZIONI SUI TASK DA TELEGRAM:
+Se il consulente dice che ha già fatto un task ("l'ho fatta", "fatto", "ci ho pensato io", "già fatto"), puoi marcarlo come completato.
+- Identifica il task dal contesto, chiedi conferma se non è chiaro
+- Per completare: [[COMPLETATO:ID_DEL_TASK]]
+- Per approvare: [[APPROVA:ID_DEL_TASK]]
+- Per avviare: [[ESEGUI:ID_DEL_TASK]]
+- Chiedi SEMPRE conferma prima di agire, a meno che il consulente sia già esplicito`;
   } else {
     systemPrompt += `\nREGOLE:
 1. Rispondi SEMPRE in italiano
@@ -3957,13 +3965,22 @@ Rispondi in modo utile e professionale basandoti SOLO sulla conversazione con qu
 8. Usa **grassetto** per cifre e concetti chiave
 
 AZIONI SUI TASK:
-Puoi proporre di approvare o avviare task. Il flusso è:
+Puoi proporre di approvare, avviare o completare task. Il flusso è:
 1. PRIMA proponi l'azione e descrivi cosa farà il task, poi chiedi conferma esplicita
 2. SOLO DOPO che il consulente conferma (dice "sì", "ok", "vai", "procedi", "fallo", "approvalo"), includi il comando nella tua risposta
 3. Per approvare un task: scrivi [[APPROVA:ID_DEL_TASK]] nel tuo messaggio
 4. Per avviare l'esecuzione: scrivi [[ESEGUI:ID_DEL_TASK]] nel tuo messaggio
-5. NON eseguire mai azioni senza conferma esplicita del consulente
-6. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
+5. Per marcare un task come "già fatto dal consulente": scrivi [[COMPLETATO:ID_DEL_TASK]] nel tuo messaggio
+6. NON eseguire mai azioni senza conferma esplicita del consulente
+7. Dopo aver incluso il comando, conferma al consulente cosa hai fatto
+
+TASK GIÀ COMPLETATI DAL CONSULENTE:
+Quando il consulente dice frasi come "l'ho già fatta", "ci ho pensato io", "è fatta", "l'ho fatta io", "già fatto", "me ne sono occupato io", "ho già provveduto", "fatto", devi:
+1. Capire a QUALE task si riferisce — dal contesto della conversazione o chiedendo chiarimento
+2. Se il task è chiaro e identificabile, chiedi conferma: "Perfetto, marco come completata la task [descrizione]?"
+3. SOLO dopo che conferma, includi [[COMPLETATO:ID_DEL_TASK]] nella risposta
+4. Se ci sono più task possibili, chiedi quale intende specificatamente
+5. Se il consulente è esplicito e sicuro (es. "quella su Mario Rossi l'ho fatta"), puoi marcarla direttamente senza doppia conferma
 
 FILE SEARCH (STORE GLOBALE CONSULENZE CLIENTI):
 Hai accesso automatico allo Store Globale Consulenze Clienti che contiene le Note Consulenze e i Progressi Email Journey di TUTTI i clienti attivi.
@@ -4102,9 +4119,10 @@ REGOLE ANTI-ALLUCINAZIONE:
   if (!isOpenMode) {
     const approveMatches = aiResponse.match(/\[\[APPROVA:[^\]]+\]\]/gi) || [];
     const executeMatches = aiResponse.match(/\[\[ESEGUI:[^\]]+\]\]/gi) || [];
+    const completedMatches = aiResponse.match(/\[\[COMPLETATO:[^\]]+\]\]/gi) || [];
 
-    if (approveMatches.length > 0 || executeMatches.length > 0) {
-      console.log(`📋 [AGENT-CHAT-INTERNAL] Action markers found for ${roleId}: APPROVA=${approveMatches.length}, ESEGUI=${executeMatches.length}`);
+    if (approveMatches.length > 0 || executeMatches.length > 0 || completedMatches.length > 0) {
+      console.log(`📋 [AGENT-CHAT-INTERNAL] Action markers found for ${roleId}: APPROVA=${approveMatches.length}, ESEGUI=${executeMatches.length}, COMPLETATO=${completedMatches.length}`);
     }
 
     for (const match of approveMatches) {
@@ -4152,9 +4170,34 @@ REGOLE ANTI-ALLUCINAZIONE:
         console.error(`❌ [AGENT-CHAT-INTERNAL] Error executing task ${taskId}:`, actionErr.message);
       }
     }
+
+    for (const match of completedMatches) {
+      const taskId = match.replace(/\[\[COMPLETATO:/i, '').replace(']]', '').trim();
+      try {
+        const taskCheck = await db.execute(sql`
+          SELECT id, status FROM ai_scheduled_tasks
+          WHERE id = ${taskId} AND consultant_id = ${consultantId}
+            AND status IN ('scheduled', 'draft', 'waiting_approval', 'paused', 'approved')
+          LIMIT 1
+        `);
+        if ((taskCheck.rows[0] as any)?.id) {
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'completed',
+                completed_at = NOW(),
+                updated_at = NOW(),
+                result_summary = COALESCE(result_summary, '') || E'\n[Completato manualmente dal consulente via chat]'
+            WHERE id = ${taskId} AND consultant_id = ${consultantId}
+          `);
+          console.log(`✅ [AGENT-CHAT-INTERNAL] Task ${taskId} marked as done by consultant via chat (${roleId})`);
+        }
+      } catch (actionErr: any) {
+        console.error(`❌ [AGENT-CHAT-INTERNAL] Error marking task ${taskId} as done:`, actionErr.message);
+      }
+    }
   }
 
-  aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').trim();
+  aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '').trim();
 
   if (options?.isOpenMode && options?.telegramChatId) {
     await db.execute(sql`
