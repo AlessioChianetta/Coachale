@@ -1425,16 +1425,9 @@ export class FileSearchService {
       }
       
       // If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
-      // include their parent consultant's stores AND their own private client store
+      // include ONLY their own private client store (email_journey, daily_reflection, consultation — enforced at prompt level)
+      // NOTE: the parent consultant's store (ownerType: 'consultant', ownerId: consultantId) is intentionally NOT included
       if (consultantId && consultantId !== userId) {
-        conditions.push(
-          and(
-            eq(fileSearchStores.ownerId, consultantId),
-            eq(fileSearchStores.ownerType, 'consultant'),
-            eq(fileSearchStores.isActive, true)
-          )
-        );
-        // Include consultant's OWN private store as a client (email_journey, daily_reflection, consultation only — enforced at prompt level)
         conditions.push(
           and(
             eq(fileSearchStores.ownerId, userId),
@@ -1442,7 +1435,7 @@ export class FileSearchService {
             eq(fileSearchStores.isActive, true)
           )
         );
-        console.log(`🔗 [FileSearch] Consultant ${userId} is also a client of ${consultantId} - including parent stores + personal client store`);
+        console.log(`🔗 [FileSearch] Consultant ${userId} is also a client of ${consultantId} - including personal client store only (email_journey, daily_reflection, consultation)`);
       }
     } else if (userRole === 'client') {
       // PRIVACY ISOLATION: Client sees ONLY their own private store
@@ -1534,16 +1527,9 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
-      // If consultant is also a client of another consultant, include parent consultant's stores
-      // AND their own private client store (email_journey, daily_reflection, consultation — enforced at prompt level)
+      // If consultant is also a client of another consultant, include ONLY their own private client store
+      // NOTE: the parent consultant's store (ownerType: 'consultant', ownerId: consultantId) is intentionally NOT included
       if (consultantId && consultantId !== userId) {
-        conditions.push(
-          and(
-            eq(fileSearchStores.ownerId, consultantId),
-            eq(fileSearchStores.ownerType, 'consultant'),
-            eq(fileSearchStores.isActive, true)
-          )
-        );
         conditions.push(
           and(
             eq(fileSearchStores.ownerId, userId),
@@ -1551,7 +1537,7 @@ export class FileSearchService {
             eq(fileSearchStores.isActive, true)
           )
         );
-        console.log(`🔗 [FileSearch] getStoreBreakdownForGeneration: Consultant ${userId} is also a client of ${consultantId} - including parent stores + personal client store`);
+        console.log(`🔗 [FileSearch] getStoreBreakdownForGeneration: Consultant ${userId} is also a client of ${consultantId} - including personal client store only (email_journey, daily_reflection, consultation)`);
       }
     } else if (userRole === 'client') {
       conditions.push(
