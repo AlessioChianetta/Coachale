@@ -587,7 +587,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <BookOpen className="h-4 w-4 text-white" />
               )}
             </div>
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white leading-tight tracking-tight">
+            <h2 className="text-sm font-bold text-foreground leading-tight tracking-tight">
               {brandName}
             </h2>
           </div>
@@ -636,7 +636,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {sidebarTab === 'tools' && !isCollapsed && categories && (
         <nav className="space-y-1 flex-1 overflow-y-auto">
           <div className="px-3 py-2 mb-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Software e strumenti esterni integrati nella piattaforma.</p>
+            <p className="text-xs text-muted-foreground">Software e strumenti esterni integrati nella piattaforma.</p>
           </div>
           <div className="space-y-1">
             {[
@@ -653,8 +653,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     className={cn(
                       "group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                       isActive
-                        ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                        ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     onClick={handleLinkClick}
                   >
@@ -664,13 +664,13 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     )} />
                     <div className={cn(
                       "p-1.5 rounded-lg",
-                      isActive ? "bg-cyan-100 dark:bg-cyan-900/30" : "bg-slate-100 dark:bg-slate-800"
+                      isActive ? "bg-cyan-100 dark:bg-cyan-900/30" : "bg-muted"
                     )}>
                       <ToolIcon className={cn("h-4 w-4", isActive ? "text-cyan-500" : tool.color)} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className={cn("font-medium block truncate", isActive && "font-semibold")}>{tool.name}</span>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">{tool.desc}</span>
+                      <span className="text-[11px] text-muted-foreground/60 truncate block">{tool.desc}</span>
                     </div>
                   </div>
                 </Link>
@@ -678,23 +678,23 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
             })}
 
             <div className="mx-3 my-2">
-              <div className="h-px bg-slate-200 dark:bg-slate-700/50" />
+              <div className="h-px bg-border/40" />
             </div>
 
             <div
-              className="group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+              className="group relative flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 cursor-pointer text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => { window.open('https://notebooklm.google/', '_blank'); handleLinkClick(); }}
             >
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-cyan-500 to-teal-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
-              <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
+              <div className="p-1.5 rounded-lg bg-muted">
                 <BookOpen className="h-4 w-4 text-purple-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">NotebookLM</span>
-                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/60" />
                 </div>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">AI notebook di Google</span>
+                <span className="text-[11px] text-muted-foreground/60 truncate block">AI notebook di Google</span>
               </div>
             </div>
           </div>
@@ -718,11 +718,11 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     onClick={() => handleCategoryToggle(category.name)}
                     className="w-full flex items-center justify-between px-2 py-1 mt-4 mb-1 group rounded-md transition-colors"
                   >
-                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-slate-400/80 dark:text-slate-500/80">
+                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
                       {category.name}
                     </span>
                     <ChevronRight className={cn(
-                      "h-2.5 w-2.5 text-slate-300 dark:text-slate-600 transition-transform duration-200",
+                      "h-2.5 w-2.5 text-muted-foreground/40 transition-transform duration-200",
                       isCategoryExpanded && "rotate-90"
                     )} />
                   </button>
@@ -755,7 +755,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               "h-4 w-4 flex-shrink-0 transition-colors duration-200",
                               isActive
                                 ? "text-cyan-600 dark:text-cyan-400"
-                                : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
+                                : "text-muted-foreground/60 group-hover:text-muted-foreground"
                             )} />
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
@@ -766,7 +766,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                 {item.name}
                               </span>
                               {item.badge && (
-                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                                   {item.badge}
                                 </span>
                               )}
@@ -797,8 +797,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   className={cn(
                     "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                     isActive
-                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     isCollapsed && "justify-center px-2"
                   )}
                   data-testid={`link-${slugify(item.name)}`}
@@ -833,7 +833,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                     isActive
                       ? "text-cyan-500"
-                      : item.color || "text-slate-400 dark:text-slate-500"
+                      : item.color || "text-muted-foreground/60"
                   )} />
 
                   {!isCollapsed && (
@@ -846,14 +846,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       </span>
                       <div className="flex items-center gap-1.5">
                         {item.badge && (
-                          <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                             <span>{item.badge}</span>
                           </span>
                         )}
                         {hasChildren && (
                           <ChevronRight className={cn(
-                            "h-3.5 w-3.5 transition-transform duration-200 text-slate-400",
+                            "h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground/40",
                             isExpanded && "rotate-90"
                           )} />
                         )}
@@ -866,7 +866,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {/* Submenu - Modern style */}
               {hasChildren && isExpanded && !isCollapsed && (
                 <div 
-                  className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-border pl-3"
+                  className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-3"
                   data-tour={role === "client" ? `client-${slugify(item.name)}-submenu` : undefined}
                 >
                   {item.children!.map((child) => {
@@ -879,8 +879,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                           className={cn(
                             "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                             isChildActive
-                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                           data-testid={`link-${slugify(child.name)}`}
                           data-tour={role === "client" ? `client-submenu-${slugify(child.name)}` : undefined}
@@ -895,14 +895,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                             isChildActive
                               ? "text-cyan-500"
-                              : child.color || "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
+                              : child.color || "text-muted-foreground/60 group-hover:text-cyan-500"
                           )} />
                           <span className={cn(
                             "font-medium",
                             isChildActive && "font-semibold"
                           )}>{child.name}</span>
                           {child.badge && (
-                            <span className="flex items-center gap-1 text-xs font-medium text-slate-400 ml-auto">
+                            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground/60 ml-auto">
                               <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
                               <span>{child.badge}</span>
                             </span>
@@ -919,8 +919,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* I Miei Agenti AI Section - Only for clients with assigned agents */}
         {role === "client" && assignedAgents.length > 0 && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
-            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               I Miei Agenti AI
             </h3>
             <div className="space-y-0.5">
@@ -929,7 +929,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                   <div
                     className={cn(
                       "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                      "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                      "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     data-testid={`link-agent-${agent.publicSlug}`}
                     onClick={handleLinkClick}
@@ -947,8 +947,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Dipendenti AI del Consulente - Link to consultant's employee agents for Gold/Deluxe clients */}
         {role === "client" && consultantInfo?.success && consultantInfo.data?.slug && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
-            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Dipendenti AI
             </h3>
             <div className="space-y-0.5">
@@ -956,7 +956,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 <div
                   className={cn(
                     "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
-                    "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                    "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                   data-testid="link-consultant-agents"
                   onClick={handleLinkClick}
@@ -973,7 +973,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
         {/* Pro Tools Section - Collapsible premium section for clients */}
         {role === "client" && !isCollapsed && (
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-border/50">
+          <div className="mt-3 pt-3 border-t border-border/50">
             <button
               onClick={() => setExpandedProTools(!expandedProTools)}
               className="w-full flex items-center justify-between px-3 py-1.5 group"
@@ -988,7 +988,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 </span>
               </div>
               <ChevronRight className={cn(
-                "h-3 w-3 text-slate-400 transition-transform duration-200",
+                "h-3 w-3 text-muted-foreground/40 transition-transform duration-200",
                 expandedProTools && "rotate-90"
               )} />
             </button>
@@ -1009,8 +1009,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                           className={cn(
                             "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                             isActive
-                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                              ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                           data-testid={`link-${slugify(item.name)}`}
                           onMouseEnter={() => preloadOnHover(item.href)}
@@ -1041,7 +1041,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                             isActive
                               ? "text-cyan-500"
-                              : item.color || "text-slate-400 dark:text-slate-500"
+                              : item.color || "text-muted-foreground/60"
                           )} />
                           <div className="flex-1 flex items-center justify-between min-w-0">
                             <span className={cn(
@@ -1052,7 +1052,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             </span>
                             {hasChildren && (
                               <ChevronRight className={cn(
-                                "h-3.5 w-3.5 transition-transform duration-200 text-slate-400",
+                                "h-3.5 w-3.5 transition-transform duration-200 text-muted-foreground/40",
                                 isExpanded && "rotate-90"
                               )} />
                             )}
@@ -1061,7 +1061,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       </Link>
 
                       {hasChildren && isExpanded && (
-                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-slate-200 dark:border-border pl-3">
+                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-border pl-3">
                           {item.children!.map((child) => {
                             const ChildIcon = child.icon;
                             const isChildActive = isRouteActive(child.href, location);
@@ -1072,8 +1072,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                   className={cn(
                                     "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                                     isChildActive
-                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-slate-900 dark:text-white"
-                                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                                      ? "bg-cyan-50/80 dark:bg-cyan-950/30 text-foreground"
+                                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                   )}
                                   data-testid={`link-${slugify(child.name)}`}
                                   onClick={handleLinkClick}
@@ -1087,7 +1087,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                     "h-4 w-4 flex-shrink-0 transition-colors duration-150",
                                     isChildActive
                                       ? "text-cyan-500"
-                                      : child.color || "text-slate-400 dark:text-slate-500 group-hover:text-cyan-500"
+                                      : child.color || "text-muted-foreground/60 group-hover:text-cyan-500"
                                   )} />
                                   <span className={cn(
                                     "font-medium",
@@ -1113,17 +1113,17 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {!isCollapsed && (
       <div className="px-2 py-3 mt-auto">
         <div className="flex items-center gap-2.5 px-3 py-3 rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-200">
-          <Avatar className="w-8 h-8 border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0">
+          <Avatar className="w-8 h-8 border-2 border-border shadow-sm flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
             <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 dark:text-white truncate leading-tight">
+            <p className="text-sm font-semibold text-foreground truncate leading-tight">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] text-muted-foreground">
               {user?.role === 'consultant' ? 'Consulente' : 'Cliente'}
             </p>
           </div>

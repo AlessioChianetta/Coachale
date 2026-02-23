@@ -192,9 +192,10 @@ Regole per queste pagine:
 | Pagina | Componenti | Status |
 |---|---|---|
 | `consultant-dashboard.tsx` | PageLayout, KPICard, SectionHeader | ✅ |
-| `client-dashboard.tsx` | PageLayout | ✅ |
+| `client-dashboard.tsx` | PageLayout, KPICard | ✅ |
 | `consultant-ai-assistant.tsx` | Layout custom + CSS vars | ✅ |
 | `client-ai-assistant.tsx` | Layout custom + CSS vars | ✅ |
 | `components/navbar.tsx` | CSS vars completo | ✅ |
 | `components/sidebar.tsx` | CSS vars completo | ✅ |
+| `consultant-clients.tsx` | Card list mobile, filter bar ottimizzata, paginazione mobile | ✅ |
 | `components/ai-assistant/ConversationSidebar.tsx` | CSS vars completo | ✅ |

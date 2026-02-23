@@ -33,6 +33,7 @@ import {
   Gift
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { KPICard } from "@/components/ui/kpi-card";
 import { getAuthHeaders, getAuthUser, logout } from "@/lib/auth";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
@@ -59,12 +60,12 @@ interface NavigationSection {
   badge?: string;
 }
 
-interface KPICard {
+interface KPICardData {
   title: string;
   value: number | string;
   icon: React.ComponentType<any>;
-  color: string;
-  bgGradient: string;
+  iconColor: string;
+  iconBg: string;
 }
 
 export default function ClientDashboard() {
@@ -177,20 +178,20 @@ export default function ClientDashboard() {
       .slice(0, 3);
   }, [completedExercises]);
 
-  const kpiCards: KPICard[] = useMemo(() => [
+  const kpiCards: KPICardData[] = useMemo(() => [
     {
       title: "Esercizi Completati",
       value: completedExercises.length,
       icon: CheckCircle,
-      color: "text-emerald-600",
-      bgGradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+      iconColor: "text-emerald-600",
+      iconBg: "bg-emerald-500/10",
     },
     {
       title: "Streak Attuale",
       value: `${stats?.streak || 0} giorni`,
       icon: Flame,
-      color: "text-orange-600",
-      bgGradient: "from-orange-500/10 via-orange-500/5 to-transparent",
+      iconColor: "text-orange-600",
+      iconBg: "bg-orange-500/10",
     },
     {
       title: "Prossima Consulenza",
@@ -198,15 +199,15 @@ export default function ClientDashboard() {
         ? format(new Date(nextConsultation.scheduledAt), "dd MMM", { locale: it })
         : "Nessuna",
       icon: Calendar,
-      color: "text-blue-600",
-      bgGradient: "from-blue-500/10 via-blue-500/5 to-transparent",
+      iconColor: "text-blue-600",
+      iconBg: "bg-blue-500/10",
     },
     {
       title: "Badge Guadagnati",
       value: badges.length || 0,
       icon: Award,
-      color: "text-purple-600",
-      bgGradient: "from-purple-500/10 via-purple-500/5 to-transparent",
+      iconColor: "text-purple-600",
+      iconBg: "bg-purple-500/10",
     },
   ], [completedExercises.length, stats?.streak, nextConsultation, badges.length]);
 
@@ -418,27 +419,14 @@ export default function ClientDashboard() {
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {kpiCards.map((kpi, index) => (
-                    <Card 
+                    <KPICard
                       key={index}
-                      className={cn(
-                        "relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]",
-                        `bg-gradient-to-br ${kpi.bgGradient}`
-                      )}
-                    >
-                      <CardContent className="p-4 sm:p-5">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="text-xs sm:text-sm font-medium text-muted-foreground">{kpi.title}</p>
-                            <p className="text-2xl sm:text-3xl font-bold tracking-tight">{kpi.value}</p>
-                          </div>
-                          <div className={cn(
-                            "p-2 sm:p-3 rounded-xl bg-background/50 backdrop-blur-sm shadow-sm",
-                          )}>
-                            <kpi.icon className={cn("h-5 w-5 sm:h-6 sm:w-6", kpi.color)} />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      title={kpi.title}
+                      value={kpi.value}
+                      icon={kpi.icon as any}
+                      iconColor={kpi.iconColor}
+                      iconBg={kpi.iconBg}
+                    />
                   ))}
                 </div>
 

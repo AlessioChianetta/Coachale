@@ -853,25 +853,27 @@ export default function ConsultantClientsPage() {
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setActiveTab('clienti')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
                 activeTab === 'clienti'
                   ? 'bg-cyan-600 text-white shadow-sm'
                   : 'bg-card text-muted-foreground hover:bg-muted border border-border'
               }`}
             >
-              <Users className="w-4 h-4" />
-              Elenco Clienti
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span className="sm:hidden">Clienti</span>
+              <span className="hidden sm:inline">Elenco Clienti</span>
             </button>
             <button
               onClick={() => setActiveTab('monitoraggio')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
                 activeTab === 'monitoraggio'
                   ? 'bg-cyan-600 text-white shadow-sm'
                   : 'bg-card text-muted-foreground hover:bg-muted border border-border'
               }`}
             >
-              <BarChart3 className="w-4 h-4" />
-              Monitoraggio Consulenze
+              <BarChart3 className="w-4 h-4 flex-shrink-0" />
+              <span className="sm:hidden">Monitoraggio</span>
+              <span className="hidden sm:inline">Monitoraggio Consulenze</span>
             </button>
           </div>
 
@@ -1587,70 +1589,70 @@ export default function ConsultantClientsPage() {
           ) : (
           /* Existing Client List Content */
           <Card className="border-0 shadow-xl bg-card">
-            <CardHeader className="pb-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <CardTitle className="text-xl font-bold text-foreground mb-1">
-                    Elenco Clienti
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">Gestisci e monitora tutti i tuoi clienti registrati</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1 sm:flex-none sm:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <CardHeader className="pb-4 px-4 sm:px-6 pt-4 sm:pt-5">
+              <div className="hidden sm:block mb-3">
+                <CardTitle className="text-xl font-bold text-foreground mb-0.5">Elenco Clienti</CardTitle>
+                <p className="text-sm text-muted-foreground">Gestisci e monitora tutti i tuoi clienti</p>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {/* Row 1: Search + Nuovo (always together) */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Cerca clienti..."
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
-                      className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400"
+                      className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400 h-10"
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
-                      {([
-                        { value: 'all', label: 'Tutti', count: clients.length },
-                        { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee).length },
-                        { value: 'employees', label: 'Dipendenti', count: clients.filter((c: any) => c.isEmployee).length },
-                      ] as const).map(opt => (
-                        <button
-                          key={opt.value}
-                          onClick={() => { setTypeFilter(opt.value); setCurrentPage(1); }}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                            typeFilter === opt.value
-                              ? opt.value === 'employees'
-                                ? 'bg-violet-600 text-white shadow-sm'
-                                : opt.value === 'clients'
-                                  ? 'bg-cyan-600 text-white shadow-sm'
-                                  : 'bg-foreground text-background shadow-sm'
-                              : 'text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {opt.label} ({opt.count})
-                        </button>
-                      ))}
-                    </div>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                      className="px-3 py-2 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                    >
-                      <option value="all">Tutti</option>
-                      <option value="active">Attivi</option>
-                      <option value="inactive">Inattivi</option>
-                    </select>
-                    <Button 
-                      onClick={() => setIsNewClientDialogOpen(true)}
-                      className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white"
-                      size="sm"
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Nuovo
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-border hover:bg-muted/40">
-                      <Download className="w-4 h-4 mr-2" />
-                      Esporta
-                    </Button>
+                  <Button
+                    onClick={() => setIsNewClientDialogOpen(true)}
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white flex-shrink-0 h-10 px-3"
+                    size="sm"
+                  >
+                    <UserPlus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Nuovo</span>
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-border hover:bg-muted/40 hidden sm:flex h-10">
+                    <Download className="w-4 h-4 mr-2" />
+                    Esporta
+                  </Button>
+                </div>
+                {/* Row 2: Type filter + Status filter */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+                    {([
+                      { value: 'all', label: 'Tutti', count: clients.length },
+                      { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee).length },
+                      { value: 'employees', label: 'Dip.', count: clients.filter((c: any) => c.isEmployee).length },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { setTypeFilter(opt.value); setCurrentPage(1); }}
+                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          typeFilter === opt.value
+                            ? opt.value === 'employees'
+                              ? 'bg-violet-600 text-white shadow-sm'
+                              : opt.value === 'clients'
+                                ? 'bg-cyan-600 text-white shadow-sm'
+                                : 'bg-foreground text-background shadow-sm'
+                            : 'text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {opt.label} ({opt.count})
+                      </button>
+                    ))}
                   </div>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => handleStatusFilterChange(e.target.value as any)}
+                    className="px-3 py-1.5 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  >
+                    <option value="all">Tutti</option>
+                    <option value="active">Attivi</option>
+                    <option value="inactive">Inattivi</option>
+                  </select>
                 </div>
               </div>
             </CardHeader>
@@ -1678,8 +1680,96 @@ export default function ConsultantClientsPage() {
                 </div>
               ) : (
                 <>
-                  {/* Compact Enterprise Table */}
-                  <div className="overflow-x-auto">
+                  {/* Mobile Card List — visible only on small screens */}
+                  <div className="sm:hidden divide-y divide-border/40">
+                    {sortedAndPaginatedClients.map((client: any) => (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 active:bg-muted/50 transition-colors"
+                      >
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${client.isActive !== false ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                        <Avatar className="w-9 h-9 flex-shrink-0">
+                          <AvatarImage src={client.avatar} />
+                          <AvatarFallback className={`${client.isEmployee ? 'bg-gradient-to-br from-violet-400 to-purple-500' : 'bg-gradient-to-br from-cyan-400 to-teal-500'} text-white font-medium text-[10px]`}>
+                            {client.firstName?.[0]}{client.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="font-semibold text-sm text-foreground truncate">
+                              {client.firstName} {client.lastName}
+                            </span>
+                            {client.isEmployee && (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-violet-100 text-violet-700 border-violet-200 flex-shrink-0">
+                                Dip.
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{client._completedCount}/{client._assignmentsCount} esercizi</span>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <div className="flex-1 bg-muted rounded-full h-1.5 max-w-[48px]">
+                                <div
+                                  className="bg-gradient-to-r from-cyan-500 to-teal-500 h-1.5 rounded-full"
+                                  style={{ width: `${client._completionRate}%` }}
+                                />
+                              </div>
+                              <span className="font-medium text-foreground">{client._completionRate}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-muted-foreground">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuItem onClick={() => handleEditClient(client)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Modifica
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                const checked = client.isActive === false;
+                                try {
+                                  await fetch(`/api/users/${client.id}`, {
+                                    method: 'PATCH',
+                                    headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ isActive: checked }),
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+                                } catch {}
+                              }}
+                            >
+                              {client.isActive !== false ? 'Disattiva' : 'Attiva'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {client.role === 'consultant' ? (
+                              <DropdownMenuItem
+                                onClick={() => removeConsultantProfileMutation.mutate(client.id)}
+                                className="text-orange-600 focus:text-orange-700"
+                              >
+                                <UserMinus className="w-4 h-4 mr-2" />
+                                Rimuovi consulente
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => addConsultantProfileMutation.mutate(client.id)}
+                                className="text-violet-600 focus:text-violet-700"
+                              >
+                                <UserCog className="w-4 h-4 mr-2" />
+                                Abilita consulente
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop Table — hidden on mobile */}
+                  <div className="hidden sm:block overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-muted/40 border-b border-border">
                         <tr>
@@ -1925,9 +2015,8 @@ export default function ConsultantClientsPage() {
                   </div>
 
                   {/* Pagination Controls */}
-                  <div className="px-4 py-3 border-t border-border bg-muted/40/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Mostra</span>
                       <select
                         value={itemsPerPage}
                         onChange={(e) => {
@@ -1940,10 +2029,10 @@ export default function ConsultantClientsPage() {
                         <option value={25}>25</option>
                         <option value={50}>50</option>
                       </select>
-                      <span>per pagina</span>
-                      <span className="text-muted-foreground mx-2">|</span>
-                      <span className="font-medium">
-                        {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filteredClients.length)} di {filteredClients.length}
+                      <span className="hidden sm:inline">per pagina</span>
+                      <span className="hidden sm:inline text-muted-foreground mx-1">|</span>
+                      <span className="font-medium text-xs">
+                        {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filteredClients.length)}<span className="hidden sm:inline"> di {filteredClients.length}</span>
                       </span>
                     </div>
                     
@@ -1953,7 +2042,7 @@ export default function ConsultantClientsPage() {
                         size="sm"
                         onClick={() => setCurrentPage(1)}
                         disabled={currentPage === 1}
-                        className="h-8 w-8 p-0"
+                        className="hidden sm:inline-flex h-8 w-8 p-0"
                       >
                         <ChevronsLeft className="w-4 h-4" />
                       </Button>
@@ -1967,7 +2056,11 @@ export default function ConsultantClientsPage() {
                         <ChevronLeft className="w-4 h-4" />
                       </Button>
                       
-                      <div className="flex items-center gap-1 mx-2">
+                      <span className="text-xs text-muted-foreground px-2 sm:hidden">
+                        {currentPage}/{totalPages}
+                      </span>
+
+                      <div className="hidden sm:flex items-center gap-1 mx-2">
                         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                           let pageNum;
                           if (totalPages <= 5) {
@@ -2007,7 +2100,7 @@ export default function ConsultantClientsPage() {
                         size="sm"
                         onClick={() => setCurrentPage(totalPages)}
                         disabled={currentPage === totalPages}
-                        className="h-8 w-8 p-0"
+                        className="hidden sm:inline-flex h-8 w-8 p-0"
                       >
                         <ChevronsRight className="w-4 h-4" />
                       </Button>

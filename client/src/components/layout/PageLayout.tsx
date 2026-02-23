@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -13,16 +12,16 @@ interface PageLayoutProps {
 }
 
 export function PageLayout({ role, children, className, noPadding = false }: PageLayoutProps) {
-  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   return (
-    <div className="min-h-screen bg-background">
-      {isMobile && (
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
-      )}
-      <div className={cn("flex", isMobile ? "h-[calc(100vh-56px)]" : "h-screen")}>
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="md:hidden sticky top-0 z-50">
+        <Navbar onToggleSidebar={() => setSidebarOpen(true)} />
+      </div>
+
+      <div className="flex flex-1 min-h-0">
         <Sidebar
           role={role}
           isOpen={sidebarOpen}
@@ -31,14 +30,9 @@ export function PageLayout({ role, children, className, noPadding = false }: Pag
           currentRole={currentRole}
           onRoleSwitch={handleRoleSwitch}
         />
-        <main className="flex-1 overflow-y-auto">
-          <div
-            className={cn(
-              !noPadding && "page-container",
-              "pb-safe",
-              className
-            )}
-          >
+
+        <main className="flex-1 overflow-y-auto min-h-0">
+          <div className={cn(!noPadding && "page-container pb-safe", className)}>
             {children}
           </div>
         </main>
