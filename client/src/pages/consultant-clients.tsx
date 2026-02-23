@@ -684,14 +684,14 @@ export default function ConsultantClientsPage() {
 
   if (clientsLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
+      <div className="flex justify-center items-center min-h-screen bg-background">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto">
             <Activity className="h-8 w-8 animate-spin text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-slate-800">Caricamento in corso</h3>
-            <p className="text-slate-600">Stiamo recuperando i dati dei tuoi clienti...</p>
+            <h3 className="text-lg font-semibold text-foreground">Caricamento in corso</h3>
+            <p className="text-muted-foreground">Stiamo recuperando i dati dei tuoi clienti...</p>
           </div>
         </div>
       </div>
@@ -700,17 +700,17 @@ export default function ConsultantClientsPage() {
 
   if (clientsError) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-4">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-background p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
             <Users className="h-10 w-10 text-red-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-red-600 mb-2">Errore nel caricamento</h1>
-            <p className="text-slate-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               Impossibile caricare i dati dei clienti. Riprova più tardi.
             </p>
-            <p className="text-sm text-slate-500">{clientsError.message}</p>
+            <p className="text-sm text-muted-foreground">{clientsError.message}</p>
           </div>
           <Button onClick={() => window.location.reload()} className="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600">
             <Activity className="w-4 h-4 mr-2" />
@@ -736,12 +736,12 @@ export default function ConsultantClientsPage() {
   }).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
+    <div className={cn("min-h-screen flex flex-col bg-background", !isMobile && "h-screen")}>
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
+      <div className={cn("flex flex-1", isMobile ? "min-h-0" : "min-h-0 overflow-hidden")}>
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
-        <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
+        <div className={cn("flex-1 p-4 sm:p-5 md:p-6", isMobile ? "overflow-y-auto" : "overflow-y-auto")}>
           {/* Navigation Tabs */}
           <NavigationTabs
             tabs={[
@@ -764,18 +764,18 @@ export default function ConsultantClientsPage() {
                     </div>
                     <div>
                       <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">Gestione Clienti</h1>
-                      <p className="text-slate-400 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">Dashboard completa per la gestione dei tuoi clienti</p>
+                      <p className="text-white/60 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">Dashboard completa per la gestione dei tuoi clienti</p>
                     </div>
                   </div>
                 </div>
                 <div className="hidden lg:flex items-center space-x-4">
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-slate-700/50">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/10">
                     <div className="text-3xl font-bold">{clients.length}</div>
-                    <div className="text-sm text-slate-400">Clienti Totali</div>
+                    <div className="text-sm text-white/60">Clienti Totali</div>
                   </div>
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-slate-700/50">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 text-center border border-white/10">
                     <div className="text-3xl font-bold">{activeClientsCount}</div>
-                    <div className="text-sm text-slate-400">Attivi</div>
+                    <div className="text-sm text-white/60">Attivi</div>
                   </div>
                 </div>
               </div>
@@ -784,13 +784,13 @@ export default function ConsultantClientsPage() {
 
           {/* Enhanced Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6 md:mb-8">
-            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <Card className="border border-border shadow-sm bg-card">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-cyan-700">Clienti Totali</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{clients.length}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Tutti i clienti registrati</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{clients.length}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Tutti i clienti registrati</p>
                   </div>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Users className="text-white" size={16} />
@@ -799,13 +799,13 @@ export default function ConsultantClientsPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <Card className="border border-border shadow-sm bg-card">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-emerald-700">Nuovi Clienti</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{newClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Ultimo mese</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{newClientsCount}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Ultimo mese</p>
                   </div>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <UserPlus className="text-white" size={16} />
@@ -814,13 +814,13 @@ export default function ConsultantClientsPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <Card className="border border-border shadow-sm bg-card">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-amber-700">Clienti Attivi</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">{activeClientsCount}</p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Con esercizi in corso</p>
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">{activeClientsCount}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Con esercizi in corso</p>
                   </div>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Zap className="text-white" size={16} />
@@ -829,17 +829,17 @@ export default function ConsultantClientsPage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm">
+            <Card className="border border-border shadow-sm bg-card">
               <CardContent className="p-3 sm:p-4 md:p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5 sm:space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-teal-700">Progresso Medio</p>
-                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">
+                    <p className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                       {assignments.length > 0 ? 
                         Math.round((assignments.filter((a: any) => a.status === 'completed').length / assignments.length) * 100) 
                         : 0}%
                     </p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">Esercizi completati</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Esercizi completati</p>
                   </div>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
                     <Target className="text-white" size={16} />
@@ -856,7 +856,7 @@ export default function ConsultantClientsPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === 'clienti'
                   ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-white/80 text-slate-600 hover:bg-white border border-slate-200'
+                  : 'bg-card text-muted-foreground hover:bg-muted border border-border'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -867,7 +867,7 @@ export default function ConsultantClientsPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === 'monitoraggio'
                   ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-white/80 text-slate-600 hover:bg-white border border-slate-200'
+                  : 'bg-card text-muted-foreground hover:bg-muted border border-border'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -876,7 +876,7 @@ export default function ConsultantClientsPage() {
           </div>
 
           {activeTab === 'clienti' && departments.length > 0 && (
-            <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mb-4">
+            <Card className="border-0 shadow-xl bg-card mb-4">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -884,8 +884,8 @@ export default function ConsultantClientsPage() {
                       <Building2 className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg font-bold text-slate-800">Struttura Aziendale</CardTitle>
-                      <p className="text-xs text-slate-500">Organizza i dipendenti per reparto</p>
+                      <CardTitle className="text-lg font-bold text-foreground">Struttura Aziendale</CardTitle>
+                      <p className="text-xs text-muted-foreground">Organizza i dipendenti per reparto</p>
                     </div>
                   </div>
                   <Button
@@ -909,7 +909,7 @@ export default function ConsultantClientsPage() {
                     return (
                       <div
                         key={dept.id}
-                        className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+                        className="rounded-xl border border-border bg-card overflow-hidden"
                         style={{ borderLeftWidth: '4px', borderLeftColor: dept.color }}
                       >
                         <div className="p-3">
@@ -919,7 +919,7 @@ export default function ConsultantClientsPage() {
                                 className="w-3 h-3 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: dept.color }}
                               />
-                              <span className="font-semibold text-sm text-slate-800">{dept.name}</span>
+                              <span className="font-semibold text-sm text-foreground">{dept.name}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
@@ -929,7 +929,7 @@ export default function ConsultantClientsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditDepartment(dept)}
-                                className="h-6 w-6 p-0 hover:bg-slate-100"
+                                className="h-6 w-6 p-0 hover:bg-muted"
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -948,18 +948,18 @@ export default function ConsultantClientsPage() {
                             </div>
                           </div>
                           {dept.description && (
-                            <p className="text-[11px] text-slate-500 mb-2">{dept.description}</p>
+                            <p className="text-[11px] text-muted-foreground mb-2">{dept.description}</p>
                           )}
                           {deptEmployees.length > 0 && (
                             <div className="space-y-1">
                               {deptEmployees.slice(0, 5).map((emp: any) => (
-                                <div key={emp.id} className="flex items-center gap-1.5 text-xs text-slate-600">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                <div key={emp.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
                                   {emp.firstName} {emp.lastName}
                                 </div>
                               ))}
                               {deptEmployees.length > 5 && (
-                                <span className="text-[10px] text-slate-400">+{deptEmployees.length - 5} altri</span>
+                                <span className="text-[10px] text-muted-foreground">+{deptEmployees.length - 5} altri</span>
                               )}
                             </div>
                           )}
@@ -971,12 +971,12 @@ export default function ConsultantClientsPage() {
                     const unassigned = clients.filter((c: any) => c.isEmployee && !c.departmentId);
                     if (unassigned.length === 0) return null;
                     return (
-                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: '#94a3b8' }}>
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 overflow-hidden" style={{ borderLeftWidth: '4px', borderLeftColor: '#94a3b8' }}>
                         <div className="p-3">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full flex-shrink-0 bg-slate-400" />
-                              <span className="font-semibold text-sm text-slate-600">Non assegnati</span>
+                              <span className="w-3 h-3 rounded-full flex-shrink-0 bg-muted-foreground/60" />
+                              <span className="font-semibold text-sm text-muted-foreground">Non assegnati</span>
                             </div>
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                               {unassigned.length} dipendenti
@@ -984,13 +984,13 @@ export default function ConsultantClientsPage() {
                           </div>
                           <div className="space-y-1">
                             {unassigned.slice(0, 5).map((emp: any) => (
-                              <div key={emp.id} className="flex items-center gap-1.5 text-xs text-slate-500">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                              <div key={emp.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
                                 {emp.firstName} {emp.lastName}
                               </div>
                             ))}
                             {unassigned.length > 5 && (
-                              <span className="text-[10px] text-slate-400">+{unassigned.length - 5} altri</span>
+                              <span className="text-[10px] text-muted-foreground">+{unassigned.length - 5} altri</span>
                             )}
                           </div>
                         </div>
@@ -1010,8 +1010,8 @@ export default function ConsultantClientsPage() {
                     <Building2 className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">Organizza il tuo team con i Reparti</p>
-                    <p className="text-xs text-slate-500">Crea reparti per raggruppare i dipendenti e gestire i documenti AI in modo mirato</p>
+                    <p className="text-sm font-semibold text-foreground">Organizza il tuo team con i Reparti</p>
+                    <p className="text-xs text-muted-foreground">Crea reparti per raggruppare i dipendenti e gestire i documenti AI in modo mirato</p>
                   </div>
                 </div>
                 <Button
@@ -1046,80 +1046,80 @@ export default function ConsultantClientsPage() {
                 <div className="space-y-4">
                   {/* Summary Header */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                    <Card className="border border-border shadow-sm bg-card">
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
                           <Users className="w-5 h-5 text-cyan-600" />
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500">Clienti monitorati</p>
-                          <p className="text-xl font-bold text-slate-800">{totalMonitored}</p>
+                          <p className="text-xs text-muted-foreground">Clienti monitorati</p>
+                          <p className="text-xl font-bold text-foreground">{totalMonitored}</p>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                    <Card className="border border-border shadow-sm bg-card">
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
                           <BarChart3 className="w-5 h-5 text-teal-600" />
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500">Utilizzo medio</p>
-                          <p className="text-xl font-bold text-slate-800">{avgUsage}%</p>
+                          <p className="text-xs text-muted-foreground">Utilizzo medio</p>
+                          <p className="text-xl font-bold text-foreground">{avgUsage}%</p>
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="border border-slate-200 shadow-sm bg-white/80">
+                    <Card className="border border-border shadow-sm bg-card">
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
                           <AlertTriangle className="w-5 h-5 text-red-600" />
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500">Clienti a rischio</p>
-                          <p className="text-xl font-bold text-slate-800">{atRiskCount}</p>
+                          <p className="text-xs text-muted-foreground">Clienti a rischio</p>
+                          <p className="text-xl font-bold text-foreground">{atRiskCount}</p>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
 
                   {/* Monitoring Table */}
-                  <Card className="border border-slate-200 shadow-sm bg-white/80">
+                  <Card className="border border-border shadow-sm bg-card">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-bold text-slate-800">
+                      <CardTitle className="text-lg font-bold text-foreground">
                         Monitoraggio Pacchetti Consulenze
                       </CardTitle>
-                      <p className="text-sm text-slate-500">Utilizzo mensile dei pacchetti consulenze limitate</p>
+                      <p className="text-sm text-muted-foreground">Utilizzo mensile dei pacchetti consulenze limitate</p>
                     </CardHeader>
                     <CardContent className="p-0">
                       {monitoringLoading ? (
                         <div className="flex items-center justify-center py-16">
                           <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
-                          <span className="ml-2 text-slate-500">Caricamento...</span>
+                          <span className="ml-2 text-muted-foreground">Caricamento...</span>
                         </div>
                       ) : monitoringData.length === 0 ? (
                         <div className="text-center py-16 px-4">
-                          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <BarChart3 className="w-8 h-8 text-slate-400" />
+                          <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <BarChart3 className="w-8 h-8 text-muted-foreground" />
                           </div>
-                          <h3 className="text-lg font-semibold text-slate-800 mb-2">Nessun pacchetto limitato</h3>
-                          <p className="text-sm text-slate-500">Nessun cliente ha un limite di consulenze mensile configurato</p>
+                          <h3 className="text-lg font-semibold text-foreground mb-2">Nessun pacchetto limitato</h3>
+                          <p className="text-sm text-muted-foreground">Nessun cliente ha un limite di consulenze mensile configurato</p>
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full">
-                            <thead className="bg-slate-50 border-b border-slate-200">
+                            <thead className="bg-muted/40 border-b border-border">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Cliente</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">Telefono</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Pacchetto</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Utilizzate</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Programmate</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Prossima</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Rimanenti</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Stato</th>
-                                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Azioni</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cliente</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Telefono</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pacchetto</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Utilizzate</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programmate</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prossima</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rimanenti</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stato</th>
+                                <th className="px-4 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Azioni</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-border/60">
                               {monitoringData.map((client: any) => {
                                 const usagePct = client.monthlyConsultationLimit > 0
                                   ? (client.consultationsUsedThisMonth / client.monthlyConsultationLimit) * 100
@@ -1174,7 +1174,7 @@ export default function ConsultantClientsPage() {
                                           </AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
-                                          <span className="font-medium text-sm text-slate-800">
+                                          <span className="font-medium text-sm text-foreground">
                                             {client.firstName} {client.lastName}
                                           </span>
                                           {client.role === 'consultant' && (
@@ -1184,15 +1184,15 @@ export default function ConsultantClientsPage() {
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 hidden md:table-cell">
-                                      <span className="text-xs text-slate-500">{client.phoneNumber || '—'}</span>
+                                      <span className="text-xs text-muted-foreground">{client.phoneNumber || '—'}</span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                      <span className="text-sm font-semibold text-slate-700">{client.monthlyConsultationLimit}/mese</span>
+                                      <span className="text-sm font-semibold text-foreground">{client.monthlyConsultationLimit}/mese</span>
                                     </td>
                                     <td className="px-4 py-3">
                                       <div className="flex flex-col items-center gap-1">
-                                        <span className="text-sm font-semibold text-slate-700">{client.consultationsUsedThisMonth}</span>
-                                        <div className="w-20 bg-slate-200 rounded-full h-1.5">
+                                        <span className="text-sm font-semibold text-foreground">{client.consultationsUsedThisMonth}</span>
+                                        <div className="w-20 bg-muted rounded-full h-1.5">
                                           <div
                                             className={`bg-gradient-to-r ${progressBarColor} h-1.5 rounded-full transition-all`}
                                             style={{ width: `${Math.min(usagePct, 100)}%` }}
@@ -1242,7 +1242,7 @@ export default function ConsultantClientsPage() {
                                             {next.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                           </span>
                                         ) : (
-                                          <span className="text-xs text-slate-400">—</span>
+                                          <span className="text-xs text-muted-foreground">—</span>
                                         );
                                       })()}
                                     </td>
@@ -1300,20 +1300,20 @@ export default function ConsultantClientsPage() {
                       
                       {schedulingStep === 'overview' && (
                         <div className="space-y-4">
-                          <div className="bg-slate-50 rounded-xl p-4">
-                            <h3 className="font-semibold text-slate-800">{schedulingClient?.firstName} {schedulingClient?.lastName}</h3>
+                          <div className="bg-muted/40 rounded-xl p-4">
+                            <h3 className="font-semibold text-foreground">{schedulingClient?.firstName} {schedulingClient?.lastName}</h3>
                             <div className="grid grid-cols-3 gap-3 mt-3">
                               <div className="text-center">
-                                <p className="text-2xl font-bold text-slate-800">{schedulingClient?.monthlyConsultationLimit}</p>
-                                <p className="text-xs text-slate-500">Pacchetto/mese</p>
+                                <p className="text-2xl font-bold text-foreground">{schedulingClient?.monthlyConsultationLimit}</p>
+                                <p className="text-xs text-muted-foreground">Pacchetto/mese</p>
                               </div>
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-emerald-600">{schedulingClient?.consultationsUsedThisMonth}</p>
-                                <p className="text-xs text-slate-500">Fatte questo mese</p>
+                                <p className="text-xs text-muted-foreground">Fatte questo mese</p>
                               </div>
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-cyan-600">{schedulingClient?.consultations?.filter((c:any) => c.status === 'scheduled').length || 0}</p>
-                                <p className="text-xs text-slate-500">Programmate</p>
+                                <p className="text-xs text-muted-foreground">Programmate</p>
                               </div>
                             </div>
                           </div>
@@ -1332,18 +1332,18 @@ export default function ConsultantClientsPage() {
                           )}
                           
                           <div>
-                            <label className="text-sm font-medium text-slate-700">Per quanti mesi vuoi programmare?</label>
+                            <label className="text-sm font-medium text-foreground">Per quanti mesi vuoi programmare?</label>
                             <select 
                               value={schedulingMonths}
                               onChange={(e) => setSchedulingMonths(parseInt(e.target.value))}
-                              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                              className="mt-1 w-full px-3 py-2 border border-border rounded-xl text-sm"
                             >
                               {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} {n === 1 ? 'mese' : 'mesi'}</option>)}
                             </select>
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium text-slate-700">Frequenza consulenze</label>
+                            <label className="text-sm font-medium text-foreground">Frequenza consulenze</label>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {[
                                 { value: 0, label: 'Da pacchetto' },
@@ -1359,7 +1359,7 @@ export default function ConsultantClientsPage() {
                                   className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                                     schedulingIntervalDays === opt.value
                                       ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm'
-                                      : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-300 hover:text-cyan-700'
+                                      : 'bg-card text-muted-foreground border-border hover:border-cyan-300 hover:text-cyan-700'
                                   }`}
                                 >
                                   {opt.label}
@@ -1369,7 +1369,7 @@ export default function ConsultantClientsPage() {
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium text-slate-700">Preferenza orario</label>
+                            <label className="text-sm font-medium text-foreground">Preferenza orario</label>
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {[
                                 { value: 'auto' as const, label: 'Automatico', desc: 'Basato sullo storico' },
@@ -1382,7 +1382,7 @@ export default function ConsultantClientsPage() {
                                   className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
                                     schedulingTimePreference === opt.value
                                       ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm'
-                                      : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-300 hover:text-cyan-700'
+                                      : 'bg-card text-muted-foreground border-border hover:border-cyan-300 hover:text-cyan-700'
                                   }`}
                                 >
                                   {opt.label}
@@ -1392,7 +1392,7 @@ export default function ConsultantClientsPage() {
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium text-slate-700">Consulenze extra per mese</label>
+                            <label className="text-sm font-medium text-foreground">Consulenze extra per mese</label>
                             <div className="mt-2 space-y-1.5">
                               {Array.from({ length: schedulingMonths }, (_, i) => {
                                 const d = new Date();
@@ -1400,21 +1400,21 @@ export default function ConsultantClientsPage() {
                                 const monthLabel = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
                                 const extraCount = schedulingExtraMonths[i] || 0;
                                 return (
-                                  <div key={i} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
-                                    <span className="text-sm text-slate-700 capitalize">{monthLabel}</span>
+                                  <div key={i} className="flex items-center justify-between bg-muted/40 rounded-xl px-3 py-2">
+                                    <span className="text-sm text-foreground capitalize">{monthLabel}</span>
                                     <div className="flex items-center gap-2">
                                       <button
                                         onClick={() => setSchedulingExtraMonths(prev => ({ ...prev, [i]: Math.max(0, extraCount - 1) }))}
                                         disabled={extraCount <= 0}
-                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 text-xs font-bold"
+                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 text-xs font-bold"
                                       >
                                         −
                                       </button>
-                                      <span className="text-sm font-semibold text-slate-800 w-4 text-center">{extraCount}</span>
+                                      <span className="text-sm font-semibold text-foreground w-4 text-center">{extraCount}</span>
                                       <button
                                         onClick={() => setSchedulingExtraMonths(prev => ({ ...prev, [i]: Math.min(5, extraCount + 1) }))}
                                         disabled={extraCount >= 5}
-                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-30 text-xs font-bold"
+                                        className="w-6 h-6 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 text-xs font-bold"
                                       >
                                         +
                                       </button>
@@ -1437,7 +1437,7 @@ export default function ConsultantClientsPage() {
 
                       {schedulingStep === 'proposal' && (
                         <div className="space-y-4">
-                          <p className="text-sm text-slate-600">Modifica le date proposte, poi procedi alla conferma.</p>
+                          <p className="text-sm text-muted-foreground">Modifica le date proposte, poi procedi alla conferma.</p>
                           {detectedPattern && detectedPattern.totalPastConsultations > 0 && (
                             <div className="bg-amber-50 rounded-xl p-3 flex items-start gap-2">
                               <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -1458,9 +1458,9 @@ export default function ConsultantClientsPage() {
                                 return acc;
                               }, {});
                               return Object.entries(grouped).map(([month, dates]) => (
-                                <div key={month} className="bg-slate-50 rounded-xl p-3">
+                                <div key={month} className="bg-muted/40 rounded-xl p-3">
                                   <div className="flex items-center justify-between mb-2">
-                                    <h4 className="text-sm font-semibold text-slate-700 capitalize">{month}</h4>
+                                    <h4 className="text-sm font-semibold text-foreground capitalize">{month}</h4>
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -1492,7 +1492,7 @@ export default function ConsultantClientsPage() {
                                           onChange={(e) => {
                                             setProposedDates(prev => prev.map((p, i) => i === d.idx ? { ...p, date: e.target.value } : p));
                                           }}
-                                          className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg"
+                                          className="flex-1 px-2 py-1 text-sm border border-border rounded-lg"
                                         />
                                         <input
                                           type="time"
@@ -1500,7 +1500,7 @@ export default function ConsultantClientsPage() {
                                           onChange={(e) => {
                                             setProposedDates(prev => prev.map((p, i) => i === d.idx ? { ...p, time: e.target.value } : p));
                                           }}
-                                          className="w-24 px-2 py-1 text-sm border border-slate-200 rounded-lg"
+                                          className="w-24 px-2 py-1 text-sm border border-border rounded-lg"
                                         />
                                         <Button
                                           variant="ghost"
@@ -1540,20 +1540,20 @@ export default function ConsultantClientsPage() {
 
                       {schedulingStep === 'review' && (
                         <div className="space-y-4">
-                          <div className="bg-slate-50 rounded-xl p-4">
-                            <h4 className="font-semibold text-slate-800 mb-2">Riepilogo</h4>
-                            <p className="text-sm text-slate-600">
+                          <div className="bg-muted/40 rounded-xl p-4">
+                            <h4 className="font-semibold text-foreground mb-2">Riepilogo</h4>
+                            <p className="text-sm text-muted-foreground">
                               Stai per creare <strong>{proposedDates.length} consulenze</strong> per {schedulingClient?.firstName} {schedulingClient?.lastName}
                             </p>
                           </div>
                           <div className="max-h-[300px] overflow-y-auto space-y-1">
                             {proposedDates.map((d, i) => (
-                              <div key={i} className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-slate-100">
+                              <div key={i} className="flex items-center gap-3 px-3 py-2 bg-card rounded-lg border border-border/60">
                                 <CalendarDays className="w-4 h-4 text-cyan-500 flex-shrink-0" />
-                                <span className="text-sm text-slate-700">
+                                <span className="text-sm text-foreground">
                                   {new Date(d.date).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
                                 </span>
-                                <span className="text-sm font-medium text-slate-800">{d.time}</span>
+                                <span className="text-sm font-medium text-foreground">{d.time}</span>
                               </div>
                             ))}
                           </div>
@@ -1586,27 +1586,27 @@ export default function ConsultantClientsPage() {
             })()
           ) : (
           /* Existing Client List Content */
-          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <Card className="border-0 shadow-xl bg-card">
             <CardHeader className="pb-4">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl font-bold text-slate-800 mb-1">
+                  <CardTitle className="text-xl font-bold text-foreground mb-1">
                     Elenco Clienti
                   </CardTitle>
-                  <p className="text-sm text-slate-600">Gestisci e monitora tutti i tuoi clienti registrati</p>
+                  <p className="text-sm text-muted-foreground">Gestisci e monitora tutti i tuoi clienti registrati</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1 sm:flex-none sm:w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Cerca clienti..."
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
-                      className="pl-9 bg-white/80 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                      className="pl-9 bg-card border-border focus:border-cyan-400 focus:ring-cyan-400"
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                    <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
                       {([
                         { value: 'all', label: 'Tutti', count: clients.length },
                         { value: 'clients', label: 'Clienti', count: clients.filter((c: any) => !c.isEmployee).length },
@@ -1621,8 +1621,8 @@ export default function ConsultantClientsPage() {
                                 ? 'bg-violet-600 text-white shadow-sm'
                                 : opt.value === 'clients'
                                   ? 'bg-cyan-600 text-white shadow-sm'
-                                  : 'bg-slate-800 text-white shadow-sm'
-                              : 'text-slate-600 hover:bg-slate-100'
+                                  : 'bg-foreground text-background shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted'
                           }`}
                         >
                           {opt.label} ({opt.count})
@@ -1632,7 +1632,7 @@ export default function ConsultantClientsPage() {
                     <select
                       value={statusFilter}
                       onChange={(e) => handleStatusFilterChange(e.target.value as any)}
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      className="px-3 py-2 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     >
                       <option value="all">Tutti</option>
                       <option value="active">Attivi</option>
@@ -1646,7 +1646,7 @@ export default function ConsultantClientsPage() {
                       <UserPlus className="w-4 h-4 mr-2" />
                       Nuovo
                     </Button>
-                    <Button variant="outline" size="sm" className="border-slate-200 hover:bg-slate-50">
+                    <Button variant="outline" size="sm" className="border-border hover:bg-muted/40">
                       <Download className="w-4 h-4 mr-2" />
                       Esporta
                     </Button>
@@ -1658,13 +1658,13 @@ export default function ConsultantClientsPage() {
             <CardContent className="p-0">
               {filteredClients.length === 0 ? (
                 <div className="text-center py-16 px-4">
-                  <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <Users size={40} className="text-slate-400" />
+                  <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Users size={40} className="text-muted-foreground" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     {searchTerm ? "Nessun risultato" : "Nessun cliente registrato"}
                   </h3>
-                  <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                     {searchTerm 
                       ? "Prova a modificare i termini di ricerca o rimuovi i filtri"
                       : "I clienti che si registrano con il tuo codice consulente appariranno qui"
@@ -1681,7 +1681,7 @@ export default function ConsultantClientsPage() {
                   {/* Compact Enterprise Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-slate-50 border-b border-slate-200">
+                      <thead className="bg-muted/40 border-b border-border">
                         <tr>
                           <th className="w-10 px-3 py-3">
                             <Checkbox 
@@ -1693,12 +1693,12 @@ export default function ConsultantClientsPage() {
                                 }
                               }}
                               onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                              className="border-slate-300"
+                              className="border-border"
                             />
                           </th>
                           <th className="w-10 px-2 py-3"></th>
                           <th 
-                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors"
                             onClick={() => handleSort('name')}
                           >
                             <div className="flex items-center gap-1">
@@ -1707,7 +1707,7 @@ export default function ConsultantClientsPage() {
                             </div>
                           </th>
                           <th 
-                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors hidden md:table-cell"
+                            className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors hidden md:table-cell"
                             onClick={() => handleSort('email')}
                           >
                             <div className="flex items-center gap-1">
@@ -1715,11 +1715,11 @@ export default function ConsultantClientsPage() {
                               <SortIcon column="email" />
                             </div>
                           </th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                             Telefono
                           </th>
                           <th 
-                            className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors hidden lg:table-cell"
+                            className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors hidden lg:table-cell"
                             onClick={() => handleSort('date')}
                           >
                             <div className="flex items-center gap-1">
@@ -1728,7 +1728,7 @@ export default function ConsultantClientsPage() {
                             </div>
                           </th>
                           <th 
-                            className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors"
                             onClick={() => handleSort('exercises')}
                           >
                             <div className="flex items-center justify-center gap-1">
@@ -1737,7 +1737,7 @@ export default function ConsultantClientsPage() {
                             </div>
                           </th>
                           <th 
-                            className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                            className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted transition-colors"
                             onClick={() => handleSort('progress')}
                           >
                             <div className="flex items-center justify-center gap-1">
@@ -1745,18 +1745,18 @@ export default function ConsultantClientsPage() {
                               <SortIcon column="progress" />
                             </div>
                           </th>
-                          <th className="px-3 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                          <th className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                             Reparto
                           </th>
-                          <th className="px-3 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                          <th className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                             Limite/mese
                           </th>
-                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          <th className="w-24 px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Azioni
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-border/60">
                         {sortedAndPaginatedClients.map((client: any) => (
                           <tr 
                             key={client.id}
@@ -1766,11 +1766,11 @@ export default function ConsultantClientsPage() {
                               <Checkbox 
                                 checked={selectedClients.has(client.id)}
                                 onCheckedChange={(checked) => handleSelectClient(client.id, !!checked)}
-                                className="border-slate-300"
+                                className="border-border"
                               />
                             </td>
                             <td className="px-2 py-2.5">
-                              <div className={`w-2 h-2 rounded-full ${client.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}`} 
+                              <div className={`w-2 h-2 rounded-full ${client.isActive !== false ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} 
                                    title={client.isActive !== false ? 'Attivo' : 'Inattivo'} />
                             </td>
                             <td className="px-3 py-2.5">
@@ -1783,7 +1783,7 @@ export default function ConsultantClientsPage() {
                                 </Avatar>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-medium text-sm text-slate-800 truncate">
+                                    <span className="font-medium text-sm text-foreground truncate">
                                       {client.firstName} {client.lastName}
                                     </span>
                                     {client.isEmployee ? (
@@ -1801,47 +1801,47 @@ export default function ConsultantClientsPage() {
                               </div>
                             </td>
                             <td className="px-3 py-2.5 hidden md:table-cell">
-                              <span className="text-xs text-slate-600 truncate max-w-[180px] block">{client.email}</span>
+                              <span className="text-xs text-muted-foreground truncate max-w-[180px] block">{client.email}</span>
                             </td>
                             <td className="px-3 py-2.5 hidden lg:table-cell">
-                              <span className="text-xs text-slate-500">{client.phoneNumber || '—'}</span>
+                              <span className="text-xs text-muted-foreground">{client.phoneNumber || '—'}</span>
                             </td>
                             <td className="px-3 py-2.5 hidden lg:table-cell">
-                              <span className="text-xs text-slate-500">
+                              <span className="text-xs text-muted-foreground">
                                 {client.createdAt ? new Date(client.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-center">
-                              <span className="text-xs font-medium text-slate-700">
+                              <span className="text-xs font-medium text-foreground">
                                 {client._completedCount}/{client._assignmentsCount}
                               </span>
                             </td>
                             <td className="px-3 py-2.5">
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-16 bg-slate-200 rounded-full h-1.5">
+                                <div className="w-16 bg-muted rounded-full h-1.5">
                                   <div 
                                     className="bg-gradient-to-r from-cyan-500 to-teal-500 h-1.5 rounded-full transition-all" 
                                     style={{ width: `${client._completionRate}%` }}
                                   />
                                 </div>
-                                <span className="text-xs font-semibold text-slate-700 w-8 text-right">{client._completionRate}%</span>
+                                <span className="text-xs font-semibold text-foreground w-8 text-right">{client._completionRate}%</span>
                               </div>
                             </td>
                             <td className="px-3 py-2.5 hidden lg:table-cell">
                               {(() => {
-                                if (!client.isEmployee) return <span className="text-xs text-slate-400">—</span>;
+                                if (!client.isEmployee) return <span className="text-xs text-muted-foreground">—</span>;
                                 const dept = departments.find((d: any) => d.id === client.departmentId);
-                                if (!dept) return <span className="text-[10px] text-slate-400 italic">Non assegnato</span>;
+                                if (!dept) return <span className="text-[10px] text-muted-foreground italic">Non assegnato</span>;
                                 return (
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dept.color }} />
-                                    <span className="text-xs font-medium text-slate-700">{dept.name}</span>
+                                    <span className="text-xs font-medium text-foreground">{dept.name}</span>
                                   </div>
                                 );
                               })()}
                             </td>
                             <td className="px-3 py-2.5 text-center hidden lg:table-cell">
-                              <span className={`text-xs font-medium ${client.monthlyConsultationLimit ? 'text-amber-600' : 'text-slate-400'}`}>
+                              <span className={`text-xs font-medium ${client.monthlyConsultationLimit ? 'text-amber-600' : 'text-muted-foreground'}`}>
                                 {client.monthlyConsultationLimit ? `${client.monthlyConsultationLimit}/mese` : 'Illimitato'}
                               </span>
                             </td>
@@ -1889,7 +1889,7 @@ export default function ConsultantClientsPage() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
-                                      className="h-7 w-7 p-0 hover:bg-slate-100"
+                                      className="h-7 w-7 p-0 hover:bg-muted"
                                     >
                                       <MoreHorizontal className="w-3.5 h-3.5" />
                                     </Button>
@@ -1925,8 +1925,8 @@ export default function ConsultantClientsPage() {
                   </div>
 
                   {/* Pagination Controls */}
-                  <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div className="px-4 py-3 border-t border-border bg-muted/40/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>Mostra</span>
                       <select
                         value={itemsPerPage}
@@ -1934,14 +1934,14 @@ export default function ConsultantClientsPage() {
                           setItemsPerPage(Number(e.target.value));
                           setCurrentPage(1);
                         }}
-                        className="px-2 py-1 text-sm border border-slate-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                        className="px-2 py-1 text-sm border border-border rounded bg-card focus:outline-none focus:ring-2 focus:ring-cyan-400"
                       >
                         <option value={10}>10</option>
                         <option value={25}>25</option>
                         <option value={50}>50</option>
                       </select>
                       <span>per pagina</span>
-                      <span className="text-slate-400 mx-2">|</span>
+                      <span className="text-muted-foreground mx-2">|</span>
                       <span className="font-medium">
                         {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filteredClients.length)} di {filteredClients.length}
                       </span>
@@ -2023,7 +2023,7 @@ export default function ConsultantClientsPage() {
 
       {/* New Client Dialog */}
       <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
-        <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className={`p-2 rounded-lg ${newClientForm.isEmployee ? 'bg-violet-100' : 'bg-emerald-100'}`}>
@@ -2035,7 +2035,7 @@ export default function ConsultantClientsPage() {
               </div>
               {newClientForm.isEmployee ? 'Nuovo Dipendente' : 'Nuovo Cliente'}
             </DialogTitle>
-            <DialogDescription className="text-slate-600">
+            <DialogDescription className="text-muted-foreground">
               {newClientForm.isEmployee 
                 ? 'Aggiungi un collaboratore o dipendente al tuo team' 
                 : 'Crea un nuovo account cliente associato al tuo profilo consulente'}
@@ -2069,7 +2069,7 @@ export default function ConsultantClientsPage() {
                 id="newFirstName"
                 value={newClientForm.firstName}
                 onChange={(e) => setNewClientForm(prev => ({...prev, firstName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Nome"
               />
             </div>
@@ -2082,7 +2082,7 @@ export default function ConsultantClientsPage() {
                 id="newLastName"
                 value={newClientForm.lastName}
                 onChange={(e) => setNewClientForm(prev => ({...prev, lastName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Cognome"
               />
             </div>
@@ -2096,7 +2096,7 @@ export default function ConsultantClientsPage() {
                 type="email"
                 value={newClientForm.email}
                 onChange={(e) => setNewClientForm(prev => ({...prev, email: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="email@esempio.com"
               />
             </div>
@@ -2110,7 +2110,7 @@ export default function ConsultantClientsPage() {
                 type="password"
                 value={newClientForm.password}
                 onChange={(e) => setNewClientForm(prev => ({...prev, password: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Minimo 6 caratteri"
               />
             </div>
@@ -2120,7 +2120,7 @@ export default function ConsultantClientsPage() {
                 Tipo
               </Label>
               <div className="col-span-3 flex gap-4">
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${!newClientForm.isEmployee ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${!newClientForm.isEmployee ? 'border-emerald-500 bg-emerald-50' : 'border-border hover:border-border'}`}>
                   <input
                     type="radio"
                     name="userType"
@@ -2134,7 +2134,7 @@ export default function ConsultantClientsPage() {
                     <span className="text-xs text-muted-foreground block mt-0.5">Accede come utente</span>
                   </div>
                 </label>
-                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${newClientForm.isEmployee ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                <label className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${newClientForm.isEmployee ? 'border-violet-500 bg-violet-50' : 'border-border hover:border-border'}`}>
                   <input
                     type="radio"
                     name="userType"
@@ -2159,7 +2159,7 @@ export default function ConsultantClientsPage() {
                 <select
                   value={newClientForm.departmentId}
                   onChange={(e) => setNewClientForm(prev => ({...prev, departmentId: e.target.value}))}
-                  className="col-span-3 px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="col-span-3 px-3 py-2 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-violet-400"
                 >
                   <option value="">Nessun reparto</option>
                   {departments.map((dept: any) => (
@@ -2174,7 +2174,7 @@ export default function ConsultantClientsPage() {
             <Button 
               variant="outline" 
               onClick={() => setIsNewClientDialogOpen(false)}
-              className="border-slate-200 hover:bg-slate-50"
+              className="border-border hover:bg-muted/40"
             >
               Annulla
             </Button>
@@ -2201,7 +2201,7 @@ export default function ConsultantClientsPage() {
 
       {/* Enhanced Edit Client Dialog */}
       <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>
-        <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-cyan-100 rounded-lg">
@@ -2209,7 +2209,7 @@ export default function ConsultantClientsPage() {
               </div>
               Modifica Cliente
             </DialogTitle>
-            <DialogDescription className="text-slate-600">
+            <DialogDescription className="text-muted-foreground">
               Aggiorna le informazioni di {editingClient?.firstName} {editingClient?.lastName}
             </DialogDescription>
           </DialogHeader>
@@ -2223,7 +2223,7 @@ export default function ConsultantClientsPage() {
                 id="firstName"
                 value={editForm.firstName}
                 onChange={(e) => setEditForm(prev => ({...prev, firstName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Nome"
               />
             </div>
@@ -2236,7 +2236,7 @@ export default function ConsultantClientsPage() {
                 id="lastName"
                 value={editForm.lastName}
                 onChange={(e) => setEditForm(prev => ({...prev, lastName: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="Cognome"
               />
             </div>
@@ -2250,7 +2250,7 @@ export default function ConsultantClientsPage() {
                 type="email"
                 value={editForm.email}
                 onChange={(e) => setEditForm(prev => ({...prev, email: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="email@esempio.com"
               />
             </div>
@@ -2263,7 +2263,7 @@ export default function ConsultantClientsPage() {
                 id="phoneNumber"
                 value={editForm.phoneNumber}
                 onChange={(e) => setEditForm(prev => ({...prev, phoneNumber: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="+39 123 456 7890"
               />
             </div>
@@ -2276,7 +2276,7 @@ export default function ConsultantClientsPage() {
                 id="username"
                 value={editForm.username}
                 onChange={(e) => setEditForm(prev => ({...prev, username: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                className="col-span-3 border-border focus:border-cyan-400 focus:ring-cyan-400"
                 placeholder="username"
               />
             </div>
@@ -2285,7 +2285,7 @@ export default function ConsultantClientsPage() {
               <Label htmlFor="monthlyLimit" className="text-right text-sm font-medium">
                 <div className="flex flex-col">
                   <span>Limite/mese</span>
-                  <span className="text-xs text-slate-400 font-normal">consulenze</span>
+                  <span className="text-xs text-muted-foreground font-normal">consulenze</span>
                 </div>
               </Label>
               <div className="col-span-3 flex items-center gap-2">
@@ -2298,10 +2298,10 @@ export default function ConsultantClientsPage() {
                     ...prev, 
                     monthlyConsultationLimit: e.target.value === '' ? null : parseInt(e.target.value)
                   }))}
-                  className="w-24 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                  className="w-24 border-border focus:border-cyan-400 focus:ring-cyan-400"
                   placeholder="0"
                 />
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {editForm.monthlyConsultationLimit === null ? 'Illimitato' : `Max ${editForm.monthlyConsultationLimit}/mese`}
                 </span>
               </div>
@@ -2318,7 +2318,7 @@ export default function ConsultantClientsPage() {
                   <select
                     value={editForm.departmentId}
                     onChange={(e) => setEditForm(prev => ({...prev, departmentId: e.target.value}))}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    className="w-full px-3 py-2 text-sm border border-border rounded-md bg-card hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                   >
                     <option value="">Nessun reparto</option>
                     {departments.map((dept: any) => (
@@ -2349,7 +2349,7 @@ export default function ConsultantClientsPage() {
               </div>
               
               {editForm.geminiApiKeys.length === 0 ? (
-                <div className="text-sm text-slate-500 italic py-2 text-center border-2 border-dashed border-slate-200 rounded-lg">
+                <div className="text-sm text-muted-foreground italic py-2 text-center border-2 border-dashed border-border rounded-lg">
                   Nessuna API key configurata. Clicca "Aggiungi Key" per iniziare.
                 </div>
               ) : (
@@ -2357,13 +2357,13 @@ export default function ConsultantClientsPage() {
                   {editForm.geminiApiKeys.map((apiKey, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <div className="flex-shrink-0 w-8 text-center">
-                        <span className="text-xs font-medium text-slate-500">#{index + 1}</span>
+                        <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
                       </div>
                       <Input
                         type="password"
                         value={apiKey}
                         onChange={(e) => handleApiKeyChange(index, e.target.value)}
-                        className="flex-1 border-slate-200 focus:border-cyan-400 focus:ring-cyan-400"
+                        className="flex-1 border-border focus:border-cyan-400 focus:ring-cyan-400"
                         placeholder={`API Key ${index + 1}`}
                       />
                       <Button
@@ -2380,7 +2380,7 @@ export default function ConsultantClientsPage() {
                 </div>
               )}
               
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Le API keys verranno ruotate automaticamente ad ogni messaggio del cliente ({editForm.geminiApiKeys.length}/10 keys)
               </p>
             </div>
@@ -2390,7 +2390,7 @@ export default function ConsultantClientsPage() {
             <Button 
               variant="outline" 
               onClick={() => setEditingClient(null)}
-              className="border-slate-200 hover:bg-slate-50"
+              className="border-border hover:bg-muted/40"
             >
               Annulla
             </Button>
@@ -2411,7 +2411,7 @@ export default function ConsultantClientsPage() {
           setDepartmentForm({ name: '', color: '#6366f1', description: '' });
         }
       }}>
-        <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-sm border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-indigo-100 rounded-lg">
@@ -2419,7 +2419,7 @@ export default function ConsultantClientsPage() {
               </div>
               {editingDepartment ? 'Modifica Reparto' : 'Nuovo Reparto'}
             </DialogTitle>
-            <DialogDescription className="text-slate-600">
+            <DialogDescription className="text-muted-foreground">
               {editingDepartment ? 'Modifica le informazioni del reparto' : 'Crea un nuovo reparto per organizzare i tuoi dipendenti'}
             </DialogDescription>
           </DialogHeader>
@@ -2429,7 +2429,7 @@ export default function ConsultantClientsPage() {
               <Input
                 value={departmentForm.name}
                 onChange={(e) => setDepartmentForm(prev => ({...prev, name: e.target.value}))}
-                className="col-span-3 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                className="col-span-3 border-border focus:border-indigo-400 focus:ring-indigo-400"
                 placeholder="Es. Vendite, Marketing, Supporto..."
               />
             </div>
@@ -2440,7 +2440,7 @@ export default function ConsultantClientsPage() {
                   <button
                     key={color}
                     onClick={() => setDepartmentForm(prev => ({...prev, color}))}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${departmentForm.color === color ? 'border-slate-800 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${departmentForm.color === color ? 'border-foreground scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
                     style={{ backgroundColor: color }}
                   />
                 ))}
@@ -2451,7 +2451,7 @@ export default function ConsultantClientsPage() {
               <textarea
                 value={departmentForm.description}
                 onChange={(e) => setDepartmentForm(prev => ({...prev, description: e.target.value}))}
-                className="col-span-3 px-3 py-2 text-sm border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                className="col-span-3 px-3 py-2 text-sm border border-border rounded-md bg-card focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
                 rows={2}
                 placeholder="Descrizione opzionale del reparto..."
               />
@@ -2465,7 +2465,7 @@ export default function ConsultantClientsPage() {
                 setEditingDepartment(null);
                 setDepartmentForm({ name: '', color: '#6366f1', description: '' });
               }}
-              className="border-slate-200 hover:bg-slate-50"
+              className="border-border hover:bg-muted/40"
             >
               Annulla
             </Button>
