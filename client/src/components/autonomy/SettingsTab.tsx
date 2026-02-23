@@ -2863,21 +2863,36 @@ function SettingsTab({
                                         ? "Analisi con sezioni obbligatorie: osservazione, riflessione, decisione, auto-revisione"
                                         : "Loop agentico multi-step con analisi approfondita iterativa"}
                                     </p>
-                                    {settings.role_reasoning_modes?.[role.id] && settings.role_reasoning_modes[role.id] !== (settings.reasoning_mode || "structured") && (
-                                      <button
-                                        className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                    <div className="flex items-center justify-between pt-1">
+                                      {settings.role_reasoning_modes?.[role.id] && settings.role_reasoning_modes[role.id] !== (settings.reasoning_mode || "structured") && (
+                                        <button
+                                          className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSettings(prev => {
+                                              const newModes = { ...prev.role_reasoning_modes };
+                                              delete newModes[role.id];
+                                              return { ...prev, role_reasoning_modes: newModes };
+                                            });
+                                          }}
+                                        >
+                                          Ripristina predefinito globale
+                                        </button>
+                                      )}
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="h-6 text-[10px] px-2 hover:bg-primary/10 hover:text-primary ml-auto"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setSettings(prev => {
-                                            const newModes = { ...prev.role_reasoning_modes };
-                                            delete newModes[role.id];
-                                            return { ...prev, role_reasoning_modes: newModes };
-                                          });
+                                          onSave();
                                         }}
+                                        disabled={isSaving}
                                       >
-                                        Ripristina predefinito globale
-                                      </button>
-                                    )}
+                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                        Salva
+                                      </Button>
+                                    </div>
                                   </div>
 
                                   <div className="rounded-lg border border-border p-3 space-y-2">
