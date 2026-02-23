@@ -1226,7 +1226,29 @@ export default function ConsultantSetupWizard() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [testingStep, setTestingStep] = useState<string | null>(null);
   const [isOnboardingMode, setIsOnboardingMode] = useState<boolean>(false);
+  const [chatKey, setChatKey] = useState(0);
+  const [chatStarted, setChatStarted] = useState(false);
+  const [pendingAutoMessage, setPendingAutoMessage] = useState<string | null>(null);
+
+  const openOnboardingMode = () => {
+    setChatStarted(false);
+    setPendingAutoMessage(null);
+    setIsOnboardingMode(true);
+  };
   const previousCompletedRef = useRef<number>(0);
+
+  const ONBOARDING_SUGGESTIONS = [
+    "Da dove inizio? Quali sono i primi step critici da completare?",
+    "Come configuro Twilio per WhatsApp Business?",
+    "Come configuro l'email SMTP per le comunicazioni automatiche?",
+    "Come importo i lead nella piattaforma?",
+    "Come creo un agente inbound per rispondere su WhatsApp?",
+    "Come creo la mia prima campagna marketing?",
+    "Come collego Google Calendar per gestire gli appuntamenti?",
+    "Come funziona la Knowledge Base? Che documenti carico?",
+    "Come collego Stripe per ricevere i pagamenti?",
+    "Come funziona Alessia AI Phone per le chiamate vocali?",
+  ];
   const { toast } = useToast();
 
   const { data: onboardingData, isLoading, refetch } = useQuery<{ success: boolean; data: OnboardingStatus }>({
@@ -1970,7 +1992,7 @@ export default function ConsultantSetupWizard() {
                 <Button
                   size="sm"
                   variant={isOnboardingMode ? "default" : "outline"}
-                  onClick={() => setIsOnboardingMode(!isOnboardingMode)}
+                  onClick={() => isOnboardingMode ? setIsOnboardingMode(false) : openOnboardingMode()}
                   className="ml-3 gap-2"
                 >
                   <Bot className="h-4 w-4" />
@@ -2020,6 +2042,7 @@ export default function ConsultantSetupWizard() {
 
           {/* ── VISTA GRIGLIA (panoramica sezioni) ── */}
           {!currentSection && (
+            <div className="flex-1 flex overflow-hidden min-h-0">
             <div className="flex-1 overflow-auto p-6">
               <div className="flex items-center justify-between mb-4">
                 <ContextualBanner
@@ -2144,6 +2167,62 @@ export default function ConsultantSetupWizard() {
                   })}
                 </div>
               )}
+            </div>
+            <AnimatePresence>
+              {isOnboardingMode && (
+                <motion.aside
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-96 border-l bg-white dark:bg-slate-900 overflow-hidden flex flex-col min-h-0"
+                >
+                  <div className="p-3 border-b flex items-center justify-between bg-gradient-to-r from-indigo-50 to-slate-50 dark:from-indigo-900/20 dark:to-slate-900">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-indigo-600" />
+                      <span className="font-semibold text-sm">Assistente Onboarding</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOnboardingMode(false)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {!chatStarted && (
+                    <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto max-h-72">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
+                        <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
+                      </div>
+                      {ONBOARDING_SUGGESTIONS.map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
+                          className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex-1 overflow-hidden min-h-0">
+                    <ChatPanel
+                      key={chatKey}
+                      isOpen={true}
+                      onClose={() => setIsOnboardingMode(false)}
+                      mode="assistenza"
+                      setMode={() => {}}
+                      consultantType="finanziario"
+                      setConsultantType={() => {}}
+                      isConsultantMode={true}
+                      isOnboardingMode={true}
+                      embedded={true}
+                      onboardingStatuses={onboardingStatusesForAI?.data}
+                      autoMessage={pendingAutoMessage}
+                      onAutoMessageSent={() => setPendingAutoMessage(null)}
+                    />
+                  </div>
+                </motion.aside>
+              )}
+            </AnimatePresence>
             </div>
           )}
 
@@ -3106,8 +3185,26 @@ export default function ConsultantSetupWizard() {
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
+                  {!chatStarted && (
+                    <div className="p-3 space-y-1.5 border-b bg-indigo-50/50 dark:bg-indigo-900/10 overflow-y-auto max-h-72">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">💬 Domande frequenti:</p>
+                        <button onClick={() => setChatStarted(true)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline">Nascondi</button>
+                      </div>
+                      {ONBOARDING_SUGGESTIONS.map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => { setPendingAutoMessage(q); setChatStarted(true); setChatKey(k => k + 1); }}
+                          className="w-full text-left text-xs p-2.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-indigo-800 hover:border-indigo-300 transition-colors leading-relaxed"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex-1 overflow-hidden min-h-0">
                     <ChatPanel
+                      key={chatKey}
                       isOpen={true}
                       onClose={() => setIsOnboardingMode(false)}
                       mode="assistenza"
@@ -3118,6 +3215,8 @@ export default function ConsultantSetupWizard() {
                       isOnboardingMode={true}
                       embedded={true}
                       onboardingStatuses={onboardingStatusesForAI?.data}
+                      autoMessage={pendingAutoMessage}
+                      onAutoMessageSent={() => setPendingAutoMessage(null)}
                     />
                   </div>
                 </motion.aside>
