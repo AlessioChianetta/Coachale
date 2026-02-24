@@ -753,7 +753,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
               {(isCategoryExpanded || isAlwaysVisible) && (
                 <div className={cn(
                   isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-[2px]",
-                  !isAlwaysVisible && "mt-0.5 mb-1"
+                  !isAlwaysVisible && "mt-0.5 mb-1 pl-2"
                 )}>
                   {category.items.map((item) => {
                     const Icon = item.icon;
@@ -761,12 +761,14 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     const isAIAutonomo = item.name === "AI Autonomo";
                     const showPulse = isAIAutonomo && isAnalysisActive;
                     const showBadge = isAIAutonomo && newResultsCount > 0;
+                    const isSubItem = !isAlwaysVisible;
 
                     return (
                       <Link key={item.href} href={item.href}>
                         <div
                           className={cn(
-                            "group flex items-center gap-3 px-3 py-[9px] rounded-lg transition-all duration-150 cursor-pointer",
+                            "group flex items-center rounded-lg transition-all duration-150 cursor-pointer",
+                            isSubItem ? "gap-2.5 px-2.5 py-[7px]" : "gap-3 px-3 py-[9px]",
                             isActive
                               ? "bg-muted text-foreground"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -776,9 +778,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                           onMouseLeave={() => cancelHoverPreload(item.href)}
                           onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
                         >
-                          {/* Filled icon box — Halal Lab style */}
+                          {/* Filled icon box — smaller for sub-items */}
                           <div className={cn(
-                            "relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150",
+                            "relative rounded-md flex items-center justify-center flex-shrink-0 transition-all duration-150",
+                            isSubItem ? "w-7 h-7" : "w-8 h-8 rounded-lg",
                             showPulse
                               ? "bg-emerald-500"
                               : isActive
@@ -786,7 +789,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                 : "bg-muted group-hover:bg-muted-foreground/10"
                           )}>
                             <Icon className={cn(
-                              "h-[17px] w-[17px] transition-colors duration-150",
+                              "transition-colors duration-150",
+                              isSubItem ? "h-[14px] w-[14px]" : "h-[17px] w-[17px]",
                               showPulse
                                 ? "text-white"
                                 : isActive
@@ -803,7 +807,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
                           <div className="flex-1 flex items-center justify-between min-w-0">
                             <span className={cn(
-                              "text-[14.5px] truncate",
+                              "truncate",
+                              isSubItem ? "text-[13.5px]" : "text-[14.5px]",
                               isActive ? "font-semibold text-foreground" : "font-medium"
                             )}>
                               {item.name}
