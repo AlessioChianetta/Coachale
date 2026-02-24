@@ -1191,7 +1191,7 @@ export default function ClientLibrary() {
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => setLocation(`/exercise/${assignment.id}`)}
+                                          onClick={() => setLocation(`/exercise/${exercise.id}?assignment=${assignment.id}`)}
                                           className="h-8 text-xs gap-1 flex-shrink-0"
                                         >
                                           {status === 'pending' ? 'Inizia' : 'Continua'}
@@ -1202,7 +1202,7 @@ export default function ClientLibrary() {
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => setLocation(`/exercise/${assignment.id}`)}
+                                          onClick={() => setLocation(`/exercise/${exercise.id}?assignment=${assignment.id}`)}
                                           className="h-8 text-xs gap-1 flex-shrink-0 text-muted-foreground"
                                         >
                                           Rivedi
