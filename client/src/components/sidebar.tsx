@@ -753,32 +753,25 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group flex items-center gap-2.5 px-2 py-2 rounded-xl transition-all duration-200 cursor-pointer min-h-[40px]",
+                              "group flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer min-h-[38px]",
                               isActive
-                                ? "bg-foreground/[0.06] dark:bg-white/[0.06] text-foreground"
-                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                ? "bg-foreground/[0.07] dark:bg-white/[0.07] text-foreground"
+                                : "text-muted-foreground hover:bg-foreground/[0.04] dark:hover:bg-white/[0.04] hover:text-foreground"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
                             onMouseLeave={() => cancelHoverPreload(item.href)}
                             onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
                           >
-                            {/* Outline icon box */}
-                            <div className={cn(
-                              "relative w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 border",
-                              showPulse
-                                ? "bg-emerald-500 border-emerald-500"
-                                : isActive
-                                  ? "bg-foreground/10 border-foreground/20 dark:bg-white/10 dark:border-white/20"
-                                  : "bg-transparent border-border/50 group-hover:border-border/80 group-hover:bg-muted/40"
-                            )}>
+                            {/* Bare icon — Halal Lab style */}
+                            <div className="relative flex-shrink-0">
                               <Icon className={cn(
-                                "h-[15px] w-[15px] transition-colors duration-200",
+                                "h-[18px] w-[18px] transition-colors duration-150",
                                 showPulse
-                                  ? "text-white"
+                                  ? "text-emerald-500"
                                   : isActive
                                     ? "text-foreground dark:text-white"
-                                    : "text-foreground/50 group-hover:text-foreground/80"
+                                    : "text-foreground/50 group-hover:text-foreground/75"
                               )} />
                               {showPulse && (
                                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
@@ -790,7 +783,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "text-[13px] truncate",
+                                "text-[13.5px] truncate",
                                 isActive ? "font-semibold text-foreground" : "font-medium"
                               )}>
                                 {item.name}
