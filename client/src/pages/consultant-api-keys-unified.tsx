@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -364,7 +364,7 @@ export default function ConsultantApiKeysUnified() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const tabParam = params.get('tab');
-    const validTabs = ['ai', 'client-ai', 'email', 'calendar', 'lead-import', 'video-meeting', 'twilio', 'instagram', 'stripe'];
+    const validTabs = ['ai', 'client-ai', 'email', 'calendar', 'lead-import', 'video-meeting', 'twilio', 'instagram', 'stripe', 'publer'];
     if (tabParam === 'whatsapp') {
       setActiveTab('twilio');
     } else if (tabParam && validTabs.includes(tabParam)) {
@@ -688,6 +688,15 @@ export default function ConsultantApiKeysUnified() {
       }
       if (response.status === 404) return { connected: false };
       return response.json();
+    },
+  });
+
+  const { data: publerConfigStatus } = useQuery({
+    queryKey: ["/api/publer/config"],
+    queryFn: async () => {
+      const res = await fetch("/api/publer/config", { headers: getAuthHeaders() });
+      if (!res.ok) return { configured: false };
+      return res.json();
     },
   });
 
@@ -2340,6 +2349,32 @@ export default function ConsultantApiKeysUnified() {
     return campaign?.campaignName || '-';
   };
 
+  const serviceStatuses = useMemo(() => {
+    const statusMap: Record<string, "configured" | "partial" | "not_configured"> = {
+      "ai": (vertexPreference?.useSuperAdminVertex && vertexPreference?.superAdminVertexAvailable) || vertexPreference?.hasOwnVertex || geminiPreference?.hasOwnGeminiKeys || (geminiPreference?.useSuperAdminGemini && geminiPreference?.superAdminGeminiAvailable)
+        ? "configured" : "not_configured",
+      "client-ai": clientsAiConfig?.clients && clientsAiConfig.clients.length > 0 ? "configured" : "not_configured",
+      "email": existingSMTP?.settings?.host ? "configured" : "not_configured",
+      "twilio": twilioSettingsData?.settings?.accountSid ? "configured" : "not_configured",
+      "instagram": instagramOAuthStatus?.connected ? "configured" : "not_configured",
+      "calendar": calendarGlobalOAuth?.globalOAuthConfigured
+        ? (agentsCalendarStatus && agentsCalendarStatus.some(a => a.calendarConnected) ? "configured" : "partial")
+        : "not_configured",
+      "lead-import": existingLeadConfig || (webhookConfigs && webhookConfigs.length > 0) || (googleSheetsConfigs && googleSheetsConfigs.length > 0) ? "configured" : "not_configured",
+      "video-meeting": turnConfigData?.config?.enabled ? "configured" : "not_configured",
+      "stripe": stripeConnectStatus?.connected ? "configured" : "not_configured",
+      "publer": publerConfigStatus?.configured && publerConfigStatus?.isActive ? "configured" : "not_configured",
+    };
+    return statusMap;
+  }, [vertexPreference, geminiPreference, clientsAiConfig, existingSMTP, twilioSettingsData, instagramOAuthStatus, calendarGlobalOAuth, agentsCalendarStatus, existingLeadConfig, webhookConfigs, googleSheetsConfigs, turnConfigData, stripeConnectStatus, publerConfigStatus]);
+
+  const getTabStatusDot = (tabValue: string) => {
+    const status = serviceStatuses[tabValue];
+    if (status === "configured") return "bg-green-500";
+    if (status === "partial") return "bg-yellow-500";
+    return "bg-gray-300";
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
@@ -2379,55 +2414,128 @@ export default function ConsultantApiKeysUnified() {
             </div>
           </div>
 
+          {/* Service Status Dashboard */}
+          {(() => {
+            const services = [
+              { key: "ai", label: "AI", icon: <Bot className="h-4 w-4" />, tab: "ai" },
+              { key: "client-ai", label: "API Clienti", icon: <Users className="h-4 w-4" />, tab: "client-ai" },
+              { key: "email", label: "Email", icon: <Mail className="h-4 w-4" />, tab: "email" },
+              { key: "twilio", label: "Twilio", icon: <MessageSquare className="h-4 w-4" />, tab: "twilio" },
+              { key: "instagram", label: "Instagram", icon: <Instagram className="h-4 w-4" />, tab: "instagram" },
+              { key: "calendar", label: "Calendar", icon: <Calendar className="h-4 w-4" />, tab: "calendar" },
+              { key: "lead-import", label: "Lead Import", icon: <Server className="h-4 w-4" />, tab: "lead-import" },
+              { key: "video-meeting", label: "Video", icon: <Video className="h-4 w-4" />, tab: "video-meeting" },
+              { key: "stripe", label: "Stripe", icon: <CreditCard className="h-4 w-4" />, tab: "stripe" },
+              { key: "publer", label: "Publer", icon: <Send className="h-4 w-4" />, tab: "publer" },
+            ];
+
+            const configuredCount = Object.values(serviceStatuses).filter(s => s === "configured").length;
+            const totalCount = Object.keys(serviceStatuses).length;
+
+            return (
+              <div className="mb-4 sm:mb-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-indigo-600" />
+                      <h2 className="text-sm sm:text-base font-semibold text-gray-900">Stato Servizi</h2>
+                    </div>
+                    <Badge variant="outline" className={configuredCount === totalCount ? "bg-green-50 text-green-700 border-green-300" : "bg-blue-50 text-blue-700 border-blue-300"}>
+                      {configuredCount}/{totalCount} configurati
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+                    {services.map((service) => {
+                      const status = serviceStatuses[service.key] || "not_configured";
+                      return (
+                        <button
+                          key={service.key}
+                          onClick={() => setActiveTab(service.tab)}
+                          className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-lg border transition-all text-left hover:shadow-sm ${
+                            activeTab === service.tab
+                              ? "border-indigo-300 bg-indigo-50 ring-1 ring-indigo-200"
+                              : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            status === "configured" ? "bg-green-500" :
+                            status === "partial" ? "bg-yellow-500" :
+                            "bg-gray-300"
+                          }`} />
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-gray-500 flex-shrink-0">{service.icon}</span>
+                            <span className="text-xs sm:text-sm font-medium text-gray-700 truncate">{service.label}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="flex flex-wrap justify-start gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg h-auto">
-                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 text-xs sm:text-sm">
+              <TabsList className="flex flex-wrap justify-start gap-1.5 sm:gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg h-auto">
+                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("ai")}`} />
                   <Bot className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">AI (Gemini)</span>
                   <span className="sm:hidden">AI</span>
                 </TabsTrigger>
-                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 text-xs sm:text-sm">
+                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("client-ai")}`} />
                   <Users className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">API Clienti</span>
                   <span className="sm:hidden">Clienti</span>
                 </TabsTrigger>
-                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 text-xs sm:text-sm">
+                <div className="w-px h-6 bg-gray-300 self-center mx-0.5 hidden sm:block" />
+                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("email")}`} />
                   <Mail className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Email SMTP</span>
                   <span className="sm:hidden">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="twilio" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm">
+                <TabsTrigger value="twilio" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("twilio")}`} />
                   <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">WhatsApp Twilio</span>
                   <span className="sm:hidden">Twilio</span>
                 </TabsTrigger>
-                <TabsTrigger value="instagram" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm">
+                <TabsTrigger value="instagram" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("instagram")}`} />
                   <Instagram className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Instagram DM</span>
                   <span className="sm:hidden">IG</span>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm">
+                <div className="w-px h-6 bg-gray-300 self-center mx-0.5 hidden sm:block" />
+                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("calendar")}`} />
                   <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
                   Calendar
                 </TabsTrigger>
-                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 text-xs sm:text-sm">
+                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("lead-import")}`} />
                   <Server className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Lead Import</span>
                   <span className="sm:hidden">Lead</span>
                 </TabsTrigger>
-                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700 text-xs sm:text-sm">
+                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("video-meeting")}`} />
                   <Video className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Video Meeting</span>
                   <span className="sm:hidden">Video</span>
                 </TabsTrigger>
-                <TabsTrigger value="stripe" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 text-xs sm:text-sm">
+                <TabsTrigger value="stripe" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("stripe")}`} />
                   <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Stripe Connect</span>
                   <span className="sm:hidden">Stripe</span>
                 </TabsTrigger>
-                <TabsTrigger value="publer" className="data-[state=active]:bg-pink-100 data-[state=active]:text-pink-700 text-xs sm:text-sm">
+                <TabsTrigger value="publer" className="data-[state=active]:bg-pink-100 data-[state=active]:text-pink-700 text-xs sm:text-sm relative">
+                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("publer")}`} />
                   <Send className="h-4 w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Publer</span>
                   <span className="sm:hidden">Publer</span>
@@ -2448,167 +2556,6 @@ export default function ConsultantApiKeysUnified() {
                     </ul>
                   </AlertDescription>
                 </Alert>
-
-                {/* Guida Setup Vertex AI */}
-                <Card className="border-2 border-purple-200 shadow-xl bg-gradient-to-br from-purple-50 to-blue-50">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-purple-600 rounded-xl">
-                        <Cloud className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-purple-900">📖 Guida Completa Setup Vertex AI</CardTitle>
-                        <CardDescription className="text-purple-700">
-                          Segui questi passaggi per attivare $300 di crediti gratuiti per 90 giorni
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        <strong>Perché Vertex AI?</strong> Ottieni $300 di crediti gratuiti per 90 giorni, modelli più avanzati (Gemini Pro 1.5), migliori limiti di rate e performance superiori rispetto a Google AI Studio.
-                      </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-4 pl-4 border-l-4 border-purple-300">
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            1
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Accedi a Google Cloud Console</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">console.cloud.google.com</a>
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">💡 Se è la prima volta, Google ti chiederà di attivare la fatturazione e ti darà $300 di crediti gratuiti validi 90 giorni</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Crea un nuovo progetto</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Clicca sul menu a tendina del progetto (in alto a sinistra)<br/>
-                              • Clicca "Nuovo Progetto"<br/>
-                              • Dai un nome al progetto (es: "AI Assistant Project")<br/>
-                              • Clicca "Crea"
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">💡 Annota il <strong>Project ID</strong> che verrà generato (es: "my-ai-project-123456")</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Abilita Vertex AI API</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Nel menu di navigazione (☰), vai su "API e servizi" → "Libreria"<br/>
-                              • Cerca "Vertex AI API"<br/>
-                              • Clicca su "Vertex AI API"<br/>
-                              • Clicca "Abilita"
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">⏳ L'attivazione richiede circa 1-2 minuti</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Crea un Service Account</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Vai direttamente su <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">Service Accounts Console</a><br/>
-                              • Oppure: Nel menu (☰), vai su "IAM e amministrazione" → "Account di servizio"<br/>
-                              • Clicca "Crea account di servizio"<br/>
-                              • Nome: "vertex-ai-service-account" (o quello che preferisci)<br/>
-                              • Descrizione: "Service account per Vertex AI"<br/>
-                              • Clicca "Crea e continua"
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Assegna i ruoli necessari</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Nella sezione "Concedi a questo account di servizio l'accesso al progetto":<br/>
-                              • Clicca "Seleziona un ruolo"<br/>
-                              • Cerca e seleziona <strong>"Vertex AI User"</strong><br/>
-                              • Clicca "Aggiungi un altro ruolo"<br/>
-                              • Cerca e seleziona <strong>"Vertex AI Service Agent"</strong><br/>
-                              • Clicca "Aggiungi un altro ruolo"<br/>
-                              • Cerca e seleziona <strong>"Service Account Token Creator"</strong><br/>
-                              • Clicca "Continua" e poi "Fine"
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            6
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Genera la chiave JSON</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Trova il service account appena creato nella lista<br/>
-                              • Clicca sui tre puntini (⋮) a destra → "Gestisci chiavi"<br/>
-                              • Clicca "Aggiungi chiave" → "Crea nuova chiave"<br/>
-                              • Seleziona formato <strong>JSON</strong><br/>
-                              • Clicca "Crea"
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">⬇️ Il file JSON verrà scaricato automaticamente - conservalo al sicuro!</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            7
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Configura qui sotto</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • <strong>Project ID</strong>: Copia il Project ID del progetto Google Cloud<br/>
-                              • <strong>Location</strong>: Scegli la region più vicina (es: "europe-west1" per Europa)<br/>
-                              • <strong>Service Account JSON</strong>: Apri il file JSON scaricato, copia tutto il contenuto e incollalo nel campo qui sotto
-                            </p>
-                            <p className="text-xs text-green-700 mt-2 font-semibold">✅ Clicca "Salva Vertex AI" e il sistema è pronto!</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Alert className="bg-yellow-50 border-yellow-200 mt-4">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-sm text-yellow-800">
-                        <strong>⚠️ Importante:</strong> Mantieni il file JSON al sicuro e non condividerlo mai pubblicamente. Contiene credenziali che danno accesso al tuo progetto Google Cloud.
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
 
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
@@ -2957,6 +2904,162 @@ export default function ConsultantApiKeysUnified() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Guida Setup Vertex AI - Collassabile (nascosta se SuperAdmin già configurato) */}
+                {!(vertexPreference?.useSuperAdminVertex && vertexPreference?.superAdminVertexAvailable) && (
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader className="pb-0">
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-purple-600 rounded-xl">
+                              <BookOpen className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <CardTitle className="text-lg text-purple-900">📖 Guida Completa Setup Vertex AI</CardTitle>
+                              <CardDescription className="text-purple-700">Clicca per espandere la guida passo-passo (7 step)</CardDescription>
+                            </div>
+                          </div>
+                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-6 space-y-4">
+                          <Alert className="bg-blue-50 border-blue-200">
+                            <CheckCircle className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-sm text-blue-800">
+                              <strong>Perché Vertex AI?</strong> Ottieni $300 di crediti gratuiti per 90 giorni, modelli più avanzati (Gemini Pro 1.5), migliori limiti di rate e performance superiori rispetto a Google AI Studio.
+                            </AlertDescription>
+                          </Alert>
+
+                          <div className="space-y-4 pl-4 border-l-4 border-purple-300">
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Accedi a Google Cloud Console</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Vai su <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">console.cloud.google.com</a>
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">💡 Se è la prima volta, Google ti chiederà di attivare la fatturazione e ti darà $300 di crediti gratuiti validi 90 giorni</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Crea un nuovo progetto</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    • Clicca sul menu a tendina del progetto (in alto a sinistra)<br/>
+                                    • Clicca "Nuovo Progetto"<br/>
+                                    • Dai un nome al progetto (es: "AI Assistant Project")<br/>
+                                    • Clicca "Crea"
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">💡 Annota il <strong>Project ID</strong> che verrà generato (es: "my-ai-project-123456")</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Abilita Vertex AI API</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    • Nel menu di navigazione (☰), vai su "API e servizi" → "Libreria"<br/>
+                                    • Cerca "Vertex AI API"<br/>
+                                    • Clicca su "Vertex AI API"<br/>
+                                    • Clicca "Abilita"
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">⏳ L'attivazione richiede circa 1-2 minuti</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Crea un Service Account</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    • Vai direttamente su <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">Service Accounts Console</a><br/>
+                                    • Oppure: Nel menu (☰), vai su "IAM e amministrazione" → "Account di servizio"<br/>
+                                    • Clicca "Crea account di servizio"<br/>
+                                    • Nome: "vertex-ai-service-account" (o quello che preferisci)<br/>
+                                    • Descrizione: "Service account per Vertex AI"<br/>
+                                    • Clicca "Crea e continua"
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">5</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Assegna i ruoli necessari</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Nella sezione "Concedi a questo account di servizio l'accesso al progetto":<br/>
+                                    • Clicca "Seleziona un ruolo"<br/>
+                                    • Cerca e seleziona <strong>"Vertex AI User"</strong><br/>
+                                    • Clicca "Aggiungi un altro ruolo"<br/>
+                                    • Cerca e seleziona <strong>"Vertex AI Service Agent"</strong><br/>
+                                    • Clicca "Aggiungi un altro ruolo"<br/>
+                                    • Cerca e seleziona <strong>"Service Account Token Creator"</strong><br/>
+                                    • Clicca "Continua" e poi "Fine"
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">6</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-purple-900">Genera la chiave JSON</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    • Trova il service account appena creato nella lista<br/>
+                                    • Clicca sui tre puntini (⋮) a destra → "Gestisci chiavi"<br/>
+                                    • Clicca "Aggiungi chiave" → "Crea nuova chiave"<br/>
+                                    • Seleziona formato <strong>JSON</strong><br/>
+                                    • Clicca "Crea"
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">⬇️ Il file JSON verrà scaricato automaticamente - conservalo al sicuro!</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">7</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Configura qui sopra</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    • <strong>Project ID</strong>: Copia il Project ID del progetto Google Cloud<br/>
+                                    • <strong>Location</strong>: Scegli la region più vicina (es: "europe-west1" per Europa)<br/>
+                                    • <strong>Service Account JSON</strong>: Apri il file JSON scaricato, copia tutto il contenuto e incollalo nel campo qui sopra
+                                  </p>
+                                  <p className="text-xs text-green-700 mt-2 font-semibold">✅ Clicca "Salva Vertex AI" e il sistema è pronto!</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Alert className="bg-yellow-50 border-yellow-200 mt-4">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-sm text-yellow-800">
+                              <strong>⚠️ Importante:</strong> Mantieni il file JSON al sicuro e non condividerlo mai pubblicamente. Contiene credenziali che danno accesso al tuo progetto Google Cloud.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardHeader>
+                </Card>
+                )}
               </TabsContent>
 
               {/* Client AI Tab Content */}
@@ -7538,282 +7641,47 @@ export default function ConsultantApiKeysUnified() {
 
               {/* Video Meeting Tab Content */}
               <TabsContent value="video-meeting" className="space-y-6">
-                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl">
-                        <Video className="h-6 w-6 text-teal-600" />
-                      </div>
-                      <div>
-                        <CardTitle>Configurazione TURN Server per Video Meeting</CardTitle>
-                        <CardDescription>
-                          Configurazione centralizzata gestita dal SuperAdmin
-                        </CardDescription>
-                      </div>
+                <div className={`flex items-center gap-4 p-4 rounded-xl border ${
+                  turnConfigData?.configured && turnConfigData.config?.enabled
+                    ? "bg-green-50 border-green-200"
+                    : "bg-orange-50 border-orange-200"
+                }`}>
+                  <div className={`p-3 rounded-xl ${
+                    turnConfigData?.configured && turnConfigData.config?.enabled
+                      ? "bg-green-100"
+                      : "bg-orange-100"
+                  }`}>
+                    <Video className={`h-6 w-6 ${
+                      turnConfigData?.configured && turnConfigData.config?.enabled
+                        ? "text-green-600"
+                        : "text-orange-600"
+                    }`} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900">Video Meeting</p>
+                      <Badge className={
+                        turnConfigData?.configured && turnConfigData.config?.enabled
+                          ? "bg-green-100 text-green-700 border-green-300"
+                          : "bg-orange-100 text-orange-700 border-orange-300"
+                      }>
+                        {turnConfigData?.configured && turnConfigData.config?.enabled
+                          ? "TURN server attivo"
+                          : "In attesa di configurazione"}
+                      </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        <strong>Perché serve un TURN server?</strong> Quando i partecipanti sono su reti restrittive 
-                        (es. NAT simmetrico, firewall aziendali, mobile 4G/5G), le connessioni dirette WebRTC falliscono. 
-                        Un server TURN fa da relay per garantire che la videochiamata funzioni sempre.
-                      </AlertDescription>
-                    </Alert>
-
-                    {turnConfigData?.configured ? (
-                      <Alert className={turnConfigData.config?.enabled ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
-                        {turnConfigData.config?.enabled ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-yellow-600" />
-                        )}
-                        <AlertDescription className="text-sm">
-                          {turnConfigData.config?.enabled 
-                            ? "TURN server configurato e attivo dal SuperAdmin. Le videochiamate useranno il relay quando necessario."
-                            : "TURN server configurato dal SuperAdmin ma attualmente disabilitato."}
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <Alert className="bg-orange-50 border-orange-200">
-                        <AlertCircle className="h-4 w-4 text-orange-600" />
-                        <AlertDescription className="text-sm text-orange-800">
-                          <strong>TURN server non configurato.</strong> Il SuperAdmin non ha ancora configurato il server TURN. 
-                          Le videochiamate potrebbero non funzionare su reti restrittive. 
-                          Contatta l'amministratore per richiedere la configurazione.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {turnConfigData?.configured && turnConfigData.config && (
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
-                          <Shield className="h-4 w-4 text-teal-600" />
-                          Dettagli Configurazione (dal SuperAdmin)
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-500">Provider:</span>
-                            <p className="font-medium">{turnConfigData.config.provider || "Metered"}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Stato:</span>
-                            <p className={`font-medium ${turnConfigData.config.enabled ? 'text-green-600' : 'text-yellow-600'}`}>
-                              {turnConfigData.config.enabled ? 'Attivo' : 'Disabilitato'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Username:</span>
-                            <p className="font-medium font-mono text-xs">{turnConfigData.config.username}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Password:</span>
-                            <p className="font-medium font-mono text-xs">{turnConfigData.config.password}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="bg-teal-50 rounded-lg p-4">
-                      <p className="text-sm text-teal-800">
-                        <strong>Nota:</strong> La configurazione del server TURN è gestita centralmente dal SuperAdmin 
-                        per garantire stabilità e sicurezza su tutte le videochiamate della piattaforma. 
-                        Non è necessaria alcuna azione da parte tua.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      {turnConfigData?.configured && turnConfigData.config?.enabled
+                        ? "TURN server configurato e attivo. Gestito dal SuperAdmin."
+                        : "In attesa di configurazione dal SuperAdmin. Contatta l'amministratore per attivare il servizio."}
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Twilio Centralized Settings Tab Content */}
               <TabsContent value="twilio" className="space-y-6">
-                {/* Guida Setup Twilio + WhatsApp */}
-                <Card className="border-2 border-green-200 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-green-600 rounded-xl">
-                        <MessageSquare className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-green-900">📖 Guida Setup Twilio + WhatsApp Business</CardTitle>
-                        <CardDescription className="text-green-700">
-                          Collega il tuo numero di telefono italiano a WhatsApp Business tramite Twilio
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        <strong>Importante:</strong> Usa un numero di telefono italiano (TIM, Vodafone, Wind, Kena, Iliad, etc.) 
-                        da collegare a WhatsApp Business tramite Twilio. Non è necessario acquistare un numero virtuale su Twilio.
-                      </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-4 pl-4 border-l-4 border-green-300">
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            1
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Crea un account Twilio</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">twilio.com/try-twilio</a> e registrati gratuitamente.
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">💡 L'account di prova include crediti gratuiti per iniziare</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Ricarica il tuo account (consigliato: 20€)</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://console.twilio.com/us1/billing/manage-billing/billing-overview" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Billing → Overview</a> e aggiungi credito
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">💰 Puoi iniziare con 20€ per testare il servizio</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Registra il tuo numero WhatsApp</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Nel menu Twilio vai su: <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Messaging → Senders → WhatsApp Senders</a>
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              📱 Inserisci il tuo numero italiano (es: +39 350 xxx xxxx) e segui la procedura di verifica
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Collega a Meta Business Manager (se richiesto)</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Se richiesto, vai su <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Meta Business Suite</a> e verifica la tua azienda
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">⏳ La verifica aziendale può richiedere 1-3 giorni lavorativi</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-blue-900">Copia le credenziali API</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://console.twilio.com/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Console Twilio (Home)</a> e copia:
-                            </p>
-                            <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-1 mt-2">
-                              <p><strong>Account SID:</strong> ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
-                              <p><strong>Auth Token:</strong> (clicca "Show" per visualizzarlo)</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            6
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-emerald-900">Configura qui sotto</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Incolla le credenziali nei campi qui sotto e salva la configurazione
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            7
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-orange-900">Configura il Webhook su Twilio</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">WhatsApp Senders</a>, clicca sul tuo numero e nella sezione <strong>"Endpoint Configuration"</strong> inserisci:
-                            </p>
-                            <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-2 mt-2">
-                              <div>
-                                <p className="text-gray-500 mb-1">Webhook URL per i messaggi in arrivo:</p>
-                                <div className="flex items-center gap-2">
-                                  <code className="bg-white px-2 py-1 rounded border text-green-700 flex-1 break-all">
-                                    {window.location.origin}/api/whatsapp/webhook
-                                  </code>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-2 flex-shrink-0"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(`${window.location.origin}/api/whatsapp/webhook`);
-                                      toast({
-                                        title: "URL copiato!",
-                                        description: "Incollalo nella configurazione Twilio",
-                                      });
-                                    }}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                              <p className="text-gray-500 text-[10px]">Metodo HTTP: <strong>POST</strong></p>
-                            </div>
-                            <p className="text-xs text-orange-700 mt-2">
-                              ⚠️ Questo passaggio è fondamentale per ricevere i messaggi WhatsApp nella piattaforma
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-700 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            ✓
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Fatto! Il sistema è pronto</p>
-                            <p className="text-xs text-green-700 mt-1">Ora puoi creare agenti WhatsApp e iniziare a ricevere messaggi</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Alert className="bg-yellow-50 border-yellow-200 mt-4">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <AlertDescription className="text-sm text-yellow-800">
-                        <strong>⚠️ Costi indicativi:</strong> Twilio addebita circa 0,005€ per messaggio WhatsApp inviato/ricevuto. 
-                        Con 20€ puoi gestire circa 4.000 messaggi.
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
-
-                {/* Form di configurazione */}
+                {/* Form di configurazione - PRIMA della guida */}
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -7938,6 +7806,180 @@ export default function ConsultantApiKeysUnified() {
                       </div>
                     </div>
                   </CardContent>
+                </Card>
+
+                {/* Guida Setup Twilio + WhatsApp - Collassabile */}
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader className="pb-0">
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-green-600 rounded-xl">
+                              <BookOpen className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-left">
+                              <CardTitle className="text-lg text-green-900">📖 Guida Setup Twilio + WhatsApp Business</CardTitle>
+                              <CardDescription className="text-green-700">Clicca per espandere la guida passo-passo (8 step)</CardDescription>
+                            </div>
+                          </div>
+                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-6 space-y-4">
+                          <Alert className="bg-blue-50 border-blue-200">
+                            <CheckCircle className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-sm text-blue-800">
+                              <strong>Importante:</strong> Usa un numero di telefono italiano (TIM, Vodafone, Wind, Kena, Iliad, etc.) 
+                              da collegare a WhatsApp Business tramite Twilio. Non è necessario acquistare un numero virtuale su Twilio.
+                            </AlertDescription>
+                          </Alert>
+
+                          <div className="space-y-4 pl-4 border-l-4 border-green-300">
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Crea un account Twilio</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Vai su <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">twilio.com/try-twilio</a> e registrati gratuitamente.
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">💡 L'account di prova include crediti gratuiti per iniziare</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Ricarica il tuo account (consigliato: 20€)</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Vai su <a href="https://console.twilio.com/us1/billing/manage-billing/billing-overview" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Billing → Overview</a> e aggiungi credito
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">💰 Puoi iniziare con 20€ per testare il servizio</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Registra il tuo numero WhatsApp</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Nel menu Twilio vai su: <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Messaging → Senders → WhatsApp Senders</a>
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">📱 Inserisci il tuo numero italiano (es: +39 350 xxx xxxx) e segui la procedura di verifica</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Collega a Meta Business Manager (se richiesto)</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Se richiesto, vai su <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Meta Business Suite</a> e verifica la tua azienda
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">⏳ La verifica aziendale può richiedere 1-3 giorni lavorativi</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">5</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-blue-900">Copia le credenziali API</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Vai su <a href="https://console.twilio.com/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Console Twilio (Home)</a> e copia:
+                                  </p>
+                                  <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-1 mt-2">
+                                    <p><strong>Account SID:</strong> ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
+                                    <p><strong>Auth Token:</strong> (clicca "Show" per visualizzarlo)</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-sm">6</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-emerald-900">Configura nel form qui sopra</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Incolla le credenziali nei campi qui sopra e salva la configurazione
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">7</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-orange-900">Configura il Webhook su Twilio</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    Vai su <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">WhatsApp Senders</a>, clicca sul tuo numero e nella sezione <strong>"Endpoint Configuration"</strong> inserisci:
+                                  </p>
+                                  <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-2 mt-2">
+                                    <div>
+                                      <p className="text-gray-500 mb-1">Webhook URL per i messaggi in arrivo:</p>
+                                      <div className="flex items-center gap-2">
+                                        <code className="bg-white px-2 py-1 rounded border text-green-700 flex-1 break-all">
+                                          {window.location.origin}/api/whatsapp/webhook
+                                        </code>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 px-2 flex-shrink-0"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/api/whatsapp/webhook`);
+                                            toast({
+                                              title: "URL copiato!",
+                                              description: "Incollalo nella configurazione Twilio",
+                                            });
+                                          }}
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <p className="text-gray-500 text-[10px]">Metodo HTTP: <strong>POST</strong></p>
+                                  </div>
+                                  <p className="text-xs text-orange-700 mt-2">
+                                    ⚠️ Questo passaggio è fondamentale per ricevere i messaggi WhatsApp nella piattaforma
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-700 text-white rounded-full flex items-center justify-center font-bold text-sm">✓</div>
+                                <div className="flex-1">
+                                  <p className="font-semibold text-green-900">Fatto! Il sistema è pronto</p>
+                                  <p className="text-xs text-green-700 mt-1">Ora puoi creare agenti WhatsApp e iniziare a ricevere messaggi</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Alert className="bg-yellow-50 border-yellow-200 mt-4">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-sm text-yellow-800">
+                              <strong>⚠️ Costi indicativi:</strong> Twilio addebita circa 0,005€ per messaggio WhatsApp inviato/ricevuto. 
+                              Con 20€ puoi gestire circa 4.000 messaggi.
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardHeader>
                 </Card>
               </TabsContent>
 
@@ -8179,6 +8221,58 @@ export default function ConsultantApiKeysUnified() {
 
               {/* Stripe Connect Tab Content */}
               <TabsContent value="stripe" className="space-y-6">
+                {/* Mini-Stepper */}
+                {(() => {
+                  const isConnected = !!stripeConnectStatus?.connected;
+                  const hasWebhook = !!stripeApiSettings?.settings?.hasWebhookSecret;
+                  const hasApiKeys = !!stripeApiSettings?.settings?.hasSecretKey;
+                  const stepStatus = (stepNum: number) => {
+                    if (stepNum === 1) return isConnected ? "completed" : "active";
+                    if (stepNum === 2) return isConnected ? (hasWebhook ? "completed" : "active") : "pending";
+                    return isConnected ? (hasApiKeys ? "completed" : "active") : "pending";
+                  };
+                  return (
+                    <div className="bg-white/70 backdrop-blur-sm rounded-xl border shadow-sm p-4 sm:p-6">
+                      <div className="flex items-center justify-between gap-2 sm:gap-4">
+                        {[
+                          { num: 1, label: "Collega Stripe" },
+                          { num: 2, label: "Configura Webhook" },
+                          { num: 3, label: "Chiavi API (opz.)" },
+                        ].map((step, i) => {
+                          const status = stepStatus(step.num);
+                          return (
+                            <div key={step.num} className="flex items-center gap-2 sm:gap-3 flex-1">
+                              <div className={`flex items-center justify-center shrink-0 h-8 w-8 rounded-full text-sm font-bold ${
+                                status === "completed" ? "bg-green-100 text-green-700 border-2 border-green-300" :
+                                status === "active" ? "bg-violet-100 text-violet-700 border-2 border-violet-400" :
+                                "bg-gray-100 text-gray-400 border-2 border-gray-200"
+                              }`}>
+                                {status === "completed" ? <CheckCircle className="h-4 w-4" /> : step.num}
+                              </div>
+                              <span className={`text-xs sm:text-sm font-medium hidden sm:inline ${
+                                status === "completed" ? "text-green-700" :
+                                status === "active" ? "text-violet-700" :
+                                "text-gray-400"
+                              }`}>{step.label}</span>
+                              {i < 2 && (
+                                <div className={`flex-1 h-0.5 ${
+                                  status === "completed" ? "bg-green-300" : "bg-gray-200"
+                                }`} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 sm:hidden mt-2">
+                        {["Collega", "Webhook", "Chiavi API"].map((label, i) => (
+                          <span key={i} className="text-[10px] text-gray-500 text-center flex-1">{label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Step 1: Stripe Connect */}
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -8187,7 +8281,7 @@ export default function ConsultantApiKeysUnified() {
                           <CreditCard className="h-6 w-6 text-violet-600" />
                         </div>
                         <div>
-                          <CardTitle>Stripe Connect</CardTitle>
+                          <CardTitle>1. Collega Stripe</CardTitle>
                           <CardDescription>
                             Collega il tuo account Stripe per ricevere pagamenti dai tuoi clienti
                           </CardDescription>
@@ -8229,6 +8323,20 @@ export default function ConsultantApiKeysUnified() {
                             </code>
                           </div>
                         </div>
+
+                        {stripeConnectStatus?.revenueSharePercentage !== undefined && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Shield className="h-5 w-5 text-blue-600" />
+                              <span className="font-semibold text-blue-800">Revenue Share</span>
+                            </div>
+                            <p className="text-sm text-blue-700">
+                              La tua percentuale di revenue share è del{" "}
+                              <span className="font-bold">{stripeConnectStatus.revenueSharePercentage}%</span>.
+                              Questa percentuale viene trattenuta automaticamente sui pagamenti ricevuti.
+                            </p>
+                          </div>
+                        )}
 
                         <div className="flex flex-wrap gap-3">
                           <Button
@@ -8289,7 +8397,7 @@ export default function ConsultantApiKeysUnified() {
                         <Alert className="bg-violet-50 border-violet-200">
                           <CreditCard className="h-4 w-4 text-violet-600" />
                           <AlertDescription className="text-violet-800">
-                            <strong>Perché collegare Stripe?</strong>
+                            <strong>Collega il tuo account Stripe per iniziare</strong>
                             <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                               <li>Ricevi pagamenti direttamente sul tuo conto</li>
                               <li>Gestisci i pagamenti dei tuoi clienti in modo sicuro</li>
@@ -8299,9 +8407,10 @@ export default function ConsultantApiKeysUnified() {
                         </Alert>
 
                         <Button
-                          className="bg-violet-600 hover:bg-violet-700 text-white"
+                          className="bg-violet-600 hover:bg-violet-700 text-white w-full sm:w-auto"
                           onClick={() => startStripeOnboardingMutation.mutate()}
                           disabled={startStripeOnboardingMutation.isPending}
+                          size="lg"
                         >
                           {startStripeOnboardingMutation.isPending ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -8310,303 +8419,322 @@ export default function ConsultantApiKeysUnified() {
                           )}
                           Collega Stripe
                         </Button>
+
+                        <p className="text-xs text-muted-foreground">
+                          Completa prima questo step. Webhook e chiavi API saranno disponibili dopo il collegamento.
+                        </p>
                       </>
                     )}
+                  </CardContent>
+                </Card>
 
-                    {stripeConnectStatus?.revenueSharePercentage !== undefined && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Shield className="h-5 w-5 text-blue-600" />
-                          <span className="font-semibold text-blue-800">Revenue Share</span>
-                        </div>
-                        <p className="text-sm text-blue-700">
-                          La tua percentuale di revenue share è del{" "}
-                          <span className="font-bold">{stripeConnectStatus.revenueSharePercentage}%</span>.
-                          Questa percentuale viene trattenuta automaticamente sui pagamenti ricevuti.
-                        </p>
-                      </div>
-                    )}
-
-                    {stripeConnectStatus?.connected && (
-                      <div className="border-t border-orange-200 pt-6 mt-6">
-                        <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-orange-600" />
-                          Configurazione Webhook (Obbligatorio)
-                        </h4>
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-3">
-                          <p className="text-sm text-orange-800">
-                            Per ricevere le notifiche dei pagamenti e attivare automaticamente le licenze dei clienti, devi configurare un webhook nella dashboard Stripe.
-                          </p>
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">URL Webhook da copiare:</p>
-                            <div className="flex items-center gap-2">
-                              <code className="flex-1 bg-white border border-orange-300 rounded px-3 py-2 text-xs font-mono text-slate-800 select-all overflow-x-auto">
-                                {window.location.origin}/api/stripe/webhook
-                              </code>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-orange-300 text-orange-700 hover:bg-orange-100 shrink-0"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(`${window.location.origin}/api/stripe/webhook`);
-                                  toast({ title: "Copiato!", description: "URL webhook copiato negli appunti" });
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
+                {/* Step 2: Webhook (only visible when connected) */}
+                {stripeConnectStatus?.connected && (
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm border-l-4 border-l-orange-400">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl">
+                            <Zap className="h-6 w-6 text-orange-600" />
                           </div>
-                          <div className="bg-white rounded-lg p-3 border border-orange-200">
-                            <p className="text-xs font-semibold text-slate-700 mb-2">Come configurare:</p>
-                            <ol className="list-decimal list-inside space-y-1 text-xs text-slate-600">
-                              <li>Vai su <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener noreferrer" className="text-violet-600 underline hover:text-violet-800">dashboard.stripe.com/webhooks</a></li>
-                              <li>Clicca su <strong>"Aggiungi endpoint"</strong></li>
-                              <li>Incolla l'URL copiato sopra</li>
-                              <li>Seleziona l'evento: <code className="bg-slate-100 px-1 rounded">checkout.session.completed</code></li>
-                              <li>Salva l'endpoint</li>
-                            </ol>
+                          <div>
+                            <CardTitle>2. Configura Webhook</CardTitle>
+                            <CardDescription>
+                              Obbligatorio per attivare automaticamente le licenze dei clienti
+                            </CardDescription>
                           </div>
-                          <Alert className="bg-red-50 border-red-200">
-                            <AlertCircle className="h-4 w-4 text-red-600" />
-                            <AlertDescription className="text-red-800 text-xs">
-                              <strong>Senza questo webhook</strong>, i pagamenti andranno a buon fine su Stripe ma le licenze dei clienti non verranno attivate automaticamente.
-                            </AlertDescription>
-                          </Alert>
                         </div>
+                        {!stripeApiSettings?.settings?.hasWebhookSecret && (
+                          <Badge className="bg-red-100 text-red-700 border-red-300 animate-pulse">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Da configurare
+                          </Badge>
+                        )}
                       </div>
-                    )}
-
-                    <div className="border-t border-violet-200 pt-6 mt-6">
-                      <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                        <BookOpen className="h-4 w-4 text-violet-600" />
-                        Come Funziona
-                      </h4>
-                      
-                      <div className="space-y-4 text-sm text-slate-600">
-                        <div className="bg-white rounded-lg p-4 border border-slate-200">
-                          <h5 className="font-medium text-slate-700 mb-2">Processo di Collegamento</h5>
-                          <ol className="list-decimal list-inside space-y-1 text-slate-600">
-                            <li>Clicca su "Collega Stripe"</li>
-                            <li>Verrai reindirizzato alla pagina di onboarding Stripe</li>
-                            <li>Completa la verifica del tuo account</li>
-                            <li>Una volta completato, sarai reindirizzato qui</li>
-                          </ol>
-                        </div>
-
-                        <Alert className="bg-amber-50 border-amber-200">
-                          <AlertCircle className="h-4 w-4 text-amber-600" />
-                          <AlertDescription className="text-amber-800">
-                            <strong>Nota:</strong> La verifica Stripe può richiedere alcuni minuti. Assicurati di avere a portata di mano i documenti richiesti.
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!stripeApiSettings?.settings?.hasWebhookSecret && (
+                        <Alert className="bg-red-50 border-red-200">
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertDescription className="text-red-800 text-sm">
+                            <strong>Attenzione:</strong> Senza webhook configurato, i pagamenti andranno a buon fine su Stripe ma le licenze dei clienti non verranno attivate automaticamente.
                           </AlertDescription>
                         </Alert>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Chiavi API Stripe (per Automazioni Pagamento) */}
-                <Card className="mt-6 border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl">
-                        <Key className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      <div>
-                        <CardTitle>Chiavi API Stripe</CardTitle>
-                        <CardDescription>
-                          Configura le chiavi API per le Automazioni Pagamento
-                        </CardDescription>
-                      </div>
-                    </div>
-                    {stripeApiLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-                    ) : stripeApiSettings?.settings?.hasSecretKey ? (
-                      <Badge className="bg-green-100 text-green-700 border-green-300">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Configurato
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-gray-100 text-gray-600 border-gray-300">
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Non configurato
-                      </Badge>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Alert className="bg-emerald-50 border-emerald-200">
-                      <AlertCircle className="h-4 w-4 text-emerald-600" />
-                      <AlertDescription className="text-emerald-800">
-                        <strong>Per le Automazioni Pagamento</strong> hai bisogno delle chiavi API dirette di Stripe, diverse da Stripe Connect.
-                        <br />Le trovi nella dashboard Stripe: <strong>Sviluppatori → Chiavi API</strong>
-                      </AlertDescription>
-                    </Alert>
-
-                    {stripeApiSettings?.settings?.hasSecretKey && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
-                        <span className="text-green-700">
-                          Secret Key salvata: <code className="bg-green-100 px-1 rounded">{stripeApiSettings.settings.secretKeyPreview}</code>
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="stripe-secret-key">Stripe Secret Key</Label>
-                      <div className="relative">
-                        <Input
-                          id="stripe-secret-key"
-                          type={showStripeSecretKey ? "text" : "password"}
-                          placeholder="sk_test_... o sk_live_..."
-                          value={stripeSecretKey}
-                          onChange={(e) => setStripeSecretKey(e.target.value)}
-                          className="pr-10 font-mono text-sm"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full"
-                          onClick={() => setShowStripeSecretKey(!showStripeSecretKey)}
-                        >
-                          {showStripeSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Inizia con sk_test_ (test) o sk_live_ (produzione)
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="stripe-webhook-secret">Stripe Webhook Secret</Label>
-                      <div className="relative">
-                        <Input
-                          id="stripe-webhook-secret"
-                          type={showStripeWebhookSecret ? "text" : "password"}
-                          placeholder="whsec_..."
-                          value={stripeWebhookSecret}
-                          onChange={(e) => setStripeWebhookSecret(e.target.value)}
-                          className="pr-10 font-mono text-sm"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full"
-                          onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)}
-                        >
-                          {showStripeWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Lo ottieni quando crei un webhook nella dashboard Stripe
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={async () => {
-                        if (!stripeSecretKey && !stripeWebhookSecret) {
-                          toast({ title: "Errore", description: "Inserisci almeno una chiave", variant: "destructive" });
-                          return;
-                        }
-                        setIsSavingStripeKeys(true);
-                        try {
-                          const response = await fetch("/api/consultant/stripe-settings", {
-                            method: "POST",
-                            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-                            body: JSON.stringify({ 
-                              stripeSecretKey: stripeSecretKey || undefined, 
-                              stripeWebhookSecret: stripeWebhookSecret || undefined 
-                            }),
-                          });
-                          if (!response.ok) throw new Error("Failed to save");
-                          toast({ title: "Salvato!", description: "Chiavi Stripe salvate con successo" });
-                          setStripeSecretKey("");
-                          setStripeWebhookSecret("");
-                          queryClient.invalidateQueries({ queryKey: ["/api/consultant/stripe-settings"] });
-                        } catch (error) {
-                          toast({ title: "Errore", description: "Impossibile salvare le chiavi", variant: "destructive" });
-                        } finally {
-                          setIsSavingStripeKeys(false);
-                        }
-                      }}
-                      disabled={isSavingStripeKeys || (!stripeSecretKey && !stripeWebhookSecret)}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                    >
-                      {isSavingStripeKeys ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Salvataggio...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Salva Chiavi Stripe
-                        </>
                       )}
-                    </Button>
-                  </CardContent>
-                </Card>
 
-                {/* Sottoscrizioni Attive */}
-                <Card className="mt-6 border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-emerald-600" />
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">URL Webhook da copiare:</p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 bg-white border border-orange-300 rounded px-3 py-2 text-xs font-mono text-slate-800 select-all overflow-x-auto">
+                            {window.location.origin}/api/stripe/webhook
+                          </code>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-orange-300 text-orange-700 hover:bg-orange-100 shrink-0"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/api/stripe/webhook`);
+                              toast({ title: "Copiato!", description: "URL webhook copiato negli appunti" });
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle>Sottoscrizioni Clienti</CardTitle>
-                        <CardDescription>Clienti che hanno acquistato licenze L2 o L3</CardDescription>
+                      <div className="bg-white rounded-lg p-3 border border-orange-200">
+                        <p className="text-xs font-semibold text-slate-700 mb-2">Come configurare:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-xs text-slate-600">
+                          <li>Vai su <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener noreferrer" className="text-violet-600 underline hover:text-violet-800">dashboard.stripe.com/webhooks</a></li>
+                          <li>Clicca su <strong>"Aggiungi endpoint"</strong></li>
+                          <li>Incolla l'URL copiato sopra</li>
+                          <li>Seleziona l'evento: <code className="bg-slate-100 px-1 rounded">checkout.session.completed</code></li>
+                          <li>Salva l'endpoint e copia il <strong>Webhook Secret</strong> (whsec_...)</li>
+                        </ol>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {subscriptionsLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+
+                      <div className="space-y-2 pt-2">
+                        <Label htmlFor="stripe-webhook-secret-step2">Stripe Webhook Secret</Label>
+                        <div className="relative">
+                          <Input
+                            id="stripe-webhook-secret-step2"
+                            type={showStripeWebhookSecret ? "text" : "password"}
+                            placeholder="whsec_..."
+                            value={stripeWebhookSecret}
+                            onChange={(e) => setStripeWebhookSecret(e.target.value)}
+                            className="pr-10 font-mono text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full"
+                            onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)}
+                          >
+                            {showStripeWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
                       </div>
-                    ) : !mySubscriptions?.length ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>Nessuna sottoscrizione attiva</p>
-                        <p className="text-sm">Le sottoscrizioni appariranno qui quando i clienti acquistano</p>
+
+                      <Button
+                        onClick={async () => {
+                          if (!stripeWebhookSecret) {
+                            toast({ title: "Errore", description: "Inserisci il webhook secret", variant: "destructive" });
+                            return;
+                          }
+                          setIsSavingStripeKeys(true);
+                          try {
+                            const response = await fetch("/api/consultant/stripe-settings", {
+                              method: "POST",
+                              headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                              body: JSON.stringify({ stripeWebhookSecret }),
+                            });
+                            if (!response.ok) throw new Error("Failed to save");
+                            toast({ title: "Salvato!", description: "Webhook secret salvato con successo" });
+                            setStripeWebhookSecret("");
+                            queryClient.invalidateQueries({ queryKey: ["/api/consultant/stripe-settings"] });
+                          } catch (error) {
+                            toast({ title: "Errore", description: "Impossibile salvare", variant: "destructive" });
+                          } finally {
+                            setIsSavingStripeKeys(false);
+                          }
+                        }}
+                        disabled={isSavingStripeKeys || !stripeWebhookSecret}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {isSavingStripeKeys ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva Webhook Secret
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Step 3: Chiavi API Stripe (only visible when connected) */}
+                {stripeConnectStatus?.connected && (
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl">
+                            <Key className="h-6 w-6 text-emerald-600" />
+                          </div>
+                          <div>
+                            <CardTitle>3. Chiavi API Stripe</CardTitle>
+                            <CardDescription>
+                              Opzionale — per le Automazioni Pagamento
+                            </CardDescription>
+                          </div>
+                        </div>
+                        {stripeApiLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                        ) : stripeApiSettings?.settings?.hasSecretKey ? (
+                          <Badge className="bg-green-100 text-green-700 border-green-300">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Configurato
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-gray-100 text-gray-600 border-gray-300">
+                            Opzionale
+                          </Badge>
+                        )}
                       </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Livello</TableHead>
-                            <TableHead>Stato</TableHead>
-                            <TableHead>Data</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mySubscriptions.map((sub: any) => (
-                            <TableRow key={sub.id}>
-                              <TableCell>{sub.clientName || "-"}</TableCell>
-                              <TableCell>{sub.clientEmail}</TableCell>
-                              <TableCell>
-                                <Badge variant={sub.level === "3" ? "default" : "secondary"}>
-                                  L{sub.level}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={sub.status === "active" ? "default" : "outline"}
-                                  className={sub.status === "active" ? "bg-emerald-100 text-emerald-700" : ""}
-                                >
-                                  {sub.status === "active" ? "Attivo" : "In attesa"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>{new Date(sub.startDate).toLocaleDateString("it-IT")}</TableCell>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Alert className="bg-emerald-50 border-emerald-200">
+                        <AlertCircle className="h-4 w-4 text-emerald-600" />
+                        <AlertDescription className="text-emerald-800">
+                          <strong>Per le Automazioni Pagamento</strong> hai bisogno delle chiavi API dirette di Stripe, diverse da Stripe Connect.
+                          <br />Le trovi nella dashboard Stripe: <strong>Sviluppatori → Chiavi API</strong>
+                        </AlertDescription>
+                      </Alert>
+
+                      {stripeApiSettings?.settings?.hasSecretKey && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                          <span className="text-green-700">
+                            Secret Key salvata: <code className="bg-green-100 px-1 rounded">{stripeApiSettings.settings.secretKeyPreview}</code>
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="stripe-secret-key">Stripe Secret Key</Label>
+                        <div className="relative">
+                          <Input
+                            id="stripe-secret-key"
+                            type={showStripeSecretKey ? "text" : "password"}
+                            placeholder="sk_test_... o sk_live_..."
+                            value={stripeSecretKey}
+                            onChange={(e) => setStripeSecretKey(e.target.value)}
+                            className="pr-10 font-mono text-sm"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-full"
+                            onClick={() => setShowStripeSecretKey(!showStripeSecretKey)}
+                          >
+                            {showStripeSecretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Inizia con sk_test_ (test) o sk_live_ (produzione)
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={async () => {
+                          if (!stripeSecretKey) {
+                            toast({ title: "Errore", description: "Inserisci la Secret Key", variant: "destructive" });
+                            return;
+                          }
+                          setIsSavingStripeKeys(true);
+                          try {
+                            const response = await fetch("/api/consultant/stripe-settings", {
+                              method: "POST",
+                              headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                              body: JSON.stringify({ stripeSecretKey }),
+                            });
+                            if (!response.ok) throw new Error("Failed to save");
+                            toast({ title: "Salvato!", description: "Chiave Stripe salvata con successo" });
+                            setStripeSecretKey("");
+                            queryClient.invalidateQueries({ queryKey: ["/api/consultant/stripe-settings"] });
+                          } catch (error) {
+                            toast({ title: "Errore", description: "Impossibile salvare la chiave", variant: "destructive" });
+                          } finally {
+                            setIsSavingStripeKeys(false);
+                          }
+                        }}
+                        disabled={isSavingStripeKeys || !stripeSecretKey}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {isSavingStripeKeys ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva Secret Key
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sottoscrizioni (always visible, at the bottom) */}
+                {stripeConnectStatus?.connected && (
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Sottoscrizioni Clienti</CardTitle>
+                          <CardDescription>Clienti che hanno acquistato licenze L2 o L3</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {subscriptionsLoading ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : !mySubscriptions?.length ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p>Nessuna sottoscrizione attiva</p>
+                          <p className="text-sm">Le sottoscrizioni appariranno qui quando i clienti acquistano</p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Cliente</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Livello</TableHead>
+                              <TableHead>Stato</TableHead>
+                              <TableHead>Data</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
+                          </TableHeader>
+                          <TableBody>
+                            {mySubscriptions.map((sub: any) => (
+                              <TableRow key={sub.id}>
+                                <TableCell>{sub.clientName || "-"}</TableCell>
+                                <TableCell>{sub.clientEmail}</TableCell>
+                                <TableCell>
+                                  <Badge variant={sub.level === "3" ? "default" : "secondary"}>
+                                    L{sub.level}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={sub.status === "active" ? "default" : "outline"}
+                                    className={sub.status === "active" ? "bg-emerald-100 text-emerald-700" : ""}
+                                  >
+                                    {sub.status === "active" ? "Attivo" : "In attesa"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{new Date(sub.startDate).toLocaleDateString("it-IT")}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Publer Tab Content */}
