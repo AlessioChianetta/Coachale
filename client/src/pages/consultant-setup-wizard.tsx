@@ -655,35 +655,40 @@ function SectionCard({
   return (
     <motion.div
       onClick={onClick}
-      whileHover={{ y: -3, boxShadow: "0 8px 25px rgba(0,0,0,0.10)" }}
+      whileHover={{ y: -4, boxShadow: "0 12px 28px rgba(0,0,0,0.08)" }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="relative cursor-pointer rounded-2xl border border-border bg-background p-5 flex flex-col gap-3 overflow-hidden select-none"
+      className="relative cursor-pointer rounded-2xl border border-border/50 bg-background p-5 flex flex-col gap-3.5 overflow-hidden select-none shadow-sm"
     >
-      <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-[0.035] pointer-events-none`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-[0.04] pointer-events-none`} />
+      <div className={`absolute -top-12 -right-12 w-32 h-32 bg-gradient-to-br ${section.gradient} opacity-[0.06] rounded-full blur-2xl pointer-events-none`} />
 
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
-          <span className="text-3xl leading-none">{section.emoji}</span>
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${section.gradient} flex items-center justify-center shadow-sm`}>
+            <span className="text-lg leading-none">{section.emoji}</span>
+          </div>
           <div>
-            <h2 className="font-bold text-base text-foreground leading-tight">{section.title}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">{section.tagline}</p>
+            <h2 className="font-bold text-sm text-foreground leading-tight">{section.title}</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{section.tagline}</p>
           </div>
         </div>
         {isUrgent && !isComplete && (
-          <Badge className="text-xs bg-orange-500 text-white border-0 animate-pulse shrink-0">⚡ Inizia</Badge>
+          <Badge className="text-[10px] bg-orange-500 text-white border-0 animate-pulse shrink-0 px-2">Inizia</Badge>
         )}
       </div>
 
-      <Separator className="opacity-50" />
-
       {isComplete ? (
-        <div className="flex items-center justify-center gap-2 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-700 dark:text-emerald-300 text-sm font-medium">
-          <Check className="h-4 w-4" /> Sezione completata
+        <div className="flex items-center justify-center gap-2 py-2.5 bg-emerald-50/80 dark:bg-emerald-900/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+          <CheckCircle2 className="h-4 w-4" /> Sezione completata
         </div>
       ) : (
-        <>
-          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-medium">{completed}/{total} completati</span>
+            <span className={`font-bold text-xs ${pct < 30 ? "text-red-500" : pct < 80 ? "text-amber-500" : "text-emerald-500"}`}>{pct}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-muted/60 rounded-full overflow-hidden">
             <motion.div
               className={`h-full rounded-full ${barColor}`}
               initial={{ width: 0 }}
@@ -691,16 +696,12 @@ function SectionCard({
               transition={{ duration: 0.6, ease: "easeOut" }}
             />
           </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{completed}/{total} completati</span>
-            <Badge variant="outline" className={`font-mono text-xs ${badgeColor}`}>{pct}%</Badge>
-          </div>
-        </>
+        </div>
       )}
 
       <Button
         size="sm"
-        className={`w-full mt-1 bg-gradient-to-r ${section.gradient} text-white border-0 hover:opacity-90`}
+        className={`w-full bg-gradient-to-r ${section.gradient} text-white border-0 hover:opacity-90 shadow-sm`}
       >
         {isComplete ? "Rivedi →" : pct === 0 ? "Inizia →" : "Continua →"}
       </Button>
@@ -2075,28 +2076,45 @@ export default function ConsultantSetupWizard() {
           {!currentSection && (
             <div className="flex-1 flex overflow-hidden min-h-0">
             <div className="flex-1 overflow-auto p-6 space-y-6">
-              {/* Progress Overview + Banner */}
+              {/* Progress Overview + Academy + Banner */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <ContextualBanner
-                    sections={sections}
-                    completedSteps={completedSteps}
-                    totalSteps={totalSteps}
-                    onGoToSection={(id) => {
-                      const s = sections.find(x => x.id === id);
-                      if (s) autoSelectStep(s);
-                    }}
-                  />
-                  <Button
-                    variant={sortByPriority ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSortByPriority(!sortByPriority)}
-                    className="ml-4 shrink-0 gap-2"
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                    {sortByPriority ? "Sezioni" : "Per Priorità"}
-                  </Button>
+                {/* Academy Quick Access + Sort */}
+                <div className="flex items-center justify-between gap-3">
+                  <Link href="/consultant/academy">
+                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-800/60 bg-gradient-to-r from-indigo-50/80 to-violet-50/80 dark:from-indigo-950/30 dark:to-violet-950/30 cursor-pointer group hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-200">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                        <GraduationCap className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="hidden sm:block">
+                        <p className="text-sm font-semibold text-foreground leading-tight">Accademia</p>
+                        <p className="text-[11px] text-muted-foreground">27 video tutorial</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors ml-1" />
+                    </div>
+                  </Link>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={sortByPriority ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSortByPriority(!sortByPriority)}
+                      className="shrink-0 gap-2"
+                    >
+                      <ArrowUpDown className="h-4 w-4" />
+                      {sortByPriority ? "Sezioni" : "Per Priorità"}
+                    </Button>
+                  </div>
                 </div>
+
+                <ContextualBanner
+                  sections={sections}
+                  completedSteps={completedSteps}
+                  totalSteps={totalSteps}
+                  onGoToSection={(id) => {
+                    const s = sections.find(x => x.id === id);
+                    if (s) autoSelectStep(s);
+                  }}
+                />
 
                 {/* Progress Stats Bar */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -2107,40 +2125,40 @@ export default function ConsultantSetupWizard() {
                     const globalPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
                     return (
                       <>
-                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
+                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/20 p-3.5 flex items-center gap-3 shadow-sm">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
                             <span className="text-white font-bold text-sm">{globalPct}%</span>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Progresso</p>
-                            <p className="text-sm font-semibold text-foreground">{completedSteps}/{totalSteps} step</p>
+                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Progresso</p>
+                            <p className="text-sm font-bold text-foreground">{completedSteps}/{totalSteps} step</p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-emerald-50/30 dark:to-emerald-950/10 p-3.5 flex items-center gap-3 shadow-sm">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Completate</p>
-                            <p className="text-sm font-semibold text-foreground">{completedSections} sezioni</p>
+                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Completate</p>
+                            <p className="text-sm font-bold text-foreground">{completedSections} sezioni</p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                            <Loader2 className="h-5 w-5 text-amber-500" />
+                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-amber-50/30 dark:to-amber-950/10 p-3.5 flex items-center gap-3 shadow-sm">
+                          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">In Corso</p>
-                            <p className="text-sm font-semibold text-foreground">{inProgressSections} sezioni</p>
+                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">In Corso</p>
+                            <p className="text-sm font-bold text-foreground">{inProgressSections} sezioni</p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                            <Circle className="h-5 w-5 text-gray-400" />
+                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-slate-50/30 dark:to-slate-950/10 p-3.5 flex items-center gap-3 shadow-sm">
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <Circle className="h-5 w-5 text-slate-400" />
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Da Iniziare</p>
-                            <p className="text-sm font-semibold text-foreground">{pendingSections} sezioni</p>
+                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Da Iniziare</p>
+                            <p className="text-sm font-bold text-foreground">{pendingSections} sezioni</p>
                           </div>
                         </div>
                       </>
@@ -2150,7 +2168,7 @@ export default function ConsultantSetupWizard() {
               </div>
 
               {!sortByPriority ? (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                     {sections.map((section, i) => (
                       <motion.div
@@ -2167,42 +2185,6 @@ export default function ConsultantSetupWizard() {
                       </motion.div>
                     ))}
                   </div>
-
-                  {/* Academy Access Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <Link href="/consultant/academy">
-                      <div className="relative cursor-pointer rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 via-purple-50 to-violet-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-violet-950/40 p-5 overflow-hidden group hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-                        <div className="relative flex items-center gap-5">
-                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <GraduationCap className="h-7 w-7 text-white" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-base text-foreground">Accademia</h3>
-                              <Badge className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-0">
-                                27 lezioni
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Video tutorial passo-passo per padroneggiare ogni funzionalità della piattaforma
-                            </p>
-                          </div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-0 hover:opacity-90 gap-1.5">
-                              <PlayCircle className="h-4 w-4" />
-                              Apri Accademia
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2288,28 +2270,6 @@ export default function ConsultantSetupWizard() {
                     );
                   })}
 
-                  {/* Academy Access Card (priority view) */}
-                  <Link href="/consultant/academy">
-                    <div className="relative cursor-pointer rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 via-purple-50 to-violet-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-violet-950/40 p-5 overflow-hidden group hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-                      <div className="relative flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                          <GraduationCap className="h-7 w-7 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-base text-foreground">Accademia</h3>
-                            <Badge className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-0">27 lezioni</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">Video tutorial passo-passo per padroneggiare la piattaforma</p>
-                        </div>
-                        <Button size="sm" className="shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-0 hover:opacity-90 gap-1.5">
-                          <PlayCircle className="h-4 w-4" />
-                          Apri Accademia
-                        </Button>
-                      </div>
-                    </div>
-                  </Link>
                 </div>
               )}
             </div>

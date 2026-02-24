@@ -448,6 +448,7 @@ export default function ConsultantAcademy() {
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
+          role="consultant"
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -478,9 +479,8 @@ export default function ConsultantAcademy() {
 
                 <Link href="/consultant/setup-wizard">
                   <Button variant="outline" size="sm" className="gap-2 text-xs">
-                    <Settings className="w-3.5 h-3.5" />
+                    <ArrowLeft className="w-3.5 h-3.5" />
                     Setup Wizard
-                    <ChevronRight className="w-3 h-3 opacity-60" />
                   </Button>
                 </Link>
               </div>
