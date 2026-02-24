@@ -2076,45 +2076,63 @@ export default function ConsultantSetupWizard() {
           {!currentSection && (
             <div className="flex-1 flex overflow-hidden min-h-0">
             <div className="flex-1 overflow-auto p-6 space-y-6">
-              {/* Progress Overview + Academy + Banner */}
-              <div className="space-y-4">
-                {/* Academy Quick Access + Sort */}
-                <div className="flex items-center justify-between gap-3">
-                  <Link href="/consultant/academy">
-                    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-800/60 bg-gradient-to-r from-indigo-50/80 to-violet-50/80 dark:from-indigo-950/30 dark:to-violet-950/30 cursor-pointer group hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all duration-200">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-                        <GraduationCap className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="hidden sm:block">
-                        <p className="text-sm font-semibold text-foreground leading-tight">Accademia</p>
-                        <p className="text-[11px] text-muted-foreground">27 video tutorial</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors ml-1" />
+              {/* Academy Hero Banner */}
+              <Link href="/consultant/academy">
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative cursor-pointer rounded-2xl overflow-hidden group"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.12),transparent_60%)]" />
+                  <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-bl from-white/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-400/20 to-transparent rounded-full blur-2xl translate-y-1/3 -translate-x-1/4" />
+                  <div className="relative px-5 py-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                      <GraduationCap className="h-6 w-6 text-white" />
                     </div>
-                  </Link>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={sortByPriority ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSortByPriority(!sortByPriority)}
-                      className="shrink-0 gap-2"
-                    >
-                      <ArrowUpDown className="h-4 w-4" />
-                      {sortByPriority ? "Sezioni" : "Per Priorità"}
-                    </Button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="font-bold text-base text-white">Accademia di Formazione</h3>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white/90 backdrop-blur-sm">
+                          27 lezioni
+                        </span>
+                      </div>
+                      <p className="text-sm text-white/70 mt-0.5">
+                        Guarda i video tutorial per configurare tutto in autonomia
+                      </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-semibold text-sm group-hover:bg-white/25 transition-all duration-200">
+                      <PlayCircle className="h-4 w-4" />
+                      Guarda Ora
+                      <ChevronRight className="h-4 w-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
                   </div>
-                </div>
+                </motion.div>
+              </Link>
 
-                <ContextualBanner
-                  sections={sections}
-                  completedSteps={completedSteps}
-                  totalSteps={totalSteps}
-                  onGoToSection={(id) => {
-                    const s = sections.find(x => x.id === id);
-                    if (s) autoSelectStep(s);
-                  }}
-                />
+              {/* Progress + Sort */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <ContextualBanner
+                    sections={sections}
+                    completedSteps={completedSteps}
+                    totalSteps={totalSteps}
+                    onGoToSection={(id) => {
+                      const s = sections.find(x => x.id === id);
+                      if (s) autoSelectStep(s);
+                    }}
+                  />
+                  <Button
+                    variant={sortByPriority ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSortByPriority(!sortByPriority)}
+                    className="shrink-0 gap-2"
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                    {sortByPriority ? "Sezioni" : "Per Priorità"}
+                  </Button>
+                </div>
 
                 {/* Progress Stats Bar */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
