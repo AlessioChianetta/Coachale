@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Clock, FileText, Calendar, CheckCircle, AlertCircle, User, BookOpen, Globe, PlayCircle, Loader2, Filter, X, GraduationCap, Award, Target, Search, ChevronRight, Grid3x3, Columns3, TrendingUp, Menu, HelpCircle, ArrowLeft } from "lucide-react";
+import { Clock, FileText, Calendar, CheckCircle, AlertCircle, User, BookOpen, Globe, PlayCircle, Loader2, Filter, X, GraduationCap, Award, Target, Search, ChevronRight, ChevronDown, ChevronUp, Grid3x3, Columns3, TrendingUp, Menu, HelpCircle, ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -53,6 +53,7 @@ export default function ClientExercises() {
   const [layoutView, setLayoutView] = useState<"grid" | "kanban" | "timeline">("kanban");
   const [exerciseMode, setExerciseMode] = useState<"all" | "consulenza" | "corso">("all");
   const [isTourActive, setIsTourActive] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
   const { toast} = useToast();
   const queryClient = useQueryClient();
 
@@ -1155,8 +1156,8 @@ export default function ClientExercises() {
                           onClick={() => setLayoutView("timeline")}
                           className={layoutView === "timeline" ? "bg-purple-600 hover:bg-purple-700" : ""}
                         >
-                          <TrendingUp size={16} className="mr-2" />
-                          Timeline
+                          <GraduationCap size={16} className="mr-2" />
+                          Moduli
                         </Button>
                       </div>
                     </div>
@@ -1530,29 +1531,185 @@ export default function ClientExercises() {
                     <div className="max-w-4xl mx-auto">
                       {getFilteredAssignments().length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16">
-                          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <BookOpen size={32} className="text-gray-400" />
+                          <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                            <BookOpen size={32} className="text-gray-400 dark:text-gray-500" />
                           </div>
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nessun esercizio trovato</h3>
-                          <p className="text-gray-600 text-center">
+                          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Nessun esercizio trovato</h3>
+                          <p className="text-gray-600 dark:text-gray-400 text-center">
                             {searchTerm || selectedCourse || selectedStatus !== "all"
                               ? "Prova a modificare i filtri di ricerca."
                               : "Non ci sono ancora esercizi disponibili."}
                           </p>
                         </div>
-                      ) : (
-                        <div className="space-y-0">
-                          {getFilteredAssignments()
-                            .sort((a, b) => new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime())
-                            .map((assignment: ExerciseAssignment, index: number) => (
-                              <TimelineCard
-                                key={assignment.id}
-                                assignment={assignment}
-                                onViewExercise={handleViewExercise}
-                              />
-                            ))}
-                        </div>
-                      )}
+                      ) : (() => {
+                        const sorted = [...getFilteredAssignments()].sort(sortByModuleLesson);
+                        const moduleGroups: { module: string; items: ExerciseAssignment[] }[] = [];
+                        let currentMod = "";
+                        for (const a of sorted) {
+                          const mod = getModuleName(a.exercise.title);
+                          if (mod !== currentMod) {
+                            currentMod = mod;
+                            moduleGroups.push({ module: mod, items: [a] });
+                          } else {
+                            moduleGroups[moduleGroups.length - 1].items.push(a);
+                          }
+                        }
+
+                        const hasModules = moduleGroups.length > 1 || (moduleGroups.length === 1 && moduleGroups[0].module !== "Altro");
+
+                        if (!hasModules) {
+                          return (
+                            <div className="space-y-0">
+                              {sorted.map((assignment: ExerciseAssignment) => (
+                                <TimelineCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        const totalExercises = sorted.length;
+                        const completedTotal = sorted.filter(a => a.status === 'completed').length;
+                        const progressPct = totalExercises > 0 ? Math.round((completedTotal / totalExercises) * 100) : 0;
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                                    <GraduationCap size={20} className="text-white" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-bold text-gray-900 dark:text-white text-base">Percorso {getCategoryLabel(selectedCourse || '')}</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{completedTotal}/{totalExercises} esercizi completati</p>
+                                  </div>
+                                </div>
+                                <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{progressPct}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }}></div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              {moduleGroups.map((group) => {
+                                const completedInModule = group.items.filter(a => a.status === 'completed').length;
+                                const allCompleted = completedInModule === group.items.length;
+                                const isOpen = expandedModules[group.module] !== false;
+
+                                const getCategoryGradientForModule = () => {
+                                  const cat = selectedCourse || '';
+                                  const gradients: Record<string, string> = {
+                                    'finanza-personale': 'from-emerald-500 to-teal-600',
+                                    'risparmio-investimenti': 'from-blue-500 to-indigo-600',
+                                    'vendita': 'from-orange-500 to-red-600',
+                                    'marketing': 'from-pink-500 to-rose-600',
+                                    'imprenditoria': 'from-indigo-500 to-purple-600',
+                                    'post-consulenza': 'from-purple-500 to-indigo-600',
+                                    'newsletter': 'from-green-500 to-emerald-600',
+                                    'metodo-turbo': 'from-yellow-500 to-orange-500',
+                                    'metodo-hybrid': 'from-cyan-500 to-blue-600',
+                                  };
+                                  return gradients[cat] || 'from-purple-500 to-indigo-600';
+                                };
+
+                                return (
+                                  <div key={group.module} className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+                                    <button
+                                      onClick={() => setExpandedModules(prev => ({ ...prev, [group.module]: !isOpen }))}
+                                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                                    >
+                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br ${getCategoryGradientForModule()} shadow-sm flex-shrink-0`}>
+                                        <span className="text-white font-bold text-sm">{extractModuleLesson(group.items[0].exercise.title)[0]}</span>
+                                      </div>
+                                      <div className="flex-1 text-left min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">{group.module}</p>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                          {completedInModule}/{group.items.length} completate
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        {allCompleted && (
+                                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        )}
+                                        <div className="w-12 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                          <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${group.items.length > 0 ? (completedInModule / group.items.length) * 100 : 0}%` }}></div>
+                                        </div>
+                                        {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />}
+                                      </div>
+                                    </button>
+
+                                    {isOpen && (
+                                      <div className="px-3 pb-3 space-y-1 border-t border-gray-100 dark:border-gray-700 pt-2">
+                                        {group.items.map((assignment) => {
+                                          const isCompleted = assignment.status === 'completed';
+                                          const isInProgress = assignment.status === 'in_progress';
+                                          const isSubmitted = assignment.status === 'submitted';
+                                          const isReturned = assignment.status === 'returned';
+                                          const lessonTitle = assignment.exercise.title.replace(/Modulo\s+\d+\s*/i, '').replace(/^\s*[-–:]\s*/, '').trim();
+
+                                          return (
+                                            <button
+                                              key={assignment.id}
+                                              onClick={() => handleViewExercise(assignment)}
+                                              className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl transition-all group ${
+                                                isInProgress
+                                                  ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                                                  : isReturned
+                                                    ? "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800"
+                                                    : "hover:bg-gray-50 dark:hover:bg-gray-750"
+                                              }`}
+                                            >
+                                              <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                                                {isCompleted ? (
+                                                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                                ) : isSubmitted ? (
+                                                  <Clock className="w-5 h-5 text-purple-500" />
+                                                ) : isInProgress ? (
+                                                  <PlayCircle className="w-5 h-5 text-blue-500" />
+                                                ) : isReturned ? (
+                                                  <AlertCircle className="w-5 h-5 text-orange-500" />
+                                                ) : (
+                                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-gray-600 group-hover:border-purple-400 transition-colors" />
+                                                )}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <span className={`text-sm leading-tight block ${
+                                                  isCompleted ? "text-gray-400 dark:text-gray-500 line-through decoration-gray-300 dark:decoration-gray-600" :
+                                                  isInProgress ? "font-semibold text-blue-700 dark:text-blue-300" :
+                                                  isReturned ? "font-semibold text-orange-700 dark:text-orange-300" :
+                                                  "text-gray-900 dark:text-white"
+                                                }`}>
+                                                  {lessonTitle || assignment.exercise.title}
+                                                </span>
+                                                {isReturned && (
+                                                  <span className="text-[10px] text-orange-600 dark:text-orange-400 mt-0.5 block">Da rivedere</span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-2 flex-shrink-0">
+                                                {assignment.score !== null && assignment.score !== undefined && (
+                                                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full">
+                                                    {assignment.score}/10
+                                                  </span>
+                                                )}
+                                                <span className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
+                                                  <Clock className="w-2.5 h-2.5" />
+                                                  {assignment.exercise.estimatedDuration || 5}min
+                                                </span>
+                                                <ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                              </div>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
             </Card>
