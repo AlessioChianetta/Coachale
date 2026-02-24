@@ -580,117 +580,121 @@ export default function AdminAcademy() {
                         <div>
                           {mod.lessons.map((lesson, lIdx) => (
                             <div key={lesson.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                              <div className="px-5 py-4">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex flex-col gap-0.5 mt-1">
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-30 hover:opacity-100" onClick={() => handleReorderLessons(lesson, "up")} disabled={lIdx === 0}>
-                                      <ArrowUp size={11} />
+                              <div className="px-5 py-5">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => handleReorderLessons(lesson, "up")} disabled={lIdx === 0}>
+                                      <ArrowUp size={13} />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 opacity-30 hover:opacity-100" onClick={() => handleReorderLessons(lesson, "down")} disabled={lIdx === mod.lessons.length - 1}>
-                                      <ArrowDown size={11} />
+                                    <Button variant="outline" size="icon" className="h-7 w-7 rounded-md" onClick={() => handleReorderLessons(lesson, "down")} disabled={lIdx === mod.lessons.length - 1}>
+                                      <ArrowDown size={13} />
                                     </Button>
                                   </div>
-                                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getModuleGradient(mod.color)} flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 opacity-80`}>
+                                  <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${getModuleGradient(mod.color)} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
                                     {lIdx + 1}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{lesson.title}</span>
-                                      <Badge variant="outline" className="text-[10px] font-mono bg-gray-50 dark:bg-gray-800">{lesson.lesson_id}</Badge>
-                                      <Badge className="text-[10px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-0">
-                                        <Clock size={9} className="mr-0.5" /> {lesson.duration}
-                                      </Badge>
+                                    <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-tight">{lesson.title}</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[11px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{lesson.lesson_id}</span>
+                                      <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                                        <Clock size={10} /> {lesson.duration}
+                                      </span>
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{lesson.description}</p>
+                                  </div>
+                                </div>
 
-                                    {(() => {
-                                      const allVideos: Array<{ id: string; title: string; video_url: string; video_type: string; isLegacy?: boolean }> = [];
-                                      if (lesson.video_url) {
-                                        allVideos.push({ id: "legacy", title: "Video principale", video_url: lesson.video_url, video_type: lesson.video_type, isLegacy: true });
-                                      }
-                                      if (lesson.videos) {
-                                        lesson.videos.forEach(v => allVideos.push({ ...v }));
-                                      }
-                                      if (allVideos.length === 0) return null;
-                                      return (
-                                        <div className="mt-3 space-y-2">
-                                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
-                                            <Film size={12} />
-                                            {allVideos.length} {allVideos.length === 1 ? "Video" : "Video"}
-                                          </div>
-                                          <div className="space-y-1.5">
-                                            {allVideos.map((vid, vIdx) => (
-                                              <div key={vid.id} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border border-purple-100 dark:border-purple-900/30">
-                                                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0 text-[10px] font-bold text-white">
-                                                  {vIdx + 1}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                                    {vid.title || `Video ${vIdx + 1}`}
-                                                  </p>
-                                                  <p className="text-[10px] text-purple-500 truncate">{vid.video_url}</p>
-                                                </div>
-                                                <Badge className="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0">
-                                                  {vid.video_type === "youtube" ? "YouTube" : "Iframe"}
-                                                </Badge>
-                                                {!vid.isLegacy && (
-                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 opacity-50 hover:opacity-100 shrink-0" onClick={() => initiateDelete("video", vid.id, vid.title || `Video ${vIdx + 1}`)}>
-                                                    <Trash2 size={11} />
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      );
-                                    })()}
+                                <div className="ml-[76px]">
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{lesson.description}</p>
 
-                                    {lesson.documents.length > 0 && (
-                                      <div className="mt-3 space-y-2">
-                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">
-                                          <FileText size={12} />
-                                          Documenti ({lesson.documents.length})
-                                        </div>
-                                        <div className="space-y-1.5">
-                                          {lesson.documents.map(doc => (
-                                            <div key={doc.id} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-100 dark:border-amber-900/30">
-                                              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
-                                                <FileText size={14} className="text-white" />
+                                  {(() => {
+                                    const allVideos: Array<{ id: string; title: string; video_url: string; video_type: string; isLegacy?: boolean }> = [];
+                                    if (lesson.video_url) {
+                                      allVideos.push({ id: "legacy", title: "Video principale", video_url: lesson.video_url, video_type: lesson.video_type, isLegacy: true });
+                                    }
+                                    if (lesson.videos) {
+                                      lesson.videos.forEach(v => allVideos.push({ ...v }));
+                                    }
+                                    if (allVideos.length === 0) return null;
+                                    return (
+                                      <div className="mb-4">
+                                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                          <Film size={13} />
+                                          {allVideos.length} {allVideos.length === 1 ? "Video" : "Video"}
+                                        </p>
+                                        <div className="space-y-2">
+                                          {allVideos.map((vid, vIdx) => (
+                                            <div key={vid.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30">
+                                              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0 text-xs font-bold text-white">
+                                                {vIdx + 1}
                                               </div>
-                                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 truncate transition-colors">
-                                                {doc.title}
-                                              </a>
-                                              <Badge className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 shrink-0 uppercase">
-                                                {doc.file_type}
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                                                  {vid.title || `Video ${vIdx + 1}`}
+                                                </p>
+                                                <p className="text-xs text-purple-500 dark:text-purple-400 truncate mt-0.5">{vid.video_url}</p>
+                                              </div>
+                                              <Badge className="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0 px-2 py-0.5">
+                                                {vid.video_type === "youtube" ? "YouTube" : "Iframe"}
                                               </Badge>
-                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 opacity-50 hover:opacity-100 shrink-0" onClick={() => initiateDelete("document", doc.id, doc.title)}>
-                                                <Trash2 size={11} />
-                                              </Button>
+                                              {!vid.isLegacy && (
+                                                <Button variant="outline" size="sm" className="h-7 px-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40 dark:hover:bg-red-950/30 shrink-0" onClick={() => initiateDelete("video", vid.id, vid.title || `Video ${vIdx + 1}`)}>
+                                                  <Trash2 size={12} className="mr-1" /> Rimuovi
+                                                </Button>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
                                       </div>
-                                    )}
+                                    );
+                                  })()}
 
-                                    {lesson.config_link && lesson.config_link !== "/" && (
-                                      <div className="mt-2 flex items-center gap-1.5">
-                                        <Settings size={11} className="text-gray-400" />
-                                        <span className="text-[10px] text-gray-400 font-mono">{lesson.config_link}</span>
+                                  {lesson.documents.length > 0 && (
+                                    <div className="mb-4">
+                                      <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <FileText size={13} />
+                                        {lesson.documents.length} {lesson.documents.length === 1 ? "Documento" : "Documenti"}
+                                      </p>
+                                      <div className="space-y-2">
+                                        {lesson.documents.map(doc => (
+                                          <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
+                                              <FileText size={15} className="text-white" />
+                                            </div>
+                                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 truncate transition-colors">
+                                              {doc.title}
+                                            </a>
+                                            <Badge className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 shrink-0 px-2 py-0.5 uppercase">
+                                              {doc.file_type}
+                                            </Badge>
+                                            <Button variant="outline" size="sm" className="h-7 px-2 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40 dark:hover:bg-red-950/30 shrink-0" onClick={() => initiateDelete("document", doc.id, doc.title)}>
+                                              <Trash2 size={12} className="mr-1" /> Rimuovi
+                                            </Button>
+                                          </div>
+                                        ))}
                                       </div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors" title="Aggiungi video" onClick={() => { setShowNewVideo(lesson.id); setVideoForm({ title: "", video_url: "", video_type: "youtube" }); }}>
-                                      <Video size={14} className="text-purple-500" />
+                                    </div>
+                                  )}
+
+                                  {lesson.config_link && lesson.config_link !== "/" && (
+                                    <div className="mb-4 flex items-center gap-2 text-xs text-gray-400">
+                                      <Settings size={12} />
+                                      <span className="font-mono">{lesson.config_link}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100 dark:border-gray-800">
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-900/40 dark:hover:bg-purple-950/30" onClick={() => { setShowNewVideo(lesson.id); setVideoForm({ title: "", video_url: "", video_type: "youtube" }); }}>
+                                      <Video size={13} /> Aggiungi Video
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors" title="Aggiungi documento" onClick={() => { setShowNewDoc(lesson.id); setDocForm({ title: "", file_url: "", file_type: "link" }); }}>
-                                      <FileText size={14} className="text-amber-500" />
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-900/40 dark:hover:bg-amber-950/30" onClick={() => { setShowNewDoc(lesson.id); setDocForm({ title: "", file_url: "", file_type: "link" }); }}>
+                                      <FileText size={13} /> Aggiungi Documento
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors" title="Modifica lezione" onClick={() => startEditLesson(lesson)}>
-                                      <Pencil size={14} className="text-blue-500" />
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/40 dark:hover:bg-blue-950/30" onClick={() => startEditLesson(lesson)}>
+                                      <Pencil size={13} /> Modifica
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="Elimina lezione" onClick={() => initiateDelete("lesson", lesson.id, lesson.title)}>
-                                      <Trash2 size={14} />
+                                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-red-500 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/40 dark:hover:bg-red-950/30" onClick={() => initiateDelete("lesson", lesson.id, lesson.title)}>
+                                      <Trash2 size={13} /> Elimina
                                     </Button>
                                   </div>
                                 </div>
