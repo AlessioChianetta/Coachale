@@ -713,104 +713,93 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {!isCollapsed && (sidebarTab === 'platform' || !categories) && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
         {/* Render categorized sidebar for consultant */}
         {categories && !isCollapsed ? (categories as SidebarCategoryExtended[]).map((category, idx) => {
-          const isCategoryExpanded = expandedCategories.has(category.name);
           const isAlwaysVisible = category.alwaysVisible;
           const isGridLayout = category.isGridLayout;
 
           return (
-            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-4" : ""}>
+            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-5" : ""}>
               <div className="space-y-0.5">
-                {/* Category Header - hide for always visible sections */}
+                {/* Category Header - static label, always expanded (Halal Lab style) */}
                 {!isAlwaysVisible && (
-                  <button
-                    onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 mb-0.5 group"
-                  >
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
+                  <div className="px-3 pt-1 pb-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/55">
                       {category.name}
                     </span>
-                    <ChevronRight className={cn(
-                      "h-3 w-3 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-all duration-200",
-                      isCategoryExpanded && "rotate-90"
-                    )} />
-                  </button>
-                )}
-
-                {/* Category Items */}
-                {(isCategoryExpanded || isAlwaysVisible) && (
-                  <div className={cn(
-                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5"
-                  )}>
-                    {category.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = isRouteActive(item.href, location);
-                      const isAIAutonomo = item.name === "AI Autonomo";
-                      const showPulse = isAIAutonomo && isAnalysisActive;
-                      const showBadge = isAIAutonomo && newResultsCount > 0;
-                      const badge = ICON_BADGE[item.color || ""] || ICON_BADGE.slate;
-
-                      return (
-                        <Link key={item.href} href={item.href}>
-                          <div
-                            className={cn(
-                              "group flex items-center gap-2.5 px-2 py-2 rounded-xl transition-all duration-200 cursor-pointer min-h-[40px]",
-                              isActive
-                                ? "bg-foreground/[0.06] dark:bg-white/[0.06] text-foreground"
-                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                            )}
-                            data-testid={`link-${slugify(item.name)}`}
-                            onMouseEnter={() => preloadOnHover(item.href)}
-                            onMouseLeave={() => cancelHoverPreload(item.href)}
-                            onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
-                          >
-                            {/* Outline icon box */}
-                            <div className={cn(
-                              "relative w-[30px] h-[30px] rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200 border",
-                              showPulse
-                                ? "bg-emerald-500 border-emerald-500"
-                                : isActive
-                                  ? "bg-foreground/10 border-foreground/20 dark:bg-white/10 dark:border-white/20"
-                                  : "bg-transparent border-border/50 group-hover:border-border/80 group-hover:bg-muted/40"
-                            )}>
-                              <Icon className={cn(
-                                "h-[15px] w-[15px] transition-colors duration-200",
-                                showPulse
-                                  ? "text-white"
-                                  : isActive
-                                    ? "text-foreground dark:text-white"
-                                    : "text-foreground/50 group-hover:text-foreground/80"
-                              )} />
-                              {showPulse && (
-                                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex-1 flex items-center justify-between min-w-0">
-                              <span className={cn(
-                                "text-[13px] truncate",
-                                isActive ? "font-semibold text-foreground" : "font-medium"
-                              )}>
-                                {item.name}
-                              </span>
-                              {showBadge ? (
-                                <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white min-w-[18px] text-center">
-                                  {newResultsCount}
-                                </span>
-                              ) : item.badge ? (
-                                <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                  {item.badge}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
                   </div>
                 )}
+
+                {/* Category Items - always visible */}
+                <div className={cn(
+                  isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-[2px]"
+                )}>
+                  {category.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = isRouteActive(item.href, location);
+                    const isAIAutonomo = item.name === "AI Autonomo";
+                    const showPulse = isAIAutonomo && isAnalysisActive;
+                    const showBadge = isAIAutonomo && newResultsCount > 0;
+
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <div
+                          className={cn(
+                            "group flex items-center gap-3 px-3 py-[9px] rounded-lg transition-all duration-150 cursor-pointer",
+                            isActive
+                              ? "bg-muted text-foreground"
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          )}
+                          data-testid={`link-${slugify(item.name)}`}
+                          onMouseEnter={() => preloadOnHover(item.href)}
+                          onMouseLeave={() => cancelHoverPreload(item.href)}
+                          onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
+                        >
+                          {/* Filled icon box — Halal Lab style */}
+                          <div className={cn(
+                            "relative w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150",
+                            showPulse
+                              ? "bg-emerald-500"
+                              : isActive
+                                ? "bg-foreground dark:bg-white"
+                                : "bg-muted group-hover:bg-muted-foreground/10"
+                          )}>
+                            <Icon className={cn(
+                              "h-[17px] w-[17px] transition-colors duration-150",
+                              showPulse
+                                ? "text-white"
+                                : isActive
+                                  ? "text-background dark:text-foreground"
+                                  : "text-foreground/55 group-hover:text-foreground/80"
+                            )} />
+                            {showPulse && (
+                              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 flex items-center justify-between min-w-0">
+                            <span className={cn(
+                              "text-[14.5px] truncate",
+                              isActive ? "font-semibold text-foreground" : "font-medium"
+                            )}>
+                              {item.name}
+                            </span>
+                            {showBadge ? (
+                              <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white min-w-[18px] text-center">
+                                {newResultsCount}
+                              </span>
+                            ) : item.badge ? (
+                              <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                {item.badge}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );
