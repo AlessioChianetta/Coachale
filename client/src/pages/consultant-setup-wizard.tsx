@@ -67,6 +67,7 @@ import {
   Users,
   GraduationCap,
   PlayCircle,
+  Zap,
 } from "lucide-react";
 import { WIZARD_TO_ACADEMY_ID } from "@/data/academy-curriculum";
 
@@ -2076,114 +2077,97 @@ export default function ConsultantSetupWizard() {
           {!currentSection && (
             <div className="flex-1 flex overflow-hidden min-h-0">
             <div className="flex-1 overflow-auto p-6 space-y-6">
-              {/* Academy Hero Banner */}
-              <Link href="/consultant/academy">
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="relative cursor-pointer rounded-2xl overflow-hidden group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600" />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.12),transparent_60%)]" />
-                  <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-bl from-white/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-400/20 to-transparent rounded-full blur-2xl translate-y-1/3 -translate-x-1/4" />
-                  <div className="relative px-5 py-4 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <GraduationCap className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5">
-                        <h3 className="font-bold text-base text-white">Accademia di Formazione</h3>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white/90 backdrop-blur-sm">
-                          27 lezioni
-                        </span>
+              {/* Unified Dark Header */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative rounded-2xl overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(99,102,241,0.15),transparent_50%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(139,92,246,0.1),transparent_50%)]" />
+
+                <div className="relative p-5 space-y-4">
+                  {/* Top Row: Title + Academy + Sort */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <Zap className="h-5 w-5 text-white" />
                       </div>
-                      <p className="text-sm text-white/70 mt-0.5">
-                        Guarda i video tutorial per configurare tutto in autonomia
-                      </p>
+                      <div>
+                        <h2 className="font-bold text-lg text-white leading-tight">Centro di Attivazione</h2>
+                        <p className="text-[13px] text-white/50">Configura e attiva ogni funzionalità</p>
+                      </div>
                     </div>
-                    <div className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 text-white font-semibold text-sm group-hover:bg-white/25 transition-all duration-200">
-                      <PlayCircle className="h-4 w-4" />
-                      Guarda Ora
-                      <ChevronRight className="h-4 w-4 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+
+                    <div className="flex items-center gap-2.5">
+                      <Link href="/consultant/academy">
+                        <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-500/20 border border-indigo-400/20 cursor-pointer group hover:bg-indigo-500/30 transition-all duration-200">
+                          <GraduationCap className="h-4 w-4 text-indigo-300" />
+                          <span className="text-sm font-semibold text-white hidden sm:inline">Accademia</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-400/20 text-indigo-300">27</span>
+                          <ChevronRight className="h-3.5 w-3.5 text-indigo-300/60 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+                      <button
+                        onClick={() => setSortByPriority(!sortByPriority)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/8 border border-white/10 text-white/70 hover:bg-white/12 hover:text-white transition-all duration-200 text-sm"
+                      >
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{sortByPriority ? "Sezioni" : "Priorità"}</span>
+                      </button>
                     </div>
                   </div>
-                </motion.div>
-              </Link>
 
-              {/* Progress + Sort */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <ContextualBanner
-                    sections={sections}
-                    completedSteps={completedSteps}
-                    totalSteps={totalSteps}
-                    onGoToSection={(id) => {
-                      const s = sections.find(x => x.id === id);
-                      if (s) autoSelectStep(s);
-                    }}
-                  />
-                  <Button
-                    variant={sortByPriority ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSortByPriority(!sortByPriority)}
-                    className="shrink-0 gap-2"
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                    {sortByPriority ? "Sezioni" : "Per Priorità"}
-                  </Button>
-                </div>
-
-                {/* Progress Stats Bar */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Stats Row */}
                   {(() => {
                     const completedSections = sections.filter(s => s.steps.every(st => st.status === "verified")).length;
                     const inProgressSections = sections.filter(s => s.steps.some(st => st.status === "verified") && !s.steps.every(st => st.status === "verified")).length;
                     const pendingSections = sections.filter(s => s.steps.every(st => st.status !== "verified")).length;
                     const globalPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
                     return (
-                      <>
-                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-muted/20 p-3.5 flex items-center gap-3 shadow-sm">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
-                            <span className="text-white font-bold text-sm">{globalPct}%</span>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                        <div className="rounded-xl bg-white/[0.06] border border-white/[0.08] p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
+                            <span className="text-white font-bold text-xs">{globalPct}%</span>
                           </div>
                           <div>
-                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Progresso</p>
-                            <p className="text-sm font-bold text-foreground">{completedSteps}/{totalSteps} step</p>
+                            <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Progresso</p>
+                            <p className="text-sm font-bold text-white">{completedSteps}/{totalSteps} <span className="text-white/50 font-normal text-xs">step</span></p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-emerald-50/30 dark:to-emerald-950/10 p-3.5 flex items-center gap-3 shadow-sm">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        <div className="rounded-xl bg-white/[0.06] border border-white/[0.08] p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                            <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400" />
                           </div>
                           <div>
-                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Completate</p>
-                            <p className="text-sm font-bold text-foreground">{completedSections} sezioni</p>
+                            <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Completate</p>
+                            <p className="text-sm font-bold text-white">{completedSections} <span className="text-white/50 font-normal text-xs">sezioni</span></p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-amber-50/30 dark:to-amber-950/10 p-3.5 flex items-center gap-3 shadow-sm">
-                          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                            <Loader2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        <div className="rounded-xl bg-white/[0.06] border border-white/[0.08] p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                            <Loader2 className="h-4.5 w-4.5 text-amber-400" />
                           </div>
                           <div>
-                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">In Corso</p>
-                            <p className="text-sm font-bold text-foreground">{inProgressSections} sezioni</p>
+                            <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">In Corso</p>
+                            <p className="text-sm font-bold text-white">{inProgressSections} <span className="text-white/50 font-normal text-xs">sezioni</span></p>
                           </div>
                         </div>
-                        <div className="rounded-xl border border-border/60 bg-gradient-to-br from-background to-slate-50/30 dark:to-slate-950/10 p-3.5 flex items-center gap-3 shadow-sm">
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <Circle className="h-5 w-5 text-slate-400" />
+                        <div className="rounded-xl bg-white/[0.06] border border-white/[0.08] p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-slate-500/20 flex items-center justify-center">
+                            <Circle className="h-4.5 w-4.5 text-slate-400" />
                           </div>
                           <div>
-                            <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Da Iniziare</p>
-                            <p className="text-sm font-bold text-foreground">{pendingSections} sezioni</p>
+                            <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Da Iniziare</p>
+                            <p className="text-sm font-bold text-white">{pendingSections} <span className="text-white/50 font-normal text-xs">sezioni</span></p>
                           </div>
                         </div>
-                      </>
+                      </div>
                     );
                   })()}
                 </div>
-              </div>
+              </motion.div>
 
               {!sortByPriority ? (
                 <div className="space-y-5">
