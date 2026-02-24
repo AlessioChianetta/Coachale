@@ -6950,10 +6950,18 @@ REGOLE IMPORTANTI:
         .where(eq(schema.exercises.libraryDocumentId, documentId))
         .orderBy(asc(schema.exercises.createdAt));
 
-      res.json(exercisesWithAssignments.map(row => ({
-        exercise: row.exercises,
-        assignment: row.exercise_assignments || null,
-      })));
+      const deduped = new Map<string, { exercise: any; assignment: any }>();
+      for (const row of exercisesWithAssignments) {
+        const title = row.exercises.title;
+        const existing = deduped.get(title);
+        if (!existing) {
+          deduped.set(title, { exercise: row.exercises, assignment: row.exercise_assignments || null });
+        } else if (!existing.assignment && row.exercise_assignments) {
+          deduped.set(title, { exercise: row.exercises, assignment: row.exercise_assignments });
+        }
+      }
+
+      res.json(Array.from(deduped.values()));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
