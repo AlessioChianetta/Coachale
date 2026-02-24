@@ -2074,44 +2074,135 @@ export default function ConsultantSetupWizard() {
           {/* ── VISTA GRIGLIA (panoramica sezioni) ── */}
           {!currentSection && (
             <div className="flex-1 flex overflow-hidden min-h-0">
-            <div className="flex-1 overflow-auto p-6">
-              <div className="flex items-center justify-between mb-4">
-                <ContextualBanner
-                  sections={sections}
-                  completedSteps={completedSteps}
-                  totalSteps={totalSteps}
-                  onGoToSection={(id) => {
-                    const s = sections.find(x => x.id === id);
-                    if (s) autoSelectStep(s);
-                  }}
-                />
-                <Button
-                  variant={sortByPriority ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSortByPriority(!sortByPriority)}
-                  className="ml-4 shrink-0 gap-2"
-                >
-                  <ArrowUpDown className="h-4 w-4" />
-                  {sortByPriority ? "Sezioni" : "Per Priorità"}
-                </Button>
+            <div className="flex-1 overflow-auto p-6 space-y-6">
+              {/* Progress Overview + Banner */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <ContextualBanner
+                    sections={sections}
+                    completedSteps={completedSteps}
+                    totalSteps={totalSteps}
+                    onGoToSection={(id) => {
+                      const s = sections.find(x => x.id === id);
+                      if (s) autoSelectStep(s);
+                    }}
+                  />
+                  <Button
+                    variant={sortByPriority ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSortByPriority(!sortByPriority)}
+                    className="ml-4 shrink-0 gap-2"
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                    {sortByPriority ? "Sezioni" : "Per Priorità"}
+                  </Button>
+                </div>
+
+                {/* Progress Stats Bar */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {(() => {
+                    const completedSections = sections.filter(s => s.steps.every(st => st.status === "verified")).length;
+                    const inProgressSections = sections.filter(s => s.steps.some(st => st.status === "verified") && !s.steps.every(st => st.status === "verified")).length;
+                    const pendingSections = sections.filter(s => s.steps.every(st => st.status !== "verified")).length;
+                    const globalPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+                    return (
+                      <>
+                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
+                            <span className="text-white font-bold text-sm">{globalPct}%</span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Progresso</p>
+                            <p className="text-sm font-semibold text-foreground">{completedSteps}/{totalSteps} step</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Completate</p>
+                            <p className="text-sm font-semibold text-foreground">{completedSections} sezioni</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 text-amber-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">In Corso</p>
+                            <p className="text-sm font-semibold text-foreground">{inProgressSections} sezioni</p>
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <Circle className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Da Iniziare</p>
+                            <p className="text-sm font-semibold text-foreground">{pendingSections} sezioni</p>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               {!sortByPriority ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {sections.map((section, i) => (
-                    <motion.div
-                      key={section.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.07 }}
-                    >
-                      <SectionCard
-                        section={section}
-                        onClick={() => autoSelectStep(section)}
-                        isUrgent={urgentSectionId === section.id}
-                      />
-                    </motion.div>
-                  ))}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {sections.map((section, i) => (
+                      <motion.div
+                        key={section.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.07 }}
+                      >
+                        <SectionCard
+                          section={section}
+                          onClick={() => autoSelectStep(section)}
+                          isUrgent={urgentSectionId === section.id}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Academy Access Card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Link href="/consultant/academy">
+                      <div className="relative cursor-pointer rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 via-purple-50 to-violet-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-violet-950/40 p-5 overflow-hidden group hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+                        <div className="relative flex items-center gap-5">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <GraduationCap className="h-7 w-7 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-base text-foreground">Accademia</h3>
+                              <Badge className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-0">
+                                27 lezioni
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Video tutorial passo-passo per padroneggiare ogni funzionalità della piattaforma
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <Button size="sm" className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-0 hover:opacity-90 gap-1.5">
+                              <PlayCircle className="h-4 w-4" />
+                              Apri Accademia
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2196,6 +2287,29 @@ export default function ConsultantSetupWizard() {
                       </div>
                     );
                   })}
+
+                  {/* Academy Access Card (priority view) */}
+                  <Link href="/consultant/academy">
+                    <div className="relative cursor-pointer rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-indigo-50 via-purple-50 to-violet-50 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-violet-950/40 p-5 overflow-hidden group hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-700 transition-all duration-300">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+                      <div className="relative flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <GraduationCap className="h-7 w-7 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-base text-foreground">Accademia</h3>
+                            <Badge className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-0">27 lezioni</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">Video tutorial passo-passo per padroneggiare la piattaforma</p>
+                        </div>
+                        <Button size="sm" className="shrink-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-0 hover:opacity-90 gap-1.5">
+                          <PlayCircle className="h-4 w-4" />
+                          Apri Accademia
+                        </Button>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               )}
             </div>
