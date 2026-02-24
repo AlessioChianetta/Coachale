@@ -718,22 +718,19 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
           const isGridLayout = category.isGridLayout;
 
           return (
-            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-1" : ""}>
+            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-4" : ""}>
               <div className="space-y-0.5">
                 {/* Category Header - hide for always visible sections */}
                 {!isAlwaysVisible && (
                   <button
                     onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-2 py-1 mt-5 mb-1 group rounded-md transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1.5 mb-0.5 group"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="h-px w-3 bg-muted-foreground/25" />
-                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/55">
-                        {category.name}
-                      </span>
-                    </div>
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
+                      {category.name}
+                    </span>
                     <ChevronRight className={cn(
-                      "h-2.5 w-2.5 text-muted-foreground/35 transition-transform duration-200",
+                      "h-3 w-3 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-all duration-200",
                       isCategoryExpanded && "rotate-90"
                     )} />
                   </button>
