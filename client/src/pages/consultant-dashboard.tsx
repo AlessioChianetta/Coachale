@@ -27,6 +27,8 @@ import {
   ArrowRight,
   Zap,
   Star,
+  GraduationCap,
+  PlayCircle,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
@@ -488,6 +490,31 @@ export default function ConsultantDashboard() {
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15">
                 <Zap className="h-3 w-3 text-yellow-300" />
                 <span className="text-white/70 text-xs font-medium">{clients.length} clienti attivi</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Academy inline */}
+          <div
+            className="relative mt-4 rounded-xl overflow-hidden cursor-pointer group"
+            onClick={() => setLocation("/consultant/academy")}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-white/10 rounded-xl" />
+            <div className="relative px-4 py-2.5 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/30 flex items-center justify-center border border-indigo-400/20 group-hover:scale-105 transition-transform shrink-0">
+                <GraduationCap className="h-4 w-4 text-indigo-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-white">Accademia di Formazione</span>
+                  <span className="text-[9px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 hidden sm:inline">27 lezioni</span>
+                </div>
+                <p className="text-[11px] text-white/40 hidden sm:block">Video tutorial per configurare la piattaforma in autonomia</p>
+              </div>
+              <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/25 border border-indigo-400/20 text-indigo-200 text-xs font-medium group-hover:bg-indigo-500/35 transition-all">
+                <PlayCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Guarda Ora</span>
+                <ChevronRight className="h-3 w-3 opacity-60" />
               </div>
             </div>
           </div>

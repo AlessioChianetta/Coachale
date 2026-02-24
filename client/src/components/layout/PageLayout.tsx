@@ -10,6 +10,7 @@ import { GraduationCap, ChevronRight, PlayCircle } from "lucide-react";
 const ACADEMY_HIDDEN_ROUTES = [
   "/consultant/academy",
   "/consultant/setup-wizard",
+  "/consultant/dashboard",
 ];
 
 function AcademyBanner() {
