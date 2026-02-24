@@ -904,7 +904,9 @@ export class DatabaseStorage implements IStorage {
       .from(schema.exerciseAssignments)
       .leftJoin(schema.exercises, eq(schema.exerciseAssignments.exerciseId, schema.exercises.id))
       .leftJoin(schema.users, eq(schema.exerciseAssignments.consultantId, schema.users.id))
-      .where(and(...whereConditions));
+      .leftJoin(schema.exerciseCategories, eq(schema.exercises.category, schema.exerciseCategories.slug))
+      .where(and(...whereConditions))
+      .orderBy(asc(schema.exerciseCategories.sortOrder), asc(schema.exercises.createdAt));
 
     return assignments.map(row => ({
       ...row.exercise_assignments,

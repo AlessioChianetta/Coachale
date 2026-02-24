@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,28 +21,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
   Search,
   Clock,
   CheckCircle,
+  CheckCircle2,
   FileText,
-  Folder,
-  Tag,
   ArrowRight,
+  ArrowLeft,
   Download,
-  Eye,
   PlusCircle,
   Send,
   GraduationCap,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Play,
-  Video,
+  PlayCircle,
   Menu,
-  HelpCircle
+  HelpCircle,
+  ClipboardList,
+  ExternalLink,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { driverConfig } from '@/lib/tour/driver-config';
@@ -135,6 +139,121 @@ import { getAuthHeaders, getAuthUser } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { type LibraryCategory, type LibraryDocument, type LibraryDocumentSection, type ClientLibraryProgress, type LibrarySubcategory } from "@shared/schema";
+
+function ModuleAccordionItem({
+  subcategory,
+  documents,
+  completedCount,
+  activeDocumentId,
+  isDocumentRead,
+  onSelectDocument,
+  defaultOpen,
+}: {
+  subcategory: any;
+  documents: any[];
+  completedCount: number;
+  activeDocumentId: string | null;
+  isDocumentRead: (id: string) => boolean;
+  onSelectDocument: (doc: any) => void;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (documents.some(d => d.id === activeDocumentId)) setOpen(true);
+  }, [activeDocumentId, documents]);
+
+  const getEmojiIcon = (iconName: string) => {
+    switch (iconName) {
+      case "BookOpen": return "📖";
+      case "FileText": return "📄";
+      case "Folder": return "📁";
+      default: return "📚";
+    }
+  };
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-border/60 bg-card/50 shadow-sm">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors"
+      >
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base bg-gradient-to-br from-purple-500 to-indigo-600 flex-shrink-0 shadow-sm">
+          {getEmojiIcon(subcategory.icon || "Folder")}
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-sm font-semibold text-foreground leading-tight truncate">{subcategory.name}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {completedCount}/{documents.length} completate
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {completedCount === documents.length && documents.length > 0 && (
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          )}
+          {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-2 pb-2 space-y-0.5">
+              {documents.map((doc: any) => {
+                const isActive = doc.id === activeDocumentId;
+                const isRead = isDocumentRead(doc.id);
+
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => onSelectDocument(doc)}
+                    className={cn(
+                      "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all group",
+                      isActive
+                        ? "bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700"
+                        : "hover:bg-muted/60"
+                    )}
+                  >
+                    <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                      {isRead ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <div className={cn(
+                          "w-4 h-4 rounded-full border-2 transition-colors",
+                          isActive
+                            ? "border-indigo-500"
+                            : "border-muted-foreground/30 group-hover:border-indigo-400"
+                        )} />
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-sm flex-1 leading-tight truncate",
+                      isActive ? "font-semibold text-indigo-700 dark:text-indigo-300" : "text-foreground",
+                      isRead && !isActive && "text-muted-foreground"
+                    )}>
+                      {doc.title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground flex-shrink-0 flex items-center gap-0.5">
+                      <Clock className="w-2.5 h-2.5" />
+                      {doc.estimatedDuration || 5}m
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function ClientLibrary() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -149,9 +268,6 @@ export default function ClientLibrary() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<LibraryDocument | undefined>();
-  const [documentSections, setDocumentSections] = useState<LibraryDocumentSection[]>([]);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
   const [requestForm, setRequestForm] = useState({
     title: "",
@@ -160,11 +276,9 @@ export default function ClientLibrary() {
     priority: "medium",
     suggestedLevel: "base"
   });
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const scrollPositionRef = useRef(0);
-  const headerTimeoutRef = useRef<NodeJS.Timeout>();
-  const [readingProgress, setReadingProgress] = useState(0);
   const [isTourActive, setIsTourActive] = useState(false);
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -328,24 +442,17 @@ export default function ClientLibrary() {
     },
   });
 
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewDocument, setPreviewDocument] = useState<LibraryDocument | undefined>();
-
   const handleViewDocument = (document: LibraryDocument) => {
-    // Naviga alla pagina dedicata del documento
-    setLocation(`/client/library/${document.id}`);
+    setActiveDocumentId(document.id);
+    setMobileSidebarOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleStartReading = async (document: LibraryDocument) => {
-    setShowPreview(false);
-    // Navigate to dedicated document page
-    window.location.href = `/client/library/${document.id}`;
-  };
-
-  const handleMarkAsRead = () => {
-    if (selectedDocument) {
+  const handleMarkAsRead = (docId?: string) => {
+    const id = docId || activeDocumentId;
+    if (id) {
       markAsReadMutation.mutate({ 
-        documentId: selectedDocument.id,
+        documentId: id,
         isRead: true,
         readAt: new Date().toISOString(),
         timeSpent: 0
@@ -369,70 +476,52 @@ export default function ClientLibrary() {
     });
   };
 
-  // Auto-hide header logic and reading progress calculation
-  const handleScroll = (scrollTop: number, scrollElement?: HTMLElement) => {
-    const currentScrollY = scrollTop;
-    const isScrollingDown = currentScrollY > scrollPositionRef.current;
-    const isScrollingUp = currentScrollY < scrollPositionRef.current;
+  const activeDocument = activeDocumentId ? documents.find((d: any) => d.id === activeDocumentId) : null;
 
-    // Calculate reading progress based on scroll position
-    if (scrollElement) {
-      const scrollHeight = scrollElement.scrollHeight;
-      const clientHeight = scrollElement.clientHeight;
-      const maxScrollTop = scrollHeight - clientHeight;
+  const { data: activeDocExercises = [] } = useQuery({
+    queryKey: ["/api/library/documents", activeDocumentId, "exercises"],
+    queryFn: async () => {
+      const response = await fetch(`/api/library/documents/${activeDocumentId}/exercises`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!activeDocumentId,
+    staleTime: 30_000,
+  });
 
-      if (maxScrollTop > 0) {
-        const progress = Math.min(100, Math.max(0, (currentScrollY / maxScrollTop) * 100));
-        setReadingProgress(progress);
-      }
-    }
-
-    // Hide header when scrolling down (after 30px)
-    if (isScrollingDown && currentScrollY > 30) {
-      setIsHeaderVisible(false);
-    }
-
-    // Show header only when scrolling up significantly or at very top
-    if ((isScrollingUp && scrollPositionRef.current - currentScrollY > 20) || currentScrollY < 10) {
-      setIsHeaderVisible(true);
-    }
-
-    scrollPositionRef.current = currentScrollY;
-
-    // Auto-hide after 2 seconds of no scroll when reading
-    if (currentScrollY > 50 && isHeaderVisible) {
-      headerTimeoutRef.current = setTimeout(() => {
-        setIsHeaderVisible(false);
-      }, 2000);
-    }
-  };
+  const { data: activeDocSections = [] } = useQuery({
+    queryKey: ["/api/library/documents", activeDocumentId, "sections"],
+    queryFn: async () => {
+      const response = await fetch(`/api/library/documents/${activeDocumentId}/sections`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!activeDocumentId,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    return () => {
-      if (headerTimeoutRef.current) {
-        clearTimeout(headerTimeoutRef.current);
-      }
-    };
-  }, []);
+    if (selectedCategory !== "all" && !activeDocumentId && filteredDocuments.length > 0) {
+      setActiveDocumentId(filteredDocuments[0].id);
+    }
+  }, [selectedCategory, filteredDocuments, activeDocumentId]);
 
   useEffect(() => {
-      if (showPreview) {
-        setIsPreviewExpanded(false);
-      }
-  }, [showPreview]);
+    if (selectedCategory === "all") {
+      setActiveDocumentId(null);
+    }
+  }, [selectedCategory]);
 
+  const currentDocIndex = filteredDocuments.findIndex((d: any) => d.id === activeDocumentId);
+  const prevDoc = currentDocIndex > 0 ? filteredDocuments[currentDocIndex - 1] : null;
+  const nextDoc = currentDocIndex < filteredDocuments.length - 1 ? filteredDocuments[currentDocIndex + 1] : null;
 
   const isDocumentRead = (documentId: string) => {
     return progress.some((p: ClientLibraryProgress) => p.documentId === documentId && p.isRead);
-  };
-
-  const getCategoryIcon = (iconName: string) => {
-    switch (iconName) {
-      case "BookOpen": return <BookOpen size={20} />;
-      case "FileText": return <FileText size={20} />;
-      case "Folder": return <Folder size={20} />;
-      default: return <BookOpen size={20} />;
-    }
   };
 
   const getLevelBadgeColor = (level: string) => {
@@ -441,16 +530,6 @@ export default function ClientLibrary() {
       case "intermedio": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "avanzato": return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default: return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-    }
-  };
-
-  const getSectionTypeIcon = (type: string) => {
-    switch (type) {
-      case "highlight": return "💡";
-      case "example": return "📝";
-      case "note": return "📌";
-      case "warning": return "⚠️";
-      default: return "";
     }
   };
 
@@ -809,97 +888,111 @@ export default function ClientLibrary() {
                 </div>
               </div>
             ) : (
-              /* Category Content View */
-              <Card className="mx-2 xs:mx-0 p-1 sm:p-3 bg-white shadow-sm">
-                <div className="flex flex-col xl:flex-row gap-2 sm:gap-3 lg:gap-4 px-1 xs:px-0 min-h-0">
-                  {/* Left Sidebar - Categories */}
-                  <div className="w-full xl:w-80 2xl:w-96 flex-shrink-0">
-                    <div className="bg-gradient-to-br from-white to-purple-50/30 border border-purple-100 rounded-2xl p-5 md:p-6 shadow-lg lg:sticky lg:top-6 backdrop-blur-sm">
-                      {/* Removed Header "Filtri" */}
+              /* Academy-Style 2-Column Layout */
+              <div className="w-full">
+                {/* Course Header with Progress */}
+                <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-4 md:p-5 mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSelectedCategory("all"); setSelectedSubcategory("all"); setActiveDocumentId(null); }}
+                        className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        Corsi
+                      </Button>
+                      <div className="h-5 w-px bg-border" />
+                      <h2 className="text-base md:text-lg font-bold text-foreground truncate">
+                        {categories.find((c: LibraryCategory) => c.id === selectedCategory)?.name}
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                          {documents.filter((d: any) => isDocumentRead(d.id)).length}/{documents.length}
+                        </span>
+                        lezioni
+                      </div>
+                      <div className="w-24 h-2 rounded-full bg-muted overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${documents.length > 0 ? (documents.filter((d: any) => isDocumentRead(d.id)).length / documents.length) * 100 : 0}%` }}
+                          transition={{ duration: 0.6 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
+                {/* Mobile: Toggle sidebar button */}
+                <div className="lg:hidden mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMobileSidebarOpen(p => !p)}
+                    className="w-full gap-2 justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      {activeDocument ? String(activeDocument.title) : "Seleziona lezione"}
+                    </span>
+                    {mobileSidebarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-4">
+                  {/* Left Sidebar - Module Accordion */}
+                  <div className={cn(
+                    "w-full lg:w-72 xl:w-80 flex-shrink-0",
+                    mobileSidebarOpen ? "block" : "hidden lg:block"
+                  )}>
+                    <div className="lg:sticky lg:top-20 space-y-3">
                       {/* Search */}
-                      <div className="mb-6">
-                        <div className="relative group">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-purple-500 transition-colors" size={16} />
-                          <Input
-                            placeholder="Cerca lezioni..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 bg-white border-purple-200 text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-xl shadow-sm transition-all"
-                            data-tour="library-search-lessons"
-                          />
-                        </div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+                        <Input
+                          placeholder="Cerca lezioni..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-9 h-9 text-sm rounded-xl"
+                          data-tour="library-search-lessons"
+                        />
                       </div>
 
-                      {/* Categories */}
+                      {/* Module Accordions */}
                       <div className="space-y-2" data-tour="library-filters-category">
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                          <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs">📁</span>
-                          </div>
-                          <h4 className="text-sm font-bold text-gray-700">Categorie</h4>
-                        </div>
-
-                        {/* Subcategories for selected course */}
                         {subcategories
                           .filter((sub: any) => sub.categoryId === selectedCategory)
                           .map((subcategory: any) => {
-                            const subCategoryDocs = documents.filter((d: any) => d.subcategoryId === subcategory.id);
-
-                            // Emoji mapping per le icone
-                            const getEmojiIcon = (iconName: string) => {
-                              switch (iconName) {
-                                case "BookOpen": return "📖";
-                                case "FileText": return "📄";
-                                case "Folder": return "📁";
-                                default: return "📚";
-                              }
-                            };
+                            const subDocs = filteredDocuments.filter((d: any) => d.subcategoryId === subcategory.id);
+                            const completedInModule = subDocs.filter((d: any) => isDocumentRead(d.id)).length;
+                            const isAnyActive = subDocs.some((d: any) => d.id === activeDocumentId);
 
                             return (
-                              <div
+                              <ModuleAccordionItem
                                 key={subcategory.id}
-                                className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                                  selectedSubcategory === subcategory.id
-                                    ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg scale-[1.02]"
-                                    : "bg-white hover:bg-purple-50 text-gray-700 hover:shadow-md border border-gray-100"
-                                }`}
-                                onClick={() => setSelectedSubcategory(subcategory.id)}
-                              >
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
-                                  selectedSubcategory === subcategory.id 
-                                    ? "bg-white/20" 
-                                    : `bg-gradient-to-br from-purple-400 to-indigo-500`
-                                }`}>
-                                  <span className="text-xl">{getEmojiIcon(subcategory.icon || "Folder")}</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold truncate text-sm">{subcategory.name}</div>
-                                  <div className={`text-xs font-medium ${selectedSubcategory === subcategory.id ? "text-purple-100" : "text-gray-500"}`}>
-                                    {subCategoryDocs.length} lezioni
-                                  </div>
-                                </div>
-                                {selectedSubcategory === subcategory.id && (
-                                  <ChevronRight size={16} className="text-white animate-pulse" />
-                                )}
-                              </div>
+                                subcategory={subcategory}
+                                documents={subDocs}
+                                completedCount={completedInModule}
+                                activeDocumentId={activeDocumentId}
+                                isDocumentRead={isDocumentRead}
+                                onSelectDocument={handleViewDocument}
+                                defaultOpen={isAnyActive}
+                              />
                             );
                           })}
                       </div>
 
                       {/* Level Filter */}
-                      <div className="mt-6 pt-6 border-t border-purple-100" data-tour="library-filter-level">
-                        <div className="flex items-center gap-2 mb-3 px-1">
-                          <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-xs">📊</span>
-                          </div>
-                          <h4 className="text-sm font-bold text-gray-700">Livello</h4>
-                        </div>
+                      <div className="pt-3 border-t border-border/60" data-tour="library-filter-level">
                         <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                          <SelectTrigger className="bg-white border-purple-200 text-gray-900 hover:bg-purple-50 focus:bg-white focus:ring-2 focus:ring-purple-200 rounded-xl shadow-sm transition-all">
+                          <SelectTrigger className="h-9 text-sm rounded-xl">
                             <SelectValue placeholder="Tutti i livelli" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl">
+                          <SelectContent>
                             <SelectItem value="all">Tutti i livelli</SelectItem>
                             <SelectItem value="base">🟢 Base</SelectItem>
                             <SelectItem value="intermedio">🟡 Intermedio</SelectItem>
@@ -910,209 +1003,277 @@ export default function ClientLibrary() {
                     </div>
                   </div>
 
-                  {/* Right Content Area - Lessons */}
+                  {/* Right Content Area - Lesson Detail */}
                   <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="flex items-center gap-1 mb-1 flex-wrap">
-                          <span className="text-xs sm:text-sm font-semibold text-blue-600 truncate">
-                            {categories.find((c: LibraryCategory) => c.id === selectedCategory)?.name}
-                          </span>
-                          {selectedSubcategory !== "all" && (
-                            <>
-                              <ChevronRight size={12} className="text-gray-400" />
-                              <span className="text-xs sm:text-sm font-semibold text-purple-600 truncate">
-                                {subcategories.find((sc: any) => sc.id === selectedSubcategory)?.name}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <p className="text-gray-600 text-xs">
-                          {filteredDocuments.length} lezioni disponibili
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Lessons Grid - Max 3 card per riga */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full">
-                      {filteredDocuments.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center py-16">
-                          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <BookOpen size={32} className="text-gray-400" />
+                    {activeDocument ? (
+                      <div className="flex flex-col gap-5">
+                        {/* Video Player */}
+                        {(activeDocument as any).videoUrl && (
+                          <div className="rounded-2xl overflow-hidden bg-black shadow-lg">
+                            <div className="aspect-video">
+                              <VideoPlayer
+                                url={(activeDocument as any).videoUrl}
+                                title={String(activeDocument.title)}
+                                className="w-full h-full"
+                              />
+                            </div>
                           </div>
-                          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nessuna lezione trovata</h3>
-                          <p className="text-gray-600 text-center">
-                            {searchTerm || selectedSubcategory !== "all" || selectedLevel !== "all"
-                              ? "Prova a modificare i filtri di ricerca."
-                              : "Non ci sono ancora lezioni disponibili in questa categoria."}
-                          </p>
-                        </div>
-                      ) : (
-                        filteredDocuments.map((document: any, lessonIndex: number) => {
-                          const category = categories.find((c: LibraryCategory) => c.id === document.categoryId);
-                          const subcategory = subcategories.find((sc: any) => sc.id === document.subcategoryId);
-                          const isRead = isDocumentRead(document.id);
+                        )}
 
-                          const getCategoryIconEmoji = () => {
-                            switch (category?.name) {
-                              case "Metodo Hybrid - Costruisci la tua attività":
-                                return "🚀";
-                              case "Sistema di Vendita High-Ticket":
-                                return "💼";
-                              default:
-                                return "📚";
-                            }
-                          };
-
-                          const getVideoThumbnail = (videoUrl: string) => {
-                            try {
-                              const urlObj = new URL(videoUrl);
-
-                              // YouTube
-                              if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
-                                let videoId = '';
-                                if (urlObj.hostname.includes('youtu.be')) {
-                                  videoId = urlObj.pathname.slice(1);
-                                } else if (urlObj.searchParams.get('v')) {
-                                  videoId = urlObj.searchParams.get('v')!;
-                                }
-                                if (videoId) {
-                                  return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-                                }
-                              }
-
-                              // Vimeo - richiede una chiamata API, usiamo un placeholder
-                              if (urlObj.hostname.includes('vimeo.com')) {
-                                return null; // Useremo il gradiente
-                              }
-
-                              return null;
-                            } catch (error) {
-                              return null;
-                            }
-                          };
-
-                          const videoThumbnail = (document as any).videoUrl ? getVideoThumbnail((document as any).videoUrl) : null;
-
-                          return (
-                            <Card
-                              key={document.id}
-                              className="bg-white border-gray-200 hover:border-purple-400 hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden transform hover:-translate-y-1"
-                              onClick={() => handleViewDocument(document)}
-                              data-tour={lessonIndex === 0 ? "library-lesson-card" : undefined}
-                            >
-                              {/* Video/Content Thumbnail Area - Più alto e con gradiente migliore */}
-                              <div className="relative h-48 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 flex items-center justify-center overflow-hidden">
-                                {/* Video Thumbnail se disponibile */}
-                                {videoThumbnail ? (
-                                  <>
-                                    <img 
-                                      src={videoThumbnail} 
-                                      alt={document.title}
-                                      className="absolute inset-0 w-full h-full object-cover scale-[1.02]"
-                                      onError={(e) => {
-                                        // Se l'immagine non carica, nascondi l'elemento
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
-                                    {/* Overlay scuro per migliorare la leggibilità */}
-                                    <div className="absolute inset-0 bg-black/30"></div>
-                                  </>
-                                ) : (
-                                  <>
-                                    {/* Decorative background pattern */}
-                                    <div className="absolute inset-0 opacity-10">
-                                      <div className="absolute top-4 left-4 w-12 h-12 border-2 border-white rounded-lg rotate-12"></div>
-                                      <div className="absolute bottom-8 right-8 w-8 h-8 border border-white rounded-full"></div>
-                                      <div className="absolute top-1/2 left-1/3 w-6 h-6 border border-white rotate-45"></div>
-                                    </div>
-
-                                    {/* Content Type Icon - Più grande con sfondo */}
-                                    <div className="relative z-10">
-                                      <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                                        <span className="text-4xl">{getCategoryIconEmoji()}</span>
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-
-                                {/* Play Button - Visibile solo all'hover */}
-                                <div className="w-16 h-16 bg-black/60 rounded-full flex items-center justify-center group-hover:bg-purple-600 group-hover:scale-110 transition-all absolute z-20 backdrop-blur-sm opacity-0 group-hover:opacity-100">
-                                  {(document as any).contentType === 'video' ? (
-                                    <div className="w-0 h-0 border-l-[18px] border-l-white border-y-[12px] border-y-transparent ml-1"></div>
-                                  ) : (
-                                    <BookOpen size={24} className="text-white" />
-                                  )}
-                                </div>
-
-                                {/* Duration Badge - Visibile solo all'hover */}
-                                <div className="absolute top-4 right-4 bg-black/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Clock size={12} />
-                                  {document.estimatedDuration || 5}min
-                                </div>
-
-                                {/* Level Badge - Visibile solo all'hover */}
-                                <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Badge className={`${getLevelBadgeColor(document.level)} text-xs font-semibold px-3 py-1 shadow-lg`}>
-                                    {document.level}
+                        {/* Lesson Info Card */}
+                        <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
+                          <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-600" />
+                          <div className="p-5 md:p-6 space-y-4">
+                            <div className="flex flex-wrap items-start gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  <Badge className={cn("text-xs font-semibold", getLevelBadgeColor(activeDocument.level))}>
+                                    {activeDocument.level}
                                   </Badge>
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {activeDocument.estimatedDuration || 5} min
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Lezione {currentDocIndex + 1}/{filteredDocuments.length}
+                                  </span>
                                 </div>
-
-                                {/* Completed Check - Più evidente */}
-                                {isRead && (
-                                  <div className="absolute bottom-4 right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white" data-tour={lessonIndex === 0 ? "library-completion-badge" : undefined}>
-                                    <CheckCircle size={18} className="text-white" />
-                                  </div>
-                                )}
+                                <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
+                                  {String(activeDocument.title)}
+                                </h1>
                               </div>
 
-                              {/* Content - Più spazio e migliore gerarchia */}
-                              <CardContent className="p-5">
-                                {/* Course/Category Path - Più leggibile */}
-                                <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-                                  <span className="truncate font-medium">{category?.name}</span>
-                                  {subcategory && (
-                                    <>
-                                      <ChevronRight size={12} className="flex-shrink-0" />
-                                      <span className="truncate">{subcategory.name}</span>
-                                    </>
-                                  )}
+                              {isDocumentRead(activeDocument.id) && (
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                                    Completata
+                                  </span>
                                 </div>
+                              )}
+                            </div>
 
-                                {/* Titolo - Più prominente */}
-                                <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 text-lg leading-tight group-hover:text-purple-600 transition-colors">
-                                  {document.title ? String(document.title) : 'Senza titolo'}
-                                </h3>
+                            {activeDocument.description && (
+                              <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
+                                {String(activeDocument.description)}
+                              </p>
+                            )}
 
-                                {/* Descrizione - Più spazio */}
-                                <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
-                                  {document.description ? String(document.description) : 'Descrizione non disponibile'}
-                                </p>
+                            {/* Text Content */}
+                            {activeDocument.content && String(activeDocument.content).trim() && (
+                              <div className="pt-4 border-t border-border/60">
+                                <div
+                                  className="prose prose-sm md:prose-base max-w-none dark:prose-invert
+                                    prose-headings:text-foreground
+                                    prose-p:text-muted-foreground prose-p:leading-relaxed
+                                    prose-strong:text-foreground
+                                    prose-a:text-indigo-600 dark:prose-a:text-indigo-400
+                                    prose-blockquote:border-indigo-500"
+                                  dangerouslySetInnerHTML={{
+                                    __html: String(activeDocument.content)
+                                      .replace(/<script[^>]*>.*?<\/script>/gi, '')
+                                      .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+                                  }}
+                                />
+                              </div>
+                            )}
 
-                                {/* Status - Layout migliore */}
-                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${isRead ? 'bg-green-500' : 'bg-purple-500'}`}></div>
-                                    <span className={`text-sm font-semibold ${isRead ? 'text-green-600' : 'text-purple-600'}`}>
-                                      {isRead ? 'Completata' : 'Disponibile'}
-                                    </span>
+                            {/* Document Sections */}
+                            {activeDocSections.length > 0 && (
+                              <div className="pt-4 border-t border-border/60 space-y-3">
+                                {activeDocSections.map((section: LibraryDocumentSection) => (
+                                  <div
+                                    key={section.id}
+                                    className={cn(
+                                      "p-4 rounded-xl border-l-4",
+                                      section.type === 'highlight' ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-500' :
+                                      section.type === 'example' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-500' :
+                                      section.type === 'note' ? 'bg-green-50 dark:bg-green-900/10 border-green-500' :
+                                      section.type === 'warning' ? 'bg-red-50 dark:bg-red-900/10 border-red-500' :
+                                      'bg-muted border-muted-foreground/30'
+                                    )}
+                                  >
+                                    <h4 className="text-sm font-semibold text-foreground mb-1">{String(section.title || 'Sezione')}</h4>
+                                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">{String(section.content || '')}</div>
                                   </div>
+                                ))}
+                              </div>
+                            )}
 
-                                  {/* Indicatore visivo di hover */}
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ArrowRight size={18} className="text-purple-600" />
-                                  </div>
+                            {/* Attachments */}
+                            {activeDocument.attachments && Array.isArray(activeDocument.attachments) && activeDocument.attachments.length > 0 && (
+                              <div className="pt-4 border-t border-border/60">
+                                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                  <Download className="w-4 h-4" /> Risorse Aggiuntive
+                                </h4>
+                                <div className="space-y-2">
+                                  {activeDocument.attachments.filter(a => a != null).map((attachment: any, index: number) => {
+                                    const fileName = getFileName(attachment);
+                                    return (
+                                      <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                                        <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                        <span className="text-sm flex-1 truncate">{fileName}</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const downloadFileName = typeof attachment === 'object' ? attachment.filename : attachment;
+                                            const link = document.createElement('a');
+                                            link.href = `/uploads/${downloadFileName}`;
+                                            link.download = fileName;
+                                            link.target = '_blank';
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                          }}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })
-                      )}
-                    </div>
+                              </div>
+                            )}
+
+                            {/* Mark as Complete */}
+                            <div className="pt-3">
+                              {!isDocumentRead(activeDocument.id) && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleMarkAsRead(activeDocument.id)}
+                                  disabled={markAsReadMutation.isPending}
+                                  className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  {markAsReadMutation.isPending ? 'Salvataggio...' : 'Segna come completata'}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Linked Exercises Section */}
+                        {activeDocExercises.length > 0 && (
+                          <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
+                            <div className="h-1 bg-gradient-to-r from-orange-500 to-amber-500" />
+                            <div className="p-5 md:p-6">
+                              <div className="flex items-center gap-2 mb-4">
+                                <ClipboardList className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                <h3 className="text-lg font-bold text-foreground">Esercizi Pratici</h3>
+                                <Badge variant="outline" className="text-xs ml-auto">
+                                  {activeDocExercises.filter((e: any) => e.assignment?.status === 'completed').length}/{activeDocExercises.length}
+                                </Badge>
+                              </div>
+                              <div className="space-y-3">
+                                {activeDocExercises.map((item: any) => {
+                                  const exercise = item.exercise;
+                                  const assignment = item.assignment;
+                                  const status = assignment?.status || 'not_assigned';
+
+                                  const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+                                    not_assigned: { label: 'Non assegnato', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: <BookOpen className="w-3.5 h-3.5" /> },
+                                    pending: { label: 'Da iniziare', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', icon: <PlayCircle className="w-3.5 h-3.5" /> },
+                                    in_progress: { label: 'In corso', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: <PlayCircle className="w-3.5 h-3.5" /> },
+                                    submitted: { label: 'In revisione', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300', icon: <Clock className="w-3.5 h-3.5" /> },
+                                    completed: { label: 'Completato', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+                                    rejected: { label: 'Da rifare', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', icon: <ArrowRight className="w-3.5 h-3.5" /> },
+                                    returned: { label: 'Restituito', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300', icon: <ArrowRight className="w-3.5 h-3.5" /> },
+                                  };
+
+                                  const cfg = statusConfig[status] || statusConfig.not_assigned;
+
+                                  return (
+                                    <div
+                                      key={exercise.id}
+                                      className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors group"
+                                    >
+                                      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                                        <ClipboardList className="w-4 h-4 text-white" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-foreground truncate">{exercise.title}</p>
+                                        {exercise.estimatedDuration && (
+                                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <Clock className="w-2.5 h-2.5" /> {exercise.estimatedDuration} min
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Badge className={cn("text-[10px] font-semibold gap-1", cfg.color)}>
+                                        {cfg.icon} {cfg.label}
+                                      </Badge>
+                                      {assignment && ['pending', 'in_progress', 'returned', 'rejected'].includes(status) && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setLocation(`/exercise/${assignment.id}`)}
+                                          className="h-8 text-xs gap-1 flex-shrink-0"
+                                        >
+                                          {status === 'pending' ? 'Inizia' : 'Continua'}
+                                          <ExternalLink className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                      {assignment && status === 'completed' && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setLocation(`/exercise/${assignment.id}`)}
+                                          className="h-8 text-xs gap-1 flex-shrink-0 text-muted-foreground"
+                                        >
+                                          Rivedi
+                                        </Button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Prev/Next Navigation */}
+                        <div className="flex items-center justify-between gap-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => prevDoc && handleViewDocument(prevDoc)}
+                            disabled={!prevDoc}
+                            className="gap-2"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="hidden sm:inline">Precedente</span>
+                          </Button>
+
+                          <div className="text-xs text-muted-foreground text-center">
+                            Lezione {currentDocIndex + 1} di {filteredDocuments.length}
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => nextDoc && handleViewDocument(nextDoc)}
+                            disabled={!nextDoc}
+                            className="gap-2"
+                          >
+                            <span className="hidden sm:inline">Successiva</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                          <BookOpen className="w-7 h-7 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Seleziona una lezione</h3>
+                        <p className="text-sm text-muted-foreground max-w-sm">
+                          Scegli una lezione dal menu a sinistra per iniziare il tuo percorso formativo.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         </main>
@@ -1250,751 +1411,7 @@ export default function ClientLibrary() {
         </DialogContent>
       </Dialog>
 
-      {/* Document Preview Dialog - Different for Video and Text */}
-      <Dialog open={showPreview} onOpenChange={() => setShowPreview(false)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
-          {previewDocument && (
-            <div className="space-y-6">
-              {/* Header - Different style for Video vs Text */}
-              <div className="relative">
-                {(previewDocument as any).contentType === 'video' ? (
-                  /* Netflix-Style Video Preview Header */
-                  <div className="bg-gradient-to-br from-red-600 via-red-700 to-red-800 rounded-2xl p-8 text-white text-center relative overflow-hidden">
-                    {/* Netflix-style decorative elements */}
-                    <div className="absolute top-0 left-0 w-full h-full opacity-10">
-                      <div className="absolute top-6 left-6 w-12 h-12 border-2 border-white rounded-lg rotate-12"></div>
-                      <div className="absolute top-8 right-8 w-6 h-6 border-2 border-white rounded-full"></div>
-                      <div className="absolute bottom-8 left-12 w-8 h-8 border border-white rotate-45"></div>
-                      <div className="absolute bottom-6 right-6 w-16 h-2 bg-white rounded-full"></div>
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-                        <Play size={36} className="text-white" />
-                      </div>
-                      <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">
-                        {previewDocument.title}
-                      </h1>
-                      {previewDocument.subtitle && (
-                        <p className="text-red-100 text-lg font-medium mb-4">
-                          {previewDocument.subtitle}
-                        </p>
-                      )}
-
-                      {/* Video-specific badges */}
-                      <div className="flex justify-center gap-3 mt-6">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
-                          <Video size={14} className="mr-1" />
-                          <span className="text-sm font-medium">Video Lezione</span>
-                        </div>
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
-                          <span className="text-sm font-medium">
-                            📊 {previewDocument.level}
-                          </span>
-                        </div>
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
-                          <Clock size={14} className="mr-1" />
-                          <span className="text-sm font-medium">
-                            {previewDocument.estimatedDuration || 5} min
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Book-Style Text Preview Header */
-                  <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-2xl p-8 text-white text-center relative overflow-hidden">
-                    {/* Decorative elements */}
-                    <div className="absolute top-0 left-0 w-full h-full opacity-10">
-                      <div className="absolute top-4 left-4 w-8 h-8 border-2 border-white rounded-full"></div>
-                      <div className="absolute top-8 right-8 w-4 h-4 border border-white rotate-45"></div>
-                      <div className="absolute bottom-6 left-8 w-6 h-6 border border-white rounded-full"></div>
-                      <div className="absolute bottom-4 right-4 w-12 h-1 bg-white rounded"></div>
-                    </div>
-
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                        <BookOpen size={32} className="text-white" />
-                      </div>
-                      <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">
-                        {previewDocument.title}
-                      </h1>
-                      {previewDocument.subtitle && (
-                        <p className="text-orange-100 text-lg font-medium mb-4">
-                          {previewDocument.subtitle}
-                        </p>
-                      )}
-
-                      {/* Level and duration badges */}
-                      <div className="flex justify-center gap-3 mt-6">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
-                          <span className="text-sm font-medium">
-                            📚 {previewDocument.level}
-                          </span>
-                        </div>
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
-                          <Clock size={14} className="mr-1" />
-                          <span className="text-sm font-medium">
-                            {previewDocument.estimatedDuration || 5} min
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Close button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowPreview(false)}
-                  className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full w-8 h-8 p-0"
-                >
-                  ✕
-                </Button>
-              </div>
-
-              {/* Document Info - Different for Video vs Text */}
-              <div className="space-y-4 px-2">
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center">
-                    {(previewDocument as any).contentType === 'video' ? (
-                      <>🎬 Anteprima Video</>
-                    ) : (
-                      <>📖 Anteprima del contenuto</>
-                    )}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {previewDocument.description || 
-                      ((previewDocument as any).contentType === 'video' 
-                        ? "Una video lezione che ti guiderà passo dopo passo attraverso i concetti." 
-                        : "Un documento formativo che ti aiuterà a migliorare le tue competenze.")}
-                  </p>
-                </div>
-
-                {/* Stats - Different for Video vs Text */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className={`rounded-xl p-4 text-center ${
-                    (previewDocument as any).contentType === 'video' 
-                      ? 'bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/20 dark:to-pink-950/20' 
-                      : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20'
-                  }`}>
-                    <div className={`text-2xl font-bold ${
-                      (previewDocument as any).contentType === 'video' 
-                        ? 'text-red-600 dark:text-red-400' 
-                        : 'text-blue-600 dark:text-blue-400'
-                    }`}>
-                      {previewDocument.estimatedDuration || 5}
-                    </div>
-                    <div className={`text-sm ${
-                      (previewDocument as any).contentType === 'video' 
-                        ? 'text-red-800 dark:text-red-300' 
-                        : 'text-blue-800 dark:text-blue-300'
-                    }`}>
-                      {(previewDocument as any).contentType === 'video' ? 'minuti di video' : 'minuti di lettura'}
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl p-4 text-center">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {previewDocument.level}
-                    </div>
-                    <div className="text-sm text-green-800 dark:text-green-300">livello di difficoltà</div>
-                  </div>
-                </div>
-
-                {/* Category and tags */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Folder size={16} className="text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {categories.find((c: LibraryCategory) => c.id === previewDocument.categoryId)?.name || 'Generale'}
-                    </span>
-                  </div>
-
-                  {previewDocument.tags && previewDocument.tags.length > 0 && (
-                    <div className="flex items-start gap-2">
-                      <Tag size={16} className="text-muted-foreground" />
-                      <div className="flex flex-wrap gap-1">
-                        {previewDocument.tags.slice(0, 5).map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {String(tag)}
-                          </Badge>
-                        ))}
-                        {previewDocument.tags.length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{previewDocument.tags.length - 5}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Viewing status - Different for Video vs Text */}
-                {isDocumentRead(previewDocument.id) ? (
-                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                        <CheckCircle size={20} className="text-white" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-green-900 dark:text-green-100">
-                          {(previewDocument as any).contentType === 'video' ? 'Video completato!' : 'Documento completato!'}
-                        </h4>
-                        <p className="text-sm text-green-700 dark:text-green-300">
-                          {(previewDocument as any).contentType === 'video' ? 'Puoi rivederlo quando vuoi' : 'Puoi rileggerlo quando vuoi'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`border rounded-xl p-4 ${
-                    (previewDocument as any).contentType === 'video' 
-                      ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' 
-                      : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        (previewDocument as any).contentType === 'video' 
-                          ? 'bg-red-500' 
-                          : 'bg-blue-500'
-                      }`}>
-                        {(previewDocument as any).contentType === 'video' ? (
-                          <Play size={20} className="text-white" />
-                        ) : (
-                          <BookOpen size={20} className="text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className={`font-semibold ${
-                          (previewDocument as any).contentType === 'video' 
-                            ? 'text-red-900 dark:text-red-100' 
-                            : 'text-blue-900 dark:text-blue-100'
-                        }`}>
-                          {(previewDocument as any).contentType === 'video' ? 'Pronto per guardare?' : 'Pronto per iniziare?'}
-                        </h4>
-                        <p className={`text-sm ${
-                          (previewDocument as any).contentType === 'video' 
-                            ? 'text-red-700 dark:text-red-300' 
-                            : 'text-blue-700 dark:text-blue-300'
-                        }`}>
-                          {(previewDocument as any).contentType === 'video' 
-                            ? 'Questo video ti guiderà nel tuo percorso di apprendimento' 
-                            : 'Questo contenuto ti aiuterà nel tuo percorso di crescita'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons - Different text for Video vs Text */}
-              <div className="flex gap-3 px-2 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPreview(false)}
-                  className="flex-1"
-                >
-                  Torna indietro
-                </Button>
-                <Button
-                  onClick={() => handleStartReading(previewDocument)}
-                  className={`flex-1 text-white ${
-                    (previewDocument as any).contentType === 'video'
-                      ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
-                      : (previewDocument as any).contentType === 'both'
-                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
-                      : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600'
-                  }`}
-                >
-                  {(previewDocument as any).contentType === 'video' ? (
-                    <>
-                      <Play size={16} className="mr-2" />
-                      {isDocumentRead(previewDocument.id) ? 'Rivedi Video' : 'Guarda Video'}
-                    </>
-                  ) : (previewDocument as any).contentType === 'both' ? (
-                    <>
-                      <Play size={16} className="mr-2" />
-                      {isDocumentRead(previewDocument.id) ? 'Rivedi Video' : 'Inizia a vedere il video'}
-                    </>
-                  ) : (
-                    <>
-                      <Eye size={16} className="mr-2" />
-                      {isDocumentRead(previewDocument.id) ? 'Rileggi' : 'Inizia a leggere'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Netflix-Style Video Player / Document Reader Dialog */}
-      <Dialog open={!!selectedDocument} onOpenChange={() => setSelectedDocument(undefined)}>
-        <DialogContent className="w-full max-w-full h-screen max-h-screen m-0 p-0 rounded-none border-none bg-black flex flex-col z-[9999] fixed inset-0 translate-x-0 translate-y-0 top-0 left-0 overflow-hidden">
-          {selectedDocument && (
-            <div className="h-full flex flex-col">
-              {(selectedDocument as any).contentType === 'video' || (selectedDocument as any).contentType === 'both' ? (
-                /* Video Interface - Different layout for 'video' vs 'both' */
-                <>
-                  {/* Header */}
-                  <div className="flex-shrink-0 bg-gradient-to-b from-black/80 to-transparent text-white px-6 py-4 shadow-lg relative z-10">
-                    <div className="flex items-center justify-between">
-                      <Button
-                        onClick={() => setSelectedDocument(undefined)}
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 px-3 py-1.5 h-auto rounded-full"
-                      >
-                        ← Torna alla libreria
-                      </Button>
-
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <div className="text-white font-semibold text-lg">
-                            {selectedDocument.title}
-                          </div>
-                          <div className="text-white/70 text-sm">
-                            {categories.find((c: LibraryCategory) => c.id === selectedDocument.categoryId)?.name}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {(selectedDocument as any).contentType === 'video' ? (
-                    /* Pure Video Mode - Full Screen */
-                    <>
-                      <div className="flex-1 bg-black flex items-center justify-center">
-                        <div className="w-full h-full">
-                          <VideoPlayer 
-                            url={(selectedDocument as any).videoUrl} 
-                            title={selectedDocument.title}
-                            className="w-full h-full"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Video Info Panel */}
-                      <div className="flex-shrink-0 bg-gradient-to-t from-black/90 to-transparent text-white px-6 py-6">
-                        <div className="max-w-4xl mx-auto">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Video Info */}
-                            <div className="md:col-span-2">
-                              <h2 className="text-2xl font-bold mb-2">{selectedDocument.title}</h2>
-                              {selectedDocument.subtitle && (
-                                <p className="text-white/80 text-lg mb-3">{selectedDocument.subtitle}</p>
-                              )}
-                              {selectedDocument.description && (
-                                <p className="text-white/70 leading-relaxed mb-4">
-                                  {selectedDocument.description}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Video Stats */}
-                            <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                              <Video size={20} className="text-white" />
-                            </div>
-                            <div>
-                              <div className="text-white font-semibold">Video Lezione</div>
-                              <div className="text-white/70 text-sm">{selectedDocument.estimatedDuration || 5} minuti</div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                              <span className="text-white font-bold text-sm">
-                                {selectedDocument.level === 'base' ? 'B' : selectedDocument.level === 'intermedio' ? 'I' : 'A'}
-                              </span>
-                            </div>
-                            <div>
-                              <div className="text-white font-semibold">Livello {selectedDocument.level}</div>
-                              <div className="text-white/70 text-sm">
-                                {selectedDocument.level === 'base' ? 'Per principianti' : 
-                                 selectedDocument.level === 'intermedio' ? 'Esperienza media' : 'Per esperti'}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Mark as Completed */}
-                              {!isDocumentRead(selectedDocument.id) && (
-                                <Button
-                                  onClick={handleMarkAsRead}
-                                  disabled={markAsReadMutation.isPending}
-                                  className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 mt-4"
-                                >
-                                  <CheckCircle size={16} className="mr-2" />
-                                  {markAsReadMutation.isPending ? 'Salvando...' : 'Segna come completato'}
-                                </Button>
-                              )}
-
-                              {isDocumentRead(selectedDocument.id) && (
-                                <div className="flex items-center gap-2 bg-green-600 rounded-lg p-3 mt-4">
-                                  <CheckCircle size={16} className="text-white" />
-                                  <span className="text-white font-semibold">Video Completato!</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Tags */}
-                          {selectedDocument.tags && selectedDocument.tags.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-white/20">
-                              <div className="flex flex-wrap gap-2">
-                                {selectedDocument.tags.map((tag, index) => (
-                                  <Badge key={index} variant="outline" className="bg-white/10 text-white border-white/30">
-                                    {String(tag)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    /* Mixed Content Mode - Video + Text in scrollable area */
-                    <div className="flex-1 overflow-hidden bg-gray-900">
-                      <ScrollArea className="h-full w-full">
-                        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-
-                          {/* Video Player - Fixed aspect ratio */}
-                          <div className="mb-8">
-                            <div className="aspect-video w-full bg-black rounded-xl overflow-hidden shadow-2xl">
-                              <VideoPlayer 
-                                url={(selectedDocument as any).videoUrl} 
-                                title={selectedDocument.title}
-                                className="w-full h-full"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          {selectedDocument.description && String(selectedDocument.description).trim() && (
-                            <div className="mb-6 p-6 bg-purple-900/30 rounded-2xl border border-purple-700/50">
-                              <div className="flex items-center mb-3">
-                                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-sm">📋</span>
-                                </div>
-                                <h3 className="ml-3 text-lg font-semibold text-white">Sommario</h3>
-                              </div>
-                              <p className="text-purple-100 leading-relaxed">
-                                {String(selectedDocument.description)}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Text Content */}
-                          {selectedDocument.content && String(selectedDocument.content).trim() && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 mb-8">
-                              <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                                  <span className="text-3xl">📄</span>
-                                  Contenuto Testuale
-                                </h3>
-                                <p className="text-gray-600 dark:text-gray-400">Approfondisci con il materiale scritto</p>
-                              </div>
-
-                              <div 
-                                className="prose prose-lg max-w-none
-                                  prose-headings:text-gray-900 dark:prose-headings:text-white
-                                  prose-p:text-gray-800 dark:prose-p:text-gray-200
-                                  prose-p:leading-relaxed prose-p:mb-4
-                                  prose-strong:text-gray-900 dark:prose-strong:text-white
-                                  prose-strong:font-semibold
-                                  prose-ul:text-gray-800 dark:prose-ul:text-gray-200
-                                  prose-ol:text-gray-800 dark:prose-ol:text-gray-200
-                                  prose-li:my-2
-                                  prose-h1:text-3xl prose-h1:font-bold prose-h1:mb-4
-                                  prose-h2:text-2xl prose-h2:font-bold prose-h2:mb-3 prose-h2:mt-8
-                                  prose-h3:text-xl prose-h3:font-semibold prose-h3:mb-3 prose-h3:mt-6
-                                  prose-h4:text-lg prose-h4:font-semibold prose-h4:mb-2 prose-h4:mt-4
-                                  prose-a:text-purple-600 dark:prose-a:text-purple-400
-                                  prose-blockquote:border-purple-500 dark:prose-blockquote:border-purple-400
-                                  prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300"
-                                dangerouslySetInnerHTML={{
-                                  __html: String(selectedDocument.content)
-                                    .replace(/<script[^>]*>.*?<\/script>/gi, '')
-                                    .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
-                                }}
-                              />
-                            </div>
-                          )}
-
-                          {/* Attachments */}
-                          {selectedDocument.attachments && Array.isArray(selectedDocument.attachments) && selectedDocument.attachments.length > 0 && (
-                            <div className="mb-8">
-                              <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                📎 Risorse Aggiuntive
-                              </h4>
-                              <div className="grid grid-cols-1 gap-3">
-                                {selectedDocument.attachments.filter(attachment => attachment != null).map((attachment: any, index: number) => {
-                                  const fileName = getFileName(attachment);
-
-                                  return (
-                                    <div key={index} className="flex items-center space-x-4 p-4 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-750 transition-all">
-                                      <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                                        <FileText className="w-5 h-5 text-purple-400" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <span className="text-base font-medium truncate block text-white">{fileName}</span>
-                                      </div>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const downloadFileName = typeof attachment === 'object' ? attachment.filename : attachment;
-                                          const link = document.createElement('a');
-                                          link.href = `/uploads/${downloadFileName}`;
-                                          link.download = fileName;
-                                          link.target = '_blank';
-                                          document.body.appendChild(link);
-                                          link.click();
-                                          document.body.removeChild(link);
-                                        }}
-                                        className="text-purple-400 hover:text-purple-300"
-                                      >
-                                        <Download className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Mark as completed section */}
-                          <div className="text-center py-8">
-                            <div className="inline-block p-6 bg-purple-900/50 rounded-2xl border border-purple-700">
-                              <div className="text-3xl mb-3">🎉</div>
-                              <h4 className="text-xl font-semibold text-white mb-2">Fine del contenuto</h4>
-                              <p className="text-purple-200 mb-4">
-                                Hai completato video e testo!
-                              </p>
-                              {!isDocumentRead(selectedDocument.id) && (
-                                <Button
-                                  onClick={handleMarkAsRead}
-                                  disabled={markAsReadMutation.isPending}
-                                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2"
-                                >
-                                  <CheckCircle size={16} className="mr-2" />
-                                  {markAsReadMutation.isPending ? 'Salvando...' : 'Segna come completato'}
-                                </Button>
-                              )}
-                              {isDocumentRead(selectedDocument.id) && (
-                                <div className="flex items-center justify-center gap-2 bg-green-600 rounded-lg p-3">
-                                  <CheckCircle size={16} className="text-white" />
-                                  <span className="text-white font-semibold">Completato!</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Bottom spacing */}
-                          <div className="h-20"></div>
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Reading Interface - Same Netflix Style as Video */
-                <>
-                  {/* Header */}
-                  <div className="flex-shrink-0 bg-gradient-to-b from-black/80 to-transparent text-white px-6 py-4 shadow-lg relative z-10">
-                    <div className="flex items-center justify-between">
-                      <Button
-                        onClick={() => setSelectedDocument(undefined)}
-                        variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20 px-3 py-1.5 h-auto rounded-full"
-                      >
-                        ← Torna alla libreria
-                      </Button>
-
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <div className="text-white font-semibold text-lg">
-                            {selectedDocument.title}
-                          </div>
-                          <div className="text-white/70 text-sm">
-                            {categories.find((c: LibraryCategory) => c.id === selectedDocument.categoryId)?.name}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Main Content Area */}
-                  <div className="flex-1 overflow-hidden bg-gray-900">
-                    <ScrollArea className="h-full w-full">
-                      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6">
-
-                        {/* Description */}
-                        {selectedDocument.description && String(selectedDocument.description).trim() && (
-                          <div className="mb-6 p-6 bg-purple-900/30 rounded-2xl border border-purple-700/50">
-                            <div className="flex items-center mb-3">
-                              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                                <span className="text-white text-sm">📋</span>
-                              </div>
-                              <h3 className="ml-3 text-lg font-semibold text-white">Sommario</h3>
-                            </div>
-                            <p className="text-purple-100 leading-relaxed">
-                              {String(selectedDocument.description)}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Text Content */}
-                        {selectedDocument.content && String(selectedDocument.content).trim() && (
-                          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 mb-8">
-                            <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                                <span className="text-3xl">📄</span>
-                                Contenuto Testuale
-                              </h3>
-                              <p className="text-gray-600 dark:text-gray-400">Approfondisci con il materiale scritto</p>
-                            </div>
-
-                            <div 
-                              className="prose prose-lg max-w-none
-                                prose-headings:text-gray-900 dark:prose-headings:text-white
-                                prose-p:text-gray-800 dark:prose-p:text-gray-200
-                                prose-p:leading-relaxed prose-p:mb-4
-                                prose-strong:text-gray-900 dark:prose-strong:text-white
-                                prose-strong:font-semibold
-                                prose-ul:text-gray-800 dark:prose-ul:text-gray-200
-                                prose-ol:text-gray-800 dark:prose-ol:text-gray-200
-                                prose-li:my-2
-                                prose-h1:text-3xl prose-h1:font-bold prose-h1:mb-4
-                                prose-h2:text-2xl prose-h2:font-bold prose-h2:mb-3 prose-h2:mt-8
-                                prose-h3:text-xl prose-h3:font-semibold prose-h3:mb-3 prose-h3:mt-6
-                                prose-h4:text-lg prose-h4:font-semibold prose-h4:mb-2 prose-h4:mt-4
-                                prose-a:text-purple-600 dark:prose-a:text-purple-400
-                                prose-blockquote:border-purple-500 dark:prose-blockquote:border-purple-400
-                                prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300"
-                              dangerouslySetInnerHTML={{
-                                __html: String(selectedDocument.content)
-                                  .replace(/<script[^>]*>.*?<\/script>/gi, '')
-                                  .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
-                              }}
-                            />
-                          </div>
-                        )}
-
-                        {/* Document Sections */}
-                        {documentSections && documentSections.length > 0 && (
-                          <div className="mb-8 space-y-6">
-                            <h3 className="text-xl font-bold text-white mb-6">
-                              ✨ Sezioni Speciali
-                            </h3>
-                            {documentSections.map((section: LibraryDocumentSection) => (
-                              <div
-                                key={section.id}
-                                className={`p-4 md:p-6 rounded-2xl border-l-4 shadow-sm ${
-                                  section.type === 'highlight' ? 'bg-yellow-900/30 border-yellow-500' :
-                                  section.type === 'example' ? 'bg-blue-900/30 border-blue-500' :
-                                  section.type === 'note' ? 'bg-green-900/30 border-green-500' :
-                                  section.type === 'warning' ? 'bg-red-900/30 border-red-500' :
-                                  'bg-gray-800 border-gray-600'
-                                }`}
-                              >
-                                <div className="flex items-center space-x-3 mb-3">
-                                  <div className="text-xl">{getSectionTypeIcon(section.type)}</div>
-                                  <h4 className="text-lg font-semibold text-white">{String(section.title || 'Sezione')}</h4>
-                                </div>
-                                <div className="whitespace-pre-wrap text-base leading-7 text-gray-200">
-                                  {String(section.content || '')}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Attachments */}
-                        {selectedDocument.attachments && Array.isArray(selectedDocument.attachments) && selectedDocument.attachments.length > 0 && (
-                          <div className="mb-8">
-                            <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                              📎 Risorse Aggiuntive
-                            </h4>
-                            <div className="grid grid-cols-1 gap-3">
-                              {selectedDocument.attachments.filter(attachment => attachment != null).map((attachment: any, index: number) => {
-                                const fileName = getFileName(attachment);
-
-                                return (
-                                  <div key={index} className="flex items-center space-x-4 p-4 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-750 transition-all">
-                                    <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                                      <FileText className="w-5 h-5 text-purple-400" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-base font-medium truncate block text-white">{fileName}</span>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        const downloadFileName = typeof attachment === 'object' ? attachment.filename : attachment;
-                                        const link = document.createElement('a');
-                                        link.href = `/uploads/${downloadFileName}`;
-                                        link.download = fileName;
-                                        link.target = '_blank';
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        document.body.removeChild(link);
-                                      }}
-                                      className="text-purple-400 hover:text-purple-300"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Mark as completed section */}
-                        <div className="text-center py-8">
-                          <div className="inline-block p-6 bg-purple-900/50 rounded-2xl border border-purple-700">
-                            <div className="text-3xl mb-3">🎉</div>
-                            <h4 className="text-xl font-semibold text-white mb-2">Fine del contenuto</h4>
-                            <p className="text-purple-200 mb-4">
-                              Hai completato la lettura!
-                            </p>
-                            {!isDocumentRead(selectedDocument.id) && (
-                              <Button
-                                onClick={handleMarkAsRead}
-                                disabled={markAsReadMutation.isPending}
-                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2"
-                              >
-                                <CheckCircle size={16} className="mr-2" />
-                                {markAsReadMutation.isPending ? 'Salvando...' : 'Segna come completato'}
-                              </Button>
-                            )}
-                            {isDocumentRead(selectedDocument.id) && (
-                              <div className="flex items-center justify-center gap-2 bg-green-600 rounded-lg p-3">
-                                <CheckCircle size={16} className="text-white" />
-                                <span className="text-white font-semibold">Completato!</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Bottom spacing */}
-                        <div className="h-20"></div>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Old preview/fullscreen dialogs removed - content now inline in Academy layout */}
     </div>
   );
 }

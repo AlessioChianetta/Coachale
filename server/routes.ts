@@ -6932,6 +6932,33 @@ REGOLE IMPORTANTI:
     }
   });
 
+  // Get exercises linked to a library document (for client view)
+  app.get("/api/library/documents/:documentId/exercises", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
+    try {
+      const { documentId } = req.params;
+      const clientId = req.user!.id;
+
+      const exercisesWithAssignments = await db.select()
+        .from(schema.exercises)
+        .leftJoin(
+          schema.exerciseAssignments,
+          and(
+            eq(schema.exerciseAssignments.exerciseId, schema.exercises.id),
+            eq(schema.exerciseAssignments.clientId, clientId)
+          )
+        )
+        .where(eq(schema.exercises.libraryDocumentId, documentId))
+        .orderBy(asc(schema.exercises.createdAt));
+
+      res.json(exercisesWithAssignments.map(row => ({
+        exercise: row.exercises,
+        assignment: row.exercise_assignments || null,
+      })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Client progress tracking
   app.post("/api/library/progress", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
     try {
