@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Users, 
+import {
+  Users,
   Calendar,
   MessageSquare,
   Mail,
@@ -19,11 +19,14 @@ import {
   Flame,
   ChevronRight,
   TrendingUp,
+  TrendingDown,
   CheckCircle,
   RotateCcw,
   Activity,
   Gift,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  Star,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
@@ -47,19 +50,120 @@ interface KPICard {
   title: string;
   value: number | string;
   icon: React.ComponentType<any>;
-  color: string;
-  bgGradient: string;
-  change?: string;
-  changeType?: "positive" | "negative" | "neutral";
+  gradient: string;
+  shadow: string;
+  trend: number;
+  trendLabel: string;
+}
+
+const CSS = `
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(108,92,231,0.3); }
+    70% { box-shadow: 0 0 0 8px rgba(108,92,231,0); }
+    100% { box-shadow: 0 0 0 0 rgba(108,92,231,0); }
+  }
+  @keyframes glow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .afu { animation: fadeInUp 0.5s ease-out forwards; }
+  .afu-1 { animation: fadeInUp 0.5s ease-out 0.05s forwards; opacity: 0; }
+  .afu-2 { animation: fadeInUp 0.5s ease-out 0.10s forwards; opacity: 0; }
+  .afu-3 { animation: fadeInUp 0.5s ease-out 0.15s forwards; opacity: 0; }
+  .afu-4 { animation: fadeInUp 0.5s ease-out 0.20s forwards; opacity: 0; }
+  .afu-5 { animation: fadeInUp 0.5s ease-out 0.25s forwards; opacity: 0; }
+  .afu-6 { animation: fadeInUp 0.5s ease-out 0.30s forwards; opacity: 0; }
+  .afu-7 { animation: fadeInUp 0.5s ease-out 0.35s forwards; opacity: 0; }
+  .shimmer-fx {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .action-btn:hover { transform: translateY(-3px); }
+  .action-btn { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .avatar-pulse { animation: pulse-ring 2.5s ease-in-out infinite; }
+`;
+
+function MiniSparkline({ color, peakValue }: { color: string; peakValue: number }) {
+  const base = Math.max(peakValue, 2);
+  const pts = [
+    Math.max(1, base - 3),
+    Math.max(1, base - 1),
+    Math.max(2, base - 2),
+    Math.max(1, base),
+    Math.max(3, base + 1),
+    Math.max(2, base + 2),
+    Math.max(4, base + 1),
+  ];
+  const max = Math.max(...pts, 1);
+  const w = 80;
+  const h = 28;
+  const pad = 2;
+  const coords = pts.map((v, i) => {
+    const x = pad + (i / (pts.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v / max) * (h - pad * 2));
+    return `${x},${y}`;
+  });
+  const path = `M ${coords.join(" L ")}`;
+  const fillPath = path + ` L ${w - pad},${h} L ${pad},${h} Z`;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-70">
+      <path d={fillPath} fill={color} fillOpacity="0.15" />
+      <path d={path} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CircularProgress({ percentage, size = 90, strokeWidth = 8, color = "#6C5CE7" }: {
+  percentage: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (percentage / 100) * circ;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        className="text-muted/40"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${dash} ${circ - dash}`}
+        strokeLinecap="round"
+        style={{ transition: "stroke-dasharray 1s ease" }}
+      />
+    </svg>
+  );
 }
 
 export default function ConsultantDashboard() {
   const [, setLocation] = useLocation();
   const user = getAuthUser();
 
-  const {
-    highPriorityClients,
-  } = useClientPriorityScore();
+  const { highPriorityClients } = useClientPriorityScore();
 
   const { data: assignments = [] } = useQuery<any[]>({
     queryKey: ["/api/exercise-assignments/consultant"],
@@ -68,38 +172,18 @@ export default function ConsultantDashboard() {
   const { data: clients = [] } = useQuery<any[]>({
     queryKey: ["/api/clients"],
     queryFn: async () => {
-      const response = await fetch("/api/clients", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch clients");
-      return response.json();
+      const res = await fetch("/api/clients", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      return res.json();
     },
   });
 
   const { data: appointments = [] } = useQuery<any[]>({
     queryKey: ["/api/appointments/upcoming"],
     queryFn: async () => {
-      const response = await fetch("/api/appointments/upcoming", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) return [];
-      return response.json();
-    },
-  });
-
-  const { data: consultantStats } = useQuery<{
-    activeClients: number;
-    completedExercises: number;
-    completionRate: number;
-    todayConsultations: number;
-  }>({
-    queryKey: ["/api/stats/consultant"],
-    queryFn: async () => {
-      const response = await fetch("/api/stats/consultant", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) return { activeClients: 0, completedExercises: 0, completionRate: 0, todayConsultations: 0 };
-      return response.json();
+      const res = await fetch("/api/appointments/upcoming", { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      return res.json();
     },
   });
 
@@ -111,100 +195,69 @@ export default function ConsultantDashboard() {
   }>({
     queryKey: ["/api/dashboard/insights"],
     queryFn: async () => {
-      const response = await fetch("/api/dashboard/insights", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed");
-      return response.json();
+      const res = await fetch("/api/dashboard/insights", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
     },
     staleTime: 1000 * 60 * 30,
     retry: 1,
   });
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Buongiorno";
-    if (hour < 18) return "Buon pomeriggio";
+    const h = new Date().getHours();
+    if (h < 12) return "Buongiorno";
+    if (h < 18) return "Buon pomeriggio";
     return "Buonasera";
   };
 
-  const pendingExercises = useMemo(() => {
-    return assignments.filter((a: any) => a.status === "pending" || a.status === "returned");
-  }, [assignments]);
+  const todayLabel = useMemo(() => {
+    return format(new Date(), "EEEE d MMMM yyyy", { locale: it });
+  }, []);
 
-  const exercisesToReview = useMemo(() => {
-    return assignments.filter((a: any) => a.status === "pending" || a.status === "returned" || a.status === "in_progress");
-  }, [assignments]);
+  const pendingExercises = useMemo(() =>
+    assignments.filter((a: any) => a.status === "pending" || a.status === "returned"),
+    [assignments]);
 
-  const completedExercises = useMemo(() => {
-    return assignments.filter((a: any) => a.status === "completed");
-  }, [assignments]);
+  const exercisesToReview = useMemo(() =>
+    assignments.filter((a: any) => ["pending", "returned", "in_progress"].includes(a.status)),
+    [assignments]);
 
-  const weekConsultations = useMemo(() => {
-    return appointments.filter((apt: any) => {
+  const completedExercises = useMemo(() =>
+    assignments.filter((a: any) => a.status === "completed"),
+    [assignments]);
+
+  const weekConsultations = useMemo(() =>
+    appointments.filter((apt: any) => {
       try {
-        const aptDate = apt.startTime ? parseISO(apt.startTime) : new Date(apt.date);
-        return isThisWeek(aptDate, { weekStartsOn: 1 });
-      } catch {
-        return false;
-      }
-    });
-  }, [appointments]);
+        const d = apt.startTime ? parseISO(apt.startTime) : new Date(apt.date);
+        return isThisWeek(d, { weekStartsOn: 1 });
+      } catch { return false; }
+    }),
+    [appointments]);
 
   const recentClients = useMemo(() => {
-    const sortedClients = [...clients].sort((a: any, b: any) => {
-      const dateA = a.updatedAt || a.createdAt || 0;
-      const dateB = b.updatedAt || b.createdAt || 0;
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    });
-    return sortedClients.slice(0, 3);
+    return [...clients]
+      .sort((a: any, b: any) =>
+        new Date(b.updatedAt || b.createdAt || 0).getTime() -
+        new Date(a.updatedAt || a.createdAt || 0).getTime()
+      )
+      .slice(0, 4);
   }, [clients]);
 
   const upcomingAppointments = useMemo(() => {
     const now = new Date();
     return appointments
       .filter((apt: any) => {
-        const aptDate = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
-        return aptDate > now;
+        const d = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+        return d > now;
       })
       .sort((a: any, b: any) => {
-        const dateA = a.startTime ? new Date(a.startTime) : new Date(a.date);
-        const dateB = b.startTime ? new Date(b.startTime) : new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
+        const da = a.startTime ? new Date(a.startTime) : new Date(a.date);
+        const db = b.startTime ? new Date(b.startTime) : new Date(b.date);
+        return da.getTime() - db.getTime();
       })
-      .slice(0, 3);
+      .slice(0, 4);
   }, [appointments]);
-
-  const kpiCards: KPICard[] = useMemo(() => [
-    {
-      title: "Clienti Attivi",
-      value: clients.length,
-      icon: Users,
-      color: "text-blue-600",
-      bgGradient: "from-blue-500/10 via-blue-500/5 to-transparent",
-    },
-    {
-      title: "Esercizi da Revisionare",
-      value: exercisesToReview.length,
-      icon: FileText,
-      color: "text-amber-600",
-      bgGradient: "from-amber-500/10 via-amber-500/5 to-transparent",
-    },
-    {
-      title: "Consulenze Settimana",
-      value: weekConsultations.length,
-      icon: Calendar,
-      color: "text-emerald-600",
-      bgGradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
-    },
-    {
-      title: "Lead Prioritari",
-      value: highPriorityClients?.length || 0,
-      icon: Target,
-      color: "text-red-600",
-      bgGradient: "from-red-500/10 via-red-500/5 to-transparent",
-    },
-  ], [clients.length, exercisesToReview.length, weekConsultations.length, highPriorityClients]);
 
   const exerciseProgress = useMemo(() => {
     const total = assignments.length;
@@ -214,606 +267,712 @@ export default function ConsultantDashboard() {
     return { total, completed, pending, percentage };
   }, [assignments.length, completedExercises.length, exercisesToReview.length]);
 
+  const kpiCards: KPICard[] = useMemo(() => [
+    {
+      title: "Clienti Attivi",
+      value: clients.length,
+      icon: Users,
+      gradient: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+      shadow: "0 6px 24px rgba(59,130,246,0.35)",
+      trend: 8,
+      trendLabel: "vs mese scorso",
+    },
+    {
+      title: "Da Revisionare",
+      value: exercisesToReview.length,
+      icon: FileText,
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+      shadow: "0 6px 24px rgba(245,158,11,0.35)",
+      trend: exercisesToReview.length > 0 ? -5 : 0,
+      trendLabel: "questa settimana",
+    },
+    {
+      title: "Consulenze",
+      value: weekConsultations.length,
+      icon: Calendar,
+      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+      shadow: "0 6px 24px rgba(16,185,129,0.35)",
+      trend: 12,
+      trendLabel: "questa settimana",
+    },
+    {
+      title: "Lead Caldi",
+      value: highPriorityClients?.length || 0,
+      icon: Target,
+      gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+      shadow: "0 6px 24px rgba(239,68,68,0.35)",
+      trend: highPriorityClients?.length || 0 > 0 ? 15 : 0,
+      trendLabel: "da contattare",
+    },
+  ], [clients.length, exercisesToReview.length, weekConsultations.length, highPriorityClients]);
+
   const attentionItems: AttentionItem[] = useMemo(() => {
     const items: AttentionItem[] = [];
-    
-    pendingExercises.slice(0, 3).forEach((assignment: any) => {
+    pendingExercises.slice(0, 3).forEach((a: any) => {
       items.push({
-        id: `exercise-${assignment.id}`,
+        id: `exercise-${a.id}`,
         type: "exercise",
-        title: `Esercizio in attesa`,
-        description: `${assignment.client?.firstName || 'Cliente'} - ${assignment.exercise?.title || 'Esercizio'}`,
-        urgency: assignment.status === "pending" ? "high" : "medium",
+        title: `${a.exercise?.title || 'Esercizio'} in attesa`,
+        description: `${a.client?.firstName || 'Cliente'} ${a.client?.lastName || ''}`,
+        urgency: a.status === "pending" ? "high" : "medium",
         actionUrl: "/consultant/exercises",
-        timeAgo: assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString('it-IT') : undefined
+        timeAgo: a.assignedAt ? format(new Date(a.assignedAt), "d MMM", { locale: it }) : undefined,
       });
     });
-
-    highPriorityClients?.filter((c: any) => c?.id).slice(0, 2).forEach((client: any, index: number) => {
+    highPriorityClients?.filter((c: any) => c?.id).slice(0, 2).forEach((client: any, i: number) => {
       items.push({
-        id: `lead-${client.id || `fallback-${index}`}`,
+        id: `lead-${client.id || `fb-${i}`}`,
         type: "lead",
-        title: "Cliente prioritario",
-        description: `${client.firstName} ${client.lastName} richiede attenzione`,
+        title: `${client.firstName} ${client.lastName}`,
+        description: "Richiede attenzione prioritaria",
         urgency: "high",
-        actionUrl: `/consultant/clients`,
+        actionUrl: "/consultant/clients",
       });
     });
-
     appointments?.slice(0, 2).forEach((apt: any) => {
       items.push({
         id: `apt-${apt.id}`,
         type: "appointment",
-        title: "Appuntamento in arrivo",
-        description: apt.title || `Con ${apt.clientName || 'Cliente'}`,
+        title: apt.title || `Con ${apt.clientName || 'Cliente'}`,
+        description: "Appuntamento in arrivo",
         urgency: "medium",
         actionUrl: "/consultant/appointments",
-        timeAgo: apt.startTime ? new Date(apt.startTime).toLocaleDateString('it-IT') : undefined
+        timeAgo: apt.startTime ? format(new Date(apt.startTime), "d MMM HH:mm", { locale: it }) : undefined,
       });
     });
-
     return items.slice(0, 5);
   }, [pendingExercises, highPriorityClients, appointments]);
 
   const quickActions = [
-    { 
-      name: "Chatta con AI", 
-      icon: MessageSquare, 
+    {
+      name: "Chatta con AI",
+      desc: "Genera insights",
+      icon: MessageSquare,
       onClick: () => setLocation("/consultant/ai-assistant"),
-      gradient: "from-fuchsia-500 to-purple-600"
+      gradient: "linear-gradient(135deg, #6C5CE7 0%, #a78bfa 100%)",
+      shadow: "0 8px 24px rgba(108,92,231,0.40)",
+      glowColor: "rgba(108,92,231,0.3)",
     },
-    { 
-      name: "Nuovo Cliente", 
-      icon: UserPlus, 
+    {
+      name: "Nuovo Cliente",
+      desc: "Gestisci clienti",
+      icon: UserPlus,
       onClick: () => setLocation("/consultant/clients"),
-      gradient: "from-blue-500 to-cyan-600"
+      gradient: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)",
+      shadow: "0 8px 24px rgba(59,130,246,0.40)",
+      glowColor: "rgba(59,130,246,0.3)",
     },
-    { 
-      name: "Chiama Lead", 
-      icon: Phone, 
+    {
+      name: "Chiama Lead",
+      desc: "Lead hub",
+      icon: Phone,
       onClick: () => setLocation("/consultant/lead-hub"),
-      gradient: "from-green-500 to-emerald-600"
+      gradient: "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
+      shadow: "0 8px 24px rgba(16,185,129,0.40)",
+      glowColor: "rgba(16,185,129,0.3)",
     },
-    { 
-      name: "Invia Email", 
-      icon: Mail, 
+    {
+      name: "Invia Email",
+      desc: "AI configurata",
+      icon: Mail,
       onClick: () => setLocation("/consultant/ai-config"),
-      gradient: "from-orange-500 to-red-600"
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+      shadow: "0 8px 24px rgba(245,158,11,0.40)",
+      glowColor: "rgba(245,158,11,0.3)",
     },
   ];
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "high": return "border-l-red-400";
-      case "medium": return "border-l-yellow-400";
-      default: return "border-l-blue-400";
-    }
+  const urgencyConfig = {
+    high: {
+      border: "border-l-red-400",
+      bg: "bg-red-400/5 hover:bg-red-400/10",
+      badge: "bg-red-400/15 text-red-400 border-red-400/30",
+      label: "Urgente",
+      dot: "bg-red-400",
+    },
+    medium: {
+      border: "border-l-amber-400",
+      bg: "bg-amber-400/5 hover:bg-amber-400/10",
+      badge: "bg-amber-400/15 text-amber-400 border-amber-400/30",
+      label: "Medio",
+      dot: "bg-amber-400",
+    },
+    low: {
+      border: "border-l-blue-400",
+      bg: "bg-blue-400/5 hover:bg-blue-400/10",
+      badge: "bg-blue-400/15 text-blue-400 border-blue-400/30",
+      label: "Basso",
+      dot: "bg-blue-400",
+    },
   };
 
-  const getUrgencyBadge = (urgency: string) => {
-    switch (urgency) {
-      case "high": return "bg-red-400/10 text-red-400 border-red-400/20";
-      case "medium": return "bg-yellow-400/10 text-yellow-400 border-yellow-400/20";
-      default: return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-    }
+  const typeConfig = {
+    exercise: { icon: FileText, color: "text-amber-500", bg: "bg-amber-500/10" },
+    lead: { icon: Target, color: "text-red-500", bg: "bg-red-500/10" },
+    appointment: { icon: Clock, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "exercise": return FileText;
-      case "lead": return Target;
-      case "appointment": return Clock;
-      default: return AlertCircle;
-    }
-  };
-
-  const formatAppointmentTime = (apt: any) => {
+  const formatAptTime = (apt: any) => {
     try {
-      const date = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
-      return format(date, "dd MMM, HH:mm", { locale: it });
-    } catch {
-      return "Data non disponibile";
-    }
+      const d = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+      return format(d, "EEEE d MMM · HH:mm", { locale: it });
+    } catch { return "Data non disponibile"; }
   };
 
-  const sparklinePoints = useMemo(() => {
-    const base = exerciseProgress.completed || 3;
-    return [
-      Math.max(1, base - 2),
-      Math.max(1, base - 1),
-      Math.max(2, base),
-      Math.max(1, base - 1),
-      Math.max(3, base + 1),
-      Math.max(2, base + 2),
-      Math.max(4, base + 1),
-    ];
-  }, [exerciseProgress.completed]);
+  const formatAptDay = (apt: any) => {
+    try {
+      const d = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+      return format(d, "d", { locale: it });
+    } catch { return "—"; }
+  };
 
-  const sparklinePath = useMemo(() => {
-    const max = Math.max(...sparklinePoints, 1);
-    const width = 120;
-    const height = 40;
-    const padding = 4;
-    const points = sparklinePoints.map((val, i) => {
-      const x = padding + (i / (sparklinePoints.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((val / max) * (height - padding * 2));
-      return `${x},${y}`;
-    });
-    return `M ${points.join(" L ")}`;
-  }, [sparklinePoints]);
+  const formatAptMonth = (apt: any) => {
+    try {
+      const d = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+      return format(d, "MMM", { locale: it }).toUpperCase();
+    } catch { return "—"; }
+  };
 
   const userInitials = useMemo(() => {
-    const first = user?.firstName?.[0] || '';
-    const last = user?.lastName?.[0] || '';
-    return (first + last).toUpperCase() || 'C';
+    const f = user?.firstName?.[0] || '';
+    const l = user?.lastName?.[0] || '';
+    return (f + l).toUpperCase() || 'C';
   }, [user]);
+
+  const urgentCount = attentionItems.filter(i => i.urgency === "high").length;
 
   return (
     <PageLayout role="consultant">
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes sparkle {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-        .animate-fadeInUp { animation: fadeInUp 0.4s ease-out forwards; }
-        .animate-fadeInUp-1 { animation: fadeInUp 0.4s ease-out 0.04s forwards; opacity: 0; }
-        .animate-fadeInUp-2 { animation: fadeInUp 0.4s ease-out 0.08s forwards; opacity: 0; }
-        .animate-fadeInUp-3 { animation: fadeInUp 0.4s ease-out 0.12s forwards; opacity: 0; }
-        .animate-fadeInUp-4 { animation: fadeInUp 0.4s ease-out 0.16s forwards; opacity: 0; }
-        .animate-fadeInUp-5 { animation: fadeInUp 0.4s ease-out 0.20s forwards; opacity: 0; }
-        .animate-fadeInUp-6 { animation: fadeInUp 0.4s ease-out 0.24s forwards; opacity: 0; }
-        .animate-fadeInUp-7 { animation: fadeInUp 0.4s ease-out 0.28s forwards; opacity: 0; }
-        .shimmer-bg {
-          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
-          background-size: 200% 100%;
-          animation: shimmer 3s ease-in-out infinite;
-        }
-      `}</style>
-            
-            {/* Hero Section - Compact */}
-            <div className="animate-fadeInUp flex items-center gap-3 px-1 py-0.5">
-              <Avatar className="h-9 w-9 ring-2 ring-primary/25 ring-offset-1 ring-offset-background shadow-sm shrink-0">
-                <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary to-violet-400 text-white">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-base font-bold tracking-tight text-foreground leading-none">
-                  {getGreeting()}, {user?.firstName || 'Consulente'} 👋
+      <style>{CSS}</style>
+
+      {/* ── HERO ─────────────────────────────────────────── */}
+      <div className="afu">
+        <div
+          className="relative overflow-hidden rounded-2xl p-6 sm:p-8"
+          style={{
+            background: "linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)",
+            boxShadow: "0 8px 40px rgba(108,92,231,0.25)",
+          }}
+        >
+          <div className="shimmer-fx absolute inset-0 pointer-events-none" />
+
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="avatar-pulse rounded-full shrink-0">
+                <Avatar className="h-14 w-14 ring-2 ring-white/20">
+                  <AvatarFallback className="text-lg font-black bg-gradient-to-br from-violet-500 to-purple-700 text-white">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs font-medium uppercase tracking-widest mb-0.5">{todayLabel}</p>
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+                  {getGreeting()}, {user?.firstName || 'Consulente'}
                 </h1>
-                <p className="text-muted-foreground/55 text-xs mt-0.5">
-                  Ecco cosa succede oggi nel tuo business
+                <p className="text-white/60 text-sm mt-1">
+                  {urgentCount > 0
+                    ? `Hai ${urgentCount} priorit${urgentCount === 1 ? 'à urgente' : 'à urgenti'} da gestire oggi`
+                    : "Tutto sotto controllo — ottimo lavoro!"}
                 </p>
               </div>
             </div>
 
-            {/* KPI Cards - Rectangular */}
-            <div className="animate-fadeInUp-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {kpiCards.map((kpi, index) => {
-                const cardGradients = [
-                  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                ];
-                const cardShadows = [
-                  '0 4px 16px rgba(59,130,246,0.30)',
-                  '0 4px 16px rgba(245,158,11,0.30)',
-                  '0 4px 16px rgba(16,185,129,0.30)',
-                  '0 4px 16px rgba(239,68,68,0.30)',
-                ];
-                const IconComponent = kpi.icon;
-                return (
-                  <div
-                    key={index}
-                    className="relative overflow-hidden rounded-xl p-4 text-white flex flex-col justify-between min-h-[90px]"
-                    style={{ background: cardGradients[index], boxShadow: cardShadows[index] }}
-                  >
-                    <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-4 translate-x-4"
-                      style={{ background: 'rgba(255,255,255,0.6)' }} />
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80 leading-tight pr-1">{kpi.title}</p>
-                      <div className="p-1.5 rounded-lg bg-white/20 shrink-0">
-                        <IconComponent className="h-3.5 w-3.5" />
-                      </div>
-                    </div>
-                    <p className="text-3xl font-black leading-none tracking-tight mt-2">{kpi.value}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* AI Briefing - Compact, dark-mode-friendly */}
-            <div className="animate-fadeInUp-2 rounded-2xl overflow-hidden border border-border/50 shadow-sm bg-card">
-              {/* Gradient header strip */}
-              <div
-                className="flex items-center justify-between px-4 py-2.5 shimmer-bg"
-                style={{ background: 'linear-gradient(135deg, #6C5CE7 0%, #9b8cf5 60%, #c084fc 100%)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-white/15">
-                    <Sparkles className="h-3.5 w-3.5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-white leading-none">Briefing AI Giornaliero</h2>
-                    {aiInsights?.generatedAt && (
-                      <p className="text-white/50 text-[10px] mt-0.5">
-                        Aggiornato alle {format(new Date(aiInsights.generatedAt), 'HH:mm', { locale: it })}
-                      </p>
-                    )}
-                  </div>
+            <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
+              {urgentCount > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/20 border border-red-400/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                  <span className="text-red-300 text-xs font-semibold">{urgentCount} urgenti</span>
                 </div>
-                <Button
-                  size="sm"
-                  className="h-7 text-xs bg-white/15 hover:bg-white/25 text-white border-0 gap-1.5 rounded-lg"
-                  onClick={() => refetchInsights()}
-                  disabled={loadingInsights}
-                >
-                  <RotateCcw className={cn("h-3 w-3", loadingInsights && "animate-spin")} />
-                  <span className="hidden sm:inline">Aggiorna</span>
-                </Button>
+              )}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15">
+                <Zap className="h-3 w-3 text-yellow-300" />
+                <span className="text-white/70 text-xs font-medium">{clients.length} clienti attivi</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── KPI CARDS ────────────────────────────────────── */}
+      <div className="afu-1 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {kpiCards.map((kpi, idx) => {
+          const Icon = kpi.icon;
+          const isPositive = kpi.trend >= 0;
+          return (
+            <div
+              key={idx}
+              className="kpi-card relative overflow-hidden rounded-2xl p-5 text-white flex flex-col justify-between min-h-[130px]"
+              style={{ background: kpi.gradient, boxShadow: kpi.shadow }}
+            >
+              <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 -translate-y-6 translate-x-6"
+                style={{ background: "rgba(255,255,255,0.8)" }} />
+
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className={cn(
+                  "flex items-center gap-0.5 text-[11px] font-bold px-2 py-0.5 rounded-full",
+                  isPositive ? "bg-white/20" : "bg-black/20"
+                )}>
+                  {isPositive ? (
+                    <TrendingUp className="h-2.5 w-2.5" />
+                  ) : (
+                    <TrendingDown className="h-2.5 w-2.5" />
+                  )}
+                  {Math.abs(kpi.trend)}%
+                </div>
               </div>
 
-              {/* Content body — uses card bg, dark mode safe */}
-              <div className="px-4 py-3">
-                {loadingInsights ? (
-                  <div className="space-y-2">
-                    <div className="h-3.5 bg-muted animate-pulse rounded-full w-4/5" />
-                    <div className="h-3 bg-muted animate-pulse rounded-full w-3/5" />
-                    <div className="space-y-1.5 mt-3">
-                      <div className="h-3 bg-muted animate-pulse rounded-full w-full" />
-                      <div className="h-3 bg-muted animate-pulse rounded-full w-11/12" />
-                      <div className="h-3 bg-muted animate-pulse rounded-full w-4/5" />
-                    </div>
-                  </div>
-                ) : aiInsights?.summary ? (
-                  <div className="space-y-2.5">
-                    <p className="text-sm text-foreground/80 leading-relaxed">{aiInsights.summary}</p>
-                    {aiInsights.highlights?.length > 0 && (
-                      <div className="space-y-1">
-                        {aiInsights.highlights.map((h, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
-                            <p className="text-xs text-foreground/70 leading-snug">{h}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5 py-1 text-muted-foreground/60">
-                    <Sparkles className="h-4 w-4 shrink-0 text-primary/50" />
-                    <p className="text-sm">Clicca "Aggiorna" per il tuo briefing AI personalizzato</p>
-                  </div>
+              <div>
+                <p className="text-4xl font-black tracking-tight leading-none mb-1">{kpi.value}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 leading-tight">{kpi.title}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-[10px] opacity-50">{kpi.trendLabel}</p>
+                  <MiniSparkline color="rgba(255,255,255,0.8)" peakValue={Number(kpi.value) || 3} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── AI BRIEFING ──────────────────────────────────── */}
+      <div className="afu-2">
+        <div className="rounded-2xl overflow-hidden border border-border/40 shadow-lg bg-card">
+          {/* Header */}
+          <div
+            className="relative flex items-center justify-between px-5 py-4 shimmer-fx"
+            style={{ background: "linear-gradient(135deg, #4c1d95 0%, #6C5CE7 50%, #9b8cf5 100%)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-white/15 backdrop-blur-sm">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white leading-none">Briefing AI Giornaliero</h2>
+                {aiInsights?.generatedAt && (
+                  <p className="text-white/50 text-[11px] mt-0.5">
+                    Aggiornato alle {format(new Date(aiInsights.generatedAt), "HH:mm", { locale: it })}
+                  </p>
                 )}
               </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => refetchInsights()}
+              disabled={loadingInsights}
+              className="h-8 text-xs bg-white/15 hover:bg-white/25 text-white border-0 gap-1.5 rounded-xl"
+            >
+              <RotateCcw className={cn("h-3 w-3", loadingInsights && "animate-spin")} />
+              <span>Aggiorna</span>
+            </Button>
+          </div>
 
-              {/* Priorities - compact, inside card */}
-              {aiInsights?.priorities && aiInsights.priorities.length > 0 && (
-                <div className="px-4 pb-3 border-t border-border/40">
-                  <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-2 pt-2.5">Priorità del giorno</p>
-                  <div className="space-y-1.5">
-                    {aiInsights.priorities.map((p, i) => (
-                      <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-muted/40 hover:bg-muted/60 transition-colors">
-                        <div className={cn(
-                          "mt-0.5 w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black text-white shrink-0",
-                          i === 0 ? "bg-red-400" : i === 1 ? "bg-amber-400" : "bg-primary/70"
-                        )}>
-                          {i + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground/90 leading-snug">{p.title}</p>
-                          <p className="text-[11px] text-muted-foreground/60 mt-0.5 leading-snug">{p.reason}</p>
-                        </div>
+          {/* Body */}
+          <div className="px-5 py-5">
+            {loadingInsights ? (
+              <div className="space-y-3">
+                <div className="h-4 bg-muted animate-pulse rounded-full w-5/6" />
+                <div className="h-3.5 bg-muted animate-pulse rounded-full w-4/6" />
+                <div className="h-3.5 bg-muted animate-pulse rounded-full w-3/6" />
+                <div className="grid grid-cols-3 gap-3 mt-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 bg-muted animate-pulse rounded-xl" />
+                  ))}
+                </div>
+              </div>
+            ) : aiInsights?.summary ? (
+              <div className="space-y-5">
+                <p className="text-base text-foreground/85 leading-relaxed font-medium">{aiInsights.summary}</p>
+
+                {aiInsights.highlights?.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {aiInsights.highlights.map((h, i) => (
+                      <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                        <Star className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                        <p className="text-sm text-foreground/75 leading-snug">{h}</p>
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+                <div className="p-4 rounded-2xl bg-primary/8">
+                  <Sparkles className="h-8 w-8 text-primary/50" />
                 </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground/70">Briefing AI pronto</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">Clicca "Aggiorna" per il tuo briefing personalizzato di oggi</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Priorities */}
+          {aiInsights?.priorities && aiInsights.priorities.length > 0 && (
+            <div className="px-5 pb-5 border-t border-border/40">
+              <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.15em] mb-3 pt-4">
+                Priorità del giorno
+              </p>
+              <div className="space-y-2">
+                {aiInsights.priorities.map((p, i) => {
+                  const colors = [
+                    { num: "bg-red-500", ring: "ring-red-400/30", text: "text-red-500" },
+                    { num: "bg-amber-500", ring: "ring-amber-400/30", text: "text-amber-500" },
+                    { num: "bg-primary", ring: "ring-primary/30", text: "text-primary" },
+                  ];
+                  const c = colors[i] || colors[2];
+                  return (
+                    <div key={i} className={cn(
+                      "flex items-start gap-3 p-4 rounded-xl border transition-colors",
+                      "bg-muted/30 hover:bg-muted/50 border-border/30"
+                    )}>
+                      <div className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black text-white shrink-0 ring-2",
+                        c.num, c.ring
+                      )}>
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-bold leading-snug", c.text)}>{p.title}</p>
+                        <p className="text-xs text-muted-foreground/65 mt-0.5 leading-snug">{p.reason}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ATTENTION + APPOINTMENTS ─────────────────────── */}
+      <div className="afu-3 grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {/* Attention */}
+        <Card className="border border-border/40 shadow-md rounded-2xl overflow-hidden bg-card">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-red-400/10">
+                <Flame className="h-4 w-4 text-red-400" />
+              </div>
+              <CardTitle className="text-base font-bold">Richiede Attenzione</CardTitle>
+              {attentionItems.length > 0 && (
+                <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-red-400/12 text-red-400 border border-red-400/25 ml-auto">
+                  {attentionItems.length} item{attentionItems.length > 1 ? 's' : ''}
+                </Badge>
               )}
             </div>
-
-            {/* Attention Items + Appointments (2 cols) */}
-            <div className="animate-fadeInUp-3 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Requires Attention */}
-              <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                <CardHeader className="pb-3 pt-5 px-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-red-400/10">
-                      <Flame className="h-4 w-4 text-red-400" />
-                    </div>
-                    <CardTitle className="text-base font-bold">Richiede Attenzione</CardTitle>
-                    {attentionItems.length > 0 && (
-                      <Badge className="text-[10px] px-2 py-0.5 rounded-full bg-red-400/10 text-red-400 border-red-400/20 hover:bg-red-400/15">{attentionItems.length}</Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="px-5 pb-5 space-y-2">
-                  {attentionItems.length > 0 ? (
-                    attentionItems.map((item) => {
-                      const IconComponent = getTypeIcon(item.type);
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => setLocation(item.actionUrl)}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 text-left border-l-[3px] border-0 shadow-sm hover:shadow-md",
-                            getUrgencyColor(item.urgency)
-                          )}
-                        >
-                          <div className="p-2 rounded-lg bg-muted/50 shrink-0">
-                            <IconComponent className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm truncate">{item.title}</p>
-                            <p className="text-xs text-muted-foreground/60 truncate">{item.description}</p>
-                          </div>
-                          {item.timeAgo && (
-                            <span className="text-[10px] text-muted-foreground/40 whitespace-nowrap">{item.timeAgo}</span>
-                          )}
-                          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 rounded-full shrink-0", getUrgencyBadge(item.urgency))}>
-                            {item.urgency === 'high' ? 'Urgente' : item.urgency === 'medium' ? 'Medio' : 'Basso'}
-                          </Badge>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0" />
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground/60 text-sm">
-                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500/40" />
-                      Nessun elemento richiede attenzione
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Appointments */}
-              <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-                <CardHeader className="pb-3 pt-5 px-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                        <Calendar className="h-4 w-4 text-emerald-500" />
-                      </div>
-                      <CardTitle className="text-base font-bold">Prossimi Appuntamenti</CardTitle>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-xs text-muted-foreground/60 hover:text-foreground"
-                      onClick={() => setLocation("/consultant/appointments")}
-                    >
-                      Vedi tutti
-                      <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="px-5 pb-5 space-y-2">
-                  {upcomingAppointments.length > 0 ? (
-                    upcomingAppointments.map((apt: any) => (
-                      <div 
-                        key={apt.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md border-l-[3px] border-l-emerald-500"
-                        onClick={() => setLocation("/consultant/appointments")}
-                      >
-                        <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
-                          <Clock className="h-4 w-4 text-emerald-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold truncate">
-                            {apt.title || apt.clientName || "Appuntamento"}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60">
-                            {formatAppointmentTime(apt)}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground/60 text-sm">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 text-emerald-500/30" />
-                      Nessun appuntamento in programma
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="animate-fadeInUp-4">
-              <h2 className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest mb-4">
-                Azioni Rapide
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {quickActions.map((action, index) => (
+          </CardHeader>
+          <CardContent className="px-4 pb-5 space-y-2">
+            {attentionItems.length > 0 ? (
+              attentionItems.map((item) => {
+                const urg = urgencyConfig[item.urgency];
+                const typ = typeConfig[item.type];
+                const TypeIcon = typ.icon;
+                return (
                   <button
-                    key={index}
-                    onClick={action.onClick}
-                    className="group relative overflow-hidden rounded-2xl p-5 sm:p-6 text-center transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] backdrop-blur-sm"
-                    style={{
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(108,92,231,0.25)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
-                    }}
+                    key={item.id}
+                    onClick={() => setLocation(item.actionUrl)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all duration-200",
+                      "border-l-[3px] border-y-0 border-r-0",
+                      urg.border, urg.bg
+                    )}
                   >
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-br opacity-90 group-hover:opacity-100 transition-opacity",
-                      action.gradient
-                    )} />
-                    <div className="relative z-10 text-white flex flex-col items-center gap-2.5">
-                      <action.icon className="h-7 w-7 sm:h-8 sm:w-8" />
-                      <p className="font-bold text-sm">{action.name}</p>
+                    <div className={cn("p-2 rounded-lg shrink-0", typ.bg)}>
+                      <TypeIcon className={cn("h-4 w-4", typ.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate text-foreground">{item.title}</p>
+                      <p className="text-xs text-muted-foreground/65 truncate mt-0.5">{item.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.timeAgo && (
+                        <span className="text-[10px] text-muted-foreground/45 hidden sm:block">{item.timeAgo}</span>
+                      )}
+                      <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 rounded-full", urg.badge)}>
+                        {urg.label}
+                      </Badge>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
                     </div>
                   </button>
-                ))}
+                );
+              })
+            ) : (
+              <div className="text-center py-10">
+                <div className="p-4 rounded-2xl bg-emerald-500/8 w-fit mx-auto mb-3">
+                  <CheckCircle className="h-8 w-8 text-emerald-500/60" />
+                </div>
+                <p className="text-sm font-semibold text-foreground/60">Tutto in ordine!</p>
+                <p className="text-xs text-muted-foreground/50 mt-0.5">Nessun elemento richiede attenzione</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Appointments Timeline */}
+        <Card className="border border-border/40 shadow-md rounded-2xl overflow-hidden bg-card">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10">
+                  <Calendar className="h-4 w-4 text-emerald-500" />
+                </div>
+                <CardTitle className="text-base font-bold">Prossimi Appuntamenti</CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground/60 hover:text-foreground gap-1"
+                onClick={() => setLocation("/consultant/appointments")}
+              >
+                Vedi tutti <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {upcomingAppointments.length > 0 ? (
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-[22px] top-4 bottom-4 w-px bg-gradient-to-b from-emerald-400/40 via-emerald-400/20 to-transparent" />
+                <div className="space-y-3">
+                  {upcomingAppointments.map((apt: any, idx: number) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-start gap-4 cursor-pointer group"
+                      onClick={() => setLocation("/consultant/appointments")}
+                    >
+                      {/* Date bubble */}
+                      <div className={cn(
+                        "shrink-0 w-11 flex flex-col items-center justify-center rounded-xl py-1.5 border transition-all duration-200",
+                        idx === 0
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/30"
+                          : "bg-muted/50 text-foreground/70 border-border/50 group-hover:border-emerald-400/50"
+                      )}>
+                        <span className="text-lg font-black leading-none">{formatAptDay(apt)}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide opacity-75">{formatAptMonth(apt)}</span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0 py-1">
+                        <p className="text-sm font-bold truncate text-foreground group-hover:text-emerald-500 transition-colors">
+                          {apt.title || apt.clientName || "Appuntamento"}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Clock className="h-3 w-3 text-muted-foreground/50" />
+                          <p className="text-xs text-muted-foreground/60 capitalize">{formatAptTime(apt)}</p>
+                        </div>
+                      </div>
+
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/30 mt-2 shrink-0 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <div className="p-4 rounded-2xl bg-emerald-500/8 w-fit mx-auto mb-3">
+                  <Calendar className="h-8 w-8 text-emerald-500/50" />
+                </div>
+                <p className="text-sm font-semibold text-foreground/60">Agenda libera</p>
+                <p className="text-xs text-muted-foreground/50 mt-0.5">Nessun appuntamento in programma</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── QUICK ACTIONS ────────────────────────────────── */}
+      <div className="afu-4">
+        <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.15em] mb-4">Azioni Rapide</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {quickActions.map((action, idx) => (
+            <button
+              key={idx}
+              onClick={action.onClick}
+              className="action-btn group relative overflow-hidden rounded-2xl text-white text-left"
+              style={{ background: action.gradient, boxShadow: action.shadow }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 12px 36px ${action.glowColor}`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = action.shadow; }}
+            >
+              <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-4 translate-x-4"
+                style={{ background: "rgba(255,255,255,0.8)" }} />
+              <div className="relative p-5">
+                <div className="p-2.5 rounded-xl bg-white/20 w-fit mb-3">
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <p className="font-bold text-sm leading-tight">{action.name}</p>
+                <p className="text-[11px] opacity-65 mt-0.5">{action.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── PROGRESS RING + RECENT CLIENTS ───────────────── */}
+      <div className="afu-5 grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        {/* Progress Ring */}
+        <Card className="lg:col-span-2 border border-border/40 shadow-md rounded-2xl overflow-hidden bg-card">
+          <CardHeader className="pb-2 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </div>
+                <CardTitle className="text-base font-bold">Esercizi</CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground/60 hover:text-foreground gap-1"
+                onClick={() => setLocation("/consultant/exercises")}
+              >
+                Dettagli <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            <div className="flex items-center gap-5">
+              {/* Ring */}
+              <div className="relative shrink-0">
+                <CircularProgress percentage={exerciseProgress.percentage} size={90} strokeWidth={8} color="#6C5CE7" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-foreground">{exerciseProgress.percentage}%</span>
+                </div>
+              </div>
+              {/* Stats */}
+              <div className="flex-1 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
+                      <CheckCircle className="h-3 w-3 text-emerald-500" /> Completati
+                    </span>
+                    <span className="text-sm font-black text-emerald-500">{exerciseProgress.completed}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                      style={{ width: `${exerciseProgress.percentage}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
+                      <RotateCcw className="h-3 w-3 text-amber-400" /> In revisione
+                    </span>
+                    <span className="text-sm font-black text-amber-400">{exerciseProgress.pending}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-400 transition-all duration-700"
+                      style={{ width: exerciseProgress.total > 0 ? `${(exerciseProgress.pending / exerciseProgress.total) * 100}%` : '0%' }}
+                    />
+                  </div>
+                </div>
+                <div className="pt-1 border-t border-border/30">
+                  <span className="text-[11px] text-muted-foreground/50">{exerciseProgress.total} totali assegnati</span>
+                </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Recent Clients */}
-            <Card className="animate-fadeInUp-5 border-0 shadow-md rounded-2xl overflow-hidden">
-              <CardHeader className="pb-3 pt-5 px-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-blue-500/10">
-                      <Activity className="h-4 w-4 text-blue-500" />
-                    </div>
-                    <CardTitle className="text-base font-bold">Clienti Recenti</CardTitle>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs text-muted-foreground/60 hover:text-foreground"
-                    onClick={() => setLocation("/consultant/clients")}
-                  >
-                    Vedi tutti
-                    <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
+        {/* Recent Clients */}
+        <Card className="lg:col-span-3 border border-border/40 shadow-md rounded-2xl overflow-hidden bg-card">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/10">
+                  <Activity className="h-4 w-4 text-blue-500" />
                 </div>
-              </CardHeader>
-              <CardContent className="px-5 pb-5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {recentClients.length > 0 ? (
-                    recentClients.map((client: any) => (
-                      <div 
-                        key={client.id}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
-                        onClick={() => setLocation(`/consultant/clients`)}
-                      >
-                        <Avatar className="h-10 w-10 shadow-sm">
-                          <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary to-violet-400 text-white">
-                            {client.firstName?.[0]}{client.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold truncate">
-                            {client.firstName} {client.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60 truncate">
-                            {client.email}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-3 text-center py-8 text-muted-foreground/60 text-sm">
-                      Nessun cliente recente
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Exercise Trends with Sparkline */}
-            <Card className="animate-fadeInUp-6 border-0 shadow-md rounded-2xl overflow-hidden">
-              <CardHeader className="pb-3 pt-5 px-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-primary/10">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                    </div>
-                    <CardTitle className="text-base font-bold">Trend Esercizi</CardTitle>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs text-muted-foreground/60 hover:text-foreground"
-                    onClick={() => setLocation("/consultant/exercises")}
-                  >
-                    Dettagli
-                    <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="px-5 pb-5">
-                <div className="flex items-center gap-6 sm:gap-8">
-                  <div className="flex-1">
-                    <div className="flex items-end gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-1">Completamento</p>
-                        <p className="text-3xl font-bold text-primary">{exerciseProgress.percentage}%</p>
-                      </div>
-                      <svg width="120" height="40" viewBox="0 0 120 40" className="mb-1">
-                        <defs>
-                          <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6C5CE7" stopOpacity="0.3" />
-                            <stop offset="100%" stopColor="#6C5CE7" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d={sparklinePath + ` L 116,40 L 4,40 Z`}
-                          fill="url(#sparkGrad)"
-                        />
-                        <path
-                          d={sparklinePath}
-                          fill="none"
-                          stroke="#6C5CE7"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        {sparklinePoints.map((val, i) => {
-                          const max = Math.max(...sparklinePoints, 1);
-                          const x = 4 + (i / (sparklinePoints.length - 1)) * 112;
-                          const y = 40 - 4 - ((val / max) * 32);
-                          return i === sparklinePoints.length - 1 ? (
-                            <circle key={i} cx={x} cy={y} r="3" fill="#6C5CE7" stroke="white" strokeWidth="1.5" />
-                          ) : null;
-                        })}
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex gap-5">
-                    <div className="text-center">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Completati</span>
-                      </div>
-                      <p className="text-2xl font-bold text-emerald-500">{exerciseProgress.completed}</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <RotateCcw className="h-3.5 w-3.5 text-yellow-400" />
-                        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">In Attesa</span>
-                      </div>
-                      <p className="text-2xl font-bold text-yellow-400">{exerciseProgress.pending}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Referral Link */}
-            <button
-              onClick={() => setLocation("/consultant/referrals")}
-              className="animate-fadeInUp-7 w-full group flex items-center justify-between p-4 rounded-2xl border-0 shadow-md hover:shadow-lg transition-all duration-300"
-              style={{
-                background: 'linear-gradient(135deg, rgba(253,121,168,0.08) 0%, rgba(255,118,117,0.06) 50%, rgba(253,203,110,0.04) 100%)',
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-pink-500/10">
-                  <Gift className="h-5 w-5 text-pink-500" />
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-bold block">Invita un Amico</span>
-                  <span className="text-xs text-muted-foreground/60">Guadagna bonus per ogni cliente portato</span>
-                </div>
+                <CardTitle className="text-base font-bold">Clienti Recenti</CardTitle>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:translate-x-1 group-hover:text-pink-500 transition-all" />
-            </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground/60 hover:text-foreground gap-1"
+                onClick={() => setLocation("/consultant/clients")}
+              >
+                Vedi tutti <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-5">
+            {recentClients.length > 0 ? (
+              <div className="space-y-2">
+                {recentClients.map((client: any) => {
+                  const initials = `${client.firstName?.[0] || ''}${client.lastName?.[0] || ''}`.toUpperCase();
+                  const isActive = !client.deactivatedAt;
+                  return (
+                    <div
+                      key={client.id}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-all duration-200 cursor-pointer group"
+                      onClick={() => setLocation("/consultant/clients")}
+                    >
+                      <Avatar className="h-10 w-10 shadow-sm shrink-0">
+                        <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary to-violet-500 text-white">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate text-foreground">
+                          {client.firstName} {client.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 truncate">{client.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge className={cn(
+                          "text-[9px] px-2 py-0 rounded-full border",
+                          isActive
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/25"
+                            : "bg-muted text-muted-foreground border-border/50"
+                        )}>
+                          {isActive ? "Attivo" : "Inattivo"}
+                        </Badge>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground/60 text-sm">
+                Nessun cliente recente
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── REFERRAL BANNER ──────────────────────────────── */}
+      <button
+        onClick={() => setLocation("/consultant/referrals")}
+        className="afu-6 w-full group flex items-center justify-between p-5 rounded-2xl transition-all duration-300 hover:shadow-lg border border-pink-400/20"
+        style={{
+          background: "linear-gradient(135deg, rgba(236,72,153,0.06) 0%, rgba(239,68,68,0.04) 50%, rgba(251,191,36,0.03) 100%)",
+        }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-pink-500/12 border border-pink-400/20">
+            <Gift className="h-5 w-5 text-pink-500" />
+          </div>
+          <div className="text-left">
+            <span className="text-sm font-bold text-foreground block">Invita un Amico</span>
+            <span className="text-xs text-muted-foreground/60 mt-0.5 block">Guadagna bonus per ogni cliente portato</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-pink-500/70 group-hover:text-pink-500 transition-colors">
+          <span className="text-xs font-semibold hidden sm:block">Scopri di più</span>
+          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+        </div>
+      </button>
 
     </PageLayout>
   );
