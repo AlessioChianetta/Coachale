@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Clock, FileText, Calendar, CheckCircle, AlertCircle, User, BookOpen, Globe, PlayCircle, Loader2, Filter, X, GraduationCap, Award, Target, Search, ChevronRight, ChevronDown, ChevronUp, Grid3x3, Columns3, TrendingUp, Menu, HelpCircle, ArrowLeft } from "lucide-react";
+import { Clock, FileText, Calendar, CheckCircle, AlertCircle, User, BookOpen, Globe, PlayCircle, Loader2, Filter, X, GraduationCap, Award, Target, Search, ChevronRight, Grid3x3, Columns3, TrendingUp, Menu, HelpCircle, ArrowLeft } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useLocation } from "wouter";
@@ -51,25 +51,14 @@ export default function ClientExercises() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [layoutView, setLayoutView] = useState<"grid" | "kanban" | "timeline">("kanban");
-  const [exerciseMode, setExerciseMode] = useState<"consulenza" | "corso">("consulenza");
+  const [exerciseMode, setExerciseMode] = useState<"all" | "consulenza" | "corso">("all");
   const [isTourActive, setIsTourActive] = useState(false);
-  const [isModeSelectorCollapsed, setIsModeSelectorCollapsed] = useState(false);
   const { toast} = useToast();
   const queryClient = useQueryClient();
 
-  // Reset categoria quando cambia modalità
   useEffect(() => {
     setSelectedCourse(null);
   }, [exerciseMode]);
-
-  // Collassa il selettore modalità quando viene selezionata una categoria
-  useEffect(() => {
-    if (selectedCourse !== null) {
-      setIsModeSelectorCollapsed(true);
-    } else {
-      setIsModeSelectorCollapsed(false);
-    }
-  }, [selectedCourse]);
 
   // Stato per gestire l'espansione del feedback nella timeline
   const [isFeedbackExpanded, setIsFeedbackExpanded] = useState<{ [key: string]: boolean }>({});
@@ -277,68 +266,81 @@ export default function ClientExercises() {
     return labels[category as keyof typeof labels] || category.charAt(0).toUpperCase() + category.slice(1);
   };
 
+  const extractModuleLesson = (title: string): [number, number] => {
+    const moduleMatch = title.match(/Modulo\s+(\d+)/i);
+    const lessonMatch = title.match(/Lezione\s+(\d+)/i);
+    const capMatch = title.match(/Capitolo\s+(\d+)/i);
+    const esMatch = title.match(/Esercizio\s+(\d+)/i);
+    const moduleNum = moduleMatch ? parseInt(moduleMatch[1]) : (capMatch ? parseInt(capMatch[1]) : (esMatch ? parseInt(esMatch[1]) : 9999));
+    const lessonNum = lessonMatch ? parseInt(lessonMatch[1]) : 9999;
+    return [moduleNum, lessonNum];
+  };
+
+  const sortByModuleLesson = (a: ExerciseAssignment, b: ExerciseAssignment) => {
+    const [aM, aL] = extractModuleLesson(a.exercise.title);
+    const [bM, bL] = extractModuleLesson(b.exercise.title);
+    if (aM !== bM) return aM - bM;
+    return aL - bL;
+  };
+
   const allCategories = useMemo(() => {
     let assignedCategories = assignments.map((a: ExerciseAssignment) => a.exercise.category);
 
-    // Filtra categorie in base alla modalità usando COURSE_CATEGORIES
     if (exerciseMode === "corso") {
       assignedCategories = assignedCategories.filter(cat => COURSE_CATEGORIES.includes(cat));
-    } else {
+    } else if (exerciseMode === "consulenza") {
       assignedCategories = assignedCategories.filter(cat => !COURSE_CATEGORIES.includes(cat));
     }
 
     const publicCategories = publicExercises.map((e: any) => e.category);
     const uniqueCategories = Array.from(new Set([...assignedCategories, ...publicCategories]));
     return uniqueCategories.sort();
-  }, [assignments, publicExercises, exerciseMode]);
+  }, [assignments, publicExercises, exerciseMode, COURSE_CATEGORIES]);
 
   const filteredAssignments = useMemo(() => {
     let filtered = assignments;
 
-    // Filtra in base alla modalità (consulenza o corso) usando COURSE_CATEGORIES
     if (exerciseMode === "corso") {
       filtered = filtered.filter((assignment: ExerciseAssignment) => COURSE_CATEGORIES.includes(assignment.exercise.category));
-    } else {
+    } else if (exerciseMode === "consulenza") {
       filtered = filtered.filter((assignment: ExerciseAssignment) => !COURSE_CATEGORIES.includes(assignment.exercise.category));
     }
 
-    // Filtra per categoria se selezionata
     if (selectedCourse) {
       filtered = filtered.filter((assignment: ExerciseAssignment) => assignment.exercise.category === selectedCourse);
     }
 
-    return filtered;
-  }, [assignments, selectedCourse, exerciseMode]);
+    return [...filtered].sort(sortByModuleLesson);
+  }, [assignments, selectedCourse, exerciseMode, COURSE_CATEGORIES]);
 
   const filteredPublicExercises = useMemo(() => {
     if (!selectedCourse) return publicExercises;
     return publicExercises.filter((exercise: any) => exercise.category === selectedCourse);
   }, [publicExercises, selectedCourse]);
 
-  // Funzioni per raggruppare gli esercizi per stato con ordinamento per data di assegnazione
   const getAssignmentsByStatus = (status: string) => {
-    return filteredAssignments
-      .filter((assignment: ExerciseAssignment) => assignment.status === status)
-      .sort((a, b) => new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime()); // Più vecchi prima (da fare per primi)
+    return [...filteredAssignments
+      .filter((assignment: ExerciseAssignment) => assignment.status === status)]
+      .sort(sortByModuleLesson);
   };
 
   // Gli esercizi "returned" vengono mostrati insieme ai "pending" come da completare
   const pendingAssignments = useMemo(() => {
     const pending = getAssignmentsByStatus('pending');
     const returned = getAssignmentsByStatus('returned');
-    return [...returned, ...pending]; // Returned in cima perché prioritari
+    return [...returned, ...pending].sort(sortByModuleLesson);
   }, [filteredAssignments]);
 
   const inProgressAssignments = useMemo(() => getAssignmentsByStatus('in_progress'), [filteredAssignments]);
   const submittedAssignments = useMemo(() => getAssignmentsByStatus('submitted'), [filteredAssignments]);
   const completedAssignments = useMemo(() => getAssignmentsByStatus('completed'), [filteredAssignments]);
 
-  // Calcola modeFilteredAssignments usando COURSE_CATEGORIES
   const modeFilteredAssignments = useMemo(() => {
+    if (exerciseMode === "all") return assignments;
     return exerciseMode === "corso"
       ? assignments.filter((a: ExerciseAssignment) => COURSE_CATEGORIES.includes(a.exercise.category))
       : assignments.filter((a: ExerciseAssignment) => !COURSE_CATEGORIES.includes(a.exercise.category));
-  }, [assignments, exerciseMode]);
+  }, [assignments, exerciseMode, COURSE_CATEGORIES]);
 
   // Statistiche per gli stati - considera la modalità attiva e la categoria selezionata
   const statusStats = useMemo(() => {
@@ -486,6 +488,50 @@ export default function ClientExercises() {
         </CardContent>
       </Card>
     );
+  };
+
+  const getModuleName = (title: string): string => {
+    const moduleMatch = title.match(/(Modulo\s+\d+)/i);
+    if (moduleMatch) return moduleMatch[1];
+    const capMatch = title.match(/(Capitolo\s+\d+)/i);
+    if (capMatch) return capMatch[1];
+    return "Altro";
+  };
+
+  const renderGroupedKanbanCards = (assignmentsList: ExerciseAssignment[], onViewExercise: (a: ExerciseAssignment) => void, isFirstColumn?: boolean) => {
+    const grouped: { module: string; items: ExerciseAssignment[] }[] = [];
+    let currentModule = "";
+    for (const a of assignmentsList) {
+      const mod = getModuleName(a.exercise.title);
+      if (mod !== currentModule) {
+        currentModule = mod;
+        grouped.push({ module: mod, items: [a] });
+      } else {
+        grouped[grouped.length - 1].items.push(a);
+      }
+    }
+
+    if (grouped.length <= 1 && grouped[0]?.module === "Altro") {
+      return assignmentsList.map((assignment: ExerciseAssignment, index: number) => (
+        <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={onViewExercise} isFirstCard={isFirstColumn && index === 0} />
+      ));
+    }
+
+    let cardIndex = 0;
+    return grouped.map((group) => (
+      <div key={group.module}>
+        <div className="flex items-center gap-2 py-2 mt-1 first:mt-0">
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide px-2">{group.module}</span>
+          <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700"></div>
+        </div>
+        {group.items.map((assignment: ExerciseAssignment) => {
+          const isFirst = isFirstColumn && cardIndex === 0;
+          cardIndex++;
+          return <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={onViewExercise} isFirstCard={isFirst} />;
+        })}
+      </div>
+    ));
   };
 
   // Kanban Card Component con design pulito e professionale
@@ -860,250 +906,57 @@ export default function ClientExercises() {
           </div>
 
           <div className="flex-1 max-w-7xl mx-auto space-y-6 p-6">
-            {/* STEP 1: Exercise Mode Selector - Enhanced Card Layout */}
-            <div 
-              className={`relative overflow-hidden bg-gradient-to-br from-white via-purple-50/30 to-blue-50/30 dark:from-gray-800 dark:via-purple-900/20 dark:to-blue-900/20 rounded-2xl shadow-xl border-2 border-purple-100 dark:border-purple-800 transition-all duration-300 ${
-                isModeSelectorCollapsed ? 'cursor-pointer hover:shadow-2xl' : ''
-              }`}
-              onClick={isModeSelectorCollapsed ? () => setIsModeSelectorCollapsed(false) : undefined}
-            >
-              {/* Decorative background elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-400/10 to-transparent rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-400/10 to-transparent rounded-full blur-3xl"></div>
-              
-              {isModeSelectorCollapsed ? (
-                /* Collapsed View - Compact Header */
-                <div className="relative z-10 p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg ${
-                      exerciseMode === "consulenza" 
-                        ? "bg-gradient-to-br from-purple-500 to-purple-600" 
-                        : "bg-gradient-to-br from-green-500 to-green-600"
-                    }`}>
-                      <CheckCircle className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg text-gray-900 dark:text-white">
-                        Esercizi {exerciseMode === "corso" ? "Corso" : "Consulenza"}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {exerciseMode === "corso" ? "Newsletter e materiali del percorso formativo" : "Esercizi personalizzati dal consulente"}
-                      </p>
-                    </div>
+            {/* Compact Mode Filter + Stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                  {(["all", "consulenza", "corso"] as const).map((mode) => {
+                    const counts = {
+                      all: assignments.length,
+                      consulenza: assignments.filter((a: ExerciseAssignment) => !COURSE_CATEGORIES.includes(a.exercise.category)).length,
+                      corso: assignments.filter((a: ExerciseAssignment) => COURSE_CATEGORIES.includes(a.exercise.category)).length,
+                    };
+                    const labels = { all: "Tutti", consulenza: "Consulenza", corso: "Corso" };
+                    const icons = { all: <BookOpen size={14} />, consulenza: <Target size={14} />, corso: <GraduationCap size={14} /> };
+                    const activeColors = { all: "bg-blue-600", consulenza: "bg-purple-600", corso: "bg-green-600" };
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setExerciseMode(mode)}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          exerciseMode === mode
+                            ? `${activeColors[mode]} text-white shadow-md`
+                            : "text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                        }`}
+                        data-tour={`exercises-mode-${mode}`}
+                      >
+                        {icons[mode]}
+                        {labels[mode]}
+                        <Badge className={`${exerciseMode === mode ? "bg-white/20 text-white" : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200"} text-[10px] ml-0.5`}>
+                          {counts[mode]}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                    <span className="text-gray-600 dark:text-gray-400">{modeFilteredAssignments.filter((a: ExerciseAssignment) => a.status === 'pending' || a.status === 'returned').length} da fare</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={exerciseMode === "consulenza" ? "bg-purple-600 text-white" : "bg-green-600 text-white"}>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        Attiva
-                      </div>
-                    </Badge>
-                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-gray-600 dark:text-gray-400">{modeFilteredAssignments.filter((a: ExerciseAssignment) => a.status === 'in_progress').length} in corso</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-gray-600 dark:text-gray-400">{modeFilteredAssignments.filter((a: ExerciseAssignment) => a.status === 'completed').length} completati</span>
                   </div>
                 </div>
-              ) : (
-                /* Expanded View - Full Cards */
-                <div className="relative z-10 p-8">
-                  {/* Minimize Button */}
-                  <button
-                    onClick={() => setIsModeSelectorCollapsed(true)}
-                    className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-white/80 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200 group"
-                    title="Minimizza"
-                  >
-                    <ChevronUp className="h-5 w-5 text-gray-400 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                  {/* Consulenza Card - Enhanced */}
-                  <button
-                    onClick={() => setExerciseMode("consulenza")}
-                    className={`group relative p-8 rounded-2xl border-2 transition-all duration-300 text-left overflow-hidden ${
-                      exerciseMode === "consulenza"
-                        ? "border-purple-500 bg-gradient-to-br from-purple-500/10 via-purple-400/5 to-transparent dark:from-purple-800/30 dark:via-purple-800/20 dark:to-transparent shadow-xl scale-[1.03] ring-4 ring-purple-500/20 dark:ring-purple-700/30"
-                        : "border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-lg hover:scale-[1.02]"
-                    }`}
-                    data-tour="exercises-mode-consulenza"
-                  >
-                    {/* Animated background gradient */}
-                    {exerciseMode === "consulenza" && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-purple-400/5 animate-pulse"></div>
-                    )}
-                    
-                    <div className="relative z-10 flex flex-col gap-4">
-                      {/* Icon and Badge */}
-                      <div className="flex items-center justify-between">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 shadow-lg ${
-                          exerciseMode === "consulenza" 
-                            ? "bg-gradient-to-br from-purple-500 to-purple-600 scale-110" 
-                            : "bg-gradient-to-br from-gray-100 to-gray-200 group-hover:scale-105"
-                        }`}>
-                          {exerciseMode === "consulenza" ? (
-                            <CheckCircle className="h-8 w-8 text-white" />
-                          ) : (
-                            <span>📋</span>
-                          )}
-                        </div>
-                        {exerciseMode === "consulenza" && (
-                          <Badge className="bg-purple-600 text-white shadow-md">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                              Attiva
-                            </div>
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {/* Content */}
-                      <div>
-                        <h4 className={`text-xl font-bold mb-2 transition-colors ${
-                          exerciseMode === "consulenza" ? "text-purple-700 dark:text-purple-300" : "text-gray-900 dark:text-white"
-                        }`}>
-                          Esercizi Consulenza
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                          Esercizi personalizzati assegnati dal tuo consulente per il tuo percorso specifico
-                        </p>
-                        
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              exerciseMode === "consulenza" ? "bg-purple-100 dark:bg-purple-900/40" : "bg-gray-100 dark:bg-gray-800"
-                            }`}>
-                              <Target className={`h-4 w-4 ${exerciseMode === "consulenza" ? "text-purple-600 dark:text-purple-400" : "text-gray-600 dark:text-gray-400"}`} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {assignments.filter((a: ExerciseAssignment) => !COURSE_CATEGORIES.includes(a.exercise.category)).length}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400">Totali</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              exerciseMode === "consulenza" ? "bg-orange-100 dark:bg-orange-900/40" : "bg-gray-100 dark:bg-gray-800"
-                            }`}>
-                              <Clock className={`h-4 w-4 ${exerciseMode === "consulenza" ? "text-orange-600 dark:text-orange-400" : "text-gray-600 dark:text-gray-400"}`} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {assignments.filter((a: ExerciseAssignment) => 
-                                  !COURSE_CATEGORIES.includes(a.exercise.category) && 
-                                  (a.status === 'pending' || a.status === 'returned')
-                                ).length}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400">Da fare</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Hover arrow */}
-                      <div className={`absolute bottom-4 right-4 transition-all duration-300 ${
-                        exerciseMode === "consulenza" ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      }`}>
-                        <ChevronRight className={`h-6 w-6 ${exerciseMode === "consulenza" ? "text-purple-600" : "text-gray-400"}`} />
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Corso Card - Enhanced */}
-                  <button
-                    onClick={() => setExerciseMode("corso")}
-                    className={`group relative p-8 rounded-2xl border-2 transition-all duration-300 text-left overflow-hidden ${
-                      exerciseMode === "corso"
-                        ? "border-green-500 bg-gradient-to-br from-green-500/10 via-green-400/5 to-transparent dark:from-green-800/30 dark:via-green-800/20 dark:to-transparent shadow-xl scale-[1.03] ring-4 ring-green-500/20 dark:ring-green-700/30"
-                        : "border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:border-green-400 dark:hover:border-green-600 hover:shadow-lg hover:scale-[1.02]"
-                    }`}
-                    data-tour="exercises-mode-corso"
-                  >
-                    {/* Animated background gradient */}
-                    {exerciseMode === "corso" && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-green-400/5 animate-pulse"></div>
-                    )}
-                    
-                    <div className="relative z-10 flex flex-col gap-4">
-                      {/* Icon and Badge */}
-                      <div className="flex items-center justify-between">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl transition-all duration-300 shadow-lg ${
-                          exerciseMode === "corso" 
-                            ? "bg-gradient-to-br from-green-500 to-green-600 scale-110" 
-                            : "bg-gradient-to-br from-gray-100 to-gray-200 group-hover:scale-105"
-                        }`}>
-                          {exerciseMode === "corso" ? (
-                            <CheckCircle className="h-8 w-8 text-white" />
-                          ) : (
-                            <span>📚</span>
-                          )}
-                        </div>
-                        {exerciseMode === "corso" && (
-                          <Badge className="bg-green-600 text-white shadow-md">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                              Attiva
-                            </div>
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {/* Content */}
-                      <div>
-                        <h4 className={`text-xl font-bold mb-2 transition-colors ${
-                          exerciseMode === "corso" ? "text-green-700 dark:text-green-300" : "text-gray-900 dark:text-white"
-                        }`}>
-                          Esercizi Corso
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4">
-                          Newsletter e materiali del percorso formativo strutturato
-                        </p>
-                        
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              exerciseMode === "corso" ? "bg-green-100 dark:bg-green-900/40" : "bg-gray-100 dark:bg-gray-800"
-                            }`}>
-                              <GraduationCap className={`h-4 w-4 ${exerciseMode === "corso" ? "text-green-600 dark:text-green-400" : "text-gray-600 dark:text-gray-400"}`} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {assignments.filter((a: ExerciseAssignment) => COURSE_CATEGORIES.includes(a.exercise.category)).length}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400">Totali</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                              exerciseMode === "corso" ? "bg-orange-100 dark:bg-orange-900/40" : "bg-gray-100 dark:bg-gray-800"
-                            }`}>
-                              <Clock className={`h-4 w-4 ${exerciseMode === "corso" ? "text-orange-600 dark:text-orange-400" : "text-gray-600 dark:text-gray-400"}`} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {assignments.filter((a: ExerciseAssignment) => 
-                                  COURSE_CATEGORIES.includes(a.exercise.category) && 
-                                  (a.status === 'pending' || a.status === 'returned')
-                                ).length}
-                              </p>
-                              <p className="text-gray-500 dark:text-gray-400">Da fare</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Hover arrow */}
-                      <div className={`absolute bottom-4 right-4 transition-all duration-300 ${
-                        exerciseMode === "corso" ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      }`}>
-                        <ChevronRight className={`h-6 w-6 ${exerciseMode === "corso" ? "text-green-600" : "text-gray-400"}`} />
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                </div>
-              )}
+              </div>
             </div>
 
-            {/* STEP 2: Category Selection View */}
+            {/* Category Selection View */}
             {selectedCourse === null && (
               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
                 <div className="text-center mb-6">
@@ -1178,10 +1031,21 @@ export default function ClientExercises() {
                             <span className="filter drop-shadow-lg">{getCategoryIcon(category)}</span>
                           </div>
                           
-                          {/* Category Name */}
-                          <h4 className="font-bold text-xl text-gray-900 dark:text-white mb-3 transition-colors duration-300 group-hover:text-purple-600 dark:group-hover:text-purple-400">
-                            {getCategoryLabel(category)}
-                          </h4>
+                          {/* Category Name + Type Badge */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="font-bold text-xl text-gray-900 dark:text-white transition-colors duration-300 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                              {getCategoryLabel(category)}
+                            </h4>
+                            {exerciseMode === "all" && (
+                              <Badge className={`text-[10px] px-1.5 py-0.5 ${
+                                COURSE_CATEGORIES.includes(category)
+                                  ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                  : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"
+                              }`}>
+                                {COURSE_CATEGORIES.includes(category) ? "Corso" : "Consulenza"}
+                              </Badge>
+                            )}
+                          </div>
                           
                           {/* Stats with icons */}
                           <div className="flex items-center gap-4 text-sm mb-4">
@@ -1265,7 +1129,7 @@ export default function ClientExercises() {
                         </Button>
                         <div className="flex items-center gap-2 text-sm">
                           <span className="text-gray-600 dark:text-gray-400">
-                            Esercizi {exerciseMode === "corso" ? "Corso" : "Consulenza"}
+                            Esercizi{exerciseMode === "all" ? "" : exerciseMode === "corso" ? " Corso" : " Consulenza"}
                           </span>
                           <ChevronRight size={14} className="text-gray-400 dark:text-gray-600" />
                           <span className="font-semibold text-purple-600 dark:text-purple-400">
@@ -1435,9 +1299,7 @@ export default function ClientExercises() {
                                     </Badge>
                                   </div>
                                   <div className="space-y-2 min-h-[250px] max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {pendingAssignments.map((assignment: ExerciseAssignment, index: number) => (
-                                      <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} isFirstCard={index === 0} />
-                                    ))}
+                                    {renderGroupedKanbanCards(pendingAssignments, handleViewExercise, true)}
                                   </div>
                                 </div>
                               )}
@@ -1460,9 +1322,7 @@ export default function ClientExercises() {
                                     </Badge>
                                   </div>
                                   <div className="space-y-2 min-h-[250px] max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {inProgressAssignments.map((assignment: ExerciseAssignment) => (
-                                      <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                                    ))}
+                                    {renderGroupedKanbanCards(inProgressAssignments, handleViewExercise)}
                                   </div>
                                 </div>
                               )}
@@ -1490,9 +1350,7 @@ export default function ClientExercises() {
                                     </Badge>
                                   </div>
                                   <div className="space-y-2 min-h-[250px] max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {submittedAssignments.map((assignment: ExerciseAssignment) => (
-                                      <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                                    ))}
+                                    {renderGroupedKanbanCards(submittedAssignments, handleViewExercise)}
                                   </div>
                                 </div>
                               )}
@@ -1515,9 +1373,7 @@ export default function ClientExercises() {
                                     </Badge>
                                   </div>
                                   <div className="space-y-2 min-h-[250px] max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {completedAssignments.map((assignment: ExerciseAssignment) => (
-                                      <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                                    ))}
+                                    {renderGroupedKanbanCards(completedAssignments, handleViewExercise)}
                                   </div>
                                 </div>
                               )}
@@ -1558,9 +1414,7 @@ export default function ClientExercises() {
                               </Badge>
                             </div>
                             <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                              {getFilteredAssignments().map((assignment: ExerciseAssignment) => (
-                                <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                              ))}
+                              {renderGroupedKanbanCards(getFilteredAssignments(), handleViewExercise, true)}
                               {getFilteredAssignments().length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-600">
                                   <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
@@ -1592,9 +1446,7 @@ export default function ClientExercises() {
                               </Badge>
                             </div>
                             <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                              {getFilteredAssignments().map((assignment: ExerciseAssignment) => (
-                                <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                              ))}
+                              {renderGroupedKanbanCards(getFilteredAssignments(), handleViewExercise)}
                               {getFilteredAssignments().length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-24 text-gray-400">
                                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -1626,9 +1478,7 @@ export default function ClientExercises() {
                               </Badge>
                             </div>
                             <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                              {getFilteredAssignments().map((assignment: ExerciseAssignment) => (
-                                <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                              ))}
+                              {renderGroupedKanbanCards(getFilteredAssignments(), handleViewExercise)}
                               {getFilteredAssignments().length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-24 text-gray-400">
                                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -1660,9 +1510,7 @@ export default function ClientExercises() {
                               </Badge>
                             </div>
                             <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                              {getFilteredAssignments().map((assignment: ExerciseAssignment) => (
-                                <KanbanCard key={assignment.id} assignment={assignment} onViewExercise={handleViewExercise} />
-                              ))}
+                              {renderGroupedKanbanCards(getFilteredAssignments(), handleViewExercise)}
                               {getFilteredAssignments().length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-24 text-gray-400">
                                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
