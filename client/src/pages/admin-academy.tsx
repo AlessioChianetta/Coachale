@@ -195,6 +195,10 @@ export default function AdminAcademy() {
   };
 
   const handleSaveLesson = async (lessonId: string) => {
+    if (lessonForm.video_url && !isValidVideoUrl(lessonForm.video_url)) {
+      toast({ title: "URL video non valido", description: "Inserisci un URL completo (es: https://...) oppure lascia il campo vuoto", variant: "destructive" });
+      return;
+    }
     await saveMutation.mutateAsync({
       url: `${API_BASE}/admin/lessons/${lessonId}`,
       method: "PUT",
@@ -207,6 +211,10 @@ export default function AdminAcademy() {
   const handleCreateLesson = async (moduleId: string) => {
     if (!lessonForm.title || !lessonForm.lesson_id) {
       toast({ title: "Errore", description: "ID e titolo sono richiesti", variant: "destructive" });
+      return;
+    }
+    if (lessonForm.video_url && !isValidVideoUrl(lessonForm.video_url)) {
+      toast({ title: "URL video non valido", description: "Inserisci un URL completo (es: https://...) oppure lascia il campo vuoto", variant: "destructive" });
       return;
     }
     await saveMutation.mutateAsync({
@@ -224,15 +232,36 @@ export default function AdminAcademy() {
       toast({ title: "Errore", description: "Titolo e URL sono richiesti", variant: "destructive" });
       return;
     }
+    if (!isValidVideoUrl(docForm.file_url)) {
+      toast({ title: "URL non valido", description: "Inserisci un URL completo valido (es: https://...)", variant: "destructive" });
+      return;
+    }
     await saveMutation.mutateAsync({ url: `${API_BASE}/admin/lessons/${lessonId}/documents`, method: "POST", body: docForm });
     setShowNewDoc(null);
     setDocForm({ title: "", file_url: "", file_type: "link" });
     toast({ title: "Documento aggiunto" });
   };
 
+  const isValidVideoUrl = (url: string): boolean => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "https:" || parsed.protocol === "http:";
+    } catch {
+      return false;
+    }
+  };
+
   const handleAddVideo = async (lessonId: string) => {
     if (!videoForm.video_url) {
       toast({ title: "Errore", description: "URL video richiesto", variant: "destructive" });
+      return;
+    }
+    if (!isValidVideoUrl(videoForm.video_url)) {
+      toast({ title: "URL non valido", description: "Inserisci un URL completo valido (es: https://www.youtube.com/watch?v=...)", variant: "destructive" });
+      return;
+    }
+    if (!videoForm.title.trim()) {
+      toast({ title: "Errore", description: "Il titolo del video e' obbligatorio", variant: "destructive" });
       return;
     }
     await saveMutation.mutateAsync({
@@ -574,47 +603,47 @@ export default function AdminAcademy() {
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{lesson.description}</p>
 
-                                    {(lesson.video_url || (lesson.videos && lesson.videos.length > 0)) && (
-                                      <div className="mt-3 space-y-2">
-                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
-                                          <Film size={12} />
-                                          Video ({(lesson.video_url ? 1 : 0) + (lesson.videos?.length || 0)})
+                                    {(() => {
+                                      const allVideos: Array<{ id: string; title: string; video_url: string; video_type: string; isLegacy?: boolean }> = [];
+                                      if (lesson.video_url) {
+                                        allVideos.push({ id: "legacy", title: "Video principale", video_url: lesson.video_url, video_type: lesson.video_type, isLegacy: true });
+                                      }
+                                      if (lesson.videos) {
+                                        lesson.videos.forEach(v => allVideos.push({ ...v }));
+                                      }
+                                      if (allVideos.length === 0) return null;
+                                      return (
+                                        <div className="mt-3 space-y-2">
+                                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                                            <Film size={12} />
+                                            {allVideos.length} {allVideos.length === 1 ? "Video" : "Video"}
+                                          </div>
+                                          <div className="space-y-1.5">
+                                            {allVideos.map((vid, vIdx) => (
+                                              <div key={vid.id} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border border-purple-100 dark:border-purple-900/30">
+                                                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0 text-[10px] font-bold text-white">
+                                                  {vIdx + 1}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                    {vid.title || `Video ${vIdx + 1}`}
+                                                  </p>
+                                                  <p className="text-[10px] text-purple-500 truncate">{vid.video_url}</p>
+                                                </div>
+                                                <Badge className="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0">
+                                                  {vid.video_type === "youtube" ? "YouTube" : "Iframe"}
+                                                </Badge>
+                                                {!vid.isLegacy && (
+                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 opacity-50 hover:opacity-100 shrink-0" onClick={() => initiateDelete("video", vid.id, vid.title || `Video ${vIdx + 1}`)}>
+                                                    <Trash2 size={11} />
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
-                                        <div className="space-y-1.5">
-                                          {lesson.video_url && (
-                                            <div className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border border-purple-100 dark:border-purple-900/30">
-                                              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
-                                                <PlayCircle size={14} className="text-white" />
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Video principale</p>
-                                                <p className="text-[10px] text-purple-500 truncate">{lesson.video_url}</p>
-                                              </div>
-                                              <Badge className="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0">
-                                                {lesson.video_type === "youtube" ? "YouTube" : "Iframe"}
-                                              </Badge>
-                                            </div>
-                                          )}
-                                          {lesson.videos?.map(vid => (
-                                            <div key={vid.id} className="flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 border border-purple-100 dark:border-purple-900/30">
-                                              <div className="w-7 h-7 rounded-md bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shrink-0">
-                                                <PlayCircle size={14} className="text-white" />
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{vid.title || "Video"}</p>
-                                                <p className="text-[10px] text-purple-500 truncate">{vid.video_url}</p>
-                                              </div>
-                                              <Badge className="text-[9px] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-0 shrink-0">
-                                                {vid.video_type === "youtube" ? "YouTube" : "Iframe"}
-                                              </Badge>
-                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 opacity-50 hover:opacity-100 shrink-0" onClick={() => initiateDelete("video", vid.id, vid.title || "Video")}>
-                                                <Trash2 size={11} />
-                                              </Button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
+                                      );
+                                    })()}
 
                                     {lesson.documents.length > 0 && (
                                       <div className="mt-3 space-y-2">

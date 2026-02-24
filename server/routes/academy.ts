@@ -425,6 +425,8 @@ router.post('/admin/lessons/:lessonId/videos', authenticateToken, requireSuperAd
     const { lessonId } = req.params;
     const { title, video_url, video_type } = req.body;
     if (!video_url) return res.status(400).json({ success: false, error: 'URL video richiesto' });
+    if (!title || !title.trim()) return res.status(400).json({ success: false, error: 'Titolo video richiesto' });
+    try { const u = new URL(video_url); if (!['http:', 'https:'].includes(u.protocol)) throw new Error(); } catch { return res.status(400).json({ success: false, error: 'URL video non valido. Inserisci un URL completo (es: https://www.youtube.com/watch?v=...)' }); }
     const maxOrder = await db.execute(sql`SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM academy_lesson_videos WHERE lesson_id = ${lessonId}`);
     const nextOrder = Number((maxOrder.rows[0] as any).next_order);
     const result = await db.execute(sql`

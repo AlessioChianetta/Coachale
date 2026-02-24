@@ -326,19 +326,39 @@ function LessonDetail({
 
   return (
     <div className="flex flex-col gap-6">
-      <GuiddePlayer embedUrl={lesson.video_url} videoType={lesson.video_type} title={lesson.title} />
-      {lesson.videos && lesson.videos.length > 0 && (
-        <div className="space-y-4">
-          {lesson.videos.map(vid => (
-            <div key={vid.id}>
-              {vid.title && (
-                <p className="text-sm font-medium text-foreground mb-2">{vid.title}</p>
-              )}
-              <GuiddePlayer embedUrl={vid.video_url} videoType={vid.video_type} title={vid.title || lesson.title} />
-            </div>
-          ))}
-        </div>
-      )}
+      {(() => {
+        const allVids: Array<{ url: string; type: string; title: string }> = [];
+        if (lesson.video_url) {
+          allVids.push({ url: lesson.video_url, type: lesson.video_type, title: lesson.title });
+        }
+        if (lesson.videos) {
+          lesson.videos.forEach(v => allVids.push({ url: v.video_url, type: v.video_type, title: v.title || lesson.title }));
+        }
+        if (allVids.length === 0) {
+          return <GuiddePlayer embedUrl={null} videoType="iframe" title={lesson.title} />;
+        }
+        if (allVids.length === 1) {
+          return <GuiddePlayer embedUrl={allVids[0].url} videoType={allVids[0].type} title={allVids[0].title} />;
+        }
+        return (
+          <div className="space-y-4">
+            {allVids.map((vid, idx) => (
+              <div key={idx}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold">
+                    {idx + 1}
+                  </span>
+                  <p className="text-sm font-semibold text-foreground">{vid.title}</p>
+                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                    Video {idx + 1} di {allVids.length}
+                  </span>
+                </div>
+                <GuiddePlayer embedUrl={vid.url} videoType={vid.type} title={vid.title} />
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
         <div className={cn("h-1 bg-gradient-to-r", gradientClass)} />
