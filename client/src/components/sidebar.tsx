@@ -732,14 +732,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
                 >
-                  <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150",
-                    isCategoryExpanded ? "bg-foreground dark:bg-white" : "bg-muted group-hover:bg-muted-foreground/10"
-                  )}>
-                    <CategoryIcon className={cn(
-                      "h-[17px] w-[17px] transition-colors duration-150",
-                      isCategoryExpanded ? "text-background dark:text-foreground" : "text-foreground/55 group-hover:text-foreground/80"
-                    )} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-blue-900">
+                    <CategoryIcon className="h-[17px] w-[17px] text-white" />
                   </div>
                   <span className="flex-1 text-[14.5px] font-medium text-left truncate">{catLabel}</span>
                   <ChevronDown className={cn(
