@@ -25,6 +25,13 @@ interface AcademyDocument {
   file_type: string;
 }
 
+interface AcademyVideo {
+  id: string;
+  title: string;
+  video_url: string;
+  video_type: string;
+}
+
 interface AcademyLesson {
   id: string;
   lesson_id: string;
@@ -37,6 +44,7 @@ interface AcademyLesson {
   config_link: string;
   sort_order: number;
   documents: AcademyDocument[];
+  videos?: AcademyVideo[];
 }
 
 interface AcademyModule {
@@ -319,6 +327,18 @@ function LessonDetail({
   return (
     <div className="flex flex-col gap-6">
       <GuiddePlayer embedUrl={lesson.video_url} videoType={lesson.video_type} title={lesson.title} />
+      {lesson.videos && lesson.videos.length > 0 && (
+        <div className="space-y-4">
+          {lesson.videos.map(vid => (
+            <div key={vid.id}>
+              {vid.title && (
+                <p className="text-sm font-medium text-foreground mb-2">{vid.title}</p>
+              )}
+              <GuiddePlayer embedUrl={vid.video_url} videoType={vid.video_type} title={vid.title || lesson.title} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
         <div className={cn("h-1 bg-gradient-to-r", gradientClass)} />

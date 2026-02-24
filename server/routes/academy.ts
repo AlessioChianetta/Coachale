@@ -47,6 +47,15 @@ async function ensureTables() {
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    sql`CREATE TABLE IF NOT EXISTS academy_lesson_videos (
+      id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+      lesson_id VARCHAR NOT NULL REFERENCES academy_lessons(id) ON DELETE CASCADE,
+      title VARCHAR NOT NULL DEFAULT '',
+      video_url TEXT NOT NULL,
+      video_type VARCHAR NOT NULL DEFAULT 'iframe',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const stmt of statements) {
     try { await db.execute(stmt); } catch (e: any) {
@@ -147,11 +156,16 @@ router.get('/modules', authenticateToken, async (req: AuthRequest, res: Response
     const docsRes = await db.execute(sql`
       SELECT * FROM academy_lesson_documents ORDER BY sort_order ASC
     `);
+    const videosRes = await db.execute(sql`
+      SELECT * FROM academy_lesson_videos ORDER BY sort_order ASC
+    `);
 
     const docs = docsRes.rows as any[];
+    const videos = videosRes.rows as any[];
     const lessons = (lessonsRes.rows as any[]).map(l => ({
       ...l,
       documents: docs.filter(d => d.lesson_id === l.id),
+      videos: videos.filter(v => v.lesson_id === l.id),
     }));
 
     const modules = (modulesRes.rows as any[]).map(m => ({
@@ -398,6 +412,69 @@ router.delete('/admin/documents/:id', authenticateToken, requireSuperAdmin, asyn
   try {
     const { id } = req.params;
     await db.execute(sql`DELETE FROM academy_lesson_documents WHERE id = ${id}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── ADMIN: Video CRUD ───
+
+router.post('/admin/lessons/:lessonId/videos', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { lessonId } = req.params;
+    const { title, video_url, video_type } = req.body;
+    if (!video_url) return res.status(400).json({ success: false, error: 'URL video richiesto' });
+    const maxOrder = await db.execute(sql`SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM academy_lesson_videos WHERE lesson_id = ${lessonId}`);
+    const nextOrder = Number((maxOrder.rows[0] as any).next_order);
+    const result = await db.execute(sql`
+      INSERT INTO academy_lesson_videos (id, lesson_id, title, video_url, video_type, sort_order)
+      VALUES (gen_random_uuid(), ${lessonId}, ${title || ''}, ${video_url}, ${video_type || 'iframe'}, ${nextOrder})
+      RETURNING *
+    `);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err: any) {
+    console.error('[Academy] POST video error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/admin/videos/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, video_url, video_type } = req.body;
+    const result = await db.execute(sql`
+      UPDATE academy_lesson_videos
+      SET title = COALESCE(${title}, title),
+          video_url = COALESCE(${video_url}, video_url),
+          video_type = COALESCE(${video_type}, video_type)
+      WHERE id = ${id}
+      RETURNING *
+    `);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Video non trovato' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/admin/videos/:id', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await db.execute(sql`DELETE FROM academy_lesson_videos WHERE id = ${id}`);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.put('/admin/videos/reorder', authenticateToken, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { order } = req.body;
+    if (!Array.isArray(order)) return res.status(400).json({ success: false, error: 'order deve essere un array' });
+    for (let i = 0; i < order.length; i++) {
+      await db.execute(sql`UPDATE academy_lesson_videos SET sort_order = ${i} WHERE id = ${order[i]}`);
+    }
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
