@@ -713,24 +713,47 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {!isCollapsed && (sidebarTab === 'platform' || !categories) && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
         {/* Render categorized sidebar for consultant */}
         {categories && !isCollapsed ? (categories as SidebarCategoryExtended[]).map((category, idx) => {
+          const isCategoryExpanded = expandedCategories.has(category.name);
           const isAlwaysVisible = category.alwaysVisible;
           const isGridLayout = category.isGridLayout;
+          const CategoryIcon = category.icon;
+          const catLabel = category.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
           return (
-            <div key={category.name} className={idx > 0 && !isAlwaysVisible ? "mt-5" : ""}>
-              <div className="space-y-0.5">
-                {/* Category Header - static label, always expanded (Halal Lab style) */}
-                {!isAlwaysVisible && (
-                  <div className="px-3 pt-1 pb-1.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/55">
-                      {category.name}
-                    </span>
+            <div key={category.name} className={idx > 0 ? "mt-1" : ""}>
+              {/* Category Header — collapsible row, Halal Lab "Settings" style */}
+              {!isAlwaysVisible && (
+                <button
+                  onClick={() => handleCategoryToggle(category.name)}
+                  className={cn(
+                    "w-full group flex items-center gap-3 px-3 py-[9px] rounded-lg transition-all duration-150 cursor-pointer",
+                    isCategoryExpanded
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150",
+                    isCategoryExpanded ? "bg-foreground dark:bg-white" : "bg-muted group-hover:bg-muted-foreground/10"
+                  )}>
+                    <CategoryIcon className={cn(
+                      "h-[17px] w-[17px] transition-colors duration-150",
+                      isCategoryExpanded ? "text-background dark:text-foreground" : "text-foreground/55 group-hover:text-foreground/80"
+                    )} />
                   </div>
-                )}
+                  <span className="flex-1 text-[14.5px] font-medium text-left truncate">{catLabel}</span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 text-muted-foreground/40 flex-shrink-0 transition-transform duration-200",
+                    isCategoryExpanded && "rotate-180"
+                  )} />
+                </button>
+              )}
 
-                {/* Category Items - always visible */}
+              {/* Category Items */}
+              {(isCategoryExpanded || isAlwaysVisible) && (
                 <div className={cn(
-                  isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-[2px]"
+                  isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-[2px]",
+                  !isAlwaysVisible && "mt-0.5 mb-1"
                 )}>
                   {category.items.map((item) => {
                     const Icon = item.icon;
@@ -800,7 +823,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                     );
                   })}
                 </div>
-              </div>
+              )}
             </div>
           );
         }) : null}
