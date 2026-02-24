@@ -2371,8 +2371,7 @@ export default function ConsultantApiKeysUnified() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
+      <div className="flex h-screen">
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
@@ -2382,6 +2381,14 @@ export default function ConsultantApiKeysUnified() {
               <div className="flex items-center justify-between">
                 <div className="space-y-1 sm:space-y-2">
                   <div className="flex items-center gap-2 sm:gap-3">
+                    {isMobile && (
+                      <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="p-2 bg-white/20 backdrop-blur-sm rounded-xl"
+                      >
+                        <Settings className="w-5 h-5 text-white" />
+                      </button>
+                    )}
                     <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
                       <Key className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
                     </div>
