@@ -779,8 +779,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                             showPulse
                               ? "bg-emerald-500"
                               : isActive
-                                ? "bg-foreground dark:bg-white"
-                                : "bg-muted group-hover:bg-muted-foreground/10"
+                                ? "bg-foreground dark:bg-blue-900"
+                                : "bg-slate-100 dark:bg-slate-700/70 group-hover:bg-slate-200 dark:group-hover:bg-slate-600/70"
                           )}>
                             <Icon className={cn(
                               "transition-colors duration-150",
@@ -788,8 +788,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                               showPulse
                                 ? "text-white"
                                 : isActive
-                                  ? "text-background dark:text-foreground"
-                                  : "text-foreground/55 group-hover:text-foreground/80"
+                                  ? "text-white"
+                                  : "text-slate-500 dark:text-slate-300 group-hover:text-slate-700 dark:group-hover:text-white"
                             )} />
                             {showPulse && (
                               <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
