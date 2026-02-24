@@ -212,6 +212,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: BookOpen,
     defaultExpanded: false,
     items: [
+      { name: "Accademia", href: "/consultant/academy", icon: GraduationCap, color: "indigo" },
       { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen, color: "orange" },
     ]
   },

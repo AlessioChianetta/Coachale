@@ -113,6 +113,7 @@ const GuideApiKeys = lazy(() => import("@/pages/guide-api-keys"));
 const GuideInstagram = lazy(() => import("@/pages/guide-instagram"));
 const GuideSocialFlows = lazy(() => import("@/pages/guide-social-flows"));
 const GuidesHub = lazy(() => import("@/pages/guides-hub"));
+const ConsultantAcademy = lazy(() => import("@/pages/consultant-academy"));
 const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard"));
 const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
@@ -659,6 +660,12 @@ function Router() {
           <Route path="/consultant/setup-wizard">
             <AuthGuard requiredRole="consultant">
               <ConsultantSetupWizard />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/academy">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAcademy />
             </AuthGuard>
           </Route>
 

@@ -110,6 +110,7 @@ import googleCalendarWebhookRouter from "./routes/google-calendar-webhook";
 import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
+import academyRouter from "./routes/academy";
 import followupApiRouter from "./routes/followup-api";
 import weeklyCheckinRouter from "./routes/weekly-checkin-router";
 import fileSearchRouter from "./routes/file-search";
@@ -14082,6 +14083,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Consultant Onboarding routes
   app.use("/api/consultant/onboarding", onboardingRouter);
+
+  // Consultant Academy routes
+  app.use("/api/consultant/academy", academyRouter);
 
   // Consultant Credential Notes - GET and PUT for account reference and notes per step
   app.get("/api/consultant/credential-notes/:stepId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {

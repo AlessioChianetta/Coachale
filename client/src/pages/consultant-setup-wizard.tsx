@@ -65,7 +65,10 @@ import {
   Copy,
   ArrowUpDown,
   Users,
+  GraduationCap,
+  PlayCircle,
 } from "lucide-react";
+import { WIZARD_TO_ACADEMY_ID } from "@/data/academy-curriculum";
 
 type StepStatus = "pending" | "configured" | "verified" | "error" | "skipped";
 
@@ -2304,7 +2307,17 @@ export default function ConsultantSetupWizard() {
                                 <CardDescription>{activeStepData.description}</CardDescription>
                               </div>
                             </div>
-                            <StatusBadge status={activeStepData.status} />
+                            <div className="flex flex-col items-end gap-2">
+                              <StatusBadge status={activeStepData.status} />
+                              {(WIZARD_TO_ACADEMY_ID[activeStepData.id] || activeStepData.id) && (
+                                <Link href={`/consultant/academy?step=${WIZARD_TO_ACADEMY_ID[activeStepData.id] || activeStepData.id}`}>
+                                  <button className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30">
+                                    <PlayCircle className="h-3.5 w-3.5" />
+                                    Tutorial
+                                  </button>
+                                </Link>
+                              )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
