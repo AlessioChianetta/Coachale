@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  GraduationCap,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -42,6 +43,7 @@ const adminItems: SidebarItem[] = [
   { name: "Gerarchia", href: "/admin/hierarchy", icon: GitBranch, color: "text-purple-500" },
   { name: "Utenti", href: "/admin/users", icon: Users, color: "text-green-500" },
 
+  { name: "Academy", href: "/admin/academy", icon: GraduationCap, color: "text-indigo-500" },
   { name: "Impostazioni", href: "/admin/settings", icon: Settings, color: "text-orange-500" },
 ];
 

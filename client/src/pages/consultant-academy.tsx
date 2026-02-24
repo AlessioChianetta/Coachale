@@ -5,36 +5,75 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GuiddePlayer } from "@/components/academy/GuiddePlayer";
-import { ACADEMY_MODULES, ACADEMY_LESSONS_FLAT, LESSON_BY_ID, type AcademyLesson } from "@/data/academy-curriculum";
 import { getAuthHeaders } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ChevronDown, ChevronRight, ExternalLink,
   ArrowLeft, ArrowRight, GraduationCap, Settings, Clock,
-  ChevronUp,
+  ChevronUp, FileText, Loader2,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 
-const MODULE_COLORS: Record<string, string> = {
-  setup_base: "from-slate-500 to-slate-700",
-  acquisisci_lead: "from-blue-500 to-blue-700",
-  vendi_converti: "from-violet-500 to-purple-700",
-  automazioni_ai: "from-indigo-500 to-blue-700",
-  contenuti_corsi: "from-amber-500 to-orange-600",
-  avanzato: "from-rose-500 to-red-700",
+interface AcademyDocument {
+  id: string;
+  title: string;
+  file_url: string;
+  file_type: string;
+}
+
+interface AcademyLesson {
+  id: string;
+  lesson_id: string;
+  module_id: string;
+  title: string;
+  description: string;
+  duration: string;
+  video_url: string | null;
+  video_type: string;
+  config_link: string;
+  sort_order: number;
+  documents: AcademyDocument[];
+}
+
+interface AcademyModule {
+  id: string;
+  slug: string;
+  title: string;
+  emoji: string;
+  tagline: string;
+  color: string;
+  sort_order: number;
+  lessons: AcademyLesson[];
+}
+
+const COLOR_GRADIENTS: Record<string, string> = {
+  slate: "from-slate-500 to-slate-700",
+  blue: "from-blue-500 to-blue-700",
+  violet: "from-violet-500 to-purple-700",
+  indigo: "from-indigo-500 to-blue-700",
+  amber: "from-amber-500 to-orange-600",
+  rose: "from-rose-500 to-red-700",
+  green: "from-green-500 to-green-700",
+  red: "from-red-500 to-red-700",
+  orange: "from-orange-500 to-orange-700",
+  teal: "from-teal-500 to-teal-700",
 };
 
-const MODULE_BADGE_COLORS: Record<string, string> = {
-  setup_base: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  acquisisci_lead: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  vendi_converti: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
-  automazioni_ai: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-  contenuti_corsi: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  avanzato: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+const COLOR_BADGES: Record<string, string> = {
+  slate: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  violet: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  indigo: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  rose: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+  green: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  orange: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  teal: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
 };
 
 interface StepStatusEntry {
@@ -45,12 +84,21 @@ interface StepStatusEntry {
 function useAcademyData() {
   const queryClient = useQueryClient();
 
+  const { data: modulesData, isLoading: modulesLoading } = useQuery<AcademyModule[]>({
+    queryKey: ["/api/consultant/academy/modules"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/academy/modules", { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch academy modules");
+      const json = await res.json();
+      return json.data || [];
+    },
+    staleTime: 60_000,
+  });
+
   const { data: wizardData } = useQuery<{ success: boolean; data: StepStatusEntry[] }>({
     queryKey: ["/api/consultant/onboarding/status/for-ai"],
     queryFn: async () => {
-      const res = await fetch("/api/consultant/onboarding/status/for-ai", {
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch("/api/consultant/onboarding/status/for-ai", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch wizard status");
       return res.json();
     },
@@ -60,14 +108,20 @@ function useAcademyData() {
   const { data: manualData } = useQuery<{ success: boolean; data: string[] }>({
     queryKey: ["/api/consultant/academy/completions"],
     queryFn: async () => {
-      const res = await fetch("/api/consultant/academy/completions", {
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch("/api/consultant/academy/completions", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch academy completions");
       return res.json();
     },
     staleTime: 30_000,
   });
+
+  const modules = modulesData || [];
+  const lessonsFlat = useMemo(() => modules.flatMap(m => m.lessons), [modules]);
+  const lessonById = useMemo(() => {
+    const map: Record<string, AcademyLesson> = {};
+    for (const l of lessonsFlat) { map[l.lesson_id] = l; }
+    return map;
+  }, [lessonsFlat]);
 
   const wizardCompleted = useMemo(() => {
     const set = new Set<string>();
@@ -100,7 +154,7 @@ function useAcademyData() {
     },
   });
 
-  return { wizardCompleted, manualCompleted, allCompleted, markMutation };
+  return { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading };
 }
 
 function LessonSidebarItem({
@@ -165,21 +219,21 @@ function ModuleAccordion({
   activeId,
   onSelect,
 }: {
-  module: typeof ACADEMY_MODULES[0];
+  module: AcademyModule;
   completedIds: Set<string>;
   wizardCompleted: Set<string>;
   activeId: string;
   onSelect: (id: string) => void;
 }) {
-  const completedInModule = module.lessons.filter(l => completedIds.has(l.id)).length;
-  const isAnyActive = module.lessons.some(l => l.id === activeId);
+  const completedInModule = module.lessons.filter(l => completedIds.has(l.lesson_id)).length;
+  const isAnyActive = module.lessons.some(l => l.lesson_id === activeId);
   const [open, setOpen] = useState(isAnyActive);
 
   useEffect(() => {
     if (isAnyActive) setOpen(true);
   }, [isAnyActive]);
 
-  const gradientClass = MODULE_COLORS[module.id] ?? "from-slate-500 to-slate-700";
+  const gradientClass = COLOR_GRADIENTS[module.color] ?? "from-slate-500 to-slate-700";
 
   return (
     <div className="rounded-2xl overflow-hidden border border-border/60 bg-card/50 shadow-sm">
@@ -218,10 +272,10 @@ function ModuleAccordion({
                 <LessonSidebarItem
                   key={lesson.id}
                   lesson={lesson}
-                  isActive={lesson.id === activeId}
-                  isCompleted={completedIds.has(lesson.id)}
-                  isWizardDone={wizardCompleted.has(lesson.id)}
-                  onClick={() => onSelect(lesson.id)}
+                  isActive={lesson.lesson_id === activeId}
+                  isCompleted={completedIds.has(lesson.lesson_id)}
+                  isWizardDone={wizardCompleted.has(lesson.lesson_id)}
+                  onClick={() => onSelect(lesson.lesson_id)}
                 />
               ))}
             </div>
@@ -234,6 +288,7 @@ function ModuleAccordion({
 
 function LessonDetail({
   lesson,
+  module,
   isCompleted,
   isWizardDone,
   onToggleComplete,
@@ -242,8 +297,11 @@ function LessonDetail({
   onNext,
   hasPrev,
   hasNext,
+  lessonIndex,
+  totalLessons,
 }: {
   lesson: AcademyLesson;
+  module: AcademyModule | undefined;
   isCompleted: boolean;
   isWizardDone: boolean;
   onToggleComplete: () => void;
@@ -252,14 +310,15 @@ function LessonDetail({
   onNext: () => void;
   hasPrev: boolean;
   hasNext: boolean;
+  lessonIndex: number;
+  totalLessons: number;
 }) {
-  const module = ACADEMY_MODULES.find(m => m.id === lesson.moduleId);
-  const badgeClass = MODULE_BADGE_COLORS[lesson.moduleId] ?? "";
-  const gradientClass = MODULE_COLORS[lesson.moduleId] ?? "from-slate-500 to-slate-700";
+  const badgeClass = module ? (COLOR_BADGES[module.color] ?? "") : "";
+  const gradientClass = module ? (COLOR_GRADIENTS[module.color] ?? "from-slate-500 to-slate-700") : "from-slate-500 to-slate-700";
 
   return (
     <div className="flex flex-col gap-6">
-      <GuiddePlayer embedUrl={lesson.guiddeEmbedUrl} title={lesson.title} />
+      <GuiddePlayer embedUrl={lesson.video_url} videoType={lesson.video_type} title={lesson.title} />
 
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm overflow-hidden">
         <div className={cn("h-1 bg-gradient-to-r", gradientClass)} />
@@ -276,7 +335,7 @@ function LessonDetail({
                   <Clock className="w-3 h-3" /> {lesson.duration}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Lezione {lesson.stepNumber}/27
+                  Lezione {lessonIndex + 1}/{totalLessons}
                 </span>
               </div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
@@ -298,8 +357,30 @@ function LessonDetail({
             {lesson.description}
           </p>
 
+          {lesson.documents && lesson.documents.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-border/40">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documenti allegati</p>
+              <div className="space-y-1.5">
+                {lesson.documents.map(doc => (
+                  <a
+                    key={doc.id}
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 flex-shrink-0" />
+                    <span className="flex-1 truncate">{doc.title}</span>
+                    <Badge variant="outline" className="text-[10px]">{doc.file_type}</Badge>
+                    <ExternalLink className="w-3 h-3 opacity-50" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-            <Link href={lesson.configLink}>
+            <Link href={lesson.config_link}>
               <Button variant="outline" size="sm" className="gap-2 w-full sm:w-auto">
                 <Settings className="w-4 h-4" />
                 Vai alla configurazione
@@ -340,7 +421,7 @@ function LessonDetail({
         </Button>
 
         <div className="text-xs text-muted-foreground text-center">
-          Lezione {lesson.stepNumber} di 27
+          Lezione {lessonIndex + 1} di {totalLessons}
         </div>
 
         <Button
@@ -363,25 +444,34 @@ export default function ConsultantAcademy() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
-  const { wizardCompleted, manualCompleted, allCompleted, markMutation } = useAcademyData();
+  const { modules, lessonsFlat, lessonById, wizardCompleted, manualCompleted, allCompleted, markMutation, modulesLoading } = useAcademyData();
+
+  const totalLessons = lessonsFlat.length;
 
   const initialStepId = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const step = params.get("step");
-    if (step && LESSON_BY_ID[step]) return step;
-    return ACADEMY_LESSONS_FLAT[0].id;
-  }, []);
+    if (step && lessonById[step]) return step;
+    return lessonsFlat[0]?.lesson_id || "";
+  }, [lessonsFlat.length > 0]);
 
   const [activeId, setActiveId] = useState<string>(initialStepId);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const activeLesson = LESSON_BY_ID[activeId] ?? ACADEMY_LESSONS_FLAT[0];
-  const activeIndex = ACADEMY_LESSONS_FLAT.findIndex(l => l.id === activeId);
-  const prevLesson = activeIndex > 0 ? ACADEMY_LESSONS_FLAT[activeIndex - 1] : null;
-  const nextLesson = activeIndex < ACADEMY_LESSONS_FLAT.length - 1 ? ACADEMY_LESSONS_FLAT[activeIndex + 1] : null;
+  useEffect(() => {
+    if (!activeId && lessonsFlat.length > 0) {
+      setActiveId(lessonsFlat[0].lesson_id);
+    }
+  }, [activeId, lessonsFlat]);
+
+  const activeLesson = lessonById[activeId] ?? lessonsFlat[0];
+  const activeModule = activeLesson ? modules.find(m => m.id === activeLesson.module_id) : undefined;
+  const activeIndex = lessonsFlat.findIndex(l => l.lesson_id === activeId);
+  const prevLesson = activeIndex > 0 ? lessonsFlat[activeIndex - 1] : null;
+  const nextLesson = activeIndex < lessonsFlat.length - 1 ? lessonsFlat[activeIndex + 1] : null;
 
   const totalCompleted = allCompleted.size;
-  const progressPct = Math.round((totalCompleted / 27) * 100);
+  const progressPct = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   const handleSelect = useCallback((id: string) => {
     setActiveId(id);
@@ -407,11 +497,25 @@ export default function ConsultantAcademy() {
   const isCompleted = allCompleted.has(activeId);
   const isWizardDone = wizardCompleted.has(activeId);
 
+  if (modulesLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <main className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   const sidebarContent = (
     <div className="flex flex-col gap-3">
       <div className="space-y-1 pb-3 border-b border-border/60">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">{totalCompleted}/27 lezioni</span>
+          <span className="text-sm font-semibold text-foreground">{totalCompleted}/{totalLessons} lezioni</span>
           <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{progressPct}%</span>
         </div>
         <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -423,12 +527,12 @@ export default function ConsultantAcademy() {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          {totalCompleted === 27 ? "🎉 Corso completato!" : `Ancora ${27 - totalCompleted} da completare`}
+          {totalCompleted === totalLessons ? "🎉 Corso completato!" : `Ancora ${totalLessons - totalCompleted} da completare`}
         </p>
       </div>
 
       <div className="space-y-2">
-        {ACADEMY_MODULES.map(mod => (
+        {modules.map(mod => (
           <ModuleAccordion
             key={mod.id}
             module={mod}
@@ -462,7 +566,7 @@ export default function ConsultantAcademy() {
                 </div>
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-foreground">Accademia di Formazione</h1>
-                  <p className="text-sm text-muted-foreground">27 lezioni per padroneggiare la piattaforma</p>
+                  <p className="text-sm text-muted-foreground">{totalLessons} lezioni per padroneggiare la piattaforma</p>
                 </div>
               </div>
 
@@ -495,11 +599,11 @@ export default function ConsultantAcademy() {
                   onClick={() => setMobileSidebarOpen(p => !p)}
                 >
                   <span className="flex items-center gap-2">
-                    <span>{ACADEMY_MODULES.find(m => m.id === activeLesson.moduleId)?.emoji}</span>
-                    <span className="text-sm font-medium truncate">{activeLesson.title}</span>
+                    <span>{activeModule?.emoji}</span>
+                    <span className="text-sm font-medium truncate">{activeLesson?.title}</span>
                   </span>
                   <span className="flex items-center gap-2 flex-shrink-0">
-                    <Badge variant="secondary" className="text-xs">{totalCompleted}/27</Badge>
+                    <Badge variant="secondary" className="text-xs">{totalCompleted}/{totalLessons}</Badge>
                     {mobileSidebarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </span>
                 </Button>
@@ -532,27 +636,34 @@ export default function ConsultantAcademy() {
               )}
 
               <div className="flex-1 min-w-0">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeId}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -12 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <LessonDetail
-                      lesson={activeLesson}
-                      isCompleted={isCompleted}
-                      isWizardDone={isWizardDone}
-                      onToggleComplete={handleToggleComplete}
-                      isToggling={markMutation.isPending}
-                      onPrev={() => prevLesson && handleSelect(prevLesson.id)}
-                      onNext={() => nextLesson && handleSelect(nextLesson.id)}
-                      hasPrev={!!prevLesson}
-                      hasNext={!!nextLesson}
-                    />
-                  </motion.div>
-                </AnimatePresence>
+                {activeLesson ? (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeId}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <LessonDetail
+                        lesson={activeLesson}
+                        module={activeModule}
+                        isCompleted={isCompleted}
+                        isWizardDone={isWizardDone}
+                        onToggleComplete={handleToggleComplete}
+                        isToggling={markMutation.isPending}
+                        onPrev={() => prevLesson && handleSelect(prevLesson.lesson_id)}
+                        onNext={() => nextLesson && handleSelect(nextLesson.lesson_id)}
+                        hasPrev={!!prevLesson}
+                        hasNext={!!nextLesson}
+                        lessonIndex={activeIndex}
+                        totalLessons={totalLessons}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                ) : (
+                  <div className="text-center text-muted-foreground py-20">Nessuna lezione disponibile</div>
+                )}
               </div>
             </div>
           </div>

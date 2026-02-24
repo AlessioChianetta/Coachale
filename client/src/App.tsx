@@ -157,6 +157,7 @@ const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
 const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
 const AdminUsers = lazy(() => import("@/pages/admin-users"));
 const AdminSettings = lazy(() => import("@/pages/admin-settings"));
+const AdminAcademy = lazy(() => import("@/pages/admin-academy"));
 const SasLanding = lazy(() => import("@/pages/sas-landing"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
 
@@ -966,6 +967,12 @@ function Router() {
           <Route path="/admin/ai-usage">
             <AuthGuard requiredRole="super_admin">
               <AdminAIUsage />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/admin/academy">
+            <AuthGuard requiredRole="super_admin">
+              <AdminAcademy />
             </AuthGuard>
           </Route>
 

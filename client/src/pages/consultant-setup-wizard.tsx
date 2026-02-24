@@ -199,6 +199,15 @@ const statusConfig = {
   skipped: { icon: Circle, color: "text-muted-foreground", bg: "bg-muted", badgeBg: "bg-muted", label: "Saltato" },
 };
 
+function AcademyCountBadge() {
+  const { data } = useQuery({ queryKey: ["academy-count"], queryFn: async () => {
+    const res = await fetch("/api/consultant/academy/count");
+    const json = await res.json();
+    return json.count ?? 27;
+  }, staleTime: 300_000 });
+  return <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-400/20 text-indigo-300">{data ?? 27}</span>;
+}
+
 function StatusBadge({ status }: { status: StepStatus }) {
   const config = statusConfig[status];
   const Icon = config.icon;
@@ -2105,7 +2114,7 @@ export default function ConsultantSetupWizard() {
                         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-500/20 border border-indigo-400/20 cursor-pointer group hover:bg-indigo-500/30 transition-all duration-200">
                           <GraduationCap className="h-4 w-4 text-indigo-300" />
                           <span className="text-sm font-semibold text-white hidden sm:inline">Accademia</span>
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-400/20 text-indigo-300">27</span>
+                          <AcademyCountBadge />
                           <ChevronRight className="h-3.5 w-3.5 text-indigo-300/60 group-hover:translate-x-0.5 transition-transform" />
                         </div>
                       </Link>

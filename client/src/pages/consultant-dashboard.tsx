@@ -96,6 +96,15 @@ const CSS = `
   .avatar-pulse { animation: pulse-ring 2.5s ease-in-out infinite; }
 `;
 
+function LessonCountBadge({ className }: { className?: string }) {
+  const { data } = useQuery({ queryKey: ["academy-count"], queryFn: async () => {
+    const res = await fetch("/api/consultant/academy/count");
+    const json = await res.json();
+    return json.count ?? 27;
+  }, staleTime: 300_000 });
+  return <span className={className}>{data ?? 27} lezioni</span>;
+}
+
 function MiniSparkline({ color, peakValue }: { color: string; peakValue: number }) {
   const base = Math.max(peakValue, 2);
   const pts = [
@@ -507,7 +516,7 @@ export default function ConsultantDashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm text-white">Accademia di Formazione</span>
-                  <span className="text-[9px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 hidden sm:inline">27 lezioni</span>
+                  <LessonCountBadge className="text-[9px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 hidden sm:inline" />
                 </div>
                 <p className="text-[11px] text-white/40 hidden sm:block">Video tutorial per configurare la piattaforma in autonomia</p>
               </div>

@@ -2,15 +2,39 @@ import { Play } from "lucide-react";
 
 interface GuiddePlayerProps {
   embedUrl: string | null;
+  videoType?: string;
   title: string;
 }
 
-export function GuiddePlayer({ embedUrl, title }: GuiddePlayerProps) {
+function getYouTubeEmbedUrl(url: string): string | null {
+  let videoId: string | null = null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      videoId = parsed.searchParams.get("v");
+      if (!videoId) {
+        const match = parsed.pathname.match(/\/embed\/([^/?]+)/);
+        if (match) videoId = match[1];
+      }
+    } else if (parsed.hostname === "youtu.be") {
+      videoId = parsed.pathname.slice(1);
+    }
+  } catch {}
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+}
+
+export function GuiddePlayer({ embedUrl, videoType = "iframe", title }: GuiddePlayerProps) {
   if (embedUrl) {
+    let src = embedUrl;
+    if (videoType === "youtube") {
+      const ytEmbed = getYouTubeEmbedUrl(embedUrl);
+      if (ytEmbed) src = ytEmbed;
+    }
+
     return (
       <div className="relative w-full overflow-hidden rounded-2xl bg-black shadow-xl" style={{ paddingTop: "56.25%" }}>
         <iframe
-          src={embedUrl}
+          src={src}
           title={title}
           className="absolute inset-0 h-full w-full border-0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
