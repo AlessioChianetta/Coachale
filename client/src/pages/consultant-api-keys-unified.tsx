@@ -2368,12 +2368,6 @@ export default function ConsultantApiKeysUnified() {
     return statusMap;
   }, [vertexPreference, geminiPreference, clientsAiConfig, existingSMTP, twilioSettingsData, instagramOAuthStatus, calendarGlobalOAuth, agentsCalendarStatus, existingLeadConfig, webhookConfigs, googleSheetsConfigs, turnConfigData, stripeConnectStatus, publerConfigStatus]);
 
-  const getTabStatusDot = (tabValue: string) => {
-    const status = serviceStatuses[tabValue];
-    if (status === "configured") return "bg-green-500";
-    if (status === "partial") return "bg-yellow-500";
-    return "bg-gray-300";
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -2478,68 +2472,17 @@ export default function ConsultantApiKeysUnified() {
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="flex flex-wrap justify-start gap-1.5 sm:gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg h-auto">
-                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("ai")}`} />
-                  <Bot className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">AI (Gemini)</span>
-                  <span className="sm:hidden">AI</span>
-                </TabsTrigger>
-                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("client-ai")}`} />
-                  <Users className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">API Clienti</span>
-                  <span className="sm:hidden">Clienti</span>
-                </TabsTrigger>
-                <div className="w-px h-6 bg-gray-300 self-center mx-0.5 hidden sm:block" />
-                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("email")}`} />
-                  <Mail className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Email SMTP</span>
-                  <span className="sm:hidden">Email</span>
-                </TabsTrigger>
-                <TabsTrigger value="twilio" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("twilio")}`} />
-                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">WhatsApp Twilio</span>
-                  <span className="sm:hidden">Twilio</span>
-                </TabsTrigger>
-                <TabsTrigger value="instagram" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("instagram")}`} />
-                  <Instagram className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Instagram DM</span>
-                  <span className="sm:hidden">IG</span>
-                </TabsTrigger>
-                <div className="w-px h-6 bg-gray-300 self-center mx-0.5 hidden sm:block" />
-                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("calendar")}`} />
-                  <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
-                  Calendar
-                </TabsTrigger>
-                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("lead-import")}`} />
-                  <Server className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Lead Import</span>
-                  <span className="sm:hidden">Lead</span>
-                </TabsTrigger>
-                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("video-meeting")}`} />
-                  <Video className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Video Meeting</span>
-                  <span className="sm:hidden">Video</span>
-                </TabsTrigger>
-                <TabsTrigger value="stripe" className="data-[state=active]:bg-violet-100 data-[state=active]:text-violet-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("stripe")}`} />
-                  <CreditCard className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Stripe Connect</span>
-                  <span className="sm:hidden">Stripe</span>
-                </TabsTrigger>
-                <TabsTrigger value="publer" className="data-[state=active]:bg-pink-100 data-[state=active]:text-pink-700 text-xs sm:text-sm relative">
-                  <div className={`w-1.5 h-1.5 rounded-full absolute top-1 right-1 ${getTabStatusDot("publer")}`} />
-                  <Send className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Publer</span>
-                  <span className="sm:hidden">Publer</span>
-                </TabsTrigger>
+              <TabsList className="hidden">
+                <TabsTrigger value="ai" />
+                <TabsTrigger value="client-ai" />
+                <TabsTrigger value="email" />
+                <TabsTrigger value="twilio" />
+                <TabsTrigger value="instagram" />
+                <TabsTrigger value="calendar" />
+                <TabsTrigger value="lead-import" />
+                <TabsTrigger value="video-meeting" />
+                <TabsTrigger value="stripe" />
+                <TabsTrigger value="publer" />
               </TabsList>
 
               {/* AI Tab Content */}
