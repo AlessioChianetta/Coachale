@@ -50,7 +50,7 @@ export default function ClientExercises() {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [layoutView, setLayoutView] = useState<"grid" | "kanban" | "timeline">("kanban");
+  const [layoutView, setLayoutView] = useState<"grid" | "kanban" | "timeline">("timeline");
   const [exerciseMode, setExerciseMode] = useState<"all" | "consulenza" | "corso">("all");
   const [isTourActive, setIsTourActive] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
