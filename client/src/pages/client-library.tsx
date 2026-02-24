@@ -265,7 +265,6 @@ export default function ClientLibrary() {
   const categoryFromUrl = urlParams.get('category');
 
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryFromUrl || "all");
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("all");
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -311,14 +310,12 @@ export default function ClientLibrary() {
   const { data: documents = [] } = useQuery({
     queryKey: ["/api/library/documents", {
       categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
-      subcategoryId: selectedSubcategory !== "all" ? selectedSubcategory : undefined,
       level: selectedLevel !== "all" ? selectedLevel : undefined,
       search: searchTerm
     }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory !== "all") params.append("categoryId", selectedCategory);
-      if (selectedSubcategory !== "all") params.append("subcategoryId", selectedSubcategory);
       if (selectedLevel !== "all") params.append("level", selectedLevel);
       if (searchTerm && !["quick", "new", "popular"].includes(searchTerm)) {
         params.append("search", searchTerm);
@@ -331,17 +328,6 @@ export default function ClientLibrary() {
       return response.json();
     },
   });
-
-
-  // Auto-select first subcategory when category changes
-  useEffect(() => {
-    if (selectedCategory !== "all" && subcategories.length > 0) {
-      const categorySubcategories = subcategories.filter((sub: any) => sub.categoryId === selectedCategory);
-      if (categorySubcategories.length > 0 && selectedSubcategory === "all") {
-        setSelectedSubcategory(categorySubcategories[0].id);
-      }
-    }
-  }, [selectedCategory, subcategories]);
 
   // Filter documents based on search term shortcuts
   const filteredDocuments = documents.filter((doc: any) => {
@@ -545,7 +531,6 @@ export default function ClientLibrary() {
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    setSelectedSubcategory("all"); // Reset subcategory when changing category
   };
 
   const startCategoriesTour = () => {
@@ -897,7 +882,7 @@ export default function ClientLibrary() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => { setSelectedCategory("all"); setSelectedSubcategory("all"); setActiveDocumentId(null); }}
+                        onClick={() => { setSelectedCategory("all"); setActiveDocumentId(null); }}
                         className="gap-1.5 text-muted-foreground hover:text-foreground"
                       >
                         <ArrowLeft className="w-4 h-4" />
