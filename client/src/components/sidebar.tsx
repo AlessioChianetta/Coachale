@@ -107,6 +107,26 @@ interface SidebarCategoryExtended extends SidebarCategory {
   alwaysVisible?: boolean;
 }
 
+const ICON_BADGE: Record<string, { text: string; bg: string; bgActive: string }> = {
+  violet:  { text: "text-violet-500",  bg: "bg-violet-500/15",  bgActive: "bg-violet-500"  },
+  fuchsia: { text: "text-fuchsia-500", bg: "bg-fuchsia-500/15", bgActive: "bg-fuchsia-500" },
+  cyan:    { text: "text-cyan-500",    bg: "bg-cyan-500/15",    bgActive: "bg-cyan-500"    },
+  blue:    { text: "text-blue-500",    bg: "bg-blue-500/15",    bgActive: "bg-blue-500"    },
+  emerald: { text: "text-emerald-500", bg: "bg-emerald-500/15", bgActive: "bg-emerald-500" },
+  amber:   { text: "text-amber-500",   bg: "bg-amber-500/15",   bgActive: "bg-amber-500"   },
+  rose:    { text: "text-rose-500",    bg: "bg-rose-500/15",    bgActive: "bg-rose-500"    },
+  teal:    { text: "text-teal-500",    bg: "bg-teal-500/15",    bgActive: "bg-teal-500"    },
+  red:     { text: "text-red-500",     bg: "bg-red-500/15",     bgActive: "bg-red-500"     },
+  green:   { text: "text-green-500",   bg: "bg-green-500/15",   bgActive: "bg-green-500"   },
+  sky:     { text: "text-sky-500",     bg: "bg-sky-500/15",     bgActive: "bg-sky-500"     },
+  orange:  { text: "text-orange-500",  bg: "bg-orange-500/15",  bgActive: "bg-orange-500"  },
+  purple:  { text: "text-purple-500",  bg: "bg-purple-500/15",  bgActive: "bg-purple-500"  },
+  indigo:  { text: "text-indigo-500",  bg: "bg-indigo-500/15",  bgActive: "bg-indigo-500"  },
+  yellow:  { text: "text-yellow-500",  bg: "bg-yellow-500/15",  bgActive: "bg-yellow-500"  },
+  pink:    { text: "text-pink-500",    bg: "bg-pink-500/15",    bgActive: "bg-pink-500"    },
+  slate:   { text: "text-slate-400",   bg: "bg-slate-500/15",   bgActive: "bg-slate-500"   },
+};
+
 const consultantCategories: SidebarCategoryExtended[] = [
   {
     name: "PRINCIPALE",
@@ -114,9 +134,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: true,
     alwaysVisible: true,
     items: [
-      { name: "Dashboard", href: "/consultant", icon: Home },
-      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles },
-      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap },
+      { name: "Dashboard", href: "/consultant", icon: Home, color: "violet" },
+      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "fuchsia" },
+      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "cyan" },
     ]
   },
   {
@@ -124,11 +144,12 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Users,
     defaultExpanded: true,
     items: [
-      { name: "Clienti", href: "/consultant/clients", icon: Users },
-      { name: "Calendario", href: "/consultant/appointments", icon: Calendar },
-      { name: "Task", href: "/consultant/tasks", icon: ListTodo },
-      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles },
-      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3 },
+      { name: "Clienti", href: "/consultant/clients", icon: Users, color: "blue" },
+      { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "emerald" },
+      { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "amber" },
+      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "rose" },
+      { name: "Analisi Dati", href: "/consultant/client-data-analysis", icon: BarChart3, color: "teal" },
+      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "violet" },
     ]
   },
   {
@@ -136,11 +157,11 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Megaphone,
     defaultExpanded: true,
     items: [
-      { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target },
-      { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: MessageSquare },
-      { name: "Email Hub", href: "/consultant/email-hub", icon: Mail },
-      { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone },
-      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot },
+      { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "red" },
+      { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: MessageSquare, color: "green" },
+      { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "sky" },
+      { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "orange" },
+      { name: "AI Autonomo", href: "/consultant/ai-autonomy", icon: Bot, color: "purple" },
     ]
   },
   {
@@ -148,12 +169,12 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: PenLine,
     defaultExpanded: false,
     items: [
-      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid },
-      { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb },
-      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine },
-      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar },
-      { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette },
-      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap },
+      { name: "Dashboard", href: "/consultant/content-studio", icon: LayoutGrid, color: "indigo" },
+      { name: "Idee", href: "/consultant/content-studio/ideas", icon: Lightbulb, color: "yellow" },
+      { name: "Contenuti", href: "/consultant/content-studio/posts", icon: PenLine, color: "purple" },
+      { name: "Calendario", href: "/consultant/content-studio/calendar", icon: Calendar, color: "emerald" },
+      { name: "Brand Assets", href: "/consultant/content-studio/brand", icon: Palette, color: "pink" },
+      { name: "AdVisage AI", href: "/consultant/content-studio/advisage", icon: Zap, color: "orange" },
     ]
   },
   {
@@ -161,10 +182,10 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: GraduationCap,
     defaultExpanded: false,
     items: [
-      { name: "Università", href: "/consultant/university", icon: GraduationCap },
-      { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList },
-      { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen },
-      { name: "Corsi", href: "/consultant/library", icon: BookOpen },
+      { name: "Università", href: "/consultant/university", icon: GraduationCap, color: "amber" },
+      { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList, color: "cyan" },
+      { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen, color: "teal" },
+      { name: "Corsi", href: "/consultant/library", icon: BookOpen, color: "blue" },
     ]
   },
   {
@@ -172,8 +193,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Database,
     defaultExpanded: false,
     items: [
-      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText },
-      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug },
+      { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "violet" },
+      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "cyan" },
+      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign, color: "emerald" },
     ]
   },
   {
@@ -181,8 +203,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Settings,
     defaultExpanded: false,
     items: [
-      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key },
-      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard },
+      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "slate" },
+      { name: "Automazioni Pagamento", href: "/consultant/payment-automations", icon: CreditCard, color: "emerald" },
     ]
   },
   {
@@ -190,19 +212,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: BookOpen,
     defaultExpanded: false,
     items: [
-      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen },
+      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen, color: "orange" },
     ]
   },
-  {
-    name: "AI AVANZATO",
-    icon: Sparkles,
-    defaultExpanded: false,
-    items: [
-      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles },
-      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch },
-      { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign },
-    ]
-  }
 ];
 
 // Flatten consultant categories for backward compatibility (client views, collapsed views)
@@ -712,13 +724,16 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                 {!isAlwaysVisible && (
                   <button
                     onClick={() => handleCategoryToggle(category.name)}
-                    className="w-full flex items-center justify-between px-2 py-1 mt-4 mb-1 group rounded-md transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1 mt-5 mb-1 group rounded-md transition-colors"
                   >
-                    <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60">
-                      {category.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-px w-3 bg-muted-foreground/25" />
+                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/55">
+                        {category.name}
+                      </span>
+                    </div>
                     <ChevronRight className={cn(
-                      "h-2.5 w-2.5 text-muted-foreground/40 transition-transform duration-200",
+                      "h-2.5 w-2.5 text-muted-foreground/35 transition-transform duration-200",
                       isCategoryExpanded && "rotate-90"
                     )} />
                   </button>
@@ -735,29 +750,30 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                       const isAIAutonomo = item.name === "AI Autonomo";
                       const showPulse = isAIAutonomo && isAnalysisActive;
                       const showBadge = isAIAutonomo && newResultsCount > 0;
+                      const badge = ICON_BADGE[item.color || ""] || ICON_BADGE.slate;
 
                       return (
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group flex items-center gap-2.5 px-3 py-3 text-sm rounded-lg transition-all duration-200 cursor-pointer border-l-[3px] min-h-[44px]",
+                              "group flex items-center gap-2.5 px-2 py-2 rounded-xl transition-all duration-200 cursor-pointer min-h-[40px]",
                               isActive
-                                ? "border-cyan-500 bg-primary/8 dark:bg-cyan-950/30 text-foreground shadow-sm"
-                                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                                ? "bg-foreground/[0.06] dark:bg-white/[0.06] text-foreground"
+                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onMouseEnter={() => preloadOnHover(item.href)}
                             onMouseLeave={() => cancelHoverPreload(item.href)}
                             onClick={() => { if (isAIAutonomo) clearNewResults(); handleLinkClick(); }}
                           >
-                            <div className="relative flex-shrink-0">
+                            {/* Colored icon badge */}
+                            <div className={cn(
+                              "relative w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200",
+                              showPulse ? "bg-emerald-500" : isActive ? badge.bgActive : badge.bg
+                            )}>
                               <Icon className={cn(
-                                "h-4 w-4 transition-colors duration-200",
-                                showPulse
-                                  ? "text-emerald-500 dark:text-emerald-400"
-                                  : isActive
-                                    ? "text-cyan-600 dark:text-cyan-400"
-                                    : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                                "h-3.5 w-3.5 transition-colors duration-200",
+                                showPulse || isActive ? "text-white" : badge.text
                               )} />
                               {showPulse && (
                                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
@@ -769,8 +785,8 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
 
                             <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "text-[13.65px] truncate",
-                                isActive ? "font-semibold" : "font-medium"
+                                "text-[13px] truncate",
+                                isActive ? "font-semibold text-foreground" : "font-medium"
                               )}>
                                 {item.name}
                               </span>
@@ -779,7 +795,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
                                   {newResultsCount}
                                 </span>
                               ) : item.badge ? (
-                                <span className="ml-1.5 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                                   {item.badge}
                                 </span>
                               ) : null}
@@ -1143,12 +1159,15 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externa
       {!isCollapsed && (
       <div className="px-2 py-3 mt-auto">
         <div className="flex items-center gap-2.5 px-3 py-3 rounded-2xl bg-card border border-border/60 shadow-sm hover:shadow-md transition-all duration-200">
-          <Avatar className="w-8 h-8 border-2 border-border shadow-sm flex-shrink-0">
-            <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
-            <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative flex-shrink-0">
+            <Avatar className="w-8 h-8 border-2 border-border shadow-sm">
+              <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
+              <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white font-bold text-xs">
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate leading-tight">
               {user?.firstName} {user?.lastName}
