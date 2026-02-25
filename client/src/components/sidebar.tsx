@@ -53,6 +53,8 @@ import {
   LayoutGrid,
   PenLine,
   CreditCard,
+  Search,
+  MapPin,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -158,6 +160,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: true,
     items: [
       { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "red" },
+      { name: "Lead Scraper", href: "/consultant/lead-scraper", icon: MapPin, color: "rose" },
       { name: "I tuoi dipendenti", href: "/consultant/whatsapp", icon: MessageSquare, color: "green" },
       { name: "Email Hub", href: "/consultant/email-hub", icon: Mail, color: "sky" },
       { name: "Chiamate Voice", href: "/consultant/voice-calls", icon: Phone, color: "orange" },
@@ -195,6 +198,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "Memoria & Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "violet" },
       { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "cyan" },
+      { name: "Skill Store", href: "/consultant/skills-store", icon: Sparkles, color: "fuchsia" },
       { name: "Costi AI", href: "/consultant/ai-usage", icon: DollarSign, color: "emerald" },
     ]
   },

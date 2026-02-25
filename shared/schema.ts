@@ -10591,3 +10591,85 @@ export const alessiaClientObjectives = pgTable("alessia_client_objectives", {
 
 export type AlessiaClientObjective = typeof alessiaClientObjectives.$inferSelect;
 export type InsertAlessiaClientObjective = typeof alessiaClientObjectives.$inferInsert;
+
+export const aiSkillsStore = pgTable("ai_skills_store", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  skillId: text("skill_id").notNull(),
+  name: text("name").notNull(),
+  displayTitle: text("display_title"),
+  description: text("description"),
+  source: text("source").notNull().default("custom"),
+  category: text("category"),
+  content: text("content"),
+  metadata: jsonb("metadata").$type<{
+    version?: string;
+    author?: string;
+    repoUrl?: string;
+    fileList?: string[];
+  }>().default(sql`'{}'::jsonb`),
+  isActive: boolean("is_active").default(true).notNull(),
+  consultantId: varchar("consultant_id"),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
+export type AiSkillStore = typeof aiSkillsStore.$inferSelect;
+export type InsertAiSkillStore = typeof aiSkillsStore.$inferInsert;
+
+export const aiSkillsAssignments = pgTable("ai_skills_assignments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  skillStoreId: uuid("skill_store_id").notNull().references(() => aiSkillsStore.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull(),
+  agentId: varchar("agent_id"),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+});
+
+export type AiSkillAssignment = typeof aiSkillsAssignments.$inferSelect;
+export type InsertAiSkillAssignment = typeof aiSkillsAssignments.$inferInsert;
+
+export const leadScraperSearches = pgTable("lead_scraper_searches", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  query: text("query").notNull(),
+  location: text("location"),
+  status: text("status").notNull().default("pending"),
+  resultsCount: integer("results_count").default(0),
+  metadata: jsonb("metadata").$type<{
+    params?: Record<string, any>;
+    stats?: Record<string, any>;
+  }>().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+});
+
+export type LeadScraperSearch = typeof leadScraperSearches.$inferSelect;
+export type InsertLeadScraperSearch = typeof leadScraperSearches.$inferInsert;
+
+export const leadScraperResults = pgTable("lead_scraper_results", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  searchId: uuid("search_id").notNull().references(() => leadScraperSearches.id, { onDelete: "cascade" }),
+  businessName: text("business_name"),
+  address: text("address"),
+  phone: text("phone"),
+  website: text("website"),
+  email: text("email"),
+  rating: real("rating"),
+  reviewsCount: integer("reviews_count"),
+  category: text("category"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  hours: jsonb("hours"),
+  websiteData: jsonb("website_data").$type<{
+    emails?: string[];
+    phones?: string[];
+    socialLinks?: Record<string, string>;
+    description?: string;
+    services?: string[];
+  }>().default(sql`'{}'::jsonb`),
+  scrapeStatus: text("scrape_status").default("pending"),
+  source: text("source").default("google_maps"),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+});
+
+export type LeadScraperResult = typeof leadScraperResults.$inferSelect;
+export type InsertLeadScraperResult = typeof leadScraperResults.$inferInsert;

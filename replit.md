@@ -51,3 +51,10 @@ The application features a modern UI/UX built with React 18, TypeScript, Vite, T
 *   **FreeSWITCH**: Voice telephony integration.
 *   **Google Calendar API**: Appointment scheduling.
 *   **Publer**: Social media scheduling and publishing.
+*   **SerpAPI**: Google Maps business data extraction for Lead Scraper (requires `SERPAPI_KEY`).
+*   **Firecrawl**: Website scraping for email/contact extraction in Lead Scraper (requires `FIRECRAWL_API_KEY`).
+
+# Skill Store & Lead Scraper (New Features)
+
+*   **Skill Store** (`/consultant/skills-store`): Marketplace for importing AI skills from GitHub repositories (`anthropics/skills` official, `travisvn/awesome-claude-skills` community) plus custom skill creation. Skills are markdown instructions injected into Gemini AI system prompt (max 5 active, 3000 chars each). DB tables: `ai_skills_store`, `ai_skills_assignments`. Backend: `server/routes/skills-store-router.ts`. Frontend: `client/src/pages/consultant-skills-store.tsx` + `client/src/components/skills-store/`. Sidebar: under "CERVELLO AI".
+*   **Lead Scraper** (`/consultant/lead-scraper`): Google Maps business search via SerpAPI + website enrichment via Firecrawl. Extracts emails, phones, social links, services. Supports CSV export, search history, per-result re-scraping. DB tables: `lead_scraper_searches`, `lead_scraper_results`. Backend: `server/routes/lead-scraper-router.ts`, `server/services/lead-scraper-service.ts`. Frontend: `client/src/pages/consultant-lead-scraper.tsx`. Sidebar: under "COMUNICAZIONE".

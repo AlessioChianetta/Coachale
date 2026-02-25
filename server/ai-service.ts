@@ -5,7 +5,7 @@
 import { performance } from 'perf_hooks';
 import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
-import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences, fileSearchDocuments } from "../shared/schema";
+import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig, consultantWhatsappConfig, aiAssistantPreferences, fileSearchDocuments, aiSkillsStore, aiSkillsAssignments } from "../shared/schema";
 import { decrypt } from "./encryption";
 import { fetchSystemDocumentsForClientAssistant } from "./services/system-prompt-documents-service";
 import { eq, and, desc, sql, or } from "drizzle-orm";
@@ -1209,6 +1209,34 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       }
     } catch (sysDocErr) {
       console.error(`⚠️ [AI-SERVICE] Error fetching system docs:`, sysDocErr);
+    }
+
+    try {
+      const activeSkills = await db
+        .select({ content: aiSkillsStore.content, name: aiSkillsStore.name })
+        .from(aiSkillsAssignments)
+        .innerJoin(aiSkillsStore, eq(aiSkillsAssignments.skillStoreId, aiSkillsStore.id))
+        .where(
+          and(
+            eq(aiSkillsAssignments.userId, userId),
+            eq(aiSkillsAssignments.isEnabled, true),
+            eq(aiSkillsStore.isActive, true)
+          )
+        )
+        .limit(5);
+
+      if (activeSkills.length > 0) {
+        const skillsContext = activeSkills
+          .filter(s => s.content)
+          .map(s => `### Skill: ${s.name}\n${s.content!.substring(0, 3000)}`)
+          .join('\n\n');
+        if (skillsContext) {
+          systemPrompt += `\n\n## Active Skills (follow these instructions when relevant)\n${skillsContext}`;
+          console.log(`🎯 [AI-SERVICE] Injected ${activeSkills.length} active skills into prompt`);
+        }
+      }
+    } catch (skillErr) {
+      console.error(`⚠️ [AI-SERVICE] Error loading active skills:`, skillErr);
     }
 
     // Calculate detailed token breakdown by section
@@ -4008,6 +4036,35 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     if (conversationMemoryContext) {
       systemPrompt = systemPrompt + '\n\n' + conversationMemoryContext;
     }
+
+    try {
+      const activeSkills = await db
+        .select({ content: aiSkillsStore.content, name: aiSkillsStore.name })
+        .from(aiSkillsAssignments)
+        .innerJoin(aiSkillsStore, eq(aiSkillsAssignments.skillStoreId, aiSkillsStore.id))
+        .where(
+          and(
+            eq(aiSkillsAssignments.userId, consultantId),
+            eq(aiSkillsAssignments.isEnabled, true),
+            eq(aiSkillsStore.isActive, true)
+          )
+        )
+        .limit(5);
+
+      if (activeSkills.length > 0) {
+        const skillsContext = activeSkills
+          .filter(s => s.content)
+          .map(s => `### Skill: ${s.name}\n${s.content!.substring(0, 3000)}`)
+          .join('\n\n');
+        if (skillsContext) {
+          systemPrompt += `\n\n## Active Skills (follow these instructions when relevant)\n${skillsContext}`;
+          console.log(`🎯 [CONSULTANT-AI] Injected ${activeSkills.length} active skills into prompt`);
+        }
+      }
+    } catch (skillErr) {
+      console.error(`⚠️ [CONSULTANT-AI] Error loading active skills:`, skillErr);
+    }
+
     timings.promptBuildEnd = performance.now();
     promptBuildTime = Math.round(timings.promptBuildEnd - timings.promptBuildStart);
     console.log(`⏱️  [TIMING] Consultant prompt building: ${promptBuildTime}ms`);
