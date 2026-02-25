@@ -1019,10 +1019,10 @@ function SettingsTab({
     queryFn: async () => {
       const res = await fetch("/api/whatsapp/config/proactive", { headers: getAuthHeaders() });
       const data = await res.json();
-      return (data.configs || []).filter((c: any) => c.isActive && c.configType === "proactive_setter").map((c: any) => ({
+      return (data.configs || []).map((c: any) => ({
         id: c.id,
-        name: c.name || c.agentName || "Dipendente WA",
-        phoneNumber: c.phoneNumber || "",
+        name: c.agentName || "Dipendente WA",
+        phoneNumber: c.twilioWhatsappNumber || "",
       }));
     },
   });
@@ -2561,7 +2561,7 @@ function SettingsTab({
               const hasTemplates = (settings.whatsapp_template_ids || []).length > 0;
               const readinessItems = [
                 { ok: hasSalesCtx, label: "Sales Context compilato", desc: "Serve per capire cosa vendere ai lead", action: () => navigate("/consultant/lead-scraper"), actionLabel: "Compila Sales Context" },
-                { ok: hasWaConfig, label: "Dipendente WhatsApp (proactive_setter) configurato", desc: "Serve per inviare WhatsApp ai lead", action: () => navigate("/consultant/whatsapp"), actionLabel: "Configura WhatsApp" },
+                { ok: hasWaConfig, label: "Dipendente WhatsApp proattivo configurato", desc: "Serve un agente WA proattivo con Twilio configurato", action: () => navigate("/consultant/whatsapp"), actionLabel: "Configura WhatsApp" },
                 { ok: selectedWa || !hasWaConfig, label: "Dipendente WA selezionato per outreach", desc: "Seleziona quale dipendente WA usare qui sotto", action: undefined, actionLabel: "" },
                 { ok: hasTemplates, label: "Template WhatsApp selezionati", desc: "Seleziona almeno un template approvato nella sezione sopra", action: undefined, actionLabel: "" },
               ];
@@ -2700,7 +2700,7 @@ function SettingsTab({
                         </SelectContent>
                       </Select>
                       {proactiveWaConfigs.length === 0 && (
-                        <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA di tipo "proactive_setter" trovato</p>
+                        <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>
                       )}
                     </div>
 

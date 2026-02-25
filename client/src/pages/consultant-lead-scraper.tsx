@@ -338,10 +338,10 @@ export default function ConsultantLeadScraper() {
       try {
         const res = await fetch("/api/whatsapp/config/proactive", { headers: getAuthHeaders() });
         const data = await res.json();
-        return (data.configs || []).filter((c: any) => c.isActive && c.configType === "proactive_setter").map((c: any) => ({
+        return (data.configs || []).map((c: any) => ({
           id: c.id,
-          name: c.name || c.agentName || "Dipendente WA",
-          phoneNumber: c.phoneNumber || "",
+          name: c.agentName || "Dipendente WA",
+          phoneNumber: c.twilioWhatsappNumber || "",
         }));
       } catch { return []; }
     },
@@ -369,8 +369,8 @@ export default function ConsultantLeadScraper() {
   const updateOutreachConfig = async (key: string, value: any) => {
     const newConfig = { ...outreachConfig, [key]: value };
     try {
-      await fetch("/api/ai/autonomy/settings", {
-        method: "PUT",
+      await fetch("/api/ai-autonomy/outreach-config", {
+        method: "PATCH",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ outreach_config: newConfig }),
       });
@@ -1511,7 +1511,7 @@ export default function ConsultantLeadScraper() {
                               ))}
                             </SelectContent>
                           </Select>
-                          {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA di tipo "proactive_setter" trovato</p>}
+                          {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
                         </div>
                         <div>
                           <Label className="text-sm font-medium mb-2 block">Template voce per outreach</Label>

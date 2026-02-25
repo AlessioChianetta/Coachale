@@ -127,6 +127,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const whatsappTemplateIds = JSON.stringify(body.whatsapp_template_ids ?? []);
     const reasoningMode = body.reasoning_mode ?? 'structured';
     const roleReasoningModes = JSON.stringify(body.role_reasoning_modes ?? {});
+    const outreachConfig = body.outreach_config !== undefined ? JSON.stringify(body.outreach_config) : null;
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -135,14 +136,14 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
         role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids,
-        reasoning_mode, role_reasoning_modes
+        reasoning_mode, role_reasoning_modes, outreach_config
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
         ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb,
-        ${reasoningMode}, ${roleReasoningModes}::jsonb
+        ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb)
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -166,6 +167,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         whatsapp_template_ids = EXCLUDED.whatsapp_template_ids,
         reasoning_mode = EXCLUDED.reasoning_mode,
         role_reasoning_modes = EXCLUDED.role_reasoning_modes,
+        outreach_config = CASE WHEN ${outreachConfig}::jsonb IS NOT NULL THEN ${outreachConfig}::jsonb ELSE ai_autonomy_settings.outreach_config END,
         updated_at = now()
       RETURNING *
     `);
@@ -174,6 +176,33 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error upserting settings:", error);
     return res.status(500).json({ error: "Failed to update autonomy settings" });
+  }
+});
+
+router.patch("/outreach-config", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const outreachConfig = JSON.stringify(req.body.outreach_config ?? {});
+    const result = await db.execute(sql`
+      UPDATE ai_autonomy_settings
+      SET outreach_config = ${outreachConfig}::jsonb, updated_at = now()
+      WHERE consultant_id = ${consultantId}
+      RETURNING *
+    `);
+
+    if (result.rows.length === 0) {
+      await db.execute(sql`
+        INSERT INTO ai_autonomy_settings (consultant_id, outreach_config)
+        VALUES (${consultantId}, ${outreachConfig}::jsonb)
+      `);
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error updating outreach config:", error);
+    return res.status(500).json({ error: "Failed to update outreach config" });
   }
 });
 
