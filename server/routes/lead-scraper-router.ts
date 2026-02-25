@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig } from "../../shared/schema";
-import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
+import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
 import { searchGoogleMaps, scrapeWebsiteWithFirecrawl, enrichSearchResults } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
 
@@ -26,7 +26,7 @@ async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecr
   };
 }
 
-router.post("/search", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { query, location, limit = 20, autoScrapeWebsites = true } = req.body;
     const consultantId = req.user?.id;
@@ -111,7 +111,7 @@ router.post("/search", authenticateToken, requireRole(["consultant", "super_admi
   }
 });
 
-router.get("/searches", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.get("/searches", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user?.id;
 
@@ -182,7 +182,7 @@ router.get("/searches/:id/results", authenticateToken, async (req: AuthRequest, 
   }
 });
 
-router.post("/results/:id/scrape-website", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/results/:id/scrape-website", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const scrapeKeys = await getLeadScraperKeys();
     const firecrawlKey = scrapeKeys.firecrawlKey;
@@ -268,7 +268,7 @@ router.get("/searches/:id/export", authenticateToken, async (req: AuthRequest, r
   }
 });
 
-router.delete("/searches/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.delete("/searches/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const [deleted] = await db
       .delete(leadScraperSearches)

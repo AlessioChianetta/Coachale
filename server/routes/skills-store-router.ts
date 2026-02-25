@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { db } from "../db";
 import { eq, and, ilike, or, desc, sql } from "drizzle-orm";
 import { aiSkillsStore, aiSkillsAssignments } from "../../shared/schema";
-import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
+import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
 
 const router = Router();
 
@@ -97,7 +97,7 @@ router.get("/:id", authenticateToken, async (req: AuthRequest, res: Response) =>
   }
 });
 
-router.post("/custom", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/custom", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { name, displayTitle, description, category, content } = req.body;
     const consultantId = req.user?.id;
@@ -125,7 +125,7 @@ router.post("/custom", authenticateToken, requireRole(["consultant", "super_admi
   }
 });
 
-router.put("/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.put("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { name, displayTitle, description, category, content } = req.body;
 
@@ -149,7 +149,7 @@ router.put("/:id", authenticateToken, requireRole(["consultant", "super_admin"])
   }
 });
 
-router.put("/:id/toggle", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.put("/:id/toggle", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const [existing] = await db
       .select({ isActive: aiSkillsStore.isActive })
@@ -170,7 +170,7 @@ router.put("/:id/toggle", authenticateToken, requireRole(["consultant", "super_a
   }
 });
 
-router.delete("/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.delete("/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const [deleted] = await db
       .delete(aiSkillsStore)
@@ -184,7 +184,7 @@ router.delete("/:id", authenticateToken, requireRole(["consultant", "super_admin
   }
 });
 
-router.post("/assign", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/assign", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const { skillStoreId, userId, agentId } = req.body;
 
@@ -219,7 +219,7 @@ router.post("/assign", authenticateToken, requireRole(["consultant", "super_admi
   }
 });
 
-router.delete("/assign/:id", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.delete("/assign/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const [deleted] = await db
       .delete(aiSkillsAssignments)
@@ -279,7 +279,7 @@ function parseSkillMdFrontmatter(content: string): { name?: string; description?
   return { name, description };
 }
 
-router.post("/import/github-official", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/import/github-official", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const skillDirs = await fetchGitHubDirectory("anthropics", "skills", "skills");
     const importedSkills: any[] = [];
@@ -360,7 +360,7 @@ router.post("/import/github-official", authenticateToken, requireRole(["consulta
   }
 });
 
-router.post("/import/github-community", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+router.post("/import/github-community", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const readmeContent = await fetchGitHubFile("travisvn", "awesome-claude-skills", "README.md");
     if (!readmeContent) {
