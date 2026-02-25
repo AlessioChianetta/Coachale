@@ -2607,7 +2607,7 @@ function SettingsTab({
                       <Slider
                         value={[outreachConfig.max_searches_per_day]}
                         min={1}
-                        max={10}
+                        max={20}
                         step={1}
                         onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)}
                       />
@@ -2620,7 +2620,7 @@ function SettingsTab({
                       <Slider
                         value={[outreachConfig.max_calls_per_day]}
                         min={1}
-                        max={20}
+                        max={50}
                         step={1}
                         onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)}
                       />
@@ -2633,7 +2633,7 @@ function SettingsTab({
                       <Slider
                         value={[outreachConfig.max_whatsapp_per_day]}
                         min={1}
-                        max={30}
+                        max={50}
                         step={1}
                         onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)}
                       />
@@ -2646,7 +2646,7 @@ function SettingsTab({
                       <Slider
                         value={[outreachConfig.max_emails_per_day]}
                         min={1}
-                        max={50}
+                        max={100}
                         step={1}
                         onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)}
                       />

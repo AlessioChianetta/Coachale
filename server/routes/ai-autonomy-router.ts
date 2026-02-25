@@ -9,6 +9,7 @@ import { executeStep, type AITaskInfo } from "../ai/ai-task-executor";
 import { logActivity, triggerAutonomousGenerationForConsultant } from "../cron/ai-task-scheduler";
 import { getTemplatesByDirection } from '../voice/voice-templates';
 import { AI_ROLES } from "../cron/ai-autonomous-roles";
+import { getRemainingLimits, getDailyUsage, getOutreachLimits } from "../services/outreach-rate-limiter";
 import { upload } from "../middleware/upload";
 import { addReasoningClient, removeReasoningClient } from "../sse/reasoning-stream";
 import fs from 'fs';
@@ -203,6 +204,237 @@ router.patch("/outreach-config", authenticateToken, requireAnyRole(["consultant"
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error updating outreach config:", error);
     return res.status(500).json({ error: "Failed to update outreach config" });
+  }
+});
+
+router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const [remaining, usage, limits] = await Promise.all([
+      getRemainingLimits(consultantId),
+      getDailyUsage(consultantId),
+      getOutreachLimits(consultantId),
+    ]);
+
+    const statsResult = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE lr.created_at >= CURRENT_DATE) as found_today,
+        COUNT(*) FILTER (WHERE lr.ai_compatibility_score IS NOT NULL AND lr.created_at >= CURRENT_DATE) as scored_today,
+        COUNT(*) FILTER (WHERE lr.lead_status = 'in_outreach') as in_outreach,
+        COUNT(*) FILTER (WHERE lr.lead_status = 'contattato') as contacted,
+        COUNT(*) FILTER (WHERE lr.lead_status = 'in_trattativa') as in_negotiation,
+        COUNT(*) FILTER (WHERE lr.lead_status = 'non_interessato') as not_interested,
+        COUNT(*) FILTER (WHERE lr.lead_status = 'nuovo' AND lr.ai_compatibility_score IS NOT NULL) as qualified_waiting
+      FROM lead_scraper_results lr
+      JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+      WHERE ls.consultant_id = ${consultantId}
+    `);
+    const statsRow = statsResult.rows[0] as any || {};
+
+    const taskCountsResult = await db.execute(sql`
+      SELECT
+        status,
+        preferred_channel,
+        COUNT(*)::int as count
+      FROM ai_scheduled_tasks
+      WHERE consultant_id = ${consultantId}
+        AND task_category = 'prospecting'
+        AND preferred_channel IN ('voice', 'whatsapp', 'email')
+        AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY status, preferred_channel
+    `);
+
+    const channelTasks: Record<string, { tasks: any[]; byStatus: Record<string, number> }> = {
+      voice: { tasks: [], byStatus: {} },
+      whatsapp: { tasks: [], byStatus: {} },
+      email: { tasks: [], byStatus: {} },
+    };
+    for (const row of taskCountsResult.rows as any[]) {
+      if (channelTasks[row.preferred_channel]) {
+        channelTasks[row.preferred_channel].byStatus[row.status] = row.count;
+      }
+    }
+
+    const pendingTasksResult = await db.execute(sql`
+      SELECT
+        ast.id, ast.title, ast.status, ast.preferred_channel, ast.ai_role,
+        ast.scheduled_at, ast.created_at, ast.completed_at, ast.result_summary,
+        ast.additional_context
+      FROM ai_scheduled_tasks ast
+      WHERE ast.consultant_id = ${consultantId}
+        AND ast.task_category = 'prospecting'
+        AND ast.preferred_channel IN ('voice', 'whatsapp', 'email')
+        AND ast.status IN ('waiting_approval', 'scheduled', 'in_progress', 'approved')
+      ORDER BY
+        CASE ast.status
+          WHEN 'in_progress' THEN 0
+          WHEN 'waiting_approval' THEN 1
+          WHEN 'approved' THEN 2
+          WHEN 'scheduled' THEN 3
+        END,
+        ast.scheduled_at ASC
+      LIMIT 30
+    `);
+
+    for (const task of pendingTasksResult.rows as any[]) {
+      const ch = task.preferred_channel;
+      if (channelTasks[ch]) {
+        const ctx = task.additional_context || {};
+        channelTasks[ch].tasks.push({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          channel: ch,
+          aiRole: task.ai_role,
+          scheduledAt: task.scheduled_at,
+          createdAt: task.created_at,
+          completedAt: task.completed_at,
+          resultSummary: task.result_summary,
+          leadName: ctx.business_name || task.title?.replace(/^Outreach (call|whatsapp|email): /i, '') || 'Lead',
+          leadScore: ctx.ai_score || null,
+          leadSector: ctx.sector || null,
+          leadId: ctx.lead_id || null,
+        });
+      }
+    }
+
+    const recentCompletedResult = await db.execute(sql`
+      SELECT
+        ast.id, ast.title, ast.status, ast.preferred_channel, ast.ai_role,
+        ast.completed_at, ast.result_summary, ast.additional_context
+      FROM ai_scheduled_tasks ast
+      WHERE ast.consultant_id = ${consultantId}
+        AND ast.task_category = 'prospecting'
+        AND ast.preferred_channel IN ('voice', 'whatsapp', 'email')
+        AND ast.status IN ('completed', 'failed')
+        AND ast.completed_at >= CURRENT_DATE - INTERVAL '3 days'
+      ORDER BY ast.completed_at DESC
+      LIMIT 15
+    `);
+
+    for (const task of recentCompletedResult.rows as any[]) {
+      const ch = task.preferred_channel;
+      if (channelTasks[ch]) {
+        const ctx = task.additional_context || {};
+        channelTasks[ch].tasks.push({
+          id: task.id,
+          title: task.title,
+          status: task.status,
+          channel: ch,
+          aiRole: task.ai_role,
+          scheduledAt: null,
+          createdAt: null,
+          completedAt: task.completed_at,
+          resultSummary: task.result_summary,
+          leadName: ctx.business_name || task.title?.replace(/^Outreach (call|whatsapp|email): /i, '') || 'Lead',
+          leadScore: ctx.ai_score || null,
+          leadSector: ctx.sector || null,
+          leadId: ctx.lead_id || null,
+        });
+      }
+    }
+
+    const activityResult = await db.execute(sql`
+      SELECT id, type, title, description, metadata, created_at
+      FROM lead_scraper_activities
+      WHERE consultant_id = ${consultantId}
+        AND created_at >= CURRENT_DATE - INTERVAL '3 days'
+      ORDER BY created_at DESC
+      LIMIT 30
+    `);
+
+    return res.json({
+      stats: {
+        foundToday: parseInt(statsRow.found_today || '0'),
+        scoredToday: parseInt(statsRow.scored_today || '0'),
+        inOutreach: parseInt(statsRow.in_outreach || '0'),
+        contacted: parseInt(statsRow.contacted || '0'),
+        inNegotiation: parseInt(statsRow.in_negotiation || '0'),
+        notInterested: parseInt(statsRow.not_interested || '0'),
+        qualifiedWaiting: parseInt(statsRow.qualified_waiting || '0'),
+      },
+      channels: {
+        voice: {
+          used: usage.calls,
+          limit: limits.maxCallsPerDay,
+          remaining: remaining.calls,
+          byStatus: channelTasks.voice.byStatus,
+          tasks: channelTasks.voice.tasks,
+        },
+        whatsapp: {
+          used: usage.whatsapp,
+          limit: limits.maxWhatsappPerDay,
+          remaining: remaining.whatsapp,
+          byStatus: channelTasks.whatsapp.byStatus,
+          tasks: channelTasks.whatsapp.tasks,
+        },
+        email: {
+          used: usage.email,
+          limit: limits.maxEmailsPerDay,
+          remaining: remaining.email,
+          byStatus: channelTasks.email.byStatus,
+          tasks: channelTasks.email.tasks,
+        },
+      },
+      searches: {
+        used: usage.searches,
+        limit: limits.maxSearchesPerDay,
+        remaining: remaining.searches,
+      },
+      recentActivity: (activityResult.rows as any[]).map(a => ({
+        id: a.id,
+        type: a.type,
+        title: a.title,
+        description: a.description,
+        metadata: a.metadata,
+        createdAt: a.created_at,
+      })),
+    });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error fetching hunter pipeline:", error);
+    return res.status(500).json({ error: "Failed to fetch hunter pipeline" });
+  }
+});
+
+router.post("/tasks/:id/reject", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { id } = req.params;
+
+    const taskResult = await db.execute(sql`
+      SELECT additional_context FROM ai_scheduled_tasks
+      WHERE id = ${id} AND consultant_id = ${consultantId} AND status = 'waiting_approval'
+    `);
+
+    if (taskResult.rows.length === 0) {
+      return res.status(400).json({ error: "Task non trovato o non in attesa di approvazione" });
+    }
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'cancelled', updated_at = NOW(),
+          result_summary = 'Rifiutato manualmente dal consulente'
+      WHERE id = ${id} AND consultant_id = ${consultantId}
+    `);
+
+    const ctx = (taskResult.rows[0] as any)?.additional_context;
+    if (ctx?.lead_id) {
+      await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_status = 'nuovo', outreach_task_id = NULL,
+            lead_next_action = NULL, lead_next_action_date = NULL
+        WHERE id = ${ctx.lead_id}
+      `);
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[AI-AUTONOMY] Error rejecting task:", error);
+    return res.status(500).json({ error: "Failed to reject task" });
   }
 });
 

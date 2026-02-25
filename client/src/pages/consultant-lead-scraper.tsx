@@ -82,6 +82,11 @@ import {
   Cog,
   ArrowRight,
   Play,
+  Clock,
+  Check,
+  PhoneCall,
+  MessageCircle,
+  MailIcon,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getAuthHeaders } from "@/lib/auth";
@@ -320,6 +325,63 @@ export default function ConsultantLeadScraper() {
     },
     refetchInterval: 30000,
   });
+
+  interface HunterPipelineData {
+    stats: { foundToday: number; scoredToday: number; inOutreach: number; contacted: number; inNegotiation: number; notInterested: number; qualifiedWaiting: number };
+    channels: Record<string, { used: number; limit: number; remaining: number; byStatus: Record<string, number>; tasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] }>;
+    searches: { used: number; limit: number; remaining: number };
+    recentActivity: { id: string; type: string; title: string; description: string; metadata: any; createdAt: string }[];
+  }
+
+  const { data: hunterPipeline, refetch: refetchPipeline } = useQuery<HunterPipelineData | null>({
+    queryKey: ["/api/ai-autonomy/hunter-pipeline"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/ai-autonomy/hunter-pipeline", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    },
+    enabled: activeTab === "hunter",
+    refetchInterval: activeTab === "hunter" ? 15000 : false,
+  });
+
+  const [lastPipelineRefresh, setLastPipelineRefresh] = useState<Date>(new Date());
+  useEffect(() => {
+    if (hunterPipeline) setLastPipelineRefresh(new Date());
+  }, [hunterPipeline]);
+
+  const approveTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/approve`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to approve");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Task approvato", description: "Il task verrà eseguito a breve" });
+      refetchPipeline();
+    },
+  });
+
+  const rejectTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/reject`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to reject");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Task rifiutato", description: "Il lead è stato rimesso in coda" });
+      refetchPipeline();
+    },
+  });
+
+  const [hunterConfigOpen, setHunterConfigOpen] = useState(false);
 
   const { data: autonomySettings, refetch: refetchAutonomy } = useQuery<any>({
     queryKey: ["/api/ai-autonomy/settings-for-hunter"],
@@ -1401,95 +1463,283 @@ export default function ConsultantLeadScraper() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="hunter" className="mt-4 space-y-6">
+          <TabsContent value="hunter" className="mt-4 space-y-4">
+            {/* SEZIONE 1 — Header operativo */}
             <Card className="rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm overflow-hidden">
               <div className="h-1 bg-gradient-to-r from-teal-400 to-cyan-500" />
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Crosshair className="h-5 w-5 text-teal-600" />
-                    Outreach Automatico (Hunter)
-                  </CardTitle>
-                  <Switch
-                    checked={outreachConfig.enabled}
-                    onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
-                  />
+              <CardContent className="pt-4 pb-3 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className={cn("w-3 h-3 rounded-full shrink-0", outreachConfig.enabled ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
+                    <span className="text-base font-bold">Centro di Controllo Hunter</span>
+                    <Switch
+                      checked={outreachConfig.enabled}
+                      onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5 h-8"
+                      onClick={handleTriggerHunter}
+                      disabled={triggeringHunter || !outreachConfig.enabled}
+                    >
+                      {triggeringHunter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                      {triggeringHunter ? "In corso..." : "Avvia Hunter"}
+                    </Button>
+                    {hunterTriggerResult && (
+                      <span className={cn("text-xs", hunterTriggerResult.success ? "text-emerald-600" : "text-red-500")}>
+                        {hunterTriggerResult.success ? `${hunterTriggerResult.tasks} task` : (hunterTriggerResult.error || "Errore")}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <CardDescription>Hunter trova lead automaticamente e li assegna ad Alessia, Stella e Millie per il primo contatto</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {(() => {
-                  const hasSalesCtx = !!(savedSalesContext?.servicesOffered);
-                  const hasWaConfig = proactiveWaConfigs.length > 0;
-                  const selectedWa = !!outreachConfig.whatsapp_config_id;
-                  const readinessItems = [
-                    { ok: hasSalesCtx, label: "Sales Context compilato", fix: "Compilalo nella tab Sales Agent", action: () => setActiveTab("agent") },
-                    { ok: outreachConfig.enabled, label: "Outreach attivato", fix: "Attiva il toggle qui sopra", action: undefined },
-                    { ok: hasWaConfig, label: "Dipendente WhatsApp configurato", fix: "Configura un dipendente WA", action: () => setLocation("/consultant/whatsapp") },
-                    { ok: selectedWa || !hasWaConfig, label: "Dipendente WA selezionato per outreach", fix: "Selezionalo qui sotto", action: undefined },
-                  ];
-                  const okCount = readinessItems.filter(c => c.ok).length;
-                  const allOk = okCount === readinessItems.length;
-                  return (
-                    <div className={cn("rounded-xl border p-4", allOk ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/10" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10")}>
-                      <div className="flex items-center gap-2 mb-2">
-                        {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
-                        <span className="text-sm font-semibold">{allOk ? "Hunter è pronto" : `Configurazione: ${okCount}/${readinessItems.length}`}</span>
+
+                {hunterPipeline && (
+                  <div className="flex items-center gap-3 flex-wrap text-xs font-medium text-muted-foreground bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+                    <span className="flex items-center gap-1"><Search className="h-3 w-3 text-teal-500" />{hunterPipeline.stats.foundToday} trovati</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-emerald-500" />{hunterPipeline.stats.scoredToday} qualificati</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><Send className="h-3 w-3 text-blue-500" />{hunterPipeline.stats.inOutreach} in outreach</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-green-500" />{hunterPipeline.stats.contacted} contattati</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3 text-amber-500" />{hunterPipeline.stats.qualifiedWaiting} in attesa</span>
+                    <span className="ml-auto text-[10px] text-gray-400">
+                      Agg: {lastPipelineRefresh.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* SEZIONE 2 — Smistamento canali (3 colonne) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { key: "voice", name: "Alessia", role: "Chiamate", icon: PhoneCall, borderColor: "border-green-300 dark:border-green-700", headerBg: "bg-green-50 dark:bg-green-950/20", badgeColor: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400", avatar: "bg-gradient-to-br from-green-400 to-emerald-600" },
+                { key: "whatsapp", name: "Stella", role: "WhatsApp", icon: MessageCircle, borderColor: "border-emerald-300 dark:border-emerald-700", headerBg: "bg-emerald-50 dark:bg-emerald-950/20", badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400", avatar: "bg-gradient-to-br from-emerald-400 to-teal-600" },
+                { key: "email", name: "Millie", role: "Email", icon: MailIcon, borderColor: "border-blue-300 dark:border-blue-700", headerBg: "bg-blue-50 dark:bg-blue-950/20", badgeColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400", avatar: "bg-gradient-to-br from-blue-400 to-indigo-600" },
+              ].map((ch) => {
+                const channelData = hunterPipeline?.channels?.[ch.key];
+                const used = channelData?.used ?? 0;
+                const limit = channelData?.limit ?? 0;
+                const tasks = channelData?.tasks ?? [];
+                const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                const Icon = ch.icon;
+
+                return (
+                  <Card key={ch.key} className={cn("rounded-xl border-2 shadow-sm overflow-hidden", ch.borderColor)}>
+                    <div className={cn("px-4 py-3 flex items-center gap-3", ch.headerBg)}>
+                      <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm", ch.avatar)}>
+                        {ch.name[0]}
                       </div>
-                      <div className="space-y-1.5">
-                        {readinessItems.map((item, i) => (
-                          <div key={i} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 text-xs">
-                              {item.ok ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
-                              <span className={item.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{item.label}</span>
-                            </div>
-                            {!item.ok && item.action && (
-                              <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600" onClick={item.action}>
-                                {item.fix} <ArrowRight className="h-3 w-3 ml-1" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold">{ch.name}</span>
+                          <Badge className={cn("text-[10px] px-1.5 h-4", ch.badgeColor)}>{ch.role}</Badge>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs font-medium text-muted-foreground">{used}/{limit} oggi</span>
+                          <Progress value={pct} className="h-1.5 flex-1" />
+                        </div>
                       </div>
                     </div>
-                  );
-                })()}
+                    <CardContent className="p-0">
+                      {tasks.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                          Nessun task in coda
+                        </div>
+                      ) : (
+                        <div className="max-h-[280px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                          <AnimatePresence initial={false}>
+                            {tasks.slice(0, 8).map((task) => (
+                              <motion.div
+                                key={task.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="px-3 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/30"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-sm font-medium truncate">{task.leadName}</span>
+                                      {task.leadScore != null && (
+                                        <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">{task.leadScore}</Badge>
+                                      )}
+                                    </div>
+                                    {task.leadSector && (
+                                      <span className="text-[10px] text-muted-foreground">{task.leadSector}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {(() => {
+                                      const statusMap: Record<string, { label: string; cls: string }> = {
+                                        waiting_approval: { label: "In attesa", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+                                        scheduled: { label: "Schedulato", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" },
+                                        in_progress: { label: "In corso", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
+                                        approved: { label: "Approvato", cls: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400" },
+                                        completed: { label: "Completato", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" },
+                                        failed: { label: "Fallito", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
+                                      };
+                                      const s = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
+                                      return <Badge className={cn("text-[9px] px-1.5 h-4", s.cls)}>{s.label}</Badge>;
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {task.scheduledAt ? timeAgo(task.scheduledAt) : task.completedAt ? timeAgo(task.completedAt) : task.createdAt ? timeAgo(task.createdAt) : ""}
+                                  </span>
+                                  {task.status === "waiting_approval" && (
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                        onClick={() => approveTaskMutation.mutate(task.id)}
+                                        disabled={approveTaskMutation.isPending}
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                        onClick={() => rejectTaskMutation.mutate(task.id)}
+                                        disabled={rejectTaskMutation.isPending}
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {task.status === "completed" && task.resultSummary && (
+                                    <span className="text-[10px] text-emerald-600 truncate max-w-[140px]">{task.resultSummary}</span>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
 
-                {outreachConfig.enabled && (
-                  <>
-                    <Separator />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SEZIONE 3 — Timeline attività in tempo reale */}
+            <Card className="rounded-2xl border shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-teal-600" />
+                  Timeline Attività
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(!hunterPipeline?.recentActivity || hunterPipeline.recentActivity.length === 0) ? (
+                  <div className="text-center py-6 text-xs text-muted-foreground">
+                    Nessuna attività recente
+                  </div>
+                ) : (
+                  <div className="relative max-h-[320px] overflow-y-auto pr-2">
+                    <div className="absolute left-[15px] top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+                    <div className="space-y-0">
+                      <AnimatePresence initial={false}>
+                        {hunterPipeline.recentActivity.slice(0, 15).map((a) => {
+                          const iconMap: Record<string, { icon: any; color: string }> = {
+                            search: { icon: Search, color: "text-teal-500 bg-teal-50 dark:bg-teal-950/30" },
+                            qualify: { icon: Target, color: "text-amber-500 bg-amber-50 dark:bg-amber-950/30" },
+                            assign: { icon: Send, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
+                            call: { icon: PhoneCall, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
+                            whatsapp: { icon: MessageCircle, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" },
+                            email: { icon: MailIcon, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
+                            completed: { icon: CheckCircle, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
+                            error: { icon: XCircle, color: "text-red-500 bg-red-50 dark:bg-red-950/30" },
+                          };
+                          const match = iconMap[a.type] || iconMap.search;
+                          const AIcon = match.icon;
+                          return (
+                            <motion.div
+                              key={a.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="relative pl-9 py-2"
+                            >
+                              <div className={cn("absolute left-[9px] top-2.5 w-[13px] h-[13px] rounded-full flex items-center justify-center z-10", match.color)}>
+                                <AIcon className="h-2.5 w-2.5" />
+                              </div>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-foreground">{a.title}</p>
+                                  {a.description && <p className="text-[10px] text-muted-foreground mt-0.5">{a.description}</p>}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">{timeAgo(a.createdAt)}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* SEZIONE 4 — Configurazione (collapsible) */}
+            <Card className="rounded-2xl border shadow-sm overflow-hidden">
+              <button
+                onClick={() => setHunterConfigOpen(!hunterConfigOpen)}
+                className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+              >
+                <span className="text-sm font-semibold flex items-center gap-2">
+                  <Cog className="h-4 w-4 text-gray-500" />
+                  Configurazione avanzata
+                </span>
+                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", hunterConfigOpen && "rotate-180")} />
+              </button>
+              {hunterConfigOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <CardContent className="pt-0 pb-5 space-y-6 border-t">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                       <div className="space-y-4">
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
                             <span>Max ricerche Hunter / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_searches_per_day}</Badge>
                           </Label>
-                          <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
+                          <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
                             <span>Max chiamate Alessia / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
                           </Label>
-                          <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
+                          <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
                             <span>Max WhatsApp Stella / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
                           </Label>
-                          <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
+                          <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
                             <span>Max email Millie / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
                           </Label>
-                          <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
+                          <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={100} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
                         </div>
                       </div>
-
                       <div className="space-y-4">
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
@@ -1537,7 +1787,6 @@ export default function ConsultantLeadScraper() {
                         </div>
                       </div>
                     </div>
-
                     <div>
                       <Label className="text-sm font-medium mb-2 block">Priorità canali di contatto</Label>
                       <p className="text-xs text-gray-400 mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
@@ -1562,60 +1811,9 @@ export default function ConsultantLeadScraper() {
                         })}
                       </div>
                     </div>
-                  </>
-                )}
-
-                <Separator />
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Button
-                    className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm gap-2"
-                    onClick={handleTriggerHunter}
-                    disabled={triggeringHunter || !outreachConfig.enabled}
-                  >
-                    {triggeringHunter ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                    {triggeringHunter ? "Esecuzione in corso..." : "Avvia Hunter ora"}
-                  </Button>
-                  <Button variant="outline" className="gap-2" onClick={() => setLocation("/consultant/ai-autonomy")}>
-                    <Cog className="h-4 w-4" />
-                    Vai a AI Autonomy
-                  </Button>
-                  {hunterTriggerResult && (
-                    <span className={cn("text-sm", hunterTriggerResult.success ? "text-emerald-600" : "text-red-500")}>
-                      {hunterTriggerResult.success ? `${hunterTriggerResult.tasks} task generati` : (hunterTriggerResult.error || "Errore")}
-                    </span>
-                  )}
-                </div>
-
-                {hunterSearches.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-teal-600" />
-                        Ultime ricerche automatiche ({hunterSearches.length})
-                      </p>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {hunterSearches.slice(0, 10).map((s) => (
-                          <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 shrink-0">
-                                <Crosshair className="h-2.5 w-2.5 mr-0.5" />Hunter
-                              </Badge>
-                              <span className="text-sm font-medium truncate">{s.query}</span>
-                              {s.location && <span className="text-xs text-muted-foreground shrink-0">({s.location})</span>}
-                            </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className="text-xs text-muted-foreground">{s.resultsCount || 0} lead</span>
-                              {getStatusBadge(s.status)}
-                              <span className="text-xs text-muted-foreground">{timeAgo(s.createdAt)}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
+                  </CardContent>
+                </motion.div>
+              )}
             </Card>
           </TabsContent>
         </Tabs>
