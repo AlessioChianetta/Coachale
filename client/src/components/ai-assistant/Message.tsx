@@ -16,6 +16,14 @@ interface CodeExecution {
   output?: string;
 }
 
+interface ChatAttachment {
+  name: string;
+  mimeType: string;
+  base64Data: string;
+  type: "image" | "document";
+  preview?: string;
+}
+
 interface MessageProps {
   message: {
     id: string;
@@ -26,6 +34,7 @@ interface MessageProps {
     isThinking?: boolean;
     modelName?: string;
     thinkingLevel?: string;
+    attachments?: ChatAttachment[];
     suggestedActions?: Array<{
       type: string;
       label: string;
@@ -247,11 +256,41 @@ export function Message({ message, onActionClick }: MessageProps) {
   };
 
   if (message.role === "user") {
+    const hasAttachments = message.attachments && message.attachments.length > 0;
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] flex items-end gap-2.5">
           <div className="bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-700 dark:to-slate-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-br-md px-4 py-3 shadow-sm border border-slate-200/50 dark:border-slate-600/30">
-            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
+            {hasAttachments && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {message.attachments!.map((att, i) => (
+                  att.type === "image" && (att.preview || att.base64Data) ? (
+                    <div key={i} className="relative group">
+                      <img
+                        src={att.preview || `data:${att.mimeType};base64,${att.base64Data}`}
+                        alt={att.name}
+                        className="max-w-[120px] max-h-[90px] rounded-lg object-cover border border-slate-200/50 dark:border-slate-600/30 cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => {
+                          const w = window.open('', '_blank');
+                          if (w) {
+                            w.document.write(`<img src="${att.preview || `data:${att.mimeType};base64,${att.base64Data}`}" style="max-width:100%;height:auto"/>`);
+                          }
+                        }}
+                      />
+                      <span className="absolute bottom-1 left-1 text-[9px] bg-black/50 text-white px-1 rounded truncate max-w-[100px]">{att.name}</span>
+                    </div>
+                  ) : (
+                    <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/60 dark:bg-slate-600/40 border border-slate-200/50 dark:border-slate-500/30">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span className="text-xs font-medium truncate max-w-[100px]">{att.name}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+            {message.content && (
+              <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+            )}
           </div>
           <div className="flex-shrink-0 h-8 w-8 rounded-full overflow-hidden shadow-sm ring-2 ring-white dark:ring-slate-800">
             <img

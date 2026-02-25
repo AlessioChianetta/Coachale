@@ -3690,24 +3690,29 @@ export interface FocusedDocument {
 export type AIModel = 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
 export type ThinkingLevel = 'none' | 'low' | 'medium' | 'high';
 
+export interface ChatAttachment {
+  name: string;
+  mimeType: string;
+  base64Data: string;
+  type: 'image' | 'document';
+}
+
 export interface ConsultantChatRequest {
   consultantId: string;
   message: string;
   conversationId?: string;
   pageContext?: import('./consultant-context-builder').ConsultantPageContext;
   focusedDocument?: FocusedDocument;
-  // Agent context: Use selected WhatsApp agent as AI persona
   agentId?: string;
-  // Model and thinking level for dynamic AI config
   model?: AIModel;
   thinkingLevel?: ThinkingLevel;
-  // Onboarding mode: specialized prompt for setup wizard assistance
   isOnboardingMode?: boolean;
   onboardingStatuses?: OnboardingStatus[];
+  attachments?: ChatAttachment[];
 }
 
 export async function* sendConsultantChatMessageStream(request: ConsultantChatRequest) {
-  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses } = request;
+  const { consultantId, message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses, attachments } = request;
 
   // ========================================
   // AGENT CONTEXT: Fetch agent persona if agentId is provided
@@ -4244,12 +4249,51 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     }
     console.log(`🛠️  [TOOLS] Consultant chat: codeExecution=YES, fileSearch=${consultantFileSearchTool ? 'YES' : 'NO'}`);
     
+    const geminiContents = geminiMessages.map((msg, idx) => {
+      const parts: any[] = [{ text: msg.content }];
+      if (msg.role === "user" && idx === geminiMessages.length - 1 && attachments && attachments.length > 0) {
+        for (const att of attachments.slice(0, 5)) {
+          if (att.base64Data.length > 10 * 1024 * 1024 * 1.37) {
+            console.warn(`⚠️ [ATTACHMENTS] Skipping ${att.name} - exceeds 10MB`);
+            continue;
+          }
+          if (att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf') {
+            parts.push({
+              inlineData: {
+                data: att.base64Data,
+                mimeType: att.mimeType,
+              }
+            });
+            console.log(`📎 [ATTACHMENTS] Added inlineData: ${att.name} (${att.mimeType})`);
+          } else if (att.mimeType === 'text/plain' || att.mimeType === 'text/csv') {
+            try {
+              const textContent = Buffer.from(att.base64Data, 'base64').toString('utf-8');
+              parts.push({ text: `\n\n--- File: ${att.name} ---\n${textContent.substring(0, 50000)}\n--- Fine File ---` });
+              console.log(`📎 [ATTACHMENTS] Added text content: ${att.name} (${textContent.length} chars)`);
+            } catch (e) {
+              console.error(`❌ [ATTACHMENTS] Failed to decode text file ${att.name}:`, e);
+            }
+          } else {
+            parts.push({
+              inlineData: {
+                data: att.base64Data,
+                mimeType: att.mimeType,
+              }
+            });
+            console.log(`📎 [ATTACHMENTS] Added inlineData (generic): ${att.name} (${att.mimeType})`);
+          }
+        }
+        console.log(`📎 [ATTACHMENTS] Total parts for last message: ${parts.length} (text + ${parts.length - 1} attachments)`);
+      }
+      return {
+        role: msg.role === "assistant" ? "model" : "user",
+        parts,
+      };
+    });
+
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: consultantDynamicConfig.model,
-      contents: geminiMessages.map(msg => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
+      contents: geminiContents,
       generationConfig: {
         systemInstruction: systemPrompt,
         ...(consultantDynamicConfig.useThinking && consultantDynamicConfig.thinkingLevel && {

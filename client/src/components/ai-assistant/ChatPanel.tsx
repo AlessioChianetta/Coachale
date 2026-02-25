@@ -13,6 +13,7 @@ import { MessageList } from "./MessageList";
 import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "./InputArea";
 import { QuickActions } from "./QuickActions";
 import { ConsultantQuickActions } from "./ConsultantQuickActions";
+import { ActiveSkillsBadge } from "./ActiveSkillsBadge";
 import { AIMode, ConsultantType } from "./AIAssistant";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAuthHeaders, getAuthUser } from "@/lib/auth";
@@ -28,12 +29,21 @@ interface CodeExecution {
   output?: string;
 }
 
+interface ChatAttachment {
+  name: string;
+  mimeType: string;
+  base64Data: string;
+  type: "image" | "document";
+  preview?: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   status?: "processing" | "completed" | "error";
   timestamp?: Date;
+  attachments?: ChatAttachment[];
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -244,33 +254,66 @@ export function ChatPanel({
     }
   };
 
-  const handleSendMessage = async (message: string) => {
-    if (!message.trim() || isTyping || rateLimitInfo.isWaiting) return;
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
-    // Stima token per questo messaggio e la potenziale risposta
-    const estimatedTokens = estimateTokens(message) + 1000; // +1000 per il contesto e la risposta
+  const handleSendMessage = async (message: string, files?: AttachedFile[]) => {
+    if ((!message.trim() && (!files || files.length === 0)) || isTyping || rateLimitInfo.isWaiting) return;
+
+    const estimatedTokens = estimateTokens(message) + 1000;
     console.log(`📊 Stima token per il messaggio:`, {
       messaggioUtente: estimateTokens(message),
       contestoERisposta: 1000,
       totaleStimato: estimatedTokens,
       tokenGiaUsati: rateLimitInfo.tokensUsed,
       tokenDopoInvio: rateLimitInfo.tokensUsed + estimatedTokens,
-      limite: MAX_TOKENS_PER_MINUTE
+      limite: MAX_TOKENS_PER_MINUTE,
+      allegati: files?.length || 0,
     });
 
-    // Attendi se necessario prima di procedere
     await waitForRateLimit(estimatedTokens);
+
+    let chatAttachments: ChatAttachment[] = [];
+    if (files && files.length > 0) {
+      try {
+        chatAttachments = await Promise.all(
+          files.slice(0, 5).map(async (af) => {
+            const base64Data = await fileToBase64(af.file);
+            return {
+              name: af.file.name,
+              mimeType: af.file.type || "application/octet-stream",
+              base64Data,
+              type: af.type,
+              preview: af.preview,
+            };
+          })
+        );
+        console.log(`📎 [ChatPanel] Converted ${chatAttachments.length} files to base64`);
+      } catch (err) {
+        console.error("Error converting files to base64:", err);
+      }
+    }
 
     const userMessageId = Date.now().toString();
     const assistantMessageId = (Date.now() + 1).toString();
 
-    // Add user message to UI immediately
     const userMessage: Message = {
       id: userMessageId,
       role: "user",
       content: message,
       status: "completed",
       timestamp: new Date(),
+      attachments: chatAttachments.length > 0 ? chatAttachments : undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -302,7 +345,6 @@ export function ChatPanel({
         body: JSON.stringify(
           isConsultantMode
             ? {
-              // Consultant endpoint payload
               message,
               conversationId: currentConversationId,
               pageContext: pageContext,
@@ -313,9 +355,14 @@ export function ChatPanel({
               } : undefined,
               isOnboardingMode: isOnboardingMode,
               onboardingStatuses: isOnboardingMode ? onboardingStatuses : undefined,
+              attachments: chatAttachments.length > 0 ? chatAttachments.map(a => ({
+                name: a.name,
+                mimeType: a.mimeType,
+                base64Data: a.base64Data,
+                type: a.type,
+              })) : undefined,
             }
             : {
-              // Client endpoint payload
               message,
               conversationId: currentConversationId,
               mode,
@@ -792,6 +839,11 @@ export function ChatPanel({
                 </div>
               )}
               <div className="flex-shrink-0 p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+                {isConsultantMode && (
+                  <div className="mb-2">
+                    <ActiveSkillsBadge />
+                  </div>
+                )}
                 <InputArea
                   onSend={handleSendMessage}
                   isProcessing={isTyping}
@@ -1130,6 +1182,11 @@ export function ChatPanel({
                       : "⏳ Riconnessione..."}
                   </AlertDescription>
                 </Alert>
+              )}
+              {isConsultantMode && (
+                <div className="mb-2">
+                  <ActiveSkillsBadge />
+                </div>
               )}
               <InputArea onSend={handleSendMessage} isProcessing={isTyping} disabled={rateLimitInfo.isWaiting} />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">

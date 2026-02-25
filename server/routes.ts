@@ -12645,10 +12645,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   app.post("/api/consultant/ai/chat", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses } = req.body;
+      const { message, conversationId, pageContext, focusedDocument, agentId, model, thinkingLevel, isOnboardingMode, onboardingStatuses, attachments } = req.body;
       
-      // Log onboarding mode for debugging
-      console.log(`🚀 [API] /api/consultant/ai/chat received - isOnboardingMode: ${isOnboardingMode}, hasOnboardingStatuses: ${!!onboardingStatuses}`);
+      console.log(`🚀 [API] /api/consultant/ai/chat received - isOnboardingMode: ${isOnboardingMode}, hasOnboardingStatuses: ${!!onboardingStatuses}, attachments: ${attachments?.length || 0}`);
       
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
@@ -12679,6 +12678,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           thinkingLevel,
           isOnboardingMode,
           onboardingStatuses,
+          attachments,
         })) {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
           
