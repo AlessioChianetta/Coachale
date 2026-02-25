@@ -460,14 +460,14 @@ export default function ConsultantLeadScraper() {
     setTriggeringHunter(true);
     setHunterTriggerResult(null);
     try {
-      const res = await fetch("/api/ai-autonomy/trigger-role", {
+      const res = await fetch("/api/ai-autonomy/trigger-role/hunter", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ roleId: "hunter" }),
       });
       const data = await res.json();
       setHunterTriggerResult({ success: res.ok, tasks: data.tasks_generated || 0, error: data.error });
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+      refetchPipeline();
     } catch (e: any) {
       setHunterTriggerResult({ success: false, error: e.message });
     } finally {
