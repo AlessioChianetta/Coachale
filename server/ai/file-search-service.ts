@@ -1403,22 +1403,6 @@ export class FileSearchService {
         )
       );
       
-      // Always include ALL client private stores for this consultant (using subquery to avoid pre-fetch guard)
-      // This allows consultants to search across all their clients' consultations,
-      // exercise responses, and other private data that's now properly isolated
-      conditions.push(
-        and(
-          inArray(
-            fileSearchStores.ownerId,
-            db.select({ id: users.id }).from(users).where(eq(users.consultantId, userId))
-          ),
-          eq(fileSearchStores.ownerType, 'client'),
-          eq(fileSearchStores.isActive, true)
-        )
-      );
-      console.log(`🔐 [FileSearch] Consultant ${userId} - client private stores always included (subquery)`);
-
-      
       // If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
       // include ONLY their own private client store (email_journey, daily_reflection, consultation — enforced at prompt level)
       // NOTE: the parent consultant's store (ownerType: 'consultant', ownerId: consultantId) is intentionally NOT included
@@ -1522,19 +1506,6 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
-      // Always include ALL client private stores for this consultant (using subquery)
-      conditions.push(
-        and(
-          inArray(
-            fileSearchStores.ownerId,
-            db.select({ id: users.id }).from(users).where(eq(users.consultantId, userId))
-          ),
-          eq(fileSearchStores.ownerType, 'client'),
-          eq(fileSearchStores.isActive, true)
-        )
-      );
-      console.log(`🔐 [FileSearch] getStoreBreakdownForGeneration: Consultant ${userId} - client private stores always included (subquery)`);
-
       // If consultant is also a client of another consultant, include ONLY their own private client store
       // NOTE: the parent consultant's store (ownerType: 'consultant', ownerId: consultantId) is intentionally NOT included
       if (consultantId && consultantId !== userId) {

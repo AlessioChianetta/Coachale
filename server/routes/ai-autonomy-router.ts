@@ -4061,19 +4061,7 @@ REGOLE ANTI-ALLUCINAZIONE:
           storeNames = [(globalStoreResult.rows[0] as any).google_store_name];
           console.log(`🌐 [MARCO-CHAT] Using Global Consultation Store (1 slot)`);
         } else {
-          const clientStoresResult = await db.execute(sql`
-            SELECT s.google_store_name
-            FROM file_search_stores s
-            JOIN users u ON u.id::text = s.owner_id
-            JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
-            WHERE s.owner_type = 'client' AND s.is_active = true
-              AND u.consultant_id = ${consultantId}::text AND u.is_active = true
-            GROUP BY s.google_store_name
-            ORDER BY COUNT(d.id) DESC
-            LIMIT 5
-          `);
-          storeNames = (clientStoresResult.rows as any[]).map(r => r.google_store_name);
-          console.log(`🔍 [MARCO-CHAT] Fallback: using ${storeNames.length} individual client stores`);
+          console.log(`⚠️ [MARCO-CHAT] Store Globale Consulenze Clienti not found — File Search disabled`);
         }
         
         if (storeNames.length > 0) {
