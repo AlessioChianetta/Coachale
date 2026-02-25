@@ -15,7 +15,7 @@ const LOG_PREFIX = "🧠 [DECISION-ENGINE]";
 
 export interface ExecutionStep {
   step: number;
-  action: "fetch_client_data" | "search_private_stores" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp" | "web_search";
+  action: "fetch_client_data" | "search_private_stores" | "analyze_patterns" | "generate_report" | "prepare_call" | "voice_call" | "send_email" | "send_whatsapp" | "web_search" | "lead_scraper_search" | "lead_qualify_and_assign";
   description: string;
   status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
   params?: Record<string, any>;
@@ -644,6 +644,24 @@ export async function buildRolePersonality(consultantId: string, roleId: string)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PARSE HUNTER INSTRUCTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+function parseHunterInstruction(instruction: string): { query: string; engine: string; location: string; limit: number } {
+  const queryMatch = instruction.match(/QUERY:\s*(.+)/i);
+  const engineMatch = instruction.match(/ENGINE:\s*(maps|search)/i);
+  const locationMatch = instruction.match(/LOCATION:\s*(.+)/i);
+  const limitMatch = instruction.match(/LIMIT:\s*(\d+)/i);
+
+  return {
+    query: queryMatch?.[1]?.trim() || 'ricerca lead',
+    engine: engineMatch?.[1]?.trim().toLowerCase() || 'maps',
+    location: locationMatch?.[1]?.trim() || 'Italia',
+    limit: limitMatch ? parseInt(limitMatch[1], 10) : 10,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // GENERATE EXECUTION PLAN (GEMINI)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -666,6 +684,64 @@ export async function generateExecutionPlan(task: {
   language?: string | null;
 }, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string }): Promise<DecisionResult> {
   console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}${options?.skipGuardrails ? ' (SKIP_GUARDRAILS)' : ''} roleId=${options?.roleId || 'none'}`);
+
+  if (options?.roleId === 'hunter' && task.preferred_channel === 'lead_scraper' && task.task_category === 'prospecting') {
+    console.log(`${LOG_PREFIX} [HUNTER-PIPELINE] Auto-generating 2-step execution plan for Hunter task ${task.id}`);
+
+    const searchParams = parseHunterInstruction(task.ai_instruction || '');
+
+    const hunterPlan: DecisionResult = {
+      should_execute: true,
+      reasoning: `Hunter pipeline automatica: Step 1 — ricerca "${searchParams.query}" su ${searchParams.engine} in ${searchParams.location} (limit ${searchParams.limit}). Step 2 — qualifica AI dei risultati e assegnazione ai dipendenti (Alessia/Stella/Millie) in base ai canali disponibili.`,
+      confidence: 0.9,
+      execution_plan: [
+        {
+          step: 1,
+          action: "lead_scraper_search",
+          description: `Ricerca lead: "${searchParams.query}" su ${searchParams.engine} in ${searchParams.location}`,
+          status: "pending",
+          params: {
+            query: searchParams.query,
+            searchEngine: searchParams.engine,
+            location: searchParams.location,
+            limit: searchParams.limit,
+          },
+        },
+        {
+          step: 2,
+          action: "lead_qualify_and_assign",
+          description: `Qualifica lead trovati (score >= soglia) e assegna ai dipendenti AI per outreach`,
+          status: "pending",
+          params: {
+            source: "hunter_pipeline",
+          },
+        },
+      ],
+      estimated_duration_minutes: 5,
+    };
+
+    await logActivity(task.consultant_id, {
+      event_type: "execution_plan_generated",
+      title: `Piano Hunter 2-step generato (ricerca + qualifica)`,
+      description: hunterPlan.reasoning,
+      icon: "🎯",
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+      event_data: {
+        should_execute: true,
+        confidence: 0.9,
+        steps_count: 2,
+        estimated_duration: 5,
+        search_query: searchParams.query,
+        search_engine: searchParams.engine,
+        search_location: searchParams.location,
+      },
+    });
+
+    return hunterPlan;
+  }
 
   const context = await buildTaskContext(task, options?.roleId);
 

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { listEvents } from "../google-calendar-service";
 import { FileSearchService } from "../ai/file-search-service";
 import { FileSearchSyncService } from "../services/file-search-sync-service";
+import { getRemainingLimits, getDailyUsage } from "../services/outreach-rate-limiter";
 
 export function wrapPromptWithStructuredReasoning(basePrompt: string, roleName: string): string {
   let prompt = basePrompt;
@@ -1037,6 +1038,170 @@ async function fetchPersonalizzaData(consultantId: string, clientIds: string[]):
     recentTasks: recentTasksResult.rows,
     personalizzaConfig,
     ...kbContext,
+  };
+}
+
+async function fetchHunterData(consultantId: string, clientIds: string[]): Promise<Record<string, any>> {
+  const salesContextResult = await db.execute(sql`
+    SELECT services_offered, target_audience, value_proposition, pricing_info,
+           competitive_advantages, ideal_client_profile, sales_approach,
+           case_studies, additional_context
+    FROM lead_scraper_sales_context
+    WHERE consultant_id = ${consultantId}
+    LIMIT 1
+  `);
+  const salesContext = salesContextResult.rows[0] || {};
+
+  const recentSearchesResult = await db.execute(sql`
+    SELECT query, location, status, results_count, metadata, created_at,
+           COALESCE((metadata->>'originRole')::text, 'manual') as origin_role
+    FROM lead_scraper_searches
+    WHERE consultant_id = ${consultantId}
+      AND created_at > NOW() - INTERVAL '7 days'
+    ORDER BY created_at DESC
+    LIMIT 20
+  `);
+
+  const leadStatsResult = await db.execute(sql`
+    SELECT lead_status, COUNT(*) as count
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+    GROUP BY lead_status
+  `);
+  const leadStats: Record<string, number> = { total: 0 };
+  for (const row of leadStatsResult.rows as any[]) {
+    leadStats[row.lead_status || 'nuovo'] = parseInt(row.count);
+    leadStats.total += parseInt(row.count);
+  }
+
+  const recentLeadsResult = await db.execute(sql`
+    SELECT lr.business_name, lr.lead_status, lr.ai_compatibility_score,
+           lr.phone, lr.email, lr.website, lr.source, lr.lead_contacted_at,
+           lr.created_at
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+      AND lr.created_at > NOW() - INTERVAL '30 days'
+    ORDER BY lr.created_at DESC
+    LIMIT 30
+  `);
+
+  const otherRoleTasksResult = await db.execute(sql`
+    SELECT ast.ai_role, ast.contact_name, ast.preferred_channel,
+           ast.status, ast.task_category
+    FROM ai_scheduled_tasks ast
+    WHERE ast.consultant_id = ${consultantId}
+      AND ast.ai_role IN ('alessia', 'stella', 'millie')
+      AND ast.created_at > NOW() - INTERVAL '7 days'
+    ORDER BY ast.created_at DESC
+    LIMIT 20
+  `);
+
+  const whatsappConfigsResult = await db.execute(sql`
+    SELECT id, agent_name, agent_type, twilio_whatsapp_number, is_active
+    FROM consultant_whatsapp_config
+    WHERE consultant_id = ${consultantId}
+      AND agent_type = 'proactive_setter'
+      AND is_active = true
+  `);
+
+  const voiceTemplates = [
+    { id: 'lead-qualification', name: 'Lead Qualification', description: 'Qualificazione lead cold' },
+    { id: 'appointment-setter', name: 'Appointment Setter', description: 'Fissare appuntamento con lead warm' },
+    { id: 'sales-orbitale', name: 'Sales Orbitale', description: 'Sales call completa per lead ad alto potenziale' },
+  ];
+
+  const settingsResult = await db.execute(sql`
+    SELECT outreach_config, whatsapp_template_ids
+    FROM ai_autonomy_settings
+    WHERE consultant_id::text = ${consultantId}::text
+    LIMIT 1
+  `);
+  const outreachConfig = (settingsResult.rows[0] as any)?.outreach_config || {};
+
+  const feedbackStatsResult = await db.execute(sql`
+    SELECT 
+      COUNT(*) FILTER (WHERE lr.lead_status = 'contattato') as contacted,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'in_trattativa') as in_negotiation,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'non_interessato') as not_interested,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'convertito') as converted,
+      COUNT(*) FILTER (WHERE lr.lead_contacted_at IS NOT NULL) as total_contacted
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+      AND lr.created_at > NOW() - INTERVAL '30 days'
+  `);
+  const feedbackStats = feedbackStatsResult.rows[0] || {};
+
+  const conversionByQueryResult = await db.execute(sql`
+    SELECT 
+      ls.query,
+      ls.location,
+      COUNT(*) as total_leads,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'contattato') as contacted,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'in_trattativa') as in_negotiation,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'non_interessato') as not_interested,
+      COUNT(*) FILTER (WHERE lr.lead_status = 'convertito') as converted,
+      ROUND(
+        CASE WHEN COUNT(*) FILTER (WHERE lr.lead_contacted_at IS NOT NULL) > 0
+        THEN (COUNT(*) FILTER (WHERE lr.lead_status IN ('in_trattativa', 'convertito'))::numeric / 
+              COUNT(*) FILTER (WHERE lr.lead_contacted_at IS NOT NULL)::numeric * 100)
+        ELSE 0 END, 1
+      ) as conversion_rate
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+      AND lr.created_at > NOW() - INTERVAL '30 days'
+      AND lr.lead_contacted_at IS NOT NULL
+    GROUP BY ls.query, ls.location
+    HAVING COUNT(*) FILTER (WHERE lr.lead_contacted_at IS NOT NULL) > 0
+    ORDER BY conversion_rate DESC
+    LIMIT 15
+  `);
+  const conversionByQuery = conversionByQueryResult.rows;
+
+  const recentActivitiesResult = await db.execute(sql`
+    SELECT la.type, la.title, la.outcome, la.completed_at,
+           lr.business_name, lr.lead_status
+    FROM lead_scraper_activities la
+    JOIN lead_scraper_results lr ON lr.id = la.lead_id
+    WHERE la.consultant_id = ${consultantId}
+      AND la.created_at > NOW() - INTERVAL '7 days'
+    ORDER BY la.created_at DESC
+    LIMIT 20
+  `);
+  const recentOutreachActivities = recentActivitiesResult.rows;
+
+  const [remainingLimits, dailyUsage] = await Promise.all([
+    getRemainingLimits(consultantId),
+    getDailyUsage(consultantId),
+  ]);
+
+  return {
+    salesContext: {
+      servicesOffered: (salesContext as any).services_offered,
+      targetAudience: (salesContext as any).target_audience,
+      valueProposition: (salesContext as any).value_proposition,
+      pricingInfo: (salesContext as any).pricing_info,
+      competitiveAdvantages: (salesContext as any).competitive_advantages,
+      idealClientProfile: (salesContext as any).ideal_client_profile,
+      salesApproach: (salesContext as any).sales_approach,
+      caseStudies: (salesContext as any).case_studies,
+      additionalContext: (salesContext as any).additional_context,
+    },
+    recentSearches: recentSearchesResult.rows,
+    leadStats,
+    recentLeads: recentLeadsResult.rows,
+    otherRoleRecentTasks: otherRoleTasksResult.rows,
+    whatsappConfigs: whatsappConfigsResult.rows,
+    voiceTemplates,
+    outreachConfig,
+    feedbackStats,
+    conversionByQuery,
+    recentOutreachActivities,
+    remainingLimits,
+    dailyUsage,
   };
 }
 
@@ -2088,6 +2253,252 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
       "priority": 2,
       "reasoning": "Motivazione basata sui dati analizzati",
       "preferred_channel": "none",
+      "urgency": "normale|oggi|settimana",
+      "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
+      "scheduling_reason": "Motivazione dell'orario scelto",
+      "tone": "professionale"
+    }
+  ]
+}`;
+    },
+  },
+
+  hunter: {
+    id: "hunter",
+    name: "Hunter",
+    displayName: "Hunter – Lead Prospector",
+    avatar: "hunter",
+    accentColor: "teal",
+    description: "Analizza il Sales Context del consulente per decidere autonomamente quali ricerche fare su Google Maps/Search, trova nuovi lead e li assegna ai dipendenti AI per il contatto (Alessia per chiamate, Stella/WA per WhatsApp, Millie per email).",
+    shortDescription: "Ricerca lead automatica e assegnazione outreach",
+    categories: ["prospecting", "outreach", "analysis"],
+    preferredChannels: ["lead_scraper", "internal"],
+    typicalPlan: ["lead_scraper_search", "lead_qualify_and_assign"],
+    maxTasksPerRun: 3,
+    fetchRoleData: fetchHunterData,
+    buildPrompt: ({ clientsList, roleData, settings, romeTimeStr, recentCompletedTasks, recentAllTasks, permanentBlocks, recentReasoningByRole }) => {
+      const salesContext = roleData.salesContext || {};
+      const recentSearches = (roleData.recentSearches || []).map((s: any) => ({
+        query: s.query,
+        location: s.location,
+        results_count: s.results_count,
+        status: s.status,
+        origin: s.origin_role || 'manual',
+        date: s.created_at ? new Date(s.created_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+      }));
+
+      const leadStats = roleData.leadStats || {};
+      const recentLeads = (roleData.recentLeads || []).map((l: any) => ({
+        business: l.business_name,
+        status: l.lead_status,
+        score: l.ai_compatibility_score,
+        phone: l.phone ? '✅' : '❌',
+        email: l.email ? '✅' : '❌',
+        website: l.website ? '✅' : '❌',
+        source: l.source,
+        contacted_at: l.lead_contacted_at ? new Date(l.lead_contacted_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' }) : null,
+      }));
+
+      const otherRoleTasks = (roleData.otherRoleRecentTasks || []).map((t: any) => ({
+        role: t.ai_role,
+        contact: t.contact_name,
+        channel: t.preferred_channel,
+        status: t.status,
+        category: t.task_category,
+      }));
+
+      const whatsappConfigs = (roleData.whatsappConfigs || []).map((c: any) => ({
+        id: c.id,
+        name: c.agent_name,
+        type: c.agent_type,
+        phone: c.twilio_whatsapp_number,
+        active: c.is_active,
+      }));
+
+      const voiceTemplates = roleData.voiceTemplates || [];
+      const outreachConfig = roleData.outreachConfig || {};
+      const feedbackStats = roleData.feedbackStats || {};
+      const conversionByQuery = (roleData.conversionByQuery || []).map((c: any) => ({
+        query: c.query,
+        location: c.location,
+        total_leads: parseInt(c.total_leads),
+        contacted: parseInt(c.contacted),
+        in_negotiation: parseInt(c.in_negotiation),
+        not_interested: parseInt(c.not_interested),
+        converted: parseInt(c.converted),
+        conversion_rate: parseFloat(c.conversion_rate),
+      }));
+      const recentOutreachActivities = (roleData.recentOutreachActivities || []).map((a: any) => ({
+        type: a.type,
+        title: a.title,
+        outcome: a.outcome,
+        business: a.business_name,
+        lead_status: a.lead_status,
+        completed_at: a.completed_at ? new Date(a.completed_at).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null,
+      }));
+      const remainingLimits = roleData.remainingLimits || {};
+      const dailyUsage = roleData.dailyUsage || {};
+
+      const hasSalesContext = salesContext.servicesOffered || salesContext.targetAudience || salesContext.valueProposition;
+
+      if (!hasSalesContext) {
+        return `Sei HUNTER, Lead Prospector AI. NON PUOI operare senza un Sales Context configurato.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+⚠️ SALES CONTEXT NON CONFIGURATO
+Il consulente non ha ancora configurato il Sales Context nella pagina Lead Scraper.
+Senza queste informazioni (servizi offerti, target audience, proposta di valore) non puoi decidere quali ricerche fare.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "Non posso operare: il Sales Context non è configurato. Il consulente deve andare nella pagina Lead Scraper e compilare il profilo vendita (servizi, target, proposta di valore) prima che io possa iniziare a cercare lead.",
+  "tasks": []
+}`;
+      }
+
+      return `Sei HUNTER, Lead Prospector AI — il cacciatore di opportunità. Il tuo ruolo è analizzare il profilo del consulente, decidere quali ricerche fare per trovare nuovi potenziali clienti, e generare task di ricerca che il sistema eseguirà automaticamente.
+
+DATA/ORA ATTUALE: ${romeTimeStr}
+
+IL TUO FOCUS: Trovare nuovi lead tramite ricerche su Google Maps e Google Search, basandoti sul profilo del consulente.
+
+═══ SALES CONTEXT DEL CONSULENTE ═══
+- Servizi offerti: ${salesContext.servicesOffered || 'Non specificato'}
+- Target audience: ${salesContext.targetAudience || 'Non specificato'}
+- Proposta di valore: ${salesContext.valueProposition || 'Non specificata'}
+- Pricing: ${salesContext.pricingInfo || 'Non specificato'}
+- Vantaggi competitivi: ${salesContext.competitiveAdvantages || 'Non specificati'}
+- Profilo cliente ideale: ${salesContext.idealClientProfile || 'Non specificato'}
+- Approccio vendita: ${salesContext.salesApproach || 'Non specificato'}
+- Case studies: ${salesContext.caseStudies || 'Nessuno'}
+- Contesto aggiuntivo: ${salesContext.additionalContext || 'Nessuno'}
+
+═══ RICERCHE RECENTI (ultimi 7 giorni) ═══
+${recentSearches.length > 0 ? JSON.stringify(recentSearches, null, 2) : 'Nessuna ricerca recente — campo libero per nuove query!'}
+
+═══ STATISTICHE LEAD PIPELINE ═══
+- Lead totali: ${leadStats.total || 0}
+- Lead nuovi (non contattati): ${leadStats.nuovo || 0}
+- Lead contattati: ${leadStats.contattato || 0}
+- Lead in trattativa: ${leadStats.in_trattativa || 0}
+- Lead non interessati: ${leadStats.non_interessato || 0}
+- Lead convertiti: ${leadStats.convertito || 0}
+
+═══ LEAD RECENTI (ultimi 30 giorni) ═══
+${recentLeads.length > 0 ? JSON.stringify(recentLeads.slice(0, 20), null, 2) : 'Nessun lead in pipeline'}
+
+═══ FEEDBACK DALLE ATTIVITÀ DI CONTATTO ═══
+${Object.keys(feedbackStats).length > 0 ? JSON.stringify(feedbackStats, null, 2) : 'Nessun feedback disponibile — le prime ricerche non hanno ancora prodotto contatti.'}
+
+═══ TASSO CONVERSIONE PER QUERY/LOCATION (ultimi 30 giorni) ═══
+${conversionByQuery.length > 0 ? `Analizza queste metriche per adattare la strategia:
+- Query con alto conversion_rate → fai query simili
+- Query con molti "non_interessato" → cambia approccio o zona
+- Query con molti "in_trattativa" → rallenta nuove ricerche per quella nicchia
+${JSON.stringify(conversionByQuery, null, 2)}` : 'Nessun dato di conversione disponibile — attendi che i primi contatti vengano completati.'}
+
+═══ ATTIVITÀ OUTREACH RECENTI (ultimi 7 giorni) ═══
+${recentOutreachActivities.length > 0 ? JSON.stringify(recentOutreachActivities.slice(0, 15), null, 2) : 'Nessuna attività di outreach recente.'}
+
+═══ TASK RECENTI DI ALTRI DIPENDENTI (Alessia/Stella/Millie) ═══
+${otherRoleTasks.length > 0 ? JSON.stringify(otherRoleTasks.slice(0, 15), null, 2) : 'Nessun task recente da altri dipendenti'}
+
+═══ DIPENDENTI WHATSAPP DISPONIBILI (proactive_setter) ═══
+${whatsappConfigs.length > 0 ? JSON.stringify(whatsappConfigs, null, 2) : 'Nessun dipendente WhatsApp configurato per outreach proattivo'}
+
+═══ TEMPLATE VOCE OUTBOUND DISPONIBILI ═══
+${voiceTemplates.length > 0 ? JSON.stringify(voiceTemplates, null, 2) : 'Nessun template voce outbound configurato'}
+
+═══ CONFIGURAZIONE OUTREACH ═══
+- Limite ricerche/giorno: ${outreachConfig.max_searches_per_day ?? outreachConfig.maxSearchesPerDay ?? 5}
+- Limite chiamate/giorno: ${outreachConfig.max_calls_per_day ?? outreachConfig.maxCallsPerDay ?? 10}
+- Limite WhatsApp/giorno: ${outreachConfig.max_whatsapp_per_day ?? outreachConfig.maxWhatsappPerDay ?? 15}
+- Limite email/giorno: ${outreachConfig.max_emails_per_day ?? outreachConfig.maxEmailsPerDay ?? 20}
+- Soglia score minimo: ${outreachConfig.score_threshold ?? outreachConfig.minScoreThreshold ?? 60}
+- Priorità canali: ${(outreachConfig.channel_priority ?? outreachConfig.channelPriority ?? ['voice', 'whatsapp', 'email']).join(' → ')}
+- Cooldown tra contatti (ore): ${outreachConfig.cooldown_hours ?? outreachConfig.cooldownHours ?? 48}
+
+═══ LIMITI RESIDUI OGGI (usati/disponibili) ═══
+- Ricerche: ${dailyUsage.searches || 0} usate, ${remainingLimits.searches ?? 'N/A'} rimanenti
+- Chiamate: ${dailyUsage.calls || 0} usate, ${remainingLimits.calls ?? 'N/A'} rimanenti
+- WhatsApp: ${dailyUsage.whatsapp || 0} usati, ${remainingLimits.whatsapp ?? 'N/A'} rimanenti
+- Email: ${dailyUsage.email || 0} usate, ${remainingLimits.email ?? 'N/A'} rimanenti
+⚠️ Se i limiti residui per le ricerche sono 0, NON generare nuovi task di ricerca.
+
+${buildTaskMemorySection(recentAllTasks, 'hunter', permanentBlocks, recentReasoningByRole)}
+
+═══ PIPELINE HUNTER: 2 STEP END-TO-END ═══
+Ogni task che crei segue automaticamente una pipeline a 2 step:
+  1. lead_scraper_search — Il sistema esegue la ricerca su Google Maps/Search e salva i risultati
+  2. lead_qualify_and_assign — Il sistema qualifica i lead trovati (AI score) e assegna quelli idonei ai dipendenti:
+     - Alessia (chiamate vocali) — se il lead ha telefono
+     - Stella/dipendente WhatsApp (WhatsApp) — se il lead ha telefono e c'è un dipendente WA configurato
+     - Millie (email) — se il lead ha email
+Tu devi SOLO creare il task di ricerca (step 1). Lo step 2 (qualifica + assegnazione) viene eseguito AUTOMATICAMENTE dal sistema dopo la ricerca.
+
+═══ REGOLE DI HUNTER ═══
+1. Suggerisci MASSIMO 3 task di tipo ricerca lead per ciclo.
+
+2. BUDGET LEAD: Se ci sono ${leadStats.nuovo || 0} lead nuovi non contattati:
+   - Se >= 50 lead nuovi → NON fare nuove ricerche, concentrati sulla qualifica. Restituisci tasks vuoto.
+   - Se >= 30 lead nuovi → max 1 ricerca, focus qualità
+   - Se < 30 → ricerche normali (2-3)
+
+3. RATE LIMITS: Controlla i limiti residui sopra.
+   - Se ricerche rimanenti = 0 → NON generare nuovi task di ricerca
+   - Se chiamate/WhatsApp/email rimanenti = 0 → segnala nel reasoning che l'outreach è saturato
+   - Rispetta SEMPRE i limiti dell'outreach_config
+
+4. OGNI TASK deve essere di tipo "lead_scraper_search" con questi parametri nell'ai_instruction:
+   - query: la query di ricerca (es. "ristoranti Milano", "studi dentistici Roma centro")
+   - searchEngine: "maps" o "search" (alterna tra i due)
+   - location: la località target (es. "Milano, Italia")
+   - limit: numero risultati (5-20)
+
+5. STRATEGIA DI RICERCA:
+   - NON ripetere query degli ultimi 7 giorni (vedi ricerche recenti sopra)
+   - Varia tra Maps (per attività locali con sede fisica) e Search (per aziende online/servizi)
+   - Adatta la location al target del consulente (dal Sales Context)
+   - Pensa a varianti creative della stessa nicchia (sinonimi, sotto-categorie, zone limitrofe)
+   - Combina il settore target con la location
+   - Se il feedback mostra molti "non_interessato" per una certa query/zona → cambia strategia
+   - Se il feedback mostra molti "in_trattativa" → rallenta le nuove ricerche
+
+6. FORMAT ai_instruction (OBBLIGATORIO — il sistema lo parserà):
+   ---
+   TIPO: lead_scraper_search
+   QUERY: [la tua query]
+   ENGINE: maps|search
+   LOCATION: [città/zona]
+   LIMIT: [5-20]
+   REASONING: [perché questa query è strategica per il consulente]
+   ---
+
+7. Il campo preferred_channel DEVE essere "lead_scraper"
+8. Usa la categoria: "prospecting"
+9. task_category DEVE essere "prospecting"
+
+10. PROGRAMMAZIONE ORARIO (scheduled_for): Formato "YYYY-MM-DDTHH:MM". Regole:
+   - Distribuisci le ricerche nel tempo (almeno 30 min tra una e l'altra)
+   - Preferisci fasce 09:00-18:00
+   - Non programmare MAI prima delle 08:30 o dopo le 19:00
+
+IMPORTANTE: Il campo "overall_reasoning" è OBBLIGATORIO. Spiega: cosa hai analizzato del profilo del consulente, quali query hai scelto e perché, quale strategia di ricerca stai seguendo, e come il feedback dei contatti precedenti ha influenzato le tue decisioni.
+
+Rispondi SOLO con JSON valido (senza markdown, senza backtick):
+{
+  "overall_reasoning": "Spiegazione dettagliata: analisi del profilo, strategia di ricerca, query scelte e motivazione, feedback loop analysis",
+  "tasks": [
+    {
+      "contact_id": null,
+      "contact_name": "Lead Search",
+      "contact_phone": "N/A",
+      "ai_instruction": "TIPO: lead_scraper_search\\nQUERY: [query]\\nENGINE: maps|search\\nLOCATION: [location]\\nLIMIT: [n]\\nREASONING: [motivazione]",
+      "task_category": "prospecting",
+      "priority": 3,
+      "reasoning": "Motivazione basata su Sales Context e pipeline attuale",
+      "preferred_channel": "lead_scraper",
       "urgency": "normale|oggi|settimana",
       "scheduled_for": "YYYY-MM-DDTHH:MM (orario Italia)",
       "scheduling_reason": "Motivazione dell'orario scelto",

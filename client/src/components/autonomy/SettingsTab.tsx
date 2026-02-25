@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
   Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
-  Plus, Trash2, FileText, Calendar, Flag, Database
+  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ import type { AgentContext, AgentFocusItem } from "@shared/schema";
 
 const AI_ROLE_NAMES_MAP: Record<string, string> = {
   alessia: 'Alessia', millie: 'Millie', echo: 'Echo', nova: 'Nova',
-  stella: 'Stella', iris: 'Iris', marco: 'Marco', personalizza: 'Personalizza',
+  stella: 'Stella', iris: 'Iris', marco: 'Marco', hunter: 'Hunter', personalizza: 'Personalizza',
 };
 
 const AGENT_AUTO_CONTEXT: Record<string, { label: string; icon: string; items: string[] }[]> = {
@@ -1002,6 +1002,59 @@ function SettingsTab({
     queryKey: ["/api/weekly-checkin/templates"],
     enabled: settings.channels_enabled.whatsapp,
   });
+
+  const { data: proactiveWaConfigs = [] } = useQuery<{ id: string; name: string; phoneNumber: string }[]>({
+    queryKey: ["/api/whatsapp/config/proactive-for-outreach"],
+    queryFn: async () => {
+      const res = await fetch("/api/whatsapp/config/proactive", { headers: getAuthHeaders() });
+      const data = await res.json();
+      return (data.configs || []).filter((c: any) => c.isActive && c.configType === "proactive_setter").map((c: any) => ({
+        id: c.id,
+        name: c.name || c.agentName || "Dipendente WA",
+        phoneNumber: c.phoneNumber || "",
+      }));
+    },
+  });
+
+  const voiceTemplateOptions = [
+    { id: "lead-qualification", name: "Qualifica Lead", description: "Per primo contatto con lead freddi" },
+    { id: "appointment-setter", name: "Fissa Appuntamento", description: "Per proporre un incontro" },
+    { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
+  ];
+
+  const outreachConfig = settings.outreach_config || {
+    enabled: false,
+    max_searches_per_day: 5,
+    max_calls_per_day: 10,
+    max_whatsapp_per_day: 15,
+    max_emails_per_day: 20,
+    score_threshold: 60,
+    channel_priority: ["voice", "whatsapp", "email"],
+    cooldown_hours: 48,
+    whatsapp_config_id: "",
+    voice_template_id: "",
+  };
+
+  const updateOutreachConfig = (key: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      outreach_config: { ...outreachConfig, [key]: value },
+    }));
+  };
+
+  const moveChannelPriority = (index: number, direction: "up" | "down") => {
+    const arr = [...outreachConfig.channel_priority];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= arr.length) return;
+    [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+    updateOutreachConfig("channel_priority", arr);
+  };
+
+  const channelLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+    voice: { label: "Chiamate (Alessia)", icon: <Phone className="h-4 w-4" />, color: "text-green-600" },
+    whatsapp: { label: "WhatsApp (Stella)", icon: <MessageSquare className="h-4 w-4" />, color: "text-emerald-600" },
+    email: { label: "Email (Millie)", icon: <Mail className="h-4 w-4" />, color: "text-blue-600" },
+  };
 
   const TEMPLATE_CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: string }> = {
     "Setter": { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", icon: "bg-blue-500" },
@@ -2468,6 +2521,192 @@ function SettingsTab({
               )}
             </div>
           )}
+
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-cyan-500" />
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+                <Search className="h-5 w-5 text-teal-600" />
+                Outreach Automatico (Hunter)
+              </div>
+              <Switch
+                checked={outreachConfig.enabled}
+                onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
+              />
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Hunter trova lead automaticamente e li assegna ad Alessia, Stella e Millie per il primo contatto
+            </p>
+
+            {outreachConfig.enabled && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Max ricerche Hunter / giorno</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.max_searches_per_day}</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.max_searches_per_day]}
+                        min={1}
+                        max={10}
+                        step={1}
+                        onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Max chiamate Alessia / giorno</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.max_calls_per_day]}
+                        min={1}
+                        max={20}
+                        step={1}
+                        onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Max WhatsApp Stella / giorno</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.max_whatsapp_per_day]}
+                        min={1}
+                        max={30}
+                        step={1}
+                        onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Max email Millie / giorno</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.max_emails_per_day]}
+                        min={1}
+                        max={50}
+                        step={1}
+                        onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Soglia score AI minimo</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.score_threshold}/100</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.score_threshold]}
+                        min={30}
+                        max={90}
+                        step={5}
+                        onValueChange={([v]) => updateOutreachConfig("score_threshold", v)}
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Solo lead con score AI &ge; {outreachConfig.score_threshold} verranno contattati</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <span>Cooldown tra contatti (ore)</span>
+                        <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_hours}h</Badge>
+                      </Label>
+                      <Slider
+                        value={[outreachConfig.cooldown_hours]}
+                        min={12}
+                        max={168}
+                        step={12}
+                        onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)}
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Tempo minimo prima di ricontattare lo stesso lead</p>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Dipendente WhatsApp per outreach</Label>
+                      <Select
+                        value={outreachConfig.whatsapp_config_id || "none"}
+                        onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleziona dipendente WA" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
+                          {proactiveWaConfigs.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {proactiveWaConfigs.length === 0 && (
+                        <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA di tipo "proactive_setter" trovato</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Template voce per outreach</Label>
+                      <Select
+                        value={outreachConfig.voice_template_id || "none"}
+                        onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleziona template voce" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Automatico (Hunter sceglie)</SelectItem>
+                          {voiceTemplateOptions.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Priorità canali di contatto</Label>
+                  <p className="text-xs text-gray-400 mb-3">Trascina per riordinare. Hunter proverà i canali in questo ordine per ogni lead.</p>
+                  <div className="space-y-2">
+                    {outreachConfig.channel_priority.map((ch, idx) => {
+                      const info = channelLabels[ch];
+                      if (!info) return null;
+                      return (
+                        <div key={ch} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                          <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
+                          <span className={info.color}>{info.icon}</span>
+                          <span className="flex-1 text-sm font-medium">{info.label}</span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              disabled={idx === 0}
+                              onClick={() => moveChannelPriority(idx, "up")}
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              disabled={idx === outreachConfig.channel_priority.length - 1}
+                              onClick={() => moveChannelPriority(idx, "down")}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">

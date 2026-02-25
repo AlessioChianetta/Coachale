@@ -1,12 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent, type GeminiClient } from "./provider-factory";
 import { db } from "../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { ExecutionStep, getAutonomySettings, buildRolePersonality } from "./autonomous-decision-engine";
 import { fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 import { fileSearchService } from "./file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
+import { searchGoogleMaps, searchGoogleWeb, enrichSearchResults, generateBatchSalesSummaries } from "../services/lead-scraper-service";
+import { leadScraperSearches, leadScraperResults, leadScraperActivities, superadminLeadScraperConfig } from "../../shared/schema";
+import { checkDailyLimits, checkLeadCooldown, getRemainingLimits } from "../services/outreach-rate-limiter";
+import { decrypt } from "../encryption";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
 const _agentDocsLoggedPerTask = new Set<string>();
@@ -203,6 +207,158 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
   return result;
 }
 
+async function updateLeadStatusAfterOutreach(
+  task: AITaskInfo,
+  stepAction: string,
+  result: Record<string, any>,
+): Promise<void> {
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+
+  const leadId = additionalContextData.lead_id;
+  if (!leadId) return;
+
+  const isProspecting = task.task_category === 'prospecting' || !!leadId;
+  if (!isProspecting) return;
+
+  console.log(`${LOG_PREFIX} [FEEDBACK-LOOP] Updating lead ${leadId} after ${stepAction} (status: ${result.status})`);
+
+  let newLeadStatus: string;
+  let activityType: string;
+  let activityTitle: string;
+  let activityOutcome: string;
+  let scheduleRetry = false;
+
+  if (stepAction === 'voice_call') {
+    if (result.status === 'scheduled' || result.call_id) {
+      const callStatus = result.call_status || result.status;
+      if (callStatus === 'completed' || callStatus === 'answered') {
+        newLeadStatus = 'in_trattativa';
+        activityType = 'voice_call_answered';
+        activityTitle = 'Chiamata completata con risposta';
+        activityOutcome = 'answered';
+      } else if (callStatus === 'no_answer' || callStatus === 'failed' || callStatus === 'busy') {
+        newLeadStatus = 'contattato';
+        activityType = 'voice_call_no_answer';
+        activityTitle = 'Chiamata senza risposta';
+        activityOutcome = 'no_answer';
+        scheduleRetry = true;
+      } else if (callStatus === 'rejected' || callStatus === 'not_interested') {
+        newLeadStatus = 'non_interessato';
+        activityType = 'voice_call_rejected';
+        activityTitle = 'Lead non interessato (chiamata)';
+        activityOutcome = 'not_interested';
+      } else {
+        newLeadStatus = 'contattato';
+        activityType = 'voice_call_scheduled';
+        activityTitle = 'Chiamata programmata';
+        activityOutcome = 'scheduled';
+      }
+    } else if (result.success === false || result.error) {
+      newLeadStatus = 'contattato';
+      activityType = 'voice_call_failed';
+      activityTitle = 'Chiamata fallita';
+      activityOutcome = 'failed';
+      scheduleRetry = true;
+    } else {
+      newLeadStatus = 'contattato';
+      activityType = 'voice_call_attempted';
+      activityTitle = 'Tentativo di chiamata';
+      activityOutcome = 'attempted';
+    }
+  } else if (stepAction === 'send_whatsapp') {
+    if (result.status === 'sent') {
+      newLeadStatus = 'contattato';
+      activityType = 'whatsapp_sent';
+      activityTitle = 'WhatsApp inviato con successo';
+      activityOutcome = 'sent';
+    } else if (result.status === 'failed') {
+      newLeadStatus = 'in_outreach';
+      activityType = 'whatsapp_failed';
+      activityTitle = 'WhatsApp invio fallito';
+      activityOutcome = 'failed';
+      scheduleRetry = true;
+    } else {
+      newLeadStatus = 'in_outreach';
+      activityType = 'whatsapp_skipped';
+      activityTitle = 'WhatsApp saltato';
+      activityOutcome = 'skipped';
+    }
+  } else if (stepAction === 'send_email') {
+    if (result.status === 'sent') {
+      newLeadStatus = 'contattato';
+      activityType = 'email_sent';
+      activityTitle = 'Email inviata con successo';
+      activityOutcome = 'sent';
+    } else if (result.status === 'failed') {
+      newLeadStatus = 'in_outreach';
+      activityType = 'email_failed';
+      activityTitle = 'Email invio fallita';
+      activityOutcome = 'failed';
+      scheduleRetry = true;
+    } else {
+      newLeadStatus = 'in_outreach';
+      activityType = 'email_skipped';
+      activityTitle = 'Email saltata';
+      activityOutcome = 'skipped';
+    }
+  } else {
+    return;
+  }
+
+  try {
+    const updateData: Record<string, any> = {
+      leadStatus: newLeadStatus,
+    };
+    if (newLeadStatus === 'contattato' || newLeadStatus === 'in_trattativa') {
+      updateData.leadContactedAt = new Date();
+    }
+    if (scheduleRetry) {
+      updateData.leadNextAction = `retry_${stepAction}`;
+      updateData.leadNextActionDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+
+    await db
+      .update(leadScraperResults)
+      .set(updateData)
+      .where(eq(leadScraperResults.id, leadId));
+
+    await db.insert(leadScraperActivities).values({
+      leadId,
+      consultantId: task.consultant_id,
+      type: activityType,
+      title: activityTitle,
+      description: `Task ${task.id} (${task.ai_role || 'N/A'}): ${result.status || 'unknown'}. ${result.error ? `Errore: ${result.error}` : ''} ${result.message_preview ? `Msg: "${result.message_preview}"` : ''} ${result.call_id ? `Call ID: ${result.call_id}` : ''}`.trim(),
+      outcome: activityOutcome,
+      completedAt: new Date(),
+      metadata: {
+        taskId: task.id,
+        aiRole: task.ai_role,
+        channel: stepAction === 'voice_call' ? 'voice' : stepAction === 'send_whatsapp' ? 'whatsapp' : 'email',
+        resultStatus: result.status,
+        searchId: additionalContextData.search_id,
+        businessName: additionalContextData.business_name,
+      },
+    });
+
+    console.log(`${LOG_PREFIX} [FEEDBACK-LOOP] Lead ${leadId} updated: status=${newLeadStatus}, activity=${activityType}${scheduleRetry ? ', retry scheduled' : ''}`);
+
+    await logActivity(task.consultant_id, {
+      event_type: 'outreach_feedback',
+      title: `Feedback outreach: ${activityTitle}`,
+      description: `Lead: ${additionalContextData.business_name || task.contact_name || 'N/A'}. Nuovo stato: ${newLeadStatus}. Canale: ${stepAction}.${scheduleRetry ? ' Retry programmato.' : ''}`,
+      icon: newLeadStatus === 'in_trattativa' ? '🔥' : newLeadStatus === 'non_interessato' ? '🚫' : '📋',
+      severity: newLeadStatus === 'in_trattativa' ? 'success' : newLeadStatus === 'non_interessato' ? 'warning' : 'info',
+      task_id: task.id,
+      contact_name: task.contact_name,
+    });
+  } catch (updateErr: any) {
+    console.error(`${LOG_PREFIX} [FEEDBACK-LOOP] DB update failed for lead ${leadId}: ${updateErr.message}`);
+  }
+}
+
 export async function executeStep(
   task: AITaskInfo,
   step: ExecutionStep,
@@ -291,12 +447,26 @@ export async function executeStep(
       case "web_search":
         result = await handleWebSearch(task, step, previousResults);
         break;
+      case "lead_scraper_search":
+        result = await handleLeadScraperSearch(task, step, previousResults);
+        break;
+      case "lead_qualify_and_assign":
+        result = await handleLeadQualifyAndAssign(task, step, previousResults);
+        break;
       default:
         throw new Error(`Unknown step action: ${step.action}`);
     }
 
     const duration_ms = Date.now() - startTime;
     console.log(`${LOG_PREFIX} Step ${step.step} (${step.action}) completed in ${duration_ms}ms`);
+
+    if (['voice_call', 'send_email', 'send_whatsapp'].includes(step.action)) {
+      try {
+        await updateLeadStatusAfterOutreach(task, step.action, result);
+      } catch (feedbackErr: any) {
+        console.warn(`${LOG_PREFIX} [FEEDBACK-LOOP] Failed to update lead status: ${feedbackErr.message}`);
+      }
+    }
 
     let enrichedDescription = step.description;
 
@@ -318,6 +488,10 @@ export async function executeStep(
       enrichedDescription = `Email ${result.status === 'sent' ? 'inviata' : result.status === 'skipped' ? 'saltata' : 'fallita'} a ${result.recipient || task.contact_name || 'N/A'}. ${result.subject ? `Oggetto: "${result.subject}"` : ''} ${result.has_attachment ? 'Con PDF allegato.' : ''}`;
     } else if (step.action === 'send_whatsapp' && result) {
       enrichedDescription = `WhatsApp ${result.status === 'sent' ? 'inviato' : result.status === 'skipped' ? 'saltato' : 'fallito'} a ${result.target_phone || task.contact_name || 'N/A'}. ${result.message_preview ? `"${result.message_preview}"` : ''}`;
+    } else if (step.action === 'lead_scraper_search' && result) {
+      enrichedDescription = `Ricerca lead: "${result.query || 'N/A'}" (${result.search_engine || 'N/A'}) in "${result.location || 'N/A'}". ${result.results_count || 0} risultati trovati. Search ID: ${result.search_id || 'N/A'}. Enrichment: ${result.enrichment_stats ? `${result.enrichment_stats.enriched} arricchiti, ${result.enrichment_stats.cached} da cache` : 'N/A'}`;
+    } else if (step.action === 'lead_qualify_and_assign' && result) {
+      enrichedDescription = `Qualifica lead: ${result.total_leads || 0} analizzati, ${result.qualified_count || 0} qualificati (soglia: ${result.score_threshold || 60}). AI summaries: ${result.summaries_generated || 0} generati. Task creati: ${result.tasks_created || 0} (voice: ${result.voice_tasks || 0}, whatsapp: ${result.whatsapp_tasks || 0}, email: ${result.email_tasks || 0}). Search ID: ${result.search_id || 'N/A'}`;
     }
 
     await logActivity(task.consultant_id, {
@@ -1022,11 +1196,76 @@ async function handlePrepareCall(
   const reportData = previousResults.generate_report || {};
   const clientData = previousResults.fetch_client_data || {};
 
-  const callIdentity = rolePersonality
-    ? `${rolePersonality}\nPrepara i punti chiave e il briefing per il CONSULENTE in vista della sua telefonata/consulenza con il cliente. Il tuo ruolo è preparare il consulente, fornendogli contesto, strategie, domande chiave da porre, e obiettivi per la chiamata. NON stai chiamando il cliente direttamente — stai facendo coaching al consulente su come condurre al meglio la conversazione.`
-    : `Sei un assistente AI per consulenti.\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`;
+  const isOutreachCall = task.task_category === 'prospecting' || 
+    (task.additional_context && (() => { try { return JSON.parse(task.additional_context!).lead_id; } catch { return false; } })());
 
-  const prompt = `${callIdentity}
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+
+  let callIdentity: string;
+  let promptBody: string;
+
+  if (isOutreachCall) {
+    callIdentity = rolePersonality
+      ? `${rolePersonality}\nStai preparando una chiamata OUTBOUND verso un lead cold/warm trovato dalla ricerca automatica. Il tuo ruolo è preparare l'AI vocale (Alessia) per questa chiamata outbound, fornendole contesto sul lead, obiettivi della chiamata, e strategia di approccio.`
+      : `Sei un assistente AI che prepara chiamate outbound verso lead.\nPrepara i punti chiave per una chiamata outbound a un potenziale cliente.`;
+
+    promptBody = `${callIdentity}
+${agentContextSection || ''}
+
+IMPORTANT: Questa è una chiamata OUTBOUND verso un LEAD (non un cliente esistente). Il lead NON ci conosce o ci conosce poco.
+
+ISTRUZIONE DEL TASK (obiettivo della chiamata):
+${task.ai_instruction}
+${buildFollowUpSection(previousResults)}
+CATEGORIA: ${task.task_category}
+
+DATI LEAD:
+Nome/Azienda: ${task.contact_name || "N/A"}
+Telefono: ${task.contact_phone}
+${additionalContextData.lead_id ? `Lead ID: ${additionalContextData.lead_id}` : ''}
+${additionalContextData.voice_template_id ? `Template voce: ${additionalContextData.voice_template_id}` : ''}
+
+REGOLE PER CHIAMATA OUTBOUND A LEAD:
+- Il lead NON ci conosce: presentati brevemente e spiega il motivo della chiamata
+- Sii diretto ma cordiale, rispetta il tempo del lead
+- Obiettivo: qualificare l'interesse e proporre un appuntamento con il consulente
+- NON dare prezzi, NON fare promesse specifiche
+- Se il lead non è interessato, ringrazia e chiudi con professionalità
+
+Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
+{
+  "talking_points": [
+    {
+      "topic": "argomento",
+      "key_message": "messaggio principale",
+      "supporting_details": "dettagli di supporto",
+      "tone": "professionale|empatico|urgente|informativo"
+    }
+  ],
+  "opening_script": "script di apertura per l'AI vocale verso il lead",
+  "closing_script": "script di chiusura per l'AI vocale",
+  "objection_responses": [
+    {
+      "objection": "possibile obiezione del lead",
+      "response": "risposta suggerita"
+    }
+  ],
+  "call_duration_estimate_minutes": 5,
+  "call_priority": "high|medium|low",
+  "preferred_call_time": "HH:MM",
+  "preferred_call_date": "YYYY-MM-DD",
+  "timing_reasoning": "spiegazione del perché questo orario è ottimale",
+  "call_topic_summary": "brief summary of what this call is about"
+}`;
+  } else {
+    callIdentity = rolePersonality
+      ? `${rolePersonality}\nPrepara i punti chiave e il briefing per il CONSULENTE in vista della sua telefonata/consulenza con il cliente. Il tuo ruolo è preparare il consulente, fornendogli contesto, strategie, domande chiave da porre, e obiettivi per la chiamata. NON stai chiamando il cliente direttamente — stai facendo coaching al consulente su come condurre al meglio la conversazione.`
+      : `Sei un assistente AI per consulenti.\nPrepara i punti chiave per una telefonata con il cliente, adattandoti al suo contesto specifico.`;
+
+    promptBody = `${callIdentity}
 ${agentContextSection || ''}
 
 IMPORTANT: The talking points and script MUST be about the CURRENT task instruction below, NOT about any previous task or report from a different context. Focus EXCLUSIVELY on what the current task asks.
@@ -1075,6 +1314,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   "timing_reasoning": "spiegazione del perché questo orario è ottimale",
   "call_topic_summary": "brief summary of what this call is about"
 }`;
+  }
+
+  const prompt = promptBody;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
   console.log(`${LOG_PREFIX} prepare_call using ${providerName} (${resolvedModel})`);
@@ -1320,6 +1562,21 @@ async function handleVoiceCall(
     ? `${callPrep.opening_script}\n\nPunti chiave:\n${talkingPointsText}\n\n${callPrep.closing_script || ""}`
     : task.ai_instruction;
 
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+  const isOutreachCall = task.task_category === 'prospecting' || !!additionalContextData.lead_id;
+  const voiceTemplateId = additionalContextData.voice_template_id || task.voice_template_suggestion || null;
+  const useDefaultTemplate = isOutreachCall ? false : true;
+  const aiMode = isOutreachCall ? 'outreach' : 'assistenza';
+
+  const callInstruction = isOutreachCall
+    ? `[OUTREACH CALL] Lead: ${resolvedName || 'Sconosciuto'} | Tel: ${resolvedPhone}\n${task.ai_instruction}\n\nPunti chiave:\n${talkingPointsText}`
+    : customPrompt;
+
+  console.log(`${LOG_PREFIX} Voice call config: isOutreach=${isOutreachCall}, aiMode=${aiMode}, useDefaultTemplate=${useDefaultTemplate}, voiceTemplateId=${voiceTemplateId || 'none'}`);
+
   const scheduledCallId = generateScheduledCallId();
 
   const preferredDate = callPrep.preferred_call_date || _step.params?.preferred_date;
@@ -1420,13 +1677,13 @@ async function handleVoiceCall(
     INSERT INTO scheduled_voice_calls (
       id, consultant_id, target_phone, scheduled_at, status, ai_mode,
       custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-      priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
+      priority, source_task_id, attempts_log, use_default_template, voice_template_id, created_at, updated_at
     ) VALUES (
       ${scheduledCallId}, ${task.consultant_id}, ${resolvedPhone},
-      ${scheduledAtSql}, 'scheduled', 'assistenza',
-      ${customPrompt}, ${customPrompt},
+      ${scheduledAtSql}, 'scheduled', ${aiMode},
+      ${customPrompt}, ${callInstruction},
       'task', 0, 3,
-      ${task.priority || 1}, ${task.id}, '[]'::jsonb, true, NOW(), NOW()
+      ${task.priority || 1}, ${task.id}, '[]'::jsonb, ${useDefaultTemplate}, ${voiceTemplateId}, NOW(), NOW()
     )
   `);
 
@@ -2157,27 +2414,41 @@ async function handleSendWhatsapp(
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       console.log(`${LOG_PREFIX} Generating template variables using ${providerName}`);
 
+      let additionalLeadContext = '';
+      if (task.additional_context) {
+        try {
+          const ctxData = JSON.parse(task.additional_context);
+          if (ctxData.lead_id) {
+            additionalLeadContext = `\n- TIPO: Messaggio OUTREACH a lead (NON cliente esistente)`;
+            if (ctxData.business_name) additionalLeadContext += `\n- Azienda lead: ${ctxData.business_name}`;
+            if (ctxData.sector) additionalLeadContext += `\n- Settore: ${ctxData.sector}`;
+            if (ctxData.ai_summary) additionalLeadContext += `\n- Profilo AI: ${ctxData.ai_summary}`;
+          }
+        } catch {}
+      }
+
       const variablePrompt = `Devi generare i valori per le variabili di un template WhatsApp.
 
 Template: "${templateBodyText}"
 Numero variabili: ${templateVariableCount}
 
-Contesto cliente:
+Contesto:
 - Nome: ${resolvedName || 'Cliente'}
 - Istruzione: ${task.ai_instruction}
-${task.additional_context ? `- Contesto aggiuntivo: ${task.additional_context}` : ''}
+${task.additional_context ? `- Contesto aggiuntivo: ${task.additional_context}` : ''}${additionalLeadContext}
 ${agentContextSection || ''}
 ${reportData.title ? `- Report preparato: "${reportData.title}"` : ''}
 ${reportData.summary ? `- Riepilogo report: ${reportData.summary.substring(0, 200)}` : ''}
 
 REGOLE:
-- La variabile {{1}} è SEMPRE il nome del cliente: "${resolvedName || 'Cliente'}"
+- La variabile {{1}} è SEMPRE il nome del destinatario: "${resolvedName || 'Cliente'}"
 - Le altre variabili ({{2}}, {{3}}, ecc.) sono messaggi brevi e personalizzati basati sul contesto
 - ${reportData.title ? 'È stato preparato un documento/report che verrà inviato via EMAIL (non su WhatsApp). Menziona brevemente cosa è stato preparato e che lo troverà nella sua casella email.' : 'Non menzionare report o email.'}
 - Ogni variabile deve essere BREVE (massimo 1-2 frasi)
 - NON usare newline (\\n) nei valori
 - Sii professionale e cordiale
 - Spiega brevemente il MOTIVO del messaggio e cosa è stato fatto (basandoti sull'istruzione del task)
+${additionalLeadContext ? '- Per un lead outreach: sii diretto, cordiale e spiega il valore che puoi offrire' : ''}
 
 Rispondi SOLO con un JSON valido nel formato:
 ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 ? '{"1": "valore", "2": "valore"}' : `{${Array.from({length: templateVariableCount}, (_, i) => `"${i+1}": "valore"`).join(', ')}}`}`;
@@ -2495,5 +2766,434 @@ Fornisci una risposta strutturata e dettagliata con le informazioni trovate, cit
       queries: searchQueries,
       sources_count: sources.length,
     } : null,
+  };
+}
+
+async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecrawlKey: string | null }> {
+  try {
+    const [config] = await db.select().from(superadminLeadScraperConfig).limit(1);
+    if (config && config.enabled) {
+      return {
+        serpApiKey: config.serpapiKeyEncrypted ? decrypt(config.serpapiKeyEncrypted) : null,
+        firecrawlKey: config.firecrawlKeyEncrypted ? decrypt(config.firecrawlKeyEncrypted) : null,
+      };
+    }
+  } catch (e) {
+    console.error(`${LOG_PREFIX} Error reading lead scraper keys from DB, falling back to env:`, e);
+  }
+  return {
+    serpApiKey: process.env.SERPAPI_KEY || null,
+    firecrawlKey: process.env.FIRECRAWL_API_KEY || null,
+  };
+}
+
+async function handleLeadScraperSearch(
+  task: AITaskInfo,
+  step: ExecutionStep,
+  _previousResults: Record<string, any>,
+): Promise<Record<string, any>> {
+  const params = step.params || {};
+  const query = params.query || params.search_query;
+  const location = params.location || '';
+  const searchEngine = params.searchEngine || params.search_engine || 'google_maps';
+  const limit = params.limit || 20;
+
+  if (!query) {
+    throw new Error('lead_scraper_search: parametro "query" mancante');
+  }
+
+  console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] query="${query}", location="${location}", engine=${searchEngine}, limit=${limit}`);
+
+  const keys = await getLeadScraperKeys();
+  if (!keys.serpApiKey) {
+    throw new Error('SERPAPI_KEY non configurata. Impossibile eseguire la ricerca lead.');
+  }
+
+  const [search] = await db
+    .insert(leadScraperSearches)
+    .values({
+      consultantId: task.consultant_id,
+      query,
+      location: location || '',
+      status: 'running',
+      metadata: { params: { limit, searchEngine, source: 'hunter_task', taskId: task.id } },
+      originRole: 'hunter',
+    })
+    .returning();
+
+  const searchId = search.id;
+  console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Created search record ${searchId}`);
+
+  let resultsCount = 0;
+
+  try {
+    if (searchEngine === 'google_search') {
+      const webResults = await searchGoogleWeb(query, location, limit, keys.serpApiKey);
+      resultsCount = webResults.length;
+
+      for (const result of webResults) {
+        await db.insert(leadScraperResults).values({
+          searchId,
+          businessName: result.title || null,
+          address: null,
+          phone: null,
+          website: result.website || null,
+          rating: null,
+          reviewsCount: null,
+          category: null,
+          latitude: null,
+          longitude: null,
+          hours: null,
+          websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
+          scrapeStatus: result.website ? 'pending' : 'no_website',
+          source: 'google_search',
+        });
+      }
+    } else {
+      const mapsResults = await searchGoogleMaps(query, location, limit, keys.serpApiKey);
+      resultsCount = mapsResults.length;
+
+      for (const result of mapsResults) {
+        await db.insert(leadScraperResults).values({
+          searchId,
+          businessName: result.title || null,
+          address: result.address || null,
+          phone: result.phone || null,
+          website: result.website || null,
+          rating: result.rating || null,
+          reviewsCount: result.reviews || null,
+          category: result.type || null,
+          latitude: result.gps_coordinates?.latitude || null,
+          longitude: result.gps_coordinates?.longitude || null,
+          hours: result.operating_hours || null,
+          scrapeStatus: result.website ? 'pending' : 'no_website',
+          source: 'google_maps',
+        });
+      }
+    }
+
+    await db
+      .update(leadScraperSearches)
+      .set({
+        status: keys.firecrawlKey ? 'enriching' : 'completed',
+        resultsCount,
+      })
+      .where(eq(leadScraperSearches.id, searchId));
+
+    console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Inserted ${resultsCount} results for search ${searchId}`);
+
+    let enrichmentStats = { enriched: 0, failed: 0, cached: 0 };
+    if (keys.firecrawlKey && resultsCount > 0) {
+      try {
+        enrichmentStats = await enrichSearchResults(searchId, keys.firecrawlKey);
+        console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Enrichment complete: ${enrichmentStats.enriched} scraped, ${enrichmentStats.cached} cached, ${enrichmentStats.failed} failed`);
+      } catch (enrichErr: any) {
+        console.error(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Enrichment error: ${enrichErr.message}`);
+      }
+
+      await db
+        .update(leadScraperSearches)
+        .set({ status: 'completed' })
+        .where(eq(leadScraperSearches.id, searchId));
+    }
+
+    await logActivity(task.consultant_id, {
+      event_type: 'lead_scraper_search_completed',
+      title: `Ricerca lead completata: "${query}"`,
+      description: `Motore: ${searchEngine}, Location: ${location || 'N/A'}, Risultati: ${resultsCount}, Arricchiti: ${enrichmentStats.enriched}, Cache: ${enrichmentStats.cached}`,
+      icon: '🔍',
+      severity: 'info',
+      task_id: task.id,
+    });
+
+    return {
+      search_id: searchId,
+      query,
+      location,
+      search_engine: searchEngine,
+      results_count: resultsCount,
+      enrichment_stats: enrichmentStats,
+      status: 'completed',
+    };
+  } catch (error: any) {
+    await db
+      .update(leadScraperSearches)
+      .set({ status: 'failed' })
+      .where(eq(leadScraperSearches.id, searchId));
+
+    throw error;
+  }
+}
+
+async function handleLeadQualifyAndAssign(
+  task: AITaskInfo,
+  step: ExecutionStep,
+  previousResults: Record<string, any>,
+): Promise<Record<string, any>> {
+  const params = step.params || {};
+  const searchId = params.search_id || params.searchId || previousResults.lead_scraper_search?.search_id;
+
+  if (!searchId) {
+    throw new Error('lead_qualify_and_assign: parametro "search_id" mancante e nessun risultato di ricerca precedente trovato');
+  }
+
+  console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Starting qualification for search ${searchId}`);
+
+  const settingsResult = await db.execute(sql`
+    SELECT outreach_config FROM ai_autonomy_settings
+    WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+  `);
+  const outreachConfig = (settingsResult.rows[0] as any)?.outreach_config || {};
+  const scoreThreshold = outreachConfig.score_threshold ?? outreachConfig.minScoreThreshold ?? 60;
+  const channelPriority: string[] = outreachConfig.channel_priority ?? outreachConfig.channelPriority ?? ['voice', 'whatsapp', 'email'];
+  const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
+  const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
+
+  let summariesGenerated = 0;
+  let summariesFailed = 0;
+  try {
+    const batchResult = await generateBatchSalesSummaries(searchId, task.consultant_id);
+    summariesGenerated = batchResult.generated;
+    summariesFailed = batchResult.failed;
+    console.log(`${LOG_PREFIX} [LEAD-QUALIFY] AI summaries: ${summariesGenerated} generated, ${summariesFailed} failed`);
+  } catch (summaryErr: any) {
+    console.error(`${LOG_PREFIX} [LEAD-QUALIFY] Batch summary error: ${summaryErr.message}`);
+  }
+
+  const allLeads = await db
+    .select()
+    .from(leadScraperResults)
+    .where(eq(leadScraperResults.searchId, searchId));
+
+  const qualifiedLeads = allLeads.filter(lead => {
+    if (!lead.aiCompatibilityScore || lead.aiCompatibilityScore < scoreThreshold) return false;
+    if (lead.leadStatus && lead.leadStatus !== 'nuovo') return false;
+    return true;
+  });
+
+  console.log(`${LOG_PREFIX} [LEAD-QUALIFY] ${allLeads.length} total leads, ${qualifiedLeads.length} qualified (score >= ${scoreThreshold})`);
+
+  let whatsappConfigActive = false;
+  if (whatsappConfigId) {
+    try {
+      const waConfigResult = await db.execute(sql`
+        SELECT id, is_active FROM consultant_whatsapp_config
+        WHERE id = ${whatsappConfigId} AND is_active = true LIMIT 1
+      `);
+      whatsappConfigActive = waConfigResult.rows.length > 0;
+    } catch (e) {
+      console.warn(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to check WA config: ${(e as Error).message}`);
+    }
+  }
+
+  const autonomySettings = await getAutonomySettings(task.consultant_id);
+  const channelsEnabled = autonomySettings.channels_enabled || {};
+
+  const remainingLimits = await getRemainingLimits(task.consultant_id);
+  console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Remaining daily limits — calls: ${remainingLimits.calls}, whatsapp: ${remainingLimits.whatsapp}, email: ${remainingLimits.email}`);
+
+  let tasksCreated = 0;
+  let voiceTasks = 0;
+  let whatsappTasks = 0;
+  let emailTasks = 0;
+  let skippedCooldown = 0;
+  let skippedRateLimit = 0;
+  const baseDelayMinutes = 15;
+
+  for (let i = 0; i < qualifiedLeads.length; i++) {
+    const lead = qualifiedLeads[i];
+    const delayMinutes = i * (baseDelayMinutes + Math.floor(Math.random() * 16));
+    const wd = (lead.websiteData as any) || {};
+    const leadPhone = lead.phone || (wd.phones && wd.phones[0]) || null;
+    const leadEmail = lead.email || (wd.emails && wd.emails[0]) || null;
+    const leadName = lead.businessName || 'Lead sconosciuto';
+
+    const cooldownOk = await checkLeadCooldown(lead.id, task.consultant_id);
+    if (!cooldownOk) {
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": cooldown active or already in pipeline`);
+      skippedCooldown++;
+      continue;
+    }
+
+    let channelAssigned: string | null = null;
+
+    for (const channel of channelPriority) {
+      if (channel === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceTasks) {
+        channelAssigned = 'voice';
+        break;
+      }
+      if (channel === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappTasks) {
+        channelAssigned = 'whatsapp';
+        break;
+      }
+      if (channel === 'email' && leadEmail && channelsEnabled.email && remainingLimits.email > emailTasks) {
+        channelAssigned = 'email';
+        break;
+      }
+    }
+
+    if (!channelAssigned) {
+      if (leadPhone && channelsEnabled.voice && remainingLimits.calls > voiceTasks) channelAssigned = 'voice';
+      else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappTasks) channelAssigned = 'whatsapp';
+      else if (leadEmail && channelsEnabled.email && remainingLimits.email > emailTasks) channelAssigned = 'email';
+    }
+
+    if (!channelAssigned) {
+      const allLimitsReached = remainingLimits.calls <= voiceTasks && remainingLimits.whatsapp <= whatsappTasks && remainingLimits.email <= emailTasks;
+      if (allLimitsReached) {
+        console.log(`${LOG_PREFIX} [LEAD-QUALIFY] All daily rate limits reached, stopping assignment`);
+        skippedRateLimit += (qualifiedLeads.length - i);
+        break;
+      }
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Skipping lead "${leadName}": no valid channel (phone=${!!leadPhone}, email=${!!leadEmail}) or limits reached`);
+      skippedRateLimit++;
+      continue;
+    }
+
+    const leadContext = [
+      `Azienda: ${leadName}`,
+      lead.category ? `Categoria: ${lead.category}` : null,
+      lead.address ? `Indirizzo: ${lead.address}` : null,
+      lead.website ? `Sito: ${lead.website}` : null,
+      lead.rating ? `Rating: ${lead.rating}/5 (${lead.reviewsCount || 0} recensioni)` : null,
+      lead.aiCompatibilityScore ? `Score AI: ${lead.aiCompatibilityScore}/100` : null,
+      lead.aiSalesSummary ? `Analisi AI: ${lead.aiSalesSummary.substring(0, 500)}` : null,
+    ].filter(Boolean).join('\n');
+
+    const childTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    try {
+      if (channelAssigned === 'voice') {
+        const instruction = `Chiamata outbound a ${leadName}. Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: qualificare l'interesse, presentare i servizi del consulente e, se appropriato, fissare un appuntamento.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            task_category, ai_role, preferred_channel,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${childTaskId}, ${task.consultant_id}, ${leadPhone},
+            ${leadName}, 'outreach_call', ${instruction},
+            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
+            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            'prospecting', 'alessia', 'voice',
+            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, voice_template_id: voiceTemplateId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+
+        voiceTasks++;
+      } else if (channelAssigned === 'whatsapp') {
+        const instruction = `Invia messaggio WhatsApp a ${leadName}. Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: primo contatto professionale, presentazione servizi del consulente. Usa un template pre-approvato.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            task_category, ai_role, preferred_channel,
+            whatsapp_config_id,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${childTaskId}, ${task.consultant_id}, ${leadPhone},
+            ${leadName}, 'outreach_whatsapp', ${instruction},
+            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
+            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            'prospecting', 'stella', 'whatsapp',
+            ${whatsappConfigId},
+            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+
+        whatsappTasks++;
+      } else if (channelAssigned === 'email') {
+        const instruction = `Invia email a ${leadName} (${leadEmail}). Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: primo contatto professionale via email, presentazione servizi del consulente e proposta di valore specifica per il loro settore.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            task_category, ai_role, preferred_channel,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${childTaskId}, ${task.consultant_id}, ${leadEmail || ''},
+            ${leadName}, 'outreach_email', ${instruction},
+            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
+            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            'prospecting', 'millie', 'email',
+            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+
+        emailTasks++;
+      }
+
+      tasksCreated++;
+
+      await db
+        .update(leadScraperResults)
+        .set({
+          leadStatus: 'in_outreach',
+          outreachTaskId: childTaskId,
+          leadNextAction: `${channelAssigned} outreach scheduled`,
+          leadNextActionDate: new Date(Date.now() + delayMinutes * 60 * 1000),
+        })
+        .where(eq(leadScraperResults.id, lead.id));
+
+      await db.insert(leadScraperActivities).values({
+        leadId: lead.id,
+        consultantId: task.consultant_id,
+        type: 'outreach_assigned',
+        title: `Outreach assegnato: ${channelAssigned}`,
+        description: `Task ${childTaskId} creato per contattare via ${channelAssigned}. Score: ${lead.aiCompatibilityScore || 'N/A'}/100`,
+        metadata: { taskId: childTaskId, channel: channelAssigned, score: lead.aiCompatibilityScore },
+      });
+
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Created ${channelAssigned} task for "${leadName}" (score: ${lead.aiCompatibilityScore}, delay: ${delayMinutes}min)`);
+    } catch (taskErr: any) {
+      console.error(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to create task for "${leadName}": ${taskErr.message}`);
+    }
+  }
+
+  await logActivity(task.consultant_id, {
+    event_type: 'lead_qualify_and_assign_completed',
+    title: `Qualifica lead completata: ${qualifiedLeads.length} qualificati su ${allLeads.length}`,
+    description: `Soglia score: ${scoreThreshold}. Task creati: ${tasksCreated} (voice: ${voiceTasks}, whatsapp: ${whatsappTasks}, email: ${emailTasks}). AI summaries: ${summariesGenerated} generati. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
+    icon: '🎯',
+    severity: 'info',
+    task_id: task.id,
+  });
+
+  return {
+    search_id: searchId,
+    total_leads: allLeads.length,
+    qualified_count: qualifiedLeads.length,
+    score_threshold: scoreThreshold,
+    summaries_generated: summariesGenerated,
+    summaries_failed: summariesFailed,
+    tasks_created: tasksCreated,
+    voice_tasks: voiceTasks,
+    whatsapp_tasks: whatsappTasks,
+    email_tasks: emailTasks,
+    skipped_cooldown: skippedCooldown,
+    skipped_rate_limit: skippedRateLimit,
+    channel_priority: channelPriority,
+    qualified_leads: qualifiedLeads.map(l => ({
+      id: l.id,
+      business_name: l.businessName,
+      score: l.aiCompatibilityScore,
+      status: l.leadStatus,
+    })),
   };
 }

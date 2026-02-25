@@ -10327,12 +10327,25 @@ export const aiScheduledTasks = pgTable("ai_scheduled_tasks", {
 export type AIScheduledTask = typeof aiScheduledTasks.$inferSelect;
 export type InsertAIScheduledTask = typeof aiScheduledTasks.$inferInsert;
 
+export interface OutreachConfig {
+  enabled?: boolean;
+  maxSearchesPerDay?: number;
+  maxCallsPerDay?: number;
+  maxWhatsappPerDay?: number;
+  maxEmailsPerDay?: number;
+  minScoreThreshold?: number;
+  channelPriority?: string[];
+  cooldownHours?: number;
+  whatsappConfigId?: string;
+  voiceTemplateId?: string;
+}
+
 export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: uuid("consultant_id").notNull(),
   autonomyLevel: integer("autonomy_level").default(1),
   defaultMode: varchar("default_mode", { length: 10 }).default("manual"),
-  allowedTaskCategories: jsonb("allowed_task_categories").$type<string[]>().default(sql`'["outreach", "reminder", "followup"]'::jsonb`),
+  allowedTaskCategories: jsonb("allowed_task_categories").$type<string[]>().default(sql`'["outreach", "reminder", "followup", "prospecting"]'::jsonb`),
   alwaysApproveActions: jsonb("always_approve_actions").$type<string[]>().default(sql`'["send_email", "make_call", "modify_data"]'::jsonb`),
   workingHoursStart: time("working_hours_start").default(sql`'08:00'`),
   workingHoursEnd: time("working_hours_end").default(sql`'20:00'`),
@@ -10354,6 +10367,7 @@ export const aiAutonomySettings = pgTable("ai_autonomy_settings", {
   whatsappTemplateIds: jsonb("whatsapp_template_ids").$type<string[]>().default(sql`'[]'::jsonb`),
   reasoningMode: varchar("reasoning_mode", { length: 20 }).default("structured"),
   roleReasoningModes: jsonb("role_reasoning_modes").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
+  outreachConfig: jsonb("outreach_config").$type<OutreachConfig>().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
 });
@@ -10652,6 +10666,7 @@ export const leadScraperSearches = pgTable("lead_scraper_searches", {
     params?: Record<string, any>;
     stats?: Record<string, any>;
   }>().default(sql`'{}'::jsonb`),
+  originRole: varchar("origin_role", { length: 30 }).default("manual"),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 
@@ -10690,6 +10705,7 @@ export const leadScraperResults = pgTable("lead_scraper_results", {
   aiSalesSummary: text("ai_sales_summary"),
   aiCompatibilityScore: integer("ai_compatibility_score"),
   aiSalesSummaryGeneratedAt: timestamp("ai_sales_summary_generated_at"),
+  outreachTaskId: varchar("outreach_task_id", { length: 100 }),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 

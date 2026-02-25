@@ -5,6 +5,7 @@ import stellaAvatar from "@assets/generated_images/stella_ai_whatsapp_assistant_
 import novaAvatar from "@assets/generated_images/nova_ai_social_media_avatar.png";
 import irisAvatar from "@assets/generated_images/iris_ai_email_hub_avatar.png";
 import marcoAvatar from "@assets/generated_images/marco_ai_executive_coach_avatar.png";
+import hunterAvatar from "@assets/generated_images/spec_ai_researcher_avatar.png";
 import type { AutonomySettings, TaskLibraryItem, NewTaskData } from "./types";
 
 export const DAYS_OF_WEEK = [
@@ -27,6 +28,7 @@ export const TASK_CATEGORIES = [
   { value: "preparation", label: "Preparazione", description: "Preparare materiale per consulenze e incontri" },
   { value: "monitoring", label: "Monitoraggio", description: "Monitorare proattivamente situazioni e scadenze clienti" },
   { value: "scheduling", label: "Schedulazione", description: "Monitorare e ricordare la programmazione delle consulenze" },
+  { value: "prospecting", label: "Prospecting", description: "Ricerca e qualifica automatica di nuovi lead" },
 ];
 
 export const TASK_LIBRARY: TaskLibraryItem[] = [
@@ -207,6 +209,7 @@ export const AI_ROLE_PROFILES: Record<string, { avatar: string; quote: string; r
   stella: { avatar: stellaAvatar, quote: "Monitoro le conversazioni WhatsApp e suggerisco azioni.", role: "WhatsApp Assistant" },
   iris: { avatar: irisAvatar, quote: "Gestisco i ticket email e le risposte automatiche.", role: "Email Hub Manager" },
   marco: { avatar: marcoAvatar, quote: "Ti spingo oltre i tuoi limiti. Niente scuse, solo risultati.", role: "Executive Coach" },
+  hunter: { avatar: hunterAvatar, quote: "Trovo i lead migliori e li passo al team per il primo contatto.", role: "Lead Prospector" },
   personalizza: { avatar: "", quote: "Configurami come vuoi: definisci tu le mie regole.", role: "Assistente Custom" },
 };
 
@@ -341,6 +344,23 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
     ],
     workflow: "Ogni 30 minuti → Legge roadmap, obiettivi, documenti KB, agenda e dati reali → Valuta se stai facendo abbastanza per scalare → Ti chiama/scrive per spingerti ad agire",
   },
+  hunter: {
+    canDo: [
+      { icon: "🔍", text: "Cerca automaticamente nuovi lead su Google Maps e Search" },
+      { icon: "🌐", text: "Analizza i siti web dei lead trovati con scraping AI" },
+      { icon: "📊", text: "Valuta e qualifica i lead con score di compatibilità" },
+      { icon: "📞", text: "Assegna i lead migliori ad Alessia per chiamate vocali" },
+      { icon: "💬", text: "Assegna i lead a Stella per outreach WhatsApp via template" },
+      { icon: "📧", text: "Assegna i lead a Millie per email personalizzate" },
+      { icon: "🧠", text: "Adatta la strategia in base ai risultati dei contatti precedenti" },
+    ],
+    cantDo: [
+      { icon: "📞", text: "Non contatta direttamente — delega ad Alessia, Stella e Millie" },
+      { icon: "💬", text: "Non invia messaggi WhatsApp direttamente" },
+      { icon: "📧", text: "Non invia email direttamente" },
+    ],
+    workflow: "Ogni ciclo → Analizza Sales Context → Cerca lead su Maps/Search → Scraping siti → Qualifica con AI → Assegna ai dipendenti per canale → Monitora risultati",
+  },
   personalizza: {
     canDo: [
       { icon: "⚙️", text: "Completamente configurabile con le tue istruzioni" },
@@ -378,6 +398,18 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
   role_working_hours: {},
   reasoning_mode: "structured",
   role_reasoning_modes: {},
+  outreach_config: {
+    enabled: false,
+    max_searches_per_day: 5,
+    max_calls_per_day: 10,
+    max_whatsapp_per_day: 15,
+    max_emails_per_day: 20,
+    score_threshold: 60,
+    channel_priority: ["voice", "whatsapp", "email"],
+    cooldown_hours: 48,
+    whatsapp_config_id: "",
+    voice_template_id: "",
+  },
 };
 
 export const EMPTY_NEW_TASK: NewTaskData = {

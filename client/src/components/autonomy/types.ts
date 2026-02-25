@@ -23,6 +23,20 @@ export interface AutonomySettings {
   whatsapp_template_ids: string[];
   reasoning_mode: string;
   role_reasoning_modes: Record<string, string>;
+  outreach_config: OutreachConfig;
+}
+
+export interface OutreachConfig {
+  enabled: boolean;
+  max_searches_per_day: number;
+  max_calls_per_day: number;
+  max_whatsapp_per_day: number;
+  max_emails_per_day: number;
+  score_threshold: number;
+  channel_priority: string[];
+  cooldown_hours: number;
+  whatsapp_config_id: string;
+  voice_template_id: string;
 }
 
 export interface RoleStatus {

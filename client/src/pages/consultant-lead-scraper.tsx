@@ -75,6 +75,8 @@ import {
   ClipboardList,
   Bot,
   ArrowUpDown,
+  Crosshair,
+  Activity,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -106,6 +108,7 @@ interface SearchResult {
   aiSalesSummary: string | null;
   aiCompatibilityScore: number | null;
   aiSalesSummaryGeneratedAt: string | null;
+  outreachTaskId: string | null;
   createdAt: string;
 }
 
@@ -117,6 +120,7 @@ interface SearchRecord {
   status: string;
   resultsCount: number | null;
   metadata: any;
+  originRole: string | null;
   createdAt: string;
 }
 
@@ -293,6 +297,22 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const { data: hunterStatus } = useQuery<{ role: string; isEnabled: boolean; lastRun: string | null; tasksCreated: number; status: string } | null>({
+    queryKey: ["/api/ai/autonomy/roles/status", "hunter"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/ai/autonomy/roles/status", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const roles = data.roles || [];
+        return roles.find((r: any) => r.role === "hunter") || null;
+      } catch {
+        return null;
+      }
+    },
+    refetchInterval: 30000,
+  });
+
   useEffect(() => {
     if (savedSalesContext) {
       setSalesContext({
@@ -338,6 +358,9 @@ export default function ConsultantLeadScraper() {
     });
     return counts;
   }, [allResults]);
+
+  const hunterSearches = useMemo(() => searches.filter(s => s.originRole === "hunter"), [searches]);
+  const hunterLeadsCount = useMemo(() => allResults.filter(r => r.outreachTaskId).length, [allResults]);
 
   const filteredSearches = useMemo(() => {
     if (historySourceFilter === "tutti") return searches;
@@ -598,6 +621,61 @@ export default function ConsultantLeadScraper() {
           ))}
         </div>
 
+        {hunterStatus && (
+          <Card className="rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm bg-gradient-to-r from-teal-50 to-white dark:from-teal-950/20 dark:to-gray-900">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-teal-100 dark:bg-teal-900/40">
+                    <Crosshair className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-900 dark:text-white">Outreach Automatico</h3>
+                      <Badge className={hunterStatus.isEnabled
+                        ? "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800"
+                        : "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400"
+                      }>
+                        {hunterStatus.isEnabled ? (
+                          <><Activity className="h-3 w-3 mr-1" />Attivo</>
+                        ) : "Disattivato"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Hunter trova e qualifica lead automaticamente
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-center px-3">
+                    <p className="text-lg font-black text-teal-600 dark:text-teal-400">{hunterSearches.length}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Ricerche Auto</p>
+                  </div>
+                  <Separator orientation="vertical" className="h-8" />
+                  <div className="text-center px-3">
+                    <p className="text-lg font-black text-teal-600 dark:text-teal-400">{hunterSearches.reduce((acc, s) => acc + (s.resultsCount || 0), 0)}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Lead Trovati</p>
+                  </div>
+                  <Separator orientation="vertical" className="h-8" />
+                  <div className="text-center px-3">
+                    <p className="text-lg font-black text-teal-600 dark:text-teal-400">{hunterLeadsCount}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">In Outreach</p>
+                  </div>
+                  {hunterStatus.lastRun && (
+                    <>
+                      <Separator orientation="vertical" className="h-8" />
+                      <div className="text-center px-3">
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{timeAgo(hunterStatus.lastRun)}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Ultimo ciclo</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full flex justify-start gap-0 bg-transparent p-0 border-b border-gray-200 dark:border-gray-700 rounded-none h-auto">
             <TabsTrigger value="ricerca" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
@@ -781,6 +859,11 @@ export default function ConsultantLeadScraper() {
                                     </div>
                                     <p className="text-xs text-muted-foreground truncate mt-0.5">{s.location || "Nessuna localita"}</p>
                                     <div className="flex items-center gap-2 mt-1.5">
+                                      {s.originRole === "hunter" && (
+                                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
+                                          <Crosshair className="h-2.5 w-2.5" />Hunter
+                                        </Badge>
+                                      )}
                                       {getStatusBadge(s.status)}
                                       <span className="text-[10px] text-muted-foreground">{resCount} risultati</span>
                                       <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
@@ -1092,7 +1175,14 @@ export default function ConsultantLeadScraper() {
                               >
                                 <TableCell>
                                   <div>
-                                    <span className="font-semibold text-gray-900 dark:text-white">{r.businessName || "-"}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-gray-900 dark:text-white">{r.businessName || "-"}</span>
+                                      {r.outreachTaskId && (
+                                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
+                                          <Crosshair className="h-2.5 w-2.5" />Auto
+                                        </Badge>
+                                      )}
+                                    </div>
                                     {r.category && <p className="text-sm text-gray-500 mt-0.5">{r.category}</p>}
                                   </div>
                                 </TableCell>
