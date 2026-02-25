@@ -1195,7 +1195,7 @@ export default function ConsultantLeadScraper() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
                 {chatMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-4">
                     <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
@@ -1231,9 +1231,8 @@ export default function ConsultantLeadScraper() {
                     <Message
                       key={msg.id}
                       message={msg}
-                      compact
                       assistantName="Sales Agent"
-                      assistantAvatarFallbackIcon={<Bot className="h-3.5 w-3.5 text-white" />}
+                      assistantSubtitle="AI Lead Scraper"
                     />
                   ))
                 )}

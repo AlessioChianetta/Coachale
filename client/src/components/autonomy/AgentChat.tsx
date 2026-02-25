@@ -539,7 +539,7 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
 
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5"
         >
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -569,19 +569,19 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
             </div>
           ) : (
             messages.map((msg) => (
-              <div key={msg.id} className="space-y-0.5">
+              <div key={msg.id}>
                 <Message
                   message={{
                     id: msg.id,
                     role: msg.sender === "consultant" ? "user" : "assistant",
                     content: msg.message,
                   }}
-                  compact
                   assistantName={roleName}
+                  assistantSubtitle="Dipendente AI"
                 />
                 <p className={cn(
-                  "text-[10px]",
-                  msg.sender === "consultant" ? "text-right mr-8 text-muted-foreground/60" : "ml-8 text-muted-foreground/60"
+                  "text-[10px] mt-1",
+                  msg.sender === "consultant" ? "text-right text-muted-foreground/60" : "ml-12 text-muted-foreground/60"
                 )}>
                   {getRelativeTime(msg.created_at)}
                 </p>
