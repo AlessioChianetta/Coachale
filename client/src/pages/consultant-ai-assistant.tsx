@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Plus, MessageSquare, Menu, X, Sparkles, Trash2, ChevronLeft, ChevronRight, Calendar, CheckCircle, BookOpen, Target, Users, TrendingUp, BarChart, Settings, AlertCircle, Bot, Settings2, Filter, Brain, RefreshCw } from "lucide-react";
+import { ActiveSkillsBadge } from "@/components/ai-assistant/ActiveSkillsBadge";
 import { MessageList } from "@/components/ai-assistant/MessageList";
 import { InputArea, AIModel, ThinkingLevel, AttachedFile } from "@/components/ai-assistant/InputArea";
 import { QuickActions } from "@/components/ai-assistant/QuickActions";
@@ -63,6 +64,14 @@ interface Conversation {
   agentId?: string | null;
 }
 
+interface ChatAttachment {
+  name: string;
+  mimeType: string;
+  base64Data: string;
+  type: "image" | "document";
+  preview?: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -72,10 +81,17 @@ interface Message {
   isThinking?: boolean;
   modelName?: string;
   thinkingLevel?: string;
+  attachments?: ChatAttachment[];
   suggestedActions?: Array<{
     type: string;
     label: string;
     data?: any;
+  }>;
+  codeExecutions?: Array<{
+    language: string;
+    code: string;
+    outcome?: string;
+    output?: string;
   }>;
 }
 
@@ -269,8 +285,20 @@ export default function ConsultantAIAssistant() {
     },
   });
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ message, model, thinkingLevel: thinkLevel }: { message: string; model?: AIModel; thinkingLevel?: ThinkingLevel }) => {
+    mutationFn: async ({ message, model, thinkingLevel: thinkLevel, attachments }: { message: string; model?: AIModel; thinkingLevel?: ThinkingLevel; attachments?: ChatAttachment[] }) => {
       const response = await fetch("/api/consultant/ai/chat", {
         method: "POST",
         headers: {
@@ -283,6 +311,12 @@ export default function ConsultantAIAssistant() {
           agentId: selectedAgentId,
           model: model || selectedModel,
           thinkingLevel: thinkLevel || thinkingLevel,
+          attachments: attachments?.map(a => ({
+            name: a.name,
+            mimeType: a.mimeType,
+            base64Data: a.base64Data,
+            type: a.type,
+          })),
         }),
       });
 
@@ -298,6 +332,8 @@ export default function ConsultantAIAssistant() {
       let messageId = "";
       let suggestedActions: any[] = [];
       let buffer = "";
+      let accumulatedCodeExecutions: Array<{ language: string; code: string; outcome?: string; output?: string }> = [];
+      let currentCodeExecution: { language: string; code: string; outcome?: string; output?: string } | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -377,6 +413,34 @@ export default function ConsultantAIAssistant() {
                     variant: "destructive",
                   });
                 }, 90000);
+              } else if (data.type === 'code_execution' && data.code) {
+                currentCodeExecution = {
+                  language: data.language || 'PYTHON',
+                  code: data.code,
+                };
+                if (tempAssistantIdRef.current) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, codeExecutions: [...accumulatedCodeExecutions, currentCodeExecution!] }
+                        : msg
+                    )
+                  );
+                }
+              } else if (data.type === 'code_execution_result' && currentCodeExecution) {
+                currentCodeExecution.outcome = data.outcome;
+                currentCodeExecution.output = data.output;
+                accumulatedCodeExecutions.push(currentCodeExecution);
+                currentCodeExecution = null;
+                if (tempAssistantIdRef.current) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, codeExecutions: [...accumulatedCodeExecutions] }
+                        : msg
+                    )
+                  );
+                }
               } else if (data.type === 'complete') {
                 messageId = data.messageId;
                 suggestedActions = data.suggestedActions || [];
@@ -416,6 +480,7 @@ export default function ConsultantAIAssistant() {
         id: `temp-user-${Date.now()}`,
         role: "user",
         content: params.message,
+        attachments: params.attachments,
       };
 
       const modelLabel = selectedModel === "gemini-3-pro-preview" ? "Pro 3" : "Flash 3";
@@ -485,8 +550,33 @@ export default function ConsultantAIAssistant() {
     },
   });
 
-  const handleSendMessage = (message: string, _files?: AttachedFile[], model?: AIModel, thinkLevel?: ThinkingLevel) => {
-    sendMessageMutation.mutate({ message, model: model || selectedModel, thinkingLevel: thinkLevel || thinkingLevel });
+  const handleSendMessage = async (message: string, files?: AttachedFile[], model?: AIModel, thinkLevel?: ThinkingLevel) => {
+    let chatAttachments: ChatAttachment[] = [];
+    if (files && files.length > 0) {
+      try {
+        chatAttachments = await Promise.all(
+          files.slice(0, 5).map(async (af) => {
+            const base64Data = await fileToBase64(af.file);
+            return {
+              name: af.file.name,
+              mimeType: af.file.type || "application/octet-stream",
+              base64Data,
+              type: af.type,
+              preview: af.preview,
+            };
+          })
+        );
+        console.log(`📎 [AI-Assistant] Converted ${chatAttachments.length} files to base64`);
+      } catch (err) {
+        console.error("Error converting files to base64:", err);
+      }
+    }
+    sendMessageMutation.mutate({
+      message,
+      model: model || selectedModel,
+      thinkingLevel: thinkLevel || thinkingLevel,
+      attachments: chatAttachments.length > 0 ? chatAttachments : undefined,
+    });
   };
 
   const handleNewConversation = () => {
@@ -703,6 +793,9 @@ export default function ConsultantAIAssistant() {
                     </AlertDescription>
                   </Alert>
                 )}
+                <div className="mb-2">
+                  <ActiveSkillsBadge />
+                </div>
                 <InputArea 
                   onSend={handleSendMessage} 
                   isProcessing={isTyping}
