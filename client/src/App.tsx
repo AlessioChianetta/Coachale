@@ -75,6 +75,7 @@ const ConsultantAutomationsPage = lazy(() => import("@/pages/consultant-automati
 const ConsultantLeadHub = lazy(() => import("@/pages/consultant-lead-hub"));
 const ConsultantSkillsStore = lazy(() => import("@/pages/consultant-skills-store"));
 const ConsultantLeadScraper = lazy(() => import("@/pages/consultant-lead-scraper"));
+const ConsultantLeadDetail = lazy(() => import("@/pages/consultant-lead-detail"));
 const ConsultantApiSettings = lazy(() => import("@/pages/consultant-api-settings"));
 const ConsultantCalendarSettings = lazy(() => import("@/pages/consultant-calendar-settings"));
 const ConsultantProfileSettings = lazy(() => import("@/pages/consultant-profile-settings"));
@@ -470,6 +471,12 @@ function Router() {
           <Route path="/consultant/skills-store">
             <AuthGuard requiredRole="consultant">
               <ConsultantSkillsStore />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/lead-scraper/lead/:leadId">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantLeadDetail />
             </AuthGuard>
           </Route>
 

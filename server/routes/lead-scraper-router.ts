@@ -462,7 +462,7 @@ router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_adm
 router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { lead_status } = req.query;
+    const { lead_status, search } = req.query;
 
     const searches = await db
       .select({ id: leadScraperSearches.id })
@@ -479,6 +479,17 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
       conditions.push(eq(leadScraperResults.leadStatus, lead_status as string));
     }
 
+    if (search && typeof search === "string" && search.trim()) {
+      const term = `%${search.trim()}%`;
+      conditions.push(sql`(
+        ${leadScraperResults.businessName} ILIKE ${term} OR
+        ${leadScraperResults.email} ILIKE ${term} OR
+        ${leadScraperResults.phone} ILIKE ${term} OR
+        ${leadScraperResults.leadNotes} ILIKE ${term} OR
+        ${leadScraperResults.category} ILIKE ${term}
+      )`);
+    }
+
     const results = await db
       .select()
       .from(leadScraperResults)
@@ -487,6 +498,88 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
 
     res.json(results);
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/results/:id", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const [result] = await db
+      .select()
+      .from(leadScraperResults)
+      .where(eq(leadScraperResults.id, req.params.id));
+
+    if (!result) return res.status(404).json({ error: "Result not found" });
+
+    const [search] = await db
+      .select()
+      .from(leadScraperSearches)
+      .where(and(
+        eq(leadScraperSearches.id, result.searchId),
+        eq(leadScraperSearches.consultantId, consultantId)
+      ));
+
+    if (!search) return res.status(403).json({ error: "Not authorized" });
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/suggest-keywords", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const [context] = await db
+      .select()
+      .from(leadScraperSalesContext)
+      .where(eq(leadScraperSalesContext.consultantId, consultantId));
+
+    if (!context || !context.servicesOffered) {
+      return res.status(400).json({ error: "Configura prima il tuo profilo vendita nella tab Sales Agent" });
+    }
+
+    const { quickGenerate } = await import("../ai/provider-factory");
+
+    const profileParts = [
+      context.servicesOffered ? `SERVIZI: ${context.servicesOffered}` : "",
+      context.targetAudience ? `TARGET: ${context.targetAudience}` : "",
+      context.idealClientProfile ? `CLIENTE IDEALE: ${context.idealClientProfile}` : "",
+      context.valueProposition ? `PROPOSTA DI VALORE: ${context.valueProposition}` : "",
+    ].filter(Boolean).join("\n");
+
+    const result = await quickGenerate({
+      consultantId,
+      feature: "lead-scraper-keyword-suggestions",
+      systemInstruction: "Sei un esperto di lead generation e ricerca B2B. Rispondi SOLO con un JSON array valido, senza markdown, senza backtick, senza testo aggiuntivo.",
+      contents: [{
+        role: "user",
+        parts: [{ text: `Analizza il profilo vendita di questo consulente e suggerisci 8-12 query di ricerca efficaci per trovare potenziali clienti.
+
+PROFILO CONSULENTE:
+${profileParts}
+
+Per ogni keyword indica se è più adatta a Google Maps (attività locali, ristoranti, negozi, studi professionali) o Google Search (aziende digitali, agenzie, software house, e-commerce).
+
+Rispondi SOLO con JSON array: [{"keyword": "string", "engine": "maps" o "search", "reason": "breve motivo in italiano"}]` }]
+      }],
+      thinkingLevel: "low",
+    });
+
+    let suggestions = [];
+    try {
+      const cleanText = (result.text || "").replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      suggestions = JSON.parse(cleanText);
+    } catch {
+      console.error("[LEAD-SCRAPER] Failed to parse keyword suggestions:", result.text);
+      return res.status(500).json({ error: "Errore nel parsing dei suggerimenti AI" });
+    }
+
+    res.json({ suggestions });
+  } catch (error: any) {
+    console.error("[LEAD-SCRAPER] Suggest keywords error:", error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,13 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -77,9 +72,12 @@ import {
   Calendar,
   ClipboardList,
   Bot,
+  ArrowUpDown,
+  User,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface SearchResult {
   id: string;
@@ -139,35 +137,59 @@ interface ChatMessage {
   text: string;
 }
 
+interface KeywordSuggestion {
+  keyword: string;
+  engine: "maps" | "search";
+  reason: string;
+}
+
 const LEAD_STATUSES = [
-  { value: "nuovo", label: "Nuovo", color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700" },
-  { value: "contattato", label: "Contattato", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" },
-  { value: "in_trattativa", label: "In trattativa", color: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800" },
-  { value: "proposta_inviata", label: "Proposta inviata", color: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800" },
-  { value: "chiuso_vinto", label: "Chiuso vinto", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800" },
-  { value: "chiuso_perso", label: "Chiuso perso", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" },
-  { value: "non_interessato", label: "Non interessato", color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" },
+  { value: "nuovo", label: "Nuovo", color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700", borderColor: "border-l-gray-300" },
+  { value: "contattato", label: "Contattato", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800", borderColor: "border-l-blue-400" },
+  { value: "in_trattativa", label: "In trattativa", color: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800", borderColor: "border-l-amber-400" },
+  { value: "proposta_inviata", label: "Proposta inviata", color: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800", borderColor: "border-l-violet-400" },
+  { value: "chiuso_vinto", label: "Chiuso vinto", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", borderColor: "border-l-emerald-500" },
+  { value: "chiuso_perso", label: "Chiuso perso", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800", borderColor: "border-l-red-400" },
+  { value: "non_interessato", label: "Non interessato", color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700", borderColor: "border-l-slate-300" },
 ];
 
 function getLeadStatusInfo(status: string | null) {
   return LEAD_STATUSES.find(s => s.value === (status || "nuovo")) || LEAD_STATUSES[0];
 }
 
-function getScoreBadge(score: number | null) {
+function getScoreBar(score: number | null) {
   if (score === null || score === undefined) return null;
-  const color = score >= 70 ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400"
-    : score >= 40 ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400"
-    : "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400";
+  const color = score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500";
+  const textColor = score >= 70 ? "text-emerald-700 dark:text-emerald-400" : score >= 40 ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400";
   return (
-    <Badge variant="outline" className={`${color} text-xs font-bold px-1.5 py-0 h-5`}>
-      <Target className="h-2.5 w-2.5 mr-0.5" />{score}
-    </Badge>
+    <div className="flex items-center gap-1.5 min-w-[60px]">
+      <span className={`text-xs font-bold ${textColor}`}>{score}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+      </div>
+    </div>
   );
+}
+
+function timeAgo(dateStr: string) {
+  const now = Date.now();
+  const d = new Date(dateStr).getTime();
+  const diff = now - d;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "adesso";
+  if (mins < 60) return `${mins}m fa`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h fa`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "ieri";
+  if (days < 7) return `${days}g fa`;
+  return new Date(dateStr).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
 }
 
 export default function ConsultantLeadScraper() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const [activeTab, setActiveTab] = useState("ricerca");
   const [searchQuery, setSearchQuery] = useState("");
@@ -175,8 +197,6 @@ export default function ConsultantLeadScraper() {
   const [searchLimit, setSearchLimit] = useState(20);
   const [searchEngine, setSearchEngine] = useState<"google_maps" | "google_search">("google_maps");
   const [selectedSearchId, setSelectedSearchId] = useState<string | null>(null);
-  const [selectedLead, setSelectedLead] = useState<SearchResult | null>(null);
-  const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
   const [filterHasEmail, setFilterHasEmail] = useState(false);
@@ -186,12 +206,6 @@ export default function ConsultantLeadScraper() {
   const [filterSearch, setFilterSearch] = useState("");
   const [filterLeadStatus, setFilterLeadStatus] = useState("tutti");
   const [showFilters, setShowFilters] = useState(false);
-
-  const [crmLeadStatus, setCrmLeadStatus] = useState("");
-  const [crmNotes, setCrmNotes] = useState("");
-  const [crmNextAction, setCrmNextAction] = useState("");
-  const [crmNextActionDate, setCrmNextActionDate] = useState("");
-  const [crmValue, setCrmValue] = useState("");
 
   const [salesContext, setSalesContext] = useState<SalesContext>({
     servicesOffered: "", targetAudience: "", valueProposition: "", pricingInfo: "",
@@ -205,6 +219,13 @@ export default function ConsultantLeadScraper() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [crmFilterStatus, setCrmFilterStatus] = useState("tutti");
+  const [crmSearch, setCrmSearch] = useState("");
+
+  const [keywordSuggestions, setKeywordSuggestions] = useState<KeywordSuggestion[]>([]);
+  const [keywordsLoading, setKeywordsLoading] = useState(false);
+  const [showKeywords, setShowKeywords] = useState(false);
+
+  const [sortBy, setSortBy] = useState<"default" | "score" | "rating" | "name">("default");
 
   const { data: searches = [], isLoading: searchesLoading } = useQuery<SearchRecord[]>({
     queryKey: ["/api/lead-scraper/searches"],
@@ -241,11 +262,17 @@ export default function ConsultantLeadScraper() {
     enabled: !!resultsUrl,
   });
 
+  const allResultsParams = useMemo(() => {
+    const p = new URLSearchParams();
+    if (crmFilterStatus !== "tutti") p.set("lead_status", crmFilterStatus);
+    if (crmSearch.trim()) p.set("search", crmSearch.trim());
+    return p.toString();
+  }, [crmFilterStatus, crmSearch]);
+
   const { data: allResults = [] } = useQuery<SearchResult[]>({
-    queryKey: ["/api/lead-scraper/all-results", crmFilterStatus],
+    queryKey: ["/api/lead-scraper/all-results", allResultsParams],
     queryFn: async () => {
-      const params = crmFilterStatus !== "tutti" ? `?lead_status=${crmFilterStatus}` : "";
-      const res = await fetch(`/api/lead-scraper/all-results${params}`, { headers: getAuthHeaders() });
+      const res = await fetch(`/api/lead-scraper/all-results${allResultsParams ? `?${allResultsParams}` : ""}`, { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch all results");
       return res.json();
     },
@@ -284,9 +311,7 @@ export default function ConsultantLeadScraper() {
     if (!isSearchRunning) return;
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
-      if (resultsUrl) {
-        queryClient.invalidateQueries({ queryKey: [resultsUrl] });
-      }
+      if (resultsUrl) queryClient.invalidateQueries({ queryKey: [resultsUrl] });
     }, 5000);
     return () => clearInterval(interval);
   }, [isSearchRunning, resultsUrl, queryClient]);
@@ -299,15 +324,23 @@ export default function ConsultantLeadScraper() {
     return { totalSearches, totalLeads, emailCount, phoneCount };
   }, [searches, results]);
 
-  useEffect(() => {
-    if (selectedLead) {
-      setCrmLeadStatus(selectedLead.leadStatus || "nuovo");
-      setCrmNotes(selectedLead.leadNotes || "");
-      setCrmNextAction(selectedLead.leadNextAction || "");
-      setCrmNextActionDate(selectedLead.leadNextActionDate ? selectedLead.leadNextActionDate.split("T")[0] : "");
-      setCrmValue(selectedLead.leadValue ? String(selectedLead.leadValue) : "");
-    }
-  }, [selectedLead]);
+  const crmStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    LEAD_STATUSES.forEach(s => { counts[s.value] = 0; });
+    allResults.forEach(r => {
+      const status = r.leadStatus || "nuovo";
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return counts;
+  }, [allResults]);
+
+  const sortedResults = useMemo(() => {
+    const sorted = [...results];
+    if (sortBy === "score") sorted.sort((a, b) => (b.aiCompatibilityScore || 0) - (a.aiCompatibilityScore || 0));
+    else if (sortBy === "rating") sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    else if (sortBy === "name") sorted.sort((a, b) => (a.businessName || "").localeCompare(b.businessName || ""));
+    return sorted;
+  }, [results, sortBy]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -329,7 +362,7 @@ export default function ConsultantLeadScraper() {
     onSuccess: (data) => {
       setSelectedSearchId(data.searchId);
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
-      toast({ title: "Ricerca avviata", description: searchEngine === "google_search" ? "La ricerca su Google Search e' in corso..." : "La ricerca su Google Maps e' in corso..." });
+      toast({ title: "Ricerca avviata" });
     },
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -342,18 +375,12 @@ export default function ConsultantLeadScraper() {
         method: "POST",
         headers: getAuthHeaders(),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Errore" }));
-        throw new Error(err.error || "Errore nello scraping");
-      }
+      if (!res.ok) throw new Error("Errore scraping");
       return res.json();
     },
     onSuccess: () => {
       if (resultsUrl) queryClient.invalidateQueries({ queryKey: [resultsUrl] });
-      toast({ title: "Sito analizzato", description: "I dati del sito sono stati estratti" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      toast({ title: "Sito analizzato" });
     },
   });
 
@@ -363,37 +390,13 @@ export default function ConsultantLeadScraper() {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error("Errore nell'eliminazione");
+      if (!res.ok) throw new Error("Errore");
       return res.json();
     },
     onSuccess: (_, deletedId) => {
       if (selectedSearchId === deletedId) setSelectedSearchId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
       toast({ title: "Ricerca eliminata" });
-    },
-    onError: () => {
-      toast({ title: "Errore", description: "Impossibile eliminare la ricerca", variant: "destructive" });
-    },
-  });
-
-  const updateCrmMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/lead-scraper/results/${id}/crm`, {
-        method: "PATCH",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Errore aggiornamento CRM");
-      return res.json();
-    },
-    onSuccess: (updated) => {
-      if (resultsUrl) queryClient.invalidateQueries({ queryKey: [resultsUrl] });
-      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
-      setSelectedLead(updated);
-      toast({ title: "CRM aggiornato", description: "Stato lead aggiornato con successo" });
-    },
-    onError: () => {
-      toast({ title: "Errore", description: "Impossibile aggiornare il CRM", variant: "destructive" });
     },
   });
 
@@ -404,35 +407,12 @@ export default function ConsultantLeadScraper() {
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Errore salvataggio contesto");
+      if (!res.ok) throw new Error("Errore");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/sales-context"] });
       toast({ title: "Contesto salvato", description: "Il tuo profilo vendita e' stato aggiornato" });
-    },
-    onError: () => {
-      toast({ title: "Errore", description: "Impossibile salvare il contesto vendita", variant: "destructive" });
-    },
-  });
-
-  const generateSummaryMutation = useMutation({
-    mutationFn: async (resultId: string) => {
-      const res = await fetch(`/api/lead-scraper/results/${resultId}/generate-summary`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error("Errore generazione analisi");
-      return res.json();
-    },
-    onSuccess: (updated) => {
-      if (resultsUrl) queryClient.invalidateQueries({ queryKey: [resultsUrl] });
-      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
-      setSelectedLead(updated);
-      toast({ title: "Analisi AI generata", description: "Il resoconto vendita e' pronto" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
     },
   });
 
@@ -442,11 +422,11 @@ export default function ConsultantLeadScraper() {
         method: "POST",
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error("Errore generazione batch");
+      if (!res.ok) throw new Error("Errore");
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Analisi AI avviata", description: "I resoconti vendita verranno generati in background" });
+      toast({ title: "Analisi AI avviata", description: "I resoconti verranno generati in background" });
       setTimeout(() => {
         if (resultsUrl) queryClient.invalidateQueries({ queryKey: [resultsUrl] });
       }, 10000);
@@ -455,16 +435,15 @@ export default function ConsultantLeadScraper() {
 
   const handleExport = () => {
     if (!selectedSearchId) return;
-    const url = `/api/lead-scraper/searches/${selectedSearchId}/export`;
-    fetch(url, { headers: getAuthHeaders() })
-      .then((res) => res.blob())
-      .then((blob) => {
-        const blobUrl = URL.createObjectURL(blob);
+    fetch(`/api/lead-scraper/searches/${selectedSearchId}/export`, { headers: getAuthHeaders() })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = blobUrl;
+        a.href = url;
         a.setAttribute("download", "");
         a.click();
-        URL.revokeObjectURL(blobUrl);
+        URL.revokeObjectURL(url);
       });
   };
 
@@ -473,18 +452,26 @@ export default function ConsultantLeadScraper() {
     toast({ title: "Copiato!", description: text });
   };
 
-  const handleSaveCrm = () => {
-    if (!selectedLead) return;
-    updateCrmMutation.mutate({
-      id: selectedLead.id,
-      data: {
-        leadStatus: crmLeadStatus,
-        leadNotes: crmNotes,
-        leadNextAction: crmNextAction,
-        leadNextActionDate: crmNextActionDate || null,
-        leadValue: crmValue ? parseFloat(crmValue) : null,
-      },
-    });
+  const handleSuggestKeywords = async () => {
+    setKeywordsLoading(true);
+    setShowKeywords(true);
+    try {
+      const res = await fetch("/api/lead-scraper/suggest-keywords", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Errore" }));
+        toast({ title: "Errore", description: err.error, variant: "destructive" });
+        return;
+      }
+      const data = await res.json();
+      setKeywordSuggestions(data.suggestions || []);
+    } catch {
+      toast({ title: "Errore", description: "Impossibile generare suggerimenti", variant: "destructive" });
+    } finally {
+      setKeywordsLoading(false);
+    }
   };
 
   const handleSendChat = async () => {
@@ -511,7 +498,7 @@ export default function ConsultantLeadScraper() {
         savedSalesContext?.targetAudience ? `TARGET: ${savedSalesContext.targetAudience}` : "",
         savedSalesContext?.valueProposition ? `PROPOSTA DI VALORE: ${savedSalesContext.valueProposition}` : "",
         `LEAD ATTUALI (${results.length} totali): ${JSON.stringify(leadsContext)}`,
-        "Rispondi in italiano, sii pratico e orientato alla vendita. Puoi preparare email, suggerire approcci, analizzare lead specifici.",
+        "Rispondi in italiano, sii pratico e orientato alla vendita.",
       ].filter(Boolean).join("\n");
 
       const contents = [
@@ -538,38 +525,16 @@ export default function ConsultantLeadScraper() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "running":
-        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"><Loader2 className="h-3 w-3 animate-spin mr-1" />In corso</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400"><Loader2 className="h-3 w-3 animate-spin mr-1" />In corso</Badge>;
       case "enriching":
-        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"><RefreshCw className="h-3 w-3 animate-spin mr-1" />Arricchimento</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"><RefreshCw className="h-3 w-3 animate-spin mr-1" />Arricchimento</Badge>;
       case "completed":
-        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"><CheckCircle className="h-3 w-3 mr-1" />Completata</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"><CheckCircle className="h-3 w-3 mr-1" />Completata</Badge>;
       case "failed":
-        return <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"><XCircle className="h-3 w-3 mr-1" />Fallita</Badge>;
+        return <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Fallita</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
-  };
-
-  const getScrapeStatusBadge = (status: string | null) => {
-    switch (status) {
-      case "scraped":
-        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] px-1.5 py-0"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />OK</Badge>;
-      case "scraped_cached":
-        return <Badge className="bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 text-[10px] px-1.5 py-0"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />Cache</Badge>;
-      case "pending":
-        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5 py-0">In attesa</Badge>;
-      case "failed":
-        return <Badge className="bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5 py-0">Fallito</Badge>;
-      case "no_website":
-        return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">No sito</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  const openLeadDetail = (lead: SearchResult) => {
-    setSelectedLead(lead);
-    setShowLeadDetail(true);
   };
 
   const activeFiltersCount = [filterHasEmail, filterHasPhone, !!filterRatingMin, !!filterCategory, !!filterSearch, filterLeadStatus !== "tutti"].filter(Boolean).length;
@@ -583,6 +548,10 @@ export default function ConsultantLeadScraper() {
     setFilterLeadStatus("tutti");
   };
 
+  const navigateToLead = (leadId: string) => {
+    setLocation(`/consultant/lead-scraper/lead/${leadId}`);
+  };
+
   return (
     <PageLayout role="consultant">
       <div className="space-y-6">
@@ -591,59 +560,28 @@ export default function ConsultantLeadScraper() {
             <MapPin className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              Lead Scraper
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Trova, analizza e gestisci i tuoi lead con AI Sales Agent
-            </p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Lead Scraper</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Trova, analizza e gestisci i tuoi lead con AI Sales Agent</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)", boxShadow: "0 6px 24px rgba(244,63,94,0.3)" }}>
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-6 translate-x-6" style={{ background: "rgba(255,255,255,0.8)" }} />
-            <div className="flex items-start justify-between">
-              <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
-                <Search className="h-3.5 w-3.5" />
+          {[
+            { label: "Ricerche", value: stats.totalSearches, icon: Search, gradient: "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)", shadow: "rgba(244,63,94,0.3)" },
+            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)", shadow: "rgba(139,92,246,0.3)" },
+            { label: "Email", value: stats.emailCount, icon: Mail, gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", shadow: "rgba(59,130,246,0.3)" },
+            { label: "Telefoni", value: stats.phoneCount, icon: Phone, gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)", shadow: "rgba(16,185,129,0.3)" },
+          ].map((stat, i) => (
+            <div key={i} className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: stat.gradient, boxShadow: `0 6px 24px ${stat.shadow}` }}>
+              <div className="flex items-start justify-between">
+                <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+                  <stat.icon className="h-3.5 w-3.5" />
+                </div>
               </div>
+              <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stat.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">{stat.label}</p>
             </div>
-            <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stats.totalSearches}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">Ricerche</p>
-          </div>
-
-          <div className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)", boxShadow: "0 6px 24px rgba(139,92,246,0.3)" }}>
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-6 translate-x-6" style={{ background: "rgba(255,255,255,0.8)" }} />
-            <div className="flex items-start justify-between">
-              <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
-                <Building2 className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stats.totalLeads}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">Lead Totali</p>
-          </div>
-
-          <div className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", boxShadow: "0 6px 24px rgba(59,130,246,0.3)" }}>
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-6 translate-x-6" style={{ background: "rgba(255,255,255,0.8)" }} />
-            <div className="flex items-start justify-between">
-              <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
-                <Mail className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stats.emailCount}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">Email</p>
-          </div>
-
-          <div className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", boxShadow: "0 6px 24px rgba(16,185,129,0.3)" }}>
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full opacity-10 -translate-y-6 translate-x-6" style={{ background: "rgba(255,255,255,0.8)" }} />
-            <div className="flex items-start justify-between">
-              <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
-                <Phone className="h-3.5 w-3.5" />
-              </div>
-            </div>
-            <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stats.phoneCount}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">Telefoni</p>
-          </div>
+          ))}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -660,63 +598,13 @@ export default function ConsultantLeadScraper() {
           </TabsList>
 
           <TabsContent value="ricerca" className="mt-4">
-            <div className="bg-gradient-to-r from-rose-50 via-pink-50 to-fuchsia-50 dark:from-rose-950/20 dark:via-pink-950/20 dark:to-fuchsia-950/20 border border-rose-200 dark:border-rose-800/40 rounded-xl overflow-hidden mb-4">
-              <button
-                className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-rose-100/50 dark:hover:bg-rose-900/20 transition-colors"
-                onClick={() => setShowGuide(!showGuide)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-rose-100 dark:bg-rose-900/30 rounded-lg">
-                    <Info className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                  </div>
-                  <span className="font-semibold text-sm text-gray-900 dark:text-white">Come funziona il Lead Scraper?</span>
-                </div>
-                {showGuide ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
-              </button>
-              {showGuide && (
-                <div className="px-5 pb-5 pt-1">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white dark:bg-gray-800/80 rounded-xl p-4 border border-rose-100 dark:border-rose-800/30 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center font-bold text-sm shadow-md">1</div>
-                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Cerca su Google</h4>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Scegli <strong>Google Maps</strong> per attivita locali o <strong>Google Search</strong> per qualsiasi sito web.
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800/80 rounded-xl p-4 border border-purple-100 dark:border-purple-800/30 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 text-white flex items-center justify-center font-bold text-sm shadow-md">2</div>
-                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white">AI analizza tutto</h4>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Firecrawl estrae dati dal sito, poi l'AI Sales Agent genera un resoconto vendita con score di compatibilita per ogni azienda.
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800/80 rounded-xl p-4 border border-blue-100 dark:border-blue-800/30 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md">3</div>
-                        <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Gestisci nel CRM</h4>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                        Gestisci ogni lead con stati CRM, note, prossime azioni e parla con l'AI per strategie di vendita.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               <div className="lg:col-span-1 space-y-4">
-                <Card className="border-2 border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-white to-pink-50/50 dark:from-rose-950/20 dark:via-gray-900 dark:to-pink-950/20 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300">
+                <Card className="border-2 border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-white to-pink-50/50 dark:from-rose-950/20 dark:via-gray-900 dark:to-pink-950/20 rounded-2xl shadow-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Search className="h-4 w-4 text-rose-500" />
-                      Nuova Ricerca
+                      <Search className="h-4 w-4 text-rose-500" />Nuova Ricerca
                     </CardTitle>
-                    <CardDescription>Cerca su Google Maps o Google Search</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -725,26 +613,16 @@ export default function ConsultantLeadScraper() {
                         <button
                           type="button"
                           onClick={() => setSearchEngine("google_maps")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                            searchEngine === "google_maps"
-                              ? "border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-700 shadow-sm"
-                              : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_maps" ? "border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
                         >
-                          <Map className="h-3.5 w-3.5" />
-                          Google Maps
+                          <Map className="h-3.5 w-3.5" />Maps
                         </button>
                         <button
                           type="button"
                           onClick={() => setSearchEngine("google_search")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                            searchEngine === "google_search"
-                              ? "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-700 shadow-sm"
-                              : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_search" ? "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
                         >
-                          <Globe className="h-3.5 w-3.5" />
-                          Google Search
+                          <Globe className="h-3.5 w-3.5" />Search
                         </button>
                       </div>
                     </div>
@@ -752,26 +630,14 @@ export default function ConsultantLeadScraper() {
                       <Label htmlFor="query" className="text-xs font-medium">Cosa cerchi</Label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="query"
-                          placeholder={searchEngine === "google_search" ? "es. agenzia google ads settore food..." : "es. ristoranti, dentisti..."}
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9 border-rose-200 dark:border-rose-800/40 focus:border-rose-400 focus:ring-rose-400"
-                        />
+                        <Input id="query" placeholder={searchEngine === "google_search" ? "es. agenzia marketing..." : "es. ristoranti, dentisti..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location" className="text-xs font-medium">Localita</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="location"
-                          placeholder="es. Milano, Roma..."
-                          value={searchLocation}
-                          onChange={(e) => setSearchLocation(e.target.value)}
-                          className="pl-9 border-rose-200 dark:border-rose-800/40 focus:border-rose-400 focus:ring-rose-400"
-                        />
+                        <Input id="location" placeholder="es. Milano, Roma..." value={searchLocation} onChange={(e) => setSearchLocation(e.target.value)} className="pl-9" />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -779,24 +645,64 @@ export default function ConsultantLeadScraper() {
                         <Label className="text-xs font-medium">Risultati max</Label>
                         <span className="text-sm font-bold text-rose-600 dark:text-rose-400">{searchLimit}</span>
                       </div>
-                      <Slider
-                        value={[searchLimit]}
-                        onValueChange={(v) => setSearchLimit(v[0])}
-                        min={5}
-                        max={100}
-                        step={5}
-                        className="[&_[role=slider]]:bg-rose-500"
-                      />
+                      <Slider value={[searchLimit]} onValueChange={(v) => setSearchLimit(v[0])} min={5} max={100} step={5} className="[&_[role=slider]]:bg-rose-500" />
                     </div>
+
                     <Button
-                      className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400 text-xs"
+                      onClick={handleSuggestKeywords}
+                      disabled={keywordsLoading}
+                    >
+                      {keywordsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                      Suggerisci keyword AI
+                    </Button>
+
+                    {showKeywords && keywordSuggestions.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-violet-700 dark:text-violet-400">Keyword suggerite</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {keywordSuggestions.map((kw, i) => (
+                            <TooltipProvider key={i}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-all hover:shadow-sm cursor-pointer bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600"
+                                    onClick={() => {
+                                      setSearchQuery(kw.keyword);
+                                      setSearchEngine(kw.engine === "maps" ? "google_maps" : "google_search");
+                                    }}
+                                  >
+                                    {kw.engine === "maps" ? <Map className="h-3 w-3 text-rose-500" /> : <Globe className="h-3 w-3 text-blue-500" />}
+                                    <span className="truncate max-w-[120px]">{kw.keyword}</span>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[200px]">
+                                  <p className="text-xs">{kw.reason}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {showKeywords && !keywordsLoading && keywordSuggestions.length === 0 && !savedSalesContext && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg">
+                        Configura prima il tuo Sales Agent nella tab dedicata per ottenere suggerimenti personalizzati.
+                      </p>
+                    )}
+
+                    <Button
+                      className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0 shadow-lg"
                       onClick={() => startSearchMutation.mutate()}
                       disabled={!searchQuery || startSearchMutation.isPending}
                     >
                       {startSearchMutation.isPending ? (
                         <><Loader2 className="h-4 w-4 animate-spin mr-2" />Avvio...</>
                       ) : (
-                        <><Search className="h-4 w-4 mr-2" />{searchEngine === "google_search" ? "Cerca su Google" : "Cerca su Maps"}</>
+                        <><Search className="h-4 w-4 mr-2" />Cerca</>
                       )}
                     </Button>
                   </CardContent>
@@ -805,83 +711,54 @@ export default function ConsultantLeadScraper() {
                 <Card className="rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />
-                      Storico Ricerche
+                      <FileText className="h-4 w-4 text-gray-500" />Storico ({searches.length})
                     </CardTitle>
-                    <CardDescription>{searches.length} ricerche</CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <ScrollArea className="h-[400px]">
+                    <ScrollArea className="h-[350px]">
                       {searchesLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
+                        <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
                       ) : searches.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground text-sm px-4">
-                          <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                          <p>Nessuna ricerca effettuata</p>
-                          <p className="text-xs mt-1">Usa il form sopra per iniziare</p>
+                          <Search className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>Nessuna ricerca</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                          {searches.map((s) => (
-                            <div
-                              key={s.id}
-                              className={`px-4 py-3 cursor-pointer transition-all duration-200 ${
-                                selectedSearchId === s.id
-                                  ? "bg-rose-50 dark:bg-rose-950/30 border-l-3 border-l-rose-500"
-                                  : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                              }`}
-                              onClick={() => setSelectedSearchId(s.id)}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
-                                  <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                                    <MapPin className="h-3 w-3" />{s.location || "Nessuna localita"}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-1.5">
-                                    {(s as any).metadata?.params?.searchEngine === "google_search" ? (
-                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-violet-300 text-violet-700 dark:border-violet-600 dark:text-violet-400">
-                                        <Globe className="h-2.5 w-2.5" />Web
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400">
-                                        <Map className="h-2.5 w-2.5" />Maps
-                                      </Badge>
-                                    )}
-                                    {getStatusBadge(s.status)}
-                                    {s.resultsCount !== null && (
-                                      <span className="text-xs text-muted-foreground font-medium">{s.resultsCount} risultati</span>
-                                    )}
+                          {searches.map((s) => {
+                            const searchMeta = s.metadata as any;
+                            const resCount = s.resultsCount || 0;
+                            return (
+                              <div
+                                key={s.id}
+                                className={`px-4 py-3 cursor-pointer transition-all duration-200 ${selectedSearchId === s.id ? "bg-rose-50 dark:bg-rose-950/30 border-l-3 border-l-rose-500" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
+                                onClick={() => setSelectedSearchId(s.id)}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      {searchMeta?.params?.searchEngine === "google_search" ? (
+                                        <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                      ) : (
+                                        <Map className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                                      )}
+                                      <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{s.location || "Nessuna localita"}</p>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      {getStatusBadge(s.status)}
+                                      <span className="text-[10px] text-muted-foreground">{resCount} risultati</span>
+                                      <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500" onClick={(e) => { e.stopPropagation(); deleteSearchMutation.mutate(s.id); }}>
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-gray-400 hover:text-red-500 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      deleteSearchMutation.mutate(s.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                  <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${selectedSearchId === s.id ? "rotate-90" : ""}`} />
-                                </div>
                               </div>
-                              <p className="text-[10px] text-muted-foreground mt-1.5">
-                                {new Date(s.createdAt).toLocaleDateString("it-IT", {
-                                  day: "2-digit",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </ScrollArea>
@@ -897,9 +774,7 @@ export default function ConsultantLeadScraper() {
                         <Building2 className="h-8 w-8 text-rose-400 dark:text-rose-500" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Seleziona o avvia una ricerca</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">
-                        Usa il pannello a sinistra per cercare business. I risultati appariranno qui con dati, analisi AI e gestione CRM.
-                      </p>
+                      <p className="text-sm text-muted-foreground max-w-md">Usa il pannello a sinistra per cercare business.</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -915,143 +790,49 @@ export default function ConsultantLeadScraper() {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <h3 className="font-bold text-gray-900 dark:text-white">{selectedSearch.query}</h3>
-                                  {selectedSearch.location && (
-                                    <Badge variant="outline" className="text-xs border-rose-200 dark:border-rose-800">
-                                      <MapPin className="h-3 w-3 mr-1" />{selectedSearch.location}
-                                    </Badge>
-                                  )}
+                                  {selectedSearch.location && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />{selectedSearch.location}</Badge>}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
                                   {getStatusBadge(selectedSearch.status)}
-                                  <span className="text-xs text-muted-foreground font-medium">
-                                    {results.length} risultati
-                                  </span>
+                                  <span className="text-xs text-muted-foreground font-medium">{results.length} risultati</span>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {selectedSearch.status === "completed" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)}
-                                  disabled={generateBatchSummariesMutation.isPending}
-                                  className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-amber-700 transition-colors"
-                                >
-                                  {generateBatchSummariesMutation.isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                                  ) : (
-                                    <Sparkles className="h-4 w-4 mr-1" />
-                                  )}
+                                <Button variant="outline" size="sm" onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)} disabled={generateBatchSummariesMutation.isPending} className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-700">
+                                  {generateBatchSummariesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
                                   Analisi AI
                                 </Button>
                               )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowFilters(!showFilters)}
-                                className="relative border-gray-200 dark:border-gray-700 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                              >
-                                <Filter className="h-4 w-4 mr-1" />
-                                Filtri
-                                {activeFiltersCount > 0 && (
-                                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-rose-500">
-                                    {activeFiltersCount}
-                                  </Badge>
-                                )}
+                              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="relative">
+                                <Filter className="h-4 w-4 mr-1" />Filtri
+                                {activeFiltersCount > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-rose-500">{activeFiltersCount}</Badge>}
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleExport}
-                                disabled={results.length === 0}
-                                className="border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-700 transition-colors"
-                              >
-                                <Download className="h-4 w-4 mr-1" />
-                                CSV
+                              <Button variant="outline" size="sm" onClick={handleExport} disabled={results.length === 0}>
+                                <Download className="h-4 w-4 mr-1" />CSV
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowChat(!showChat)}
-                                className="border-gray-200 dark:border-gray-700 hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/20 hover:text-violet-700 transition-colors"
-                              >
-                                <MessageSquare className="h-4 w-4 mr-1" />
-                                Chat AI
-                              </Button>
+                              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                                <SelectTrigger className="w-[130px] h-9 text-xs">
+                                  <ArrowUpDown className="h-3 w-3 mr-1" /><SelectValue placeholder="Ordina" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Predefinito</SelectItem>
+                                  <SelectItem value="score">Score AI</SelectItem>
+                                  <SelectItem value="rating">Rating</SelectItem>
+                                  <SelectItem value="name">Nome A-Z</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
-
                           {isSearchRunning && (
                             <div className="mt-3">
                               <Progress value={undefined} className="h-1.5" />
                               <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                {selectedSearch.status === "enriching"
-                                  ? "Analisi siti web in corso..."
-                                  : "Ricerca in corso..."}
+                                <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
                               </p>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {showChat && (
-                      <Card className="rounded-2xl border border-violet-200 dark:border-violet-800/40 shadow-sm">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm flex items-center gap-2">
-                            <Bot className="h-4 w-4 text-violet-500" />
-                            AI Sales Agent Chat
-                          </CardTitle>
-                          <CardDescription className="text-xs">Chiedi strategie di vendita, email, analisi sui lead</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <ScrollArea className="h-[250px] mb-3 border rounded-lg p-3">
-                            {chatMessages.length === 0 && (
-                              <div className="text-center text-muted-foreground text-xs py-8">
-                                <Bot className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                                <p>Inizia una conversazione con il Sales Agent</p>
-                                <p className="mt-1">Es: "Qual e' il lead piu promettente?" o "Prepara una email per..."</p>
-                              </div>
-                            )}
-                            {chatMessages.map((msg, i) => (
-                              <div key={i} className={`mb-3 ${msg.role === "user" ? "text-right" : "text-left"}`}>
-                                <div className={`inline-block max-w-[85%] px-3 py-2 rounded-xl text-sm ${
-                                  msg.role === "user"
-                                    ? "bg-violet-100 dark:bg-violet-900/30 text-violet-900 dark:text-violet-100"
-                                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                }`}>
-                                  <p className="whitespace-pre-wrap">{msg.text}</p>
-                                </div>
-                              </div>
-                            ))}
-                            {chatLoading && (
-                              <div className="text-left mb-3">
-                                <div className="inline-block px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800">
-                                  <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
-                                </div>
-                              </div>
-                            )}
-                            <div ref={chatEndRef} />
-                          </ScrollArea>
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Scrivi un messaggio..."
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendChat()}
-                              className="flex-1"
-                            />
-                            <Button
-                              size="icon"
-                              onClick={handleSendChat}
-                              disabled={!chatInput.trim() || chatLoading}
-                              className="bg-violet-500 hover:bg-violet-600 text-white"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -1060,14 +841,9 @@ export default function ConsultantLeadScraper() {
                       <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
                         <CardContent className="py-4 px-5">
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                              <Filter className="h-4 w-4 text-rose-500" />
-                              Filtri
-                            </h4>
+                            <h4 className="text-sm font-semibold flex items-center gap-2"><Filter className="h-4 w-4 text-rose-500" />Filtri</h4>
                             {activeFiltersCount > 0 && (
-                              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50">
-                                <X className="h-3 w-3 mr-1" />Rimuovi filtri
-                              </Button>
+                              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-rose-600"><X className="h-3 w-3 mr-1" />Rimuovi</Button>
                             )}
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -1083,14 +859,10 @@ export default function ConsultantLeadScraper() {
                             <Input placeholder="Categoria" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="h-9" />
                             <Input placeholder="Cerca nome..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="h-9" />
                             <Select value={filterLeadStatus} onValueChange={setFilterLeadStatus}>
-                              <SelectTrigger className="h-9">
-                                <SelectValue placeholder="Stato lead" />
-                              </SelectTrigger>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Stato" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="tutti">Tutti gli stati</SelectItem>
-                                {LEAD_STATUSES.map(s => (
-                                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                                ))}
+                                <SelectItem value="tutti">Tutti</SelectItem>
+                                {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
@@ -1101,79 +873,48 @@ export default function ConsultantLeadScraper() {
                     <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                       <CardContent className="p-0">
                         {resultsLoading ? (
-                          <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-6 w-6 animate-spin text-rose-400" />
-                          </div>
+                          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-rose-400" /></div>
                         ) : results.length === 0 ? (
                           <div className="text-center py-12 text-muted-foreground">
-                            {isSearchRunning ? (
-                              <div className="flex flex-col items-center gap-2">
-                                <Loader2 className="h-6 w-6 animate-spin text-rose-400" />
-                                <p>Ricerca in corso, i risultati appariranno a breve...</p>
-                              </div>
-                            ) : "Nessun risultato trovato"}
+                            {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-rose-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
-                                <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                                  <TableHead className="min-w-[200px] font-semibold text-gray-700 dark:text-gray-300">Nome</TableHead>
-                                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Telefono</TableHead>
-                                  <TableHead className="font-semibold text-gray-700 dark:text-gray-300">Email</TableHead>
-                                  <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Rating</TableHead>
-                                  <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Score</TableHead>
-                                  <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Stato</TableHead>
-                                  <TableHead className="text-center font-semibold text-gray-700 dark:text-gray-300">Scraping</TableHead>
-                                  <TableHead className="text-right font-semibold text-gray-700 dark:text-gray-300">Azioni</TableHead>
+                                <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                                  <TableHead className="min-w-[220px] font-semibold">Azienda</TableHead>
+                                  <TableHead className="text-center font-semibold w-[50px]">Contatti</TableHead>
+                                  <TableHead className="text-center font-semibold w-[80px]">Rating</TableHead>
+                                  <TableHead className="text-center font-semibold w-[90px]">Score AI</TableHead>
+                                  <TableHead className="text-center font-semibold w-[90px]">Stato</TableHead>
+                                  <TableHead className="text-right font-semibold w-[60px]">Azioni</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {results.map((r) => {
+                                {sortedResults.map((r) => {
                                   const statusInfo = getLeadStatusInfo(r.leadStatus);
                                   return (
                                     <TableRow
                                       key={r.id}
-                                      className="cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors duration-150 border-b border-gray-100 dark:border-gray-800"
-                                      onClick={() => openLeadDetail(r)}
+                                      className={`cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                      onClick={() => navigateToLead(r.id)}
                                     >
-                                      <TableCell className="font-medium text-gray-900 dark:text-white">
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="line-clamp-1">{r.businessName || "\u2014"}</span>
-                                          {r.source === "google_search" && (
-                                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">Web</Badge>
-                                          )}
+                                      <TableCell>
+                                        <div>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-medium text-gray-900 dark:text-white line-clamp-1">{r.businessName || "\u2014"}</span>
+                                            {r.source === "google_search" && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-600">Web</Badge>}
+                                          </div>
+                                          {r.category && <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{r.category}</p>}
                                         </div>
                                       </TableCell>
-                                      <TableCell>
-                                        {r.phone ? (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs hover:bg-green-50 dark:hover:bg-green-950/20" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.phone!); }}>
-                                                  <Phone className="h-3 w-3 mr-1 text-green-500" />
-                                                  <span className="truncate max-w-[100px]">{r.phone}</span>
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Copia telefono</TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        ) : <span className="text-xs text-muted-foreground">{"\u2014"}</span>}
-                                      </TableCell>
-                                      <TableCell>
-                                        {r.email ? (
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/20" onClick={(e) => { e.stopPropagation(); copyToClipboard(r.email!); }}>
-                                                  <Mail className="h-3 w-3 mr-1 text-blue-500" />
-                                                  <span className="truncate max-w-[120px]">{r.email}</span>
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Copia email</TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        ) : <span className="text-xs text-muted-foreground">{"\u2014"}</span>}
+                                      <TableCell className="text-center">
+                                        <div className="flex items-center justify-center gap-1">
+                                          <div className={`w-2 h-2 rounded-full ${r.email ? "bg-blue-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
+                                          <div className={`w-2 h-2 rounded-full ${r.phone ? "bg-green-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
+                                          <div className={`w-2 h-2 rounded-full ${r.website ? "bg-purple-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
+                                        </div>
                                       </TableCell>
                                       <TableCell className="text-center">
                                         {r.rating ? (
@@ -1181,52 +922,24 @@ export default function ConsultantLeadScraper() {
                                             <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                                             <span className="text-xs font-semibold">{r.rating}</span>
                                           </div>
-                                        ) : <span className="text-xs text-muted-foreground">{"\u2014"}</span>}
+                                        ) : <span className="text-xs text-muted-foreground">\u2014</span>}
                                       </TableCell>
                                       <TableCell className="text-center">
-                                        {getScoreBadge(r.aiCompatibilityScore)}
+                                        {getScoreBar(r.aiCompatibilityScore)}
                                       </TableCell>
                                       <TableCell className="text-center">
-                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>
-                                          {statusInfo.label}
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-center">
-                                        <div className="flex items-center justify-center gap-1">
-                                          {getScrapeStatusBadge(r.scrapeStatus)}
-                                          {(r.scrapeStatus === "scraped" || r.scrapeStatus === "scraped_cached") && r.websiteData && (
-                                            <div className="flex items-center gap-0.5 ml-1">
-                                              {(r.websiteData as any)?.emails?.length > 0 && <Mail className="h-3 w-3 text-blue-400" />}
-                                              {(r.websiteData as any)?.phones?.length > 0 && <Phone className="h-3 w-3 text-green-400" />}
-                                              {(r.websiteData as any)?.socialLinks && Object.keys((r.websiteData as any).socialLinks).length > 0 && <ExternalLink className="h-3 w-3 text-purple-400" />}
-                                            </div>
-                                          )}
-                                        </div>
+                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
                                       </TableCell>
                                       <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                           {r.website && r.scrapeStatus !== "scraped" && r.scrapeStatus !== "scraped_cached" && (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-purple-50 dark:hover:bg-purple-950/20" onClick={(e) => { e.stopPropagation(); scrapeWebsiteMutation.mutate(r.id); }} disabled={scrapeWebsiteMutation.isPending}>
-                                                    <RefreshCw className={`h-3 w-3 ${scrapeWebsiteMutation.isPending ? "animate-spin" : ""}`} />
-                                                  </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Analizza sito web</TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); scrapeWebsiteMutation.mutate(r.id); }}>
+                                              <RefreshCw className={`h-3 w-3 ${scrapeWebsiteMutation.isPending ? "animate-spin" : ""}`} />
+                                            </Button>
                                           )}
-                                          <TooltipProvider>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyToClipboard([r.businessName, r.phone, r.email, r.website].filter(Boolean).join(" | ")); }}>
-                                                  <Copy className="h-3 w-3" />
-                                                </Button>
-                                              </TooltipTrigger>
-                                              <TooltipContent>Copia dati</TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyToClipboard([r.businessName, r.phone, r.email, r.website].filter(Boolean).join(" | ")); }}>
+                                            <Copy className="h-3 w-3" />
+                                          </Button>
                                         </div>
                                       </TableCell>
                                     </TableRow>
@@ -1245,104 +958,126 @@ export default function ConsultantLeadScraper() {
           </TabsContent>
 
           <TabsContent value="crm" className="mt-4">
-            <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                {LEAD_STATUSES.map(s => (
+                  <button
+                    key={s.value}
+                    className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center ${
+                      crmFilterStatus === s.value
+                        ? `${s.color} border-current shadow-sm`
+                        : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                    onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
+                  >
+                    <span className="text-lg font-black">{crmStats[s.value] || 0}</span>
+                    <span className="text-[10px] font-medium leading-tight">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
                     <CardTitle className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-rose-500" />
-                      CRM Lead
+                      <ClipboardList className="h-5 w-5 text-rose-500" />CRM Lead
+                      <span className="text-sm font-normal text-muted-foreground">({allResults.length})</span>
                     </CardTitle>
-                    <CardDescription>Gestisci tutti i tuoi lead da tutte le ricerche</CardDescription>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cerca lead..."
+                          value={crmSearch}
+                          onChange={(e) => setCrmSearch(e.target.value)}
+                          className="pl-9 w-[250px] h-9"
+                        />
+                        {crmSearch && (
+                          <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setCrmSearch("")}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      {crmFilterStatus !== "tutti" && (
+                        <Button variant="ghost" size="sm" onClick={() => setCrmFilterStatus("tutti")} className="text-xs h-8 text-rose-600">
+                          <X className="h-3 w-3 mr-1" />Rimuovi filtro
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Select value={crmFilterStatus} onValueChange={setCrmFilterStatus}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filtra per stato" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tutti">Tutti gli stati</SelectItem>
-                      {LEAD_STATUSES.map(s => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {allResults.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p>Nessun lead trovato</p>
-                    <p className="text-xs mt-1">Avvia una ricerca nella tab "Ricerca" per iniziare</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                          <TableHead className="font-semibold">Nome</TableHead>
-                          <TableHead className="font-semibold">Email</TableHead>
-                          <TableHead className="font-semibold">Telefono</TableHead>
-                          <TableHead className="text-center font-semibold">Score</TableHead>
-                          <TableHead className="text-center font-semibold">Stato</TableHead>
-                          <TableHead className="font-semibold">Prossima azione</TableHead>
-                          <TableHead className="text-right font-semibold">Valore</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {allResults.map((r) => {
-                          const statusInfo = getLeadStatusInfo(r.leadStatus);
-                          return (
-                            <TableRow
-                              key={r.id}
-                              className="cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors"
-                              onClick={() => openLeadDetail(r)}
-                            >
-                              <TableCell className="font-medium">{r.businessName || "\u2014"}</TableCell>
-                              <TableCell className="text-sm">{r.email || "\u2014"}</TableCell>
-                              <TableCell className="text-sm">{r.phone || "\u2014"}</TableCell>
-                              <TableCell className="text-center">{getScoreBadge(r.aiCompatibilityScore)}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>
-                                  {statusInfo.label}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {r.leadNextAction ? (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {r.leadNextAction}
-                                    {r.leadNextActionDate && <span className="text-[10px]">({new Date(r.leadNextActionDate).toLocaleDateString("it-IT")})</span>}
-                                  </span>
-                                ) : "\u2014"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {r.leadValue ? (
-                                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                    {r.leadValue.toLocaleString("it-IT")} EUR
-                                  </span>
-                                ) : "\u2014"}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {allResults.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p>Nessun lead trovato</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                            <TableHead className="font-semibold">Nome</TableHead>
+                            <TableHead className="font-semibold">Email</TableHead>
+                            <TableHead className="font-semibold">Telefono</TableHead>
+                            <TableHead className="text-center font-semibold">Score</TableHead>
+                            <TableHead className="text-center font-semibold">Stato</TableHead>
+                            <TableHead className="font-semibold">Prossima azione</TableHead>
+                            <TableHead className="text-right font-semibold">Valore</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allResults.map((r) => {
+                            const statusInfo = getLeadStatusInfo(r.leadStatus);
+                            return (
+                              <TableRow
+                                key={r.id}
+                                className={`cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                onClick={() => navigateToLead(r.id)}
+                              >
+                                <TableCell className="font-medium">
+                                  <div>
+                                    <span className="text-gray-900 dark:text-white">{r.businessName || "\u2014"}</span>
+                                    {r.category && <p className="text-[10px] text-muted-foreground">{r.category}</p>}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm">{r.email || "\u2014"}</TableCell>
+                                <TableCell className="text-sm">{r.phone || "\u2014"}</TableCell>
+                                <TableCell className="text-center">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {r.leadNextAction ? (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />{r.leadNextAction}
+                                      {r.leadNextActionDate && <span className="text-[10px]">({new Date(r.leadNextActionDate).toLocaleDateString("it-IT")})</span>}
+                                    </span>
+                                  ) : "\u2014"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {r.leadValue ? <span className="font-semibold text-emerald-600 dark:text-emerald-400">{r.leadValue.toLocaleString("it-IT")} EUR</span> : "\u2014"}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="agent" className="mt-4">
             <Card className="rounded-2xl border-2 border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/50 via-white to-purple-50/50 dark:from-violet-950/20 dark:via-gray-900 dark:to-purple-950/20 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-violet-500" />
-                  Configura il tuo Sales Agent
+                  <Bot className="h-5 w-5 text-violet-500" />Configura il tuo Sales Agent
                 </CardTitle>
                 <CardDescription>
-                  Inserisci il contesto del tuo business perche l'AI possa analizzare ogni azienda in base a cio che vendi e dare uno score di compatibilita accurato.
+                  Inserisci il contesto del tuo business perche l'AI possa analizzare ogni azienda e dare uno score di compatibilita accurato.
                   {savedSalesContext ? (
                     <Badge className="ml-2 bg-emerald-100 text-emerald-700 border-emerald-200"><CheckCircle className="h-3 w-3 mr-1" />Configurato</Badge>
                   ) : (
@@ -1353,108 +1088,45 @@ export default function ConsultantLeadScraper() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Zap className="h-3.5 w-3.5 text-amber-500" />Servizi che offri
-                      </Label>
-                      <Textarea
-                        placeholder="Descrivi i servizi che vendi: consulenza marketing, sviluppo web, gestione social, SEO, formazione..."
-                        value={salesContext.servicesOffered}
-                        onChange={(e) => setSalesContext(p => ({ ...p, servicesOffered: e.target.value }))}
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Target className="h-3.5 w-3.5 text-rose-500" />Target ideale
-                      </Label>
-                      <Textarea
-                        placeholder="A chi vendi? PMI, startup, professionisti, e-commerce, ristoranti..."
-                        value={salesContext.targetAudience}
-                        onChange={(e) => setSalesContext(p => ({ ...p, targetAudience: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-violet-500" />Proposta di valore
-                      </Label>
-                      <Textarea
-                        placeholder="Cosa ti rende unico? Perche un'azienda dovrebbe scegliere te?"
-                        value={salesContext.valueProposition}
-                        onChange={(e) => setSalesContext(p => ({ ...p, valueProposition: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-500" />Pricing / Pacchetti
-                      </Label>
-                      <Textarea
-                        placeholder="Range prezzi, pacchetti disponibili, modalita di pagamento..."
-                        value={salesContext.pricingInfo}
-                        onChange={(e) => setSalesContext(p => ({ ...p, pricingInfo: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
+                    {[
+                      { key: "servicesOffered", label: "Servizi che offri", icon: <Zap className="h-3.5 w-3.5 text-amber-500" />, placeholder: "Descrivi i servizi che vendi...", minH: "100px" },
+                      { key: "targetAudience", label: "Target ideale", icon: <Target className="h-3.5 w-3.5 text-rose-500" />, placeholder: "A chi vendi? PMI, startup, professionisti...", minH: "80px" },
+                      { key: "valueProposition", label: "Proposta di valore", icon: <Sparkles className="h-3.5 w-3.5 text-violet-500" />, placeholder: "Cosa ti rende unico?", minH: "80px" },
+                      { key: "pricingInfo", label: "Pricing / Pacchetti", icon: <DollarSign className="h-3.5 w-3.5 text-emerald-500" />, placeholder: "Range prezzi, pacchetti...", minH: "80px" },
+                    ].map(field => (
+                      <div key={field.key} className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-1.5">{field.icon}{field.label}</Label>
+                        <Textarea
+                          placeholder={field.placeholder}
+                          value={(salesContext as any)[field.key]}
+                          onChange={(e) => setSalesContext(p => ({ ...p, [field.key]: e.target.value }))}
+                          className={`min-h-[${field.minH}]`}
+                        />
+                      </div>
+                    ))}
                   </div>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <TrendingUp className="h-3.5 w-3.5 text-blue-500" />Vantaggi competitivi
-                      </Label>
-                      <Textarea
-                        placeholder="Cosa fai meglio della concorrenza? Esperienza, risultati, tecnologia..."
-                        value={salesContext.competitiveAdvantages}
-                        onChange={(e) => setSalesContext(p => ({ ...p, competitiveAdvantages: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-indigo-500" />Profilo cliente ideale
-                      </Label>
-                      <Textarea
-                        placeholder="Fatturato, numero dipendenti, settore, maturita digitale..."
-                        value={salesContext.idealClientProfile}
-                        onChange={(e) => setSalesContext(p => ({ ...p, idealClientProfile: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <MessageSquare className="h-3.5 w-3.5 text-cyan-500" />Approccio vendita
-                      </Label>
-                      <Textarea
-                        placeholder="Come approcci il primo contatto? Email, chiamata, LinkedIn, referral..."
-                        value={salesContext.salesApproach}
-                        onChange={(e) => setSalesContext(p => ({ ...p, salesApproach: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-1.5">
-                        <Star className="h-3.5 w-3.5 text-amber-500" />Casi di successo
-                      </Label>
-                      <Textarea
-                        placeholder="Brevi case study: 'Per l'azienda X abbiamo aumentato il fatturato del 30%'..."
-                        value={salesContext.caseStudies}
-                        onChange={(e) => setSalesContext(p => ({ ...p, caseStudies: e.target.value }))}
-                        className="min-h-[80px]"
-                      />
-                    </div>
+                    {[
+                      { key: "competitiveAdvantages", label: "Vantaggi competitivi", icon: <TrendingUp className="h-3.5 w-3.5 text-blue-500" />, placeholder: "Cosa fai meglio della concorrenza?" },
+                      { key: "idealClientProfile", label: "Profilo cliente ideale", icon: <Users className="h-3.5 w-3.5 text-indigo-500" />, placeholder: "Fatturato, dipendenti, settore..." },
+                      { key: "salesApproach", label: "Approccio vendita", icon: <MessageSquare className="h-3.5 w-3.5 text-cyan-500" />, placeholder: "Come approcci il primo contatto?" },
+                      { key: "caseStudies", label: "Casi di successo", icon: <Star className="h-3.5 w-3.5 text-amber-500" />, placeholder: "Brevi case study..." },
+                    ].map(field => (
+                      <div key={field.key} className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-1.5">{field.icon}{field.label}</Label>
+                        <Textarea
+                          placeholder={field.placeholder}
+                          value={(salesContext as any)[field.key]}
+                          onChange={(e) => setSalesContext(p => ({ ...p, [field.key]: e.target.value }))}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-1.5">
-                    <Info className="h-3.5 w-3.5 text-gray-500" />Contesto aggiuntivo
-                  </Label>
-                  <Textarea
-                    placeholder="Qualsiasi altra informazione utile per l'AI: tono di voce, vincoli, preferenze..."
-                    value={salesContext.additionalContext}
-                    onChange={(e) => setSalesContext(p => ({ ...p, additionalContext: e.target.value }))}
-                    className="min-h-[60px]"
-                  />
+                  <Label className="text-sm font-semibold flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-gray-500" />Contesto aggiuntivo</Label>
+                  <Textarea placeholder="Qualsiasi altra informazione utile..." value={salesContext.additionalContext} onChange={(e) => setSalesContext(p => ({ ...p, additionalContext: e.target.value }))} className="min-h-[60px]" />
                 </div>
                 <div className="mt-6 flex justify-end">
                   <Button
@@ -1462,11 +1134,7 @@ export default function ConsultantLeadScraper() {
                     onClick={() => saveSalesContextMutation.mutate(salesContext)}
                     disabled={saveSalesContextMutation.isPending}
                   >
-                    {saveSalesContextMutation.isPending ? (
-                      <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</>
-                    ) : (
-                      <><Save className="h-4 w-4 mr-2" />Salva configurazione</>
-                    )}
+                    {saveSalesContextMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</> : <><Save className="h-4 w-4 mr-2" />Salva configurazione</>}
                   </Button>
                 </div>
               </CardContent>
@@ -1475,365 +1143,206 @@ export default function ConsultantLeadScraper() {
         </Tabs>
       </div>
 
-      <Dialog open={showLeadDetail} onOpenChange={setShowLeadDetail}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogDescription className="sr-only">Dettaglio lead e gestione CRM</DialogDescription>
-          {selectedLead && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30">
-                    <Building2 className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{selectedLead.businessName || "Lead senza nome"}</span>
-                      {getScoreBadge(selectedLead.aiCompatibilityScore)}
-                    </div>
-                    <p className="text-sm font-normal text-muted-foreground mt-0.5">
-                      {selectedLead.category || "Categoria non disponibile"}
-                    </p>
-                  </div>
-                </DialogTitle>
-              </DialogHeader>
+      <button
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center"
+      >
+        <Bot className="h-6 w-6" />
+        <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
+      </button>
 
-              <div className="space-y-5 mt-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <InfoBlock icon={<MapPin className="h-4 w-4 text-rose-500" />} label="Indirizzo" value={selectedLead.address} />
-                  <InfoBlock icon={<Phone className="h-4 w-4 text-green-500" />} label="Telefono" value={selectedLead.phone} copyable onCopy={() => selectedLead.phone && copyToClipboard(selectedLead.phone)} />
-                  <InfoBlock icon={<Mail className="h-4 w-4 text-blue-500" />} label="Email" value={selectedLead.email} copyable onCopy={() => selectedLead.email && copyToClipboard(selectedLead.email)} />
-                  <InfoBlock icon={<Globe className="h-4 w-4 text-purple-500" />} label="Sito Web" value={selectedLead.website} link />
+      <AnimatePresence>
+        {showChat && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 z-40"
+              onClick={() => setShowChat(false)}
+            />
+            <motion.div
+              initial={{ x: "100%", opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed inset-y-0 right-0 w-full sm:w-[420px] max-w-full z-50 flex flex-col bg-background shadow-2xl border-l"
+            >
+              <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-muted/50 to-transparent">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+                  <Bot className="h-4 w-4 text-white" />
                 </div>
-
-                <div className="flex items-center gap-4">
-                  {selectedLead.rating && (
-                    <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-lg">
-                      <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                      <span className="font-bold text-amber-700 dark:text-amber-400">{selectedLead.rating}</span>
-                      {selectedLead.reviewsCount && (
-                        <span className="text-sm text-amber-600/70 dark:text-amber-400/70">({selectedLead.reviewsCount} recensioni)</span>
-                      )}
-                    </div>
-                  )}
-                  {getScrapeStatusBadge(selectedLead.scrapeStatus)}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate">Sales Agent</h3>
+                  <p className="text-xs text-muted-foreground">Chat diretta</p>
                 </div>
-
-                {selectedLead.aiSalesSummary && (
-                  <>
-                    <Separator />
-                    <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 border border-violet-200 dark:border-violet-800/40 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold flex items-center gap-2 text-violet-900 dark:text-violet-200">
-                          <Sparkles className="h-4 w-4 text-violet-500" />
-                          Analisi AI Sales Agent
-                          {selectedLead.aiCompatibilityScore && (
-                            <span className={`ml-2 text-lg font-black ${
-                              selectedLead.aiCompatibilityScore >= 70 ? "text-emerald-600" :
-                              selectedLead.aiCompatibilityScore >= 40 ? "text-amber-600" : "text-red-600"
-                            }`}>
-                              {selectedLead.aiCompatibilityScore}/100
-                            </span>
-                          )}
-                        </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => generateSummaryMutation.mutate(selectedLead.id)}
-                          disabled={generateSummaryMutation.isPending}
-                          className="text-xs h-7 text-violet-600 hover:text-violet-700 hover:bg-violet-100"
-                        >
-                          {generateSummaryMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                          )}
-                          Rigenera
-                        </Button>
-                      </div>
-                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                        {selectedLead.aiSalesSummary.replace(/\*\*SCORE:\s*\d+\*\*\n?/, "")}
-                      </div>
-                      {selectedLead.aiSalesSummaryGeneratedAt && (
-                        <p className="text-[10px] text-violet-400 mt-3">
-                          Generato il {new Date(selectedLead.aiSalesSummaryGeneratedAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {!selectedLead.aiSalesSummary && (selectedLead.scrapeStatus === "scraped" || selectedLead.scrapeStatus === "scraped_cached") && (
-                  <>
-                    <Separator />
-                    <Button
-                      variant="outline"
-                      className="w-full border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20"
-                      onClick={() => generateSummaryMutation.mutate(selectedLead.id)}
-                      disabled={generateSummaryMutation.isPending}
-                    >
-                      {generateSummaryMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generazione analisi AI...</>
-                      ) : (
-                        <><Sparkles className="h-4 w-4 mr-2" />Genera analisi AI Sales Agent</>
-                      )}
-                    </Button>
-                  </>
-                )}
-
-                {selectedLead.websiteData && (() => {
-                  const wd = selectedLead.websiteData as any;
-                  const allEmails = [...new Set([
-                    ...(selectedLead.email ? [selectedLead.email] : []),
-                    ...(wd.emails || []),
-                  ])];
-                  const allPhones = [...new Set([
-                    ...(selectedLead.phone ? [selectedLead.phone] : []),
-                    ...(wd.phones || []),
-                  ])];
-
-                  return (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
-                          <Zap className="h-4 w-4 text-amber-500" />
-                          Dati estratti dal sito web
-                        </h4>
-                        <div className="space-y-3">
-                          {wd.description && <ExpandableDescription text={wd.description} threshold={400} />}
-
-                          {allEmails.length > 0 && (
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Email ({allEmails.length})</Label>
-                              <div className="flex flex-wrap gap-2 mt-1.5">
-                                {allEmails.map((email: string, i: number) => (
-                                  <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" onClick={() => copyToClipboard(email)}>
-                                    <Mail className="h-3 w-3 mr-1 text-blue-500" />{email}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {allPhones.length > 0 && (
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Telefoni ({allPhones.length})</Label>
-                              <div className="flex flex-wrap gap-2 mt-1.5">
-                                {allPhones.map((phone: string, i: number) => (
-                                  <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors" onClick={() => copyToClipboard(phone)}>
-                                    <Phone className="h-3 w-3 mr-1 text-green-500" />{phone}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {wd.socialLinks && Object.keys(wd.socialLinks).length > 0 && (
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
-                              <div className="flex flex-wrap gap-2 mt-1.5">
-                                {Object.entries(wd.socialLinks).map(([platform, url]) => (
-                                  <Badge key={platform} variant="outline" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors" onClick={() => window.open(url as string, "_blank")}>
-                                    <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {wd.services?.length > 0 && (
-                            <div>
-                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Servizi ({wd.services.length})</Label>
-                              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                {wd.services.map((svc: string, i: number) => (
-                                  <Badge key={i} variant="secondary" className="text-xs bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-
-                {selectedLead.website && selectedLead.scrapeStatus !== "scraped" && selectedLead.scrapeStatus !== "scraped_cached" && (
-                  <>
-                    <Separator />
-                    <Button
-                      variant="outline"
-                      className="w-full border-purple-200 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors"
-                      onClick={() => scrapeWebsiteMutation.mutate(selectedLead.id)}
-                      disabled={scrapeWebsiteMutation.isPending}
-                    >
-                      {scrapeWebsiteMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Analisi in corso...</>
-                      ) : (
-                        <><RefreshCw className="h-4 w-4 mr-2" />Analizza sito web</>
-                      )}
-                    </Button>
-                  </>
-                )}
-
-                <Separator />
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                  <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                    <ClipboardList className="h-4 w-4 text-rose-500" />
-                    Gestione CRM
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Stato lead</Label>
-                      <Select value={crmLeadStatus} onValueChange={setCrmLeadStatus}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LEAD_STATUSES.map(s => (
-                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Valore potenziale (EUR)</Label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="es. 5000"
-                          value={crmValue}
-                          onChange={(e) => setCrmValue(e.target.value)}
-                          className="pl-9"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Prossima azione</Label>
-                      <Input
-                        placeholder="es. Inviare email, chiamare..."
-                        value={crmNextAction}
-                        onChange={(e) => setCrmNextAction(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Data prossima azione</Label>
-                      <Input
-                        type="date"
-                        value={crmNextActionDate}
-                        onChange={(e) => setCrmNextActionDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                      <Label className="text-xs font-medium">Note</Label>
-                      <Textarea
-                        placeholder="Appunti sulla trattativa, dettagli del contatto..."
-                        value={crmNotes}
-                        onChange={(e) => setCrmNotes(e.target.value)}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end mt-4">
-                    <Button
-                      onClick={handleSaveCrm}
-                      disabled={updateCrmMutation.isPending}
-                      className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white"
-                    >
-                      {updateCrmMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</>
-                      ) : (
-                        <><Save className="h-4 w-4 mr-2" />Salva CRM</>
-                      )}
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setChatMessages([])}
+                    disabled={chatMessages.length === 0 || chatLoading}
+                    title="Cancella chat"
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowChat(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </PageLayout>
-  );
-}
 
-function ExpandableDescription({ text, threshold = 400 }: { text: string; threshold?: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > threshold;
-  const displayText = isLong && !expanded ? text.substring(0, threshold) + "..." : text;
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                {chatMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-4">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                      <Bot className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium mb-1">Chatta con Sales Agent</p>
+                      <p className="text-xs text-muted-foreground max-w-[250px]">
+                        Chiedi strategie, email, analisi sui lead
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 w-full max-w-[280px]">
+                      {[
+                        "Qual e' il lead piu promettente?",
+                        "Prepara una email di presentazione",
+                        "Come approccio i lead a Milano?",
+                      ].map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setChatInput(s);
+                          }}
+                          className="text-left text-xs px-3 py-2 rounded-lg border border-dashed hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Sparkles className="h-3 w-3 inline-block mr-1.5 opacity-50" />
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex gap-2 max-w-[90%]",
+                        msg.role === "user" ? "ml-auto flex-row-reverse" : ""
+                      )}
+                    >
+                      <div className="shrink-0 mt-1">
+                        {msg.role === "assistant" ? (
+                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                            <Bot className="h-3.5 w-3.5 text-white" />
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        className={cn(
+                          "rounded-xl px-4 py-3 text-sm leading-relaxed",
+                          msg.role === "user"
+                            ? "bg-primary text-primary-foreground rounded-tr-sm"
+                            : "bg-muted rounded-tl-sm"
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
 
-  return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-      <p className="text-sm mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line">{displayText}</p>
-      {isLong && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-1 h-6 px-2 text-xs text-primary hover:text-primary/80"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? (
-            <><ChevronUp className="h-3 w-3 mr-1" />Comprimi</>
-          ) : (
-            <><ChevronDown className="h-3 w-3 mr-1" />Mostra tutto ({text.length} caratteri)</>
-          )}
-        </Button>
-      )}
-    </div>
-  );
-}
+                {chatLoading && (
+                  <motion.div
+                    className="flex gap-2 max-w-[90%]"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  >
+                    <div className="shrink-0 mt-1">
+                      <motion.div
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                          <Bot className="h-3.5 w-3.5 text-white" />
+                        </div>
+                      </motion.div>
+                    </div>
+                    <div className="bg-muted rounded-xl rounded-tl-sm px-4 py-2.5 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1.5">
+                          {[0, 1, 2].map((idx) => (
+                            <motion.span
+                              key={idx}
+                              className="w-2 h-2 rounded-full bg-violet-500"
+                              animate={{
+                                y: [0, -6, 0],
+                                opacity: [0.4, 1, 0.4],
+                                scale: [0.85, 1.15, 0.85],
+                              }}
+                              transition={{
+                                duration: 0.8,
+                                repeat: Infinity,
+                                delay: idx * 0.15,
+                                ease: "easeInOut",
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <motion.span
+                          className="text-xs font-medium text-violet-600 dark:text-violet-400"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          Sales Agent sta scrivendo
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
 
-function InfoBlock({
-  icon,
-  label,
-  value,
-  copyable,
-  onCopy,
-  link,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | null;
-  copyable?: boolean;
-  onCopy?: () => void;
-  link?: boolean;
-}) {
-  if (!value) {
-    return (
-      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-        {icon}
-        <div>
-          <p className="text-xs text-muted-foreground font-medium">{label}</p>
-          <p className="text-sm text-muted-foreground italic">Non disponibile</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 group hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
-      {icon}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground font-medium">{label}</p>
-        {link ? (
-          <a
-            href={value.startsWith("http") ? value : `https://${value}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline truncate block"
-          >
-            {value}
-          </a>
-        ) : (
-          <p className="text-sm truncate font-medium text-gray-900 dark:text-white">{value}</p>
+              <div className="border-t p-3">
+                <div className="flex gap-2">
+                  <Textarea
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendChat();
+                      }
+                    }}
+                    placeholder="Scrivi a Sales Agent..."
+                    className="min-h-[40px] max-h-[120px] resize-none text-sm rounded-xl"
+                    disabled={chatLoading}
+                  />
+                  <Button
+                    size="icon"
+                    className="h-10 w-10 shrink-0 rounded-xl"
+                    onClick={handleSendChat}
+                    disabled={!chatInput.trim() || chatLoading}
+                  >
+                    {chatLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
-      </div>
-      {copyable && onCopy && (
-        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={onCopy}>
-          <Copy className="h-3 w-3" />
-        </Button>
-      )}
-    </div>
+      </AnimatePresence>
+    </PageLayout>
   );
 }
