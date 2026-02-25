@@ -72,6 +72,12 @@ interface ChatAttachment {
   preview?: string;
 }
 
+interface GeneratedFile {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -82,6 +88,7 @@ interface Message {
   modelName?: string;
   thinkingLevel?: string;
   attachments?: ChatAttachment[];
+  generatedFiles?: GeneratedFile[];
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -334,6 +341,7 @@ export default function ConsultantAIAssistant() {
       let buffer = "";
       let accumulatedCodeExecutions: Array<{ language: string; code: string; outcome?: string; output?: string }> = [];
       let currentCodeExecution: { language: string; code: string; outcome?: string; output?: string } | null = null;
+      let accumulatedGeneratedFiles: GeneratedFile[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -413,6 +421,23 @@ export default function ConsultantAIAssistant() {
                     variant: "destructive",
                   });
                 }, 90000);
+              } else if (data.type === 'generated_file' && data.fileData) {
+                const genFile: GeneratedFile = {
+                  fileName: data.fileName || 'file',
+                  mimeType: data.fileMimeType || 'application/octet-stream',
+                  data: data.fileData,
+                };
+                accumulatedGeneratedFiles.push(genFile);
+                console.log(`📄 [GENERATED FILE] Received: ${genFile.fileName} (${genFile.mimeType})`);
+                if (tempAssistantIdRef.current) {
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === tempAssistantIdRef.current
+                        ? { ...msg, generatedFiles: [...accumulatedGeneratedFiles] }
+                        : msg
+                    )
+                  );
+                }
               } else if (data.type === 'code_execution' && data.code) {
                 currentCodeExecution = {
                   language: data.language || 'PYTHON',

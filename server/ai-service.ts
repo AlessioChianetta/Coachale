@@ -233,6 +233,17 @@ async function* streamWithRetriesAdapter(
           args: event.args,
         };
         break;
+
+      case 'generated_file':
+        yield {
+          type: 'generated_file',
+          conversationId: event.conversationId,
+          provider: event.provider,
+          fileData: event.fileData,
+          fileMimeType: event.mimeType,
+          fileName: event.fileName,
+        };
+        break;
     }
   }
 }
@@ -740,7 +751,7 @@ export interface ChatResponse {
 }
 
 export interface ChatStreamChunk {
-  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking" | "code_execution" | "code_execution_result" | "function_call";
+  type: "start" | "delta" | "complete" | "error" | "retry" | "heartbeat" | "thinking" | "code_execution" | "code_execution_result" | "function_call" | "generated_file";
   conversationId: string;
   messageId?: string;
   content?: string;
@@ -765,6 +776,10 @@ export interface ChatStreamChunk {
   // Function Call fields
   functionName?: string;
   args?: Record<string, any>;
+  // Generated File fields (from Gemini code execution inlineData)
+  fileData?: string;
+  fileMimeType?: string;
+  fileName?: string;
 }
 
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {

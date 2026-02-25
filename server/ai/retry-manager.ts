@@ -105,6 +105,14 @@ export type AiRetryEvent =
       provider: AiProviderMetadata;
       functionName: string;
       args: Record<string, any>;
+    }
+  | {
+      type: 'generated_file';
+      conversationId: string;
+      provider: AiProviderMetadata;
+      mimeType: string;
+      fileData: string;
+      fileName: string;
     };
 
 /**
@@ -264,6 +272,10 @@ export interface GeminiPart {
     name: string;
     args: Record<string, any>;
   };
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
 }
 
 /**
@@ -412,6 +424,29 @@ export async function* streamWithBackoff<TChunk extends GeminiStreamChunk>(
                 provider: context.provider,
                 functionName: part.functionCall.name,
                 args: part.functionCall.args || {},
+              };
+            }
+            else if (part.inlineData) {
+              const ext = part.inlineData.mimeType.split('/')[1] || 'bin';
+              const mimeToName: Record<string, string> = {
+                'application/pdf': 'documento.pdf',
+                'image/png': 'immagine.png',
+                'image/jpeg': 'immagine.jpg',
+                'image/gif': 'immagine.gif',
+                'image/webp': 'immagine.webp',
+                'text/csv': 'dati.csv',
+                'text/plain': 'file.txt',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'foglio.xlsx',
+              };
+              const fileName = mimeToName[part.inlineData.mimeType] || `file.${ext}`;
+              console.log(`📄 [GENERATED FILE] Gemini produced file: ${fileName} (${part.inlineData.mimeType}, ${Math.round(part.inlineData.data.length * 0.75 / 1024)}KB)`);
+              yield {
+                type: 'generated_file',
+                conversationId: context.conversationId,
+                provider: context.provider,
+                mimeType: part.inlineData.mimeType,
+                fileData: part.inlineData.data,
+                fileName,
               };
             }
             // Handle text parts (thinking or regular content)

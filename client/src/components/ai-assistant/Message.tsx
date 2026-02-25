@@ -24,6 +24,12 @@ interface ChatAttachment {
   preview?: string;
 }
 
+interface GeneratedFile {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
 interface MessageProps {
   message: {
     id: string;
@@ -35,6 +41,7 @@ interface MessageProps {
     modelName?: string;
     thinkingLevel?: string;
     attachments?: ChatAttachment[];
+    generatedFiles?: GeneratedFile[];
     suggestedActions?: Array<{
       type: string;
       label: string;
@@ -351,6 +358,85 @@ export function Message({ message, onActionClick }: MessageProps) {
 
         {message.codeExecutions && message.codeExecutions.length > 0 && (
           <CodeExecutionBlock codeExecutions={message.codeExecutions} />
+        )}
+
+        {message.generatedFiles && message.generatedFiles.length > 0 && (
+          <div className="mb-3 flex flex-col gap-2">
+            {message.generatedFiles.map((file, idx) => {
+              const isPdf = file.mimeType === 'application/pdf';
+              const isImage = file.mimeType.startsWith('image/');
+              const iconColor = isPdf ? 'text-red-500' : isImage ? 'text-blue-500' : 'text-gray-500';
+              const bgColor = isPdf ? 'from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20' : isImage ? 'from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20' : 'from-gray-50 to-slate-50 dark:from-gray-950/20 dark:to-slate-950/20';
+              const borderColor = isPdf ? 'border-red-200 dark:border-red-800/40' : isImage ? 'border-blue-200 dark:border-blue-800/40' : 'border-gray-200 dark:border-gray-700/40';
+
+              const handleDownload = () => {
+                try {
+                  const byteChars = atob(file.data);
+                  const byteNumbers = new Array(byteChars.length);
+                  for (let i = 0; i < byteChars.length; i++) {
+                    byteNumbers[i] = byteChars.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  const blob = new Blob([byteArray], { type: file.mimeType });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = file.fileName;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  console.error('Download failed:', err);
+                }
+              };
+
+              return (
+                <div
+                  key={`${message.id}-genfile-${idx}`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r ${bgColor} border ${borderColor} shadow-sm`}
+                >
+                  {isPdf ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-8 w-8 flex-shrink-0 ${iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <path d="M9 15v-2h2a1 1 0 1 0 0-2H9v6"/>
+                    </svg>
+                  ) : isImage ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-8 w-8 flex-shrink-0 ${iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-8 w-8 flex-shrink-0 ${iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{file.fileName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{file.mimeType.split('/')[1] || 'file'}</p>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleDownload}
+                    className="flex-shrink-0 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-lg shadow-sm text-xs px-3 py-1.5 h-auto"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Scarica
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {!isPlaceholder && (

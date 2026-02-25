@@ -37,6 +37,12 @@ interface ChatAttachment {
   preview?: string;
 }
 
+interface GeneratedFile {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -44,6 +50,7 @@ interface Message {
   status?: "processing" | "completed" | "error";
   timestamp?: Date;
   attachments?: ChatAttachment[];
+  generatedFiles?: GeneratedFile[];
   suggestedActions?: Array<{
     type: string;
     label: string;
@@ -393,6 +400,7 @@ export function ChatPanel({
       let accumulatedContent = "";
       let accumulatedCodeExecutions: CodeExecution[] = [];
       let currentCodeExecution: Partial<CodeExecution> | null = null;
+      let accumulatedGeneratedFiles: GeneratedFile[] = [];
       let finalConversationId = currentConversationId;
       let finalMessageId = assistantMessageId;
       let finalSuggestedActions: any[] = [];
@@ -457,8 +465,22 @@ export function ChatPanel({
                     )
                   );
                 }
+              } else if (data.type === "generated_file" && data.fileData) {
+                const genFile: GeneratedFile = {
+                  fileName: data.fileName || 'file',
+                  mimeType: data.fileMimeType || 'application/octet-stream',
+                  data: data.fileData,
+                };
+                accumulatedGeneratedFiles.push(genFile);
+                console.log(`📄 [GENERATED FILE] Received: ${genFile.fileName} (${genFile.mimeType})`);
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantMessageId
+                      ? { ...msg, generatedFiles: [...accumulatedGeneratedFiles] }
+                      : msg
+                  )
+                );
               } else if (data.type === "code_execution" && data.code) {
-                // Gemini is executing Python code - start a new code execution block
                 console.log(`🐍 [CODE EXEC] Received Python code (${data.code.length} chars)`);
                 currentCodeExecution = {
                   language: data.language || 'PYTHON',
