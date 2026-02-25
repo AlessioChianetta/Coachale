@@ -222,6 +222,8 @@ export default function ConsultantLeadScraper() {
 
   const [crmFilterStatus, setCrmFilterStatus] = useState("tutti");
   const [crmSearch, setCrmSearch] = useState("");
+  const [crmSourceFilter, setCrmSourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
+  const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
 
   const [keywordSuggestions, setKeywordSuggestions] = useState<KeywordSuggestion[]>([]);
   const [keywordsLoading, setKeywordsLoading] = useState(false);
@@ -268,8 +270,9 @@ export default function ConsultantLeadScraper() {
     const p = new URLSearchParams();
     if (crmFilterStatus !== "tutti") p.set("lead_status", crmFilterStatus);
     if (crmSearch.trim()) p.set("search", crmSearch.trim());
+    if (crmSourceFilter !== "tutti") p.set("source", crmSourceFilter);
     return p.toString();
-  }, [crmFilterStatus, crmSearch]);
+  }, [crmFilterStatus, crmSearch, crmSourceFilter]);
 
   const { data: allResults = [] } = useQuery<SearchResult[]>({
     queryKey: ["/api/lead-scraper/all-results", allResultsParams],
@@ -335,6 +338,15 @@ export default function ConsultantLeadScraper() {
     });
     return counts;
   }, [allResults]);
+
+  const filteredSearches = useMemo(() => {
+    if (historySourceFilter === "tutti") return searches;
+    return searches.filter((s) => {
+      const meta = s.metadata as any;
+      const engine = meta?.params?.searchEngine || "google_maps";
+      return engine === historySourceFilter;
+    });
+  }, [searches, historySourceFilter]);
 
   const sortedResults = useMemo(() => {
     const sorted = [...results];
@@ -711,22 +723,40 @@ export default function ConsultantLeadScraper() {
                 </Card>
 
                 <Card className="rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <FileText className="h-4 w-4 text-gray-500" />Storico ({searches.length})
                     </CardTitle>
+                    <div className="flex items-center gap-1 mt-2">
+                      {(["tutti", "google_maps", "google_search"] as const).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setHistorySourceFilter(v)}
+                          className={cn(
+                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all",
+                            historySourceFilter === v
+                              ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400"
+                              : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          )}
+                        >
+                          {v === "tutti" && "Tutti"}
+                          {v === "google_maps" && <><Map className="h-3 w-3 text-rose-500" />Maps</>}
+                          {v === "google_search" && <><Globe className="h-3 w-3 text-blue-500" />Search</>}
+                        </button>
+                      ))}
+                    </div>
                   </CardHeader>
                   <CardContent className="p-0">
                     <ScrollArea className="h-[350px]">
                       {searchesLoading ? (
                         <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-                      ) : searches.length === 0 ? (
+                      ) : filteredSearches.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground text-sm px-4">
                           <Search className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>Nessuna ricerca</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                          {searches.map((s) => {
+                          {filteredSearches.map((s) => {
                             const searchMeta = s.metadata as any;
                             const resCount = s.resultsCount || 0;
                             return (
@@ -989,7 +1019,25 @@ export default function ConsultantLeadScraper() {
                       <ClipboardList className="h-5 w-5 text-violet-500" />CRM Lead
                       <span className="text-sm font-normal text-muted-foreground">({allResults.length})</span>
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+                        {(["tutti", "google_maps", "google_search"] as const).map((v) => (
+                          <button
+                            key={v}
+                            onClick={() => setCrmSourceFilter(v)}
+                            className={cn(
+                              "flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                              crmSourceFilter === v
+                                ? "bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white"
+                                : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                            )}
+                          >
+                            {v === "tutti" && "Tutti"}
+                            {v === "google_maps" && <><Map className="h-3 w-3 text-rose-500" />Maps</>}
+                            {v === "google_search" && <><Globe className="h-3 w-3 text-blue-500" />Search</>}
+                          </button>
+                        ))}
+                      </div>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -1004,9 +1052,9 @@ export default function ConsultantLeadScraper() {
                           </Button>
                         )}
                       </div>
-                      {crmFilterStatus !== "tutti" && (
-                        <Button variant="ghost" size="sm" onClick={() => setCrmFilterStatus("tutti")} className="text-xs h-8 text-gray-500 hover:text-gray-700">
-                          <X className="h-3 w-3 mr-1" />Rimuovi filtro
+                      {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti") && (
+                        <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); }} className="text-xs h-8 text-gray-500 hover:text-gray-700">
+                          <X className="h-3 w-3 mr-1" />Rimuovi filtri
                         </Button>
                       )}
                     </div>

@@ -462,7 +462,7 @@ router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_adm
 router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { lead_status, search } = req.query;
+    const { lead_status, search, source } = req.query;
 
     const searches = await db
       .select({ id: leadScraperSearches.id })
@@ -488,6 +488,10 @@ router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "sup
         ${leadScraperResults.leadNotes} ILIKE ${term} OR
         ${leadScraperResults.category} ILIKE ${term}
       )`);
+    }
+
+    if (source && typeof source === "string" && source !== "tutti") {
+      conditions.push(eq(leadScraperResults.source, source));
     }
 
     const results = await db
