@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -16,6 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft,
   Building2,
@@ -38,9 +47,24 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
+  Plus,
+  PhoneCall,
+  FileText,
+  Presentation,
+  Handshake,
+  Clock,
+  MessageSquare,
+  Pencil,
+  Trash2,
+  CalendarDays,
+  BarChart3,
+  Activity,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface LeadResult {
   id: string;
@@ -68,6 +92,21 @@ interface LeadResult {
   createdAt: string;
 }
 
+interface LeadActivity {
+  id: string;
+  leadId: string;
+  consultantId: string;
+  type: string;
+  title: string | null;
+  description: string | null;
+  outcome: string | null;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  metadata: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const LEAD_STATUSES = [
   { value: "nuovo", label: "Nuovo", color: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700" },
   { value: "contattato", label: "Contattato", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800" },
@@ -78,8 +117,57 @@ const LEAD_STATUSES = [
   { value: "non_interessato", label: "Non interessato", color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700" },
 ];
 
+const ACTIVITY_TYPES = [
+  { value: "nota", label: "Nota", icon: FileText, color: "text-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
+  { value: "chiamata", label: "Chiamata", icon: PhoneCall, color: "text-green-500", bgColor: "bg-green-50 dark:bg-green-950/20" },
+  { value: "email_inviata", label: "Email inviata", icon: Mail, color: "text-cyan-500", bgColor: "bg-cyan-50 dark:bg-cyan-950/20" },
+  { value: "discovery", label: "Discovery", icon: Presentation, color: "text-violet-500", bgColor: "bg-violet-50 dark:bg-violet-950/20" },
+  { value: "demo", label: "Demo", icon: BarChart3, color: "text-amber-500", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
+  { value: "appuntamento", label: "Appuntamento", icon: CalendarDays, color: "text-rose-500", bgColor: "bg-rose-50 dark:bg-rose-950/20" },
+  { value: "proposta", label: "Proposta", icon: ClipboardList, color: "text-indigo-500", bgColor: "bg-indigo-50 dark:bg-indigo-950/20" },
+  { value: "chiusura", label: "Chiusura", icon: Handshake, color: "text-emerald-500", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
+];
+
+const OUTCOMES = [
+  { value: "positivo", label: "Positivo", color: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800" },
+  { value: "neutro", label: "Neutro", color: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800" },
+  { value: "negativo", label: "Negativo", color: "text-red-600 bg-red-50 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800" },
+  { value: "non_risponde", label: "Non risponde", color: "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-950/20 dark:text-slate-400 dark:border-slate-800" },
+  { value: "da_richiamare", label: "Da richiamare", color: "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800" },
+  { value: "prenotato", label: "Prenotato", color: "text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-800" },
+];
+
 function getLeadStatusInfo(status: string | null) {
   return LEAD_STATUSES.find(s => s.value === (status || "nuovo")) || LEAD_STATUSES[0];
+}
+
+function getActivityType(type: string) {
+  return ACTIVITY_TYPES.find(t => t.value === type) || ACTIVITY_TYPES[0];
+}
+
+function getOutcomeInfo(outcome: string | null) {
+  if (!outcome) return null;
+  return OUTCOMES.find(o => o.value === outcome);
+}
+
+function formatDateIT(dateStr: string | null) {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function timeAgo(dateStr: string) {
+  const now = Date.now();
+  const d = new Date(dateStr).getTime();
+  const diff = now - d;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "adesso";
+  if (mins < 60) return `${mins}m fa`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h fa`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "ieri";
+  if (days < 7) return `${days}g fa`;
+  return new Date(dateStr).toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
 }
 
 export default function ConsultantLeadDetail() {
@@ -95,6 +183,17 @@ export default function ConsultantLeadDetail() {
   const [crmNextActionDate, setCrmNextActionDate] = useState("");
   const [crmValue, setCrmValue] = useState("");
 
+  const [activeActivityTab, setActiveActivityTab] = useState("timeline");
+  const [showNewActivity, setShowNewActivity] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<LeadActivity | null>(null);
+
+  const [newType, setNewType] = useState("nota");
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newOutcome, setNewOutcome] = useState("");
+  const [newScheduledAt, setNewScheduledAt] = useState("");
+  const [newCompletedAt, setNewCompletedAt] = useState("");
+
   const { data: lead, isLoading } = useQuery<LeadResult>({
     queryKey: ["/api/lead-scraper/results", leadId],
     queryFn: async () => {
@@ -104,6 +203,37 @@ export default function ConsultantLeadDetail() {
     },
     enabled: !!leadId,
   });
+
+  const activityFilterType = activeActivityTab === "timeline" ? "all"
+    : activeActivityTab === "note" ? "nota"
+    : activeActivityTab === "chiamate" ? "chiamata"
+    : activeActivityTab === "disco_demo" ? undefined
+    : activeActivityTab === "opportunita" ? undefined
+    : "all";
+
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<LeadActivity[]>({
+    queryKey: ["/api/lead-scraper/leads", leadId, "activities", activeActivityTab],
+    queryFn: async () => {
+      let url = `/api/lead-scraper/leads/${leadId}/activities`;
+      if (activityFilterType && activityFilterType !== "all") {
+        url += `?type=${activityFilterType}`;
+      }
+      const res = await fetch(url, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error("Failed to fetch activities");
+      return res.json();
+    },
+    enabled: !!leadId,
+  });
+
+  const filteredActivities = useMemo(() => {
+    if (activeActivityTab === "disco_demo") {
+      return activities.filter(a => a.type === "discovery" || a.type === "demo" || a.type === "appuntamento");
+    }
+    if (activeActivityTab === "opportunita") {
+      return activities.filter(a => a.type === "proposta" || a.type === "chiusura");
+    }
+    return activities;
+  }, [activities, activeActivityTab]);
 
   useEffect(() => {
     if (lead) {
@@ -127,7 +257,7 @@ export default function ConsultantLeadDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
-      toast({ title: "CRM aggiornato", description: "Dati lead salvati con successo" });
+      toast({ title: "CRM aggiornato" });
     },
     onError: () => {
       toast({ title: "Errore", description: "Impossibile aggiornare il CRM", variant: "destructive" });
@@ -165,10 +295,103 @@ export default function ConsultantLeadDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/results", leadId] });
       toast({ title: "Sito analizzato" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+  });
+
+  const createActivityMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/api/lead-scraper/leads/${leadId}/activities`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore creazione attivita");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/leads", leadId, "activities"] });
+      resetActivityForm();
+      setShowNewActivity(false);
+      toast({ title: "Attivita registrata" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile creare l'attivita", variant: "destructive" });
     },
   });
+
+  const updateActivityMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await fetch(`/api/lead-scraper/activities/${id}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Errore aggiornamento");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/leads", leadId, "activities"] });
+      setEditingActivity(null);
+      resetActivityForm();
+      toast({ title: "Attivita aggiornata" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile aggiornare l'attivita", variant: "destructive" });
+    },
+  });
+
+  const deleteActivityMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/lead-scraper/activities/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Errore eliminazione");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/leads", leadId, "activities"] });
+      toast({ title: "Attivita eliminata" });
+    },
+    onError: () => {
+      toast({ title: "Errore", description: "Impossibile eliminare l'attivita", variant: "destructive" });
+    },
+  });
+
+  const resetActivityForm = () => {
+    setNewType("nota");
+    setNewTitle("");
+    setNewDescription("");
+    setNewOutcome("");
+    setNewScheduledAt("");
+    setNewCompletedAt("");
+  };
+
+  const openEditActivity = (activity: LeadActivity) => {
+    setEditingActivity(activity);
+    setNewType(activity.type);
+    setNewTitle(activity.title || "");
+    setNewDescription(activity.description || "");
+    setNewOutcome(activity.outcome || "");
+    setNewScheduledAt(activity.scheduledAt ? activity.scheduledAt.slice(0, 16) : "");
+    setNewCompletedAt(activity.completedAt ? activity.completedAt.slice(0, 16) : "");
+    setShowNewActivity(true);
+  };
+
+  const handleSaveActivity = () => {
+    const data = {
+      type: newType,
+      title: newTitle || null,
+      description: newDescription || null,
+      outcome: newOutcome || null,
+      scheduledAt: newScheduledAt || null,
+      completedAt: newCompletedAt || null,
+    };
+    if (editingActivity) {
+      updateActivityMutation.mutate({ id: editingActivity.id, data });
+    } else {
+      createActivityMutation.mutate(data);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     try {
@@ -188,6 +411,13 @@ export default function ConsultantLeadDetail() {
       leadValue: crmValue ? parseFloat(crmValue) : null,
     });
   };
+
+  const activityStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    ACTIVITY_TYPES.forEach(t => { counts[t.value] = 0; });
+    activities.forEach(a => { counts[a.type] = (counts[a.type] || 0) + 1; });
+    return counts;
+  }, [activities]);
 
   if (isLoading) {
     return (
@@ -232,14 +462,9 @@ export default function ConsultantLeadDetail() {
 
   return (
     <PageLayout role="consultant">
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-5 max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.history.back()}
-            className="text-gray-500 hover:text-gray-900 dark:hover:text-white"
-          >
+          <Button variant="ghost" size="sm" onClick={() => window.history.back()} className="text-gray-500 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="h-4 w-4 mr-1.5" />Indietro
           </Button>
           <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
@@ -273,108 +498,155 @@ export default function ConsultantLeadDetail() {
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Score</p>
               </div>
               <div className="w-16 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500"
-                  }`}
-                  style={{ width: `${score}%` }}
-                />
+                <div className={`h-full rounded-full transition-all ${score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
               </div>
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-4 space-y-4">
             <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-rose-500" />
-                  Informazioni di contatto
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-rose-500" />Contatti
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <ContactBlock icon={<MapPin className="h-4 w-4 text-rose-500" />} label="Indirizzo" value={lead.address} />
-                  <ContactBlock icon={<Globe className="h-4 w-4 text-purple-500" />} label="Sito Web" value={lead.website} link />
-                </div>
-
+              <CardContent className="space-y-2">
+                {lead.address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <MapPin className="h-3.5 w-3.5 text-rose-400 mt-0.5 shrink-0" />
+                    <span className="text-muted-foreground">{lead.address}</span>
+                  </div>
+                )}
+                {lead.website && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <Globe className="h-3.5 w-3.5 text-purple-400 mt-0.5 shrink-0" />
+                    <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{lead.website}</a>
+                  </div>
+                )}
                 {allEmails.length > 0 && (
-                  <div className="mt-4">
-                    <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Email ({allEmails.length})</Label>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Email</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {allEmails.map((email: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-sm py-1 px-2.5" onClick={() => copyToClipboard(email)}>
-                          <Mail className="h-3.5 w-3.5 mr-1.5 text-blue-500" />{email}
-                          <Copy className="h-3 w-3 ml-2 text-gray-400" />
+                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-xs py-0.5 px-2" onClick={() => copyToClipboard(email)}>
+                          <Mail className="h-3 w-3 mr-1 text-blue-500" />{email}
                         </Badge>
                       ))}
                     </div>
                   </div>
                 )}
-
                 {allPhones.length > 0 && (
-                  <div className="mt-4">
-                    <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Telefoni ({allPhones.length})</Label>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Telefoni</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {allPhones.map((phone: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-sm py-1 px-2.5" onClick={() => copyToClipboard(phone)}>
-                          <Phone className="h-3.5 w-3.5 mr-1.5 text-green-500" />{phone}
-                          <Copy className="h-3 w-3 ml-2 text-gray-400" />
+                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-xs py-0.5 px-2" onClick={() => copyToClipboard(phone)}>
+                          <Phone className="h-3 w-3 mr-1 text-green-500" />{phone}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {lead.rating && (
+                  <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 w-fit">
+                    <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                    <span className="font-bold text-sm text-amber-700 dark:text-amber-400">{lead.rating}</span>
+                    {lead.reviewsCount && <span className="text-xs text-amber-600/70 dark:text-amber-400/70">({lead.reviewsCount})</span>}
+                  </div>
+                )}
+
+                {wd?.socialLinks && Object.keys(wd.socialLinks).length > 0 && (
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {Object.entries(wd.socialLinks).map(([platform, url]) => (
+                        <Badge key={platform} variant="outline" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors text-xs" onClick={() => window.open(url as string, "_blank")}>
+                          <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
                         </Badge>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {lead.rating && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                      <span className="font-bold text-amber-700 dark:text-amber-400">{lead.rating}</span>
-                      {lead.reviewsCount && (
-                        <span className="text-sm text-amber-600/70 dark:text-amber-400/70">({lead.reviewsCount} recensioni)</span>
-                      )}
-                    </div>
+                {lead.website && lead.scrapeStatus !== "scraped" && lead.scrapeStatus !== "scraped_cached" && (
+                  <Button variant="outline" size="sm" className="w-full text-xs mt-2" onClick={() => scrapeWebsiteMutation.mutate()} disabled={scrapeWebsiteMutation.isPending}>
+                    {scrapeWebsiteMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                    Analizza sito web
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-rose-500" />Gestione CRM
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Stato</Label>
+                  <Select value={crmLeadStatus} onValueChange={setCrmLeadStatus}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Valore (EUR)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input type="number" placeholder="5000" value={crmValue} onChange={(e) => setCrmValue(e.target.value)} className="pl-8 h-9" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Prossima azione</Label>
+                  <Input placeholder="es. Chiamare..." value={crmNextAction} onChange={(e) => setCrmNextAction(e.target.value)} className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Data azione</Label>
+                  <Input type="date" value={crmNextActionDate} onChange={(e) => setCrmNextActionDate(e.target.value)} className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Note generali</Label>
+                  <Textarea placeholder="Appunti sulla trattativa..." value={crmNotes} onChange={(e) => setCrmNotes(e.target.value)} className="min-h-[80px]" />
+                </div>
+                {lead.leadContactedAt && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
+                    <Calendar className="h-3 w-3 text-blue-500" />
+                    Primo contatto: {new Date(lead.leadContactedAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                 )}
+                <Button onClick={handleSaveCrm} disabled={updateCrmMutation.isPending} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white h-9">
+                  {updateCrmMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salva CRM
+                </Button>
               </CardContent>
             </Card>
 
             {lead.aiSalesSummary && (
               <Card className="rounded-2xl border-2 border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/50 via-white to-purple-50/50 dark:from-violet-950/20 dark:via-gray-900 dark:to-purple-950/20 shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-violet-500" />
-                      Analisi AI Sales Agent
-                      {score !== null && score !== undefined && (
-                        <span className={`text-lg font-black ${scoreColor}`}>{score}/100</span>
-                      )}
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-violet-500" />Analisi AI
+                      {score !== null && score !== undefined && <span className={`text-base font-black ${scoreColor}`}>{score}/100</span>}
                     </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => generateSummaryMutation.mutate()}
-                      disabled={generateSummaryMutation.isPending}
-                      className="text-xs h-7 text-violet-600 hover:text-violet-700 hover:bg-violet-100"
-                    >
-                      {generateSummaryMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                      )}
-                      Rigenera
+                    <Button variant="ghost" size="sm" onClick={() => generateSummaryMutation.mutate()} disabled={generateSummaryMutation.isPending} className="text-xs h-6 text-violet-600">
+                      {generateSummaryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                  <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
                     {lead.aiSalesSummary.replace(/\*\*SCORE:\s*\d+\*\*\n?/, "")}
                   </div>
                   {lead.aiSalesSummaryGeneratedAt && (
-                    <p className="text-[10px] text-violet-400 mt-3">
-                      Generato il {new Date(lead.aiSalesSummaryGeneratedAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    <p className="text-[10px] text-violet-400 mt-2">
+                      {formatDateIT(lead.aiSalesSummaryGeneratedAt)}
                     </p>
                   )}
                 </CardContent>
@@ -382,221 +654,253 @@ export default function ConsultantLeadDetail() {
             )}
 
             {!lead.aiSalesSummary && (lead.scrapeStatus === "scraped" || lead.scrapeStatus === "scraped_cached") && (
-              <Card className="rounded-2xl border border-violet-200 dark:border-violet-800/40 shadow-sm">
-                <CardContent className="py-6 text-center">
-                  <Sparkles className="h-8 w-8 mx-auto mb-3 text-violet-400" />
-                  <p className="text-sm text-muted-foreground mb-3">Nessuna analisi AI disponibile per questo lead</p>
-                  <Button
-                    onClick={() => generateSummaryMutation.mutate()}
-                    disabled={generateSummaryMutation.isPending}
-                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white"
-                  >
-                    {generateSummaryMutation.isPending ? (
-                      <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generazione in corso...</>
-                    ) : (
-                      <><Sparkles className="h-4 w-4 mr-2" />Genera analisi AI Sales Agent</>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {wd && (
-              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-amber-500" />
-                    Dati estratti dal sito web
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {wd.description && <ExpandableDescription text={wd.description} threshold={500} />}
-
-                  {wd.socialLinks && Object.keys(wd.socialLinks).length > 0 && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
-                      <div className="flex flex-wrap gap-2 mt-1.5">
-                        {Object.entries(wd.socialLinks).map(([platform, url]) => (
-                          <Badge key={platform} variant="outline" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors" onClick={() => window.open(url as string, "_blank")}>
-                            <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {wd.services?.length > 0 && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Servizi ({wd.services.length})</Label>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {wd.services.map((svc: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-xs bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {lead.website && lead.scrapeStatus !== "scraped" && lead.scrapeStatus !== "scraped_cached" && (
-              <Button
-                variant="outline"
-                className="w-full border-purple-200 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20"
-                onClick={() => scrapeWebsiteMutation.mutate()}
-                disabled={scrapeWebsiteMutation.isPending}
-              >
-                {scrapeWebsiteMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Analisi in corso...</>
-                ) : (
-                  <><RefreshCw className="h-4 w-4 mr-2" />Analizza sito web</>
-                )}
+              <Button onClick={() => generateSummaryMutation.mutate()} disabled={generateSummaryMutation.isPending} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
+                {generateSummaryMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                Genera analisi AI
               </Button>
             )}
           </div>
 
-          <div className="space-y-5">
-            <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm sticky top-4">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4 text-rose-500" />
-                  Gestione CRM
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Stato lead</Label>
-                  <Select value={crmLeadStatus} onValueChange={setCrmLeadStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEAD_STATUSES.map(s => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Valore potenziale (EUR)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="es. 5000"
-                      value={crmValue}
-                      onChange={(e) => setCrmValue(e.target.value)}
-                      className="pl-9"
-                    />
+          <div className="lg:col-span-8 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {ACTIVITY_TYPES.slice(0, 5).map(at => (
+                  <div key={at.value} className={cn("flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium", at.bgColor)}>
+                    <at.icon className={cn("h-3 w-3", at.color)} />
+                    <span>{activityStats[at.value] || 0}</span>
                   </div>
-                </div>
+                ))}
+              </div>
+              <Button
+                size="sm"
+                onClick={() => { resetActivityForm(); setEditingActivity(null); setShowNewActivity(true); }}
+                className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-1" />Nuova attivita
+              </Button>
+            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Prossima azione</Label>
-                  <Input
-                    placeholder="es. Inviare email, chiamare..."
-                    value={crmNextAction}
-                    onChange={(e) => setCrmNextAction(e.target.value)}
-                  />
-                </div>
+            <Tabs value={activeActivityTab} onValueChange={setActiveActivityTab}>
+              <TabsList className="w-full flex justify-start gap-0.5 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl overflow-x-auto">
+                {[
+                  { value: "timeline", label: "Timeline", icon: Activity },
+                  { value: "note", label: "Note", icon: FileText },
+                  { value: "chiamate", label: "Chiamate", icon: PhoneCall },
+                  { value: "disco_demo", label: "Disco & Demo", icon: Presentation },
+                  { value: "opportunita", label: "Opportunita", icon: Handshake },
+                ].map(tab => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-lg px-3 text-xs">
+                    <tab.icon className="h-3.5 w-3.5" />{tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Data prossima azione</Label>
-                  <Input
-                    type="date"
-                    value={crmNextActionDate}
-                    onChange={(e) => setCrmNextActionDate(e.target.value)}
-                  />
-                </div>
+              <div className="mt-3">
+                {activitiesLoading ? (
+                  <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : filteredActivities.length === 0 ? (
+                  <Card className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                    <CardContent className="py-12 text-center">
+                      <Activity className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+                      <p className="text-sm font-medium text-muted-foreground mb-1">
+                        {activeActivityTab === "timeline" ? "Nessuna attivita registrata" : `Nessuna ${activeActivityTab === "note" ? "nota" : activeActivityTab === "chiamate" ? "chiamata" : "attivita"} registrata`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mb-4">Registra la prima attivita per questo lead</p>
+                      <Button size="sm" variant="outline" onClick={() => { resetActivityForm(); setNewType(activeActivityTab === "note" ? "nota" : activeActivityTab === "chiamate" ? "chiamata" : "nota"); setEditingActivity(null); setShowNewActivity(true); }}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Aggiungi
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+                    <div className="space-y-0">
+                      {filteredActivities.map((activity) => {
+                        const at = getActivityType(activity.type);
+                        const outcomeInfo = getOutcomeInfo(activity.outcome);
+                        const IconComp = at.icon;
+                        return (
+                          <div key={activity.id} className="relative pl-12 pr-0 py-3 group">
+                            <div className={cn("absolute left-3 top-4 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background z-10", at.bgColor)}>
+                              <IconComp className={cn("h-3 w-3", at.color)} />
+                            </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Note</Label>
-                  <Textarea
-                    placeholder="Appunti sulla trattativa, dettagli del contatto..."
-                    value={crmNotes}
-                    onChange={(e) => setCrmNotes(e.target.value)}
-                    className="min-h-[120px]"
-                  />
-                </div>
-
-                {lead.leadContactedAt && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
-                    <Calendar className="h-3 w-3 text-blue-500" />
-                    Primo contatto: {new Date(lead.leadContactedAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}
+                            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors shadow-sm">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", at.bgColor, at.color, "border-current/20")}>{at.label}</Badge>
+                                    {outcomeInfo && (
+                                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", outcomeInfo.color)}>{outcomeInfo.label}</Badge>
+                                    )}
+                                    {activity.scheduledAt && !activity.completedAt && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400">
+                                        <Clock className="h-2.5 w-2.5 mr-0.5" />Programmato
+                                      </Badge>
+                                    )}
+                                    {activity.completedAt && (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400">
+                                        <CheckCircle className="h-2.5 w-2.5 mr-0.5" />Completato
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {activity.title && (
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1.5">{activity.title}</p>
+                                  )}
+                                  {activity.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap leading-relaxed">{activity.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+                                    <span>{timeAgo(activity.createdAt)}</span>
+                                    {activity.scheduledAt && (
+                                      <span className="flex items-center gap-0.5">
+                                        <CalendarDays className="h-2.5 w-2.5" />
+                                        {formatDateIT(activity.scheduledAt)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditActivity(activity)}>
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => deleteActivityMutation.mutate(activity.id)}>
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+              </div>
+            </Tabs>
 
-                <Button
-                  onClick={handleSaveCrm}
-                  disabled={updateCrmMutation.isPending}
-                  className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white"
-                >
-                  {updateCrmMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</>
-                  ) : (
-                    <><Save className="h-4 w-4 mr-2" />Salva CRM</>
+            {wd && (wd.description || wd.services?.length > 0) && (
+              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-amber-500" />Dati dal sito web
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {wd.description && <ExpandableDescription text={wd.description} threshold={300} />}
+                  {wd.services?.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Servizi</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {wd.services.map((svc: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
+
+      <Dialog open={showNewActivity} onOpenChange={(open) => { if (!open) { setShowNewActivity(false); setEditingActivity(null); resetActivityForm(); } }}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-4 w-4 text-rose-500" />
+              {editingActivity ? "Modifica attivita" : "Nuova attivita"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Tipo attivita</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {ACTIVITY_TYPES.map(at => (
+                  <button
+                    key={at.value}
+                    type="button"
+                    onClick={() => setNewType(at.value)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border text-xs font-medium transition-all",
+                      newType === at.value
+                        ? `${at.bgColor} border-current/30 shadow-sm`
+                        : "border-gray-200 dark:border-gray-700 text-muted-foreground hover:border-gray-300"
+                    )}
+                  >
+                    <at.icon className={cn("h-4 w-4", newType === at.value ? at.color : "")} />
+                    <span className="text-[10px] leading-tight text-center">{at.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Titolo</Label>
+              <Input placeholder="es. Prima chiamata con il responsabile..." value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Descrizione</Label>
+              <Textarea placeholder="Dettagli dell'attivita, cosa e' emerso..." value={newDescription} onChange={(e) => setNewDescription(e.target.value)} className="min-h-[100px]" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Esito</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {OUTCOMES.map(o => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setNewOutcome(newOutcome === o.value ? "" : o.value)}
+                    className={cn(
+                      "px-2 py-1.5 rounded-lg border text-xs font-medium transition-all text-center",
+                      newOutcome === o.value ? `${o.color} shadow-sm` : "border-gray-200 dark:border-gray-700 text-muted-foreground"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Programmato per</Label>
+                <Input type="datetime-local" value={newScheduledAt} onChange={(e) => setNewScheduledAt(e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Completato il</Label>
+                <Input type="datetime-local" value={newCompletedAt} onChange={(e) => setNewCompletedAt(e.target.value)} className="h-9" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNewActivity(false); setEditingActivity(null); resetActivityForm(); }}>Annulla</Button>
+            <Button onClick={handleSaveActivity} disabled={createActivityMutation.isPending || updateActivityMutation.isPending} className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
+              {(createActivityMutation.isPending || updateActivityMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              {editingActivity ? "Aggiorna" : "Registra"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
 
-function ContactBlock({ icon, label, value, link }: { icon: React.ReactNode; label: string; value: string | null; link?: boolean }) {
-  if (!value) {
-    return (
-      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-        {icon}
-        <div>
-          <p className="text-xs text-muted-foreground font-medium">{label}</p>
-          <p className="text-sm text-muted-foreground italic">Non disponibile</p>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
-      {icon}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground font-medium">{label}</p>
-        {link ? (
-          <a href={value.startsWith("http") ? value : `https://${value}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate block">
-            {value}
-          </a>
-        ) : (
-          <p className="text-sm truncate font-medium text-gray-900 dark:text-white">{value}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ExpandableDescription({ text, threshold = 500 }: { text: string; threshold?: number }) {
+function ExpandableDescription({ text, threshold = 300 }: { text: string; threshold?: number }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > threshold;
   const displayText = isLong && !expanded ? text.substring(0, threshold) + "..." : text;
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-      <p className="text-sm mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line">{displayText}</p>
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5">
+      <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
+      <p className="text-xs mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{displayText}</p>
       {isLong && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-1 h-6 px-2 text-xs text-primary hover:text-primary/80"
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? (
-            <><ChevronUp className="h-3 w-3 mr-1" />Comprimi</>
-          ) : (
-            <><ChevronDown className="h-3 w-3 mr-1" />Mostra tutto ({text.length} caratteri)</>
-          )}
+        <Button variant="ghost" size="sm" className="mt-1 h-5 px-2 text-[10px] text-primary hover:text-primary/80" onClick={() => setExpanded(!expanded)}>
+          {expanded ? <><ChevronUp className="h-3 w-3 mr-0.5" />Comprimi</> : <><ChevronDown className="h-3 w-3 mr-0.5" />Mostra tutto</>}
         </Button>
       )}
     </div>

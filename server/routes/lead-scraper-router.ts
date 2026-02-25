@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
-import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext } from "../../shared/schema";
+import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext, leadScraperActivities } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
 import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
@@ -580,6 +580,115 @@ Rispondi SOLO con JSON array: [{"keyword": "string", "engine": "maps" o "search"
     res.json({ suggestions });
   } catch (error: any) {
     console.error("[LEAD-SCRAPER] Suggest keywords error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/leads/:leadId/activities", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { leadId } = req.params;
+    const { type } = req.query;
+
+    let conditions: any[] = [
+      eq(leadScraperActivities.leadId, leadId),
+      eq(leadScraperActivities.consultantId, consultantId),
+    ];
+
+    if (type && typeof type === "string" && type !== "all") {
+      conditions.push(eq(leadScraperActivities.type, type));
+    }
+
+    const activities = await db
+      .select()
+      .from(leadScraperActivities)
+      .where(and(...conditions))
+      .orderBy(desc(leadScraperActivities.createdAt));
+
+    res.json(activities);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/leads/:leadId/activities", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { leadId } = req.params;
+    const { type, title, description, outcome, scheduledAt, completedAt, metadata } = req.body;
+
+    if (!type) return res.status(400).json({ error: "type is required" });
+
+    const [activity] = await db
+      .insert(leadScraperActivities)
+      .values({
+        leadId,
+        consultantId,
+        type,
+        title: title || null,
+        description: description || null,
+        outcome: outcome || null,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        completedAt: completedAt ? new Date(completedAt) : null,
+        metadata: metadata || {},
+      })
+      .returning();
+
+    res.status(201).json(activity);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/activities/:activityId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { activityId } = req.params;
+
+    const [existing] = await db
+      .select()
+      .from(leadScraperActivities)
+      .where(and(eq(leadScraperActivities.id, activityId), eq(leadScraperActivities.consultantId, consultantId)));
+
+    if (!existing) return res.status(404).json({ error: "Activity not found" });
+
+    const updateData: any = { updatedAt: new Date() };
+    const { title, description, outcome, scheduledAt, completedAt, metadata, type } = req.body;
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (outcome !== undefined) updateData.outcome = outcome;
+    if (type !== undefined) updateData.type = type;
+    if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (completedAt !== undefined) updateData.completedAt = completedAt ? new Date(completedAt) : null;
+    if (metadata !== undefined) updateData.metadata = metadata;
+
+    const [updated] = await db
+      .update(leadScraperActivities)
+      .set(updateData)
+      .where(eq(leadScraperActivities.id, activityId))
+      .returning();
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete("/activities/:activityId", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { activityId } = req.params;
+
+    const [existing] = await db
+      .select()
+      .from(leadScraperActivities)
+      .where(and(eq(leadScraperActivities.id, activityId), eq(leadScraperActivities.consultantId, consultantId)));
+
+    if (!existing) return res.status(404).json({ error: "Activity not found" });
+
+    await db.delete(leadScraperActivities).where(eq(leadScraperActivities.id, activityId));
+    res.json({ success: true });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

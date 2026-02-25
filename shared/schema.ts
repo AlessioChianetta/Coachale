@@ -10714,3 +10714,21 @@ export const leadScraperSalesContext = pgTable("lead_scraper_sales_context", {
 
 export type LeadScraperSalesContext = typeof leadScraperSalesContext.$inferSelect;
 export type InsertLeadScraperSalesContext = typeof leadScraperSalesContext.$inferInsert;
+
+export const leadScraperActivities = pgTable("lead_scraper_activities", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: uuid("lead_id").notNull().references(() => leadScraperResults.id, { onDelete: "cascade" }),
+  consultantId: varchar("consultant_id").notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: text("title"),
+  description: text("description"),
+  outcome: varchar("outcome", { length: 50 }),
+  scheduledAt: timestamp("scheduled_at"),
+  completedAt: timestamp("completed_at"),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
+export type LeadScraperActivity = typeof leadScraperActivities.$inferSelect;
+export type InsertLeadScraperActivity = typeof leadScraperActivities.$inferInsert;
