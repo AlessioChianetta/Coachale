@@ -158,6 +158,10 @@ export interface GeminiStreamChunk {
       parts?: Array<{
         text?: string;
         thought?: boolean;
+        executableCode?: { code: string; language: string };
+        codeExecutionResult?: { outcome: string; output: string };
+        inlineData?: { mimeType: string; data: string };
+        functionCall?: { name: string; args: Record<string, any> };
       }>;
     };
   }>;
@@ -373,10 +377,16 @@ class VertexAIClientAdapter implements GeminiClient {
           }
           const candidates = chunk.candidates?.map((c: any) => ({
             content: {
-              parts: c.content?.parts?.map((p: any) => ({
-                text: p.text,
-                thought: p.thought,
-              })),
+              parts: c.content?.parts?.map((p: any) => {
+                const mapped: any = {};
+                if (p.text !== undefined) mapped.text = p.text;
+                if (p.thought !== undefined) mapped.thought = p.thought;
+                if (p.executableCode) mapped.executableCode = p.executableCode;
+                if (p.codeExecutionResult) mapped.codeExecutionResult = p.codeExecutionResult;
+                if (p.inlineData) mapped.inlineData = p.inlineData;
+                if (p.functionCall) mapped.functionCall = p.functionCall;
+                return mapped;
+              }),
             },
           }));
           
@@ -514,6 +524,8 @@ class GeminiClientAdapter implements GeminiClient {
         config: {
           ...params.generationConfig,
           ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+          ...(params.systemInstruction && { systemInstruction: params.systemInstruction }),
+          ...(params.toolConfig && { toolConfig: params.toolConfig }),
         },
       }),
       { context: `GeminiAdapter.generateContentStream(${params.model})` }
@@ -531,21 +543,33 @@ class GeminiClientAdapter implements GeminiClient {
           
           const candidates = (chunk as any).candidates?.map((c: any) => ({
             content: {
-              parts: c.content?.parts?.map((p: any) => ({
-                text: p.text,
-                thought: p.thought,
-              })),
+              parts: c.content?.parts?.map((p: any) => {
+                const mapped: any = {};
+                if (p.text !== undefined) mapped.text = p.text;
+                if (p.thought !== undefined) mapped.thought = p.thought;
+                if (p.executableCode) mapped.executableCode = p.executableCode;
+                if (p.codeExecutionResult) mapped.codeExecutionResult = p.codeExecutionResult;
+                if (p.inlineData) mapped.inlineData = p.inlineData;
+                if (p.functionCall) mapped.functionCall = p.functionCall;
+                return mapped;
+              }),
             },
           }));
           
-          const chunkParts = (chunk as any).parts?.map((p: any) => ({
-            text: p.text,
-            thought: p.thought,
-          }));
+          const chunkParts = (chunk as any).parts?.map((p: any) => {
+            const mapped: any = {};
+            if (p.text !== undefined) mapped.text = p.text;
+            if (p.thought !== undefined) mapped.thought = p.thought;
+            if (p.executableCode) mapped.executableCode = p.executableCode;
+            if (p.codeExecutionResult) mapped.codeExecutionResult = p.codeExecutionResult;
+            if (p.inlineData) mapped.inlineData = p.inlineData;
+            if (p.functionCall) mapped.functionCall = p.functionCall;
+            return mapped;
+          });
           
           let text: string | undefined;
           if (typeof chunk.text === 'function') {
-            text = chunk.text();
+            try { text = chunk.text(); } catch { text = undefined; }
           } else if (typeof chunk.text === 'string') {
             text = chunk.text;
           } else if ((chunk as any).candidates?.[0]?.content?.parts?.[0]?.text) {
