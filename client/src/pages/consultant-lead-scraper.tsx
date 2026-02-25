@@ -739,9 +739,13 @@ export default function ConsultantLeadScraper() {
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-1.5">
                                       {searchMeta?.params?.searchEngine === "google_search" ? (
-                                        <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
+                                          <Globe className="h-2.5 w-2.5" />Search
+                                        </Badge>
                                       ) : (
-                                        <Map className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
+                                          <Map className="h-2.5 w-2.5" />Maps
+                                        </Badge>
                                       )}
                                       <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
                                     </div>
@@ -1020,6 +1024,7 @@ export default function ConsultantLeadScraper() {
                         <TableHeader>
                           <TableRow className="bg-gray-50 dark:bg-gray-800/50">
                             <TableHead className="font-semibold">Nome</TableHead>
+                            <TableHead className="text-center font-semibold w-[70px]">Fonte</TableHead>
                             <TableHead className="font-semibold">Email</TableHead>
                             <TableHead className="font-semibold">Telefono</TableHead>
                             <TableHead className="text-center font-semibold">Score</TableHead>
@@ -1042,6 +1047,17 @@ export default function ConsultantLeadScraper() {
                                     <span className="font-semibold text-gray-900 dark:text-white">{r.businessName || "-"}</span>
                                     {r.category && <p className="text-sm text-gray-500 mt-0.5">{r.category}</p>}
                                   </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {r.source === "google_search" ? (
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
+                                      <Globe className="h-2.5 w-2.5" />Search
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
+                                      <Map className="h-2.5 w-2.5" />Maps
+                                    </Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.email || "-"}</TableCell>
                                 <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.phone || "-"}</TableCell>
