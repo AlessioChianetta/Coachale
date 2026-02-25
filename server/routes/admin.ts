@@ -2096,7 +2096,7 @@ router.put(
 );
 
 router.get(
-  "/superadmin/lead-scraper-config",
+  "/admin/superadmin/lead-scraper-config",
   authenticateToken,
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
@@ -2145,7 +2145,7 @@ router.get(
 );
 
 router.post(
-  "/superadmin/lead-scraper-config",
+  "/admin/superadmin/lead-scraper-config",
   authenticateToken,
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
@@ -2206,7 +2206,7 @@ router.post(
 );
 
 router.delete(
-  "/superadmin/lead-scraper-config",
+  "/admin/superadmin/lead-scraper-config",
   authenticateToken,
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
