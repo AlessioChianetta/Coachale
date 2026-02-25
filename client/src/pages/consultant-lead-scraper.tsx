@@ -58,6 +58,7 @@ import {
   TrendingUp,
   Users,
   FileText,
+  Map,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -100,6 +101,7 @@ export default function ConsultantLeadScraper() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLocation, setSearchLocation] = useState("");
   const [searchLimit, setSearchLimit] = useState(20);
+  const [searchEngine, setSearchEngine] = useState<"google_maps" | "google_search">("google_maps");
   const [selectedSearchId, setSelectedSearchId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<SearchResult | null>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
@@ -173,7 +175,7 @@ export default function ConsultantLeadScraper() {
       const res = await fetch("/api/lead-scraper/search", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery, location: searchLocation, limit: searchLimit }),
+        body: JSON.stringify({ query: searchQuery, location: searchLocation, limit: searchLimit, searchEngine }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Errore" }));
@@ -184,7 +186,7 @@ export default function ConsultantLeadScraper() {
     onSuccess: (data) => {
       setSelectedSearchId(data.searchId);
       queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
-      toast({ title: "Ricerca avviata", description: "La ricerca su Google Maps e' in corso..." });
+      toast({ title: "Ricerca avviata", description: searchEngine === "google_search" ? "La ricerca su Google Search e' in corso..." : "La ricerca su Google Maps e' in corso..." });
     },
     onError: (error: Error) => {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
@@ -270,6 +272,8 @@ export default function ConsultantLeadScraper() {
     switch (status) {
       case "scraped":
         return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] px-1.5 py-0"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />OK</Badge>;
+      case "scraped_cached":
+        return <Badge className="bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 text-[10px] px-1.5 py-0"><CheckCircle className="h-2.5 w-2.5 mr-0.5" />Cache</Badge>;
       case "pending":
         return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5 py-0">In attesa</Badge>;
       case "failed":
@@ -379,10 +383,10 @@ export default function ConsultantLeadScraper() {
                 <div className="bg-white dark:bg-gray-800/80 rounded-xl p-4 border border-rose-100 dark:border-rose-800/30 shadow-sm">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center font-bold text-sm shadow-md">1</div>
-                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Cerca su Google Maps</h4>
+                    <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Cerca su Google</h4>
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Inserisci cosa cerchi (es. "dentisti", "ristoranti") e dove (es. "Milano"). Il sistema usa SerpAPI per trovare tutti i business nella zona.
+                    Scegli <strong>Google Maps</strong> per attivita locali (negozi, agenzie, ristoranti) o <strong>Google Search</strong> per qualsiasi sito web (chi fa ads, freelancer, SaaS...).
                   </p>
                 </div>
 
@@ -418,16 +422,45 @@ export default function ConsultantLeadScraper() {
                   <Search className="h-4 w-4 text-rose-500" />
                   Nuova Ricerca
                 </CardTitle>
-                <CardDescription>Cerca business su Google Maps</CardDescription>
+                <CardDescription>Cerca su Google Maps o Google Search</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Motore di ricerca</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSearchEngine("google_maps")}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                        searchEngine === "google_maps"
+                          ? "border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-700 shadow-sm"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                    >
+                      <Map className="h-3.5 w-3.5" />
+                      Google Maps
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSearchEngine("google_search")}
+                      className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                        searchEngine === "google_search"
+                          ? "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-700 shadow-sm"
+                          : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"
+                      }`}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      Google Search
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="query" className="text-xs font-medium">Cosa cerchi</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="query"
-                      placeholder="es. ristoranti, dentisti..."
+                      placeholder={searchEngine === "google_search" ? "es. agenzia google ads settore food, freelance social media..." : "es. ristoranti, dentisti..."}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9 border-rose-200 dark:border-rose-800/40 focus:border-rose-400 focus:ring-rose-400"
@@ -469,7 +502,7 @@ export default function ConsultantLeadScraper() {
                   {startSearchMutation.isPending ? (
                     <><Loader2 className="h-4 w-4 animate-spin mr-2" />Avvio...</>
                   ) : (
-                    <><Search className="h-4 w-4 mr-2" />Cerca su Maps</>
+                    <><Search className="h-4 w-4 mr-2" />{searchEngine === "google_search" ? "Cerca su Google" : "Cerca su Maps"}</>
                   )}
                 </Button>
               </CardContent>
@@ -729,7 +762,12 @@ export default function ConsultantLeadScraper() {
                                 onClick={() => openLeadDetail(r)}
                               >
                                 <TableCell className="font-medium text-gray-900 dark:text-white">
-                                  <span className="line-clamp-1">{r.businessName || "\u2014"}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="line-clamp-1">{r.businessName || "\u2014"}</span>
+                                    {r.source === "google_search" && (
+                                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-600 dark:border-blue-700 dark:text-blue-400">Web</Badge>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <span className="text-xs text-muted-foreground line-clamp-1">{r.address || "\u2014"}</span>
@@ -822,7 +860,7 @@ export default function ConsultantLeadScraper() {
                                 <TableCell className="text-center">
                                   <div className="flex items-center justify-center gap-1">
                                     {getScrapeStatusBadge(r.scrapeStatus)}
-                                    {r.scrapeStatus === "scraped" && r.websiteData && (
+                                    {(r.scrapeStatus === "scraped" || r.scrapeStatus === "scraped_cached") && r.websiteData && (
                                       <div className="flex items-center gap-0.5 ml-1">
                                         {(r.websiteData as any)?.emails?.length > 0 && (
                                           <Mail className="h-3 w-3 text-blue-400" />
@@ -839,7 +877,7 @@ export default function ConsultantLeadScraper() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1">
-                                    {r.website && r.scrapeStatus !== "scraped" && (
+                                    {r.website && r.scrapeStatus !== "scraped" && r.scrapeStatus !== "scraped_cached" && (
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
@@ -1055,7 +1093,7 @@ export default function ConsultantLeadScraper() {
                   );
                 })()}
 
-                {selectedLead.website && selectedLead.scrapeStatus !== "scraped" && (
+                {selectedLead.website && selectedLead.scrapeStatus !== "scraped" && selectedLead.scrapeStatus !== "scraped_cached" && (
                   <>
                     <Separator />
                     <Button

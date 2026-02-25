@@ -3,7 +3,7 @@ import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
 import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
-import { searchGoogleMaps, scrapeWebsiteWithFirecrawl, enrichSearchResults } from "../services/lead-scraper-service";
+import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
 
 const router = Router();
@@ -28,10 +28,13 @@ async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecr
 
 router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const { query, location, limit = 20, autoScrapeWebsites = true } = req.body;
+    const { query, location, limit = 20, autoScrapeWebsites = true, searchEngine = "google_maps" } = req.body;
     const consultantId = req.user?.id;
 
     if (!query) return res.status(400).json({ error: "Query is required" });
+    if (!["google_maps", "google_search"].includes(searchEngine)) {
+      return res.status(400).json({ error: "searchEngine deve essere 'google_maps' o 'google_search'" });
+    }
 
     const keys = await getLeadScraperKeys();
     const serpApiKey = keys.serpApiKey;
@@ -46,7 +49,7 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
         query,
         location: location || "",
         status: "running",
-        metadata: { params: { limit, autoScrapeWebsites } },
+        metadata: { params: { limit, autoScrapeWebsites, searchEngine } },
       })
       .returning();
 
@@ -54,33 +57,64 @@ router.post("/search", authenticateToken, requireAnyRole(["consultant", "super_a
 
     (async () => {
       try {
-        const results = await searchGoogleMaps(query, location, limit, serpApiKey);
+        if (searchEngine === "google_search") {
+          const webResults = await searchGoogleWeb(query, location, limit, serpApiKey);
 
-        for (const result of results) {
-          await db.insert(leadScraperResults).values({
-            searchId: search.id,
-            businessName: result.title || null,
-            address: result.address || null,
-            phone: result.phone || null,
-            website: result.website || null,
-            rating: result.rating || null,
-            reviewsCount: result.reviews || null,
-            category: result.type || null,
-            latitude: result.gps_coordinates?.latitude || null,
-            longitude: result.gps_coordinates?.longitude || null,
-            hours: result.operating_hours || null,
-            scrapeStatus: result.website ? "pending" : "no_website",
-            source: "google_maps",
-          });
+          for (const result of webResults) {
+            await db.insert(leadScraperResults).values({
+              searchId: search.id,
+              businessName: result.title || null,
+              address: null,
+              phone: null,
+              website: result.website || null,
+              rating: null,
+              reviewsCount: null,
+              category: null,
+              latitude: null,
+              longitude: null,
+              hours: null,
+              websiteData: result.snippet ? { description: result.snippet, emails: [], phones: [], socialLinks: {}, services: [] } : null,
+              scrapeStatus: result.website ? "pending" : "no_website",
+              source: "google_search",
+            });
+          }
+
+          await db
+            .update(leadScraperSearches)
+            .set({
+              status: autoScrapeWebsites ? "enriching" : "completed",
+              resultsCount: webResults.length,
+            })
+            .where(eq(leadScraperSearches.id, search.id));
+        } else {
+          const results = await searchGoogleMaps(query, location, limit, serpApiKey);
+
+          for (const result of results) {
+            await db.insert(leadScraperResults).values({
+              searchId: search.id,
+              businessName: result.title || null,
+              address: result.address || null,
+              phone: result.phone || null,
+              website: result.website || null,
+              rating: result.rating || null,
+              reviewsCount: result.reviews || null,
+              category: result.type || null,
+              latitude: result.gps_coordinates?.latitude || null,
+              longitude: result.gps_coordinates?.longitude || null,
+              hours: result.operating_hours || null,
+              scrapeStatus: result.website ? "pending" : "no_website",
+              source: "google_maps",
+            });
+          }
+
+          await db
+            .update(leadScraperSearches)
+            .set({
+              status: autoScrapeWebsites ? "enriching" : "completed",
+              resultsCount: results.length,
+            })
+            .where(eq(leadScraperSearches.id, search.id));
         }
-
-        await db
-          .update(leadScraperSearches)
-          .set({
-            status: autoScrapeWebsites ? "enriching" : "completed",
-            resultsCount: results.length,
-          })
-          .where(eq(leadScraperSearches.id, search.id));
 
         if (autoScrapeWebsites) {
           const bgKeys = await getLeadScraperKeys();

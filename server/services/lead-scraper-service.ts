@@ -57,6 +57,77 @@ export async function searchGoogleMaps(
   return allResults.slice(0, limit);
 }
 
+interface GoogleWebResult {
+  title?: string;
+  website?: string;
+  snippet?: string;
+  displayedLink?: string;
+}
+
+export async function searchGoogleWeb(
+  query: string,
+  location: string,
+  limit: number = 20,
+  serpApiKey: string
+): Promise<GoogleWebResult[]> {
+  const allResults: GoogleWebResult[] = [];
+  let start = 0;
+
+  while (allResults.length < limit) {
+    const searchQuery = location ? `${query} ${location}` : query;
+    const params = new URLSearchParams({
+      engine: "google",
+      q: searchQuery,
+      api_key: serpApiKey,
+      start: start.toString(),
+      num: "10",
+      gl: "it",
+      hl: "it",
+    });
+
+    if (location) {
+      params.set("location", location);
+    }
+
+    const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`SerpAPI error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    const organicResults = data.organic_results || [];
+
+    if (organicResults.length === 0) break;
+
+    for (const r of organicResults) {
+      allResults.push({
+        title: r.title || null,
+        website: r.link || null,
+        snippet: r.snippet || null,
+        displayedLink: r.displayed_link || null,
+      });
+    }
+
+    start += 10;
+
+    if (organicResults.length < 10) break;
+  }
+
+  const seen = new Set<string>();
+  const deduped = allResults.filter((r) => {
+    if (!r.website) return false;
+    const domain = r.website.replace(/^https?:\/\//, "").split("/")[0].toLowerCase();
+    if (seen.has(domain)) return false;
+    seen.add(domain);
+    return true;
+  });
+
+  console.log(`[LEAD-SCRAPER] Google Web search: "${query}" in "${location}" — ${deduped.length} unique results (from ${allResults.length} total)`);
+
+  return deduped.slice(0, limit);
+}
+
 function cleanMarkdown(raw: string): string {
   let text = raw;
   text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, "");
@@ -221,10 +292,48 @@ export async function scrapeWebsiteWithFirecrawl(
   }
 }
 
+function extractDomain(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase();
+}
+
+async function findCachedScrape(website: string): Promise<{
+  websiteData: any;
+  email: string | null;
+  phone: string | null;
+} | null> {
+  const domain = extractDomain(website);
+
+  const cached = await db
+    .select({
+      websiteData: leadScraperResults.websiteData,
+      email: leadScraperResults.email,
+      phone: leadScraperResults.phone,
+    })
+    .from(leadScraperResults)
+    .where(
+      sql`${leadScraperResults.scrapeStatus} = 'scraped'
+        AND ${leadScraperResults.websiteData} IS NOT NULL
+        AND ${leadScraperResults.websiteData}::text != '{}'
+        AND ${leadScraperResults.websiteData}::text != 'null'
+        AND LOWER(REGEXP_REPLACE(REGEXP_REPLACE(${leadScraperResults.website}, '^https?://', ''), '^www\\.', '')) LIKE ${domain + '%'}`
+    )
+    .limit(1);
+
+  if (cached.length > 0 && cached[0].websiteData) {
+    const wd = cached[0].websiteData as any;
+    if (wd.description || (wd.emails && wd.emails.length > 0) || (wd.phones && wd.phones.length > 0)) {
+      console.log(`[LEAD-SCRAPER] Cache hit for ${domain} — reusing existing scrape data`);
+      return cached[0];
+    }
+  }
+
+  return null;
+}
+
 export async function enrichSearchResults(
   searchId: string,
   firecrawlApiKey: string
-): Promise<{ enriched: number; failed: number }> {
+): Promise<{ enriched: number; failed: number; cached: number }> {
   const results = await db
     .select()
     .from(leadScraperResults)
@@ -234,11 +343,32 @@ export async function enrichSearchResults(
 
   let enriched = 0;
   let failed = 0;
+  let cached = 0;
 
   for (const result of results) {
     if (!result.website || result.scrapeStatus === "scraped") continue;
 
     try {
+      const cachedData = await findCachedScrape(result.website);
+
+      if (cachedData) {
+        const primaryEmail = (cachedData.websiteData as any)?.emails?.[0] || cachedData.email || result.email;
+        const primaryPhone = (!result.phone && (cachedData.websiteData as any)?.phones?.[0]) ? (cachedData.websiteData as any).phones[0] : (cachedData.phone || result.phone);
+
+        await db
+          .update(leadScraperResults)
+          .set({
+            websiteData: cachedData.websiteData,
+            email: primaryEmail,
+            phone: primaryPhone || result.phone,
+            scrapeStatus: "scraped_cached",
+          })
+          .where(eq(leadScraperResults.id, result.id));
+
+        cached++;
+        continue;
+      }
+
       let websiteUrl = result.website;
       if (!websiteUrl.startsWith("http")) {
         websiteUrl = `https://${websiteUrl}`;
@@ -270,5 +400,6 @@ export async function enrichSearchResults(
     }
   }
 
-  return { enriched, failed };
+  console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped, ${cached} from cache, ${failed} failed`);
+  return { enriched, failed, cached };
 }
