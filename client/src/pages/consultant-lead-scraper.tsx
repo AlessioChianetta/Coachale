@@ -306,10 +306,10 @@ export default function ConsultantLeadScraper() {
   });
 
   const { data: hunterStatus } = useQuery<{ role: string; isEnabled: boolean; lastRun: string | null; tasksCreated: number; status: string } | null>({
-    queryKey: ["/api/ai/autonomy/roles/status", "hunter"],
+    queryKey: ["/api/ai-autonomy/roles/status", "hunter"],
     queryFn: async () => {
       try {
-        const res = await fetch("/api/ai/autonomy/roles/status", { headers: getAuthHeaders() });
+        const res = await fetch("/api/ai-autonomy/roles/status", { headers: getAuthHeaders() });
         if (!res.ok) return null;
         const data = await res.json();
         const roles = data.roles || [];
@@ -322,10 +322,10 @@ export default function ConsultantLeadScraper() {
   });
 
   const { data: autonomySettings, refetch: refetchAutonomy } = useQuery<any>({
-    queryKey: ["/api/ai/autonomy/settings-for-hunter"],
+    queryKey: ["/api/ai-autonomy/settings-for-hunter"],
     queryFn: async () => {
       try {
-        const res = await fetch("/api/ai/autonomy/settings", { headers: getAuthHeaders() });
+        const res = await fetch("/api/ai-autonomy/settings", { headers: getAuthHeaders() });
         if (!res.ok) return null;
         return res.json();
       } catch { return null; }
@@ -352,7 +352,14 @@ export default function ConsultantLeadScraper() {
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
     cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "",
   };
-  const outreachConfig = { ...outreachDefaults, ...(autonomySettings?.outreach_config || {}) };
+  const [localOutreachOverride, setLocalOutreachOverride] = useState<Record<string, any> | null>(null);
+  const outreachConfig = { ...outreachDefaults, ...(autonomySettings?.outreach_config || {}), ...(localOutreachOverride || {}) };
+
+  useEffect(() => {
+    if (autonomySettings?.outreach_config) {
+      setLocalOutreachOverride(null);
+    }
+  }, [autonomySettings?.outreach_config]);
 
   const voiceTemplateOptions = [
     { id: "lead-qualification", name: "Qualifica Lead", description: "Per primo contatto con lead freddi" },
@@ -368,6 +375,7 @@ export default function ConsultantLeadScraper() {
 
   const updateOutreachConfig = async (key: string, value: any) => {
     const newConfig = { ...outreachConfig, [key]: value };
+    setLocalOutreachOverride(prev => ({ ...(prev || {}), [key]: value }));
     try {
       await fetch("/api/ai-autonomy/outreach-config", {
         method: "PATCH",
@@ -390,7 +398,7 @@ export default function ConsultantLeadScraper() {
     setTriggeringHunter(true);
     setHunterTriggerResult(null);
     try {
-      const res = await fetch("/api/ai/autonomy/trigger-role", {
+      const res = await fetch("/api/ai-autonomy/trigger-role", {
         method: "POST",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ roleId: "hunter" }),
