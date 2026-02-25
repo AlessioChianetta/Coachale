@@ -1514,6 +1514,50 @@ export default function ConsultantLeadScraper() {
               </CardContent>
             </Card>
 
+            {/* DIAGRAMMA DI FLUSSO — Pipeline Hunter */}
+            <Card className="rounded-2xl border shadow-sm overflow-hidden">
+              <CardContent className="py-4 px-3 sm:px-5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pipeline Outreach</p>
+                <div className="flex items-stretch gap-0 overflow-x-auto pb-1">
+                  {[
+                    { step: 1, label: "Ricerca", sub: "Google Maps / Search", icon: Search, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", count: hunterPipeline?.stats.foundToday },
+                    { step: 2, label: "Qualifica AI", sub: "Score compatibilità", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", count: hunterPipeline?.stats.scoredToday },
+                    { step: 3, label: "Approvazione", sub: "Manuale o automatica", icon: Shield, color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", count: hunterPipeline?.stats.qualifiedWaiting },
+                    { step: 4, label: "Smistamento", sub: "Alessia · Stella · Millie", icon: Send, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", count: hunterPipeline?.stats.inOutreach },
+                    { step: 5, label: "Contatto", sub: "Call / WA / Email", icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.contacted },
+                  ].map((s, i, arr) => {
+                    const SIcon = s.icon;
+                    return (
+                      <div key={s.step} className="flex items-center min-w-0">
+                        <div className={cn("flex flex-col items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl border min-w-[90px] sm:min-w-[110px]", s.bg, s.border)}>
+                          <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", s.bg)}>
+                            <SIcon className={cn("h-4 w-4", s.color)} />
+                          </div>
+                          <span className={cn("text-[11px] sm:text-xs font-bold text-center leading-tight", s.color)}>{s.label}</span>
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight">{s.sub}</span>
+                          {s.count != null && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 mt-0.5">{s.count}</Badge>
+                          )}
+                        </div>
+                        {i < arr.length - 1 && (
+                          <div className="flex items-center px-0.5 sm:px-1 shrink-0">
+                            <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />Non interessato: {hunterPipeline?.stats.notInterested ?? 0}</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />In trattativa: {hunterPipeline?.stats.inNegotiation ?? 0}</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />Ricerche oggi: {hunterPipeline?.searches?.used ?? 0}/{hunterPipeline?.searches?.limit ?? 0}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* SEZIONE 2 — Smistamento canali (3 colonne) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
