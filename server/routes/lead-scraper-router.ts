@@ -1,9 +1,9 @@
 import { Router, Response } from "express";
 import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
-import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig } from "../../shared/schema";
+import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig, leadScraperSalesContext } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireAnyRole } from "../middleware/auth";
-import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults } from "../services/lead-scraper-service";
+import { searchGoogleMaps, searchGoogleWeb, scrapeWebsiteWithFirecrawl, enrichSearchResults, generateSalesSummary, generateBatchSalesSummaries } from "../services/lead-scraper-service";
 import { decrypt } from "../encryption";
 
 const router = Router();
@@ -184,7 +184,7 @@ router.get("/searches/:id", authenticateToken, async (req: AuthRequest, res: Res
 
 router.get("/searches/:id/results", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const { has_email, has_phone, rating_min, category, search: searchText } = req.query;
+    const { has_email, has_phone, rating_min, category, search: searchText, lead_status } = req.query;
 
     let conditions: any[] = [eq(leadScraperResults.searchId, req.params.id)];
 
@@ -202,6 +202,9 @@ router.get("/searches/:id/results", authenticateToken, async (req: AuthRequest, 
     }
     if (searchText) {
       conditions.push(ilike(leadScraperResults.businessName, `%${searchText}%`));
+    }
+    if (lead_status && lead_status !== "tutti") {
+      conditions.push(eq(leadScraperResults.leadStatus, lead_status as string));
     }
 
     const results = await db
@@ -317,6 +320,172 @@ router.delete("/searches/:id", authenticateToken, requireAnyRole(["consultant", 
 
     if (!deleted) return res.status(404).json({ error: "Search not found" });
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/results/:id/crm", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const { leadStatus, leadNotes, leadNextAction, leadNextActionDate, leadValue } = req.body;
+
+    const [existing] = await db.select().from(leadScraperResults).where(eq(leadScraperResults.id, req.params.id));
+    if (!existing) return res.status(404).json({ error: "Result not found" });
+
+    const updateData: any = {};
+    if (leadStatus !== undefined) updateData.leadStatus = leadStatus;
+    if (leadNotes !== undefined) updateData.leadNotes = leadNotes;
+    if (leadNextAction !== undefined) updateData.leadNextAction = leadNextAction;
+    if (leadNextActionDate !== undefined) updateData.leadNextActionDate = leadNextActionDate ? new Date(leadNextActionDate) : null;
+    if (leadValue !== undefined) updateData.leadValue = leadValue;
+
+    if (leadStatus && leadStatus !== "nuovo" && !existing.leadContactedAt) {
+      updateData.leadContactedAt = new Date();
+    }
+
+    const [updated] = await db
+      .update(leadScraperResults)
+      .set(updateData)
+      .where(eq(leadScraperResults.id, req.params.id))
+      .returning();
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/sales-context", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const [context] = await db
+      .select()
+      .from(leadScraperSalesContext)
+      .where(eq(leadScraperSalesContext.consultantId, consultantId));
+
+    res.json(context || null);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put("/sales-context", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { servicesOffered, targetAudience, valueProposition, pricingInfo, competitiveAdvantages, idealClientProfile, salesApproach, caseStudies, additionalContext } = req.body;
+
+    const [existing] = await db
+      .select()
+      .from(leadScraperSalesContext)
+      .where(eq(leadScraperSalesContext.consultantId, consultantId));
+
+    if (existing) {
+      const [updated] = await db
+        .update(leadScraperSalesContext)
+        .set({
+          servicesOffered, targetAudience, valueProposition, pricingInfo,
+          competitiveAdvantages, idealClientProfile, salesApproach, caseStudies,
+          additionalContext, updatedAt: new Date(),
+        })
+        .where(eq(leadScraperSalesContext.consultantId, consultantId))
+        .returning();
+      res.json(updated);
+    } else {
+      const [created] = await db
+        .insert(leadScraperSalesContext)
+        .values({
+          consultantId, servicesOffered, targetAudience, valueProposition,
+          pricingInfo, competitiveAdvantages, idealClientProfile, salesApproach,
+          caseStudies, additionalContext,
+        })
+        .returning();
+      res.json(created);
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/results/:id/generate-summary", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const result = await generateSalesSummary(req.params.id, consultantId);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[LEAD-SCRAPER] Error generating summary:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/searches/:id/generate-summaries", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    res.json({ status: "started", message: "Generazione resoconti AI avviata in background" });
+
+    generateBatchSalesSummaries(req.params.id, consultantId).catch((err) => {
+      console.error("[LEAD-SCRAPER] Batch summary generation error:", err);
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/chat", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { systemContext, contents } = req.body;
+
+    if (!contents || !Array.isArray(contents)) {
+      return res.status(400).json({ error: "contents array is required" });
+    }
+
+    const { quickGenerate } = await import("../ai/provider-factory");
+
+    const result = await quickGenerate({
+      consultantId,
+      feature: "lead-scraper-sales-chat",
+      contents: contents.map((c: any) => ({
+        role: c.role === "assistant" ? "model" : c.role,
+        parts: c.parts,
+      })),
+      systemInstruction: systemContext || "Sei un AI Sales Agent. Aiuta il consulente con strategie di vendita.",
+      thinkingLevel: "low",
+    });
+
+    res.json({ text: result.text });
+  } catch (error: any) {
+    console.error("[LEAD-SCRAPER] Chat error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/all-results", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { lead_status } = req.query;
+
+    const searches = await db
+      .select({ id: leadScraperSearches.id })
+      .from(leadScraperSearches)
+      .where(eq(leadScraperSearches.consultantId, consultantId));
+
+    if (searches.length === 0) return res.json([]);
+
+    const searchIds = searches.map(s => s.id);
+
+    let conditions: any[] = [sql`${leadScraperResults.searchId} IN (${sql.join(searchIds.map(id => sql`${id}`), sql`, `)})`];
+
+    if (lead_status && lead_status !== "tutti") {
+      conditions.push(eq(leadScraperResults.leadStatus, lead_status as string));
+    }
+
+    const results = await db
+      .select()
+      .from(leadScraperResults)
+      .where(and(...conditions))
+      .orderBy(desc(leadScraperResults.createdAt));
+
+    res.json(results);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

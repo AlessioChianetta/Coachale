@@ -10681,8 +10681,36 @@ export const leadScraperResults = pgTable("lead_scraper_results", {
   }>().default(sql`'{}'::jsonb`),
   scrapeStatus: text("scrape_status").default("pending"),
   source: text("source").default("google_maps"),
+  leadStatus: text("lead_status").default("nuovo"),
+  leadNotes: text("lead_notes"),
+  leadContactedAt: timestamp("lead_contacted_at"),
+  leadNextAction: text("lead_next_action"),
+  leadNextActionDate: timestamp("lead_next_action_date"),
+  leadValue: real("lead_value"),
+  aiSalesSummary: text("ai_sales_summary"),
+  aiCompatibilityScore: integer("ai_compatibility_score"),
+  aiSalesSummaryGeneratedAt: timestamp("ai_sales_summary_generated_at"),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 
 export type LeadScraperResult = typeof leadScraperResults.$inferSelect;
 export type InsertLeadScraperResult = typeof leadScraperResults.$inferInsert;
+
+export const leadScraperSalesContext = pgTable("lead_scraper_sales_context", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull().unique(),
+  servicesOffered: text("services_offered"),
+  targetAudience: text("target_audience"),
+  valueProposition: text("value_proposition"),
+  pricingInfo: text("pricing_info"),
+  competitiveAdvantages: text("competitive_advantages"),
+  idealClientProfile: text("ideal_client_profile"),
+  salesApproach: text("sales_approach"),
+  caseStudies: text("case_studies"),
+  additionalContext: text("additional_context"),
+  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
+});
+
+export type LeadScraperSalesContext = typeof leadScraperSalesContext.$inferSelect;
+export type InsertLeadScraperSalesContext = typeof leadScraperSalesContext.$inferInsert;

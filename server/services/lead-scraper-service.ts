@@ -1,6 +1,7 @@
 import { db } from "../db";
-import { eq, sql } from "drizzle-orm";
-import { leadScraperSearches, leadScraperResults } from "../../shared/schema";
+import { eq, sql, and, isNull, inArray } from "drizzle-orm";
+import { leadScraperSearches, leadScraperResults, leadScraperSalesContext } from "../../shared/schema";
+import { quickGenerate } from "../ai/provider-factory";
 
 interface SerpApiResult {
   title?: string;
@@ -402,4 +403,154 @@ export async function enrichSearchResults(
 
   console.log(`[LEAD-SCRAPER] Enrichment complete for search ${searchId}: ${enriched} scraped, ${cached} from cache, ${failed} failed`);
   return { enriched, failed, cached };
+}
+
+export async function generateSalesSummary(resultId: string, consultantId: string): Promise<any> {
+  const [result] = await db.select().from(leadScraperResults).where(eq(leadScraperResults.id, resultId));
+  if (!result) throw new Error("Result not found");
+
+  const [salesContext] = await db
+    .select()
+    .from(leadScraperSalesContext)
+    .where(eq(leadScraperSalesContext.consultantId, consultantId));
+
+  const wd = (result.websiteData as any) || {};
+
+  let consultantContextBlock = "";
+  if (salesContext) {
+    const parts: string[] = [];
+    if (salesContext.servicesOffered) parts.push(`SERVIZI CHE VENDO: ${salesContext.servicesOffered}`);
+    if (salesContext.targetAudience) parts.push(`TARGET IDEALE: ${salesContext.targetAudience}`);
+    if (salesContext.valueProposition) parts.push(`PROPOSTA DI VALORE: ${salesContext.valueProposition}`);
+    if (salesContext.pricingInfo) parts.push(`PRICING: ${salesContext.pricingInfo}`);
+    if (salesContext.competitiveAdvantages) parts.push(`VANTAGGI COMPETITIVI: ${salesContext.competitiveAdvantages}`);
+    if (salesContext.idealClientProfile) parts.push(`PROFILO CLIENTE IDEALE: ${salesContext.idealClientProfile}`);
+    if (salesContext.salesApproach) parts.push(`APPROCCIO VENDITA: ${salesContext.salesApproach}`);
+    if (salesContext.caseStudies) parts.push(`CASI DI SUCCESSO: ${salesContext.caseStudies}`);
+    if (salesContext.additionalContext) parts.push(`CONTESTO AGGIUNTIVO: ${salesContext.additionalContext}`);
+    consultantContextBlock = parts.join("\n");
+  }
+
+  let companyDataBlock = "";
+  const dataLines: string[] = [];
+  if (result.businessName) dataLines.push(`NOME AZIENDA: ${result.businessName}`);
+  if (result.category) dataLines.push(`CATEGORIA: ${result.category}`);
+  if (result.address) dataLines.push(`INDIRIZZO: ${result.address}`);
+  if (result.website) dataLines.push(`SITO WEB: ${result.website}`);
+  if (result.phone) dataLines.push(`TELEFONO: ${result.phone}`);
+  if (result.email) dataLines.push(`EMAIL: ${result.email}`);
+  if (result.rating) dataLines.push(`RATING GOOGLE: ${result.rating}/5 (${result.reviewsCount || 0} recensioni)`);
+  if (wd.emails?.length) dataLines.push(`EMAIL DAL SITO: ${wd.emails.join(", ")}`);
+  if (wd.phones?.length) dataLines.push(`TELEFONI DAL SITO: ${wd.phones.join(", ")}`);
+  if (wd.socialLinks && Object.keys(wd.socialLinks).length > 0) {
+    dataLines.push(`SOCIAL: ${Object.entries(wd.socialLinks).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
+  }
+  if (wd.services?.length) dataLines.push(`SERVIZI DELL'AZIENDA: ${wd.services.join(", ")}`);
+  if (wd.description) {
+    const descTruncated = wd.description.length > 4000 ? wd.description.substring(0, 4000) + "..." : wd.description;
+    dataLines.push(`DESCRIZIONE DAL SITO:\n${descTruncated}`);
+  }
+  companyDataBlock = dataLines.join("\n");
+
+  const systemPrompt = `Sei un esperto analista di vendita B2B italiano. Il tuo compito è analizzare un'azienda target e produrre un resoconto strutturato per aiutare il consulente a vendere i propri servizi a questa azienda.
+
+${consultantContextBlock ? `--- PROFILO DEL CONSULENTE (CHI VENDE) ---\n${consultantContextBlock}\n---` : "NOTA: Il consulente non ha ancora configurato il proprio profilo vendita. Fai un'analisi generica dell'azienda."}
+
+Produci il resoconto in questo FORMATO ESATTO:
+
+**SCORE: [numero da 1 a 100]**
+
+## Chi sono
+[Breve sintesi dell'azienda: cosa fanno, dimensione, settore]
+
+## Cosa fanno
+[Servizi/prodotti principali dell'azienda target]
+
+## Punti di forza dell'azienda
+[Cosa fanno bene, reputazione, presenza online]
+
+## Bisogni potenziali
+[Dove il consulente potrebbe aiutarli in base ai servizi che offre. Sii specifico e concreto]
+
+## Strategia di approccio
+[Come contattarli, quale canale usare, quando, con quale tono]
+
+## Contatto migliore
+[Quale email/telefono usare e perché]
+
+## Apertura conversazione suggerita
+[Una frase d'apertura personalizzata e professionale per il primo contatto]
+
+REGOLE:
+- Lo SCORE deve riflettere quanto questa azienda è un buon prospect PER IL CONSULENTE in base ai suoi servizi specifici
+- Score alto (70-100): bisogno evidente dei servizi del consulente, buon budget presunto, facile accesso
+- Score medio (40-69): potenziale interesse ma non certo, bisogna investigare
+- Score basso (1-39): poco match con i servizi del consulente
+- Sii pratico e actionable, non generico
+- Scrivi in italiano`;
+
+  const userPrompt = `Analizza questa azienda target:\n\n${companyDataBlock}`;
+
+  try {
+    const aiResult = await quickGenerate({
+      consultantId,
+      feature: "lead-scraper-sales-analysis",
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      systemInstruction: systemPrompt,
+      thinkingLevel: "low",
+    });
+
+    const responseText = aiResult.text || "";
+
+    let score: number | null = null;
+    const scoreMatch = responseText.match(/\*\*SCORE:\s*(\d{1,3})\*\*/);
+    if (scoreMatch) {
+      score = Math.min(100, Math.max(1, parseInt(scoreMatch[1])));
+    }
+
+    const [updated] = await db
+      .update(leadScraperResults)
+      .set({
+        aiSalesSummary: responseText,
+        aiCompatibilityScore: score,
+        aiSalesSummaryGeneratedAt: new Date(),
+      })
+      .where(eq(leadScraperResults.id, resultId))
+      .returning();
+
+    console.log(`[LEAD-SCRAPER] AI summary generated for ${result.businessName}: score=${score}`);
+    return updated;
+  } catch (error: any) {
+    console.error(`[LEAD-SCRAPER] AI summary error for ${result.businessName}:`, error.message);
+    throw error;
+  }
+}
+
+export async function generateBatchSalesSummaries(searchId: string, consultantId: string): Promise<{ generated: number; failed: number }> {
+  const results = await db
+    .select()
+    .from(leadScraperResults)
+    .where(
+      and(
+        eq(leadScraperResults.searchId, searchId),
+        sql`(${leadScraperResults.scrapeStatus} = 'scraped' OR ${leadScraperResults.scrapeStatus} = 'scraped_cached')`,
+        isNull(leadScraperResults.aiSalesSummary)
+      )
+    );
+
+  let generated = 0;
+  let failed = 0;
+
+  for (const result of results) {
+    try {
+      await generateSalesSummary(result.id, consultantId);
+      generated++;
+    } catch (error: any) {
+      console.error(`[LEAD-SCRAPER] Batch summary failed for ${result.businessName}:`, error.message);
+      failed++;
+    }
+  }
+
+  console.log(`[LEAD-SCRAPER] Batch summary complete for search ${searchId}: ${generated} generated, ${failed} failed`);
+  return { generated, failed };
 }
