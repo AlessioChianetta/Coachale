@@ -1,0 +1,40 @@
+dc99a312-4afb-4d6c-b…Pda3CJmjhFjIKmz30:1 
+ Failed to load resource: the server responded with a status of 502 (Bad Gateway)
+19
+injected.js:37 Heartbeat sent successfully
+dc99a312-4afb-4d6c-b…Pda3CJmjhFjIKmz30:1 
+ Failed to load resource: net::ERR_CONNECTION_RESET
+19
+injected.js:37 Heartbeat sent successfully
+2
+SettingsTab.tsx:2674 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at SettingsTab (SettingsTab.tsx:2674:54)
+injected.js:37 The above error occurred in the <SettingsTab> component:
+
+    at SettingsTab (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/components/autonomy/SettingsTab.tsx:1745:3)
+    at div
+    at main
+    at div
+    at div
+    at div
+    at ConsultantAIAutonomyPage (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/components/autonomy/index.tsx:37:20)
+    at AuthGuard (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/App.tsx?v=uEn04RagFbvWcaAE9wueU:341:35)
+    at Provider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://dc99a312-4afb-4d6c-be74-0c8011c56123-00-sjd7m1q5035y.kirk.replit.dev/src/App.tsx?v=uEn04RagFbvWcaAE9wueU:2155:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=acfd96f4:19413 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at SettingsTab (SettingsTab.tsx:2674:54)

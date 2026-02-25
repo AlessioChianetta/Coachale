@@ -1022,7 +1022,7 @@ function SettingsTab({
     { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
   ];
 
-  const outreachConfig = settings.outreach_config || {
+  const outreachDefaults = {
     enabled: false,
     max_searches_per_day: 5,
     max_calls_per_day: 10,
@@ -1034,6 +1034,7 @@ function SettingsTab({
     whatsapp_config_id: "",
     voice_template_id: "",
   };
+  const outreachConfig = { ...outreachDefaults, ...(settings.outreach_config || {}) };
 
   const updateOutreachConfig = (key: string, value: any) => {
     setSettings(prev => ({
