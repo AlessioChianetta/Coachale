@@ -992,6 +992,17 @@ function SettingsTab({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const { data: savedSalesContext } = useQuery<{ servicesOffered?: string; targetAudience?: string } | null>({
+    queryKey: ["/api/lead-scraper/sales-context"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/lead-scraper/sales-context", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    },
+  });
+
   const { data: whatsappTemplates = [], isLoading: templatesLoading } = useQuery<{
     id: string;
     friendlyName: string;
@@ -2543,6 +2554,47 @@ function SettingsTab({
               Hunter trova lead automaticamente e li assegna ad Alessia, Stella e Millie per il primo contatto
             </p>
 
+            {(() => {
+              const hasSalesCtx = !!(savedSalesContext?.servicesOffered);
+              const hasWaConfig = proactiveWaConfigs.length > 0;
+              const selectedWa = !!outreachConfig.whatsapp_config_id;
+              const hasTemplates = (settings.whatsapp_template_ids || []).length > 0;
+              const readinessItems = [
+                { ok: hasSalesCtx, label: "Sales Context compilato", desc: "Serve per capire cosa vendere ai lead", action: () => navigate("/consultant/lead-scraper"), actionLabel: "Compila Sales Context" },
+                { ok: hasWaConfig, label: "Dipendente WhatsApp (proactive_setter) configurato", desc: "Serve per inviare WhatsApp ai lead", action: () => navigate("/consultant/whatsapp"), actionLabel: "Configura WhatsApp" },
+                { ok: selectedWa || !hasWaConfig, label: "Dipendente WA selezionato per outreach", desc: "Seleziona quale dipendente WA usare qui sotto", action: undefined, actionLabel: "" },
+                { ok: hasTemplates, label: "Template WhatsApp selezionati", desc: "Seleziona almeno un template approvato nella sezione sopra", action: undefined, actionLabel: "" },
+              ];
+              const okCount = readinessItems.filter(c => c.ok).length;
+              const allOk = okCount === readinessItems.length;
+              return (
+                <div className={cn("rounded-xl border p-4 mb-4", allOk ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/10" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10")}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                    <span className="text-sm font-semibold">{allOk ? "Tutto configurato — Hunter è pronto" : `Configurazione: ${okCount}/${readinessItems.length} completata`}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {readinessItems.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {item.ok ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                          <div>
+                            <span className={cn("text-xs", item.ok ? "text-muted-foreground" : "text-foreground font-medium")}>{item.label}</span>
+                            {!item.ok && <p className="text-[10px] text-muted-foreground">{item.desc}</p>}
+                          </div>
+                        </div>
+                        {!item.ok && item.action && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600 hover:text-teal-700" onClick={item.action}>
+                            {item.actionLabel} <ArrowRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {outreachConfig.enabled && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2973,6 +3025,63 @@ function SettingsTab({
                                       )}
                                     </div>
                                   )}
+
+                                  {role.id === "hunter" && (() => {
+                                    const hasSalesContext = !!(savedSalesContext?.servicesOffered);
+                                    const hasWaConfig = proactiveWaConfigs.length > 0 && !!outreachConfig.whatsapp_config_id;
+                                    const hasOutreachEnabled = !!outreachConfig.enabled;
+                                    const checks = [
+                                      { ok: hasSalesContext, label: "Sales Context compilato", fix: "Vai su Lead Scraper → Sales Agent", action: () => navigate("/consultant/lead-scraper") },
+                                      { ok: hasOutreachEnabled, label: "Outreach attivato", fix: "Attivalo nella tab Canali", action: () => onTabChange("canali") },
+                                      { ok: hasWaConfig, label: "Dipendente WhatsApp configurato", fix: "Seleziona in tab Canali → Outreach", action: () => onTabChange("canali") },
+                                    ];
+                                    const allOk = checks.every(c => c.ok);
+                                    return (
+                                      <div className="rounded-xl border p-4 space-y-3 mt-2" onClick={(e) => e.stopPropagation()}>
+                                        <p className="text-sm font-semibold flex items-center gap-2">
+                                          {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                                          {allOk ? "Hunter è pronto per lavorare" : "Configurazione richiesta"}
+                                        </p>
+                                        <div className="space-y-1.5">
+                                          {checks.map((c, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-2 text-xs">
+                                                {c.ok
+                                                  ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                  : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                                                <span className={c.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{c.label}</span>
+                                              </div>
+                                              {!c.ok && (
+                                                <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={c.action}>
+                                                  {c.fix} <ArrowRight className="h-3 w-3 ml-1" />
+                                                </Button>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                        <div className="flex gap-2 pt-1">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 text-xs rounded-xl gap-1.5 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-400"
+                                            onClick={() => onTabChange("canali")}
+                                          >
+                                            <Cog className="h-3.5 w-3.5" />
+                                            Configura Outreach
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 text-xs rounded-xl gap-1.5 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-violet-700 dark:text-violet-400"
+                                            onClick={() => navigate("/consultant/lead-scraper")}
+                                          >
+                                            <Search className="h-3.5 w-3.5" />
+                                            Vai a Lead Scraper
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   <div className="flex items-center gap-3 pt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
                                     <Button

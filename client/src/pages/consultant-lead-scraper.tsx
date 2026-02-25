@@ -77,7 +77,13 @@ import {
   ArrowUpDown,
   Crosshair,
   Activity,
+  Shield,
+  AlertCircle,
+  Cog,
+  ArrowRight,
+  Play,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -232,6 +238,8 @@ export default function ConsultantLeadScraper() {
   const [keywordSuggestions, setKeywordSuggestions] = useState<KeywordSuggestion[]>([]);
   const [keywordsLoading, setKeywordsLoading] = useState(false);
   const [showKeywords, setShowKeywords] = useState(false);
+  const [triggeringHunter, setTriggeringHunter] = useState(false);
+  const [hunterTriggerResult, setHunterTriggerResult] = useState<{ success: boolean; tasks?: number; error?: string } | null>(null);
 
   const [sortBy, setSortBy] = useState<"default" | "score" | "rating" | "name">("default");
 
@@ -312,6 +320,90 @@ export default function ConsultantLeadScraper() {
     },
     refetchInterval: 30000,
   });
+
+  const { data: autonomySettings, refetch: refetchAutonomy } = useQuery<any>({
+    queryKey: ["/api/ai/autonomy/settings-for-hunter"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/ai/autonomy/settings", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    },
+  });
+
+  const { data: proactiveWaConfigs = [] } = useQuery<{ id: string; name: string; phoneNumber: string }[]>({
+    queryKey: ["/api/whatsapp/config/proactive-for-outreach-ls"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/whatsapp/config/proactive", { headers: getAuthHeaders() });
+        const data = await res.json();
+        return (data.configs || []).filter((c: any) => c.isActive && c.configType === "proactive_setter").map((c: any) => ({
+          id: c.id,
+          name: c.name || c.agentName || "Dipendente WA",
+          phoneNumber: c.phoneNumber || "",
+        }));
+      } catch { return []; }
+    },
+  });
+
+  const outreachDefaults = {
+    enabled: false, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
+    max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
+    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "",
+  };
+  const outreachConfig = { ...outreachDefaults, ...(autonomySettings?.outreach_config || {}) };
+
+  const voiceTemplateOptions = [
+    { id: "lead-qualification", name: "Qualifica Lead", description: "Per primo contatto con lead freddi" },
+    { id: "appointment-setter", name: "Fissa Appuntamento", description: "Per proporre un incontro" },
+    { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
+  ];
+
+  const channelLabelsMap: Record<string, { label: string; color: string }> = {
+    voice: { label: "Chiamate (Alessia)", color: "text-green-600" },
+    whatsapp: { label: "WhatsApp (Stella)", color: "text-emerald-600" },
+    email: { label: "Email (Millie)", color: "text-blue-600" },
+  };
+
+  const updateOutreachConfig = async (key: string, value: any) => {
+    const newConfig = { ...outreachConfig, [key]: value };
+    try {
+      await fetch("/api/ai/autonomy/settings", {
+        method: "PUT",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ outreach_config: newConfig }),
+      });
+      refetchAutonomy();
+    } catch {}
+  };
+
+  const moveChannelPriority = (index: number, direction: "up" | "down") => {
+    const arr = [...outreachConfig.channel_priority];
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= arr.length) return;
+    [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+    updateOutreachConfig("channel_priority", arr);
+  };
+
+  const handleTriggerHunter = async () => {
+    setTriggeringHunter(true);
+    setHunterTriggerResult(null);
+    try {
+      const res = await fetch("/api/ai/autonomy/trigger-role", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: "hunter" }),
+      });
+      const data = await res.json();
+      setHunterTriggerResult({ success: res.ok, tasks: data.tasks_generated || 0, error: data.error });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+    } catch (e: any) {
+      setHunterTriggerResult({ success: false, error: e.message });
+    } finally {
+      setTriggeringHunter(false);
+    }
+  };
 
   useEffect(() => {
     if (savedSalesContext) {
@@ -622,7 +714,7 @@ export default function ConsultantLeadScraper() {
         </div>
 
         {hunterStatus && (
-          <Card className="rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm bg-gradient-to-r from-teal-50 to-white dark:from-teal-950/20 dark:to-gray-900">
+          <Card className="rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm bg-gradient-to-r from-teal-50 to-white dark:from-teal-950/20 dark:to-gray-900 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("hunter")}>
             <CardContent className="py-4 px-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
@@ -642,7 +734,7 @@ export default function ConsultantLeadScraper() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Hunter trova e qualifica lead automaticamente
+                      Hunter trova e qualifica lead automaticamente — <span className="text-teal-600 dark:text-teal-400 font-medium">clicca per configurare</span>
                     </p>
                   </div>
                 </div>
@@ -686,6 +778,10 @@ export default function ConsultantLeadScraper() {
             </TabsTrigger>
             <TabsTrigger value="agent" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
               <Bot className="h-3.5 w-3.5" />Sales Agent
+            </TabsTrigger>
+            <TabsTrigger value="hunter" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
+              <Crosshair className="h-3.5 w-3.5" />Hunter
+              {hunterStatus?.isEnabled && <span className="ml-1 w-2 h-2 rounded-full bg-teal-500 animate-pulse" />}
             </TabsTrigger>
           </TabsList>
 
@@ -1293,6 +1389,224 @@ export default function ConsultantLeadScraper() {
                     {saveSalesContextMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvataggio...</> : <><Save className="h-4 w-4 mr-2" />Salva configurazione</>}
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="hunter" className="mt-4 space-y-6">
+            <Card className="rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-teal-400 to-cyan-500" />
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Crosshair className="h-5 w-5 text-teal-600" />
+                    Outreach Automatico (Hunter)
+                  </CardTitle>
+                  <Switch
+                    checked={outreachConfig.enabled}
+                    onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
+                  />
+                </div>
+                <CardDescription>Hunter trova lead automaticamente e li assegna ad Alessia, Stella e Millie per il primo contatto</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {(() => {
+                  const hasSalesCtx = !!(savedSalesContext?.servicesOffered);
+                  const hasWaConfig = proactiveWaConfigs.length > 0;
+                  const selectedWa = !!outreachConfig.whatsapp_config_id;
+                  const readinessItems = [
+                    { ok: hasSalesCtx, label: "Sales Context compilato", fix: "Compilalo nella tab Sales Agent", action: () => setActiveTab("agent") },
+                    { ok: outreachConfig.enabled, label: "Outreach attivato", fix: "Attiva il toggle qui sopra", action: undefined },
+                    { ok: hasWaConfig, label: "Dipendente WhatsApp configurato", fix: "Configura un dipendente WA", action: () => setLocation("/consultant/whatsapp") },
+                    { ok: selectedWa || !hasWaConfig, label: "Dipendente WA selezionato per outreach", fix: "Selezionalo qui sotto", action: undefined },
+                  ];
+                  const okCount = readinessItems.filter(c => c.ok).length;
+                  const allOk = okCount === readinessItems.length;
+                  return (
+                    <div className={cn("rounded-xl border p-4", allOk ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/10" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10")}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {allOk ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                        <span className="text-sm font-semibold">{allOk ? "Hunter è pronto" : `Configurazione: ${okCount}/${readinessItems.length}`}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {readinessItems.map((item, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {item.ok ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                              <span className={item.ok ? "text-muted-foreground" : "text-foreground font-medium"}>{item.label}</span>
+                            </div>
+                            {!item.ok && item.action && (
+                              <Button variant="ghost" size="sm" className="h-6 text-xs px-2 text-teal-600" onClick={item.action}>
+                                {item.fix} <ArrowRight className="h-3 w-3 ml-1" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {outreachConfig.enabled && (
+                  <>
+                    <Separator />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max ricerche Hunter / giorno</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_searches_per_day}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max chiamate Alessia / giorno</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max WhatsApp Stella / giorno</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max email Millie / giorno</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Soglia score AI minimo</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.score_threshold}/100</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.score_threshold]} min={30} max={90} step={5} onValueChange={([v]) => updateOutreachConfig("score_threshold", v)} />
+                          <p className="text-xs text-gray-400 mt-1">Solo lead con score &ge; {outreachConfig.score_threshold} verranno contattati</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Cooldown tra contatti (ore)</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_hours}h</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Dipendente WhatsApp per outreach</Label>
+                          <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Seleziona dipendente WA" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
+                              {proactiveWaConfigs.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA di tipo "proactive_setter" trovato</p>}
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Template voce per outreach</Label>
+                          <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Seleziona template voce" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Automatico (Hunter sceglie)</SelectItem>
+                              {voiceTemplateOptions.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Priorità canali di contatto</Label>
+                      <p className="text-xs text-gray-400 mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
+                      <div className="space-y-2">
+                        {outreachConfig.channel_priority.map((ch: string, idx: number) => {
+                          const info = channelLabelsMap[ch];
+                          if (!info) return null;
+                          return (
+                            <div key={ch} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                              <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
+                              <span className={cn("text-sm font-medium", info.color)}>{info.label}</span>
+                              <div className="flex gap-1 ml-auto">
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === 0} onClick={() => moveChannelPriority(idx, "up")}>
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={idx === outreachConfig.channel_priority.length - 1} onClick={() => moveChannelPriority(idx, "down")}>
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    className="bg-teal-600 hover:bg-teal-700 text-white shadow-sm gap-2"
+                    onClick={handleTriggerHunter}
+                    disabled={triggeringHunter || !outreachConfig.enabled}
+                  >
+                    {triggeringHunter ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    {triggeringHunter ? "Esecuzione in corso..." : "Avvia Hunter ora"}
+                  </Button>
+                  <Button variant="outline" className="gap-2" onClick={() => setLocation("/consultant/ai-autonomy")}>
+                    <Cog className="h-4 w-4" />
+                    Vai a AI Autonomy
+                  </Button>
+                  {hunterTriggerResult && (
+                    <span className={cn("text-sm", hunterTriggerResult.success ? "text-emerald-600" : "text-red-500")}>
+                      {hunterTriggerResult.success ? `${hunterTriggerResult.tasks} task generati` : (hunterTriggerResult.error || "Errore")}
+                    </span>
+                  )}
+                </div>
+
+                {hunterSearches.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-teal-600" />
+                        Ultime ricerche automatiche ({hunterSearches.length})
+                      </p>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {hunterSearches.slice(0, 10).map((s) => (
+                          <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 shrink-0">
+                                <Crosshair className="h-2.5 w-2.5 mr-0.5" />Hunter
+                              </Badge>
+                              <span className="text-sm font-medium truncate">{s.query}</span>
+                              {s.location && <span className="text-xs text-muted-foreground shrink-0">({s.location})</span>}
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-xs text-muted-foreground">{s.resultsCount || 0} lead</span>
+                              {getStatusBadge(s.status)}
+                              <span className="text-xs text-muted-foreground">{timeAgo(s.createdAt)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
