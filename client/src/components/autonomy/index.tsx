@@ -541,8 +541,9 @@ export default function ConsultantAIAutonomyPage() {
       <div className={`flex-1 flex flex-col min-h-0 ${isMobile ? "w-full" : "ml-0"}`}>
         <div className="flex-1 flex min-h-0">
           <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
-            <div className={cn("mx-auto space-y-8 transition-all duration-300", activeTab === "dashboard" ? "" : chatOpenRoleId ? "max-w-5xl" : "max-w-7xl")}>
-              <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 lg:p-8 shadow-sm">
+            <div className="space-y-8">
+              <div className={cn("mx-auto transition-all duration-300", chatOpenRoleId ? "max-w-5xl" : "max-w-7xl")}>
+                <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 lg:p-8 shadow-sm">
                 <div className="space-y-5">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -621,7 +622,9 @@ export default function ConsultantAIAutonomyPage() {
                   </div>
                 </div>
               </div>
+              </div>
 
+              <div className={cn("mx-auto transition-all duration-300", activeTab === "dashboard" ? "" : chatOpenRoleId ? "max-w-5xl" : "max-w-7xl")}>
               <SettingsTab
                 settings={settings}
                 setSettings={setSettings}
@@ -744,6 +747,7 @@ export default function ConsultantAIAutonomyPage() {
                   />
                 }
               />
+              </div>
             </div>
           </main>
 
