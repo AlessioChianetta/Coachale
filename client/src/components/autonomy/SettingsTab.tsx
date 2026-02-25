@@ -1683,6 +1683,8 @@ function SettingsTab({
                       <SelectItem value="nova">Nova</SelectItem>
                       <SelectItem value="stella">Stella</SelectItem>
                       <SelectItem value="iris">Iris</SelectItem>
+                      <SelectItem value="marco">Marco</SelectItem>
+                      <SelectItem value="hunter">Hunter</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1726,7 +1728,9 @@ function SettingsTab({
                                     log.ai_role === "echo" ? "border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400" :
                                     log.ai_role === "nova" ? "border-pink-300 text-pink-600 dark:border-pink-700 dark:text-pink-400" :
                                     log.ai_role === "stella" ? "border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400" :
-                                    log.ai_role === "iris" ? "border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400" :
+                                    log.ai_role === "iris" ? "border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400" :
+                                    log.ai_role === "marco" ? "border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-400" :
+                                    log.ai_role === "hunter" ? "border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400" :
                                     "border-muted-foreground/30 text-muted-foreground"
                                   )}>
                                     {log.ai_role.charAt(0).toUpperCase() + log.ai_role.slice(1)}
