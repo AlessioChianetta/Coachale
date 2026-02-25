@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, superadminTwitterConfig, consultantLicenses, superadminStripeConfig } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig, superadminInstagramConfig, superadminTwitterConfig, consultantLicenses, superadminStripeConfig, superadminLeadScraperConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -2091,6 +2091,142 @@ router.put(
     } catch (error: any) {
       console.error("Save superadmin stripe config error:", error);
       res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.get(
+  "/superadmin/lead-scraper-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db.select().from(superadminLeadScraperConfig).limit(1);
+
+      if (!config) {
+        return res.json({ configured: false, enabled: false });
+      }
+
+      let serpapiKeyPreview = "";
+      let firecrawlKeyPreview = "";
+
+      if (config.serpapiKeyEncrypted) {
+        try {
+          const decrypted = decrypt(config.serpapiKeyEncrypted);
+          serpapiKeyPreview = decrypted.length > 12
+            ? `${decrypted.substring(0, 8)}...${decrypted.slice(-4)}`
+            : "***";
+        } catch { serpapiKeyPreview = "***"; }
+      }
+
+      if (config.firecrawlKeyEncrypted) {
+        try {
+          const decrypted = decrypt(config.firecrawlKeyEncrypted);
+          firecrawlKeyPreview = decrypted.length > 12
+            ? `${decrypted.substring(0, 8)}...${decrypted.slice(-4)}`
+            : "***";
+        } catch { firecrawlKeyPreview = "***"; }
+      }
+
+      res.json({
+        configured: true,
+        enabled: config.enabled,
+        hasSerpApiKey: !!config.serpapiKeyEncrypted,
+        hasFirecrawlKey: !!config.firecrawlKeyEncrypted,
+        serpapiKeyPreview,
+        firecrawlKeyPreview,
+        updatedAt: config.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Get lead scraper config error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/superadmin/lead-scraper-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { serpapiKey, firecrawlKey, enabled } = req.body;
+
+      const [existing] = await db.select().from(superadminLeadScraperConfig).limit(1);
+
+      if (existing) {
+        const updateData: any = {
+          updatedAt: sql`now()`,
+          updatedBy: req.user!.id,
+        };
+
+        if (serpapiKey && serpapiKey !== "***ENCRYPTED***") {
+          updateData.serpapiKeyEncrypted = encrypt(serpapiKey);
+        }
+        if (firecrawlKey && firecrawlKey !== "***ENCRYPTED***") {
+          updateData.firecrawlKeyEncrypted = encrypt(firecrawlKey);
+        }
+        if (typeof enabled === "boolean") {
+          updateData.enabled = enabled;
+        }
+
+        await db
+          .update(superadminLeadScraperConfig)
+          .set(updateData)
+          .where(eq(superadminLeadScraperConfig.id, existing.id));
+      } else {
+        await db.insert(superadminLeadScraperConfig).values({
+          serpapiKeyEncrypted: serpapiKey ? encrypt(serpapiKey) : null,
+          firecrawlKeyEncrypted: firecrawlKey ? encrypt(firecrawlKey) : null,
+          enabled: enabled ?? true,
+          updatedBy: req.user!.id,
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existing ? "update_lead_scraper_config" : "create_lead_scraper_config",
+        targetType: "setting",
+        targetId: "superadmin_lead_scraper_config",
+        details: {
+          hasSerpApiKey: !!serpapiKey,
+          hasFirecrawlKey: !!firecrawlKey,
+          enabled: enabled ?? true,
+        },
+      });
+
+      console.log(`✅ SuperAdmin Lead Scraper config saved by ${req.user!.id}`);
+
+      res.json({ success: true, message: "Lead Scraper configuration saved" });
+    } catch (error: any) {
+      console.error("Save lead scraper config error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/superadmin/lead-scraper-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      await db.delete(superadminLeadScraperConfig);
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "delete_lead_scraper_config",
+        targetType: "setting",
+        targetId: "superadmin_lead_scraper_config",
+        details: {},
+      });
+
+      console.log(`🗑️ SuperAdmin Lead Scraper config deleted by ${req.user!.id}`);
+
+      res.json({ success: true, message: "Lead Scraper configuration removed" });
+    } catch (error: any) {
+      console.error("Delete lead scraper config error:", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );

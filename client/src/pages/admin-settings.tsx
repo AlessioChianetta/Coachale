@@ -41,6 +41,9 @@ import {
   AlertTriangle,
   FileText,
   Zap,
+  MapPin,
+  Globe,
+  Search,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -286,6 +289,15 @@ export default function AdminSettings() {
   const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
   const [isSavingStripe, setIsSavingStripe] = useState(false);
 
+  const [leadScraperFormData, setLeadScraperFormData] = useState({
+    serpapiKey: "",
+    firecrawlKey: "",
+    enabled: true,
+  });
+  const [showSerpApiKey, setShowSerpApiKey] = useState(false);
+  const [showFirecrawlKey, setShowFirecrawlKey] = useState(false);
+  const [isSavingLeadScraper, setIsSavingLeadScraper] = useState(false);
+
   const [serviceToken, setServiceToken] = useState<string | null>(null);
   const [wsAuthToken, setWsAuthToken] = useState<string>(() => crypto.randomUUID().replace(/-/g, ''));
   const [tokenCopied, setTokenCopied] = useState(false);
@@ -488,6 +500,18 @@ export default function AdminSettings() {
       return response.json();
     },
     enabled: activeTab === "pagamenti",
+  });
+
+  const { data: leadScraperConfigData, refetch: refetchLeadScraperConfig } = useQuery({
+    queryKey: ["/api/admin/superadmin/lead-scraper-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/superadmin/lead-scraper-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch lead scraper config");
+      return response.json();
+    },
+    enabled: activeTab === "integrazioni",
   });
 
   const { data: voiceSettings, refetch: refetchVoice } = useQuery({
@@ -1293,6 +1317,64 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveLeadScraperConfig = async () => {
+    setIsSavingLeadScraper(true);
+    try {
+      const response = await fetch("/api/admin/superadmin/lead-scraper-config", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serpapiKey: leadScraperFormData.serpapiKey || undefined,
+          firecrawlKey: leadScraperFormData.firecrawlKey || undefined,
+          enabled: leadScraperFormData.enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Configurazione salvata",
+        description: "Lead Scraper configurato con successo.",
+      });
+
+      setLeadScraperFormData(prev => ({ ...prev, serpapiKey: "", firecrawlKey: "" }));
+      refetchLeadScraperConfig();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLeadScraper(false);
+    }
+  };
+
+  const handleDeleteLeadScraperConfig = async () => {
+    try {
+      const response = await fetch("/api/admin/superadmin/lead-scraper-config", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) throw new Error("Errore durante l'eliminazione");
+
+      toast({ title: "Configurazione rimossa", description: "Le chiavi Lead Scraper sono state eliminate." });
+      setLeadScraperFormData({ serpapiKey: "", firecrawlKey: "", enabled: true });
+      refetchLeadScraperConfig();
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    }
+  };
+
   const getActionLabel = (action: string) => {
     const labels: Record<string, string> = {
       update_google_oauth: "Aggiornamento Google OAuth",
@@ -1903,6 +1985,111 @@ export default function AdminSettings() {
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-rose-500" />
+                  Lead Scraper (SerpAPI + Firecrawl)
+                </CardTitle>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Configura le API key per lo scraping Google Maps e l'analisi dei siti web. Queste chiavi saranno usate da tutti i consulenti.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <Badge variant={leadScraperConfigData?.configured ? "default" : "secondary"} className={leadScraperConfigData?.configured ? "bg-emerald-500 hover:bg-emerald-600" : ""}>
+                    {leadScraperConfigData?.configured ? "Configurato" : "Non configurato"}
+                  </Badge>
+                  {leadScraperConfigData?.configured && (
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={leadScraperConfigData?.enabled ?? true}
+                        onCheckedChange={(checked) => {
+                          setLeadScraperFormData(prev => ({ ...prev, enabled: checked }));
+                          fetch("/api/admin/superadmin/lead-scraper-config", {
+                            method: "POST",
+                            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+                            body: JSON.stringify({ enabled: checked }),
+                          }).then(() => refetchLeadScraperConfig());
+                        }}
+                      />
+                      <span className="text-sm text-muted-foreground">Attivo</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Search className="w-4 h-4 text-blue-500" />
+                      SerpAPI Key
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Per ricerche Google Maps. Ottienila da serpapi.com</p>
+                    <div className="relative">
+                      <Input
+                        type={showSerpApiKey ? "text" : "password"}
+                        placeholder={leadScraperConfigData?.hasSerpApiKey ? leadScraperConfigData.serpapiKeyPreview : "Inserisci la SERPAPI_KEY"}
+                        value={leadScraperFormData.serpapiKey}
+                        onChange={(e) => setLeadScraperFormData(prev => ({ ...prev, serpapiKey: e.target.value }))}
+                        className="pr-10"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        onClick={() => setShowSerpApiKey(!showSerpApiKey)}
+                      >
+                        {showSerpApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-orange-500" />
+                      Firecrawl API Key
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Per analisi siti web. Ottienila da firecrawl.dev</p>
+                    <div className="relative">
+                      <Input
+                        type={showFirecrawlKey ? "text" : "password"}
+                        placeholder={leadScraperConfigData?.hasFirecrawlKey ? leadScraperConfigData.firecrawlKeyPreview : "Inserisci la FIRECRAWL_API_KEY"}
+                        value={leadScraperFormData.firecrawlKey}
+                        onChange={(e) => setLeadScraperFormData(prev => ({ ...prev, firecrawlKey: e.target.value }))}
+                        className="pr-10"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        onClick={() => setShowFirecrawlKey(!showFirecrawlKey)}
+                      >
+                        {showFirecrawlKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleSaveLeadScraperConfig}
+                    disabled={isSavingLeadScraper || (!leadScraperFormData.serpapiKey && !leadScraperFormData.firecrawlKey)}
+                  >
+                    {isSavingLeadScraper ? (
+                      <><Loader2 className="w-4 h-4 animate-spin mr-2" />Salvataggio...</>
+                    ) : (
+                      <><Check className="w-4 h-4 mr-2" />Salva Configurazione</>
+                    )}
+                  </Button>
+                  {leadScraperConfigData?.configured && (
+                    <Button variant="destructive" size="sm" onClick={handleDeleteLeadScraperConfig}>
+                      <Trash2 className="w-4 h-4 mr-2" />Rimuovi
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
               </div>

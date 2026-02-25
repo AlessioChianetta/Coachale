@@ -836,6 +836,19 @@ export const superadminStripeConfig = pgTable("superadmin_stripe_config", {
 export type SuperadminStripeConfig = typeof superadminStripeConfig.$inferSelect;
 export type InsertSuperadminStripeConfig = typeof superadminStripeConfig.$inferInsert;
 
+export const superadminLeadScraperConfig = pgTable("superadmin_lead_scraper_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serpapiKeyEncrypted: text("serpapi_key_encrypted"),
+  firecrawlKeyEncrypted: text("firecrawl_key_encrypted"),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type SuperadminLeadScraperConfig = typeof superadminLeadScraperConfig.$inferSelect;
+export type InsertSuperadminLeadScraperConfig = typeof superadminLeadScraperConfig.$inferInsert;
+
 // Consultant Licenses - Track license allocations for each consultant
 export const consultantLicenses = pgTable("consultant_licenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

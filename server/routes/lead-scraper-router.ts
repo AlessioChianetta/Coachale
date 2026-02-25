@@ -1,11 +1,30 @@
 import { Router, Response } from "express";
 import { db } from "../db";
 import { eq, and, desc, sql, ilike, gte } from "drizzle-orm";
-import { leadScraperSearches, leadScraperResults } from "../../shared/schema";
+import { leadScraperSearches, leadScraperResults, superadminLeadScraperConfig } from "../../shared/schema";
 import { AuthRequest, authenticateToken, requireRole } from "../middleware/auth";
 import { searchGoogleMaps, scrapeWebsiteWithFirecrawl, enrichSearchResults } from "../services/lead-scraper-service";
+import { decrypt } from "../encryption";
 
 const router = Router();
+
+async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecrawlKey: string | null }> {
+  try {
+    const [config] = await db.select().from(superadminLeadScraperConfig).limit(1);
+    if (config && config.enabled) {
+      return {
+        serpApiKey: config.serpapiKeyEncrypted ? decrypt(config.serpapiKeyEncrypted) : null,
+        firecrawlKey: config.firecrawlKeyEncrypted ? decrypt(config.firecrawlKeyEncrypted) : null,
+      };
+    }
+  } catch (e) {
+    console.error("[LEAD-SCRAPER] Error reading keys from DB, falling back to env:", e);
+  }
+  return {
+    serpApiKey: process.env.SERPAPI_KEY || null,
+    firecrawlKey: process.env.FIRECRAWL_API_KEY || null,
+  };
+}
 
 router.post("/search", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
@@ -14,9 +33,10 @@ router.post("/search", authenticateToken, requireRole(["consultant", "super_admi
 
     if (!query) return res.status(400).json({ error: "Query is required" });
 
-    const serpApiKey = process.env.SERPAPI_KEY;
+    const keys = await getLeadScraperKeys();
+    const serpApiKey = keys.serpApiKey;
     if (!serpApiKey) {
-      return res.status(400).json({ error: "SERPAPI_KEY not configured. Please add it in settings." });
+      return res.status(400).json({ error: "SERPAPI_KEY non configurata. Vai nelle Impostazioni Admin > Lead Scraper per configurarla." });
     }
 
     const [search] = await db
@@ -63,7 +83,8 @@ router.post("/search", authenticateToken, requireRole(["consultant", "super_admi
           .where(eq(leadScraperSearches.id, search.id));
 
         if (autoScrapeWebsites) {
-          const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+          const bgKeys = await getLeadScraperKeys();
+          const firecrawlKey = bgKeys.firecrawlKey;
           if (firecrawlKey) {
             await enrichSearchResults(search.id, firecrawlKey);
           }
@@ -111,7 +132,7 @@ router.get("/searches/:id", authenticateToken, async (req: AuthRequest, res: Res
     const [search] = await db
       .select()
       .from(leadScraperSearches)
-      .where(eq(leadScraperSearches.id, req.params.id));
+      .where(and(eq(leadScraperSearches.id, req.params.id), eq(leadScraperSearches.consultantId, req.user!.id)));
 
     if (!search) return res.status(404).json({ error: "Search not found" });
 
@@ -163,9 +184,10 @@ router.get("/searches/:id/results", authenticateToken, async (req: AuthRequest, 
 
 router.post("/results/:id/scrape-website", authenticateToken, requireRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
   try {
-    const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+    const scrapeKeys = await getLeadScraperKeys();
+    const firecrawlKey = scrapeKeys.firecrawlKey;
     if (!firecrawlKey) {
-      return res.status(400).json({ error: "FIRECRAWL_API_KEY not configured" });
+      return res.status(400).json({ error: "FIRECRAWL_API_KEY non configurata. Vai nelle Impostazioni Admin > Lead Scraper per configurarla." });
     }
 
     const [result] = await db
@@ -201,16 +223,18 @@ router.post("/results/:id/scrape-website", authenticateToken, requireRole(["cons
 
 router.get("/searches/:id/export", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
+    const [search] = await db
+      .select()
+      .from(leadScraperSearches)
+      .where(and(eq(leadScraperSearches.id, req.params.id), eq(leadScraperSearches.consultantId, req.user!.id)));
+
+    if (!search) return res.status(404).json({ error: "Search not found" });
+
     const results = await db
       .select()
       .from(leadScraperResults)
       .where(eq(leadScraperResults.searchId, req.params.id))
       .orderBy(desc(leadScraperResults.rating));
-
-    const [search] = await db
-      .select()
-      .from(leadScraperSearches)
-      .where(eq(leadScraperSearches.id, req.params.id));
 
     const csvHeaders = "Nome,Indirizzo,Telefono,Email,Sito Web,Rating,Recensioni,Categoria,Email Extra,Social,Descrizione\n";
     const csvRows = results.map((r) => {
@@ -248,7 +272,7 @@ router.delete("/searches/:id", authenticateToken, requireRole(["consultant", "su
   try {
     const [deleted] = await db
       .delete(leadScraperSearches)
-      .where(eq(leadScraperSearches.id, req.params.id))
+      .where(and(eq(leadScraperSearches.id, req.params.id), eq(leadScraperSearches.consultantId, req.user!.id)))
       .returning();
 
     if (!deleted) return res.status(404).json({ error: "Search not found" });
