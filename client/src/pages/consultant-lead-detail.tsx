@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -182,6 +182,7 @@ export default function ConsultantLeadDetail() {
   const [crmNextAction, setCrmNextAction] = useState("");
   const [crmNextActionDate, setCrmNextActionDate] = useState("");
   const [crmValue, setCrmValue] = useState("");
+  const [showAllPhones, setShowAllPhones] = useState(false);
 
   const [activeActivityTab, setActiveActivityTab] = useState("timeline");
   const [showNewActivity, setShowNewActivity] = useState(false);
@@ -423,7 +424,7 @@ export default function ConsultantLeadDetail() {
     return (
       <PageLayout role="consultant">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-rose-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
         </div>
       </PageLayout>
     );
@@ -475,8 +476,8 @@ export default function ConsultantLeadDetail() {
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30 shadow-sm">
-              <Building2 className="h-7 w-7 text-rose-600 dark:text-rose-400" />
+            <div className="p-3 rounded-2xl bg-gray-100 dark:bg-gray-800 shadow-sm">
+              <Building2 className="h-7 w-7 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{lead.businessName || "Lead senza nome"}</h1>
@@ -509,44 +510,50 @@ export default function ConsultantLeadDetail() {
             <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-rose-500" />Contatti
+                  <Building2 className="h-4 w-4 text-violet-500" />Contatti
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-3 p-5">
                 {lead.address && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <MapPin className="h-3.5 w-3.5 text-rose-400 mt-0.5 shrink-0" />
-                    <span className="text-muted-foreground">{lead.address}</span>
+                  <div className="flex items-start gap-2.5 text-sm">
+                    <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">{lead.address}</span>
                   </div>
                 )}
                 {lead.website && (
-                  <div className="flex items-start gap-2 text-sm">
-                    <Globe className="h-3.5 w-3.5 text-purple-400 mt-0.5 shrink-0" />
-                    <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{lead.website}</a>
+                  <div className="flex items-start gap-2.5 text-sm">
+                    <Globe className="h-3.5 w-3.5 text-gray-400 mt-0.5 shrink-0" />
+                    <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">{lead.website}</a>
                   </div>
                 )}
                 {allEmails.length > 0 && (
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Email</Label>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {allEmails.map((email: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-xs py-0.5 px-2" onClick={() => copyToClipboard(email)}>
-                          <Mail className="h-3 w-3 mr-1 text-blue-500" />{email}
-                        </Badge>
-                      ))}
-                    </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Email</p>
+                    {allEmails.map((email: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2.5 cursor-pointer group" onClick={() => copyToClipboard(email)}>
+                        <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 transition-colors truncate">{email}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {allPhones.length > 0 && (
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Telefoni</Label>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {allPhones.map((phone: string, i: number) => (
-                        <Badge key={i} variant="secondary" className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-xs py-0.5 px-2" onClick={() => copyToClipboard(phone)}>
-                          <Phone className="h-3 w-3 mr-1 text-green-500" />{phone}
-                        </Badge>
-                      ))}
-                    </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Telefoni</p>
+                    {(showAllPhones ? allPhones : allPhones.slice(0, 2)).map((phone: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2.5 cursor-pointer group" onClick={() => copyToClipboard(phone)}>
+                        <Phone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-emerald-600 transition-colors">{phone}</span>
+                      </div>
+                    ))}
+                    {allPhones.length > 2 && (
+                      <button
+                        onClick={() => setShowAllPhones(!showAllPhones)}
+                        className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mt-0.5 transition-colors"
+                      >
+                        {showAllPhones ? "Mostra meno" : `Mostra altri ${allPhones.length - 2} numeri`}
+                      </button>
+                    )}
                   </div>
                 )}
                 {lead.rating && (
@@ -558,13 +565,17 @@ export default function ConsultantLeadDetail() {
                 )}
 
                 {wd?.socialLinks && Object.keys(wd.socialLinks).length > 0 && (
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Social</p>
+                    <div className="flex flex-wrap gap-2">
                       {Object.entries(wd.socialLinks).map(([platform, url]) => (
-                        <Badge key={platform} variant="outline" className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors text-xs" onClick={() => window.open(url as string, "_blank")}>
-                          <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
-                        </Badge>
+                        <button
+                          key={platform}
+                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                          onClick={() => window.open(url as string, "_blank")}
+                        >
+                          <ExternalLink className="h-3 w-3" />{platform}
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -582,37 +593,37 @@ export default function ConsultantLeadDetail() {
             <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4 text-rose-500" />Gestione CRM
+                  <ClipboardList className="h-4 w-4 text-violet-500" />Gestione CRM
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 p-5">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Stato</Label>
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Stato</Label>
                   <Select value={crmLeadStatus} onValueChange={setCrmLeadStatus}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-violet-500"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Valore (EUR)</Label>
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Valore (EUR)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder="5000" value={crmValue} onChange={(e) => setCrmValue(e.target.value)} className="pl-8 h-9" />
+                    <Input type="number" placeholder="5000" value={crmValue} onChange={(e) => setCrmValue(e.target.value)} className="pl-8 h-9 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-violet-500" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Prossima azione</Label>
-                  <Input placeholder="es. Chiamare..." value={crmNextAction} onChange={(e) => setCrmNextAction(e.target.value)} className="h-9" />
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Prossima azione</Label>
+                  <Input placeholder="es. Chiamare..." value={crmNextAction} onChange={(e) => setCrmNextAction(e.target.value)} className="h-9 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-violet-500" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Data azione</Label>
-                  <Input type="date" value={crmNextActionDate} onChange={(e) => setCrmNextActionDate(e.target.value)} className="h-9" />
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Data azione</Label>
+                  <Input type="date" value={crmNextActionDate} onChange={(e) => setCrmNextActionDate(e.target.value)} className="h-9 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-violet-500" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Note generali</Label>
-                  <Textarea placeholder="Appunti sulla trattativa..." value={crmNotes} onChange={(e) => setCrmNotes(e.target.value)} className="min-h-[80px]" />
+                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Note generali</Label>
+                  <Textarea placeholder="Appunti sulla trattativa..." value={crmNotes} onChange={(e) => setCrmNotes(e.target.value)} className="min-h-[80px] border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-violet-500" />
                 </div>
                 {lead.leadContactedAt && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
@@ -620,7 +631,7 @@ export default function ConsultantLeadDetail() {
                     Primo contatto: {new Date(lead.leadContactedAt).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                 )}
-                <Button onClick={handleSaveCrm} disabled={updateCrmMutation.isPending} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white h-9">
+                <Button onClick={handleSaveCrm} disabled={updateCrmMutation.isPending} className="w-full bg-violet-600 hover:bg-violet-700 text-white h-9">
                   {updateCrmMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Salva CRM
                 </Button>
@@ -628,7 +639,7 @@ export default function ConsultantLeadDetail() {
             </Card>
 
             {lead.aiSalesSummary && (
-              <Card className="rounded-2xl border-2 border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/50 via-white to-purple-50/50 dark:from-violet-950/20 dark:via-gray-900 dark:to-purple-950/20 shadow-sm">
+              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -654,7 +665,7 @@ export default function ConsultantLeadDetail() {
             )}
 
             {!lead.aiSalesSummary && (lead.scrapeStatus === "scraped" || lead.scrapeStatus === "scraped_cached") && (
-              <Button onClick={() => generateSummaryMutation.mutate()} disabled={generateSummaryMutation.isPending} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white">
+              <Button onClick={() => generateSummaryMutation.mutate()} disabled={generateSummaryMutation.isPending} className="w-full bg-violet-600 hover:bg-violet-700 text-white">
                 {generateSummaryMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
                 Genera analisi AI
               </Button>
@@ -674,7 +685,7 @@ export default function ConsultantLeadDetail() {
               <Button
                 size="sm"
                 onClick={() => { resetActivityForm(); setEditingActivity(null); setShowNewActivity(true); }}
-                className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white"
+                className="bg-violet-600 hover:bg-violet-700 text-white"
               >
                 <Plus className="h-4 w-4 mr-1" />Nuova attivita
               </Button>
@@ -793,7 +804,7 @@ export default function ConsultantLeadDetail() {
                       <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Servizi</Label>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {wd.services.map((svc: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-[10px] bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
+                          <Badge key={i} variant="secondary" className="text-[10px] bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">{svc}</Badge>
                         ))}
                       </div>
                     </div>
@@ -809,7 +820,7 @@ export default function ConsultantLeadDetail() {
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-rose-500" />
+              <Plus className="h-4 w-4 text-violet-500" />
               {editingActivity ? "Modifica attivita" : "Nuova attivita"}
             </DialogTitle>
           </DialogHeader>
@@ -825,11 +836,11 @@ export default function ConsultantLeadDetail() {
                     className={cn(
                       "flex flex-col items-center gap-1 p-2 rounded-lg border text-xs font-medium transition-all",
                       newType === at.value
-                        ? `${at.bgColor} border-current/30 shadow-sm`
+                        ? `${at.bgColor} border-violet-400 dark:border-violet-500 shadow-sm ring-1 ring-violet-300 dark:ring-violet-700`
                         : "border-gray-200 dark:border-gray-700 text-muted-foreground hover:border-gray-300"
                     )}
                   >
-                    <at.icon className={cn("h-4 w-4", newType === at.value ? at.color : "")} />
+                    <at.icon className={cn("h-3.5 w-3.5", newType === at.value ? at.color : "text-gray-400")} />
                     <span className="text-[10px] leading-tight text-center">{at.label}</span>
                   </button>
                 ))}
@@ -856,7 +867,7 @@ export default function ConsultantLeadDetail() {
                     onClick={() => setNewOutcome(newOutcome === o.value ? "" : o.value)}
                     className={cn(
                       "px-2 py-1.5 rounded-lg border text-xs font-medium transition-all text-center",
-                      newOutcome === o.value ? `${o.color} shadow-sm` : "border-gray-200 dark:border-gray-700 text-muted-foreground"
+                      newOutcome === o.value ? `${o.color} shadow-sm ring-1 ring-current/30` : "border-gray-200 dark:border-gray-700 text-muted-foreground hover:border-gray-300"
                     )}
                   >
                     {o.label}
@@ -878,7 +889,7 @@ export default function ConsultantLeadDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowNewActivity(false); setEditingActivity(null); resetActivityForm(); }}>Annulla</Button>
-            <Button onClick={handleSaveActivity} disabled={createActivityMutation.isPending || updateActivityMutation.isPending} className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white">
+            <Button onClick={handleSaveActivity} disabled={createActivityMutation.isPending || updateActivityMutation.isPending} className="bg-violet-600 hover:bg-violet-700 text-white">
               {(createActivityMutation.isPending || updateActivityMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               {editingActivity ? "Aggiorna" : "Registra"}
             </Button>
@@ -889,6 +900,38 @@ export default function ConsultantLeadDetail() {
   );
 }
 
+function renderMarkdownText(text: string): React.ReactNode[] {
+  const urlRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|(https?:\/\/[^\s]+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    if (match[1] && match[2]) {
+      parts.push(
+        <a key={key++} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+          {match[1]}
+        </a>
+      );
+    } else if (match[3]) {
+      parts.push(
+        <a key={key++} href={match[3]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+          {match[3]}
+        </a>
+      );
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
+
 function ExpandableDescription({ text, threshold = 300 }: { text: string; threshold?: number }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > threshold;
@@ -897,7 +940,7 @@ function ExpandableDescription({ text, threshold = 300 }: { text: string; thresh
   return (
     <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5">
       <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-      <p className="text-xs mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{displayText}</p>
+      <p className="text-sm mt-1 text-gray-600 dark:text-gray-400 whitespace-pre-line leading-relaxed">{renderMarkdownText(displayText)}</p>
       {isLong && (
         <Button variant="ghost" size="sm" className="mt-1 h-5 px-2 text-[10px] text-primary hover:text-primary/80" onClick={() => setExpanded(!expanded)}>
           {expanded ? <><ChevronUp className="h-3 w-3 mr-0.5" />Comprimi</> : <><ChevronDown className="h-3 w-3 mr-0.5" />Mostra tutto</>}

@@ -556,7 +556,7 @@ export default function ConsultantLeadScraper() {
     <PageLayout role="consultant">
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-lg">
+          <div className="p-2.5 bg-violet-600 rounded-xl shadow-sm">
             <MapPin className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -567,32 +567,32 @@ export default function ConsultantLeadScraper() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Ricerche", value: stats.totalSearches, icon: Search, gradient: "linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)", shadow: "rgba(244,63,94,0.3)" },
-            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)", shadow: "rgba(139,92,246,0.3)" },
-            { label: "Email", value: stats.emailCount, icon: Mail, gradient: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", shadow: "rgba(59,130,246,0.3)" },
-            { label: "Telefoni", value: stats.phoneCount, icon: Phone, gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)", shadow: "rgba(16,185,129,0.3)" },
+            { label: "Ricerche", value: stats.totalSearches, icon: Search, iconColor: "text-rose-500", numColor: "text-rose-600 dark:text-rose-400" },
+            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, iconColor: "text-violet-500", numColor: "text-violet-600 dark:text-violet-400" },
+            { label: "Email", value: stats.emailCount, icon: Mail, iconColor: "text-blue-500", numColor: "text-blue-600 dark:text-blue-400" },
+            { label: "Telefoni", value: stats.phoneCount, icon: Phone, iconColor: "text-emerald-500", numColor: "text-emerald-600 dark:text-emerald-400" },
           ].map((stat, i) => (
-            <div key={i} className="relative overflow-hidden rounded-xl p-4 text-white" style={{ background: stat.gradient, boxShadow: `0 6px 24px ${stat.shadow}` }}>
+            <div key={i} className="relative overflow-hidden rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="flex items-start justify-between">
-                <div className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
-                  <stat.icon className="h-3.5 w-3.5" />
+                <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <stat.icon className={`h-3.5 w-3.5 ${stat.iconColor}`} />
                 </div>
               </div>
-              <p className="text-2xl font-black tracking-tight leading-none mt-2 mb-0.5">{stat.value}</p>
-              <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">{stat.label}</p>
+              <p className={`text-2xl font-black tracking-tight leading-none mt-2 mb-0.5 ${stat.numColor}`}>{stat.value}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{stat.label}</p>
             </div>
           ))}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full flex justify-start gap-1 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl">
-            <TabsTrigger value="ricerca" className="flex items-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-lg px-4">
+          <TabsList className="w-full flex justify-start gap-0 bg-transparent p-0 border-b border-gray-200 dark:border-gray-700 rounded-none h-auto">
+            <TabsTrigger value="ricerca" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
               <Search className="h-3.5 w-3.5" />Ricerca
             </TabsTrigger>
-            <TabsTrigger value="crm" className="flex items-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-lg px-4">
+            <TabsTrigger value="crm" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
               <ClipboardList className="h-3.5 w-3.5" />CRM Lead
             </TabsTrigger>
-            <TabsTrigger value="agent" className="flex items-center gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:shadow-sm rounded-lg px-4">
+            <TabsTrigger value="agent" className="flex items-center gap-1.5 px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 data-[state=active]:bg-transparent data-[state=active]:shadow-none text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-medium transition-colors">
               <Bot className="h-3.5 w-3.5" />Sales Agent
             </TabsTrigger>
           </TabsList>
@@ -600,10 +600,10 @@ export default function ConsultantLeadScraper() {
           <TabsContent value="ricerca" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               <div className="lg:col-span-1 space-y-4">
-                <Card className="border-2 border-rose-200 dark:border-rose-800/40 bg-gradient-to-br from-rose-50/50 via-white to-pink-50/50 dark:from-rose-950/20 dark:via-gray-900 dark:to-pink-950/20 rounded-2xl shadow-sm">
+                <Card className="border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm bg-white dark:bg-gray-900">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Search className="h-4 w-4 text-rose-500" />Nuova Ricerca
+                      <Search className="h-4 w-4 text-violet-500" />Nuova Ricerca
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -613,14 +613,14 @@ export default function ConsultantLeadScraper() {
                         <button
                           type="button"
                           onClick={() => setSearchEngine("google_maps")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_maps" ? "border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_maps" ? "border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
                         >
                           <Map className="h-3.5 w-3.5" />Maps
                         </button>
                         <button
                           type="button"
                           onClick={() => setSearchEngine("google_search")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_search" ? "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_search" ? "border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
                         >
                           <Globe className="h-3.5 w-3.5" />Search
                         </button>
@@ -695,7 +695,7 @@ export default function ConsultantLeadScraper() {
                     )}
 
                     <Button
-                      className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white border-0 shadow-lg"
+                      className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm"
                       onClick={() => startSearchMutation.mutate()}
                       disabled={!searchQuery || startSearchMutation.isPending}
                     >
@@ -730,7 +730,7 @@ export default function ConsultantLeadScraper() {
                             return (
                               <div
                                 key={s.id}
-                                className={`px-4 py-3 cursor-pointer transition-all duration-200 ${selectedSearchId === s.id ? "bg-rose-50 dark:bg-rose-950/30 border-l-3 border-l-rose-500" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
+                                className={`px-4 py-3 cursor-pointer transition-all duration-200 ${selectedSearchId === s.id ? "bg-violet-50 dark:bg-violet-950/20 border-l-3 border-l-violet-500" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
                                 onClick={() => setSelectedSearchId(s.id)}
                               >
                                 <div className="flex items-start justify-between gap-2">
@@ -770,8 +770,8 @@ export default function ConsultantLeadScraper() {
                 {!selectedSearchId ? (
                   <Card className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
                     <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30 flex items-center justify-center mb-4 shadow-sm">
-                        <Building2 className="h-8 w-8 text-rose-400 dark:text-rose-500" />
+                      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 shadow-sm">
+                        <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Seleziona o avvia una ricerca</h3>
                       <p className="text-sm text-muted-foreground max-w-md">Usa il pannello a sinistra per cercare business.</p>
@@ -784,8 +784,8 @@ export default function ConsultantLeadScraper() {
                         <CardContent className="py-4 px-5">
                           <div className="flex items-center justify-between flex-wrap gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/30">
-                                <Search className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                              <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800">
+                                <Search className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
@@ -807,7 +807,7 @@ export default function ConsultantLeadScraper() {
                               )}
                               <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="relative">
                                 <Filter className="h-4 w-4 mr-1" />Filtri
-                                {activeFiltersCount > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-rose-500">{activeFiltersCount}</Badge>}
+                                {activeFiltersCount > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-violet-600">{activeFiltersCount}</Badge>}
                               </Button>
                               <Button variant="outline" size="sm" onClick={handleExport} disabled={results.length === 0}>
                                 <Download className="h-4 w-4 mr-1" />CSV
@@ -841,9 +841,9 @@ export default function ConsultantLeadScraper() {
                       <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
                         <CardContent className="py-4 px-5">
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold flex items-center gap-2"><Filter className="h-4 w-4 text-rose-500" />Filtri</h4>
+                            <h4 className="text-sm font-semibold flex items-center gap-2"><Filter className="h-4 w-4 text-gray-500" />Filtri</h4>
                             {activeFiltersCount > 0 && (
-                              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-rose-600"><X className="h-3 w-3 mr-1" />Rimuovi</Button>
+                              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-gray-500 hover:text-gray-700"><X className="h-3 w-3 mr-1" />Rimuovi</Button>
                             )}
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -873,10 +873,10 @@ export default function ConsultantLeadScraper() {
                     <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                       <CardContent className="p-0">
                         {resultsLoading ? (
-                          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-rose-400" /></div>
+                          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-violet-400" /></div>
                         ) : results.length === 0 ? (
                           <div className="text-center py-12 text-muted-foreground">
-                            {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-rose-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
+                            {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-violet-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
                           </div>
                         ) : (
                           <div className="overflow-x-auto">
@@ -897,7 +897,7 @@ export default function ConsultantLeadScraper() {
                                   return (
                                     <TableRow
                                       key={r.id}
-                                      className={`cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                      className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-l-3 ${statusInfo.borderColor}`}
                                       onClick={() => navigateToLead(r.id)}
                                     >
                                       <TableCell>
@@ -910,10 +910,10 @@ export default function ConsultantLeadScraper() {
                                         </div>
                                       </TableCell>
                                       <TableCell className="text-center">
-                                        <div className="flex items-center justify-center gap-1">
-                                          <div className={`w-2 h-2 rounded-full ${r.email ? "bg-blue-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
-                                          <div className={`w-2 h-2 rounded-full ${r.phone ? "bg-green-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
-                                          <div className={`w-2 h-2 rounded-full ${r.website ? "bg-purple-400" : "bg-gray-200 dark:bg-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
+                                        <div className="flex items-center justify-center gap-1.5">
+                                          <Mail className={`h-3.5 w-3.5 ${r.email ? "text-blue-500" : "text-gray-200 dark:text-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
+                                          <Phone className={`h-3.5 w-3.5 ${r.phone ? "text-emerald-500" : "text-gray-200 dark:text-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
+                                          <Globe className={`h-3.5 w-3.5 ${r.website ? "text-violet-500" : "text-gray-200 dark:text-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
                                         </div>
                                       </TableCell>
                                       <TableCell className="text-center">
@@ -959,15 +959,15 @@ export default function ConsultantLeadScraper() {
 
           <TabsContent value="crm" className="mt-4">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                {LEAD_STATUSES.map(s => (
+              <div className="flex items-stretch overflow-x-auto">
+                {LEAD_STATUSES.map((s, idx) => (
                   <button
                     key={s.value}
-                    className={`flex flex-col items-center p-2.5 rounded-xl border transition-all text-center ${
+                    className={`relative flex-1 min-w-[100px] flex flex-col items-center justify-center py-3 px-2 text-center transition-all ${
                       crmFilterStatus === s.value
-                        ? `${s.color} border-current shadow-sm`
-                        : "bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                    }`}
+                        ? `${s.color} shadow-sm font-semibold`
+                        : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    } ${idx === 0 ? "rounded-l-lg border border-gray-200 dark:border-gray-700" : idx === LEAD_STATUSES.length - 1 ? "rounded-r-lg border border-l-0 border-gray-200 dark:border-gray-700" : "border border-l-0 border-gray-200 dark:border-gray-700"}`}
                     onClick={() => setCrmFilterStatus(crmFilterStatus === s.value ? "tutti" : s.value)}
                   >
                     <span className="text-lg font-black">{crmStats[s.value] || 0}</span>
@@ -980,7 +980,7 @@ export default function ConsultantLeadScraper() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <CardTitle className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-rose-500" />CRM Lead
+                      <ClipboardList className="h-5 w-5 text-violet-500" />CRM Lead
                       <span className="text-sm font-normal text-muted-foreground">({allResults.length})</span>
                     </CardTitle>
                     <div className="flex items-center gap-2">
@@ -999,7 +999,7 @@ export default function ConsultantLeadScraper() {
                         )}
                       </div>
                       {crmFilterStatus !== "tutti" && (
-                        <Button variant="ghost" size="sm" onClick={() => setCrmFilterStatus("tutti")} className="text-xs h-8 text-rose-600">
+                        <Button variant="ghost" size="sm" onClick={() => setCrmFilterStatus("tutti")} className="text-xs h-8 text-gray-500 hover:text-gray-700">
                           <X className="h-3 w-3 mr-1" />Rimuovi filtro
                         </Button>
                       )}
@@ -1032,17 +1032,17 @@ export default function ConsultantLeadScraper() {
                             return (
                               <TableRow
                                 key={r.id}
-                                className={`cursor-pointer hover:bg-rose-50/50 dark:hover:bg-rose-950/10 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-l-3 ${statusInfo.borderColor}`}
                                 onClick={() => navigateToLead(r.id)}
                               >
-                                <TableCell className="font-medium">
+                                <TableCell>
                                   <div>
-                                    <span className="text-gray-900 dark:text-white">{r.businessName || "\u2014"}</span>
-                                    {r.category && <p className="text-[10px] text-muted-foreground">{r.category}</p>}
+                                    <span className="font-semibold text-gray-900 dark:text-white">{r.businessName || "-"}</span>
+                                    {r.category && <p className="text-sm text-gray-500 mt-0.5">{r.category}</p>}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm">{r.email || "\u2014"}</TableCell>
-                                <TableCell className="text-sm">{r.phone || "\u2014"}</TableCell>
+                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.email || "-"}</TableCell>
+                                <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.phone || "-"}</TableCell>
                                 <TableCell className="text-center">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
                                 <TableCell className="text-center">
                                   <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
@@ -1071,7 +1071,7 @@ export default function ConsultantLeadScraper() {
           </TabsContent>
 
           <TabsContent value="agent" className="mt-4">
-            <Card className="rounded-2xl border-2 border-violet-200 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/50 via-white to-purple-50/50 dark:from-violet-950/20 dark:via-gray-900 dark:to-purple-950/20 shadow-sm">
+            <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bot className="h-5 w-5 text-violet-500" />Configura il tuo Sales Agent
@@ -1089,48 +1089,48 @@ export default function ConsultantLeadScraper() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     {[
-                      { key: "servicesOffered", label: "Servizi che offri", icon: <Zap className="h-3.5 w-3.5 text-amber-500" />, placeholder: "Descrivi i servizi che vendi...", minH: "100px" },
-                      { key: "targetAudience", label: "Target ideale", icon: <Target className="h-3.5 w-3.5 text-rose-500" />, placeholder: "A chi vendi? PMI, startup, professionisti...", minH: "80px" },
-                      { key: "valueProposition", label: "Proposta di valore", icon: <Sparkles className="h-3.5 w-3.5 text-violet-500" />, placeholder: "Cosa ti rende unico?", minH: "80px" },
-                      { key: "pricingInfo", label: "Pricing / Pacchetti", icon: <DollarSign className="h-3.5 w-3.5 text-emerald-500" />, placeholder: "Range prezzi, pacchetti...", minH: "80px" },
+                      { key: "servicesOffered", label: "Servizi che offri", placeholder: "Descrivi i servizi che vendi...", tall: true },
+                      { key: "targetAudience", label: "Target ideale", placeholder: "A chi vendi? PMI, startup, professionisti...", tall: false },
+                      { key: "valueProposition", label: "Proposta di valore", placeholder: "Cosa ti rende unico?", tall: false },
+                      { key: "pricingInfo", label: "Pricing / Pacchetti", placeholder: "Range prezzi, pacchetti...", tall: false },
                     ].map(field => (
                       <div key={field.key} className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-1.5">{field.icon}{field.label}</Label>
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</Label>
                         <Textarea
                           placeholder={field.placeholder}
                           value={(salesContext as any)[field.key]}
                           onChange={(e) => setSalesContext(p => ({ ...p, [field.key]: e.target.value }))}
-                          className={`min-h-[${field.minH}]`}
+                          className={`${field.tall ? "min-h-[100px]" : "min-h-[80px]"} border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500`}
                         />
                       </div>
                     ))}
                   </div>
                   <div className="space-y-4">
                     {[
-                      { key: "competitiveAdvantages", label: "Vantaggi competitivi", icon: <TrendingUp className="h-3.5 w-3.5 text-blue-500" />, placeholder: "Cosa fai meglio della concorrenza?" },
-                      { key: "idealClientProfile", label: "Profilo cliente ideale", icon: <Users className="h-3.5 w-3.5 text-indigo-500" />, placeholder: "Fatturato, dipendenti, settore..." },
-                      { key: "salesApproach", label: "Approccio vendita", icon: <MessageSquare className="h-3.5 w-3.5 text-cyan-500" />, placeholder: "Come approcci il primo contatto?" },
-                      { key: "caseStudies", label: "Casi di successo", icon: <Star className="h-3.5 w-3.5 text-amber-500" />, placeholder: "Brevi case study..." },
+                      { key: "competitiveAdvantages", label: "Vantaggi competitivi", placeholder: "Cosa fai meglio della concorrenza?" },
+                      { key: "idealClientProfile", label: "Profilo cliente ideale", placeholder: "Fatturato, dipendenti, settore..." },
+                      { key: "salesApproach", label: "Approccio vendita", placeholder: "Come approcci il primo contatto?" },
+                      { key: "caseStudies", label: "Casi di successo", placeholder: "Brevi case study..." },
                     ].map(field => (
                       <div key={field.key} className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-1.5">{field.icon}{field.label}</Label>
+                        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">{field.label}</Label>
                         <Textarea
                           placeholder={field.placeholder}
                           value={(salesContext as any)[field.key]}
                           onChange={(e) => setSalesContext(p => ({ ...p, [field.key]: e.target.value }))}
-                          className="min-h-[80px]"
+                          className="min-h-[80px] border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500"
                         />
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-gray-500" />Contesto aggiuntivo</Label>
-                  <Textarea placeholder="Qualsiasi altra informazione utile..." value={salesContext.additionalContext} onChange={(e) => setSalesContext(p => ({ ...p, additionalContext: e.target.value }))} className="min-h-[60px]" />
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contesto aggiuntivo</Label>
+                  <Textarea placeholder="Qualsiasi altra informazione utile..." value={salesContext.additionalContext} onChange={(e) => setSalesContext(p => ({ ...p, additionalContext: e.target.value }))} className="min-h-[60px] border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500" />
                 </div>
                 <div className="mt-6 flex justify-end">
                   <Button
-                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg"
+                    className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm"
                     onClick={() => saveSalesContextMutation.mutate(salesContext)}
                     disabled={saveSalesContextMutation.isPending}
                   >
