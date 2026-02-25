@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Github, ExternalLink, User, Sparkles, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41,7 +40,7 @@ export function SkillDetailModal({ skill, open, onOpenChange, onToggle }: SkillD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -75,13 +74,13 @@ export function SkillDetailModal({ skill, open, onOpenChange, onToggle }: SkillD
           <Switch checked={skill.isActive} onCheckedChange={() => onToggle(skill.id)} />
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 max-h-[40vh]">
-          <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
-            <pre className="whitespace-pre-wrap text-xs bg-muted/50 p-4 rounded-lg border border-border/50 font-mono leading-relaxed">
-              {skill.content}
+        <div className="flex-1 min-h-0 max-h-[55vh] overflow-y-auto rounded-lg border border-border/50 bg-muted/30">
+          <div className="p-4">
+            <pre className="whitespace-pre-wrap text-xs font-mono leading-relaxed text-foreground/90 m-0">
+{skill.content}
             </pre>
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           {fileList.length > 0 && (
