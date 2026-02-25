@@ -257,11 +257,17 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
       }
     }
 
+    function parseCtx(raw: any): Record<string, any> {
+      if (!raw) return {};
+      if (typeof raw === 'object') return raw;
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+
     const pendingTasksResult = await db.execute(sql`
       SELECT
-        ast.id, ast.title, ast.status, ast.preferred_channel, ast.ai_role,
+        ast.id, ast.contact_name, ast.status, ast.preferred_channel, ast.origin_type,
         ast.scheduled_at, ast.created_at, ast.completed_at, ast.result_summary,
-        ast.additional_context
+        ast.additional_context, ast.ai_instruction
       FROM ai_scheduled_tasks ast
       WHERE ast.consultant_id = ${consultantId}
         AND ast.task_category = 'prospecting'
@@ -281,18 +287,18 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
     for (const task of pendingTasksResult.rows as any[]) {
       const ch = task.preferred_channel;
       if (channelTasks[ch]) {
-        const ctx = task.additional_context || {};
+        const ctx = parseCtx(task.additional_context);
         channelTasks[ch].tasks.push({
           id: task.id,
-          title: task.title,
+          title: task.contact_name || task.ai_instruction?.substring(0, 60) || 'Task',
           status: task.status,
           channel: ch,
-          aiRole: task.ai_role,
+          aiRole: task.origin_type,
           scheduledAt: task.scheduled_at,
           createdAt: task.created_at,
           completedAt: task.completed_at,
           resultSummary: task.result_summary,
-          leadName: ctx.business_name || task.title?.replace(/^Outreach (call|whatsapp|email): /i, '') || 'Lead',
+          leadName: ctx.business_name || task.contact_name || 'Lead',
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
@@ -302,8 +308,8 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
 
     const recentCompletedResult = await db.execute(sql`
       SELECT
-        ast.id, ast.title, ast.status, ast.preferred_channel, ast.ai_role,
-        ast.completed_at, ast.result_summary, ast.additional_context
+        ast.id, ast.contact_name, ast.status, ast.preferred_channel, ast.origin_type,
+        ast.completed_at, ast.result_summary, ast.additional_context, ast.ai_instruction
       FROM ai_scheduled_tasks ast
       WHERE ast.consultant_id = ${consultantId}
         AND ast.task_category = 'prospecting'
@@ -317,18 +323,18 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
     for (const task of recentCompletedResult.rows as any[]) {
       const ch = task.preferred_channel;
       if (channelTasks[ch]) {
-        const ctx = task.additional_context || {};
+        const ctx = parseCtx(task.additional_context);
         channelTasks[ch].tasks.push({
           id: task.id,
-          title: task.title,
+          title: task.contact_name || task.ai_instruction?.substring(0, 60) || 'Task',
           status: task.status,
           channel: ch,
-          aiRole: task.ai_role,
+          aiRole: task.origin_type,
           scheduledAt: null,
           createdAt: null,
           completedAt: task.completed_at,
           resultSummary: task.result_summary,
-          leadName: ctx.business_name || task.title?.replace(/^Outreach (call|whatsapp|email): /i, '') || 'Lead',
+          leadName: ctx.business_name || task.contact_name || 'Lead',
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
@@ -421,7 +427,8 @@ router.post("/tasks/:id/reject", authenticateToken, requireAnyRole(["consultant"
       WHERE id = ${id} AND consultant_id = ${consultantId}
     `);
 
-    const ctx = (taskResult.rows[0] as any)?.additional_context;
+    const rawCtx = (taskResult.rows[0] as any)?.additional_context;
+    const ctx = typeof rawCtx === 'string' ? (() => { try { return JSON.parse(rawCtx); } catch { return {}; } })() : (rawCtx || {});
     if (ctx?.lead_id) {
       await db.execute(sql`
         UPDATE lead_scraper_results

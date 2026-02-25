@@ -1,0 +1,73 @@
+1:05:08 PM [express] GET /api/lead-scraper/searches 304 in 666ms :: [{"id":"8730f3cf-5c34-4b09-94eb-…
+[AI-AUTONOMY] Error fetching hunter pipeline: error: column ast.title does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:260:32) {
+  length: 107,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '31',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+11:05:09 PM [express] GET /api/ai-autonomy/hunter-pipeline 500 in 1172ms :: {"error":"Failed to fetch…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[AI-AUTONOMY] Error fetching hunter pipeline: error: column ast.title does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:260:32) {
+  length: 107,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '31',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+11:05:25 PM [express] GET /api/ai-autonomy/hunter-pipeline 500 in 1379ms :: {"error":"Failed to fetch…
+11:05:30 PM [express] GET /api/ai-autonomy/roles/status 200 in 3033ms :: {"alessia":{"effectiveLevel"…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[AI-AUTONOMY] Error fetching hunter pipeline: error: column ast.title does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:260:32) {
+  length: 107,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '31',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+11:05:42 PM [express] GET /api/ai-autonomy/hunter-pipeline 500 in 1273ms :: {"error":"Failed to fe

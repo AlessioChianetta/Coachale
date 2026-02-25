@@ -410,7 +410,7 @@ export default function ConsultantLeadScraper() {
   });
 
   const outreachDefaults = {
-    enabled: false, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
+    enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
     cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "",
   };
@@ -1495,6 +1495,40 @@ export default function ConsultantLeadScraper() {
                   </div>
                 </div>
 
+                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="flex items-center gap-2 flex-1">
+                    <button
+                      onClick={() => updateOutreachConfig("require_approval", true)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        outreachConfig.require_approval
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700"
+                          : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                      )}
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      Approvazione Manuale
+                    </button>
+                    <button
+                      onClick={() => updateOutreachConfig("require_approval", false)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        !outreachConfig.require_approval
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-700"
+                          : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                      )}
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                      Full Autonomo
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground max-w-[180px] leading-tight">
+                    {outreachConfig.require_approval
+                      ? "I task attendono la tua approvazione prima di partire"
+                      : "I task partono automaticamente senza approvazione"}
+                  </span>
+                </div>
+
                 {hunterPipeline && (
                   <div className="flex items-center gap-3 flex-wrap text-xs font-medium text-muted-foreground bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
                     <span className="flex items-center gap-1"><Search className="h-3 w-3 text-teal-500" />{hunterPipeline.stats.foundToday} trovati</span>
@@ -1522,7 +1556,7 @@ export default function ConsultantLeadScraper() {
                   {[
                     { step: 1, label: "Ricerca", sub: "Google Maps / Search", icon: Search, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", count: hunterPipeline?.stats.foundToday },
                     { step: 2, label: "Qualifica AI", sub: "Score compatibilità", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", count: hunterPipeline?.stats.scoredToday },
-                    { step: 3, label: "Approvazione", sub: "Manuale o automatica", icon: Shield, color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", count: hunterPipeline?.stats.qualifiedWaiting },
+                    { step: 3, label: outreachConfig.require_approval ? "Approvazione" : "Auto", sub: outreachConfig.require_approval ? "Manuale" : "Full autonomo", icon: outreachConfig.require_approval ? Shield : Zap, color: outreachConfig.require_approval ? "text-violet-600" : "text-emerald-600", bg: outreachConfig.require_approval ? "bg-violet-50 dark:bg-violet-950/30" : "bg-emerald-50 dark:bg-emerald-950/30", border: outreachConfig.require_approval ? "border-violet-200 dark:border-violet-800" : "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.qualifiedWaiting },
                     { step: 4, label: "Smistamento", sub: "Alessia · Stella · Millie", icon: Send, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", count: hunterPipeline?.stats.inOutreach },
                     { step: 5, label: "Contatto", sub: "Call / WA / Email", icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.contacted },
                   ].map((s, i, arr) => {

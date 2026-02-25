@@ -2948,6 +2948,8 @@ async function handleLeadQualifyAndAssign(
   const channelPriority: string[] = outreachConfig.channel_priority ?? outreachConfig.channelPriority ?? ['voice', 'whatsapp', 'email'];
   const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
   const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
+  const requireApproval = outreachConfig.require_approval !== false;
+  const outreachTaskStatus = requireApproval ? 'waiting_approval' : 'scheduled';
 
   let summariesGenerated = 0;
   let summariesFailed = 0;
@@ -3078,7 +3080,7 @@ async function handleLeadQualifyAndAssign(
             ${childTaskId}, ${task.consultant_id}, ${leadPhone},
             ${leadName}, 'outreach_call', ${instruction},
             NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
             'prospecting', 'alessia', 'voice',
             ${JSON.stringify({ lead_id: lead.id, search_id: searchId, voice_template_id: voiceTemplateId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
             3, 0, 5,
@@ -3103,7 +3105,7 @@ async function handleLeadQualifyAndAssign(
             ${childTaskId}, ${task.consultant_id}, ${leadPhone},
             ${leadName}, 'outreach_whatsapp', ${instruction},
             NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
             'prospecting', 'stella', 'whatsapp',
             ${whatsappConfigId},
             ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
@@ -3128,7 +3130,7 @@ async function handleLeadQualifyAndAssign(
             ${childTaskId}, ${task.consultant_id}, ${leadEmail || ''},
             ${leadName}, 'outreach_email', ${instruction},
             NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
             'prospecting', 'millie', 'email',
             ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
             3, 0, 5,
