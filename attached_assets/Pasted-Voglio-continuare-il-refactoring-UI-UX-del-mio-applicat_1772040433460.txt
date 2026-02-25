@@ -1,0 +1,37 @@
+Voglio continuare il refactoring UI/UX del mio applicativo per dargli un aspetto da SaaS B2B professionale, pulito e minimale. Attualmente l'interfaccia usa troppi colori saturi che creano confusione visiva. Usa Tailwind CSS per applicare queste modifiche alle tab 'Ricerca', 'CRM Lead' e 'Sales Agent':
+
+Passo 1: Header Globale (Le 4 card colorate in alto)
+
+Rimuovi i background gradienti solidi (rosso, viola, blu, verde).
+
+Trasforma queste card in uno stile neutro: sfondo bianco (bg-white), bordo leggerissimo (border border-gray-200), ombra delicata (shadow-sm).
+
+Usa i colori attuali (rosso, viola, blu, verde) solo per l'icona all'interno della card e magari per il testo del numero, lasciando la label in grigio (text-gray-500).
+
+Rendi il menu a schede (Ricerca, CRM Lead, Sales Agent) più simile a veri 'Tabs': rimuovi lo sfondo grigio a pillola e usa uno stile con un bordo inferiore colorato (border-b-2) solo per il tab attivo.
+
+Passo 2: Tab 'Ricerca'
+
+Sidebar sinistra: Ammorbidisci il design. Cambia i bottoni attivi (come 'Maps') in un colore primario del brand (es. un blu o un viola aziendale) invece del rosso acceso. Il bottone 'Cerca' in fondo rendilo dello stesso colore primario per coerenza.
+
+Tabella: C'è un bug di codifica nella colonna Rating, sostituisci \u2014 con un trattino normale - o gestisci il dato mancante.
+
+Colonna Contatti: I tre pallini colorati sono poco chiari. Sostituiscili con delle piccolissime icone (es. busta per email, telefono, mappamondo per web) che si colorano se il dato è presente, e rimangono in grigio chiaro se il dato manca.
+
+Passo 3: Tab 'CRM Lead'
+
+Pipeline superiore (Stati del Lead): Attualmente i box degli stati (Nuovo, Contattato, ecc.) sono tutti uguali e separati. Uniscili visivamente in una 'barra di progresso' orizzontale o usa un design a freccia (chevron) per far capire che è un imbuto/pipeline sequenziale.
+
+Tabella: Nella colonna 'Nome', c'è troppo testo della stessa dimensione. Metti il nome dell'azienda in grassetto (font-semibold text-gray-900) e sposta l'eventuale categoria/descrizione sotto, con un testo più piccolo e grigio (text-sm text-gray-500).
+
+Passo 4: Tab 'Sales Agent' (Form di configurazione)
+
+Rimuovi le icone colorate di fianco alle label di ogni campo (es. i fulmini, il bersaglio rosa, i soldi verdi). Rendi le label semplici, pulite e professionali in testo grigio scuro (text-gray-700 font-medium).
+
+Standardizza i campi di testo (textarea): sfondo bianco, bordo grigio (border-gray-300), e un anello di focus (focus:ring-2 focus:ring-primary-color) coerente con il brand.
+
+Assicurati che l'allineamento dei campi sia su una griglia perfetta a 2 colonne, mantenendo altezze uniformi per le textarea.
+
+Passo 5: Coerenza Generale
+
+Definisci una singola palette di 'Colori Primari' (scegli o il viola o il blu scuro) per tutti i bottoni di azione principale ('Cerca', 'Salva configurazione', ecc.) ed elimina l'uso di rosa, rosso e verde per le azioni, a meno che non indichino specificamente successo o pericolo.

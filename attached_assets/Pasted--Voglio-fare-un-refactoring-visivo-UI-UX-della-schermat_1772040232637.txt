@@ -1,0 +1,41 @@
+"Voglio fare un refactoring visivo (UI/UX) della schermata di dettaglio del Lead per renderla più pulita, moderna e in stile SaaS professionale. Usa Tailwind CSS (o il sistema di styling attuale) per applicare queste modifiche passo dopo passo:
+
+Passo 1: Pulizia della Card 'Contatti' (Sidebar sinistra)
+
+Rimuovi lo stile 'badge/pillola' viola per email e numeri di telefono. È visivamente troppo pesante.
+
+Trasforma i contatti in una semplice lista verticale. Usa un'icona piccola e di colore neutro (es. grigio text-gray-400) a sinistra, seguita dal testo in text-gray-700.
+
+Logica UX: Poiché ci sono molti numeri di telefono, mostra solo i primi due. Metti gli altri sotto un pulsante 'Mostra altri X numeri' (espandibile) per non allungare troppo la sidebar.
+
+Rendi i pulsanti 'Social' più minimalisti, magari rimuovendo il bordo o usando un design più compatto.
+
+Passo 2: Miglioramento dei campi 'Gestione CRM' (Sidebar sinistra)
+
+Rendi i campi di input e le select più eleganti: usa un bordo più leggero (border-gray-200) e al passaggio del mouse o focus metti un ring del colore primario (rosa).
+
+Assicurati che il padding interno delle card sia abbondante e uniforme (es. usa p-5 o p-6).
+
+Conferma che il bottone 'Salva CRM' occupi tutta la larghezza (w-full) e mantenga il suo colore di risalto.
+
+Passo 3: Formattazione leggibile per 'Dati dal sito web'
+
+Cruciale: Il testo attuale contiene sintassi Markdown e URL grezzi (es. !Agenzia di Marketing(https://...)). Crea una funzione o usa una libreria per fare il parsing di questo testo in HTML renderizzato correttamente.
+
+Gli URL devono diventare veri tag <a> cliccabili, con colore blu o del brand, magari con un underline all'hover.
+
+Aumenta l'interlinea (leading-relaxed) del testo descrittivo e usa un grigio scuro (text-gray-600) per renderlo più leggibile.
+
+Il tag sotto 'Servizi' cambialo da rosa tenue a un grigio neutro (bg-gray-100 text-gray-700); i colori caldi servono solo per le azioni principali o gli alert.
+
+Passo 4: Perfezionamento della Modale 'Nuova attività' (se aperta)
+
+Nelle griglie di selezione ('Tipo attività' ed 'Esito'), migliora lo stato di selezione. Quando un utente clicca su un'opzione, il bordo dovrebbe diventare del colore primario (rosa) e forse avere un background leggerissimo dello stesso colore (es. bg-pink-50), per far capire chiaramente cosa è stato selezionato.
+
+Riduci leggermente la dimensione delle icone dentro i bottoni 'Tipo attività' per renderle più proporzionate al testo.
+
+Passo 5: Ritocchi generali
+
+Ammorbidisci le ombre di tutte le card (usa shadow-sm con un bordo leggerissimo border border-gray-100). Le card non devono sembrare 'staccate' dallo sfondo.
+
+Uniforma il layout per assicurarti che gli spazi (gap) tra le sezioni principali siano costanti."
