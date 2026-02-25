@@ -594,30 +594,34 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
           )}
         </div>
 
-        <div className="border-t p-3">
+        <div className="p-3 space-y-2">
           {selectedFile && (
-            <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs">
-              {selectedFile.type.startsWith('audio/') ? (
-                <Music className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-              ) : selectedFile.type.startsWith('image/') ? (
-                <ImageIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              )}
-              <span className="truncate flex-1">{selectedFile.name}</span>
-              <span className="text-muted-foreground shrink-0">
-                {(selectedFile.size / 1024).toFixed(0)}KB
-              </span>
-              <button
-                onClick={() => setSelectedFile(null)}
-                className="text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            <div className="flex flex-wrap gap-2 px-1">
+              <div className="relative group flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                {selectedFile.type.startsWith('image/') ? (
+                  <ImageIcon className="w-5 h-5 text-blue-500" />
+                ) : selectedFile.type.startsWith('audio/') ? (
+                  <Music className="w-5 h-5 text-purple-500" />
+                ) : (
+                  <FileText className="w-5 h-5 text-slate-500" />
+                )}
+                <span className="text-sm text-slate-700 dark:text-slate-300 max-w-[120px] truncate">
+                  {selectedFile.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {(selectedFile.size / 1024).toFixed(0)}KB
+                </span>
+                <button
+                  onClick={() => setSelectedFile(null)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           )}
           {isRecording && (
-            <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-red-50 dark:bg-red-950/30 rounded-lg text-xs">
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800 text-xs">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-red-600 dark:text-red-400 font-medium">
                 Registrazione in corso... {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
@@ -630,63 +634,84 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
               </button>
             </div>
           )}
-          <div className="flex gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.ogg"
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-10 w-10 shrink-0 rounded-xl"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending || isRecording}
-              title="Allega file"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder={`Scrivi a ${roleName}...`}
-              className="min-h-[40px] max-h-[120px] resize-none text-sm rounded-xl"
-              disabled={sending || isRecording}
-            />
-            {!input.trim() && !selectedFile ? (
+          <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200/70 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all duration-300 focus-within:border-primary/40 dark:focus-within:border-primary/40 focus-within:shadow-primary/10 focus-within:bg-white dark:focus-within:bg-slate-800">
+            <div className="px-4 pt-3 pb-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.ogg"
+              />
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder={sending ? "Sto elaborando..." : `Scrivi a ${roleName}...`}
+                disabled={sending || isRecording}
+                className="resize-none min-h-[44px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
+                rows={1}
+              />
+            </div>
+
+            <div className="flex items-center justify-between px-3 pb-3 pt-1">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || isRecording}
+                  title="Allega file"
+                >
+                  <Paperclip className="h-4 w-4 text-slate-500" />
+                </Button>
+                {!input.trim() && !selectedFile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-8 p-0 rounded-lg",
+                      isRecording
+                        ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50"
+                        : "hover:bg-slate-200 dark:hover:bg-slate-700"
+                    )}
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={sending}
+                    title={isRecording ? "Ferma registrazione" : "Registra vocale"}
+                  >
+                    {isRecording ? (
+                      <MicOff className="h-4 w-4 text-red-500" />
+                    ) : (
+                      <Mic className="h-4 w-4 text-slate-500" />
+                    )}
+                  </Button>
+                )}
+              </div>
+
               <Button
-                size="icon"
-                variant={isRecording ? "destructive" : "ghost"}
-                className="h-10 w-10 shrink-0 rounded-xl"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={sending}
-                title={isRecording ? "Ferma registrazione" : "Registra vocale"}
-              >
-                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
-            ) : (
-              <Button
-                size="icon"
-                className="h-10 w-10 shrink-0 rounded-xl"
                 onClick={() => sendMessage()}
                 disabled={(!input.trim() && !selectedFile) || sending}
+                size="sm"
+                className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
               >
                 {sending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex gap-0.5">
+                    <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4 text-white" />
                 )}
               </Button>
-            )}
+            </div>
           </div>
         </div>
       </motion.div>

@@ -1243,33 +1243,43 @@ export default function ConsultantLeadScraper() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="border-t p-3">
-                <div className="flex gap-2">
-                  <Textarea
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendChat();
-                      }
-                    }}
-                    placeholder="Scrivi a Sales Agent..."
-                    className="min-h-[40px] max-h-[120px] resize-none text-sm rounded-xl"
-                    disabled={chatLoading}
-                  />
-                  <Button
-                    size="icon"
-                    className="h-10 w-10 shrink-0 rounded-xl"
-                    onClick={handleSendChat}
-                    disabled={!chatInput.trim() || chatLoading}
-                  >
-                    {chatLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
+              <div className="p-3">
+                <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-200/70 dark:border-slate-700 shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50 hover:shadow-xl transition-all duration-300 focus-within:border-primary/40 dark:focus-within:border-primary/40 focus-within:shadow-primary/10 focus-within:bg-white dark:focus-within:bg-slate-800">
+                  <div className="px-4 pt-3 pb-2">
+                    <Textarea
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendChat();
+                        }
+                      }}
+                      placeholder={chatLoading ? "Sto elaborando..." : "Scrivi a Sales Agent..."}
+                      disabled={chatLoading}
+                      className="resize-none min-h-[44px] max-h-[120px] bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:ring-0 disabled:opacity-60 disabled:cursor-not-allowed text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 p-0 shadow-none"
+                      rows={1}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end px-3 pb-3 pt-1">
+                    <Button
+                      onClick={handleSendChat}
+                      disabled={!chatInput.trim() || chatLoading}
+                      size="sm"
+                      className="h-9 w-9 p-0 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 disabled:from-slate-200 disabled:to-slate-300 dark:disabled:from-slate-700 dark:disabled:to-slate-600 transition-all"
+                    >
+                      {chatLoading ? (
+                        <div className="flex gap-0.5">
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      ) : (
+                        <Send className="h-4 w-4 text-white" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </motion.div>
