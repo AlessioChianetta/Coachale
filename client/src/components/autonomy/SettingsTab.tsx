@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
   Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
-  Plus, Trash2, FileText, Calendar, Flag
+  Plus, Trash2, FileText, Calendar, Flag, Database
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -768,6 +768,12 @@ interface SettingsTabProps {
   kbDocuments: KbDocument[];
   chatOpenRoleId: string | null;
   setChatOpenRoleId: (roleId: string | null) => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  unreadCount: number;
+  activityContent: React.ReactNode;
+  dashboardContent: React.ReactNode;
+  dataCatalogContent: React.ReactNode;
 }
 
 function AgentMemoryContent({ roleId }: { roleId: string }) {
@@ -967,6 +973,12 @@ function SettingsTab({
   kbDocuments,
   chatOpenRoleId,
   setChatOpenRoleId,
+  activeTab,
+  onTabChange,
+  unreadCount,
+  activityContent,
+  dashboardContent,
+  dataCatalogContent,
 }: SettingsTabProps) {
   const [, navigate] = useLocation();
   const [showArchDetails, setShowArchDetails] = useState(true);
@@ -1143,96 +1155,101 @@ function SettingsTab({
     >
       {/* 4 Summary Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-indigo-500" />
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30">
               <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Livello Autonomia</span>
           </div>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{settings.autonomy_level}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{autonomyInfo.label}</p>
-            </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{settings.autonomy_level}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{autonomyInfo.label}</p>
           </div>
         </div>
 
-        <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500" />
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30">
               <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Modalità</span>
           </div>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
-            </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {settings.default_mode === "manual" ? "Manuale" : settings.default_mode === "hybrid" ? "Ibrido" : "Automatico"}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{settings.is_active ? "Sistema attivo" : "Sistema spento"}</p>
           </div>
         </div>
 
-        <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500" />
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-xl bg-green-50 dark:bg-green-900/30">
               <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Canali Attivi</span>
           </div>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp].filter(Boolean).length}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">canali abilitati</p>
-            </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp].filter(Boolean).length}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">canali abilitati</p>
           </div>
         </div>
 
-        <div className="relative group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/30">
               <Bot className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
             <span className="text-sm font-semibold text-gray-900 dark:text-white">Dipendenti</span>
           </div>
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{systemStatus?.roles?.filter(r => r.enabled).length || 0}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">dipendenti attivi</p>
-            </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{systemStatus?.roles?.filter(r => r.enabled).length || 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">dipendenti attivi</p>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="panoramica" className="mt-6">
-        <TabsList className="grid w-full grid-cols-5 h-auto bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1.5">
-          <TabsTrigger value="panoramica" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
+      <Tabs value={activeTab} onValueChange={onTabChange} className="mt-6">
+        <TabsList className="flex flex-wrap w-full h-auto bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1.5 gap-1">
+          <TabsTrigger value="panoramica" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Activity className="h-4 w-4" />
             <span className="hidden sm:inline">Panoramica</span>
           </TabsTrigger>
-          <TabsTrigger value="autonomia" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
+          <TabsTrigger value="autonomia" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Zap className="h-4 w-4" />
-            <span className="hidden sm:inline">Autonomia & Modalita'</span>
+            <span className="hidden sm:inline">Autonomia & Modalità</span>
           </TabsTrigger>
-          <TabsTrigger value="orari" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
+          <TabsTrigger value="orari" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Clock className="h-4 w-4" />
             <span className="hidden sm:inline">Orari & Limiti</span>
           </TabsTrigger>
-          <TabsTrigger value="canali" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
+          <TabsTrigger value="canali" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <ListTodo className="h-4 w-4" />
             <span className="hidden sm:inline">Canali & Categorie</span>
           </TabsTrigger>
-          <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2">
+          <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
             <Bot className="h-4 w-4" />
             <span className="hidden sm:inline">Dipendenti AI</span>
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
+            <Activity className="h-4 w-4" />
+            <span className="hidden sm:inline">Feed</span>
+            {unreadCount > 0 && (
+              <Badge className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0 min-w-[18px] h-[18px] rounded-full">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
+            <ListTodo className="h-4 w-4" />
+            <span className="hidden sm:inline">Task</span>
+          </TabsTrigger>
+          <TabsTrigger value="data-catalog" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
+            <Database className="h-4 w-4" />
+            <span className="hidden sm:inline">Dati</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1384,9 +1401,9 @@ function SettingsTab({
 
                 <Separator />
 
-                <div className="rounded-xl border border-border p-4 bg-amber-50 dark:bg-amber-950/20">
-                  <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-amber-500" />
+                <div className="rounded-xl border border-amber-200 dark:border-amber-800 p-4 bg-amber-50 dark:bg-amber-950/20">
+                  <h4 className="text-sm font-semibold mb-4 flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                    <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     Guardrail di Sicurezza
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
@@ -3106,8 +3123,7 @@ function SettingsTab({
             </div>
           </div>
 
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 border-l-4 border-l-gray-400 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 to-gray-500" />
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
               <Cog className="h-5 w-5" />
               Configura Agente Personalizzato
@@ -3348,6 +3364,18 @@ function SettingsTab({
               </div>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-5 space-y-5">
+          {activityContent}
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="mt-5 space-y-5">
+          {dashboardContent}
+        </TabsContent>
+
+        <TabsContent value="data-catalog" className="mt-5 space-y-5">
+          {dataCatalogContent}
         </TabsContent>
       </Tabs>
 

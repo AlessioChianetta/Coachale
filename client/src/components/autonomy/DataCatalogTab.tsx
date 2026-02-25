@@ -21,7 +21,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="space-y-5"
     >
-      <Card className="rounded-xl shadow-sm border-l-4 border-l-teal-500 bg-teal-50 dark:bg-teal-950/20">
+      <Card className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <CardContent className="py-5 px-6">
           <div className="flex items-center gap-4">
             <div className="p-2.5 rounded-xl bg-teal-500 shadow-sm">
@@ -47,7 +47,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </CardContent>
       </Card>
 
-      <div className="rounded-xl border-l-4 border-teal-500 bg-teal-50/50 dark:bg-teal-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-teal-500/15 shrink-0">
             <Search className="h-5 w-5 text-teal-500" />
@@ -87,7 +87,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-amber-500/15 shrink-0">
             <BookOpen className="h-5 w-5 text-amber-500" />
@@ -125,7 +125,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-purple-500/15 shrink-0">
             <Brain className="h-5 w-5 text-purple-500" />
@@ -154,7 +154,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-blue-500/15 shrink-0">
             <FileText className="h-5 w-5 text-blue-500" />
@@ -183,7 +183,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-green-500 bg-green-50/50 dark:bg-green-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-green-500/15 shrink-0">
             <PhoneCall className="h-5 w-5 text-green-500" />
@@ -212,7 +212,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-emerald-500/15 shrink-0">
             <Phone className="h-5 w-5 text-emerald-500" />
@@ -250,7 +250,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-sky-500 bg-sky-50/50 dark:bg-sky-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-sky-500/15 shrink-0">
             <Mail className="h-5 w-5 text-sky-500" />
@@ -278,7 +278,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-green-600 bg-green-50/50 dark:bg-green-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-green-600/15 shrink-0">
             <MessageSquare className="h-5 w-5 text-green-600" />
@@ -306,7 +306,7 @@ function DataCatalogTab({ showArchDetails, setShowArchDetails }: DataCatalogTabP
         </div>
       </div>
 
-      <div className="rounded-xl border-l-4 border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-xl bg-cyan-500/15 shrink-0">
             <Globe className="h-5 w-5 text-cyan-500" />

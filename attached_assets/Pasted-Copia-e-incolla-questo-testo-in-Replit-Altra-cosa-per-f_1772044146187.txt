@@ -1,0 +1,42 @@
+Copia e incolla questo testo in Replit:
+"Altra cosa per favore: i tab 'Feed', 'Task' e 'Dati' mettili in questa tab bar inferiore (quella che contiene 'Panoramica', 'Autonomia & Modalità', ecc.) e togli la barra superiore. La dicitura 'Impostazioni' sparisce del tutto.
+
+Oltre a questo, voglio continuare il refactoring UI/UX per allineare anche questa schermata ('Dipendente AI') allo stile SaaS pulito e minimale che stiamo creando. Usa Tailwind CSS per applicare queste modifiche:
+
+Passo 1: Refactoring dell'Header Principale
+
+Rimuovi il background viola scuro/gradiente dal banner principale in alto ('Dipendente AI').
+
+Sostituiscilo con un header pulito: sfondo bianco (bg-white) o grigio chiarissimo (bg-gray-50), con un testo scuro (text-gray-900) per il titolo.
+
+Rendi i badge di stato (es. 'Sistema attivo', 'Livello 3') e i bottoni (Voice, Email, ecc.) meno 'pesanti' visivamente, usando background chiari con testo colorato (es. bg-green-100 text-green-700 per il verde) invece di colori solidi forti.
+
+Passo 2: KPI Cards (Livello Autonomia, Modalità, ecc.)
+
+Rimuovi il bordo superiore colorato (la riga blu, rosa, verde, arancione in cima alle card).
+
+Uniforma il design a quello delle altre schermate: card bianche, bordo leggero (border-gray-200), ombra delicata (shadow-sm).
+
+Sposta il colore sull'icona della singola card, lasciando il resto neutro.
+
+Passo 3: Sezione 'Stato Sistema in Tempo Reale' e 'Limiti'
+
+Le card dello stato (Stato, Orario, Clienti, Task) vanno bene, ma assicurati che abbiano lo stesso border-gray-200 e shadow-sm del resto.
+
+Nelle barre di progresso ('Limiti giornalieri utilizzati oggi'), usa uno spessore sottile (es. h-2) e un colore primario coerente per la barra piena, con uno sfondo grigio chiarissimo (bg-gray-100) per la parte vuota.
+
+Il box 'Ultimo errore rilevato' ha uno sfondo rosso un po' troppo acceso. Usare un bg-red-50, bordo border-red-200 e testo text-red-700 lo renderà più elegante pur mantenendo l'allerta.
+
+Passo 4: 'Guardrail di Sicurezza' e Info Box
+
+Il box giallo del Guardrail è buono, ma rendilo più 'soft': bg-amber-50, bordo border-amber-200 o border-amber-100, con il testo in text-amber-800 o grigio scuro.
+
+Passo 5: Log Ragionamenti AI
+
+Rendi gli elementi della lista meno simili a dei messaggi di alert e più simili a un vero feed di log.
+
+Usa per ogni log uno sfondo bianco (bg-white), bordo border-gray-200, con il nome utente/ruolo in grassetto e il badge del ruolo piccolo e discreto.
+
+Aumenta leggermente il padding interno (es. p-4) dei log per far 'respirare' il testo, specialmente per quelli lunghi come l'ultimo in basso."
+
+Facendo così, la schermata si alleggerirà drasticamente, spostando l'attenzione dell'utente sui dati e sulle azioni (che sono la cosa più importante), piuttosto che sull'involucro dell'interfaccia.

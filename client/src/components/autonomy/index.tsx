@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Settings, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Bot, Activity, ListTodo, Database, X, Cpu, Zap, MessageSquare, Phone, Mail } from "lucide-react";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,7 +27,8 @@ import DataCatalogTab from "./DataCatalogTab";
 export default function ConsultantAIAutonomyPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("settings");
+  const [activeTab, setActiveTab] = useState("panoramica");
+  const isSettingsTab = ["panoramica", "autonomia", "orari", "canali", "dipendenti"].includes(activeTab);
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
@@ -330,7 +329,7 @@ export default function ConsultantAIAutonomyPage() {
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: activeTab === "settings",
+    enabled: isSettingsTab,
     refetchInterval: 30000,
   });
 
@@ -445,7 +444,7 @@ export default function ConsultantAIAutonomyPage() {
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: activeTab === "settings",
+    enabled: isSettingsTab,
   });
 
   const { data: pendingApprovalTasks } = useQuery<AITask[]>({
@@ -543,41 +542,42 @@ export default function ConsultantAIAutonomyPage() {
         <div className="flex-1 flex min-h-0">
           <main className={cn("flex-1 p-6 lg:px-8 overflow-auto transition-all duration-300", chatOpenRoleId ? "mr-0" : "")}>
             <div className={cn("mx-auto space-y-8 transition-all duration-300", chatOpenRoleId ? "max-w-5xl" : "max-w-7xl")}>
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-violet-950 to-purple-950 p-6 lg:p-8 text-white shadow-2xl">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
-                <div className="absolute top-0 right-0 w-72 h-72 bg-violet-500/5 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl" />
-
-                <div className="relative z-10 space-y-5">
+              <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 lg:p-8 shadow-sm">
+                <div className="space-y-5">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
                         <Bot className="h-7 w-7 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dipendente AI</h1>
-                        <p className="text-violet-200/70 text-sm mt-0.5">
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Dipendente AI</h1>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
                           Configura, monitora e controlla il tuo team autonomo
                         </p>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
+                      <div className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full border",
+                        systemStatus?.is_active
+                          ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                          : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                      )}>
                         <div className={cn(
                           "w-2 h-2 rounded-full",
-                          systemStatus?.is_active ? "bg-green-400 animate-pulse" : "bg-red-400"
+                          systemStatus?.is_active ? "bg-green-500 animate-pulse" : "bg-red-500"
                         )} />
                         <span className={cn(
                           "text-xs font-medium",
-                          systemStatus?.is_active ? "text-green-300" : "text-red-300"
+                          systemStatus?.is_active ? "text-green-700 dark:text-green-300" : "text-red-700 dark:text-red-300"
                         )}>
                           {systemStatus?.is_active ? "Sistema attivo" : "Sistema spento"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
-                        <Zap className="h-3 w-3 text-amber-400" />
-                        <span className="text-xs text-amber-300 font-medium">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                        <Zap className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">
                           Livello {settings.autonomy_level || 0}
                         </span>
                       </div>
@@ -588,33 +588,33 @@ export default function ConsultantAIAutonomyPage() {
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.voice
-                        ? "bg-green-500/15 border-green-500/20"
-                        : "bg-white/5 border-white/10 opacity-50"
+                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
                     )}>
-                      <Phone className="h-3.5 w-3.5 text-green-400" />
-                      <span className="text-xs font-medium text-green-300">Voice</span>
+                      <Phone className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      <span className="text-xs font-medium text-green-700 dark:text-green-300">Voice</span>
                     </div>
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.email
-                        ? "bg-blue-500/15 border-blue-500/20"
-                        : "bg-white/5 border-white/10 opacity-50"
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
                     )}>
-                      <Mail className="h-3.5 w-3.5 text-blue-400" />
-                      <span className="text-xs font-medium text-blue-300">Email</span>
+                      <Mail className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Email</span>
                     </div>
                     <div className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
                       settings.channels_enabled?.whatsapp
-                        ? "bg-emerald-500/15 border-emerald-500/20"
-                        : "bg-white/5 border-white/10 opacity-50"
+                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                        : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700 opacity-50"
                     )}>
-                      <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-xs font-medium text-emerald-300">WhatsApp</span>
+                      <MessageSquare className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">WhatsApp</span>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
-                      <Cpu className="h-3.5 w-3.5 text-purple-400" />
-                      <span className="text-xs font-medium text-purple-300">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800">
+                      <Cpu className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                      <span className="text-xs font-medium text-violet-700 dark:text-violet-300">
                         {systemStatus?.roles?.filter((r: any) => r.enabled).length || 0} dipendenti
                       </span>
                     </div>
@@ -622,87 +622,41 @@ export default function ConsultantAIAutonomyPage() {
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4 max-w-2xl mx-auto h-12 rounded-xl bg-gray-100 dark:bg-gray-800/50 p-1">
-                  <TabsTrigger value="settings" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">Impostazioni</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="activity" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
-                    <Activity className="h-4 w-4" />
-                    <span className="hidden sm:inline">Feed</span>
-                    {unreadCount > 0 && (
-                      <Badge className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0 min-w-[18px] h-[18px] rounded-full">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="dashboard" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
-                    <ListTodo className="h-4 w-4" />
-                    <span className="hidden sm:inline">Task</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="data-catalog" className="flex items-center gap-2 rounded-lg text-sm data-[state=active]:shadow-sm">
-                    <Database className="h-4 w-4" />
-                    <span className="hidden sm:inline">Dati</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="settings" className="mt-6 space-y-6">
-                  <div className="flex items-center gap-4 pb-2">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
-                      <Settings className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tight">Impostazioni Autonomia</h2>
-                      <p className="text-sm text-muted-foreground">Configura livelli di autonomia, ruoli AI e comportamento dei dipendenti</p>
-                    </div>
-                  </div>
-                  <Separator />
-                  <SettingsTab
-                    settings={settings}
-                    setSettings={setSettings}
-                    systemStatus={systemStatus}
-                    loadingSettings={loadingSettings}
-                    onSave={() => saveMutation.mutate(settings)}
-                    isSaving={saveMutation.isPending}
-                    expandedRole={expandedRole}
-                    setExpandedRole={setExpandedRole}
-                    togglingRole={togglingRole}
-                    onToggleRole={handleToggleRole}
-                    isTriggering={isTriggering}
-                    triggerResult={triggerResult}
-                    onTriggerAnalysis={handleTriggerAnalysis}
-                    autonomousLogs={autonomousLogs}
-                    autonomousLogsPage={autonomousLogsPage}
-                    setAutonomousLogsPage={setAutonomousLogsPage}
-                    autonomousLogTypeFilter={autonomousLogTypeFilter}
-                    setAutonomousLogTypeFilter={setAutonomousLogTypeFilter}
-                    autonomousLogSeverityFilter={autonomousLogSeverityFilter}
-                    setAutonomousLogSeverityFilter={setAutonomousLogSeverityFilter}
-                    autonomousLogRoleFilter={autonomousLogRoleFilter}
-                    setAutonomousLogRoleFilter={setAutonomousLogRoleFilter}
-                    personalizzaConfig={personalizzaConfig}
-                    setPersonalizzaConfig={setPersonalizzaConfig}
-                    personalizzaLoading={personalizzaLoading}
-                    personalizzaSaving={personalizzaSaving}
-                    onSavePersonalizza={savePersonalizzaConfig}
-                    kbDocuments={kbDocuments}
-                    chatOpenRoleId={chatOpenRoleId}
-                    setChatOpenRoleId={setChatOpenRoleId}
-                  />
-                </TabsContent>
-
-                <TabsContent value="activity" className="mt-6 space-y-6">
-                  <div className="flex items-center gap-4 pb-2">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
-                      <Activity className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tight">Feed Attività</h2>
-                      <p className="text-sm text-muted-foreground">Monitora azioni, ragionamenti AI e simulazioni dei dipendenti in tempo reale</p>
-                    </div>
-                  </div>
-                  <Separator />
+              <SettingsTab
+                settings={settings}
+                setSettings={setSettings}
+                systemStatus={systemStatus}
+                loadingSettings={loadingSettings}
+                onSave={() => saveMutation.mutate(settings)}
+                isSaving={saveMutation.isPending}
+                expandedRole={expandedRole}
+                setExpandedRole={setExpandedRole}
+                togglingRole={togglingRole}
+                onToggleRole={handleToggleRole}
+                isTriggering={isTriggering}
+                triggerResult={triggerResult}
+                onTriggerAnalysis={handleTriggerAnalysis}
+                autonomousLogs={autonomousLogs}
+                autonomousLogsPage={autonomousLogsPage}
+                setAutonomousLogsPage={setAutonomousLogsPage}
+                autonomousLogTypeFilter={autonomousLogTypeFilter}
+                setAutonomousLogTypeFilter={setAutonomousLogTypeFilter}
+                autonomousLogSeverityFilter={autonomousLogSeverityFilter}
+                setAutonomousLogSeverityFilter={setAutonomousLogSeverityFilter}
+                autonomousLogRoleFilter={autonomousLogRoleFilter}
+                setAutonomousLogRoleFilter={setAutonomousLogRoleFilter}
+                personalizzaConfig={personalizzaConfig}
+                setPersonalizzaConfig={setPersonalizzaConfig}
+                personalizzaLoading={personalizzaLoading}
+                personalizzaSaving={personalizzaSaving}
+                onSavePersonalizza={savePersonalizzaConfig}
+                kbDocuments={kbDocuments}
+                chatOpenRoleId={chatOpenRoleId}
+                setChatOpenRoleId={setChatOpenRoleId}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                unreadCount={unreadCount}
+                activityContent={
                   <ActivityTab
                     activityData={activityData}
                     loadingActivity={loadingActivity}
@@ -733,19 +687,8 @@ export default function ConsultantAIAutonomyPage() {
                     reasoningData={reasoningData}
                     loadingReasoning={loadingReasoning}
                   />
-                </TabsContent>
-
-                <TabsContent value="dashboard" className="mt-6 space-y-6">
-                  <div className="flex items-center gap-4 pb-2">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-sm">
-                      <ListTodo className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tight">Gestione Task</h2>
-                      <p className="text-sm text-muted-foreground">Crea, approva e monitora i task dei dipendenti AI e manuali</p>
-                    </div>
-                  </div>
-                  <Separator />
+                }
+                dashboardContent={
                   <DashboardTab
                     showCreateTask={showCreateTask}
                     setShowCreateTask={setShowCreateTask}
@@ -793,25 +736,14 @@ export default function ConsultantAIAutonomyPage() {
                       setChatOpenRoleId(roleId);
                     }}
                   />
-                </TabsContent>
-
-                <TabsContent value="data-catalog" className="mt-6 space-y-6">
-                  <div className="flex items-center gap-4 pb-2">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm">
-                      <Database className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tight">Catalogo Dati</h2>
-                      <p className="text-sm text-muted-foreground">Esplora le fonti dati, query e operazioni accessibili ai dipendenti AI</p>
-                    </div>
-                  </div>
-                  <Separator />
+                }
+                dataCatalogContent={
                   <DataCatalogTab
                     showArchDetails={showArchDetails}
                     setShowArchDetails={setShowArchDetails}
                   />
-                </TabsContent>
-              </Tabs>
+                }
+              />
             </div>
           </main>
 
