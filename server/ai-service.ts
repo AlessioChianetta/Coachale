@@ -2234,6 +2234,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
     let accumulatedThinking = "";
+    let accumulatedCodeExecutions: Array<{ language: string; code: string; outcome?: string; output?: string }> = [];
+    let accumulatedGeneratedFiles: Array<{ fileName: string; mimeType: string; data: string }> = [];
+    let currentCodeExecution: { language: string; code: string; outcome?: string; output?: string } | null = null;
 
     // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
     const fileSearchTool = hasFileSearch ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) : null;
@@ -2833,6 +2836,24 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
           accumulatedThinking += chunk.content;
         }
         
+        // Accumulate code execution data for DB persistence
+        if (chunk.type === 'code_execution') {
+          currentCodeExecution = { language: chunk.language || 'PYTHON', code: chunk.code || '' };
+        }
+        if (chunk.type === 'code_execution_result' && currentCodeExecution) {
+          currentCodeExecution.outcome = chunk.outcome;
+          currentCodeExecution.output = chunk.output;
+          accumulatedCodeExecutions.push(currentCodeExecution);
+          currentCodeExecution = null;
+        }
+        if (chunk.type === 'generated_file') {
+          accumulatedGeneratedFiles.push({
+            fileName: chunk.fileName || 'file',
+            mimeType: chunk.fileMimeType || 'application/octet-stream',
+            data: chunk.fileData || '',
+          });
+        }
+        
         // Capture usageMetadata from complete event
         if (chunk.type === 'complete' && chunk.usageMetadata) {
           clientUsageMetadata = chunk.usageMetadata;
@@ -2973,7 +2994,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         content: assistantMessage,
         status: "completed",
         tokensUsed: null,
-        metadata: suggestedActions.length > 0 ? { suggestedActions } : null,
+        metadata: (suggestedActions.length > 0 || accumulatedGeneratedFiles.length > 0 || accumulatedCodeExecutions.length > 0)
+          ? {
+              ...(suggestedActions.length > 0 && { suggestedActions }),
+              ...(accumulatedGeneratedFiles.length > 0 && { generatedFiles: accumulatedGeneratedFiles }),
+              ...(accumulatedCodeExecutions.length > 0 && { codeExecutions: accumulatedCodeExecutions }),
+            }
+          : null,
         thinkingContent: accumulatedThinking || null,
       })
       .returning();
@@ -3290,11 +3317,13 @@ export async function getConversationMessages(conversationId: string, clientId: 
     .where(eq(aiMessages.conversationId, conversationId))
     .orderBy(aiMessages.createdAt);
 
-  // Map messages to include suggestedActions from metadata and thinking from thinkingContent
+  // Map messages to include suggestedActions, generatedFiles, codeExecutions from metadata
   const messagesWithActions = messages.map(msg => ({
     ...msg,
     thinking: msg.thinkingContent || undefined,
     suggestedActions: (msg.metadata as any)?.suggestedActions || undefined,
+    generatedFiles: (msg.metadata as any)?.generatedFiles || undefined,
+    codeExecutions: (msg.metadata as any)?.codeExecutions || undefined,
   }));
 
   return {
@@ -4222,6 +4251,9 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
     let accumulatedThinking = "";
+    let accumulatedCodeExecutions: Array<{ language: string; code: string; outcome?: string; output?: string }> = [];
+    let accumulatedGeneratedFiles: Array<{ fileName: string; mimeType: string; data: string }> = [];
+    let currentCodeExecution: { language: string; code: string; outcome?: string; output?: string } | null = null;
 
     // Build FileSearch tool from stores already fetched above (only if stores have actual documents)
     const consultantFileSearchTool = hasConsultantFileSearch ? fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames) : null;
@@ -4336,6 +4368,24 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         accumulatedThinking += chunk.content;
       }
       
+      // Accumulate code execution data for DB persistence
+      if (chunk.type === 'code_execution') {
+        currentCodeExecution = { language: chunk.language || 'PYTHON', code: chunk.code || '' };
+      }
+      if (chunk.type === 'code_execution_result' && currentCodeExecution) {
+        currentCodeExecution.outcome = chunk.outcome;
+        currentCodeExecution.output = chunk.output;
+        accumulatedCodeExecutions.push(currentCodeExecution);
+        currentCodeExecution = null;
+      }
+      if (chunk.type === 'generated_file') {
+        accumulatedGeneratedFiles.push({
+          fileName: chunk.fileName || 'file',
+          mimeType: chunk.fileMimeType || 'application/octet-stream',
+          data: chunk.fileData || '',
+        });
+      }
+      
       // Capture usageMetadata from complete event
       if (chunk.type === 'complete' && chunk.usageMetadata) {
         consultantUsageMetadata = chunk.usageMetadata;
@@ -4371,6 +4421,13 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
     console.log(`   - content length: ${assistantMessage.length} chars`);
     console.log(`   - accumulatedThinking length: ${accumulatedThinking?.length || 0} chars`);
     
+    const consultantMetadata = (accumulatedGeneratedFiles.length > 0 || accumulatedCodeExecutions.length > 0)
+      ? {
+          ...(accumulatedGeneratedFiles.length > 0 && { generatedFiles: accumulatedGeneratedFiles }),
+          ...(accumulatedCodeExecutions.length > 0 && { codeExecutions: accumulatedCodeExecutions }),
+        }
+      : null;
+
     const [savedMessage] = await db.insert(aiMessages)
       .values({
         conversationId: conversation.id,
@@ -4379,10 +4436,14 @@ IMPORTANTE: Rispetta queste preferenze in tutte le tue risposte.
         status: "completed",
         tokensUsed: null,
         thinkingContent: accumulatedThinking || null,
+        metadata: consultantMetadata,
       })
       .returning();
     
     console.log(`✅ [DB INSERT DEBUG] Message saved successfully: ${savedMessage.id}`);
+    if (consultantMetadata) {
+      console.log(`   - metadata: ${accumulatedGeneratedFiles.length} generated files, ${accumulatedCodeExecutions.length} code executions`);
+    }
 
     // Update conversation last message time
     await db.update(aiConversations)
@@ -5855,11 +5916,13 @@ export async function getConsultantConversationMessages(conversationId: string, 
     .where(eq(aiMessages.conversationId, conversationId))
     .orderBy(aiMessages.createdAt);
 
-  // Map messages to include thinking from thinkingContent and suggestedActions from metadata
+  // Map messages to include thinking, suggestedActions, generatedFiles, codeExecutions from metadata
   const messagesWithThinking = messages.map(msg => ({
     ...msg,
     thinking: msg.thinkingContent || undefined,
     suggestedActions: (msg.metadata as any)?.suggestedActions || undefined,
+    generatedFiles: (msg.metadata as any)?.generatedFiles || undefined,
+    codeExecutions: (msg.metadata as any)?.codeExecutions || undefined,
   }));
 
   return {

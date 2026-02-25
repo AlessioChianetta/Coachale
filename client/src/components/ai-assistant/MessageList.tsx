@@ -10,6 +10,12 @@ interface CodeExecution {
   output?: string;
 }
 
+interface GeneratedFile {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
 interface MessageListProps {
   messages: Array<{
     id: string;
@@ -26,6 +32,7 @@ interface MessageListProps {
       data?: any;
     }>;
     codeExecutions?: CodeExecution[];
+    generatedFiles?: GeneratedFile[];
   }>;
   isTyping: boolean;
   onActionClick?: (actionType?: string, actionData?: any) => void;
