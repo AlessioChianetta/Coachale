@@ -1790,7 +1790,7 @@ function DashboardTab({
                       onDrop={(e) => handleColumnDrop(e, role)}
                       onDragLeave={() => setDragOverColumn(null)}
                       className={cn(
-                        "min-w-[310px] max-w-[350px] flex-shrink-0 rounded-xl border border-border/30 bg-card/50 dark:bg-card/30 flex flex-col transition-all duration-200",
+                        "min-w-[380px] max-w-[440px] flex-shrink-0 rounded-xl border border-border/30 bg-card/50 dark:bg-card/30 flex flex-col transition-all duration-200",
                         isDragOver && "ring-2 ring-primary/30 scale-[1.01]",
                         draggedColumn === role && "opacity-50"
                       )}
