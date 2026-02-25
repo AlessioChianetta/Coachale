@@ -820,7 +820,22 @@ export default function ConsultantLeadScraper() {
                                   <span className="text-xs text-muted-foreground line-clamp-1">{r.category || "\u2014"}</span>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  {getScrapeStatusBadge(r.scrapeStatus)}
+                                  <div className="flex items-center justify-center gap-1">
+                                    {getScrapeStatusBadge(r.scrapeStatus)}
+                                    {r.scrapeStatus === "scraped" && r.websiteData && (
+                                      <div className="flex items-center gap-0.5 ml-1">
+                                        {(r.websiteData as any)?.emails?.length > 0 && (
+                                          <Mail className="h-3 w-3 text-blue-400" />
+                                        )}
+                                        {(r.websiteData as any)?.phones?.length > 0 && (
+                                          <Phone className="h-3 w-3 text-green-400" />
+                                        )}
+                                        {(r.websiteData as any)?.socialLinks && Object.keys((r.websiteData as any).socialLinks).length > 0 && (
+                                          <ExternalLink className="h-3 w-3 text-purple-400" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-1">
@@ -944,90 +959,101 @@ export default function ConsultantLeadScraper() {
                   {getScrapeStatusBadge(selectedLead.scrapeStatus)}
                 </div>
 
-                {selectedLead.websiteData && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="text-sm font-bold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
-                        <Zap className="h-4 w-4 text-amber-500" />
-                        Dati estratti dal sito web
-                      </h4>
-                      <div className="space-y-3">
-                        {selectedLead.websiteData.description && (
-                          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                            <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-                            <p className="text-sm mt-1 text-gray-700 dark:text-gray-300">{selectedLead.websiteData.description}</p>
-                          </div>
-                        )}
+                {selectedLead.websiteData && (() => {
+                  const wd = selectedLead.websiteData as any;
+                  const allEmails = [...new Set([
+                    ...(selectedLead.email ? [selectedLead.email] : []),
+                    ...(wd.emails || []),
+                  ])];
+                  const allPhones = [...new Set([
+                    ...(selectedLead.phone ? [selectedLead.phone] : []),
+                    ...(wd.phones || []),
+                  ])];
+                  const descText = wd.description || "";
+                  const descIsLong = descText.length > 400;
 
-                        {selectedLead.websiteData.emails?.length > 0 && (
-                          <div>
-                            <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Email trovate</Label>
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {selectedLead.websiteData.emails.map((email: string, i: number) => (
-                                <Badge
-                                  key={i}
-                                  variant="secondary"
-                                  className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                                  onClick={() => copyToClipboard(email)}
-                                >
-                                  <Mail className="h-3 w-3 mr-1 text-blue-500" />{email}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                  return (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-bold mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
+                          <Zap className="h-4 w-4 text-amber-500" />
+                          Dati estratti dal sito web
+                        </h4>
+                        <div className="space-y-3">
+                          {descText && (
+                            <ExpandableDescription text={descText} threshold={400} />
+                          )}
 
-                        {selectedLead.websiteData.phones?.length > 0 && (
-                          <div>
-                            <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Telefoni trovati</Label>
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {selectedLead.websiteData.phones.map((phone: string, i: number) => (
-                                <Badge
-                                  key={i}
-                                  variant="secondary"
-                                  className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                                  onClick={() => copyToClipboard(phone)}
-                                >
-                                  <Phone className="h-3 w-3 mr-1 text-green-500" />{phone}
-                                </Badge>
-                              ))}
+                          {allEmails.length > 0 && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Email ({allEmails.length})</Label>
+                              <div className="flex flex-wrap gap-2 mt-1.5">
+                                {allEmails.map((email: string, i: number) => (
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                    onClick={() => copyToClipboard(email)}
+                                  >
+                                    <Mail className="h-3 w-3 mr-1 text-blue-500" />{email}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {selectedLead.websiteData.socialLinks && Object.keys(selectedLead.websiteData.socialLinks).length > 0 && (
-                          <div>
-                            <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
-                            <div className="flex flex-wrap gap-2 mt-1.5">
-                              {Object.entries(selectedLead.websiteData.socialLinks).map(([platform, url]) => (
-                                <Badge
-                                  key={platform}
-                                  variant="outline"
-                                  className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors"
-                                  onClick={() => window.open(url as string, "_blank")}
-                                >
-                                  <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
-                                </Badge>
-                              ))}
+                          {allPhones.length > 0 && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Telefoni ({allPhones.length})</Label>
+                              <div className="flex flex-wrap gap-2 mt-1.5">
+                                {allPhones.map((phone: string, i: number) => (
+                                  <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className="cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                    onClick={() => copyToClipboard(phone)}
+                                  >
+                                    <Phone className="h-3 w-3 mr-1 text-green-500" />{phone}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {selectedLead.websiteData.services?.length > 0 && (
-                          <div>
-                            <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Servizi</Label>
-                            <div className="flex flex-wrap gap-1.5 mt-1.5">
-                              {selectedLead.websiteData.services.map((svc: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="text-xs bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
-                              ))}
+                          {wd.socialLinks && Object.keys(wd.socialLinks).length > 0 && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Social</Label>
+                              <div className="flex flex-wrap gap-2 mt-1.5">
+                                {Object.entries(wd.socialLinks).map(([platform, url]) => (
+                                  <Badge
+                                    key={platform}
+                                    variant="outline"
+                                    className="cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/20 transition-colors"
+                                    onClick={() => window.open(url as string, "_blank")}
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1 text-purple-500" />{platform}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {wd.services?.length > 0 && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Servizi ({wd.services.length})</Label>
+                              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                {wd.services.map((svc: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-xs bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400">{svc}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  );
+                })()}
 
                 {selectedLead.website && selectedLead.scrapeStatus !== "scraped" && (
                   <>
@@ -1054,6 +1080,33 @@ export default function ConsultantLeadScraper() {
         </DialogContent>
       </Dialog>
     </PageLayout>
+  );
+}
+
+function ExpandableDescription({ text, threshold = 400 }: { text: string; threshold?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > threshold;
+  const displayText = isLong && !expanded ? text.substring(0, threshold) + "..." : text;
+
+  return (
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+      <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
+      <p className="text-sm mt-1 text-gray-700 dark:text-gray-300 whitespace-pre-line">{displayText}</p>
+      {isLong && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-1 h-6 px-2 text-xs text-primary hover:text-primary/80"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? (
+            <><ChevronUp className="h-3 w-3 mr-1" />Comprimi</>
+          ) : (
+            <><ChevronDown className="h-3 w-3 mr-1" />Mostra tutto ({text.length} caratteri)</>
+          )}
+        </Button>
+      )}
+    </div>
   );
 }
 

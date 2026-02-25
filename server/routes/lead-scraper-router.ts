@@ -204,12 +204,14 @@ router.post("/results/:id/scrape-website", authenticateToken, requireAnyRole(["c
     const websiteData = await scrapeWebsiteWithFirecrawl(websiteUrl, firecrawlKey);
 
     const primaryEmail = websiteData.emails.length > 0 ? websiteData.emails[0] : result.email;
+    const primaryPhone = (!result.phone && websiteData.phones.length > 0) ? websiteData.phones[0] : result.phone;
 
     const [updated] = await db
       .update(leadScraperResults)
       .set({
         websiteData: websiteData as any,
         email: primaryEmail,
+        phone: primaryPhone,
         scrapeStatus: "scraped",
       })
       .where(eq(leadScraperResults.id, req.params.id))
@@ -236,12 +238,14 @@ router.get("/searches/:id/export", authenticateToken, async (req: AuthRequest, r
       .where(eq(leadScraperResults.searchId, req.params.id))
       .orderBy(desc(leadScraperResults.rating));
 
-    const csvHeaders = "Nome,Indirizzo,Telefono,Email,Sito Web,Rating,Recensioni,Categoria,Email Extra,Social,Descrizione\n";
+    const csvHeaders = "Nome,Indirizzo,Telefono,Email,Sito Web,Rating,Recensioni,Categoria,Email Extra,Telefoni Extra,Social,Servizi,Descrizione\n";
     const csvRows = results.map((r) => {
       const wd = r.websiteData as any || {};
       const extraEmails = (wd.emails || []).join("; ");
+      const extraPhones = (wd.phones || []).join("; ");
       const social = Object.entries(wd.socialLinks || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
-      const desc = (wd.description || "").replace(/"/g, '""').substring(0, 200);
+      const services = (wd.services || []).join("; ");
+      const desc = (wd.description || "").replace(/"/g, '""').replace(/\n/g, " ");
       return [
         `"${(r.businessName || "").replace(/"/g, '""')}"`,
         `"${(r.address || "").replace(/"/g, '""')}"`,
@@ -252,7 +256,9 @@ router.get("/searches/:id/export", authenticateToken, async (req: AuthRequest, r
         r.reviewsCount || "",
         `"${(r.category || "").replace(/"/g, '""')}"`,
         `"${extraEmails}"`,
+        `"${extraPhones}"`,
         `"${social}"`,
+        `"${services}"`,
         `"${desc}"`,
       ].join(",");
     });
