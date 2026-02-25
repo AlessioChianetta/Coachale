@@ -89,6 +89,7 @@ import {
   MailIcon,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -239,6 +240,7 @@ export default function ConsultantLeadScraper() {
   const [crmSearch, setCrmSearch] = useState("");
   const [crmSourceFilter, setCrmSourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
+  const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
 
   const [keywordSuggestions, setKeywordSuggestions] = useState<KeywordSuggestion[]>([]);
   const [keywordsLoading, setKeywordsLoading] = useState(false);
@@ -493,6 +495,12 @@ export default function ConsultantLeadScraper() {
 
   const selectedSearch = searches.find((s) => s.id === selectedSearchId);
   const isSearchRunning = selectedSearch?.status === "running" || selectedSearch?.status === "enriching";
+
+  useEffect(() => {
+    if (!selectedSearchId && searches.length > 0) {
+      setSelectedSearchId(searches[0].id);
+    }
+  }, [searches, selectedSearchId]);
 
   useEffect(() => {
     if (!isSearchRunning) return;
@@ -855,391 +863,424 @@ export default function ConsultantLeadScraper() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="ricerca" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-1 space-y-4">
-                <Card className="border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm bg-white dark:bg-gray-900">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Search className="h-4 w-4 text-violet-500" />Nuova Ricerca
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Motore di ricerca</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSearchEngine("google_maps")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_maps" ? "border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
-                        >
-                          <Map className="h-3.5 w-3.5" />Maps
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSearchEngine("google_search")}
-                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${searchEngine === "google_search" ? "border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400 shadow-sm" : "border-gray-200 dark:border-gray-700 text-gray-500"}`}
-                        >
-                          <Globe className="h-3.5 w-3.5" />Search
-                        </button>
-                      </div>
+          <TabsContent value="ricerca" className="mt-4 space-y-4">
+            <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900">
+              <CardContent className="py-3 px-4">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSearchEngine("google_maps")}
+                        className={cn(
+                          "flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-all",
+                          searchEngine === "google_maps"
+                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
+                            : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        <Map className="h-3.5 w-3.5" />Maps
+                      </button>
+                      <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+                      <button
+                        type="button"
+                        onClick={() => setSearchEngine("google_search")}
+                        className={cn(
+                          "flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-all",
+                          searchEngine === "google_search"
+                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
+                            : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                      >
+                        <Globe className="h-3.5 w-3.5" />Search
+                      </button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="query" className="text-xs font-medium">Cosa cerchi</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="query" placeholder={searchEngine === "google_search" ? "es. agenzia marketing..." : "es. ristoranti, dentisti..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-                      </div>
+
+                    <div className="relative flex-1 min-w-[150px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder={searchEngine === "google_search" ? "es. agenzia marketing..." : "es. ristoranti, dentisti..."}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 h-9"
+                        onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location" className="text-xs font-medium">Localita</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="location" placeholder="es. Milano, Roma..." value={searchLocation} onChange={(e) => setSearchLocation(e.target.value)} className="pl-9" />
-                      </div>
+
+                    <div className="relative w-[180px] shrink-0">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="es. Milano, Roma..."
+                        value={searchLocation}
+                        onChange={(e) => setSearchLocation(e.target.value)}
+                        className="pl-9 h-9"
+                        onKeyDown={(e) => { if (e.key === "Enter" && searchQuery) startSearchMutation.mutate(); }}
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-xs font-medium">Risultati max</Label>
-                        <span className="text-sm font-bold text-rose-600 dark:text-rose-400">{searchLimit}</span>
-                      </div>
-                      <Slider value={[searchLimit]} onValueChange={(v) => setSearchLimit(v[0])} min={5} max={100} step={5} className="[&_[role=slider]]:bg-rose-500" />
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Label className="text-[11px] text-muted-foreground whitespace-nowrap">Max</Label>
+                      <Input
+                        type="number"
+                        value={searchLimit}
+                        onChange={(e) => setSearchLimit(Math.max(5, Math.min(100, parseInt(e.target.value) || 5)))}
+                        className="h-9 w-[60px] text-center text-sm font-semibold"
+                        min={5}
+                        max={100}
+                        step={5}
+                      />
                     </div>
 
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400 text-xs"
+                      className="h-9 border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/20 text-violet-700 dark:text-violet-400 shrink-0"
                       onClick={handleSuggestKeywords}
                       disabled={keywordsLoading}
                     >
-                      {keywordsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-                      Suggerisci keyword AI
+                      {keywordsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     </Button>
 
+                    <Popover open={historyPopoverOpen} onOpenChange={setHistoryPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 gap-1.5 shrink-0">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Storico</span>
+                          {searches.length > 0 && (
+                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] ml-0.5">{searches.length}</Badge>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-[380px] p-0">
+                        <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold">Storico ricerche</span>
+                            <div className="flex items-center gap-1">
+                              {(["tutti", "google_maps", "google_search"] as const).map((v) => (
+                                <button
+                                  key={v}
+                                  onClick={() => setHistorySourceFilter(v)}
+                                  className={cn(
+                                    "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all",
+                                    historySourceFilter === v
+                                      ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400"
+                                      : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  )}
+                                >
+                                  {v === "tutti" && "Tutti"}
+                                  {v === "google_maps" && <><Map className="h-2.5 w-2.5 text-rose-500" />Maps</>}
+                                  {v === "google_search" && <><Globe className="h-2.5 w-2.5 text-blue-500" />Search</>}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <ScrollArea className="h-[320px]">
+                          {searchesLoading ? (
+                            <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                          ) : filteredSearches.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground text-sm px-4">
+                              <Search className="h-6 w-6 mx-auto mb-2 opacity-30" /><p>Nessuna ricerca</p>
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                              {filteredSearches.map((s) => {
+                                const searchMeta = s.metadata as any;
+                                const resCount = s.resultsCount || 0;
+                                return (
+                                  <div
+                                    key={s.id}
+                                    className={cn(
+                                      "px-3 py-2.5 cursor-pointer transition-all duration-200",
+                                      selectedSearchId === s.id
+                                        ? "bg-violet-50 dark:bg-violet-950/20 border-l-3 border-l-violet-500"
+                                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                    )}
+                                    onClick={() => { setSelectedSearchId(s.id); setHistoryPopoverOpen(false); }}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5">
+                                          {searchMeta?.params?.searchEngine === "google_search" ? (
+                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
+                                              <Globe className="h-2.5 w-2.5" />Search
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
+                                              <Map className="h-2.5 w-2.5" />Maps
+                                            </Badge>
+                                          )}
+                                          <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          {s.originRole === "hunter" && (
+                                            <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
+                                              <Crosshair className="h-2.5 w-2.5" />Hunter
+                                            </Badge>
+                                          )}
+                                          {getStatusBadge(s.status)}
+                                          <span className="text-[10px] text-muted-foreground">{resCount} ris.</span>
+                                          <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
+                                        </div>
+                                      </div>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500 shrink-0" onClick={(e) => { e.stopPropagation(); deleteSearchMutation.mutate(s.id); }}>
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button
+                      className="bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm h-9 px-5 shrink-0"
+                      onClick={() => startSearchMutation.mutate()}
+                      disabled={!searchQuery || startSearchMutation.isPending}
+                    >
+                      {startSearchMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Avvio...</>
+                      ) : (
+                        <><Search className="h-4 w-4 mr-1.5" />Cerca</>
+                      )}
+                    </Button>
+                  </div>
+
+                  <AnimatePresence>
                     {showKeywords && keywordSuggestions.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-violet-700 dark:text-violet-400">Keyword suggerite</Label>
-                        <div className="flex flex-wrap gap-1.5">
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap pt-1 pb-0.5">
+                          <span className="text-[11px] font-medium text-violet-600 dark:text-violet-400 shrink-0">AI:</span>
                           {keywordSuggestions.map((kw, i) => (
                             <TooltipProvider key={i}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <button
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-all hover:shadow-sm cursor-pointer bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-medium transition-all hover:shadow-sm cursor-pointer bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-600"
                                     onClick={() => {
                                       setSearchQuery(kw.keyword);
                                       setSearchEngine(kw.engine === "maps" ? "google_maps" : "google_search");
                                     }}
                                   >
-                                    {kw.engine === "maps" ? <Map className="h-3 w-3 text-rose-500" /> : <Globe className="h-3 w-3 text-blue-500" />}
+                                    {kw.engine === "maps" ? <Map className="h-2.5 w-2.5 text-rose-500" /> : <Globe className="h-2.5 w-2.5 text-blue-500" />}
                                     <span className="truncate max-w-[120px]">{kw.keyword}</span>
                                   </button>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[200px]">
+                                <TooltipContent side="bottom" className="max-w-[200px]">
                                   <p className="text-xs">{kw.reason}</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           ))}
                         </div>
-                      </div>
+                      </motion.div>
                     )}
-
                     {showKeywords && !keywordsLoading && keywordSuggestions.length === 0 && !savedSalesContext && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg">
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg"
+                      >
                         Configura prima il tuo Sales Agent nella tab dedicata per ottenere suggerimenti personalizzati.
-                      </p>
+                      </motion.p>
                     )}
+                  </AnimatePresence>
+                </div>
+              </CardContent>
+            </Card>
 
-                    <Button
-                      className="w-full bg-violet-600 hover:bg-violet-700 text-white border-0 shadow-sm"
-                      onClick={() => startSearchMutation.mutate()}
-                      disabled={!searchQuery || startSearchMutation.isPending}
-                    >
-                      {startSearchMutation.isPending ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" />Avvio...</>
-                      ) : (
-                        <><Search className="h-4 w-4 mr-2" />Cerca</>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-500" />Storico ({searches.length})
-                    </CardTitle>
-                    <div className="flex items-center gap-1 mt-2">
-                      {(["tutti", "google_maps", "google_search"] as const).map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => setHistorySourceFilter(v)}
-                          className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all",
-                            historySourceFilter === v
-                              ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400"
-                              : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-                          )}
-                        >
-                          {v === "tutti" && "Tutti"}
-                          {v === "google_maps" && <><Map className="h-3 w-3 text-rose-500" />Maps</>}
-                          {v === "google_search" && <><Globe className="h-3 w-3 text-blue-500" />Search</>}
-                        </button>
-                      ))}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-[350px]">
-                      {searchesLoading ? (
-                        <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-                      ) : filteredSearches.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground text-sm px-4">
-                          <Search className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>Nessuna ricerca</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                          {filteredSearches.map((s) => {
-                            const searchMeta = s.metadata as any;
-                            const resCount = s.resultsCount || 0;
-                            return (
-                              <div
-                                key={s.id}
-                                className={`px-4 py-3 cursor-pointer transition-all duration-200 ${selectedSearchId === s.id ? "bg-violet-50 dark:bg-violet-950/20 border-l-3 border-l-violet-500" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}
-                                onClick={() => setSelectedSearchId(s.id)}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      {searchMeta?.params?.searchEngine === "google_search" ? (
-                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-blue-300 text-blue-600 bg-blue-50 dark:bg-blue-950/30 gap-0.5">
-                                          <Globe className="h-2.5 w-2.5" />Search
-                                        </Badge>
-                                      ) : (
-                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
-                                          <Map className="h-2.5 w-2.5" />Maps
-                                        </Badge>
-                                      )}
-                                      <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground truncate mt-0.5">{s.location || "Nessuna localita"}</p>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                      {s.originRole === "hunter" && (
-                                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800 gap-0.5">
-                                          <Crosshair className="h-2.5 w-2.5" />Hunter
-                                        </Badge>
-                                      )}
-                                      {getStatusBadge(s.status)}
-                                      <span className="text-[10px] text-muted-foreground">{resCount} risultati</span>
-                                      <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-shrink-0">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-500" onClick={(e) => { e.stopPropagation(); deleteSearchMutation.mutate(s.id); }}>
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
+            {!selectedSearchId ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Search className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-medium">Avvia la tua prima ricerca</p>
+                <p className="text-xs mt-1">Inserisci una keyword e una località per trovare nuovi lead</p>
               </div>
-
-              <div className="lg:col-span-3 space-y-4">
-                {!selectedSearchId ? (
-                  <Card className="rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
-                    <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-                      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4 shadow-sm">
-                        <Building2 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+            ) : (
+              <div className="space-y-4">
+                {selectedSearch && (
+                  <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <CardContent className="py-3 px-4">
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800">
+                            <Search className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-gray-900 dark:text-white">{selectedSearch.query}</h3>
+                              {selectedSearch.location && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />{selectedSearch.location}</Badge>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              {getStatusBadge(selectedSearch.status)}
+                              <span className="text-xs text-muted-foreground font-medium">{results.length} risultati</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {selectedSearch.status === "completed" && (
+                            <Button variant="outline" size="sm" onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)} disabled={generateBatchSummariesMutation.isPending} className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-700">
+                              {generateBatchSummariesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                              Analisi AI
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="relative">
+                            <Filter className="h-4 w-4 mr-1" />Filtri
+                            {activeFiltersCount > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-violet-600">{activeFiltersCount}</Badge>}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleExport} disabled={results.length === 0}>
+                            <Download className="h-4 w-4 mr-1" />CSV
+                          </Button>
+                          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                            <SelectTrigger className="w-[130px] h-9 text-xs">
+                              <ArrowUpDown className="h-3 w-3 mr-1" /><SelectValue placeholder="Ordina" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="default">Predefinito</SelectItem>
+                              <SelectItem value="score">Score AI</SelectItem>
+                              <SelectItem value="rating">Rating</SelectItem>
+                              <SelectItem value="name">Nome A-Z</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Seleziona o avvia una ricerca</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">Usa il pannello a sinistra per cercare business.</p>
+                      {isSearchRunning && (
+                        <div className="mt-3">
+                          <Progress value={undefined} className="h-1.5" />
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
+                          </p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                ) : (
-                  <>
-                    {selectedSearch && (
-                      <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <CardContent className="py-4 px-5">
-                          <div className="flex items-center justify-between flex-wrap gap-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800">
-                                <Search className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-bold text-gray-900 dark:text-white">{selectedSearch.query}</h3>
-                                  {selectedSearch.location && <Badge variant="outline" className="text-xs"><MapPin className="h-3 w-3 mr-1" />{selectedSearch.location}</Badge>}
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  {getStatusBadge(selectedSearch.status)}
-                                  <span className="text-xs text-muted-foreground font-medium">{results.length} risultati</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {selectedSearch.status === "completed" && (
-                                <Button variant="outline" size="sm" onClick={() => generateBatchSummariesMutation.mutate(selectedSearchId!)} disabled={generateBatchSummariesMutation.isPending} className="border-amber-200 hover:border-amber-400 hover:bg-amber-50 text-amber-700">
-                                  {generateBatchSummariesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                                  Analisi AI
-                                </Button>
-                              )}
-                              <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="relative">
-                                <Filter className="h-4 w-4 mr-1" />Filtri
-                                {activeFiltersCount > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-violet-600">{activeFiltersCount}</Badge>}
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={handleExport} disabled={results.length === 0}>
-                                <Download className="h-4 w-4 mr-1" />CSV
-                              </Button>
-                              <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-                                <SelectTrigger className="w-[130px] h-9 text-xs">
-                                  <ArrowUpDown className="h-3 w-3 mr-1" /><SelectValue placeholder="Ordina" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="default">Predefinito</SelectItem>
-                                  <SelectItem value="score">Score AI</SelectItem>
-                                  <SelectItem value="rating">Rating</SelectItem>
-                                  <SelectItem value="name">Nome A-Z</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          {isSearchRunning && (
-                            <div className="mt-3">
-                              <Progress value={undefined} className="h-1.5" />
-                              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" />{selectedSearch.status === "enriching" ? "Analisi siti web in corso..." : "Ricerca in corso..."}
-                              </p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {showFilters && (
-                      <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <CardContent className="py-4 px-5">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold flex items-center gap-2"><Filter className="h-4 w-4 text-gray-500" />Filtri</h4>
-                            {activeFiltersCount > 0 && (
-                              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-gray-500 hover:text-gray-700"><X className="h-3 w-3 mr-1" />Rimuovi</Button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox id="hasEmail" checked={filterHasEmail} onCheckedChange={(c) => setFilterHasEmail(!!c)} />
-                              <Label htmlFor="hasEmail" className="text-sm">Ha email</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox id="hasPhone" checked={filterHasPhone} onCheckedChange={(c) => setFilterHasPhone(!!c)} />
-                              <Label htmlFor="hasPhone" className="text-sm">Ha telefono</Label>
-                            </div>
-                            <Input placeholder="Rating min" value={filterRatingMin} onChange={(e) => setFilterRatingMin(e.target.value)} className="h-9" />
-                            <Input placeholder="Categoria" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="h-9" />
-                            <Input placeholder="Cerca nome..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="h-9" />
-                            <Select value={filterLeadStatus} onValueChange={setFilterLeadStatus}>
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Stato" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="tutti">Tutti</SelectItem>
-                                {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                      <CardContent className="p-0">
-                        {resultsLoading ? (
-                          <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-violet-400" /></div>
-                        ) : results.length === 0 ? (
-                          <div className="text-center py-12 text-muted-foreground">
-                            {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-violet-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
-                          </div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                                  <TableHead className="min-w-[220px] font-semibold">Azienda</TableHead>
-                                  <TableHead className="text-center font-semibold w-[50px]">Contatti</TableHead>
-                                  <TableHead className="text-center font-semibold w-[80px]">Rating</TableHead>
-                                  <TableHead className="text-center font-semibold w-[90px]">Score AI</TableHead>
-                                  <TableHead className="text-center font-semibold w-[90px]">Stato</TableHead>
-                                  <TableHead className="text-right font-semibold w-[60px]">Azioni</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {sortedResults.map((r) => {
-                                  const statusInfo = getLeadStatusInfo(r.leadStatus);
-                                  return (
-                                    <TableRow
-                                      key={r.id}
-                                      className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-l-3 ${statusInfo.borderColor}`}
-                                      onClick={() => navigateToLead(r.id)}
-                                    >
-                                      <TableCell>
-                                        <div>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="font-medium text-gray-900 dark:text-white line-clamp-1">{r.businessName || "\u2014"}</span>
-                                            {r.source === "google_search" && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-600">Web</Badge>}
-                                          </div>
-                                          {r.category && <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{r.category}</p>}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-center">
-                                        <div className="flex items-center justify-center gap-1.5">
-                                          <Mail className={`h-3.5 w-3.5 ${r.email ? "text-blue-500" : "text-gray-200 dark:text-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
-                                          <Phone className={`h-3.5 w-3.5 ${r.phone ? "text-emerald-500" : "text-gray-200 dark:text-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
-                                          <Globe className={`h-3.5 w-3.5 ${r.website ? "text-violet-500" : "text-gray-200 dark:text-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-center">
-                                        {r.rating ? (
-                                          <div className="flex items-center justify-center gap-1">
-                                            <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                                            <span className="text-xs font-semibold">{r.rating}</span>
-                                          </div>
-                                        ) : <span className="text-xs text-muted-foreground">\u2014</span>}
-                                      </TableCell>
-                                      <TableCell className="text-center">
-                                        {getScoreBar(r.aiCompatibilityScore)}
-                                      </TableCell>
-                                      <TableCell className="text-center">
-                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                          {r.website && r.scrapeStatus !== "scraped" && r.scrapeStatus !== "scraped_cached" && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); scrapeWebsiteMutation.mutate(r.id); }}>
-                                              <RefreshCw className={`h-3 w-3 ${scrapeWebsiteMutation.isPending ? "animate-spin" : ""}`} />
-                                            </Button>
-                                          )}
-                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyToClipboard([r.businessName, r.phone, r.email, r.website].filter(Boolean).join(" | ")); }}>
-                                            <Copy className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </>
                 )}
+
+                {showFilters && (
+                  <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <CardContent className="py-4 px-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold flex items-center gap-2"><Filter className="h-4 w-4 text-gray-500" />Filtri</h4>
+                        {activeFiltersCount > 0 && (
+                          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7 text-gray-500 hover:text-gray-700"><X className="h-3 w-3 mr-1" />Rimuovi</Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="hasEmail" checked={filterHasEmail} onCheckedChange={(c) => setFilterHasEmail(!!c)} />
+                          <Label htmlFor="hasEmail" className="text-sm">Ha email</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="hasPhone" checked={filterHasPhone} onCheckedChange={(c) => setFilterHasPhone(!!c)} />
+                          <Label htmlFor="hasPhone" className="text-sm">Ha telefono</Label>
+                        </div>
+                        <Input placeholder="Rating min" value={filterRatingMin} onChange={(e) => setFilterRatingMin(e.target.value)} className="h-9" />
+                        <Input placeholder="Categoria" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="h-9" />
+                        <Input placeholder="Cerca nome..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="h-9" />
+                        <Select value={filterLeadStatus} onValueChange={setFilterLeadStatus}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Stato" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tutti">Tutti</SelectItem>
+                            {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                  <CardContent className="p-0">
+                    {resultsLoading ? (
+                      <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-violet-400" /></div>
+                    ) : results.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        {isSearchRunning ? <><Loader2 className="h-6 w-6 animate-spin text-violet-400 mx-auto mb-2" /><p>Ricerca in corso...</p></> : "Nessun risultato"}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50 dark:bg-gray-800/50">
+                              <TableHead className="min-w-[220px] font-semibold">Azienda</TableHead>
+                              <TableHead className="text-center font-semibold w-[50px]">Contatti</TableHead>
+                              <TableHead className="text-center font-semibold w-[80px]">Rating</TableHead>
+                              <TableHead className="text-center font-semibold w-[90px]">Score AI</TableHead>
+                              <TableHead className="text-center font-semibold w-[90px]">Stato</TableHead>
+                              <TableHead className="text-right font-semibold w-[60px]">Azioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sortedResults.map((r) => {
+                              const statusInfo = getLeadStatusInfo(r.leadStatus);
+                              return (
+                                <TableRow
+                                  key={r.id}
+                                  className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-l-3 ${statusInfo.borderColor}`}
+                                  onClick={() => navigateToLead(r.id)}
+                                >
+                                  <TableCell>
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-medium text-gray-900 dark:text-white line-clamp-1">{r.businessName || "\u2014"}</span>
+                                        {r.source === "google_search" && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-600">Web</Badge>}
+                                      </div>
+                                      {r.category && <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{r.category}</p>}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <Mail className={`h-3.5 w-3.5 ${r.email ? "text-blue-500" : "text-gray-200 dark:text-gray-700"}`} title={r.email ? "Email disponibile" : "No email"} />
+                                      <Phone className={`h-3.5 w-3.5 ${r.phone ? "text-emerald-500" : "text-gray-200 dark:text-gray-700"}`} title={r.phone ? "Telefono disponibile" : "No telefono"} />
+                                      <Globe className={`h-3.5 w-3.5 ${r.website ? "text-violet-500" : "text-gray-200 dark:text-gray-700"}`} title={r.website ? "Sito web disponibile" : "No sito"} />
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {r.rating ? (
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                        <span className="text-xs font-semibold">{r.rating}</span>
+                                      </div>
+                                    ) : <span className="text-xs text-muted-foreground">{"\u2014"}</span>}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {getScoreBar(r.aiCompatibilityScore)}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${statusInfo.color}`}>{statusInfo.label}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {r.website && r.scrapeStatus !== "scraped" && r.scrapeStatus !== "scraped_cached" && (
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); scrapeWebsiteMutation.mutate(r.id); }}>
+                                          <RefreshCw className={`h-3 w-3 ${scrapeWebsiteMutation.isPending ? "animate-spin" : ""}`} />
+                                        </Button>
+                                      )}
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); copyToClipboard([r.businessName, r.phone, r.email, r.website].filter(Boolean).join(" | ")); }}>
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           <TabsContent value="crm" className="mt-4">
