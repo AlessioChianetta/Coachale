@@ -50,6 +50,11 @@ interface MessageProps {
     codeExecutions?: CodeExecution[];
   };
   onActionClick?: (actionType?: string, actionData?: any) => void;
+  assistantName?: string;
+  assistantSubtitle?: string;
+  assistantAvatarSrc?: string;
+  assistantAvatarFallbackIcon?: React.ReactNode;
+  compact?: boolean;
 }
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -178,7 +183,7 @@ const MARKDOWN_COMPONENTS: Components = {
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
-export function Message({ message, onActionClick }: MessageProps) {
+export function Message({ message, onActionClick, assistantName, assistantSubtitle, assistantAvatarSrc, assistantAvatarFallbackIcon, compact }: MessageProps) {
   const [, setLocation] = useLocation();
 
   const handleAction = (action: { type: string; label: string; data?: any }) => {
@@ -264,6 +269,22 @@ export function Message({ message, onActionClick }: MessageProps) {
 
   if (message.role === "user") {
     const hasAttachments = message.attachments && message.attachments.length > 0;
+
+    if (compact) {
+      return (
+        <div className="flex gap-2 max-w-[90%] ml-auto flex-row-reverse">
+          <div className="shrink-0 mt-1">
+            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+          <div className="rounded-xl px-4 py-3 text-sm leading-relaxed bg-primary text-primary-foreground rounded-tr-sm">
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] flex items-end gap-2.5">
@@ -321,13 +342,50 @@ export function Message({ message, onActionClick }: MessageProps) {
   const isPlaceholder = message.content.includes("💭 Sto pensando");
   const content = message.content || '';
 
+  const resolvedName = assistantName ?? "Simone";
+  const resolvedSubtitle = assistantSubtitle ?? "AI Advisor";
+  const resolvedAvatar = assistantAvatarSrc ?? "/avatars/simone-avatar.png";
+
+  if (compact) {
+    return (
+      <div className="flex gap-2 max-w-[90%]">
+        <div className="shrink-0 mt-1">
+          {assistantAvatarFallbackIcon ? (
+            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              {assistantAvatarFallbackIcon}
+            </div>
+          ) : (
+            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/><path d="M2 21a10 10 0 0 1 20 0"/></svg>
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl px-4 py-3 text-sm leading-relaxed bg-muted rounded-tl-sm">
+          <div className="ai-content">
+            {isHtmlContent(content) ? (
+              <div dangerouslySetInnerHTML={{ __html: sanitizeAndFormatHtml(content) }} />
+            ) : (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeSanitize]}
+                components={MARKDOWN_COMPONENTS}
+              >
+                {preprocessContent(content)}
+              </ReactMarkdown>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center gap-2.5 mb-3">
         <div className="flex-shrink-0 h-9 w-9 rounded-full overflow-hidden shadow-md ring-2 ring-violet-200 dark:ring-violet-800">
           <img
-            src="/avatars/simone-avatar.png"
-            alt="Simone"
+            src={resolvedAvatar}
+            alt={resolvedName}
             className="h-full w-full object-cover"
             onError={(e) => {
               const t = e.currentTarget;
@@ -340,8 +398,8 @@ export function Message({ message, onActionClick }: MessageProps) {
           />
         </div>
         <div>
-          <p className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">Simone</p>
-          <p className="text-xs text-violet-500 dark:text-violet-400 leading-tight">AI Advisor</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{resolvedName}</p>
+          <p className="text-xs text-violet-500 dark:text-violet-400 leading-tight">{resolvedSubtitle}</p>
         </div>
       </div>
 

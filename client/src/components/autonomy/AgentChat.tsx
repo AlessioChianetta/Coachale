@@ -5,10 +5,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getAuthHeaders } from "@/lib/auth";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import { Message } from "@/components/ai-assistant/Message";
+import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
 import {
-  Send, Loader2, Trash2, User, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
+  Send, Loader2, Trash2, X, ChevronDown, Sparkles, Brain, Calendar, MessageSquare, ChevronRight,
   Paperclip, Mic, MicOff, FileText, Image as ImageIcon, Music,
 } from "lucide-react";
 
@@ -81,31 +81,6 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
   ],
 };
 
-function SafeMarkdown({ content }: { content: string }) {
-  return (
-    <ReactMarkdown
-      rehypePlugins={[rehypeSanitize]}
-      components={{
-        p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
-        strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-        em: ({ children }) => <em className="italic">{children}</em>,
-        ul: ({ children }) => <ul className="list-disc pl-4 mb-3 space-y-1">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal pl-4 mb-3 space-y-1">{children}</ol>,
-        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-        h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-sm font-semibold mb-1.5 mt-2 first:mt-0">{children}</h3>,
-        blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/30 pl-3 my-2 italic text-muted-foreground">{children}</blockquote>,
-        code: ({ children }) => (
-          <code className="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
-        ),
-        hr: () => <hr className="my-3 border-border/50" />,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-}
 
 function getRelativeTime(dateStr: string): string {
   const now = new Date();
@@ -594,94 +569,28 @@ export default function AgentChat({ roleId, roleName, avatar, accentColor, open,
             </div>
           ) : (
             messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex gap-2 max-w-[90%]",
-                  msg.sender === "consultant" ? "ml-auto flex-row-reverse" : ""
-                )}
-              >
-                <div className="shrink-0 mt-1">
-                  {msg.sender === "agent" ? (
-                    <AgentAvatar avatar={avatar} name={roleName} size="sm" />
-                  ) : (
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                  )}
-                </div>
-                <div
-                  className={cn(
-                    "rounded-xl px-4 py-3 text-sm leading-relaxed",
-                    msg.sender === "consultant"
-                      ? "bg-primary text-primary-foreground rounded-tr-sm"
-                      : "bg-muted rounded-tl-sm"
-                  )}
-                >
-                  {msg.sender === "agent" ? (
-                    <SafeMarkdown content={msg.message} />
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.message}</p>
-                  )}
-                  <p className={cn(
-                    "text-[10px] mt-1",
-                    msg.sender === "consultant" ? "text-primary-foreground/60" : "text-muted-foreground/60"
-                  )}>
-                    {getRelativeTime(msg.created_at)}
-                  </p>
-                </div>
+              <div key={msg.id} className="space-y-0.5">
+                <Message
+                  message={{
+                    id: msg.id,
+                    role: msg.sender === "consultant" ? "user" : "assistant",
+                    content: msg.message,
+                  }}
+                  compact
+                  assistantName={roleName}
+                />
+                <p className={cn(
+                  "text-[10px]",
+                  msg.sender === "consultant" ? "text-right mr-8 text-muted-foreground/60" : "ml-8 text-muted-foreground/60"
+                )}>
+                  {getRelativeTime(msg.created_at)}
+                </p>
               </div>
             ))
           )}
 
           {sending && (
-            <motion.div
-              className="flex gap-2 max-w-[90%]"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <div className="shrink-0 mt-1">
-                <motion.div
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  <AgentAvatar avatar={avatar} name={roleName} size="sm" />
-                </motion.div>
-              </div>
-              <div className="bg-muted rounded-xl rounded-tl-sm px-4 py-2.5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1.5">
-                    {[0, 1, 2].map((i) => (
-                      <motion.span
-                        key={i}
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: accentColor }}
-                        animate={{
-                          y: [0, -6, 0],
-                          opacity: [0.4, 1, 0.4],
-                          scale: [0.85, 1.15, 0.85],
-                        }}
-                        transition={{
-                          duration: 0.8,
-                          repeat: Infinity,
-                          delay: i * 0.15,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <motion.span
-                    className="text-xs font-medium"
-                    style={{ color: accentColor }}
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    {roleName} sta scrivendo
-                  </motion.span>
-                </div>
-              </div>
-            </motion.div>
+            <ThinkingBubble isThinking={true} />
           )}
         </div>
 

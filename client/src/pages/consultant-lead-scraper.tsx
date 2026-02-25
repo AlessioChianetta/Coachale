@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageLayout } from "@/components/layout/PageLayout";
+import { Message } from "@/components/ai-assistant/Message";
+import { ThinkingBubble } from "@/components/ai-assistant/ThinkingBubble";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +75,6 @@ import {
   ClipboardList,
   Bot,
   ArrowUpDown,
-  User,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -133,8 +134,9 @@ interface SalesContext {
 }
 
 interface ChatMessage {
+  id: string;
   role: "user" | "assistant";
-  text: string;
+  content: string;
 }
 
 interface KeywordSuggestion {
@@ -478,7 +480,7 @@ export default function ConsultantLeadScraper() {
     if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatInput("");
-    setChatMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", content: userMsg }]);
     setChatLoading(true);
 
     try {
@@ -502,7 +504,7 @@ export default function ConsultantLeadScraper() {
       ].filter(Boolean).join("\n");
 
       const contents = [
-        ...chatMessages.map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] })),
+        ...chatMessages.map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] })),
         { role: "user", parts: [{ text: userMsg }] },
       ];
 
@@ -514,9 +516,9 @@ export default function ConsultantLeadScraper() {
 
       if (!res.ok) throw new Error("Errore chat");
       const data = await res.json();
-      setChatMessages(prev => [...prev, { role: "assistant", text: data.text || "Nessuna risposta" }]);
+      setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: data.text || "Nessuna risposta" }]);
     } catch {
-      setChatMessages(prev => [...prev, { role: "assistant", text: "Errore nella comunicazione con l'AI. Riprova." }]);
+      setChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: "Errore nella comunicazione con l'AI. Riprova." }]);
     } finally {
       setChatLoading(false);
     }
@@ -1225,87 +1227,19 @@ export default function ConsultantLeadScraper() {
                     </div>
                   </div>
                 ) : (
-                  chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "flex gap-2 max-w-[90%]",
-                        msg.role === "user" ? "ml-auto flex-row-reverse" : ""
-                      )}
-                    >
-                      <div className="shrink-0 mt-1">
-                        {msg.role === "assistant" ? (
-                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                            <Bot className="h-3.5 w-3.5 text-white" />
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                        )}
-                      </div>
-                      <div
-                        className={cn(
-                          "rounded-xl px-4 py-3 text-sm leading-relaxed",
-                          msg.role === "user"
-                            ? "bg-primary text-primary-foreground rounded-tr-sm"
-                            : "bg-muted rounded-tl-sm"
-                        )}
-                      >
-                        <p className="whitespace-pre-wrap">{msg.text}</p>
-                      </div>
-                    </div>
+                  chatMessages.map((msg) => (
+                    <Message
+                      key={msg.id}
+                      message={msg}
+                      compact
+                      assistantName="Sales Agent"
+                      assistantAvatarFallbackIcon={<Bot className="h-3.5 w-3.5 text-white" />}
+                    />
                   ))
                 )}
 
                 {chatLoading && (
-                  <motion.div
-                    className="flex gap-2 max-w-[90%]"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    <div className="shrink-0 mt-1">
-                      <motion.div
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                          <Bot className="h-3.5 w-3.5 text-white" />
-                        </div>
-                      </motion.div>
-                    </div>
-                    <div className="bg-muted rounded-xl rounded-tl-sm px-4 py-2.5 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                          {[0, 1, 2].map((idx) => (
-                            <motion.span
-                              key={idx}
-                              className="w-2 h-2 rounded-full bg-violet-500"
-                              animate={{
-                                y: [0, -6, 0],
-                                opacity: [0.4, 1, 0.4],
-                                scale: [0.85, 1.15, 0.85],
-                              }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                delay: idx * 0.15,
-                                ease: "easeInOut",
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <motion.span
-                          className="text-xs font-medium text-violet-600 dark:text-violet-400"
-                          animate={{ opacity: [0.5, 1, 0.5] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                        >
-                          Sales Agent sta scrivendo
-                        </motion.span>
-                      </div>
-                    </div>
-                  </motion.div>
+                  <ThinkingBubble isThinking={true} />
                 )}
                 <div ref={chatEndRef} />
               </div>
