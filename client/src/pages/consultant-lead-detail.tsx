@@ -900,49 +900,116 @@ export default function ConsultantLeadDetail() {
   );
 }
 
-function renderMarkdownText(text: string): React.ReactNode[] {
-  const urlRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)|(https?:\/\/[^\s]+)/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
-
-  while ((match = urlRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    if (match[1] && match[2]) {
-      parts.push(
-        <a key={key++} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-          {match[1]}
-        </a>
-      );
-    } else if (match[3]) {
-      parts.push(
-        <a key={key++} href={match[3]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-          {match[3]}
-        </a>
-      );
-    }
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-  return parts;
+function cleanScrapedText(raw: string): string {
+  let t = raw;
+  t = t.replace(/\[(?:\s*)\]\(https?:\/\/[^)]+\)/g, "");
+  t = t.replace(/\\\\/g, "\n");
+  t = t.replace(/\\n/g, "\n");
+  t = t.replace(/\*\*([^*]+)\*\*/g, "$1");
+  t = t.replace(/^\s*#+\s*/gm, "");
+  t = t.replace(/^[-*]\s+/gm, "- ");
+  t = t.replace(/[ \t]+$/gm, "");
+  t = t.replace(/[ \t]{3,}/g, "  ");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  t = t.trim();
+  return t;
 }
 
-function ExpandableDescription({ text, threshold = 300 }: { text: string; threshold?: number }) {
+function renderFormattedText(text: string): React.ReactNode[] {
+  const cleaned = cleanScrapedText(text);
+  const lines = cleaned.split("\n");
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  const renderLineWithLinks = (line: string, baseKey: number): React.ReactNode[] => {
+    const urlRegex = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)|(https?:\/\/[^\s<>)"]+)/g;
+    const parts: React.ReactNode[] = [];
+    let lastIdx = 0;
+    let m: RegExpExecArray | null;
+    let k = 0;
+
+    while ((m = urlRegex.exec(line)) !== null) {
+      if (m.index > lastIdx) {
+        parts.push(line.slice(lastIdx, m.index));
+      }
+      const href = m[2] || m[3];
+      const label = m[1] || (() => {
+        try {
+          const u = new URL(href);
+          return u.hostname.replace(/^www\./, "");
+        } catch { return href; }
+      })();
+      parts.push(
+        <a key={`${baseKey}-l${k++}`} href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
+          {label}
+        </a>
+      );
+      lastIdx = m.index + m[0].length;
+    }
+    if (lastIdx < line.length) {
+      parts.push(line.slice(lastIdx));
+    }
+    return parts;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === "") {
+      elements.push(<br key={key++} />);
+      continue;
+    }
+
+    const isBullet = /^[-\u2022]\s+/.test(line);
+    if (isBullet) {
+      const bulletLines: string[] = [line];
+      while (i + 1 < lines.length && /^[-\u2022]\s+/.test(lines[i + 1])) {
+        i++;
+        bulletLines.push(lines[i]);
+      }
+      elements.push(
+        <ul key={key++} className="list-disc list-inside space-y-0.5 ml-1 my-1">
+          {bulletLines.map((bl, bi) => (
+            <li key={bi} className="text-sm text-gray-600 dark:text-gray-400">
+              {renderLineWithLinks(bl.replace(/^[-\u2022]\s+/, ""), key + bi)}
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    const isHeadingLike = line.length < 60 && !line.includes(".") && /^[A-Z\u00C0-\u00DC]/.test(line) && i > 0 && (lines[i - 1]?.trim() === "" || i === 0);
+    if (isHeadingLike) {
+      elements.push(
+        <p key={key++} className="font-semibold text-gray-800 dark:text-gray-200 mt-1.5 mb-0.5">
+          {renderLineWithLinks(line, key)}
+        </p>
+      );
+    } else {
+      elements.push(
+        <p key={key++} className="text-sm text-gray-600 dark:text-gray-400">
+          {renderLineWithLinks(line, key)}
+        </p>
+      );
+    }
+  }
+  return elements;
+}
+
+function ExpandableDescription({ text, threshold = 400 }: { text: string; threshold?: number }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > threshold;
-  const displayText = isLong && !expanded ? text.substring(0, threshold) + "..." : text;
+  const cleaned = cleanScrapedText(text);
+  const isLong = cleaned.length > threshold;
+  const displayText = isLong && !expanded ? cleaned.substring(0, threshold) + "..." : cleaned;
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5">
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
       <Label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Descrizione</Label>
-      <p className="text-sm mt-1 text-gray-600 dark:text-gray-400 whitespace-pre-line leading-relaxed">{renderMarkdownText(displayText)}</p>
+      <div className="mt-1.5 space-y-0.5 leading-relaxed">
+        {renderFormattedText(displayText)}
+      </div>
       {isLong && (
-        <Button variant="ghost" size="sm" className="mt-1 h-5 px-2 text-[10px] text-primary hover:text-primary/80" onClick={() => setExpanded(!expanded)}>
+        <Button variant="ghost" size="sm" className="mt-1.5 h-5 px-2 text-[10px] text-primary hover:text-primary/80" onClick={() => setExpanded(!expanded)}>
           {expanded ? <><ChevronUp className="h-3 w-3 mr-0.5" />Comprimi</> : <><ChevronDown className="h-3 w-3 mr-0.5" />Mostra tutto</>}
         </Button>
       )}
