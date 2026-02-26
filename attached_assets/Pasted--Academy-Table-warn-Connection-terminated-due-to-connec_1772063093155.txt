@@ -1,0 +1,63 @@
+[Academy] Table warn: Connection terminated due to connection timeout
+❌ [CALENDAR WEBHOOK] Error loading channels from DB: Connection terminated due to connection timeout
+⚠️ [DB POOL] Warmup failed (non-blocking): Warmup timeout (10s)
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/consultant-ai-config.tsx as it exceeds the max of 500KB.
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/consultant-voice-calls.tsx as it exceeds the max of 500KB.
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[EMAIL-HUB INIT] Error initializing IDLE connections: Error: Connection terminated due to connection timeout
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async initializeEmailHubIdle (/home/runner/workspace/server/routes/email-hub-router.ts:3917:22) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:136:73)
+      at Object.onceWrapper (node:events:638:28)
+      at Connection.emit (node:events:524:28)
+      at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:62:12)
+      at Socket.emit (node:events:536:35)
+      at TCP.<anonymous> (node:net:343:12)
+}
+[Outbound] Failed to reload pending calls: Error: Connection terminated due to connection timeout
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async reloadPendingCalls (/home/runner/workspace/server/routes/voice-router.ts:2628:20) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:136:73)
+      at Object.onceWrapper (node:events:638:28)
+      at Connection.emit (node:events:524:28)
+      at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:62:12)
+      at Socket.emit (node:events:536:35)
+      at TCP.<anonymous> (node:net:343:12)
+}
+[TELEGRAM-STARTUP] Error during webhook auto-refresh: Connection terminated due to connection timeout
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/consultant-api-keys-unified.tsx as it exceeds the max of 500KB.
+[BABEL] Note: The code generator has deoptimised the styling of /home/runner/workspace/client/src/pages/consultant-file-search-analytics.tsx as it exceeds the max of 500KB.
+[PUBLER SYNC] Global sync error: Error: Connection terminated due to connection timeout
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async PublerService.syncAllConsultantsPostStatuses (/home/runner/workspace/server/services/publer-service.ts:894:23)
+    at async Timeout._onTimeout (/home/runner/workspace/server/routes/publer.ts:326:22) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:136:73)
+      at Object.onceWrapper (node:events:638:28)
+      at Connection.emit (node:events:524:28)
+      at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:62:12)
+      at Socket.emit (node:events:536:35)
+      at TCP.<anonymous> (node:net:343:12)
+}
+[PUBLER POLLING] Initial sync complete: 0 consultants, 0 posts updated
+[Academy] Table warn: Connection terminated due to connection timeout
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[Academy] Table warn: Connection terminated due to connection timeout
+[Academy] Table warn: Connection terminated due to connection timeout
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+⚠️  [DB POOL] Keepalive failed: Connection terminated due to connection timeout
+[Academy] Table warn: Connection terminated due to connection timeout
+❌ [CronLock] Error acquiring lock for "ai-task-scheduler": Connection terminated due to connection timeout
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+[Academy] Seed error: Error: Connection terminated due to connection timeout
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seedIfEmpty (/home/runner/workspace/server/routes/academy.ts:69:19) {
+  [cause]: Error: Connection terminated unexpectedly
