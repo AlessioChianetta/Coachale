@@ -1016,8 +1016,6 @@ async function getUserIdFromRequest(req: any): Promise<{
       : null;
 
     if (mode === 'warmup') {
-      console.log(`🔥 [warmup] TLS warmup ping from VPS`);
-      clientWs.close(1000, 'warmup_ok');
       return null;
     }
 
@@ -1758,6 +1756,14 @@ export function setupGeminiLiveWSService(): WebSocketServer {
   wss.on('connection', async (clientWs, req) => {
     const connectionId = Math.random().toString(36).substring(7);
     const wsArrivalTime = Date.now();
+
+    const warmupUrl = new URL(req.url || '', `http://${req.headers.host}`);
+    if (warmupUrl.searchParams.get('mode') === 'warmup') {
+      console.log(`🔥 [warmup] TLS warmup ping from VPS`);
+      clientWs.close(1000, 'warmup_ok');
+      return;
+    }
+
     console.log(`🎤 [${connectionId}] Client connected to Live API`);
     console.log(`⏱️ [LATENCY-E2E] WebSocket arrival: ${new Date(wsArrivalTime).toISOString()}`);
     
