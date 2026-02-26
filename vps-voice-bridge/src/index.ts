@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { startVoiceBridgeServer } from './voice-bridge-server.js';
+import { startESLController } from './esl-client.js';
 import { warmupReplitConnection } from './replit-ws-client.js';
 
 const log = logger.child('MAIN');
@@ -28,6 +29,7 @@ function printConfig(): void {
   log.info(`  Auth Token: ${config.ws.authToken ? 'configured' : 'disabled'}`);
   log.info(`  Replit WS: ${config.replit.wsUrl || 'not configured'}`);
   log.info(`  Voice: ${config.voice.voiceId}`);
+  log.info(`  ESL Connection: ${config.esl.host}:${config.esl.port}`);
   log.info(`  Max Concurrent Calls: ${config.session.maxConcurrent}`);
   log.info(`  Session Timeout: ${config.session.timeoutMs}ms`);
   log.info(`  Log Level: ${config.logLevel}`);
@@ -37,17 +39,23 @@ async function main(): Promise<void> {
   printBanner();
   printConfig();
 
-  log.info('Starting Voice Bridge Server...');
-  
+  log.info('Starting Voice Bridge System...');
+
   try {
+    // 1. Avvia il Server WebSocket (Riceve l'audio streaming da FreeSWITCH)
     startVoiceBridgeServer();
 
+    // 2. Avvia il Controller ESL (Ascolta eventi FreeSWITCH e comanda lo stream)
+    startESLController();
+
+    // 3. TLS warmup verso Replit (pre-riscalda la connessione)
     warmupReplitConnection().catch(() => {});
     setInterval(() => {
       warmupReplitConnection().catch(() => {});
     }, 4 * 60 * 1000);
+
   } catch (error) {
-    log.error('Failed to start server', {
+    log.error('Failed to start system', {
       error: error instanceof Error ? error.message : 'Unknown',
     });
     process.exit(1);
