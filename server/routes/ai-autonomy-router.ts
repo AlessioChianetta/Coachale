@@ -600,9 +600,9 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
         event_type: 'hunter_crm_analysis',
         severity: 'info',
         title: `Ho analizzato il CRM: tutti i lead sono aggiornati`,
-        description: `Ho controllato ${leadsResult.rows.length} lead con score >= ${scoreThreshold}. Nessuno necessita di attenzione.`,
+        description: `Ho controllato ${totalAnalyzed} lead con score >= ${scoreThreshold}. Nessuno necessita di attenzione.`,
       });
-      return res.json({ success: true, analyzed: leadsResult.rows.length, actionable: 0, tasks_created: 0, skipped: 0, leads: [] });
+      return res.json({ success: true, analyzed: totalAnalyzed, actionable: 0, tasks_created: 0, skipped: 0, leads: [] });
     }
 
     const { quickGenerate } = await import("../ai/provider-factory");
@@ -768,13 +768,13 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     await logActivity(consultantId, {
       event_type: 'hunter_crm_analysis',
       severity: 'info',
-      title: `Ho analizzato ${leadsResult.rows.length} lead nel CRM: ${actionableLeads.length} meritano attenzione`,
+      title: `Ho analizzato ${totalAnalyzed} lead nel CRM: ${actionableLeads.length} meritano attenzione`,
       description: `${tasksCreated} campagne create: ${voiceCount > 0 ? `${voiceCount} chiamate` : ''}${waCount > 0 ? ` ${waCount} WhatsApp` : ''}${emailCount > 0 ? ` ${emailCount} email` : ''}. ${skipped} saltati.`,
     });
 
     return res.json({
       success: true,
-      analyzed: leadsResult.rows.length,
+      analyzed: totalAnalyzed,
       actionable: actionableLeads.length,
       tasks_created: tasksCreated,
       skipped,
