@@ -1015,6 +1015,12 @@ async function getUserIdFromRequest(req: any): Promise<{
       ? testModeParam 
       : null;
 
+    if (mode === 'warmup') {
+      console.log(`🔥 [warmup] TLS warmup ping from VPS`);
+      clientWs.close(1000, 'warmup_ok');
+      return null;
+    }
+
     if (!mode) {
       console.error('❌ No mode provided in WebSocket connection');
       return null;

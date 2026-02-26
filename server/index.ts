@@ -29,7 +29,7 @@ import { initDatasetSyncScheduler } from "./cron/dataset-sync-scheduler";
 import { startPendingBookingExpiryScheduler } from "./cron/pending-booking-expiry";
 import { initAITaskScheduler } from "./cron/ai-task-scheduler";
 import { initAIUsageAggregator } from "./cron/ai-usage-aggregator";
-import { warmupPool } from "./db";
+import { warmupPool, warmupVoiceCallTables } from "./db";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -124,7 +124,7 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
-  warmupPool();
+  warmupPool().then(() => warmupVoiceCallTables()).catch(() => {});
 
   // Setup WebSocket test server
   //setupWebSocketTest(server);

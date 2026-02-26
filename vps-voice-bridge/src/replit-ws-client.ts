@@ -5,6 +5,37 @@ import { base64ToPcm } from './audio-converter.js';
 
 const log = logger.child('REPLIT-WS');
 
+export async function warmupReplitConnection(): Promise<void> {
+  const startTime = Date.now();
+  const warmupUrl = `${config.replit.wsUrl}?mode=warmup`;
+
+  try {
+    const ws = new WebSocket(warmupUrl);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        try { ws.close(); } catch (_) {}
+        reject(new Error('TLS warmup timeout (5s)'));
+      }, 5000);
+
+      ws.on('open', () => {
+        clearTimeout(timeout);
+        const ms = Date.now() - startTime;
+        log.info(`🔥 [TLS WARMUP] Replit connection warmed in ${ms}ms`);
+        ws.close(1000, 'warmup_done');
+        resolve();
+      });
+
+      ws.on('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+  } catch (error: any) {
+    const ms = Date.now() - startTime;
+    log.warn(`⚠️ [TLS WARMUP] Failed in ${ms}ms: ${error.message}`);
+  }
+}
+
 export interface ReplitClientOptions {
   sessionId: string;
   callerId: string;

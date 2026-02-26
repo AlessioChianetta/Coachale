@@ -55,6 +55,37 @@ export async function warmupPool(): Promise<void> {
   }
 }
 
+export async function warmupVoiceCallTables(): Promise<void> {
+  const startTime = Date.now();
+  const tables = [
+    { name: 'voice_numbers', query: 'SELECT id FROM voice_numbers LIMIT 1' },
+    { name: 'scheduled_voice_calls', query: 'SELECT id FROM scheduled_voice_calls LIMIT 1' },
+    { name: 'voice_calls', query: 'SELECT id FROM voice_calls LIMIT 1' },
+    { name: 'users', query: 'SELECT id FROM users LIMIT 1' },
+    { name: 'consultant_availability_settings', query: 'SELECT consultant_id FROM consultant_availability_settings LIMIT 1' },
+    { name: 'ai_conversations', query: 'SELECT id FROM ai_conversations LIMIT 1' },
+    { name: 'ai_messages', query: 'SELECT id FROM ai_messages LIMIT 1' },
+    { name: 'proactive_leads', query: 'SELECT id FROM proactive_leads LIMIT 1' },
+    { name: 'ai_scheduled_tasks', query: 'SELECT id FROM ai_scheduled_tasks LIMIT 1' },
+  ];
+
+  const results = await Promise.allSettled(
+    tables.map(t => pool.query(t.query))
+  );
+
+  const ok = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results
+    .map((r, i) => r.status === 'rejected' ? tables[i].name : null)
+    .filter(Boolean);
+
+  const ms = Date.now() - startTime;
+  if (failed.length === 0) {
+    console.log(`🔥 [DB POOL] Voice tables warmed in ${ms}ms (${ok}/${tables.length} OK)`);
+  } else {
+    console.warn(`🔥 [DB POOL] Voice tables warmed in ${ms}ms (${ok}/${tables.length} OK, failed: ${failed.join(', ')})`);
+  }
+}
+
 // Funzione di retry con exponential backoff
 class DatabaseRetryError extends Error {
   constructor(message: string, public readonly isRetryable: boolean = true) {

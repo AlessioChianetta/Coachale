@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { startVoiceBridgeServer } from './voice-bridge-server.js';
+import { warmupReplitConnection } from './replit-ws-client.js';
 
 const log = logger.child('MAIN');
 
@@ -40,6 +41,11 @@ async function main(): Promise<void> {
   
   try {
     startVoiceBridgeServer();
+
+    warmupReplitConnection().catch(() => {});
+    setInterval(() => {
+      warmupReplitConnection().catch(() => {});
+    }, 4 * 60 * 1000);
   } catch (error) {
     log.error('Failed to start server', {
       error: error instanceof Error ? error.message : 'Unknown',
