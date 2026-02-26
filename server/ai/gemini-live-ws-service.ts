@@ -1852,7 +1852,6 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
           nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
           voiceThinkingBudgetGreeting: consultantAvailabilitySettings.voiceThinkingBudgetGreeting,
-          voiceThinkingBudgetConversation: consultantAvailabilitySettings.voiceThinkingBudgetConversation,
           voiceProtectFirstMessage: consultantAvailabilitySettings.voiceProtectFirstMessage,
           voiceDeferredPrompt: consultantAvailabilitySettings.voiceDeferredPrompt,
         })
@@ -2841,8 +2840,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let userContext: any = null; // Declare here to be accessible throughout the function
       let conversationHistory: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}> = []; // For sales_agent/consultation_invite modes
       let agentBusinessContext: { businessName: string; whatWeDo: string; servicesOffered: string[]; targetClient: string; nonTargetClient: string } | undefined = undefined; // 🆕 Business context per feedback
-      let voiceThinkingBudgetGreeting = 0;
-      let voiceThinkingBudgetConversation = 128;
+      let voiceThinkingBudget = 0;
       let voiceProtectFirstMessage = true;
       let voiceDeferredPrompt = false;
       let firstAiTurnComplete = false;
@@ -3460,11 +3458,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             outboundManualPrompt = settings.outboundManualPrompt || '';
             outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
-            voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
-            voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
+            voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
-            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}`);
+            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, thinkingBudget=${voiceThinkingBudget}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
             console.log(`🔍 [ROUTING-DEBUG]   outboundPromptSource: ${outboundPromptSource}`);
@@ -3786,8 +3783,7 @@ Una volta che hanno capito e confermato:
             inboundBrandVoiceAgentId = settings.inboundBrandVoiceAgentId || null;
             outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
-            voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
-            voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
+            voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
             
@@ -5735,7 +5731,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192,
                 thinkingConfig: {
-                  thinkingBudget: voiceThinkingBudgetGreeting
+                  thinkingBudget: voiceThinkingBudget
                 }
               },
               inputAudioTranscription: {},
@@ -5799,6 +5795,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         }
         
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
+        console.log(`🧠 [${connectionId}] ThinkingBudget: ${voiceThinkingBudget} (applies to entire session)`);
         console.log(`🤖 [${connectionId}] Model: ${liveModelId} [${liveApiBackend}] - Language: ITALIAN ONLY`);
         if (isPhoneCall) {
           console.log(`📞 [${connectionId}] PHONE CALL VAD CONFIG:`);
@@ -7786,7 +7783,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
 
             if (!firstAiTurnComplete) {
               firstAiTurnComplete = true;
-              console.log(`🎙️ [${connectionId}] First AI turn complete — upgrading thinkingBudget from ${voiceThinkingBudgetGreeting} to ${voiceThinkingBudgetConversation}`);
+              console.log(`🎙️ [${connectionId}] First AI turn complete (thinkingBudget=${voiceThinkingBudget} for entire session)`);
             }
             
             // 🔒 Check closing state machine

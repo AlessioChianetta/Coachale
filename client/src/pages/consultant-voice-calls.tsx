@@ -1000,7 +1000,6 @@ export default function ConsultantVoiceCallsPage() {
   const [outboundBrandVoiceEnabled, setOutboundBrandVoiceEnabled] = useState(false);
   const [outboundBrandVoiceAgentId, setOutboundBrandVoiceAgentId] = useState<string | null>(null);
   const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
-  const [voiceThinkingBudgetConversation, setVoiceThinkingBudgetConversation] = useState(128);
   const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
   const [voiceDeferredPrompt, setVoiceDeferredPrompt] = useState(false);
 
@@ -1965,7 +1964,6 @@ export default function ConsultantVoiceCallsPage() {
       setOutboundBrandVoiceEnabled(nonClientSettingsData.outboundBrandVoiceEnabled || false);
       setOutboundBrandVoiceAgentId(nonClientSettingsData.outboundBrandVoiceAgentId || null);
       setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
-      setVoiceThinkingBudgetConversation(nonClientSettingsData.voice_thinking_budget_conversation ?? 128);
       setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
       setVoiceDeferredPrompt(nonClientSettingsData.voice_deferred_prompt ?? false);
       setHasChanges(false);
@@ -1992,7 +1990,6 @@ export default function ConsultantVoiceCallsPage() {
           outboundBrandVoiceEnabled,
           outboundBrandVoiceAgentId,
           voiceThinkingBudgetGreeting,
-          voiceThinkingBudgetConversation,
           voiceProtectFirstMessage,
           voiceDeferredPrompt,
         }),
@@ -3518,7 +3515,7 @@ export default function ConsultantVoiceCallsPage() {
                       <CardContent className="space-y-6">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <Label>Thinking Budget - Saluto</Label>
+                            <Label>Thinking Budget</Label>
                             <span className="text-sm font-mono text-muted-foreground w-12 text-right">{voiceThinkingBudgetGreeting}</span>
                           </div>
                           <Slider
@@ -3528,22 +3525,7 @@ export default function ConsultantVoiceCallsPage() {
                             max={256}
                             step={8}
                           />
-                          <p className="text-xs text-muted-foreground">Token di ragionamento per il primo messaggio (saluto). 0 = risposta immediata senza pensiero.</p>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label>Thinking Budget - Conversazione</Label>
-                            <span className="text-sm font-mono text-muted-foreground w-12 text-right">{voiceThinkingBudgetConversation}</span>
-                          </div>
-                          <Slider
-                            value={[voiceThinkingBudgetConversation]}
-                            onValueChange={([v]) => { setVoiceThinkingBudgetConversation(v); setHasChanges(true); }}
-                            min={0}
-                            max={256}
-                            step={8}
-                          />
-                          <p className="text-xs text-muted-foreground">Token di ragionamento per i messaggi successivi al saluto.</p>
+                          <p className="text-xs text-muted-foreground">Token di ragionamento per l'AI durante le chiamate. 0 = risposta immediata, 128+ = ragionamento più profondo (leggermente più lento).</p>
                         </div>
 
                         <div className="flex items-center justify-between">
