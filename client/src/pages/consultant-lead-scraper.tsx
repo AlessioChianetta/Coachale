@@ -566,11 +566,16 @@ export default function ConsultantLeadScraper() {
           body: JSON.stringify({ mode: "execute" }),
         });
         const data = await res.json();
-        setCrmAnalysisResult({ success: res.ok, analyzed: data.analyzed, actionable: data.actionable, tasks_created: data.tasks_created, skipped: data.skipped, error: data.error });
+        const resultsCount = data.results?.filter((r: any) => r.status !== 'error').length || 0;
+        setCrmAnalysisResult({ success: res.ok, analyzed: data.analyzed, actionable: data.actionable, tasks_created: resultsCount, skipped: data.skipped, error: data.error });
         if (res.ok) {
           const skipDesc = buildSkipDescription(data.skipReasons, data.analyzed);
-          if (data.tasks_created > 0) {
-            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili — ${data.tasks_created} task creati.${skipDesc ? ` ${skipDesc}.` : ""}` });
+          if (resultsCount > 0) {
+            const parts: string[] = [];
+            if (data.voiceCount > 0) parts.push(`${data.voiceCount} chiamate`);
+            if (data.waCount > 0) parts.push(`${data.waCount} WA`);
+            if (data.emailCount > 0) parts.push(`${data.emailCount} email`);
+            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${resultsCount} task individuali creati: ${parts.join(', ')}.${data.skipped > 0 ? ` ${data.skipped} saltati.` : ''}${skipDesc ? ` ${skipDesc}.` : ""}` });
           } else if (data.actionable > 0) {
             toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili ma nessun task creato (limiti raggiunti o canali non configurati).${skipDesc ? ` ${skipDesc}.` : ""}` });
           } else {
@@ -629,7 +634,12 @@ export default function ConsultantLeadScraper() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast({ title: "Piano eseguito", description: `${data.tasks_created} campagne create` });
+        const successCount = data.results?.filter((r: any) => r.status !== 'error').length || 0;
+        const parts: string[] = [];
+        if (data.voiceCount > 0) parts.push(`${data.voiceCount} chiamate`);
+        if (data.waCount > 0) parts.push(`${data.waCount} WA`);
+        if (data.emailCount > 0) parts.push(`${data.emailCount} email`);
+        toast({ title: "Piano eseguito", description: `${successCount} task individuali creati${parts.length ? ': ' + parts.join(', ') : ''}` });
         setShowPlanPanel(false);
         setCurrentPlan(null);
         setPlanChatMessages([]);
@@ -2198,6 +2208,14 @@ export default function ConsultantLeadScraper() {
                   <CardContent className="pt-0 pb-5 space-y-6 border-t">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                       <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max lead per analisi CRM</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_leads_per_batch || 15}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_leads_per_batch || 15]} min={5} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_leads_per_batch", v)} />
+                          <p className="text-xs text-gray-400 mt-1">Quanti lead contattare per ogni analisi CRM</p>
+                        </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
                             <span>Max ricerche Hunter / giorno</span>

@@ -584,6 +584,300 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
   return { totalAnalyzed: leadsResult.rows.length, actionableLeads, skipReasons };
 }
 
+async function generateOutreachContent(
+  consultantId: string,
+  lead: any,
+  channel: string,
+  salesCtx: any,
+  consultantName: string,
+  talkingPoints?: string[]
+): Promise<{ channel: string; callScript?: string; whatsappMessage?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
+  const { quickGenerate } = await import("../ai/provider-factory");
+
+  const leadInfo = [
+    `LEAD: ${lead.businessName}`,
+    lead.category ? `Settore: ${lead.category}` : '',
+    lead.score ? `Score compatibilità: ${lead.score}/100` : '',
+    lead.website ? `Sito: ${lead.website}` : '',
+    lead.address ? `Zona: ${lead.address}` : '',
+    lead.salesSummary ? `Note AI: ${lead.salesSummary}` : '',
+    lead.aiReason || lead.reason ? `Motivo contatto: ${lead.aiReason || lead.reason}` : '',
+    talkingPoints?.length ? `Talking points specifici: ${talkingPoints.join('; ')}` : '',
+  ].filter(Boolean).join('\n');
+
+  const contextInfo = [
+    salesCtx.services_offered ? `SERVIZI DEL CONSULENTE: ${salesCtx.services_offered}` : '',
+    salesCtx.target_audience ? `TARGET: ${salesCtx.target_audience}` : '',
+    salesCtx.value_proposition ? `PROPOSTA DI VALORE: ${salesCtx.value_proposition}` : '',
+    salesCtx.sales_approach ? `APPROCCIO: ${salesCtx.sales_approach}` : '',
+    salesCtx.competitive_advantages ? `VANTAGGI: ${salesCtx.competitive_advantages}` : '',
+    `NOME CONSULENTE: ${consultantName}`,
+  ].filter(Boolean).join('\n');
+
+  const channelPrompts: Record<string, string> = {
+    voice: [
+      `Genera uno script per una chiamata commerciale a ${lead.businessName}.`,
+      `Rispondi SOLO con un JSON: { "callScript": "testo dello script completo" }`,
+      `Lo script deve includere:`,
+      `- Apertura: presentazione breve e motivo della chiamata (max 2 frasi)`,
+      `- 3-4 talking points specifici per questo lead`,
+      `- Obiettivo: proporre un incontro/demo`,
+      `- Chiusura: CTA chiara`,
+      `Tono: professionale ma cordiale, italiano naturale.`,
+    ].join('\n'),
+    whatsapp: [
+      `Genera un messaggio WhatsApp per ${lead.businessName}.`,
+      `Rispondi SOLO con un JSON: { "whatsappMessage": "testo del messaggio" }`,
+      `Il messaggio deve essere:`,
+      `- Breve (max 3-4 frasi)`,
+      `- Informale ma professionale`,
+      `- Con un hook personalizzato basato sul settore/attività del lead`,
+      `- CTA: proposta di breve chiamata o incontro`,
+      `NON usare emoji eccessivi, max 1-2.`,
+    ].join('\n'),
+    email: [
+      `Genera un'email professionale per ${lead.businessName}.`,
+      `Rispondi SOLO con un JSON: { "emailSubject": "oggetto email", "emailBody": "corpo email in testo semplice" }`,
+      `L'email deve avere:`,
+      `- Oggetto accattivante e specifico (non generico)`,
+      `- Corpo: 4-5 frasi, tono professionale`,
+      `- Riferimento specifico all'attività del lead`,
+      `- CTA: proposta di incontro o chiamata`,
+      `- Firma: ${consultantName}`,
+    ].join('\n'),
+  };
+
+  const aiResult = await quickGenerate({
+    consultantId,
+    feature: `hunter-outreach-${channel}`,
+    thinkingLevel: 'low',
+    systemInstruction: [
+      `Sei Hunter, il copywriter commerciale del consulente ${consultantName}.`,
+      contextInfo,
+      channelPrompts[channel] || channelPrompts.email,
+    ].join('\n'),
+    contents: [{ role: 'user', parts: [{ text: leadInfo }] }],
+  });
+
+  try {
+    const cleaned = aiResult.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return { channel, leadId: lead.id || lead.leadId, ...parsed };
+  } catch {
+    if (channel === 'voice') return { channel, leadId: lead.id || lead.leadId, callScript: `Buongiorno, sono ${consultantName}. La contatto perché ho notato la vostra attività ${lead.businessName} e credo di potervi aiutare. Avrebbe 10 minuti per una breve chiamata?` };
+    if (channel === 'whatsapp') return { channel, leadId: lead.id || lead.leadId, whatsappMessage: `Buongiorno! Sono ${consultantName}. Ho visto la vostra attività ${lead.businessName} e mi piacerebbe capire come posso esservi utile. Le va una breve chiamata?` };
+    return { channel, leadId: lead.id || lead.leadId, emailSubject: `Proposta di collaborazione per ${lead.businessName}`, emailBody: `Buongiorno,\n\nMi chiamo ${consultantName} e mi occupo di consulenza finanziaria. Ho avuto modo di conoscere la vostra attività e credo di poter offrire valore concreto.\n\nLe andrebbe una breve chiamata per approfondire?\n\nCordiali saluti,\n${consultantName}` };
+  }
+}
+
+async function findNextAvailableSlot(
+  consultantId: string,
+  channel: string,
+  offsetIndex: number,
+  timezone: string = 'Europe/Rome'
+): Promise<Date> {
+  const now = new Date();
+  const baseOffset = channel === 'voice' ? 30 : channel === 'whatsapp' ? 5 : 10;
+  const slotDuration = channel === 'voice' ? 30 : channel === 'whatsapp' ? 5 : 10;
+
+  let candidate = new Date(now.getTime() + (5 + offsetIndex * baseOffset) * 60000);
+
+  const hour = candidate.getHours();
+  if (hour < 9) { candidate.setHours(9, 0, 0, 0); }
+  else if (hour >= 19) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+
+  const day = candidate.getDay();
+  if (day === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+  else if (day === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(9, 0, 0, 0); }
+
+  if (channel === 'voice') {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const windowStart = new Date(candidate.getTime() - slotDuration * 60000);
+      const windowEnd = new Date(candidate.getTime() + slotDuration * 60000);
+      try {
+        const conflict = await db.execute(sql`
+          SELECT id FROM scheduled_voice_calls
+          WHERE consultant_id = ${consultantId}
+            AND status IN ('scheduled', 'pending')
+            AND scheduled_at BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}
+          LIMIT 1
+        `);
+        if (conflict.rows.length === 0) break;
+      } catch { break; }
+      candidate = new Date(candidate.getTime() + slotDuration * 60000);
+      const newHour = candidate.getHours();
+      if (newHour >= 19) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+      const newDay = candidate.getDay();
+      if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(9, 0, 0, 0); }
+      else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(9, 0, 0, 0); }
+    }
+  }
+
+  return candidate;
+}
+
+async function scheduleIndividualOutreach(
+  consultantId: string,
+  lead: any,
+  channel: string,
+  content: any,
+  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string },
+  mode: 'autonomous' | 'approval',
+  slotIndex: number
+): Promise<{ taskId: string; channel: string; leadName: string; status: string; scheduledAt: string; contentPreview: string }> {
+  const scheduledAt = await findNextAvailableSlot(consultantId, channel, slotIndex, config.timezone);
+  const scheduledAtIso = scheduledAt.toISOString();
+  const taskId = `hunt_${channel.substring(0, 2)}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const leadName = lead.businessName || lead.business_name || 'Lead';
+  const taskStatus = mode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+  let contentPreview = '';
+
+  if (channel === 'voice') {
+    const callScript = content.callScript || '';
+    contentPreview = callScript.substring(0, 120);
+    const scheduledCallId = `svc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const voiceStatus = mode === 'autonomous' ? 'scheduled' : 'pending';
+
+    await db.execute(sql`
+      INSERT INTO scheduled_voice_calls (
+        id, consultant_id, target_phone, scheduled_at, status, ai_mode,
+        custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
+        priority, source_task_id, attempts_log, use_default_template, voice_template_id, created_at, updated_at
+      ) VALUES (
+        ${scheduledCallId}, ${consultantId}, ${lead.phone || ''},
+        ${scheduledAtIso}, ${voiceStatus}, 'outreach',
+        ${callScript}, ${'Hunter CRM outreach: ' + leadName},
+        'task', 0, 3,
+        2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, ${config.voiceTemplateId}, NOW(), NOW()
+      )
+    `);
+
+    await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+        scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
+        voice_call_id, additional_context, max_attempts, current_attempt, retry_delay_minutes,
+        created_at, updated_at
+      ) VALUES (
+        ${taskId}, ${consultantId}, ${lead.phone || ''}, ${leadName},
+        'single_call', ${callScript},
+        ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'voice',
+        ${scheduledCallId},
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis' })}::text,
+        3, 0, 5, NOW(), NOW()
+      )
+    `);
+  } else if (channel === 'whatsapp') {
+    const waMessage = content.whatsappMessage || '';
+    contentPreview = waMessage.substring(0, 120);
+
+    await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+        scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
+        whatsapp_config_id, additional_context, max_attempts, current_attempt, retry_delay_minutes,
+        created_at, updated_at
+      ) VALUES (
+        ${taskId}, ${consultantId}, ${lead.phone || ''}, ${leadName},
+        'ai_task', ${waMessage},
+        ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'whatsapp',
+        ${config.whatsappConfigId},
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis' })}::text,
+        1, 0, 5, NOW(), NOW()
+      )
+    `);
+  } else if (channel === 'email') {
+    const emailSubject = content.emailSubject || `Proposta per ${leadName}`;
+    const emailBody = content.emailBody || '';
+    contentPreview = emailSubject;
+
+    let emailSent = false;
+    if (mode === 'autonomous' && config.emailAccountId) {
+      try {
+        const smtpResult = await db.execute(sql`
+          SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+          FROM email_accounts
+          WHERE id = ${config.emailAccountId} AND consultant_id = ${consultantId} AND smtp_host IS NOT NULL
+          LIMIT 1
+        `);
+        const smtpConfig = smtpResult.rows[0] as any;
+        if (smtpConfig && lead.email) {
+          const nodemailer = await import('nodemailer');
+          const transporter = nodemailer.createTransport({
+            host: smtpConfig.smtp_host,
+            port: smtpConfig.smtp_port || 587,
+            secure: (smtpConfig.smtp_port || 587) === 465,
+            auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_password },
+            tls: { rejectUnauthorized: false },
+          });
+
+          const htmlBody = emailBody.replace(/\n/g, '<br>');
+          const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
+          const sendResult = await transporter.sendMail({ from: fromField, to: lead.email, subject: emailSubject, html: htmlBody });
+          emailSent = true;
+
+          const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          await db.execute(sql`
+            INSERT INTO hub_emails (
+              id, account_id, consultant_id, message_id, subject, from_name, from_email,
+              to_recipients, body_html, body_text, snippet, direction, folder,
+              is_read, processing_status, sent_at, created_at, updated_at
+            ) VALUES (
+              ${hubEmailId}, ${config.emailAccountId}, ${consultantId},
+              ${sendResult.messageId || hubEmailId},
+              ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
+              ${JSON.stringify([{ email: lead.email, name: leadName }])}::jsonb,
+              ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+              'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+            )
+            ON CONFLICT (message_id) DO NOTHING
+          `);
+        }
+      } catch (emailErr: any) {
+        console.error(`[HUNTER-CRM] Email send failed for ${leadName}: ${emailErr.message}`);
+      }
+    }
+
+    const emailTaskStatus = emailSent ? 'completed' : taskStatus;
+    await db.execute(sql`
+      INSERT INTO ai_scheduled_tasks (
+        id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+        scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
+        additional_context, max_attempts, current_attempt, retry_delay_minutes,
+        created_at, updated_at
+      ) VALUES (
+        ${taskId}, ${consultantId}, ${lead.phone || ''}, ${leadName},
+        'ai_task', ${`Oggetto: ${emailSubject}\n\n${emailBody}`},
+        ${scheduledAtIso}, ${config.timezone},
+        ${emailTaskStatus},
+        2, 'prospecting', 'hunter', 'email',
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId })}::text,
+        1, 0, 5, NOW(), NOW()
+      )
+    `);
+  }
+
+  await db.execute(sql`
+    UPDATE lead_scraper_results
+    SET lead_status = 'in_outreach', outreach_task_id = ${taskId},
+        lead_next_action = ${`${channel} outreach individuale`},
+        lead_next_action_date = ${scheduledAtIso}
+    WHERE id = ${lead.id || lead.leadId}
+  `);
+
+  await db.execute(sql`
+    INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
+    VALUES (
+      ${lead.id || lead.leadId}, ${consultantId}, 'crm_reanalysis',
+      ${'Hunter → ' + channel + ': ' + leadName},
+      ${content.callScript?.substring(0, 200) || content.whatsappMessage?.substring(0, 200) || content.emailSubject || 'Outreach personalizzato'},
+      ${JSON.stringify({ taskId, channel, score: lead.score, source: 'crm_analysis', scheduledAt: scheduledAtIso })}::jsonb
+    )
+  `);
+
+  return { taskId, channel, leadName, status: taskStatus, scheduledAt: scheduledAtIso, contentPreview };
+}
+
 router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;
@@ -601,10 +895,11 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const outreachConfig = settings.outreach_config || {};
     const channelsEnabled = settings.channels_enabled || {};
     const scoreThreshold = outreachConfig.score_threshold ?? 60;
+    const maxLeads = outreachConfig.max_leads_per_batch ?? 15;
 
     const { totalAnalyzed, actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold);
 
-    console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode}), skipReasons:`, skipReasons);
+    console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode}, maxLeads=${maxLeads}), skipReasons:`, skipReasons);
 
     if (mode === "plan") {
       return res.json({
@@ -623,19 +918,23 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
         title: `Ho analizzato il CRM: tutti i lead sono aggiornati`,
         description: `Ho controllato ${totalAnalyzed} lead con score >= ${scoreThreshold}. Nessuno necessita di attenzione.`,
       });
-      return res.json({ success: true, analyzed: totalAnalyzed, actionable: 0, tasks_created: 0, skipped: 0, leads: [] });
+      return res.json({ success: true, analyzed: totalAnalyzed, actionable: 0, results: [], skipReasons });
     }
 
     const { quickGenerate } = await import("../ai/provider-factory");
 
-    const salesCtxResult = await db.execute(sql`
-      SELECT services_offered, target_audience, value_proposition, sales_approach,
-             competitive_advantages, ideal_client_profile, additional_context
-      FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
-    `);
+    const [salesCtxResult, consultantResult] = await Promise.all([
+      db.execute(sql`
+        SELECT services_offered, target_audience, value_proposition, sales_approach,
+               competitive_advantages, ideal_client_profile, additional_context
+        FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      `),
+      db.execute(sql`SELECT name FROM users WHERE id = ${consultantId} LIMIT 1`),
+    ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
+    const consultantName = (consultantResult.rows[0] as any)?.name || 'Consulente';
 
-    const leadsForAI = actionableLeads.slice(0, 30).map(l => ({
+    const leadsForAI = actionableLeads.slice(0, maxLeads).map(l => ({
       id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
       category: l.category, phone: !!l.phone, email: !!l.email,
       daysSinceLastContact: l.daysSinceLastContact, daysSinceCreated: l.daysSinceCreated, reason: l.reason,
@@ -669,7 +968,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const voiceTemplateId = outreachConfig.voice_template_id ?? null;
     const emailAccountId = outreachConfig.email_account_id ?? null;
     const hunterMode = outreachConfig.hunter_mode ?? (outreachConfig.require_approval !== false ? 'approval' : 'autonomous');
-    const outreachTaskStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+    const outreachMode = hunterMode === 'autonomous' ? 'autonomous' : 'approval';
 
     let whatsappConfigActive = false;
     if (whatsappConfigId) {
@@ -680,13 +979,11 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     }
 
     const remainingLimits = await getRemainingLimits(consultantId);
-
-    const batchVoice: any[] = [];
-    const batchWhatsapp: any[] = [];
-    const batchEmail: any[] = [];
     let voiceCount = 0, waCount = 0, emailCount = 0, skipped = 0;
 
-    for (const lead of actionableLeads.slice(0, 30)) {
+    const leadsWithChannels: { lead: any; channel: string; aiReason: string }[] = [];
+
+    for (const lead of actionableLeads.slice(0, maxLeads)) {
       const aiDecision = aiDecisions.find(d => d.leadId === lead.id);
       let channel: string | null = null;
 
@@ -708,99 +1005,53 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
 
       if (!channel) { skipped++; continue; }
 
-      const entry = {
-        leadId: lead.id, businessName: lead.businessName, phone: lead.phone, email: lead.email,
-        score: lead.score, category: lead.category, website: lead.website, address: lead.address,
-        rating: lead.rating, reviewsCount: lead.reviewsCount,
-        salesSummary: lead.salesSummary, status: 'pending' as const, resultNote: null as string | null,
-        aiReason: aiDecision?.reason || lead.reason,
-      };
+      lead.aiReason = aiDecision?.reason || lead.reason;
+      leadsWithChannels.push({ lead, channel, aiReason: lead.aiReason });
 
-      if (channel === 'voice') { batchVoice.push(entry); voiceCount++; }
-      else if (channel === 'whatsapp') { batchWhatsapp.push(entry); waCount++; }
-      else if (channel === 'email') { batchEmail.push(entry); emailCount++; }
+      if (channel === 'voice') voiceCount++;
+      else if (channel === 'whatsapp') waCount++;
+      else if (channel === 'email') emailCount++;
     }
 
-    const batches: { channel: string; leads: any[]; label: string }[] = [];
-    if (batchVoice.length > 0) batches.push({ channel: 'voice', leads: batchVoice, label: 'Chiamate' });
-    if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', leads: batchWhatsapp, label: 'WhatsApp' });
-    if (batchEmail.length > 0) batches.push({ channel: 'email', leads: batchEmail, label: 'Email' });
+    const results: any[] = [];
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome' };
 
-    let tasksCreated = 0;
-    const details: { leadName: string; action: string; reason: string }[] = [];
-
-    for (const batch of batches) {
-      const batchTaskId = `crm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const instruction = `Analisi CRM — ${batch.leads.length} lead da ricontattare via ${batch.channel}.\n\nLead:\n${batch.leads.map((l: any, i: number) => `${i+1}. ${l.businessName} (Score: ${l.score || 'N/A'}/100) — ${l.aiReason}`).join('\n')}`;
-
-      const batchResultData = {
-        batchOutreach: true, channel: batch.channel, source: 'crm_analysis',
-        voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
-        whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
-        emailAccountId: batch.channel === 'email' ? emailAccountId : null,
-        leads: batch.leads, assigned_by: 'hunter', self_managed: true,
-      };
-
+    for (let i = 0; i < leadsWithChannels.length; i++) {
+      const { lead, channel } = leadsWithChannels[i];
       try {
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-            scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
-            result_data, additional_context, max_attempts, current_attempt, retry_delay_minutes,
-            created_at, updated_at
-          ) VALUES (
-            ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
-            ${'Analisi CRM: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
-            'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
-            ${outreachTaskStatus}, 2, 'prospecting', 'hunter', ${batch.channel},
-            ${JSON.stringify(batchResultData)}::jsonb,
-            ${JSON.stringify({ crm_analysis: true, batch_outreach: true, business_name: batch.leads[0]?.businessName, ai_score: batch.leads[0]?.score, sector: batch.leads[0]?.category, lead_id: batch.leads[0]?.leadId, lead_count: batch.leads.length })}::text,
-            1, 0, 5, NOW(), NOW()
-          )
-        `);
-        tasksCreated++;
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName);
+        const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
+        results.push(result);
+        console.log(`[HUNTER-CRM] ✓ ${result.leadName} → ${channel} (${result.status})`);
+      } catch (err: any) {
+        console.error(`[HUNTER-CRM] ✗ Failed ${lead.businessName} → ${channel}: ${err.message}`);
+        results.push({ taskId: null, channel, leadName: lead.businessName, status: 'error', scheduledAt: null, contentPreview: err.message });
+      }
 
-        for (const lead of batch.leads) {
-          await db.execute(sql`
-            UPDATE lead_scraper_results
-            SET lead_status = 'in_outreach', outreach_task_id = ${batchTaskId},
-                lead_next_action = ${`${batch.channel} outreach da analisi CRM`},
-                lead_next_action_date = NOW() + INTERVAL '5 minutes'
-            WHERE id = ${lead.leadId}
-          `);
-
-          await db.execute(sql`
-            INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
-            VALUES (
-              ${lead.leadId}, ${consultantId}, 'crm_reanalysis',
-              ${'Hunter ha rianalizzato: ' + lead.businessName},
-              ${lead.aiReason},
-              ${JSON.stringify({ taskId: batchTaskId, channel: batch.channel, score: lead.score, source: 'crm_analysis' })}::jsonb
-            )
-          `);
-
-          details.push({ leadName: lead.businessName, action: batch.channel, reason: lead.aiReason });
-        }
-      } catch (batchErr: any) {
-        console.error(`[HUNTER-CRM] Failed to create batch ${batch.channel} task: ${batchErr.message}`);
+      if (i < leadsWithChannels.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
+
+    const successCount = results.filter(r => r.status !== 'error').length;
 
     await logActivity(consultantId, {
       event_type: 'hunter_crm_analysis',
       severity: 'info',
-      title: `Ho analizzato ${totalAnalyzed} lead nel CRM: ${actionableLeads.length} meritano attenzione`,
-      description: `${tasksCreated} campagne create: ${voiceCount > 0 ? `${voiceCount} chiamate` : ''}${waCount > 0 ? ` ${waCount} WhatsApp` : ''}${emailCount > 0 ? ` ${emailCount} email` : ''}. ${skipped} saltati.`,
+      title: `Ho analizzato ${totalAnalyzed} lead nel CRM: ${successCount} task individuali creati`,
+      description: `${voiceCount > 0 ? `${voiceCount} chiamate` : ''}${waCount > 0 ? ` ${waCount} WhatsApp` : ''}${emailCount > 0 ? ` ${emailCount} email` : ''}${skipped > 0 ? ` — ${skipped} saltati` : ''}. Ogni lead ha il suo task personalizzato.`,
     });
 
     return res.json({
       success: true,
       analyzed: totalAnalyzed,
       actionable: actionableLeads.length,
-      tasks_created: tasksCreated,
-      skipped,
-      leads: details,
+      results,
       skipReasons,
+      voiceCount,
+      waCount,
+      emailCount,
+      skipped,
     });
   } catch (error: any) {
     console.error("[HUNTER-CRM] Error analyzing CRM:", error);
@@ -1080,7 +1331,6 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
     const outreachConfig = freshSettings?.outreach_config || plan.outreachConfig || {};
     const channelsEnabled = freshSettings?.channels_enabled || {};
     const hunterMode = outreachConfig.hunter_mode ?? (outreachConfig.require_approval !== false ? 'approval' : 'autonomous');
-    const taskStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
     const voiceTemplateId = outreachConfig.voice_template_id ?? null;
     const whatsappConfigId = outreachConfig.whatsapp_config_id ?? null;
     const emailAccountId = outreachConfig.email_account_id ?? null;
@@ -1096,100 +1346,68 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
 
     if (includedLeads.length === 0) {
       hunterPlansCache.delete(planId);
-      return res.json({ success: true, tasks_created: 0, details: [] });
+      return res.json({ success: true, results: [], voiceCount: 0, waCount: 0, emailCount: 0 });
     }
 
     const actionMap: Record<string, string> = { call: 'voice', whatsapp: 'whatsapp', email: 'email' };
-    const batchVoice: any[] = [];
-    const batchWhatsapp: any[] = [];
-    const batchEmail: any[] = [];
+    const outreachMode = hunterMode === 'autonomous' ? 'autonomous' : 'approval';
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome' };
 
-    for (const lead of includedLeads) {
-      const channel = actionMap[lead.action] || lead.action;
-      const entry = {
-        leadId: lead.leadId, businessName: lead.businessName, phone: lead.phone, email: lead.email,
-        score: lead.score, category: lead.category, salesSummary: null,
-        status: 'pending' as const, resultNote: null as string | null,
-        aiReason: lead.reason, talkingPoints: lead.talkingPoints || [],
-      };
-      if (channel === 'voice') batchVoice.push(entry);
-      else if (channel === 'whatsapp') batchWhatsapp.push(entry);
-      else if (channel === 'email') batchEmail.push(entry);
-    }
+    const [salesCtxResult, consultantResult] = await Promise.all([
+      db.execute(sql`
+        SELECT services_offered, target_audience, value_proposition, sales_approach,
+               competitive_advantages, ideal_client_profile, additional_context
+        FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      `),
+      db.execute(sql`SELECT name FROM users WHERE id = ${consultantId} LIMIT 1`),
+    ]);
+    const salesCtx = (salesCtxResult.rows[0] as any) || {};
+    const consultantName = (consultantResult.rows[0] as any)?.name || 'Consulente';
 
-    const batches: { channel: string; leads: any[] }[] = [];
-    if (batchVoice.length > 0) batches.push({ channel: 'voice', leads: batchVoice });
-    if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', leads: batchWhatsapp });
-    if (batchEmail.length > 0) batches.push({ channel: 'email', leads: batchEmail });
+    const results: any[] = [];
+    let voiceCount = 0, waCount = 0, emailCount = 0;
 
-    let tasksCreated = 0;
-    const details: { leadName: string; action: string; reason: string }[] = [];
-
-    for (const batch of batches) {
-      const batchTaskId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const instruction = `Piano Hunter approvato — ${batch.leads.length} lead via ${batch.channel}.\n\n${batch.leads.map((l: any, i: number) => `${i+1}. ${l.businessName} (Score: ${l.score || 'N/A'}) — ${l.aiReason}${l.talkingPoints?.length ? '\n   Talking points: ' + l.talkingPoints.join(', ') : ''}`).join('\n')}`;
-
-      const batchResultData = {
-        batchOutreach: true, channel: batch.channel, source: 'hunter_plan',
-        voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
-        whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
-        emailAccountId: batch.channel === 'email' ? emailAccountId : null,
-        leads: batch.leads, assigned_by: 'hunter', self_managed: true,
+    for (let i = 0; i < includedLeads.length; i++) {
+      const planLead = includedLeads[i];
+      const channel = actionMap[planLead.action] || planLead.action;
+      const lead = {
+        id: planLead.leadId, leadId: planLead.leadId,
+        businessName: planLead.businessName, phone: planLead.phone,
+        email: planLead.email, score: planLead.score,
+        category: planLead.category, reason: planLead.reason,
+        aiReason: planLead.reason,
       };
 
       try {
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-            scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
-            result_data, additional_context, max_attempts, current_attempt, retry_delay_minutes,
-            created_at, updated_at
-          ) VALUES (
-            ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
-            ${'Piano: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
-            'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
-            ${taskStatus}, 2, 'prospecting', 'hunter', ${batch.channel},
-            ${JSON.stringify(batchResultData)}::jsonb,
-            ${JSON.stringify({ hunter_plan: true, plan_id: planId, batch_outreach: true, business_name: batch.leads[0]?.businessName, ai_score: batch.leads[0]?.score, sector: batch.leads[0]?.category, lead_id: batch.leads[0]?.leadId, lead_count: batch.leads.length })}::text,
-            1, 0, 5, NOW(), NOW()
-          )
-        `);
-        tasksCreated++;
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints);
+        const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
+        results.push(result);
+        if (channel === 'voice') voiceCount++;
+        else if (channel === 'whatsapp') waCount++;
+        else if (channel === 'email') emailCount++;
+        console.log(`[HUNTER-PLAN-EXEC] ✓ ${result.leadName} → ${channel} (${result.status})`);
+      } catch (err: any) {
+        console.error(`[HUNTER-PLAN-EXEC] ✗ Failed ${lead.businessName} → ${channel}: ${err.message}`);
+        results.push({ taskId: null, channel, leadName: lead.businessName, status: 'error', scheduledAt: null, contentPreview: err.message });
+      }
 
-        for (const lead of batch.leads) {
-          await db.execute(sql`
-            UPDATE lead_scraper_results
-            SET lead_status = 'in_outreach', outreach_task_id = ${batchTaskId},
-                lead_next_action = ${`${batch.channel} outreach da piano Hunter`},
-                lead_next_action_date = NOW() + INTERVAL '5 minutes'
-            WHERE id = ${lead.leadId}
-          `);
-          await db.execute(sql`
-            INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
-            VALUES (
-              ${lead.leadId}, ${consultantId}, 'crm_reanalysis',
-              ${'Piano Hunter approvato: ' + lead.businessName},
-              ${lead.aiReason},
-              ${JSON.stringify({ taskId: batchTaskId, channel: batch.channel, score: lead.score, source: 'hunter_plan', planId })}::jsonb
-            )
-          `);
-          details.push({ leadName: lead.businessName, action: batch.channel, reason: lead.aiReason });
-        }
-      } catch (batchErr: any) {
-        console.error(`[HUNTER-PLAN-EXEC] Failed to create batch ${batch.channel} task: ${batchErr.message}`);
+      if (i < includedLeads.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
+
+    const successCount = results.filter(r => r.status !== 'error').length;
 
     await logActivity(consultantId, {
       event_type: 'hunter_plan_executed',
       severity: 'info',
-      title: `Piano Hunter approvato ed eseguito: ${includedLeads.length} lead, ${tasksCreated} campagne`,
-      description: `${batchVoice.length > 0 ? `${batchVoice.length} chiamate ` : ''}${batchWhatsapp.length > 0 ? `${batchWhatsapp.length} WhatsApp ` : ''}${batchEmail.length > 0 ? `${batchEmail.length} email` : ''}`,
+      title: `Piano Hunter eseguito: ${successCount} task individuali creati`,
+      description: `${voiceCount > 0 ? `${voiceCount} chiamate` : ''}${waCount > 0 ? ` ${waCount} WhatsApp` : ''}${emailCount > 0 ? ` ${emailCount} email` : ''}. Ogni lead ha il suo task personalizzato.`,
     });
 
     hunterPlansCache.delete(planId);
 
-    return res.json({ success: true, tasks_created: tasksCreated, details });
+    return res.json({ success: true, results, voiceCount, waCount, emailCount });
   } catch (error: any) {
     console.error("[HUNTER-PLAN-EXEC] Error:", error);
     return res.status(500).json({ error: "Failed to execute plan" });
