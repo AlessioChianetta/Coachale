@@ -1,0 +1,27 @@
+📅 [LIST EVENTS] Last event: Consulenza — Giusy Dattilo on 2026-03-05T15:30:00.000Z
+6:36:32 PM [express] GET /api/ai-autonomy/system-status 200 in 578ms :: {"is_active":true,"autonomy_…
+🗂️ [MARCO] Analysis: dedicated agent store loaded: fileSearchStores/autonomous-agent-marco-c9exwiiv5e75
+ℹ️ [FileSearch] Service initialized - using database keys only (SuperAdmin or User)
+🔍 [FileSearch] getConsultantOwnStores - ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 consultant-only stores: Store Globale Consulenze Clienti, Knowledge Base Consulente
+🗂️ [MARCO] Analysis: File Search stores loaded: 3 stores (agent+consultant) for 2 docs
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 [LIST EVENTS] Using consultant's calendar (legacy flow): primary
+📅 Fetching events from calendar: primary
+📅 [LIST EVENTS] Date range: 2026-02-01T00:00:00.000Z → 2026-05-01T00:00:00.000Z
+📅 [LIST EVENTS] Total events from Google: 236
+📅 [LIST EVENTS] Cancelled events (filtered out): 0
+📅 [LIST EVENTS] Transparent/Free events (filtered out): 1
+📅 [LIST EVENTS] Sample transparent events being filtered:
+   - "Buon compleanno!" on 2026-02-02
+📅 [LIST EVENTS] Final events after filtering: 235
+📅 [LIST EVENTS] First event: INIZIO GIORNATA on 2026-02-02T07:00:00.000Z
+📅 [LIST EVENTS] Last event: FINE GIORNATA on 2026-04-30T18:00:00.000Z
+❌ [AUTONOMOUS-GEN] [Marco] fetchRoleData FAILED: for SELECT DISTINCT, ORDER BY expressions must appear in select list
+❌ [AUTONOMOUS-GEN] [Marco] Error: for SELECT DISTINCT, ORDER BY expressions must appear in select list
+📡 [SSE] 0c73bbe5-51e1-4108-866b-6be7a52fce3b: type=cycle_complete
+🧠 [AUTONOMOUS-GEN] Total: 0 tasks  created across 1 roles for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+6:36:35 PM [express] POST /api/ai-autonomy/trigger-role/marco 200 in 7735ms :: {"success":true,"task…

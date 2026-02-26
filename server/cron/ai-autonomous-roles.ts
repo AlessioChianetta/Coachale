@@ -367,15 +367,18 @@ async function fetchAlessiaData(consultantId: string, clientIds: string[]): Prom
   `);
 
   const clientStoreResult = await db.execute(sql`
-    SELECT DISTINCT d.client_id as client_id,
-           u.first_name || ' ' || u.last_name as client_name
-    FROM file_search_stores s
-    JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
-    JOIN users u ON u.id::text = d.client_id
-    WHERE s.owner_type = 'consultant' AND s.owner_id = ${consultantId}::text
-      AND s.display_name = 'Store Globale Consulenze Clienti'
-      AND s.is_active = true AND u.is_active = true
-    ORDER BY u.first_name
+    SELECT client_id, client_name FROM (
+      SELECT DISTINCT d.client_id as client_id,
+             u.first_name || ' ' || u.last_name as client_name,
+             u.first_name as sort_name
+      FROM file_search_stores s
+      JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+      JOIN users u ON u.id::text = d.client_id
+      WHERE s.owner_type = 'consultant' AND s.owner_id = ${consultantId}::text
+        AND s.display_name = 'Store Globale Consulenze Clienti'
+        AND s.is_active = true AND u.is_active = true
+    ) sub
+    ORDER BY sort_name
   `);
 
   const whatsappResult = await db.execute(sql`
@@ -975,15 +978,18 @@ async function fetchMarcoData(consultantId: string, clientIds: string[]): Promis
   `);
 
   const clientStoreResult = await db.execute(sql`
-    SELECT DISTINCT d.client_id as client_id,
-           u.first_name || ' ' || u.last_name as client_name
-    FROM file_search_stores s
-    JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
-    JOIN users u ON u.id::text = d.client_id
-    WHERE s.owner_type = 'consultant' AND s.owner_id = ${consultantId}::text
-      AND s.display_name = 'Store Globale Consulenze Clienti'
-      AND s.is_active = true AND u.is_active = true
-    ORDER BY u.first_name
+    SELECT client_id, client_name FROM (
+      SELECT DISTINCT d.client_id as client_id,
+             u.first_name || ' ' || u.last_name as client_name,
+             u.first_name as sort_name
+      FROM file_search_stores s
+      JOIN file_search_documents d ON d.store_id = s.id AND d.source_type IN ('consultation', 'email_journey')
+      JOIN users u ON u.id::text = d.client_id
+      WHERE s.owner_type = 'consultant' AND s.owner_id = ${consultantId}::text
+        AND s.display_name = 'Store Globale Consulenze Clienti'
+        AND s.is_active = true AND u.is_active = true
+    ) sub
+    ORDER BY sort_name
   `);
 
   return {
