@@ -2157,6 +2157,16 @@ function DashboardTab({
               ? [...taskDetailData.activity].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
               : [];
             const hasResults = task.result_data && task.result_data.results;
+            const isBatchOutreach = task.result_data?.batchOutreach === true;
+            const batchLeads: any[] = isBatchOutreach ? (task.result_data?.leads || []) : [];
+            const batchChannel = task.result_data?.channel || '';
+            const batchStats = isBatchOutreach ? {
+              total: batchLeads.length,
+              done: batchLeads.filter((l: any) => l.status === 'done').length,
+              failed: batchLeads.filter((l: any) => l.status === 'failed').length,
+              pending: batchLeads.filter((l: any) => l.status === 'pending').length,
+              skipped: batchLeads.filter((l: any) => l.status === 'skipped').length,
+            } : null;
             const isFinished = task.status === 'completed' || task.status === 'failed';
 
             const executionDuration = (() => {
@@ -2757,6 +2767,105 @@ function DashboardTab({
                     </div>
                   );
                 })()}
+
+                {isBatchOutreach && batchStats && batchLeads.length > 0 && (
+                  <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        {batchChannel === 'voice' ? <Phone className="h-5 w-5 text-blue-500" /> :
+                         batchChannel === 'whatsapp' ? <MessageSquare className="h-5 w-5 text-green-500" /> :
+                         <Mail className="h-5 w-5 text-orange-500" />}
+                        Campagna Outreach
+                        <Badge variant="outline" className="text-xs ml-1">{batchStats.total} lead</Badge>
+                      </h3>
+                      {task.result_data?.isFollowUp && (
+                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400">
+                          Follow-up
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                        <CheckCircle className="h-3.5 w-3.5" /> {batchStats.done}
+                      </span>
+                      <span className="flex items-center gap-1 text-red-500 font-medium">
+                        <XCircle className="h-3.5 w-3.5" /> {batchStats.failed}
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-500 font-medium">
+                        <Clock className="h-3.5 w-3.5" /> {batchStats.pending}
+                      </span>
+                      {batchStats.skipped > 0 && (
+                        <span className="flex items-center gap-1 text-muted-foreground font-medium">
+                          <Minus className="h-3.5 w-3.5" /> {batchStats.skipped}
+                        </span>
+                      )}
+                    </div>
+
+                    {batchStats.total > 0 && (
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                        <div className="h-full flex">
+                          <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${(batchStats.done / batchStats.total) * 100}%` }} />
+                          <div className="bg-red-400 transition-all duration-500" style={{ width: `${(batchStats.failed / batchStats.total) * 100}%` }} />
+                          {task.status === 'in_progress' && batchStats.pending > 0 && (
+                            <div className="bg-blue-400 animate-pulse transition-all duration-500" style={{ width: `${(1 / batchStats.total) * 100}%` }} />
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {batchLeads.map((lead: any, idx: number) => (
+                        <div key={lead.leadId || idx} className={cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                          lead.status === 'done' ? "bg-emerald-50/50 dark:bg-emerald-950/10" :
+                          lead.status === 'failed' ? "bg-red-50/50 dark:bg-red-950/10" :
+                          lead.status === 'pending' && task.status === 'in_progress' ? "bg-blue-50/30 dark:bg-blue-950/10" :
+                          "bg-muted/20"
+                        )}>
+                          <div className="shrink-0">
+                            {lead.status === 'done' ? <CheckCircle className="h-4 w-4 text-emerald-500" /> :
+                             lead.status === 'failed' ? <XCircle className="h-4 w-4 text-red-500" /> :
+                             lead.status === 'skipped' ? <Minus className="h-4 w-4 text-muted-foreground" /> :
+                             task.status === 'in_progress' ? <Loader2 className="h-4 w-4 text-blue-500 animate-spin" /> :
+                             <Clock className="h-4 w-4 text-amber-500" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium truncate">{lead.businessName}</span>
+                              {lead.score && (
+                                <Badge variant="outline" className={cn(
+                                  "text-[10px] py-0 px-1.5",
+                                  lead.score >= 80 ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400" :
+                                  lead.score >= 60 ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400" :
+                                  "bg-muted text-muted-foreground"
+                                )}>
+                                  {lead.score}/100
+                                </Badge>
+                              )}
+                              {lead.category && (
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{lead.category}</span>
+                              )}
+                            </div>
+                            {lead.resultNote && lead.status !== 'pending' && (
+                              <p className={cn(
+                                "text-[11px] mt-0.5 truncate",
+                                lead.status === 'done' ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+                              )}>
+                                {lead.resultNote}
+                              </p>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-[10px] text-muted-foreground">
+                            {lead.phone && batchChannel === 'voice' && <span>{lead.phone}</span>}
+                            {lead.phone && batchChannel === 'whatsapp' && <span>{lead.phone}</span>}
+                            {lead.email && batchChannel === 'email' && <span className="truncate max-w-[120px] block">{lead.email}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {taskDetailData.follow_ups && taskDetailData.follow_ups.length > 0 && (
                   <div className="rounded-xl border border-border shadow-sm bg-card p-5 space-y-3">

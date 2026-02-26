@@ -679,6 +679,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         additional_context: task.additional_context,
         voice_template_suggestion: task.voice_template_suggestion,
         language: task.language,
+        result_data: task.result_data,
       }, { 
         skipGuardrails: skipGuardrails, 
         roleId: task.ai_role || undefined 

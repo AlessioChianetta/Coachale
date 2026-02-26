@@ -453,6 +453,9 @@ export async function executeStep(
       case "lead_qualify_and_assign":
         result = await handleLeadQualifyAndAssign(task, step, previousResults);
         break;
+      case "batch_outreach":
+        result = await handleBatchOutreach(task, step, previousResults, agentContextSection);
+        break;
       default:
         throw new Error(`Unknown step action: ${step.action}`);
     }
@@ -491,7 +494,9 @@ export async function executeStep(
     } else if (step.action === 'lead_scraper_search' && result) {
       enrichedDescription = `Ricerca lead: "${result.query || 'N/A'}" (${result.search_engine || 'N/A'}) in "${result.location || 'N/A'}". ${result.results_count || 0} risultati trovati. Search ID: ${result.search_id || 'N/A'}. Enrichment: ${result.enrichment_stats ? `${result.enrichment_stats.enriched} arricchiti, ${result.enrichment_stats.cached} da cache` : 'N/A'}`;
     } else if (step.action === 'lead_qualify_and_assign' && result) {
-      enrichedDescription = `Qualifica lead: ${result.total_leads || 0} analizzati, ${result.qualified_count || 0} qualificati (soglia: ${result.score_threshold || 60}). AI summaries: ${result.summaries_generated || 0} generati. Task creati: ${result.tasks_created || 0} (voice: ${result.voice_tasks || 0}, whatsapp: ${result.whatsapp_tasks || 0}, email: ${result.email_tasks || 0}). Search ID: ${result.search_id || 'N/A'}`;
+      enrichedDescription = `Qualifica lead: ${result.total_leads || 0} analizzati, ${result.qualified_count || 0} qualificati (soglia: ${result.score_threshold || 60}). AI summaries: ${result.summaries_generated || 0} generati. Campagne batch create: ${result.batch_tasks_created || 0} (voice: ${result.voice_leads || 0}, whatsapp: ${result.whatsapp_leads || 0}, email: ${result.email_leads || 0}). Search ID: ${result.search_id || 'N/A'}`;
+    } else if (step.action === 'batch_outreach' && result) {
+      enrichedDescription = `Campagna ${result.channel || 'N/A'} completata: ${result.contacted || 0}/${result.total_leads || 0} contattati, ${result.failed || 0} falliti.${result.follow_up_created ? ` Follow-up creato per ${result.follow_up_count || 0} lead.` : ''}`;
     }
 
     await logActivity(task.consultant_id, {
@@ -2886,6 +2891,256 @@ async function getLeadScraperKeys(): Promise<{ serpApiKey: string | null; firecr
   };
 }
 
+async function handleBatchOutreach(
+  task: AITaskInfo,
+  step: ExecutionStep,
+  previousResults: Record<string, any>,
+  agentContextSection?: string,
+): Promise<Record<string, any>> {
+  let resultData: any = {};
+  if (task.additional_context) {
+    try { const ac = JSON.parse(task.additional_context); if (ac.batch_outreach) resultData = {}; } catch {}
+  }
+  const taskResult = await db.execute(sql`
+    SELECT result_data FROM ai_scheduled_tasks WHERE id = ${task.id} LIMIT 1
+  `);
+  const rdRaw = (taskResult.rows[0] as any)?.result_data;
+  if (rdRaw) {
+    resultData = typeof rdRaw === 'string' ? JSON.parse(rdRaw) : rdRaw;
+  }
+
+  if (!resultData.batchOutreach || !resultData.leads) {
+    throw new Error('batch_outreach: task non contiene dati batch (result_data.batchOutreach mancante)');
+  }
+
+  const channel: string = resultData.channel || step.params?.channel || 'email';
+  const leads: any[] = resultData.leads;
+  const searchQuery = resultData.searchQuery || 'Ricerca';
+  const pendingLeads = leads.filter((l: any) => l.status === 'pending');
+
+  console.log(`${LOG_PREFIX} [BATCH-OUTREACH] Starting batch ${channel} outreach: ${pendingLeads.length}/${leads.length} pending leads`);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'batch_outreach_started',
+    title: `📋 Campagna avviata: ${pendingLeads.length} lead via ${channel}`,
+    description: `Inizio contatto sequenziale per "${searchQuery}"`,
+    icon: '📋',
+    severity: 'info',
+    task_id: task.id,
+  });
+
+  let contacted = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < leads.length; i++) {
+    const lead = leads[i];
+    if (lead.status !== 'pending') {
+      if (lead.status === 'done') contacted++;
+      else if (lead.status === 'failed') failed++;
+      else if (lead.status === 'skipped') skipped++;
+      continue;
+    }
+
+    const leadName = lead.businessName || 'Lead sconosciuto';
+    const leadIndex = leads.filter((l: any, idx: number) => idx <= i && (l.status === 'pending' || l.status === 'done' || l.status === 'failed')).length;
+    const totalPending = pendingLeads.length;
+
+    await logActivity(task.consultant_id, {
+      event_type: 'batch_outreach_lead_start',
+      title: `🔄 Contattando "${leadName}" (${leadIndex}/${totalPending})`,
+      description: `Score: ${lead.score || 'N/A'}/100 — ${channel === 'voice' ? 'Chiamata in corso...' : channel === 'whatsapp' ? 'Invio WhatsApp...' : 'Invio email...'}`,
+      icon: '🔄',
+      severity: 'info',
+      task_id: task.id,
+      contact_name: leadName,
+    });
+
+    try {
+      let stepResult: Record<string, any>;
+
+      const leadTask: AITaskInfo = {
+        ...task,
+        contact_phone: lead.phone || task.contact_phone,
+        contact_name: leadName,
+        ai_instruction: `Contatto outreach per ${leadName}. Score: ${lead.score || 'N/A'}/100.\n${lead.category ? `Categoria: ${lead.category}` : ''}${lead.website ? `\nSito: ${lead.website}` : ''}${lead.address ? `\nIndirizzo: ${lead.address}` : ''}${lead.salesSummary ? `\nAnalisi: ${lead.salesSummary}` : ''}`,
+        additional_context: JSON.stringify({
+          lead_id: lead.leadId,
+          search_id: resultData.searchId,
+          voice_template_id: resultData.voiceTemplateId || null,
+          business_name: leadName,
+          sector: lead.category || null,
+          ai_summary: lead.salesSummary || null,
+          batch_outreach: true,
+        }),
+        task_category: 'prospecting',
+      };
+
+      if (channel === 'voice') {
+        stepResult = await handleVoiceCall(leadTask, step, previousResults);
+      } else if (channel === 'whatsapp') {
+        leadTask.whatsapp_config_id = resultData.whatsappConfigId || task.whatsapp_config_id;
+        stepResult = await handleSendWhatsapp(leadTask, step, previousResults, agentContextSection);
+      } else {
+        stepResult = await handleSendEmail(leadTask, step, previousResults, agentContextSection);
+      }
+
+      const success = stepResult.status === 'sent' || stepResult.status === 'scheduled' || !!stepResult.call_id || stepResult.success !== false;
+
+      leads[i].status = success ? 'done' : 'failed';
+      leads[i].resultNote = success
+        ? (stepResult.status || 'completato')
+        : (stepResult.error || stepResult.reason || 'Errore sconosciuto');
+
+      if (success) {
+        contacted++;
+        await logActivity(task.consultant_id, {
+          event_type: 'batch_outreach_lead_done',
+          title: `✅ "${leadName}" — ${channel === 'voice' ? 'chiamata avviata' : channel === 'whatsapp' ? 'WhatsApp inviato' : 'email inviata'}`,
+          description: `Score: ${lead.score || 'N/A'}/100. Progresso: ${contacted}/${totalPending} completati`,
+          icon: '✅',
+          severity: 'info',
+          task_id: task.id,
+          contact_name: leadName,
+        });
+      } else {
+        failed++;
+        await logActivity(task.consultant_id, {
+          event_type: 'batch_outreach_lead_failed',
+          title: `❌ "${leadName}" — ${leads[i].resultNote}`,
+          description: `Score: ${lead.score || 'N/A'}/100. Motivo: ${leads[i].resultNote}`,
+          icon: '❌',
+          severity: 'warning',
+          task_id: task.id,
+          contact_name: leadName,
+        });
+      }
+
+      try {
+        await updateLeadStatusAfterOutreach(leadTask, channel === 'voice' ? 'voice_call' : channel === 'whatsapp' ? 'send_whatsapp' : 'send_email', stepResult);
+      } catch (feedbackErr: any) {
+        console.warn(`${LOG_PREFIX} [BATCH-OUTREACH] Failed to update lead status for "${leadName}": ${feedbackErr.message}`);
+      }
+
+    } catch (leadErr: any) {
+      console.error(`${LOG_PREFIX} [BATCH-OUTREACH] Error processing lead "${leadName}": ${leadErr.message}`);
+      leads[i].status = 'failed';
+      leads[i].resultNote = leadErr.message;
+      failed++;
+
+      await logActivity(task.consultant_id, {
+        event_type: 'batch_outreach_lead_error',
+        title: `❌ "${leadName}" — Errore: ${leadErr.message.substring(0, 100)}`,
+        description: `Errore durante il contatto. Si prosegue con il prossimo lead.`,
+        icon: '❌',
+        severity: 'warning',
+        task_id: task.id,
+        contact_name: leadName,
+      });
+    }
+
+    resultData.leads = leads;
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET result_data = ${JSON.stringify(resultData)}::jsonb, updated_at = NOW()
+      WHERE id = ${task.id}
+    `);
+
+    if (i < leads.length - 1 && leads[i + 1]?.status === 'pending') {
+      const paceDelay = channel === 'voice' ? 10000 : 3000;
+      console.log(`${LOG_PREFIX} [BATCH-OUTREACH] Pacing delay: ${paceDelay}ms before next lead`);
+      await new Promise(r => setTimeout(r, paceDelay));
+    }
+  }
+
+  const permanentFailures = ['invalido', 'non disponibile', 'invalid', 'no phone', 'no email', 'not_found', 'blocked', 'opt_out'];
+  const followUpLeads = leads.filter((l: any) => {
+    if (l.status !== 'failed') return false;
+    const note = (l.resultNote || '').toLowerCase();
+    return !permanentFailures.some(pf => note.includes(pf));
+  });
+
+  await logActivity(task.consultant_id, {
+    event_type: 'batch_outreach_completed',
+    title: `🎯 Campagna completata: ${contacted}/${leads.length} contattati`,
+    description: `✅ ${contacted} contattati, ❌ ${failed} falliti, ⏭️ ${skipped} saltati${followUpLeads.length > 0 ? `. ${followUpLeads.length} da riprovare.` : ''}`,
+    icon: '🎯',
+    severity: contacted > 0 ? 'info' : 'warning',
+    task_id: task.id,
+  });
+
+  if (followUpLeads.length > 0) {
+    try {
+      const followUpTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const followUpResultData = {
+        batchOutreach: true,
+        searchId: resultData.searchId,
+        searchQuery: resultData.searchQuery,
+        channel: channel,
+        voiceTemplateId: resultData.voiceTemplateId || null,
+        whatsappConfigId: resultData.whatsappConfigId || null,
+        isFollowUp: true,
+        originalTaskId: task.id,
+        leads: followUpLeads.map((l: any) => ({ ...l, status: 'pending', resultNote: null })),
+      };
+
+      const outreachConfig = await db.execute(sql`
+        SELECT outreach_config FROM ai_autonomy_settings
+        WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+      `);
+      const followUpDays = ((outreachConfig.rows[0] as any)?.outreach_config as any)?.followUpDays ?? 3;
+
+      await db.execute(sql`
+        INSERT INTO ai_scheduled_tasks (
+          id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+          scheduled_at, timezone, status, priority, parent_task_id,
+          task_category, ai_role, preferred_channel,
+          result_data,
+          additional_context,
+          max_attempts, current_attempt, retry_delay_minutes,
+          created_at, updated_at
+        ) VALUES (
+          ${followUpTaskId}, ${task.consultant_id}, ${followUpLeads[0]?.phone || ''},
+          ${`Follow-up: ${searchQuery}`}, 'ai_task', ${`Follow-up campagna: ${followUpLeads.length} lead da ricontattare via ${channel}`},
+          NOW() + ${sql.raw(`INTERVAL '${followUpDays} days'`)},
+          ${task.timezone || 'Europe/Rome'}, 'waiting_approval', 2, ${task.id},
+          'outreach', ${task.ai_role || 'alessia'}, ${channel},
+          ${JSON.stringify(followUpResultData)}::jsonb,
+          ${JSON.stringify({ batch_outreach: true, is_follow_up: true })},
+          1, 0, 5,
+          NOW(), NOW()
+        )
+      `);
+
+      await logActivity(task.consultant_id, {
+        event_type: 'batch_outreach_followup_created',
+        title: `🔁 Follow-up programmato: ${followUpLeads.length} lead tra ${followUpDays} giorni`,
+        description: `Task follow-up creato per ricontattare i lead non raggiunti via ${channel}`,
+        icon: '🔁',
+        severity: 'info',
+        task_id: task.id,
+      });
+
+      console.log(`${LOG_PREFIX} [BATCH-OUTREACH] Created follow-up task ${followUpTaskId} for ${followUpLeads.length} leads in ${followUpDays} days`);
+    } catch (followUpErr: any) {
+      console.error(`${LOG_PREFIX} [BATCH-OUTREACH] Failed to create follow-up task: ${followUpErr.message}`);
+    }
+  }
+
+  return {
+    status: 'completed',
+    channel,
+    search_query: searchQuery,
+    total_leads: leads.length,
+    contacted,
+    failed,
+    skipped,
+    follow_up_created: followUpLeads.length > 0,
+    follow_up_count: followUpLeads.length,
+    leads: leads.map(l => ({ businessName: l.businessName, status: l.status, resultNote: l.resultNote })),
+  };
+}
+
 async function handleLeadScraperSearch(
   task: AITaskInfo,
   step: ExecutionStep,
@@ -3171,17 +3426,18 @@ async function handleLeadQualifyAndAssign(
   const remainingLimits = await getRemainingLimits(task.consultant_id);
   console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Remaining daily limits — calls: ${remainingLimits.calls}, whatsapp: ${remainingLimits.whatsapp}, email: ${remainingLimits.email}`);
 
-  let tasksCreated = 0;
-  let voiceTasks = 0;
-  let whatsappTasks = 0;
-  let emailTasks = 0;
+  let voiceLeadCount = 0;
+  let whatsappLeadCount = 0;
+  let emailLeadCount = 0;
   let skippedCooldown = 0;
   let skippedRateLimit = 0;
-  const baseDelayMinutes = 15;
+
+  const batchVoice: any[] = [];
+  const batchWhatsapp: any[] = [];
+  const batchEmail: any[] = [];
 
   for (let i = 0; i < qualifiedLeads.length; i++) {
     const lead = qualifiedLeads[i];
-    const delayMinutes = i * (baseDelayMinutes + Math.floor(Math.random() * 16));
     const wd = (lead.websiteData as any) || {};
     const leadPhone = lead.phone || (wd.phones && wd.phones[0]) || null;
     const leadEmail = lead.email || (wd.emails && wd.emails[0]) || null;
@@ -3197,28 +3453,28 @@ async function handleLeadQualifyAndAssign(
     let channelAssigned: string | null = null;
 
     for (const channel of channelPriority) {
-      if (channel === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceTasks) {
+      if (channel === 'voice' && leadPhone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceLeadCount) {
         channelAssigned = 'voice';
         break;
       }
-      if (channel === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappTasks) {
+      if (channel === 'whatsapp' && leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) {
         channelAssigned = 'whatsapp';
         break;
       }
-      if (channel === 'email' && leadEmail && channelsEnabled.email && remainingLimits.email > emailTasks) {
+      if (channel === 'email' && leadEmail && channelsEnabled.email && remainingLimits.email > emailLeadCount) {
         channelAssigned = 'email';
         break;
       }
     }
 
     if (!channelAssigned) {
-      if (leadPhone && channelsEnabled.voice && remainingLimits.calls > voiceTasks) channelAssigned = 'voice';
-      else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappTasks) channelAssigned = 'whatsapp';
-      else if (leadEmail && channelsEnabled.email && remainingLimits.email > emailTasks) channelAssigned = 'email';
+      if (leadPhone && channelsEnabled.voice && remainingLimits.calls > voiceLeadCount) channelAssigned = 'voice';
+      else if (leadPhone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > whatsappLeadCount) channelAssigned = 'whatsapp';
+      else if (leadEmail && channelsEnabled.email && remainingLimits.email > emailLeadCount) channelAssigned = 'email';
     }
 
     if (!channelAssigned) {
-      const allLimitsReached = remainingLimits.calls <= voiceTasks && remainingLimits.whatsapp <= whatsappTasks && remainingLimits.email <= emailTasks;
+      const allLimitsReached = remainingLimits.calls <= voiceLeadCount && remainingLimits.whatsapp <= whatsappLeadCount && remainingLimits.email <= emailLeadCount;
       if (allLimitsReached) {
         console.log(`${LOG_PREFIX} [LEAD-QUALIFY] All daily rate limits reached, stopping assignment`);
         skippedRateLimit += (qualifiedLeads.length - i);
@@ -3229,137 +3485,125 @@ async function handleLeadQualifyAndAssign(
       continue;
     }
 
-    const leadContext = [
-      `Azienda: ${leadName}`,
-      lead.category ? `Categoria: ${lead.category}` : null,
-      lead.address ? `Indirizzo: ${lead.address}` : null,
-      lead.website ? `Sito: ${lead.website}` : null,
-      lead.rating ? `Rating: ${lead.rating}/5 (${lead.reviewsCount || 0} recensioni)` : null,
-      lead.aiCompatibilityScore ? `Score AI: ${lead.aiCompatibilityScore}/100` : null,
-      lead.aiSalesSummary ? `Analisi AI: ${lead.aiSalesSummary.substring(0, 500)}` : null,
-    ].filter(Boolean).join('\n');
+    const leadEntry = {
+      leadId: lead.id,
+      businessName: leadName,
+      phone: leadPhone,
+      email: leadEmail,
+      score: lead.aiCompatibilityScore,
+      category: lead.category || null,
+      website: lead.website || null,
+      address: lead.address || null,
+      rating: lead.rating || null,
+      reviewsCount: lead.reviewsCount || 0,
+      salesSummary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 500) : null,
+      status: 'pending' as const,
+      resultNote: null as string | null,
+    };
 
-    const childTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    try {
-      if (channelAssigned === 'voice') {
-        const instruction = `Chiamata outbound a ${leadName}. Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: qualificare l'interesse, presentare i servizi del consulente e, se appropriato, fissare un appuntamento.`;
-
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-            scheduled_at, timezone, status, priority, parent_task_id,
-            task_category, ai_role, preferred_channel,
-            additional_context,
-            max_attempts, current_attempt, retry_delay_minutes,
-            created_at, updated_at
-          ) VALUES (
-            ${childTaskId}, ${task.consultant_id}, ${leadPhone},
-            ${leadName}, 'outreach_call', ${instruction},
-            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
-            'prospecting', 'alessia', 'voice',
-            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, voice_template_id: voiceTemplateId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
-            3, 0, 5,
-            NOW(), NOW()
-          )
-        `);
-
-        voiceTasks++;
-      } else if (channelAssigned === 'whatsapp') {
-        const instruction = `Invia messaggio WhatsApp a ${leadName}. Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: primo contatto professionale, presentazione servizi del consulente. Usa un template pre-approvato.`;
-
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-            scheduled_at, timezone, status, priority, parent_task_id,
-            task_category, ai_role, preferred_channel,
-            whatsapp_config_id,
-            additional_context,
-            max_attempts, current_attempt, retry_delay_minutes,
-            created_at, updated_at
-          ) VALUES (
-            ${childTaskId}, ${task.consultant_id}, ${leadPhone},
-            ${leadName}, 'outreach_whatsapp', ${instruction},
-            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
-            'prospecting', 'stella', 'whatsapp',
-            ${whatsappConfigId},
-            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
-            3, 0, 5,
-            NOW(), NOW()
-          )
-        `);
-
-        whatsappTasks++;
-      } else if (channelAssigned === 'email') {
-        const instruction = `Invia email a ${leadName} (${leadEmail}). Questo è un lead trovato dalla ricerca automatica con score ${lead.aiCompatibilityScore || 'N/A'}/100.\n\nDati lead:\n${leadContext}\n\nObiettivo: primo contatto professionale via email, presentazione servizi del consulente e proposta di valore specifica per il loro settore.`;
-
-        await db.execute(sql`
-          INSERT INTO ai_scheduled_tasks (
-            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
-            scheduled_at, timezone, status, priority, parent_task_id,
-            task_category, ai_role, preferred_channel,
-            additional_context,
-            max_attempts, current_attempt, retry_delay_minutes,
-            created_at, updated_at
-          ) VALUES (
-            ${childTaskId}, ${task.consultant_id}, ${leadEmail || ''},
-            ${leadName}, 'outreach_email', ${instruction},
-            NOW() + ${sql.raw(`INTERVAL '${delayMinutes} minutes'`)},
-            ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
-            'prospecting', 'millie', 'email',
-            ${JSON.stringify({ lead_id: lead.id, search_id: searchId, business_name: leadName, sector: lead.category || null, ai_summary: lead.aiSalesSummary ? lead.aiSalesSummary.substring(0, 300) : null })},
-            3, 0, 5,
-            NOW(), NOW()
-          )
-        `);
-
-        emailTasks++;
-      }
-
-      tasksCreated++;
-
-      await db
-        .update(leadScraperResults)
-        .set({
-          leadStatus: 'in_outreach',
-          outreachTaskId: childTaskId,
-          leadNextAction: `${channelAssigned} outreach scheduled`,
-          leadNextActionDate: new Date(Date.now() + delayMinutes * 60 * 1000),
-        })
-        .where(eq(leadScraperResults.id, lead.id));
-
-      await db.insert(leadScraperActivities).values({
-        leadId: lead.id,
-        consultantId: task.consultant_id,
-        type: 'outreach_assigned',
-        title: `Outreach assegnato: ${channelAssigned}`,
-        description: `Task ${childTaskId} creato per contattare via ${channelAssigned}. Score: ${lead.aiCompatibilityScore || 'N/A'}/100`,
-        metadata: { taskId: childTaskId, channel: channelAssigned, score: lead.aiCompatibilityScore },
-      });
-
-      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Created ${channelAssigned} task for "${leadName}" (score: ${lead.aiCompatibilityScore}, delay: ${delayMinutes}min)`);
-
-      const channelLabel = channelAssigned === 'voice' ? '📞 Alessia (chiamata)' : channelAssigned === 'whatsapp' ? '💬 Stella (WhatsApp)' : '📧 Millie (email)';
-      await logActivity(task.consultant_id, {
-        event_type: 'lead_outreach_task_created',
-        title: `🚀 Task outreach creato per "${leadName}"`,
-        description: `Canale: ${channelLabel}, Score: ${lead.aiCompatibilityScore || 'N/A'}/100, Programmato tra ${delayMinutes} min`,
-        icon: '🚀',
-        severity: 'info',
-        task_id: task.id,
-        contact_name: leadName,
-      });
-    } catch (taskErr: any) {
-      console.error(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to create task for "${leadName}": ${taskErr.message}`);
+    if (channelAssigned === 'voice') {
+      batchVoice.push(leadEntry);
+      voiceLeadCount++;
+    } else if (channelAssigned === 'whatsapp') {
+      batchWhatsapp.push(leadEntry);
+      whatsappLeadCount++;
+    } else if (channelAssigned === 'email') {
+      batchEmail.push(leadEntry);
+      emailLeadCount++;
     }
   }
 
+  const searchQuery = task.ai_instruction?.match(/[""]([^""]+)[""]|cercando\s+(.+?)(?:\s+in\s+|\s*$)/i)?.[1] || 'Ricerca lead';
+  let batchTasksCreated = 0;
+
+  const batches: { channel: string; role: string; leads: any[]; channelLabel: string }[] = [];
+  if (batchVoice.length > 0) batches.push({ channel: 'voice', role: 'alessia', leads: batchVoice, channelLabel: '📞 Chiamate' });
+  if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', role: 'stella', leads: batchWhatsapp, channelLabel: '💬 WhatsApp' });
+  if (batchEmail.length > 0) batches.push({ channel: 'email', role: 'millie', leads: batchEmail, channelLabel: '📧 Email' });
+
+  for (const batch of batches) {
+    const batchTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const leadNames = batch.leads.map(l => l.businessName).join(', ');
+    const instruction = `Campagna Outreach: ${searchQuery} — ${batch.leads.length} lead da contattare via ${batch.channel}.\n\nLead da contattare:\n${batch.leads.map((l, i) => `${i+1}. ${l.businessName} (Score: ${l.score || 'N/A'}/100)${l.phone ? ` — Tel: ${l.phone}` : ''}${l.email ? ` — Email: ${l.email}` : ''}`).join('\n')}\n\nObiettivo per ciascun lead: primo contatto professionale, presentazione servizi del consulente.`;
+
+    const batchResultData = {
+      batchOutreach: true,
+      searchId: searchId,
+      searchQuery: searchQuery,
+      channel: batch.channel,
+      voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
+      whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
+      leads: batch.leads,
+    };
+
+    try {
+      const contactPhone = batch.leads[0]?.phone || '';
+      await db.execute(sql`
+        INSERT INTO ai_scheduled_tasks (
+          id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+          scheduled_at, timezone, status, priority, parent_task_id,
+          task_category, ai_role, preferred_channel,
+          result_data,
+          additional_context,
+          max_attempts, current_attempt, retry_delay_minutes,
+          created_at, updated_at
+        ) VALUES (
+          ${batchTaskId}, ${task.consultant_id}, ${contactPhone},
+          ${`Campagna: ${searchQuery}`}, 'ai_task', ${instruction},
+          NOW() + INTERVAL '5 minutes',
+          ${task.timezone || 'Europe/Rome'}, ${outreachTaskStatus}, 2, ${task.id},
+          'outreach', ${batch.role}, ${batch.channel},
+          ${JSON.stringify(batchResultData)}::jsonb,
+          ${JSON.stringify({ search_id: searchId, batch_outreach: true })},
+          1, 0, 5,
+          NOW(), NOW()
+        )
+      `);
+
+      batchTasksCreated++;
+
+      for (const lead of batch.leads) {
+        await db
+          .update(leadScraperResults)
+          .set({
+            leadStatus: 'in_outreach',
+            outreachTaskId: batchTaskId,
+            leadNextAction: `${batch.channel} outreach in campagna batch`,
+            leadNextActionDate: new Date(Date.now() + 5 * 60 * 1000),
+          })
+          .where(eq(leadScraperResults.id, lead.leadId));
+
+        await db.insert(leadScraperActivities).values({
+          leadId: lead.leadId,
+          consultantId: task.consultant_id,
+          type: 'outreach_assigned',
+          title: `Outreach assegnato: ${batch.channel} (campagna batch)`,
+          description: `Campagna "${searchQuery}" — ${batch.leads.length} lead. Score: ${lead.score || 'N/A'}/100`,
+          metadata: { taskId: batchTaskId, channel: batch.channel, score: lead.score, batchSize: batch.leads.length },
+        });
+      }
+
+      console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Created batch ${batch.channel} task for ${batch.leads.length} leads: ${leadNames}`);
+
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_outreach_batch_created',
+        title: `🚀 Campagna ${batch.channelLabel} creata: ${batch.leads.length} lead`,
+        description: `${batch.role === 'alessia' ? 'Alessia' : batch.role === 'stella' ? 'Stella' : 'Millie'} lavorerà ${batch.leads.length} lead in sequenza: ${leadNames}`,
+        icon: '🚀',
+        severity: 'info',
+        task_id: task.id,
+      });
+    } catch (taskErr: any) {
+      console.error(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to create batch ${batch.channel} task: ${taskErr.message}`);
+    }
+  }
+
+  const totalLeadsAssigned = voiceLeadCount + whatsappLeadCount + emailLeadCount;
+
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_and_assign_completed',
-    title: `Qualifica lead completata: ${qualifiedLeads.length} qualificati su ${allLeads.length}`,
-    description: `Soglia score: ${scoreThreshold}. Task creati: ${tasksCreated} (voice: ${voiceTasks}, whatsapp: ${whatsappTasks}, email: ${emailTasks}). AI summaries: ${summariesGenerated} generati. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
+    title: `Qualifica completata: ${totalLeadsAssigned} lead in ${batchTasksCreated} campagne`,
+    description: `${qualifiedLeads.length}/${allLeads.length} qualificati (soglia: ${scoreThreshold}). Campagne: ${voiceLeadCount > 0 ? `📞 ${voiceLeadCount} chiamate` : ''}${whatsappLeadCount > 0 ? ` 💬 ${whatsappLeadCount} WhatsApp` : ''}${emailLeadCount > 0 ? ` 📧 ${emailLeadCount} email` : ''}. Skippati: ${skippedCooldown} cooldown, ${skippedRateLimit} rate limit.`,
     icon: '🎯',
     severity: 'info',
     task_id: task.id,
@@ -3372,10 +3616,11 @@ async function handleLeadQualifyAndAssign(
     score_threshold: scoreThreshold,
     summaries_generated: summariesGenerated,
     summaries_failed: summariesFailed,
-    tasks_created: tasksCreated,
-    voice_tasks: voiceTasks,
-    whatsapp_tasks: whatsappTasks,
-    email_tasks: emailTasks,
+    batch_tasks_created: batchTasksCreated,
+    leads_assigned: totalLeadsAssigned,
+    voice_leads: voiceLeadCount,
+    whatsapp_leads: whatsappLeadCount,
+    email_leads: emailLeadCount,
     skipped_cooldown: skippedCooldown,
     skipped_rate_limit: skippedRateLimit,
     channel_priority: channelPriority,

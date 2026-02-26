@@ -682,6 +682,7 @@ export async function generateExecutionPlan(task: {
   additional_context?: string | null;
   voice_template_suggestion?: string | null;
   language?: string | null;
+  result_data?: any;
 }, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string }): Promise<DecisionResult> {
   console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}${options?.skipGuardrails ? ' (SKIP_GUARDRAILS)' : ''} roleId=${options?.roleId || 'none'}`);
 
@@ -741,6 +742,55 @@ export async function generateExecutionPlan(task: {
     });
 
     return hunterPlan;
+  }
+
+  let resultDataParsed: any = null;
+  if (task.result_data) {
+    try { resultDataParsed = typeof task.result_data === 'string' ? JSON.parse(task.result_data) : task.result_data; } catch {}
+  }
+  if (resultDataParsed?.batchOutreach === true) {
+    const batchChannel = resultDataParsed.channel || 'unknown';
+    const batchLeads = resultDataParsed.leads || [];
+    const pendingLeads = batchLeads.filter((l: any) => l.status === 'pending');
+    console.log(`${LOG_PREFIX} [BATCH-OUTREACH] Auto-generating 1-step execution plan for batch ${batchChannel} task ${task.id} (${pendingLeads.length}/${batchLeads.length} pending)`);
+
+    const batchPlan: DecisionResult = {
+      should_execute: true,
+      reasoning: `Campagna outreach batch: ${pendingLeads.length} lead da contattare via ${batchChannel}. Processo sequenziale: contatto uno alla volta con log per ciascuno.`,
+      confidence: 0.95,
+      execution_plan: [
+        {
+          step: 1,
+          action: "batch_outreach",
+          description: `Contatta ${pendingLeads.length} lead via ${batchChannel} in sequenza`,
+          status: "pending",
+          params: {
+            channel: batchChannel,
+          },
+        },
+      ],
+      estimated_duration_minutes: pendingLeads.length * 2,
+    };
+
+    await logActivity(task.consultant_id, {
+      event_type: "execution_plan_generated",
+      title: `Piano campagna ${batchChannel} generato (${pendingLeads.length} lead)`,
+      description: batchPlan.reasoning,
+      icon: "📋",
+      severity: "info",
+      task_id: task.id,
+      contact_name: task.contact_name,
+      contact_id: task.contact_id,
+      event_data: {
+        should_execute: true,
+        confidence: 0.95,
+        steps_count: 1,
+        batch_size: pendingLeads.length,
+        channel: batchChannel,
+      },
+    });
+
+    return batchPlan;
   }
 
   const context = await buildTaskContext(task, options?.roleId);
