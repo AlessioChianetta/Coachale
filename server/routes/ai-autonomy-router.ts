@@ -929,10 +929,11 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
                competitive_advantages, ideal_client_profile, additional_context
         FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
       `),
-      db.execute(sql`SELECT name FROM users WHERE id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
     ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
-    const consultantName = (consultantResult.rows[0] as any)?.name || 'Consulente';
+    const cRow = consultantResult.rows[0] as any;
+    const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
 
     const leadsForAI = actionableLeads.slice(0, maxLeads).map(l => ({
       id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
@@ -1359,10 +1360,11 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
                competitive_advantages, ideal_client_profile, additional_context
         FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
       `),
-      db.execute(sql`SELECT name FROM users WHERE id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
     ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
-    const consultantName = (consultantResult.rows[0] as any)?.name || 'Consulente';
+    const cRow = consultantResult.rows[0] as any;
+    const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
 
     const results: any[] = [];
     let voiceCount = 0, waCount = 0, emailCount = 0;
