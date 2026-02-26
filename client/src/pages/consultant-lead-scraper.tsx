@@ -537,10 +537,13 @@ export default function ConsultantLeadScraper() {
           setPlanChatInput("");
           setShowPlanPanel(true);
           setCrmAnalysisResult({ success: true, analyzed: data.totalActions, actionable: data.leads?.length || 0 });
+          toast({ title: "Piano Hunter generato", description: `${data.leads?.length || 0} lead azionabili trovati. Rivedi il piano e approva.` });
         } else if (res.ok && !data.planId) {
           setCrmAnalysisResult({ success: true, analyzed: 0, actionable: 0, tasks_created: 0, noPlan: true });
+          toast({ title: "Analisi CRM completata", description: "Nessun lead necessita di attenzione al momento. Tutti i lead sono aggiornati o hanno task attivi.", variant: "default" });
         } else {
           setCrmAnalysisResult({ success: false, error: data.error || "Errore generazione piano" });
+          toast({ title: "Errore", description: data.error || "Errore durante la generazione del piano", variant: "destructive" });
         }
       } else {
         const res = await fetch("/api/ai-autonomy/hunter-analyze-crm", {
@@ -550,11 +553,21 @@ export default function ConsultantLeadScraper() {
         });
         const data = await res.json();
         setCrmAnalysisResult({ success: res.ok, analyzed: data.analyzed, actionable: data.actionable, tasks_created: data.tasks_created, skipped: data.skipped, error: data.error });
+        if (res.ok) {
+          if (data.tasks_created > 0) {
+            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili — ${data.tasks_created} task creati` });
+          } else {
+            toast({ title: "Analisi CRM completata", description: data.actionable > 0 ? `${data.analyzed} lead analizzati — ${data.actionable} azionabili ma nessun task creato (limiti raggiunti o canali non configurati)` : `${data.analyzed} lead analizzati — tutti aggiornati, nessuna azione necessaria` });
+          }
+        } else {
+          toast({ title: "Errore analisi CRM", description: data.error || "Errore durante l'analisi", variant: "destructive" });
+        }
         refetchPipeline();
         queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
       }
     } catch (e: any) {
       setCrmAnalysisResult({ success: false, error: e.message });
+      toast({ title: "Errore", description: e.message || "Errore di connessione", variant: "destructive" });
     } finally {
       setAnalyzingCrm(false);
     }
