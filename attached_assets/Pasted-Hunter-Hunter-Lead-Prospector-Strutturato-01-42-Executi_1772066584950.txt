@@ -1,0 +1,73 @@
+Hunter
+Hunter
+
+Lead Prospector
+
+⚡ Strutturato
+01:42
+
+Executive Summary
+
+14
+
+Clienti analizzati
+
+14
+
+Idonei
+
+3
+
+Task creati
+
+Pensiero Intimo AI
+
+Osservazione
+Ho analizzato la pipeline attuale che conta 10 lead (tra cui SAEP ICT e Wexa) tutti in stato 'nuovo'. Ho notato che Stella ha ben 11 task di outreach e follow-up in attesa di approvazione, il che indica un collo di bottiglia nel processo di contatto. Le ricerche precedenti si sono concentrate su Software House a Milano e Agenzie Marketing a Roma, lasciando scoperti i segmenti dei consulenti/coach e le aziende B2B in altre aree geografiche strategiche.
+
+Riflessione
+Con solo 10 lead totali, siamo ben al di sotto della soglia di sicurezza di 30-50 lead. È necessario diversificare il database puntando al Segmento 2 (Coach/Consulenti) e al Segmento 1 (MSP/SaaS) in poli tecnologici diversi da Milano e Roma per evitare saturazione. Il Sales Context ora completo mi permette di mirare con precisione a chi ha flussi ricorrenti e problemi di gestione lead su WhatsApp.
+
+Decisione
+Ho programmato 3 nuove ricerche: 1) Business Coach a Bologna su Google Maps per intercettare il Segmento 2; 2) Managed Service Providers (MSP) a Torino tramite Google Search per il Segmento 1; 3) Agenzie di formazione a Padova su Google Maps. Queste query coprono tutti i segmenti target in città con alta densità imprenditoriale, garantendo varietà alla pipeline.
+
+Auto-Revisione
+I task creati non sono duplicati di ricerche recenti. Ho distribuito le esecuzioni durante la mattinata e il pomeriggio del 26 febbraio per non sovraccaricare il sistema. Sebbene l'outreach sia fermo in attesa di approvazione del consulente, aumentare il volume di lead qualificabili è fondamentale per garantire che, una volta sbloccata Stella, ci sia materiale di alta qualità su cui lavorare.
+
+Modello: gemini-3-flash-preview
+Strutturato
+Analisi Strategica
+
+Analisi Executive Coach
+
+Ho analizzato la pipeline attuale che conta 10 lead (tra cui SAEP ICT e Wexa) tutti in stato 'nuovo'. Ho notato che Stella ha ben 11 task di outreach e follow-up in attesa di approvazione, il che indica un collo di bottiglia nel processo di contatto. Le ricerche precedenti si sono concentrate su Software House a Milano e Agenzie Marketing a Roma, lasciando scoperti i segmenti dei consulenti/coach e le aziende B2B in altre aree geografiche strategiche.
+
+Con solo 10 lead totali, siamo ben al di sotto della soglia di sicurezza di 30-50 lead. È necessario diversificare il database puntando al Segmento 2 (Coach/Consulenti) e al Segmento 1 (MSP/SaaS) in poli tecnologici diversi da Milano e Roma per evitare saturazione. Il Sales Context ora completo mi permette di mirare con precisione a chi ha flussi ricorrenti e problemi di gestione lead su WhatsApp.
+
+Ho programmato 3 nuove ricerche: 1) Business Coach a Bologna su Google Maps per intercettare il Segmento 2; 2) Managed Service Providers (MSP) a Torino tramite Google Search per il Segmento 1; 3) Agenzie di formazione a Padova su Google Maps. Queste query coprono tutti i segmenti target in città con alta densità imprenditoriale, garantendo varietà alla pipeline.
+
+Azioni Operative
+
+Azioni decise (3)
+
+📌 Task
+lead_scraper
+P3
+Lead Search
+TIPO: lead_scraper_search QUERY: Business Coach ENGINE: maps LOCATION: Bologna, Italia LIMIT: 10 REASONING: Target Segmento 2. I coach a Bologna gesti
+
+Perché: Espansione verso il segmento consulenti in un'area geografica non ancora esplorata.
+📌 Task
+lead_scraper
+P3
+Lead Search
+TIPO: lead_scraper_search QUERY: Managed Service Provider ENGINE: search LOCATION: Torino, Italia LIMIT: 10 REASONING: Target Segmento 1. Gli MSP hann
+
+Perché: Ricerca di aziende B2B con modelli di ricavo ricorrente (MRR) a Torino.
+📌 Task
+lead_scraper
+P2
+Lead Search
+TIPO: lead_scraper_search QUERY: Agenzia di formazione ENGINE: maps LOCATION: Padova, Italia LIMIT: 10 REASONING: Target Segmento 2/3. Le agenzie di f
+
+Perché: Focus su aziende che vendono corsi e servizi formativi, ideali per i Livelli 3 e 5 del Sistema Orbitale.

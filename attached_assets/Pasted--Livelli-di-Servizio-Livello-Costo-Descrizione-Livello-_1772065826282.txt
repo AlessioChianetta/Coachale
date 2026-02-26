@@ -1,0 +1,149 @@
+
+Livelli di Servizio
+Livello
+Costo
+Descrizione
+Livello 1 (Gratuito)
+ Gratuito
+Accesso per test a un dipendente predefinito.
+Livello 2
+ A pagamento 47 Euro al mese
+Lo stesso dipendente del Livello 0 con messaggi illimitati.
+Livello 3
+ A pagamento 97 euro al mese
+Corsi e supporto AI (esercizi e assistenza) più la possibilità di interazione vocale illimitata con un dipendente AI vocale. e Memoria Ai
+Livello 4
+ A pagamento 
+1000 euro setup
+297 euro al mese
+Dipendente Ai che prende appuntamenti su whatsapp/instagram/email
+Livello 5
+ A pagamento 
+2000 euro setup
+497 euro al mese
+Fornitura dell'infrastruttura completa per creare e distribuire agenti AI, sviluppare corsi, ecc., inclusi Onboarding iniziale e supporto dedicati e assistenza clienti.
+Livello 6
+ A pagamento 
+2000 euro setup
+997 euro al mese
+Tutti i servizi precedenti, più consulenze esclusive e personalizzate con me per l'analisi dei processi aziendali e la raccomandazione di software per l'ottimizzazione.
+
+
+
+
+Obiettivi di Crescita e Strategie di Scaling
+Il tuo obiettivo è eccellente. Passare da 2k MRR (Monthly Recurring Revenue) a 7k MRR e successivamente a 100k MRR richiede un'esecuzione strategica in Vendite e Marketing, con un focus particolare sulla scalabilità del modello SaaS.
+Fase 1: Scaling da 2k MRR a 7k MRR (Focus: Ottimizzazione e Conversione)
+Questa fase si concentra sull'ottimizzazione del funnel esistente, la convalida dei canali di acquisizione e l'affinamento del Product-Market Fit per segmenti di nicchia.
+1. Vendite (Sales) - Checklist
+Task
+Stato
+Dettagli
+Definizione ICP (Ideal Customer Profile) Dettagliato
+[ ]
+Rivedi i tuoi attuali 2k MRR clienti: chi sono, cosa fanno, perché amano il tuo prodotto. Crea 2-3 Buyer Personas specifiche.
+Mappatura Customer Journey
+[ ]
+Identifica i punti di frizione (calo) nel processo di onboarding e conversione.
+Ottimizzazione Demo/Trial Conversione
+[ ]
+Analizza il tasso di conversione da Trial a Pagante. Implementa un trigger di supporto per gli utenti che non usano una feature chiave entro i primi 3 giorni.
+Definizione Processo di Upsell/Cross-sell
+[ ]
+Identifica opportunità per vendere piani superiori o add-on ai clienti esistenti (più facile che acquisirne di nuovi).
+Misurazione Tasso di Abbandono (Churn Rate)
+[ ]
+Stabilisci una metrica settimanale per monitorare il churn e sviluppa tattiche di mitigazione.
+Formazione del primo Sales Assistant (se necessario)
+[ ]
+Documenta i processi di vendita base per prepararti all'assunzione del primo venditore.
+
+2. Marketing (Marketing) - Checklist
+Task
+Stato
+Dettagli
+Analisi e Ottimizzazione SEO On-Page/Tecnica
+[ ]
+Assicurati che il tuo sito web sia veloce e indicizzato correttamente.
+Content Marketing Mirato (2-4 articoli/mese)
+[ ]
+Scrivi contenuti che rispondano direttamente ai problemi dell'ICP identificato. Focus su long-tail keywords.
+Email Marketing Automation
+[ ]
+Implementa sequenze di drip campaign per: Trial Onboarding, Lead Nurturing (per chi non si converte subito) e Re-engagement (per utenti inattivi).
+Test A/B Landing Page
+[ ]
+Ottimizza le pagine di destinazione (titoli, CTA, benefici) per massimizzare il tasso di conversione (Conversion Rate Optimization - CRO).
+Raccolta Recensioni e Testimonianze
+[ ]
+Incoraggia attivamente i tuoi 2k MRR clienti soddisfatti a lasciare recensioni su piattaforme rilevanti (es. Capterra, G2, Product Hunt).
+
+3. Google Ads Strategy (Fase 1: Convalida)
+Obiettivo: Generare traffico qualificato a un costo per acquisizione (CPA) sostenibile e inferiore al tuo Lifetime Value (LTV) target.
+Struttura Iniziale:
+Campagna 1 (Brand): Proteggi il tuo nome e il nome del tuo prodotto. (CPA basso, ROAS alto).
+Campagna 2 (Competitor): Fai offerte su nomi di competitor diretti. Utilizza copy che evidenzi i tuoi differenziatori chiave.
+Campagna 3 (High Intent Keywords): Parola chiave con intento molto alto (es. "software gestione [nicchia]", "alternativa a [competitor]").
+
+Azione Google Ads
+Dettagli
+Ricerca Keyword Negativa
+Fondamentale per escludere traffico non pertinente (es. "gratis", "open source", "lavoro").
+Monitoraggio Conversioni
+Configura il monitoraggio delle conversioni (es. Iscrizione Trial, Acquisto) in modo accurato.
+Budget Limitato e Mirato
+Inizia con un budget che ti permetta di raccogliere dati significativi (es. 20-30 conversioni al mese) e concentrati sulle parole chiave più performanti.
+
+
+
+Fase 2: Scaling da 7k MRR a 100k MRR (Focus: Espansione e Ripetibilità)
+Una volta raggiunto i 7k MRR, hai un modello di business semi-convalidato. La sfida ora è rendere i processi di acquisizione ripetibili, scalabili ed efficienti, investendo pesantemente nei canali che hanno funzionato nella Fase 1.
+1. Vendite (Sales) - Checklist
+Task
+Stato
+Dettagli
+Istituzione di un Team di Vendita
+[ ]
+Assumi un SDR (Sales Development Rep) e/o un AE (Account Executive).
+Implementazione CRM (Customer Relationship Management)
+[ ]
+Utilizza un CRM (es. HubSpot, Salesforce, Pipedrive) per gestire pipeline, lead scoring e reporting.
+Sviluppo di Playbook di Vendita
+[ ]
+Documenta i migliori script, gestione obiezioni e flussi di lavoro per i nuovi assunti.
+Lancio di un Programma Referral/Affiliazione
+[ ]
+Incentiva i clienti attuali a portare nuovi clienti.
+Focus su Segmenti Enterprise/High-Value
+[ ]
+Sviluppa un processo di vendita specifico per clienti più grandi con LTV significativamente più alto.
+
+2. Marketing (Marketing) - Checklist
+Task
+Stato
+Dettagli
+Espansione del Contenuto a Tutta la Funnel
+[ ]
+Crea contenuti per ogni fase: Awareness (blog post generici), Consideration (guide, webinar), Decision (casi studio, comparazioni).
+Lancio di Webinar e Eventi Virtuali
+[ ]
+Posizionati come thought leader nella tua nicchia.
+Strategia di Ritorno per Carrello Abbandonato/Trial Scaduto
+[ ]
+Sequenze di email e/o retargeting aggressive per recuperare utenti che non hanno completato l'acquisto.
+Integrazione Dati (Marketing Automation & CRM)
+[ ]
+Sincronizza i dati tra gli strumenti per una visione unica del cliente e per un lead scoring avanzato.
+Espansione su Nuovi Canali
+[ ]
+Testare Meta Ads (Facebook/Instagram), LinkedIn Ads (se B2B) o altri canali verticali.
+
+3. Google Ads Strategy (Fase 2: Massimizzazione)
+Obiettivo: Massimizzare la copertura e le conversioni mantenendo il CPA target.
+Espansione:
+Campagna 4 (Problem/Solution): Targetizza utenti che cercano soluzioni ai problemi specifici che il tuo SaaS risolve, anche senza usare il nome del prodotto.
+Campagna 5 (Retargeting Dinamico): Mostra annunci specifici agli utenti che hanno visitato il tuo sito ma non si sono convertiti.
+Campagne P-Max (Performance Max): Utilizza le campagne Performance Max di Google per automatizzare la diffusione su tutti i canali Google (Search, Display, YouTube, Gmail) in modo efficiente.
+Focus sul ROAS: Sposta il budget verso campagne che dimostrano il Return on Ad Spend (ROAS) più alto e utilizza strategie di offerta basate sul valore (es. Maximize Conversion Value).
+
+

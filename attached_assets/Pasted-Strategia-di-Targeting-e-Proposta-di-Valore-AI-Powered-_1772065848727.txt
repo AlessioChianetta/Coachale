@@ -1,0 +1,144 @@
+Strategia di Targeting e Proposta di Valore (AI-Powered)
+Questo documento sintetizza il Profilo Cliente Ideale (ICP) e i modelli di pricing e servizio, allineando le offerte (Livelli 1-6) alle esigenze specifiche della clientela (Acquisizione Lead, Supporto e Onboarding, Rivenditori). L'obiettivo è massimizzare il valore e la scalabilità, passando da un modello di servizio a una piattaforma.
+1. Focalizzazione sul Cliente Ideale (ICP)
+Il cliente ideale è un'azienda B2B in abbonamento (SaaS, MSP, software house a retainer, servizi productized) con un team di 5–30 persone che serve clienti PMI e ha due motori operativi ripetibili ma inefficienti: il supporto multi-canale e l'onboarding.
+
+Obiettivo Primario del Cliente
+Nichia Target
+Stato Attuale (Dolore)
+Trasformazione (Stato Ideale)
+Acquisizione/Lead Gen
+Aziende con Alto Volume di Contatti Social/WhatsApp
+Alto volume di messaggi/commenti dispersivi (INFO, PREZZO), lead persi, follow-up manuale.
+L'AI risponde immediatamente, qualifica i lead e prende appuntamenti su WhatsApp/IG (Livello 4).
+Standardizzazione/Controllo
+B2B Subscription Business (5-30 persone)
+Supporto "a memoria" incoerente, founder/senior interrotti, onboarding lento, documentazione non applicata.
+Supporto coerente, team autonomo, onboarding guidato, founder concentrato sulla crescita (Livelli 3,4, 5, 6).
+Espansione/Distribuzione
+Rivenditori, Agenzie High-Ticket
+Vogliono integrare l'AI ma non hanno l'infrastruttura di hosting, governance o training.
+Piattaforma completa per creare, distribuire e rivendere agenti AI con supporto dedicato (Livello 5 e schema fee).
+
+2. Allineamento Livelli di Servizio alle Esigenze
+I 6 livelli di servizio sono strutturati per coprire le tre macro-esigenze del mercato (Lead, Supporto, Infrastruttura/Rivendita).
+
+Livello
+Prezzo
+Focus Principale
+Allineamento all'ICP
+Dettagli chiave
+1 (Gratuito)
+Gratuito
+Test e Prova
+Convalida del concetto AI
+Accesso per test a un dipendente predefinito.
+2 (Silver)
+47 €/Mese
+Utilizzo Illimitato
+Uso individuale di base/Piccoli team
+Messaggi illimitati con il dipendente predefinito.
+3 (Gold)
+97 €/Mese
+Supporto e Formazione
+Standardizzazione del Know-How (Soft)
+Corsi, supporto AI, interazione vocale, Memoria AI per coerenza.
+4 (Premium Lead)
+1000 € Setup + 297 €/Mese
+Lead Generation Automatica
+Alta Urgenza (Chi ha Campagne/Follower)
+Dipendente AI che prende appuntamenti su WhatsApp/Instagram/Email.
+5 (Infrastruttura)
+2000 € Setup + 497 €/Mese
+Piattaforma e Rivendita
+ICP che vuole Scalare / Rivenditori
+Fornitura dell'infrastruttura completa per creare e distribuire agenti AI, Onboarding dedicato e supporto.
+6 (Executive)
+2000 € Setup + 997 €/Mese
+Consulenza Strategica
+ICP High-Value/Enterprise
+Tutti i servizi precedenti + consulenze esclusive per l'analisi dei processi aziendali e raccomandazione di software.
+
+3. Strategia di Prezzi (Pricing) e Monetizzazione
+Per la scalabilità e la crescita, è fondamentale adottare modelli di prezzo che riflettano il valore erogato e che gestiscano in modo sostenibile i costi operativi delle API AI.
+3.1. Modello per i Servizi Core (Livelli 1-4)
+Questo modello si basa sull'abbonamento mensile, con un Setup Fee che copre l'implementazione e la configurazione iniziale (principalmente per i livelli ad alto valore).
+3.2. Modello per Rivenditori e Licenze (Livello 5)
+Il Livello 5 è progettato per agenzie, software house o grandi clienti che desiderano distribuire gli Agenti AI internamente o rivenderli a terzi.
+
+Elemento di Prezzo
+Descrizione
+Setup Fee (Infrastruttura)
+2000 € Una Tantum per l'installazione iniziale dell'infrastruttura di agent building, onboarding e governance.
+Licenza Base (Piattaforma)
+497 €/Mese per l'accesso illimitato alla piattaforma di creazione e gestione degli agenti (la tua UI/Dashboard).
+Modello di Rivendita (Royalty)
+% sui Ricavi Ricorrenti (MRR): Applicare una percentuale (es. 35%-50%) sul MRR generato dal rivenditore. Questo garantisce un guadagno passivo.
+Fee per Crediti AI (Gestione API)
+Vedi Sezione 3.3.
+
+3.3. Gestione dei Costi API (Crediti AI)
+Per i livelli base (1-4), i costi AI (API key) sono inclusi nel prezzo per semplificare l'offerta e incentivare l'adozione. Per i clienti ad alto consumo (Livello 5 e 6, e Rivenditori), la strategia deve cambiare per proteggere i margini.
+
+Soglia di Consumo
+Strategia di Gestione Costi AI
+Consumo Basso/Medio (Livelli 1-4)
+Costo Inclusi: I costi API sono gestiti internamente. L'abbonamento è sufficiente per coprire l'utilizzo tipico, creando un buffer di rischio gestibile.
+Consumo Alto (Livelli 5-6, Rivenditori)
+Fatturazione Diretta o Add-on: Quando il consumo supera una soglia definita (es. >50 € di crediti al mese), si passa a due opzioni:
+
+
+Opzione A: Fatturazione Pass-Through: Aggiungere un add-on mensile calcolato sui costi API effettivi con un piccolo markup (es. 10%).
+
+
+Opzione B: API Key del Cliente: Configurare l'ambiente di produzione direttamente sull'API Key (Gemini/Vertex AI) del cliente. Questo li rende responsabili diretti del consumo. Consigliato per Livello 5/6.
+
+4. Esempi Operativi di Trasformazione
+Di seguito sono riportati esempi di come le diverse offerte risolvono i problemi operativi dei clienti, trasformando la documentazione esistente in azioni automatiche.
+4.1. Caso 1: Gestione Contatti Social (Livello 4)
+Azione
+Stato Attuale
+Trasformazione AI (Livello 4)
+Domanda IG/WhatsApp
+"Scrivi INFO e ti contatto" è gestito da un junior in orari di ufficio, con ritardi.
+L'AI risponde immediatamente, qualifica (Budget/Bisogno), usa il link per la prenotazione Calendar event e salva il contatto nel CRM File.
+Onboarding Team
+I junior chiedono al senior/founder: "Cosa rispondo se chiede uno sconto?".
+L'Agente AI (Mario/Assistente di Person) risponde in base alla policy aziendale (es. "Lo sconto è concesso solo per pagamenti annuali > 5k €").
+
+4.2. Caso 2: Onboarding Clienti (Livelli 3 e 5)
+Azione
+Stato Attuale
+Trasformazione AI (Livello 5)
+Raccolta Accessi
+Email/WhatsApp manuale con ritardi.
+Il Workflow AI chiede i dati in sequenza, crea la checklist e li salva automaticamente in un sistema sicuro.
+Training Iniziale
+Call ripetitive e dispendiose.
+Il Cliente interagisce con l'Assistente Formativo AI (Livello 3/5) che risponde a dubbi operativi 24/7 (es. "Come configuro la prima campagna?").
+
+4.3. Caso 3: Personalizzazione Estrema (Servizio Bonus - "Crea il tuo Dipendente AI")
+
+Questo servizio funge da dimostrazione della versatilità della piattaforma e può essere un upsell strategico per i Livelli 5 e 6 o un'attività ad alto margine su progetto. L'obiettivo è trasformare qualsiasi manuale o ruolo aziendale in un agente AI personalizzato con personalità specifica.
+
+Azione
+Stato Attuale
+Trasformazione AI (Bonus Service / Livello 5+)
+Personalizzazione Ruolo
+Il know-how è legato alla singola persona (es. il cameriere esperto).
+Creazione di un Agente AI personalizzato (es. "Cameriere AI per il tavolo X") che incarna il tono di voce e le competenze specifiche dell'azienda.
+Assistenza al Cliente Finale
+Il cliente chiede informazioni sul menu, tempi di attesa, allergeni al personale occupato.
+L'Agente AI, accessibile via QR Code al tavolo, risponde immediatamente a tutte le domande, consiglia piatti basati su preferenze note e gestisce informazioni specifiche (es. allergeni, ingredienti, abbinamenti vino).
+Scalabilità del Tono
+Il tono di servizio è incostante tra i dipendenti.
+L'AI garantisce un tono di voce coerente e brandizzato in ogni interazione, indipendentemente dal volume di richieste.
+
+
+5. Implementazione Strategica (Focus Iniziale)
+Per passare da 2k MRR a 7k MRR, la priorità è concentrarsi sulla convalida dell'offerta Lead Generation (Livello 4) e sulla standardizzazione del servizio Supporto (Livello 3).
+
+Focalizzazione sul Livello 4: È la soluzione più visibile e urgente per i clienti con problemi di acquisizione. Lanciare campagne mirate con la frase filtro: "Smetti di perdere lead su WhatsApp/Instagram. Installa l'AI che qualifica e prenota per te."
+Preparazione per la Scalabilità (Livello 5): Sviluppare il playbook di implementazione per i rivenditori. Creare il contratto di rivendita (vedi attività in [1]) basato sul modello Licenza + % su MRR.
+Marketing Coerente: Utilizzare la Trasformazione Rivelatrice ([4]): Da supporto e onboarding che dipendono da persone a supporto e onboarding che dipendono da regole applicate automaticamente.
+

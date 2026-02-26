@@ -1,0 +1,115 @@
+Profilo Cliente Ideale (ICP) e Proposta di Valore
+Questo documento delinea il cliente target, la proposta di valore centrale e le funzionalità del servizio, con l'obiettivo di supportare le fasi di scaling e marketing definite nella strategia aziendale.
+1. Aiutiamo Chi a Fare Cosa e Come
+Aiuto imprenditori con clienti ricorrenti a installare un Dipendente AI che gestisce assistenza clienti e onboarding, seguendo la tua documentazione, le tue regole e il tuo tono Per farti lavorare meno in azienda, riprenderti tempo per te e scalare senza colli di bottiglia, grazie al Sistema Orbitale.
+1.1. Chi Aiutiamo (Ideal Customer Profile - ICP)
+Segmento Cliente
+Descrizione Dettagliata
+Aziende/PMI
+Titolari di piccole e medie imprese o dirigenti (es. CEO, CTO) in settori ad alto volume di interazione con il cliente (es. e-commerce, servizi professionali, agenzie di marketing/vendita). Sono bloccati da processi interni inefficienti e cercano soluzioni per la scalabilità senza aumentare il personale.
+Consulenti/Formatori
+Professionisti o aziende che vendono corsi, coaching o servizi di consulenza. Hanno bisogno di automatizzare l'assistenza post-vendita e la fase di lead generation per concentrarsi sulla creazione di valore.
+Start-up in Fase di Crescita
+Aziende con un prodotto validato e un MRR in crescita che necessitano di infrastrutture automatizzate per gestire l'aumento della domanda (es. gestione appuntamenti, customer support di primo livello).
+
+1.2. Cosa Aiutiamo a Fare
+Obiettivo Primario: Trasformare processi ad alta intensità di lavoro manuale in sistemi automatizzati e scalabili, riducendo i costi operativi e aumentando il tasso di conversione.
+
+Esempi di Risultati:
+
+Generazione Lead: Ottenere più appuntamenti qualificati tramite l'AI (Livello 4 e 6).
+Supporto Clienti: Fornire assistenza 24/7 con costi ridotti (Livello 3).
+Scalabilità: Fornire l'infrastruttura per creare e vendere agenti AI personalizzati (Livello 5).
+1.3. Il Nostro Metodo (Come)
+Forniamo la nostra soluzione attraverso una struttura di servizi modulare, dal supporto di base all'infrastruttura completa e alla consulenza personalizzata.
+
+Livello di Servizio
+Metodo (Il Come)
+Livello 1 & 2 (Bronze e Silver Accesso)
+Free | 49 €/M
+Accesso immediato a un dipendente AI predefinito per la prova o l'uso illimitato.
+Livello 3 (Gold Supporto AI)
+99 €/M | 299 €/M
+Formazione (Corsi) e interazione vocale con AI per supporto e assistenza specifica. | 2 Consulenze al mese se richieste
+Livello 4 (Deluxe Consulente Agenti Specifici)
+299 €/M Setup 997 euro
+Solo Implementazione di un agente AI dedicato alla presa appuntamenti sui canali social/email.
+Livello 5 (Exclusive Infrastruttura)
+499 €/M Setup 1997 euro
+Fornitura di un'infrastruttura completa e Onboarding dedicato per l'autonomia nella creazione di agenti e corsi AI. Gestione onboarding clienti e dipendenti
+Livello 6 (Consulenza)
+999 €/M Setup 1997 euro
+Integrazione completa dei servizi precedenti con consulenze esclusive per l'analisi e l'ottimizzazione dei processi aziendali e consigli di implementazione dell’AI nelle aziende.
+
+2. Il Problema che Risolviamo
+Il nostro servizio si rivolge direttamente ai seguenti problemi chiave sperimentati dai nostri ICP:
+
+Problema del Cliente
+Impatto Negativo (Il Costo del Non Agire)
+Inefficienza Operativa e Costi Elevati del Personale
+L'assunzione di personale per compiti ripetitivi e a basso valore è costosa e non scalabile. Ciò limita la capacità di crescita.
+Perdita di Opportunità (Lead)
+La mancata risposta tempestiva su canali come WhatsApp o Instagram porta alla perdita di potenziali clienti e appuntamenti.
+Mancanza di Scalabilità del Supporto
+Il supporto clienti non può crescere alla stessa velocità delle vendite, portando a churn e recensioni negative.
+Mancanza di Competenze Interne sull'AI
+I clienti sanno di dover usare l'AI ma non hanno le competenze o l'infrastruttura per implementarla efficacemente.
+
+3. Funzionalità e Soluzioni (Per Livello)
+Le funzionalità si allineano direttamente alla risoluzione dei problemi del cliente, suddivise per livello di servizio.
+A. Funzionalità di Base e Interazione
+Funzionalità
+Livelli
+Soluzione al Problema
+Accesso a Dipendente AI
+1, 2
+Test e Uso Immediato di un assistente AI pre-addestrato per compiti generici.
+Messaggi Illimitati
+2, 3, 4, 5, 6
+Disponibilità Costante senza limitazioni di utilizzo.
+Interazione Vocale
+3, 4, 5, 6
+Supporto Dinamico e Accessibile che simula l'interazione umana per una migliore esperienza.
+Memoria AI
+3, 4, 5, 6
+Contesto Persistente per conversazioni più efficaci e personalizzate (l'AI ricorda le interazioni precedenti).
+
+B. Funzionalità di Crescita e Vendita
+Funzionalità
+Livelli
+Soluzione al Problema
+Presa Appuntamenti Automatica
+4, 5, 6
+Zero Lead Persi: L'AI gestisce la qualificazione e la prenotazione di appuntamenti su WhatsApp, Instagram ed Email.
+Corsi e Supporto AI
+3, 5, 6
+Formazione e Autonomia: Strumenti per l'apprendimento e l'applicazione pratica dell'AI.
+Fornitura Infrastruttura Completa
+5, 6
+Scalabilità Massima: Possibilità di creare e distribuire i propri agenti AI (per uso interno o rivendita).
+Consulenze Personalizzate
+6
+Ottimizzazione Profonda: Analisi dei processi aziendali per raccomandare software e strategie per l'efficienza.
+
+
+Per saperne di più su come implementare queste funzionalità, consulta la documentazione completa del prodotto disponibile al seguente link: File
+
+4. Modello di Partnership e Rivendita (Applicabile ai Livelli 5)
+I clienti che accedono al Livello 5 (Exclusive Infrastruttura) godono della possibilità unica di diventare partner e rivendere i servizi di Livello 1, 2 e 3 (Accesso Bronze e Silver, Supporto AI Gold) ai propri clienti. Questo modello di partnership consente ai nostri clienti di Livello 5 di generare flussi di entrate aggiuntivi e di monetizzare l'infrastruttura AI che hanno implementato.
+
+Questa opportunità è estesa anche ai partner di Livello 5 che scelgono di concentrarsi esclusivamente sulla rivendita, pur mantenendo l'accesso all'infrastruttura necessaria per il supporto e la configurazione dei prodotti rivenduti.
+4.1. Struttura delle Commissioni di Rivendita
+La percentuale di commissione sulla rivendita dei servizi di Livello 1, 2 e 3 è determinata dal livello di coinvolgimento del partner (Livello 5) nell'assistenza e nell'onboarding del cliente finale:
+
+Servizio di Rivendita (Livelli 1, 2, 3)
+Responsabilità di Onboarding e Assistenza
+Commissione per il Partner (Livello 5)
+Livello 1, 2, 3
+Gestita da Exit 5kk (Il Fornitore)
+50% del ricavo mensile netto
+Livello 1, 2, 3
+Gestita dal Partner (Livello 5)
+35% del ricavo mensile netto
+
+
+Nota: La commissione del 35% si applica quando il partner di Livello 5 gestisce autonomamente l'integrazione, l'onboarding e il supporto continuo per i servizi di Livello 1, 2 o 3 venduti al cliente finale. La commissione del 50% è riservata ai casi in cui Exit 5kk gestisce direttamente queste fasi cruciali.
