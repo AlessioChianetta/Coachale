@@ -307,7 +307,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           createdAt: task.created_at,
           completedAt: task.completed_at,
           resultSummary: task.result_summary,
-          leadName: ctx.business_name || task.contact_name || 'Lead',
+          leadName: ctx.lead_count > 1 ? `${ctx.business_name || 'Lead'} (+${ctx.lead_count - 1})` : (ctx.business_name || task.contact_name || 'Lead'),
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
@@ -343,7 +343,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           createdAt: null,
           completedAt: task.completed_at,
           resultSummary: task.result_summary,
-          leadName: ctx.business_name || task.contact_name || 'Lead',
+          leadName: ctx.lead_count > 1 ? `${ctx.business_name || 'Lead'} (+${ctx.lead_count - 1})` : (ctx.business_name || task.contact_name || 'Lead'),
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
@@ -505,6 +505,13 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
 
   const now = new Date();
   const actionableLeads: any[] = [];
+  const skipReasons = {
+    withActiveTask: 0,
+    tooRecent: 0,
+    recentlyContacted: 0,
+    recentNegotiation: 0,
+    inOutreachActive: 0,
+  };
 
   for (const lead of leadsResult.rows as any[]) {
     const daysSinceCreated = (now.getTime() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24);
@@ -515,9 +522,12 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
     let hasActiveTask = false;
     if (lead.outreach_task_id) {
       const taskCheck = await db.execute(sql`
-        SELECT status FROM ai_scheduled_tasks
+        SELECT status, created_at FROM ai_scheduled_tasks
         WHERE id = ${lead.outreach_task_id}
-          AND status IN ('scheduled', 'in_progress', 'waiting_approval', 'approved')
+          AND (
+            status IN ('scheduled', 'in_progress', 'approved')
+            OR (status = 'waiting_approval' AND created_at > NOW() - INTERVAL '24 hours')
+          )
         LIMIT 1
       `);
       hasActiveTask = taskCheck.rows.length > 0;
@@ -529,15 +539,25 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
     if (lead.lead_status === 'nuovo' && daysSinceCreated > 1 && !hasActiveTask) {
       actionable = true;
       reason = `Lead nuovo con score ${lead.ai_compatibility_score}/100, creato ${Math.round(daysSinceCreated)} giorni fa, mai contattato`;
+    } else if (lead.lead_status === 'nuovo' && daysSinceCreated <= 1) {
+      skipReasons.tooRecent++;
     } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity > 5 && !hasActiveTask) {
       actionable = true;
       reason = `Lead contattato ${Math.round(daysSinceActivity)} giorni fa senza follow-up`;
+    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity <= 5) {
+      skipReasons.recentlyContacted++;
     } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity > 7 && !hasActiveTask) {
       actionable = true;
       reason = `Lead in trattativa fermo da ${Math.round(daysSinceActivity)} giorni`;
+    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity <= 7) {
+      skipReasons.recentNegotiation++;
     } else if (lead.lead_status === 'in_outreach' && lead.outreach_task_id && !hasActiveTask) {
       actionable = true;
       reason = `Lead rimasto in outreach con task completato/fallito — da ricontattare`;
+    } else if (lead.lead_status === 'in_outreach' && hasActiveTask) {
+      skipReasons.inOutreachActive++;
+    } else if (hasActiveTask) {
+      skipReasons.withActiveTask++;
     }
 
     if (actionable) {
@@ -561,7 +581,7 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
     }
   }
 
-  return { totalAnalyzed: leadsResult.rows.length, actionableLeads };
+  return { totalAnalyzed: leadsResult.rows.length, actionableLeads, skipReasons };
 }
 
 router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
@@ -582,9 +602,9 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const channelsEnabled = settings.channels_enabled || {};
     const scoreThreshold = outreachConfig.score_threshold ?? 60;
 
-    const { totalAnalyzed, actionableLeads } = await getActionableCrmLeads(consultantId, scoreThreshold);
+    const { totalAnalyzed, actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold);
 
-    console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode})`);
+    console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode}), skipReasons:`, skipReasons);
 
     if (mode === "plan") {
       return res.json({
@@ -592,6 +612,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
         analyzed: totalAnalyzed,
         actionable: actionableLeads.length,
         leads: actionableLeads,
+        skipReasons,
       });
     }
 
@@ -731,9 +752,9 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
             ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
             ${'Analisi CRM: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
             'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
-            ${outreachTaskStatus}, 2, 'outreach', 'hunter', ${batch.channel},
+            ${outreachTaskStatus}, 2, 'prospecting', 'hunter', ${batch.channel},
             ${JSON.stringify(batchResultData)}::jsonb,
-            ${JSON.stringify({ crm_analysis: true, batch_outreach: true })}::text,
+            ${JSON.stringify({ crm_analysis: true, batch_outreach: true, business_name: batch.leads[0]?.businessName, ai_score: batch.leads[0]?.score, sector: batch.leads[0]?.category, lead_id: batch.leads[0]?.leadId, lead_count: batch.leads.length })}::text,
             1, 0, 5, NOW(), NOW()
           )
         `);
@@ -779,6 +800,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
       tasks_created: tasksCreated,
       skipped,
       leads: details,
+      skipReasons,
     });
   } catch (error: any) {
     console.error("[HUNTER-CRM] Error analyzing CRM:", error);
@@ -806,9 +828,11 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
 
     let leadsForPlan: any[] = [];
 
+    let planSkipReasons: any = {};
     if (source === "crm") {
-      const { actionableLeads } = await getActionableCrmLeads(consultantId, scoreThreshold);
+      const { actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold);
       leadsForPlan = actionableLeads;
+      planSkipReasons = skipReasons;
     }
 
     if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
@@ -816,7 +840,7 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
     }
 
     if (leadsForPlan.length === 0) {
-      return res.json({ success: true, planId: null, leads: [], summary: "Nessun lead azionabile trovato nel CRM.", totalActions: 0, channels: { voice: 0, whatsapp: 0, email: 0 } });
+      return res.json({ success: true, planId: null, leads: [], summary: "Nessun lead azionabile trovato nel CRM.", totalActions: 0, channels: { voice: 0, whatsapp: 0, email: 0 }, skipReasons: planSkipReasons });
     }
 
     const salesCtxResult = await db.execute(sql`
@@ -912,6 +936,7 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
       summary: planData.summary,
       totalActions: channels.voice + channels.whatsapp + channels.email,
       channels,
+      skipReasons: planSkipReasons,
     });
   } catch (error: any) {
     console.error("[HUNTER-PLAN] Error generating plan:", error);
@@ -1123,9 +1148,9 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
             ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
             ${'Piano: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
             'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
-            ${taskStatus}, 2, 'outreach', 'hunter', ${batch.channel},
+            ${taskStatus}, 2, 'prospecting', 'hunter', ${batch.channel},
             ${JSON.stringify(batchResultData)}::jsonb,
-            ${JSON.stringify({ hunter_plan: true, plan_id: planId, batch_outreach: true })}::text,
+            ${JSON.stringify({ hunter_plan: true, plan_id: planId, batch_outreach: true, business_name: batch.leads[0]?.businessName, ai_score: batch.leads[0]?.score, sector: batch.leads[0]?.category, lead_id: batch.leads[0]?.leadId, lead_count: batch.leads.length })}::text,
             1, 0, 5, NOW(), NOW()
           )
         `);

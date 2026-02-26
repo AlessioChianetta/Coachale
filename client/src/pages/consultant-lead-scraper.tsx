@@ -524,6 +524,17 @@ export default function ConsultantLeadScraper() {
     setAnalyzingCrm(true);
     setCrmAnalysisResult(null);
     try {
+      const buildSkipDescription = (skipReasons: any, analyzed: number) => {
+        if (!skipReasons) return "";
+        const parts: string[] = [];
+        if (skipReasons.withActiveTask > 0) parts.push(`${skipReasons.withActiveTask} con task attivo`);
+        if (skipReasons.inOutreachActive > 0) parts.push(`${skipReasons.inOutreachActive} in outreach attivo`);
+        if (skipReasons.tooRecent > 0) parts.push(`${skipReasons.tooRecent} troppo recenti`);
+        if (skipReasons.recentlyContacted > 0) parts.push(`${skipReasons.recentlyContacted} contattati di recente`);
+        if (skipReasons.recentNegotiation > 0) parts.push(`${skipReasons.recentNegotiation} in trattativa recente`);
+        return parts.length > 0 ? `Esclusi: ${parts.join(", ")}` : "";
+      };
+
       if (hunterMode === "plan") {
         const res = await fetch("/api/ai-autonomy/hunter-plan/generate", {
           method: "POST",
@@ -537,10 +548,13 @@ export default function ConsultantLeadScraper() {
           setPlanChatInput("");
           setShowPlanPanel(true);
           setCrmAnalysisResult({ success: true, analyzed: data.totalActions, actionable: data.leads?.length || 0 });
-          toast({ title: "Piano Hunter generato", description: `${data.leads?.length || 0} lead azionabili trovati. Rivedi il piano e approva.` });
+          const skipDesc = buildSkipDescription(data.skipReasons, data.totalActions);
+          toast({ title: "Piano Hunter generato", description: `${data.leads?.length || 0} lead azionabili trovati. Rivedi il piano e approva.${skipDesc ? ` ${skipDesc}.` : ""}` });
         } else if (res.ok && !data.planId) {
-          setCrmAnalysisResult({ success: true, analyzed: 0, actionable: 0, tasks_created: 0, noPlan: true });
-          toast({ title: "Analisi CRM completata", description: "Nessun lead necessita di attenzione al momento. Tutti i lead sono aggiornati o hanno task attivi.", variant: "default" });
+          const skipTotal = data.skipReasons ? Object.values(data.skipReasons as Record<string, number>).reduce((a: number, b: number) => a + b, 0) : 0;
+          setCrmAnalysisResult({ success: true, analyzed: skipTotal, actionable: 0, tasks_created: 0, noPlan: true });
+          const skipDesc = buildSkipDescription(data.skipReasons, skipTotal);
+          toast({ title: "Analisi CRM completata", description: skipDesc ? `${skipTotal} lead analizzati, 0 azionabili. ${skipDesc}.` : "Nessun lead necessita di attenzione al momento." });
         } else {
           setCrmAnalysisResult({ success: false, error: data.error || "Errore generazione piano" });
           toast({ title: "Errore", description: data.error || "Errore durante la generazione del piano", variant: "destructive" });
@@ -554,10 +568,13 @@ export default function ConsultantLeadScraper() {
         const data = await res.json();
         setCrmAnalysisResult({ success: res.ok, analyzed: data.analyzed, actionable: data.actionable, tasks_created: data.tasks_created, skipped: data.skipped, error: data.error });
         if (res.ok) {
+          const skipDesc = buildSkipDescription(data.skipReasons, data.analyzed);
           if (data.tasks_created > 0) {
-            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili — ${data.tasks_created} task creati` });
+            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili — ${data.tasks_created} task creati.${skipDesc ? ` ${skipDesc}.` : ""}` });
+          } else if (data.actionable > 0) {
+            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — ${data.actionable} azionabili ma nessun task creato (limiti raggiunti o canali non configurati).${skipDesc ? ` ${skipDesc}.` : ""}` });
           } else {
-            toast({ title: "Analisi CRM completata", description: data.actionable > 0 ? `${data.analyzed} lead analizzati — ${data.actionable} azionabili ma nessun task creato (limiti raggiunti o canali non configurati)` : `${data.analyzed} lead analizzati — tutti aggiornati, nessuna azione necessaria` });
+            toast({ title: "Analisi CRM completata", description: `${data.analyzed} lead analizzati — 0 azionabili.${skipDesc ? ` ${skipDesc}.` : " Tutti i lead sono aggiornati."}` });
           }
         } else {
           toast({ title: "Errore analisi CRM", description: data.error || "Errore durante l'analisi", variant: "destructive" });
