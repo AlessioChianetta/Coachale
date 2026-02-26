@@ -1845,7 +1845,7 @@ export default function ConsultantLeadScraper() {
 
             {/* SEZIONE 2 — Coda Outreach Unificata */}
             {(() => {
-              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] = [];
+              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] = [];
               if (hunterPipeline?.channels) {
                 Object.entries(hunterPipeline.channels).forEach(([, chData]) => {
                   if (chData?.tasks) allTasks.push(...chData.tasks);
@@ -2069,7 +2069,17 @@ export default function ConsultantLeadScraper() {
                                           {getScoreBar(task.leadScore)}
                                         </div>
                                       )}
-                                      {task.title && (
+                                      {task.aiInstruction && (
+                                        <div className="space-y-1">
+                                          <span className="font-medium text-muted-foreground">
+                                            {task.channel === 'voice' ? 'Script chiamata:' : task.channel === 'whatsapp' ? 'Messaggio WA:' : 'Email:'}
+                                          </span>
+                                          <div className="max-h-[160px] overflow-y-auto rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-2.5 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                            {task.aiInstruction}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {!task.aiInstruction && task.title && (
                                         <div className="flex items-start gap-2 text-muted-foreground">
                                           <span className="font-medium shrink-0">Task:</span>
                                           <span className="break-words">{task.title}</span>
