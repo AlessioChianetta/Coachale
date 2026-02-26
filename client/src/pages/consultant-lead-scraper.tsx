@@ -87,6 +87,8 @@ import {
   PhoneCall,
   MessageCircle,
   MailIcon,
+  Route,
+  PenLine,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -450,6 +452,10 @@ export default function ConsultantLeadScraper() {
     enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
     cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "",
+    call_instruction_template: "", whatsapp_template_id: "",
+    cooldown_new_hours: 24, cooldown_contacted_days: 5, cooldown_negotiation_days: 7,
+    max_attempts_per_lead: 3, first_contact_channel: "auto", high_score_channel: "voice",
+    communication_style: "professionale", custom_instructions: "", email_signature: "", opening_hook: "",
     follow_up_sequence: [
       { day: 0, channel: "voice" },
       { day: 2, channel: "email" },
@@ -466,11 +472,55 @@ export default function ConsultantLeadScraper() {
     }
   }, [autonomySettings?.outreach_config]);
 
-  const voiceTemplateOptions = [
+  const { data: fetchedVoiceTemplates = [] } = useQuery<{ id: string; name: string; description: string }[]>({
+    queryKey: ["/api/voice/non-client-settings/outbound-templates"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/voice/non-client-settings", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.availableOutboundTemplates || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description || "",
+        }));
+      } catch { return []; }
+    },
+  });
+
+  const voiceTemplateOptions = fetchedVoiceTemplates.length > 0 ? fetchedVoiceTemplates : [
     { id: "lead-qualification", name: "Qualifica Lead", description: "Per primo contatto con lead freddi" },
     { id: "appointment-setter", name: "Fissa Appuntamento", description: "Per proporre un incontro" },
     { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
   ];
+
+  const { data: approvedWaTemplates = [] } = useQuery<{ id: string; name: string; twilioContentSid: string; scenario: string | null; bodyText: string | null; useCase: string | null }[]>({
+    queryKey: ["/api/whatsapp/templates/approved-for-hunter"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/whatsapp/templates/approved", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        return res.json();
+      } catch { return []; }
+    },
+  });
+
+  const [selectedWaTemplateId, setSelectedWaTemplateId] = useState<string>("");
+
+  const { data: waTemplateVariables = [] } = useQuery<{ position: number; variableKey: string; variableName: string; description: string }[]>({
+    queryKey: ["/api/whatsapp/custom-templates/variables", selectedWaTemplateId || outreachConfig.whatsapp_template_id],
+    queryFn: async () => {
+      const tplId = selectedWaTemplateId || outreachConfig.whatsapp_template_id;
+      if (!tplId) return [];
+      try {
+        const res = await fetch(`/api/whatsapp/custom-templates/${tplId}/variables`, { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.data || [];
+      } catch { return []; }
+    },
+    enabled: !!(selectedWaTemplateId || outreachConfig.whatsapp_template_id),
+  });
 
   const channelLabelsMap: Record<string, { label: string; color: string }> = {
     voice: { label: "Chiamate (Alessia)", color: "text-green-600" },
@@ -2069,6 +2119,28 @@ export default function ConsultantLeadScraper() {
                                           {getScoreBar(task.leadScore)}
                                         </div>
                                       )}
+                                      {task.channel === 'voice' && task.voiceTemplateName && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                          <PhoneCall className="h-3 w-3 text-green-600 shrink-0" />
+                                          <span className="font-medium">Template voce:</span>
+                                          <span>{task.voiceTemplateName}</span>
+                                        </div>
+                                      )}
+                                      {task.channel === 'voice' && task.callInstruction && (
+                                        <div className="space-y-1">
+                                          <span className="font-medium text-muted-foreground">Istruzione chiamata:</span>
+                                          <div className="rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-2 text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">
+                                            {task.callInstruction}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {task.channel === 'whatsapp' && task.waTemplateName && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                          <MessageCircle className="h-3 w-3 text-emerald-600 shrink-0" />
+                                          <span className="font-medium">Template WA:</span>
+                                          <span>{task.waTemplateName}</span>
+                                        </div>
+                                      )}
                                       {task.aiInstruction && (
                                         <div className="space-y-1">
                                           <span className="font-medium text-muted-foreground">
@@ -2278,63 +2350,262 @@ export default function ConsultantLeadScraper() {
 
                     <div>
                       <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-orange-500" />
+                        Qualificazione Lead
+                      </Label>
+                      <p className="text-xs text-gray-400 mb-4">Configura i tempi di attesa e il numero massimo di tentativi per contattare i lead.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Ore minime prima di contattare un lead nuovo</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_new_hours || 24}h</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.cooldown_new_hours || 24]} min={1} max={72} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_new_hours", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Giorni prima di ricontattare un lead contattato</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_contacted_days || 5}g</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.cooldown_contacted_days || 5]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_contacted_days", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Giorni prima di ricontattare un lead in trattativa</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_negotiation_days || 7}g</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.cooldown_negotiation_days || 7]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_negotiation_days", v)} />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                            <span>Max tentativi per lead</span>
+                            <Badge variant="outline" className="text-xs">{outreachConfig.max_attempts_per_lead || 3}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_attempts_per_lead || 3]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_attempts_per_lead", v)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
+                        <Route className="h-4 w-4 text-blue-500" />
+                        Strategia Canale
+                      </Label>
+                      <p className="text-xs text-gray-400 mb-4">Definisci quale canale usare per il primo contatto e per i lead ad alto score.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Canale primo contatto</Label>
+                          <Select value={outreachConfig.first_contact_channel || "auto"} onValueChange={(v) => updateOutreachConfig("first_contact_channel", v)}>
+                            <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto">Automatico (Hunter sceglie)</SelectItem>
+                              <SelectItem value="voice">Chiamata</SelectItem>
+                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[10px] text-gray-400">Canale da usare per il primo contatto con lead nuovi</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Canale preferito per lead ad alto score (&gt;80)</Label>
+                          <Select value={outreachConfig.high_score_channel || "voice"} onValueChange={(v) => updateOutreachConfig("high_score_channel", v)}>
+                            <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="voice">Chiamata</SelectItem>
+                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[10px] text-gray-400">Per lead con score AI &gt; 80, Hunter preferirà questo canale</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
+                        <PenLine className="h-4 w-4 text-purple-500" />
+                        Stile Comunicazione
+                      </Label>
+                      <p className="text-xs text-gray-400 mb-4">Personalizza il tono, lo stile e la firma dei messaggi generati da Hunter.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Stile di comunicazione</Label>
+                          <Select value={outreachConfig.communication_style || "professionale"} onValueChange={(v) => updateOutreachConfig("communication_style", v)}>
+                            <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="formale">Formale</SelectItem>
+                              <SelectItem value="professionale">Professionale</SelectItem>
+                              <SelectItem value="informale">Informale</SelectItem>
+                              <SelectItem value="amichevole">Amichevole</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Opening hook</Label>
+                          <Input
+                            value={outreachConfig.opening_hook || ""}
+                            onChange={(e) => updateOutreachConfig("opening_hook", e.target.value)}
+                            placeholder="Es: Ho notato che la vostra azienda..."
+                            className="h-9 text-xs"
+                          />
+                          <p className="text-[10px] text-gray-400">Frase di apertura personalizzata per i messaggi</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Istruzioni personalizzate</Label>
+                          <Textarea
+                            value={outreachConfig.custom_instructions || ""}
+                            onChange={(e) => updateOutreachConfig("custom_instructions", e.target.value)}
+                            placeholder="Es: Non usare 'sinergia', menziona il Sistema Orbitale, sii diretto..."
+                            className="text-xs min-h-[80px] resize-y"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Firma email</Label>
+                          <Textarea
+                            value={outreachConfig.email_signature || ""}
+                            onChange={(e) => updateOutreachConfig("email_signature", e.target.value)}
+                            placeholder={"Nome Cognome\nTitolo | Azienda\nTel: +39...\nwww.sito.it"}
+                            className="text-xs min-h-[80px] resize-y"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
                         <Users className="h-4 w-4 text-violet-500" />
                         Dipendenti e Account per Outreach
                       </Label>
                       <p className="text-xs text-gray-400 mb-4">Hunter usa questi strumenti per contattare i lead tramite i canali configurati.</p>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-semibold flex items-center gap-1.5">
                             <PhoneCall className="h-3.5 w-3.5 text-green-600" />
-                            Template voce
+                            Configurazione Chiamate
                           </Label>
-                          <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
-                              <SelectValue placeholder="Seleziona template voce" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Automatico (Hunter sceglie)</SelectItem>
-                              {voiceTemplateOptions.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Template outbound</Label>
+                            <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
+                              <SelectTrigger className="w-full h-9 text-xs">
+                                <SelectValue placeholder="Seleziona template voce" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Predefinito (Hunter sceglie)</SelectItem>
+                                {voiceTemplateOptions.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name} — {t.description}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Istruzione chiamata</Label>
+                            <Textarea
+                              value={outreachConfig.call_instruction_template || ""}
+                              onChange={(e) => updateOutreachConfig("call_instruction_template", e.target.value)}
+                              placeholder="Es: Presentarsi come partner tecnologico, scoprire se usano già AI..."
+                              className="text-xs min-h-[60px] resize-y"
+                              rows={3}
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-semibold flex items-center gap-1.5">
                             <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-                            Dipendente WhatsApp
+                            Configurazione WhatsApp
                           </Label>
-                          <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
-                              <SelectValue placeholder="Seleziona dipendente WA" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
-                              {proactiveWaConfigs.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {proactiveWaConfigs.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Dipendente WhatsApp</Label>
+                            <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
+                              <SelectTrigger className="w-full h-9 text-xs">
+                                <SelectValue placeholder="Seleziona dipendente WA" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
+                                {proactiveWaConfigs.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {proactiveWaConfigs.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Template WhatsApp</Label>
+                            <Select
+                              value={outreachConfig.whatsapp_template_id || "none"}
+                              onValueChange={(v) => {
+                                const val = v === "none" ? "" : v;
+                                updateOutreachConfig("whatsapp_template_id", val);
+                                setSelectedWaTemplateId(val);
+                              }}
+                            >
+                              <SelectTrigger className="w-full h-9 text-xs">
+                                <SelectValue placeholder="Seleziona template WA" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuno (corpo generato da AI)</SelectItem>
+                                {approvedWaTemplates.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}{t.useCase ? ` (${t.useCase})` : ""}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {approvedWaTemplates.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun template WA approvato trovato</p>}
+                            {(() => {
+                              const selId = selectedWaTemplateId || outreachConfig.whatsapp_template_id;
+                              const selTpl = selId ? approvedWaTemplates.find(t => t.id === selId) : null;
+                              if (!selTpl?.bodyText) return null;
+                              return (
+                                <div className="mt-1.5 p-2 rounded-md bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30">
+                                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 leading-relaxed whitespace-pre-wrap">{selTpl.bodyText}</p>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          {(outreachConfig.whatsapp_template_id || selectedWaTemplateId) && waTemplateVariables.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              <Label className="text-[10px] text-muted-foreground">Variabili template</Label>
+                              <div className="space-y-0.5">
+                                {waTemplateVariables.map((v) => (
+                                  <p key={v.position} className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                                    {`{{${v.position}}}`} = {v.variableName}
+                                    {v.description && <span className="text-gray-400 dark:text-gray-500 ml-1">({v.description})</span>}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-semibold flex items-center gap-1.5">
                             <MailIcon className="h-3.5 w-3.5 text-blue-600" />
                             Account email
                           </Label>
-                          <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
-                              <SelectValue placeholder="Seleziona account email" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nessuno (disabilita email outreach)</SelectItem>
-                              {emailAccounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {emailAccounts.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun account email configurato</p>}
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Account di invio</Label>
+                            <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
+                              <SelectTrigger className="w-full h-9 text-xs">
+                                <SelectValue placeholder="Seleziona account email" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nessuno (disabilita email outreach)</SelectItem>
+                                {emailAccounts.map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {emailAccounts.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun account email configurato</p>}
+                          </div>
                         </div>
                       </div>
                     </div>

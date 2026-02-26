@@ -40,6 +40,18 @@ export interface OutreachConfig {
   cooldown_hours: number;
   whatsapp_config_id: string;
   voice_template_id: string;
+  call_instruction_template: string;
+  whatsapp_template_id: string;
+  cooldown_new_hours: number;
+  cooldown_contacted_days: number;
+  cooldown_negotiation_days: number;
+  max_attempts_per_lead: number;
+  first_contact_channel: string;
+  high_score_channel: string;
+  communication_style: string;
+  custom_instructions: string;
+  email_signature: string;
+  opening_hook: string;
 }
 
 export interface RoleStatus {

@@ -531,6 +531,18 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
     cooldown_hours: 48,
     whatsapp_config_id: "",
     voice_template_id: "",
+    call_instruction_template: "",
+    whatsapp_template_id: "",
+    cooldown_new_hours: 24,
+    cooldown_contacted_days: 5,
+    cooldown_negotiation_days: 7,
+    max_attempts_per_lead: 3,
+    first_contact_channel: "auto",
+    high_score_channel: "voice",
+    communication_style: "professionale",
+    custom_instructions: "",
+    email_signature: "",
+    opening_hook: "",
   },
 };
 

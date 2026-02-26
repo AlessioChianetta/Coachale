@@ -312,6 +312,9 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
+          voiceTemplateName: ctx.voice_template_name || null,
+          callInstruction: ctx.call_instruction || null,
+          waTemplateName: ctx.wa_template_name || null,
         });
       }
     }
@@ -349,6 +352,9 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           leadScore: ctx.ai_score || null,
           leadSector: ctx.sector || null,
           leadId: ctx.lead_id || null,
+          voiceTemplateName: ctx.voice_template_name || null,
+          callInstruction: ctx.call_instruction || null,
+          waTemplateName: ctx.wa_template_name || null,
         });
       }
     }
@@ -480,7 +486,7 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-async function getActionableCrmLeads(consultantId: string, scoreThreshold: number) {
+async function getActionableCrmLeads(consultantId: string, scoreThreshold: number, outreachConfig?: any) {
   const leadsResult = await db.execute(sql`
     SELECT
       lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website, lr.address,
@@ -535,23 +541,27 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
       hasActiveTask = taskCheck.rows.length > 0;
     }
 
+    const cooldownNewDays = (outreachConfig?.cooldown_new_hours ?? 24) / 24;
+    const cooldownContactedDays = outreachConfig?.cooldown_contacted_days ?? 5;
+    const cooldownNegotiationDays = outreachConfig?.cooldown_negotiation_days ?? 7;
+
     let actionable = false;
     let reason = '';
 
-    if (lead.lead_status === 'nuovo' && daysSinceCreated > 1 && !hasActiveTask) {
+    if (lead.lead_status === 'nuovo' && daysSinceCreated > cooldownNewDays && !hasActiveTask) {
       actionable = true;
       reason = `Lead nuovo con score ${lead.ai_compatibility_score}/100, creato ${Math.round(daysSinceCreated)} giorni fa, mai contattato`;
-    } else if (lead.lead_status === 'nuovo' && daysSinceCreated <= 1) {
+    } else if (lead.lead_status === 'nuovo' && daysSinceCreated <= cooldownNewDays) {
       skipReasons.tooRecent++;
-    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity > 5 && !hasActiveTask) {
+    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity > cooldownContactedDays && !hasActiveTask) {
       actionable = true;
       reason = `Lead contattato ${Math.round(daysSinceActivity)} giorni fa senza follow-up`;
-    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity <= 5) {
+    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity <= cooldownContactedDays) {
       skipReasons.recentlyContacted++;
-    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity > 7 && !hasActiveTask) {
+    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity > cooldownNegotiationDays && !hasActiveTask) {
       actionable = true;
       reason = `Lead in trattativa fermo da ${Math.round(daysSinceActivity)} giorni`;
-    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity <= 7) {
+    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity <= cooldownNegotiationDays) {
       skipReasons.recentNegotiation++;
     } else if (lead.lead_status === 'in_outreach' && lead.outreach_task_id && !hasActiveTask) {
       actionable = true;
@@ -592,9 +602,24 @@ async function generateOutreachContent(
   channel: string,
   salesCtx: any,
   consultantName: string,
-  talkingPoints?: string[]
+  talkingPoints?: string[],
+  outreachConfig?: any
 ): Promise<{ channel: string; callScript?: string; whatsappMessage?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
   const { quickGenerate } = await import("../ai/provider-factory");
+
+  const commStyle = outreachConfig?.communication_style || 'professionale';
+  const customInstructions = outreachConfig?.custom_instructions || '';
+  const emailSignature = outreachConfig?.email_signature || '';
+  const openingHook = outreachConfig?.opening_hook || '';
+  const callInstructionTemplate = outreachConfig?.call_instruction_template || '';
+
+  const styleMap: Record<string, string> = {
+    formale: 'Tono FORMALE: usa il Lei, linguaggio istituzionale, zero emoji, frasi strutturate.',
+    professionale: 'Tono PROFESSIONALE: cordiale ma competente, usa il Lei ma senza essere freddo. Linguaggio diretto.',
+    informale: 'Tono INFORMALE: usa il tu, linguaggio colloquiale ma rispettoso. Puoi usare 1-2 emoji.',
+    amichevole: 'Tono AMICHEVOLE: come un collega che scrive a un altro. Usa il tu, breve, diretto, umano.',
+  };
+  const styleInstruction = styleMap[commStyle] || styleMap.professionale;
 
   const leadInfo = [
     `LEAD: ${lead.businessName}`,
@@ -616,36 +641,45 @@ async function generateOutreachContent(
     `NOME CONSULENTE: ${consultantName}`,
   ].filter(Boolean).join('\n');
 
+  const customBlock = [
+    styleInstruction,
+    customInstructions ? `ISTRUZIONI PERSONALIZZATE DEL CONSULENTE (SEGUILE ATTENTAMENTE): ${customInstructions}` : '',
+    openingHook ? `APPROCCIO DI APERTURA PREFERITO: Usa un approccio simile a: "${openingHook}"` : '',
+  ].filter(Boolean).join('\n');
+
   const channelPrompts: Record<string, string> = {
     voice: [
       `Genera uno script per una chiamata commerciale a ${lead.businessName}.`,
       `Rispondi SOLO con un JSON: { "callScript": "testo dello script completo" }`,
       `Lo script deve includere:`,
       `- Apertura: presentazione breve e motivo della chiamata (max 2 frasi)`,
-      `- 3-4 talking points specifici per questo lead`,
+      `- 3-4 talking points specifici per questo lead basati sul loro settore e attività`,
       `- Obiettivo: proporre un incontro/demo`,
-      `- Chiusura: CTA chiara`,
-      `Tono: professionale ma cordiale, italiano naturale.`,
-    ].join('\n'),
+      `- Chiusura: CTA chiara per fissare un appuntamento`,
+      callInstructionTemplate ? `CONTESTO AGGIUNTIVO PER LA CHIAMATA: ${callInstructionTemplate}` : '',
+      `IMPORTANTE: Lo script deve sembrare naturale, NON un template generico. Personalizza ogni frase per QUESTO specifico lead.`,
+    ].filter(Boolean).join('\n'),
     whatsapp: [
       `Genera un messaggio WhatsApp per ${lead.businessName}.`,
       `Rispondi SOLO con un JSON: { "whatsappMessage": "testo del messaggio" }`,
       `Il messaggio deve essere:`,
       `- Breve (max 3-4 frasi)`,
-      `- Informale ma professionale`,
-      `- Con un hook personalizzato basato sul settore/attività del lead`,
+      `- Con un hook personalizzato che dimostri che HAI STUDIATO l'attività del lead`,
       `- CTA: proposta di breve chiamata o incontro`,
+      `- NON generico, NON sembrare un bot. Scrivi come scriverebbe una persona vera.`,
       `NON usare emoji eccessivi, max 1-2.`,
     ].join('\n'),
     email: [
-      `Genera un'email professionale per ${lead.businessName}.`,
+      `Genera un'email per ${lead.businessName}.`,
       `Rispondi SOLO con un JSON: { "emailSubject": "oggetto email", "emailBody": "corpo email in testo semplice" }`,
-      `L'email deve avere:`,
-      `- Oggetto accattivante e specifico (non generico)`,
-      `- Corpo: 4-5 frasi, tono professionale`,
-      `- Riferimento specifico all'attività del lead`,
-      `- CTA: proposta di incontro o chiamata`,
-      `- Firma: ${consultantName}`,
+      `REGOLE FONDAMENTALI per l'email:`,
+      `- L'oggetto deve essere SPECIFICO per questo lead, mai generico tipo "Proposta di collaborazione"`,
+      `- Corpo: max 5-6 righe, vai DRITTO al punto`,
+      `- Prima riga: dimostra che conosci la loro attività con un riferimento specifico`,
+      `- Non usare parole come "sinergia", "innovativo", "cutting-edge" — sono spam`,
+      `- CTA: una sola domanda chiara (es: "Ha 15 minuti giovedì per una call veloce?")`,
+      `- NON iniziare con "Mi permetto di contattarLa" o frasi simili da telemarketing`,
+      emailSignature ? `- FIRMA (aggiungi alla fine del corpo):\n${emailSignature}` : `- Firma: ${consultantName}`,
     ].join('\n'),
   };
 
@@ -654,16 +688,20 @@ async function generateOutreachContent(
     feature: `hunter-outreach-${channel}`,
     thinkingLevel: 'low',
     systemInstruction: [
-      `Sei Hunter, il copywriter commerciale del consulente ${consultantName}.`,
+      `Sei Hunter, il copywriter commerciale di ${consultantName}. Scrivi messaggi che CONVERTONO — brevi, personalizzati, umani.`,
       contextInfo,
+      customBlock,
       channelPrompts[channel] || channelPrompts.email,
-    ].join('\n'),
+    ].join('\n\n'),
     contents: [{ role: 'user', parts: [{ text: leadInfo }] }],
   });
 
   try {
     const cleaned = aiResult.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
+    if (channel === 'email' && emailSignature && parsed.emailBody && !parsed.emailBody.includes(emailSignature.split('\n')[0])) {
+      parsed.emailBody = parsed.emailBody.trimEnd() + '\n\n' + emailSignature;
+    }
     return { channel, leadId: lead.id || lead.leadId, ...parsed };
   } catch {
     if (channel === 'voice') return { channel, leadId: lead.id || lead.leadId, callScript: `Buongiorno, sono ${consultantName}. La contatto perché ho notato la vostra attività ${lead.businessName} e credo di potervi aiutare. Avrebbe 10 minuti per una breve chiamata?` };
@@ -723,7 +761,7 @@ async function scheduleIndividualOutreach(
   lead: any,
   channel: string,
   content: any,
-  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string },
+  config: { voiceTemplateId: string | null; whatsappConfigId: string | null; emailAccountId: string | null; timezone: string; whatsappTemplateName?: string; voiceTemplateName?: string; callInstructionTemplate?: string },
   mode: 'autonomous' | 'approval',
   slotIndex: number
 ): Promise<{ taskId: string; channel: string; leadName: string; status: string; scheduledAt: string; contentPreview: string }> {
@@ -765,7 +803,7 @@ async function scheduleIndividualOutreach(
         'single_call', ${callScript},
         ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'voice',
         ${scheduledCallId},
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis' })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', voice_template_name: config.voiceTemplateName || null, call_instruction: config.callInstructionTemplate || null })}::text,
         3, 0, 5, NOW(), NOW()
       )
     `);
@@ -784,7 +822,7 @@ async function scheduleIndividualOutreach(
         'ai_task', ${waMessage},
         ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'whatsapp',
         ${config.whatsappConfigId},
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis' })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', wa_template_name: config.whatsappTemplateName || null })}::text,
         1, 0, 5, NOW(), NOW()
       )
     `);
@@ -899,7 +937,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const scoreThreshold = outreachConfig.score_threshold ?? 60;
     const maxLeads = outreachConfig.max_leads_per_batch ?? 15;
 
-    const { totalAnalyzed, actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold);
+    const { totalAnalyzed, actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold, outreachConfig);
 
     console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode}, maxLeads=${maxLeads}), skipReasons:`, skipReasons);
 
@@ -986,23 +1024,33 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
 
     const leadsWithChannels: { lead: any; channel: string; aiReason: string }[] = [];
 
+    const firstContactChannel = outreachConfig.first_contact_channel || 'auto';
+    const highScoreChannel = outreachConfig.high_score_channel || 'voice';
+
     for (const lead of actionableLeads.slice(0, maxLeads)) {
       const aiDecision = aiDecisions.find(d => d.leadId === lead.id);
       let channel: string | null = null;
 
-      if (aiDecision && aiDecision.action !== 'skip') {
+      const canUseChannel = (ch: string): boolean => {
+        if (ch === 'voice') return !!(lead.phone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceCount);
+        if (ch === 'whatsapp') return !!(lead.phone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > waCount);
+        if (ch === 'email') return !!(lead.email && channelsEnabled.email && remainingLimits.email > emailCount);
+        return false;
+      };
+
+      if (lead.leadStatus === 'nuovo' && firstContactChannel !== 'auto' && canUseChannel(firstContactChannel)) {
+        channel = firstContactChannel;
+      } else if (lead.score > 80 && highScoreChannel && canUseChannel(highScoreChannel)) {
+        channel = highScoreChannel;
+      } else if (aiDecision && aiDecision.action !== 'skip') {
         const actionMap: Record<string, string> = { call: 'voice', whatsapp: 'whatsapp', email: 'email' };
         const preferred = actionMap[aiDecision.action] || aiDecision.action;
-        if (preferred === 'voice' && lead.phone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceCount) channel = 'voice';
-        else if (preferred === 'whatsapp' && lead.phone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > waCount) channel = 'whatsapp';
-        else if (preferred === 'email' && lead.email && channelsEnabled.email && remainingLimits.email > emailCount) channel = 'email';
+        if (canUseChannel(preferred)) channel = preferred;
       }
 
       if (!channel) {
         for (const ch of channelPriority) {
-          if (ch === 'voice' && lead.phone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceCount) { channel = 'voice'; break; }
-          if (ch === 'whatsapp' && lead.phone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > waCount) { channel = 'whatsapp'; break; }
-          if (ch === 'email' && lead.email && channelsEnabled.email && remainingLimits.email > emailCount) { channel = 'email'; break; }
+          if (canUseChannel(ch)) { channel = ch; break; }
         }
       }
 
@@ -1017,12 +1065,32 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     }
 
     const results: any[] = [];
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome' };
+    const callInstructionTemplate = outreachConfig.call_instruction_template || null;
+
+    let resolvedVoiceTemplateName: string | null = null;
+    if (voiceTemplateId) {
+      try {
+        const { getTemplateById } = await import("../voice/voice-templates");
+        const tmpl = getTemplateById(voiceTemplateId);
+        if (tmpl) resolvedVoiceTemplateName = tmpl.name;
+      } catch {}
+    }
+
+    let resolvedWaTemplateName: string | null = null;
+    const waTemplateId = outreachConfig.whatsapp_template_id || null;
+    if (waTemplateId) {
+      try {
+        const waResult = await db.execute(sql`SELECT template_name FROM whatsapp_custom_templates WHERE id = ${waTemplateId} LIMIT 1`);
+        if (waResult.rows[0]) resolvedWaTemplateName = (waResult.rows[0] as any).template_name;
+      } catch {}
+    }
+
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', whatsappTemplateName: resolvedWaTemplateName, voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
 
     for (let i = 0; i < leadsWithChannels.length; i++) {
       const { lead, channel } = leadsWithChannels[i];
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         console.log(`[HUNTER-CRM] ✓ ${result.leadName} → ${channel} (${result.status})`);
@@ -1084,7 +1152,7 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
 
     let planSkipReasons: any = {};
     if (source === "crm") {
-      const { actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold);
+      const { actionableLeads, skipReasons } = await getActionableCrmLeads(consultantId, scoreThreshold, outreachConfig);
       leadsForPlan = actionableLeads;
       planSkipReasons = skipReasons;
     }
@@ -1354,7 +1422,27 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
 
     const actionMap: Record<string, string> = { call: 'voice', whatsapp: 'whatsapp', email: 'email' };
     const outreachMode = hunterMode === 'autonomous' ? 'autonomous' : 'approval';
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome' };
+    const callInstructionTemplate2 = outreachConfig.call_instruction_template || null;
+
+    let resolvedVoiceTemplateName2: string | null = null;
+    if (voiceTemplateId) {
+      try {
+        const { getTemplateById } = await import("../voice/voice-templates");
+        const tmpl = getTemplateById(voiceTemplateId);
+        if (tmpl) resolvedVoiceTemplateName2 = tmpl.name;
+      } catch {}
+    }
+
+    let resolvedWaTemplateName2: string | null = null;
+    const waTemplateId2 = outreachConfig.whatsapp_template_id || null;
+    if (waTemplateId2) {
+      try {
+        const waResult2 = await db.execute(sql`SELECT template_name FROM whatsapp_custom_templates WHERE id = ${waTemplateId2} LIMIT 1`);
+        if (waResult2.rows[0]) resolvedWaTemplateName2 = (waResult2.rows[0] as any).template_name;
+      } catch {}
+    }
+
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', whatsappTemplateName: resolvedWaTemplateName2, voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2 };
 
     const [salesCtxResult, consultantResult] = await Promise.all([
       db.execute(sql`
@@ -1383,7 +1471,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
       };
 
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints, outreachConfig);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         if (channel === 'voice') voiceCount++;

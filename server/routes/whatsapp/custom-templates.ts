@@ -26,7 +26,7 @@ import {
   consultantWhatsappConfig,
 } from "../../../shared/schema";
 import { inArray } from "drizzle-orm";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull, ne } from "drizzle-orm";
 import {
   DEFAULT_TEMPLATES_BY_AGENT,
   AGENT_TYPE_LABELS,
@@ -52,18 +52,28 @@ router.get(
       const approvedTemplates = await db
         .select({
           id: schema.whatsappCustomTemplates.id,
-          name: schema.whatsappCustomTemplates.name,
-          twilioContentSid: schema.whatsappCustomTemplates.twilioContentSid,
+          name: schema.whatsappCustomTemplates.templateName,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
           scenario: schema.whatsappCustomTemplates.scenario,
+          bodyText: whatsappTemplateVersions.bodyText,
+          useCase: schema.whatsappCustomTemplates.useCase,
         })
         .from(schema.whatsappCustomTemplates)
+        .innerJoin(
+          whatsappTemplateVersions,
+          and(
+            eq(whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+            eq(whatsappTemplateVersions.isActive, true)
+          )
+        )
         .where(
           and(
             eq(schema.whatsappCustomTemplates.consultantId, consultantId),
-            sql`${schema.whatsappCustomTemplates.twilioContentSid} IS NOT NULL AND ${schema.whatsappCustomTemplates.twilioContentSid} != ''`
+            isNotNull(whatsappTemplateVersions.twilioContentSid),
+            ne(whatsappTemplateVersions.twilioContentSid, '')
           )
         )
-        .orderBy(schema.whatsappCustomTemplates.name);
+        .orderBy(schema.whatsappCustomTemplates.templateName);
 
       res.json(approvedTemplates);
     } catch (error: any) {
