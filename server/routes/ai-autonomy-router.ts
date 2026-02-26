@@ -82,7 +82,7 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         proactive_check_interval_minutes: 60,
         is_active: false,
         custom_instructions: null,
-        channels_enabled: { voice: true, email: false, whatsapp: false },
+        channels_enabled: { voice: true, email: false, whatsapp: false, lead_scraper: true },
         role_frequencies: {},
         role_autonomy_modes: {},
         role_working_hours: {},
@@ -121,7 +121,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const proactiveInterval = body.proactive_check_interval_minutes ?? 60;
     const isActive = body.is_active ?? false;
     const customInstructions = body.custom_instructions || null;
-    const channelsEnabled = JSON.stringify(body.channels_enabled ?? { voice: true, email: false, whatsapp: false });
+    const channelsEnabled = JSON.stringify(body.channels_enabled ?? { voice: true, email: false, whatsapp: false, lead_scraper: true });
     const roleFrequencies = JSON.stringify(body.role_frequencies ?? {});
     const roleAutonomyModes = JSON.stringify(body.role_autonomy_modes ?? {});
     const roleWorkingHours = JSON.stringify(body.role_working_hours ?? {});
@@ -1018,7 +1018,7 @@ router.post("/tasks/analyze", authenticateToken, requireAnyRole(["consultant", "
       SELECT channels_enabled, allowed_task_categories FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
     `);
     const settings = settingsResult.rows[0] as any || {};
-    const channelsEnabled = settings?.channels_enabled || { voice: true, email: false, whatsapp: false };
+    const channelsEnabled = settings?.channels_enabled || { voice: true, email: false, whatsapp: false, lead_scraper: true };
 
     const clientNames = clients.map((c: any) => `${c.first_name} ${c.last_name} (ID: ${c.id})`).join('\n');
     const templateList = templateOptions.map(t => `${t.id}: ${t.name} - ${t.description}`).join('\n');

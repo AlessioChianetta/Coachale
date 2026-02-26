@@ -1257,7 +1257,7 @@ function SettingsTab({
           </div>
           <div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp].filter(Boolean).length}
+              {[settings.channels_enabled.voice, settings.channels_enabled.email, settings.channels_enabled.whatsapp, settings.channels_enabled.lead_scraper !== false].filter(Boolean).length}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">canali abilitati</p>
           </div>
@@ -2405,6 +2405,29 @@ function SettingsTab({
                   {settings.channels_enabled.whatsapp 
                     ? "Usato da: Stella (messaggi WhatsApp), Marco (comunicazioni WhatsApp), Personalizza (se configurato)" 
                     : "Se disabilitato: Stella, Marco e Personalizza non potranno inviare messaggi WhatsApp."}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-xl border border-gray-100 dark:border-gray-800 p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-900/30">
+                      <Search className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Lead Scraper</span>
+                  </div>
+                  <Switch
+                    checked={settings.channels_enabled.lead_scraper !== false}
+                    onCheckedChange={(checked) => setSettings(prev => ({
+                      ...prev,
+                      channels_enabled: { ...prev.channels_enabled, lead_scraper: checked },
+                    }))}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {settings.channels_enabled.lead_scraper !== false
+                    ? "Usato da: Hunter (ricerca e qualificazione lead autonoma)" 
+                    : "Se disabilitato: Hunter non potrà cercare e qualificare nuovi lead."}
                 </p>
               </div>
             </div>

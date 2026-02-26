@@ -117,7 +117,7 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   max_daily_analyses: 50,
   is_active: false,
   custom_instructions: null,
-  channels_enabled: { voice: true, email: false, whatsapp: false },
+  channels_enabled: { voice: true, email: false, whatsapp: false, lead_scraper: true },
   role_frequencies: {},
   role_autonomy_modes: {},
   role_working_hours: {},
