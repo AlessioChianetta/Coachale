@@ -3,7 +3,7 @@ import { getAIProvider, getModelForProviderName, getGeminiApiKeyForClassifier, G
 import { db } from "../db";
 import { sql, eq } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
-import { ExecutionStep, getAutonomySettings, buildRolePersonality } from "./autonomous-decision-engine";
+import { ExecutionStep, getAutonomySettings, buildRolePersonality, getThinkingBudgetForLevel } from "./autonomous-decision-engine";
 import { fetchAgentContext, buildAgentContextSection } from "../cron/ai-autonomous-roles";
 import { fileSearchService } from "./file-search-service";
 import { fileSearchSyncService } from "../services/file-search-sync-service";
@@ -372,6 +372,8 @@ export async function executeStep(
   task: AITaskInfo,
   step: ExecutionStep,
   previousResults: Record<string, any>,
+  autonomyModelOverride?: string,
+  autonomyThinkingLevelOverride?: string,
 ): Promise<StepExecutionResult> {
   const startTime = Date.now();
   console.log(`${LOG_PREFIX} Executing step ${step.step}: ${step.action} - ${step.description}`);
@@ -426,6 +428,19 @@ export async function executeStep(
       }
     }
 
+    let taskModel = autonomyModelOverride;
+    let taskThinkingLevel = autonomyThinkingLevelOverride;
+    if (!taskModel || !taskThinkingLevel) {
+      try {
+        const autonomySettingsForModel = await getAutonomySettings(task.consultant_id);
+        taskModel = taskModel || autonomySettingsForModel.autonomy_model;
+        taskThinkingLevel = taskThinkingLevel || autonomySettingsForModel.autonomy_thinking_level;
+      } catch { /* use defaults */ }
+    }
+    taskModel = taskModel || GEMINI_3_MODEL;
+    taskThinkingLevel = taskThinkingLevel || 'low';
+    console.log(`${LOG_PREFIX} Using autonomy model=${taskModel}, thinkingLevel=${taskThinkingLevel} for step ${step.step}`);
+
     let result: Record<string, any>;
 
     switch (step.action) {
@@ -433,28 +448,28 @@ export async function executeStep(
         result = await handleFetchClientData(task, step, previousResults);
         break;
       case "search_private_stores":
-        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection, agentDocs);
+        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection, agentDocs, taskModel, taskThinkingLevel);
         break;
       case "analyze_patterns":
-        result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection);
+        result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
         break;
       case "generate_report":
-        result = await handleGenerateReport(task, step, previousResults, rolePersonality, agentContextSection);
+        result = await handleGenerateReport(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
         break;
       case "prepare_call":
-        result = await handlePrepareCall(task, step, previousResults, rolePersonality, agentContextSection);
+        result = await handlePrepareCall(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
         break;
       case "voice_call":
         result = await handleVoiceCall(task, step, previousResults);
         break;
       case "send_email":
-        result = await handleSendEmail(task, step, previousResults, agentContextSection);
+        result = await handleSendEmail(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel);
         break;
       case "send_whatsapp":
-        result = await handleSendWhatsapp(task, step, previousResults, agentContextSection);
+        result = await handleSendWhatsapp(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel);
         break;
       case "web_search":
-        result = await handleWebSearch(task, step, previousResults);
+        result = await handleWebSearch(task, step, previousResults, taskModel, taskThinkingLevel);
         break;
       case "lead_scraper_search":
         result = await handleLeadScraperSearch(task, step, previousResults);
@@ -463,7 +478,7 @@ export async function executeStep(
         result = await handleLeadQualifyAndAssign(task, step, previousResults);
         break;
       case "batch_outreach":
-        result = await handleBatchOutreach(task, step, previousResults, agentContextSection);
+        result = await handleBatchOutreach(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel);
         break;
       default:
         throw new Error(`Unknown step action: ${step.action}`);
@@ -722,6 +737,8 @@ async function handleSearchPrivateStores(
   rolePersonality?: string | null,
   agentContextSection?: string,
   agentDocs?: AgentDocuments | null,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}, agent_file_search_docs=${agentDocs?.fileSearchDocTitles?.length || 0}`);
 
@@ -891,14 +908,17 @@ Cerca specificamente:
 
 Riassumi le informazioni trovate in modo strutturato.`;
 
+  const searchModel = autonomyModel || GEMINI_3_MODEL;
+  const searchThinkingBudget = getThinkingBudgetForLevel(autonomyThinkingLevel || 'low');
   const response = await withRetry(async () => {
     return await trackedGenerateContent(ai!, {
-      model: GEMINI_3_MODEL,
+      model: searchModel,
       contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
       config: {
         temperature: 0.3,
         maxOutputTokens: 8192,
         tools: [fileSearchTool],
+        thinkingConfig: { thinkingBudget: searchThinkingBudget },
       },
     } as any, { consultantId: task.consultant_id, feature: 'ai-task-file-search', keySource: 'superadmin' });
   });
@@ -925,6 +945,8 @@ async function handleAnalyzePatterns(
   previousResults: Record<string, any>,
   rolePersonality?: string | null,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_analyze_patterns_started',
@@ -998,13 +1020,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 }`;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-  console.log(`${LOG_PREFIX} analyze_patterns using ${providerName} (${resolvedModel})`);
+  const effectiveModel = autonomyModel || resolvedModel;
+  console.log(`${LOG_PREFIX} analyze_patterns using ${providerName} (${effectiveModel})`);
 
   const response = await withRetry(async () => {
     return await client.generateContent({
-      model: resolvedModel,
+      model: effectiveModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 16384, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -1043,6 +1066,8 @@ async function handleGenerateReport(
   previousResults: Record<string, any>,
   rolePersonality?: string | null,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_generate_report_started',
@@ -1216,13 +1241,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 - Le firme (signatures) nel footer vanno incluse ESCLUSIVAMENTE quando document_type è "contract". Per guide, strategic_report, market_research, brief, dossier, analysis: footer.signatures DEVE essere un array vuoto [] o non presente.`;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-  console.log(`${LOG_PREFIX} generate_report using ${providerName} (${resolvedModel})`);
+  const effectiveReportModel = autonomyModel || resolvedModel;
+  console.log(`${LOG_PREFIX} generate_report using ${providerName} (${effectiveReportModel})`);
 
   const response = await withRetry(async () => {
     return await client.generateContent({
-      model: resolvedModel,
+      model: effectiveReportModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 65536 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -1265,6 +1291,8 @@ async function handlePrepareCall(
   previousResults: Record<string, any>,
   rolePersonality?: string | null,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_prepare_call_started',
@@ -1404,13 +1432,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
   const prompt = promptBody;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-  console.log(`${LOG_PREFIX} prepare_call using ${providerName} (${resolvedModel})`);
+  const effectiveCallModel = autonomyModel || resolvedModel;
+  console.log(`${LOG_PREFIX} prepare_call using ${providerName} (${effectiveCallModel})`);
 
   const response = await withRetry(async () => {
     return await client.generateContent({
-      model: resolvedModel,
+      model: effectiveCallModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -2231,6 +2260,8 @@ async function handleSendEmail(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_email_started',
@@ -2287,7 +2318,8 @@ async function handleSendEmail(
   if (!emailBody) {
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-      console.log(`${LOG_PREFIX} send_email body generation using ${providerName}`);
+      const effectiveEmailModel = autonomyModel || resolvedModel;
+      console.log(`${LOG_PREFIX} send_email body generation using ${providerName} (${effectiveEmailModel})`);
       const emailPrompt = `Scrivi un'email BREVE (massimo 4-5 frasi) e professionale per il cliente ${task.contact_name || 'N/A'}.
 ${agentContextSection || ''}
 Contesto: ${task.ai_instruction}
@@ -2302,9 +2334,9 @@ REGOLE IMPORTANTI:
 4. Sii diretto e professionale.`;
 
       const resp = await withRetry(() => client.generateContent({
-        model: resolvedModel,
+        model: effectiveEmailModel,
         contents: [{ role: "user", parts: [{ text: emailPrompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
       emailBody = resp.response.text() || "";
     } catch (provErr: any) {
@@ -2419,6 +2451,8 @@ async function handleSendWhatsapp(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_whatsapp_started',
@@ -2530,7 +2564,8 @@ async function handleSendWhatsapp(
   if (selectedTemplateId && templateVariableCount > 0) {
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-      console.log(`${LOG_PREFIX} Generating template variables using ${providerName}`);
+      const effectiveWaModel = autonomyModel || resolvedModel;
+      console.log(`${LOG_PREFIX} Generating template variables using ${providerName} (${effectiveWaModel})`);
 
       let additionalLeadContext = '';
       if (task.additional_context) {
@@ -2572,9 +2607,9 @@ Rispondi SOLO con un JSON valido nel formato:
 ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 ? '{"1": "valore", "2": "valore"}' : `{${Array.from({length: templateVariableCount}, (_, i) => `"${i+1}": "valore"`).join(', ')}}`}`;
 
       const resp = await withRetry(() => client.generateContent({
-        model: resolvedModel,
+        model: effectiveWaModel,
         contents: [{ role: "user", parts: [{ text: variablePrompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
 
       const responseText = resp.response.text() || '';
@@ -2628,7 +2663,8 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
   if (!messageText) {
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-      console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName}`);
+      const effectiveWaMsgModel = autonomyModel || resolvedModel;
+      console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName} (${effectiveWaMsgModel})`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp informativo e professionale per ${resolvedName || 'il cliente'}.
 ${agentContextSection || ''}
 
@@ -2649,9 +2685,9 @@ REGOLE PER IL MESSAGGIO:
 - NON usare asterischi per il grassetto`;
 
       const resp = await withRetry(() => client.generateContent({
-        model: resolvedModel,
+        model: effectiveWaMsgModel,
         contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.5, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
       messageText = resp.response.text() || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
     } catch (provErr: any) {
@@ -2776,6 +2812,8 @@ async function handleWebSearch(
   task: AITaskInfo,
   step: ExecutionStep,
   previousResults: Record<string, any>,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_web_search_started',
@@ -2801,7 +2839,8 @@ async function handleWebSearch(
     console.log(`${LOG_PREFIX} Search query too long (${searchQuery.length} chars), generating focused queries with Gemini`);
     try {
       const { client: queryGenClient, model: queryModel, providerName: queryProvider } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-      console.log(`${LOG_PREFIX} web_search query generation using ${queryProvider}`);
+      const effectiveQueryModel = autonomyModel || queryModel;
+      console.log(`${LOG_PREFIX} web_search query generation using ${queryProvider} (${effectiveQueryModel})`);
       const keyTopics = analysisData.key_topics || [];
       const queryGenPrompt = `Based on the following task context, generate 2-3 concise, focused web search queries (each max 10 words) that would find the most relevant information. Return ONLY the queries, one per line.
 
@@ -2813,9 +2852,9 @@ ${step.description ? `Step description: ${step.description}` : ''}`;
 
       const queryGenResponse = await withRetry(async () => {
         return await queryGenClient.generateContent({
-          model: queryModel,
+          model: effectiveQueryModel,
           contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 256 },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 256, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
         });
       });
 
@@ -2859,13 +2898,14 @@ IMPORTANTE: Riporta SOLO informazioni che trovi realmente dalla ricerca. NON inv
 Fornisci una risposta strutturata e dettagliata con le informazioni trovate, citando le fonti quando possibile.`;
 
   const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
-  console.log(`${LOG_PREFIX} web_search using ${providerName} (${resolvedModel})`);
+  const effectiveSearchModel = autonomyModel || resolvedModel;
+  console.log(`${LOG_PREFIX} web_search using ${providerName} (${effectiveSearchModel})`);
 
   const response = await withRetry(async () => {
     return await client.generateContent({
-      model: resolvedModel,
+      model: effectiveSearchModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
+      generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       tools: [{ googleSearch: {} }],
     });
   });
@@ -2921,6 +2961,8 @@ async function handleBatchOutreach(
   step: ExecutionStep,
   previousResults: Record<string, any>,
   agentContextSection?: string,
+  autonomyModel?: string,
+  autonomyThinkingLevel?: string,
 ): Promise<Record<string, any>> {
   let resultData: any = {};
   if (task.additional_context) {

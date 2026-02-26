@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 
 export const PRICING: Record<string, { input: number; output: number; cachedInput: number }> = {
   'gemini-3-flash-preview': { input: 0.50, output: 3.00, cachedInput: 0.05 },
-  'gemini-3-pro-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
-  'gemini-3-pro-image-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
+  'gemini-3.1-pro-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
+  'gemini-3.1-pro-image-preview': { input: 2.00, output: 12.00, cachedInput: 0.20 },
   'gemini-2.5-flash-tts': { input: 0.30, output: 2.50, cachedInput: 0.03 },
   'gemini-2.5-pro-tts': { input: 1.25, output: 10.00, cachedInput: 0.125 },
   'gemini-2.5-flash-native-audio-preview-12-2025': { input: 3.00, output: 12.00, cachedInput: 0.30 },

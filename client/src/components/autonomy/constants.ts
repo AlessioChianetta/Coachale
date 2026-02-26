@@ -517,6 +517,8 @@ export const DEFAULT_SETTINGS: AutonomySettings = {
   role_working_hours: {},
   reasoning_mode: "structured",
   role_reasoning_modes: {},
+  autonomy_model: "gemini-3-flash-preview",
+  autonomy_thinking_level: "low",
   outreach_config: {
     enabled: false,
     max_searches_per_day: 5,

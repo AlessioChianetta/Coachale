@@ -24,6 +24,8 @@ export interface AutonomySettings {
   reasoning_mode: string;
   role_reasoning_modes: Record<string, string>;
   outreach_config: OutreachConfig;
+  autonomy_model: string;
+  autonomy_thinking_level: string;
 }
 
 export interface OutreachConfig {

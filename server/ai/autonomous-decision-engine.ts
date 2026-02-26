@@ -49,6 +49,8 @@ export interface AutonomySettings {
   role_working_hours: Record<string, { start: string; end: string; days: number[] }>;
   reasoning_mode: string;
   role_reasoning_modes: Record<string, string>;
+  autonomy_model: string;
+  autonomy_thinking_level: string;
 }
 
 export interface DailyActionCounts {
@@ -123,7 +125,19 @@ const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   role_working_hours: {},
   reasoning_mode: 'structured',
   role_reasoning_modes: {},
+  autonomy_model: 'gemini-3-flash-preview',
+  autonomy_thinking_level: 'low',
 };
+
+export function getThinkingBudgetForLevel(level: string): number {
+  switch (level) {
+    case 'minimal': return 1024;
+    case 'low': return 4096;
+    case 'medium': return 8192;
+    case 'high': return 16384;
+    default: return 4096;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RETRY HELPER
@@ -179,6 +193,8 @@ export async function getAutonomySettings(consultantId: string): Promise<Autonom
       role_working_hours: row.role_working_hours ?? DEFAULT_AUTONOMY_SETTINGS.role_working_hours,
       reasoning_mode: row.reasoning_mode ?? DEFAULT_AUTONOMY_SETTINGS.reasoning_mode,
       role_reasoning_modes: row.role_reasoning_modes ?? DEFAULT_AUTONOMY_SETTINGS.role_reasoning_modes,
+      autonomy_model: row.autonomy_model ?? DEFAULT_AUTONOMY_SETTINGS.autonomy_model,
+      autonomy_thinking_level: row.autonomy_thinking_level ?? DEFAULT_AUTONOMY_SETTINGS.autonomy_thinking_level,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Error fetching autonomy settings:`, error.message);
@@ -683,7 +699,7 @@ export async function generateExecutionPlan(task: {
   voice_template_suggestion?: string | null;
   language?: string | null;
   result_data?: any;
-}, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string }): Promise<DecisionResult> {
+}, options?: { isManual?: boolean; skipGuardrails?: boolean; roleId?: string; autonomyModel?: string; autonomyThinkingLevel?: string }): Promise<DecisionResult> {
   console.log(`${LOG_PREFIX} Generating execution plan for task ${task.id}${options?.isManual ? ' (MANUAL)' : ''}${options?.skipGuardrails ? ' (SKIP_GUARDRAILS)' : ''} roleId=${options?.roleId || 'none'}`);
 
   if (options?.roleId === 'hunter' && task.preferred_channel === 'lead_scraper' && task.task_category === 'prospecting') {
@@ -966,10 +982,13 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
       console.log(`${LOG_PREFIX} [PLAN-GEN] API key obtained, calling Gemini for task=${task.id}`);
 
       const ai = new GoogleGenAI({ apiKey });
+      const planModel = options?.autonomyModel || context.autonomy_settings.autonomy_model || GEMINI_3_MODEL;
+      const planThinkingLevel = options?.autonomyThinkingLevel || context.autonomy_settings.autonomy_thinking_level || 'low';
+      console.log(`${LOG_PREFIX} [PLAN-GEN] Using model=${planModel}, thinkingLevel=${planThinkingLevel}`);
       const response = await trackedGenerateContent(ai, {
-        model: GEMINI_3_MODEL,
+        model: planModel,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: { temperature: 0.2, maxOutputTokens: 4096 },
+        config: { temperature: 0.2, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(planThinkingLevel) } },
       }, { consultantId: taskConsultantId, feature: 'decision-engine', keySource: 'classifier' });
 
       const text = response.text;

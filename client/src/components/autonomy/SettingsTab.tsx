@@ -2433,6 +2433,78 @@ function SettingsTab({
             </div>
           </div>
 
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500" />
+            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+              <Brain className="h-5 w-5 text-purple-600" />
+              Modello AI per Autonomia
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Scegli il modello e il livello di ragionamento usato dai dipendenti AI durante le esecuzioni autonome
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Modello AI</Label>
+                <Select
+                  value={settings.autonomy_model || 'gemini-3-flash-preview'}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-3-flash-preview">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Gemini 3 Flash</span>
+                        <span className="text-xs text-gray-400">Veloce ed economico — ideale per la maggior parte dei task</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gemini-3.1-pro-preview">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Gemini 3.1 Pro</span>
+                        <span className="text-xs text-gray-400">Ragionamento avanzato — per analisi complesse e decisioni critiche</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(settings.autonomy_model || 'gemini-3-flash-preview') === 'gemini-3-flash-preview'
+                    ? "Flash è più rapido e consuma meno token. Consigliato per operazioni ad alto volume."
+                    : "Pro 3.1 offre ragionamento superiore. Ideale per qualificazione lead e decisioni strategiche. Costo più elevato."}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Livello di Ragionamento</Label>
+                <Select
+                  value={settings.autonomy_thinking_level || 'low'}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">
+                      <span className="font-medium">Basso</span>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <span className="font-medium">Medio</span>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <span className="font-medium">Alto</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(settings.autonomy_thinking_level || 'low') === 'low' 
+                    ? "Risposte rapide con ragionamento minimo. Più veloce e economico."
+                    : (settings.autonomy_thinking_level || 'low') === 'medium'
+                      ? "Buon equilibrio tra velocità e profondità di analisi."
+                      : "Ragionamento approfondito per ogni decisione. Più lento ma più accurato."}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {settings.channels_enabled.whatsapp && (
             <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-green-500" />

@@ -508,7 +508,7 @@ export default function ConsultantAIAssistant() {
         attachments: params.attachments,
       };
 
-      const modelLabel = selectedModel === "gemini-3-pro-preview" ? "Pro 3" : "Flash 3";
+      const modelLabel = selectedModel === "gemini-3.1-pro-preview" ? "Pro 3.1" : "Flash 3";
       const thinkingLabel = thinkingLevel === "none" ? "Nessuno" : thinkingLevel === "low" ? "Basso" : thinkingLevel === "medium" ? "Medio" : "Alto";
       const assistantPlaceholder: Message = {
         id: `temp-assistant-${Date.now()}`,

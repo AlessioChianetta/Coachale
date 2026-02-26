@@ -115,7 +115,7 @@ interface ManagerPreferences {
   writingStyle: "default" | "professional" | "friendly" | "direct" | "eccentric" | "efficient" | "nerd" | "cynical" | "custom";
   responseLength: "short" | "balanced" | "comprehensive";
   customInstructions: string | null;
-  aiModel?: "gemini-3-flash-preview" | "gemini-3-pro-preview";
+  aiModel?: "gemini-3-flash-preview" | "gemini-3.1-pro-preview";
   thinkingLevel?: "none" | "low" | "medium" | "high";
 }
 
@@ -147,7 +147,7 @@ const RESPONSE_LENGTH_OPTIONS = [
 
 const AI_MODEL_OPTIONS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Veloce e bilanciato (default)" },
-  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Ragionamento avanzato" },
+  { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", description: "Ragionamento avanzato" },
 ];
 
 const THINKING_LEVEL_OPTIONS = [
@@ -1499,7 +1499,7 @@ export default function ManagerChat() {
         role: "user",
         content: message,
       };
-      const modelLabel = selectedModel === "gemini-3-pro-preview" ? "Pro 3" : "Flash 3";
+      const modelLabel = selectedModel === "gemini-3.1-pro-preview" ? "Pro 3.1" : "Flash 3";
       const thinkingLabel = thinkingLevel === "none" ? "Nessuno" : thinkingLevel === "low" ? "Basso" : thinkingLevel === "medium" ? "Medio" : "Alto";
       const assistantPlaceholder: Message = {
         id: `temp-assistant-${Date.now()}`,

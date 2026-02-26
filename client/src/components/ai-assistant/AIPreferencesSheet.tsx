@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
-type AIModel = "gemini-3-flash-preview" | "gemini-3-pro-preview";
+type AIModel = "gemini-3-flash-preview" | "gemini-3.1-pro-preview";
 type ThinkingLevel = "none" | "low" | "medium" | "high";
 
 interface AIPreferences {
@@ -43,7 +43,7 @@ const DEFAULT_PREFERENCES: AIPreferences = {
 
 const MODEL_OPTIONS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash", description: "Veloce e versatile" },
-  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro", description: "Ragionamento avanzato" },
+  { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro", description: "Ragionamento avanzato" },
 ];
 
 const THINKING_LEVEL_OPTIONS = [

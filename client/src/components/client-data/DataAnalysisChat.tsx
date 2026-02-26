@@ -276,7 +276,7 @@ export function DataAnalysisChat({
         role: "assistant",
         content: responseText,
         thinking,
-        modelName: selectedModel.includes("pro") ? "Pro 3" : "Flash 3",
+        modelName: selectedModel.includes("pro") ? "Pro 3.1" : "Flash 3",
         thinkingLevel: thinkingLevel,
         suggestedActions: resultActions.length > 0 ? resultActions : undefined,
         queryResult: data,
@@ -315,7 +315,7 @@ export function DataAnalysisChat({
       role: "assistant",
       content: "",
       isThinking: true,
-      modelName: selectedModel.includes("pro") ? "Pro 3" : "Flash 3",
+      modelName: selectedModel.includes("pro") ? "Pro 3.1" : "Flash 3",
       thinkingLevel: thinkingLevel,
     };
 
@@ -601,7 +601,7 @@ export function DataAnalysisChat({
                     {isTyping && !messages.some(m => m.isThinking) && (
                       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <MessageComponent
-                          message={{ id: "typing", role: "assistant", content: "", isThinking: true, modelName: selectedModel.includes("pro") ? "Pro 3" : "Flash 3" }}
+                          message={{ id: "typing", role: "assistant", content: "", isThinking: true, modelName: selectedModel.includes("pro") ? "Pro 3.1" : "Flash 3" }}
                         />
                       </motion.div>
                     )}

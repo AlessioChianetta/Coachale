@@ -89,6 +89,8 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         whatsapp_template_ids: [],
         reasoning_mode: 'structured',
         role_reasoning_modes: {},
+        autonomy_model: 'gemini-3-flash-preview',
+        autonomy_thinking_level: 'low',
       });
     }
 
@@ -129,6 +131,8 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const reasoningMode = body.reasoning_mode ?? 'structured';
     const roleReasoningModes = JSON.stringify(body.role_reasoning_modes ?? {});
     const outreachConfig = body.outreach_config !== undefined ? JSON.stringify(body.outreach_config) : null;
+    const autonomyModel = body.autonomy_model ?? 'gemini-3-flash-preview';
+    const autonomyThinkingLevel = body.autonomy_thinking_level ?? 'low';
 
     const result = await db.execute(sql`
       INSERT INTO ai_autonomy_settings (
@@ -137,14 +141,14 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         max_daily_calls, max_daily_emails, max_daily_whatsapp, max_daily_analyses,
         proactive_check_interval_minutes, is_active, custom_instructions, channels_enabled,
         role_frequencies, role_autonomy_modes, role_working_hours, whatsapp_template_ids,
-        reasoning_mode, role_reasoning_modes, outreach_config
+        reasoning_mode, role_reasoning_modes, outreach_config, autonomy_model, autonomy_thinking_level
       ) VALUES (
         ${consultantId}, ${autonomyLevel}, ${defaultMode}, ${allowedCategories}::jsonb,
         ${alwaysApprove}::jsonb, ${hoursStart}::time, ${hoursEnd}::time, ARRAY[${sql.raw(days.join(','))}]::integer[],
         ${maxCalls}, ${maxEmails}, ${maxWhatsapp}, ${maxAnalyses},
         ${proactiveInterval}, ${isActive}, ${customInstructions}, ${channelsEnabled}::jsonb,
         ${roleFrequencies}::jsonb, ${roleAutonomyModes}::jsonb, ${roleWorkingHours}::jsonb, ${whatsappTemplateIds}::jsonb,
-        ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb)
+        ${reasoningMode}, ${roleReasoningModes}::jsonb, COALESCE(${outreachConfig}::jsonb, '{}'::jsonb), ${autonomyModel}, ${autonomyThinkingLevel}
       )
       ON CONFLICT (consultant_id) DO UPDATE SET
         autonomy_level = EXCLUDED.autonomy_level,
@@ -169,6 +173,8 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         reasoning_mode = EXCLUDED.reasoning_mode,
         role_reasoning_modes = EXCLUDED.role_reasoning_modes,
         outreach_config = CASE WHEN ${outreachConfig}::jsonb IS NOT NULL THEN ${outreachConfig}::jsonb ELSE ai_autonomy_settings.outreach_config END,
+        autonomy_model = EXCLUDED.autonomy_model,
+        autonomy_thinking_level = EXCLUDED.autonomy_thinking_level,
         updated_at = now()
       RETURNING *
     `);

@@ -662,6 +662,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         contact_id: task.contact_id,
       });
       
+      const autonomySettings = await getAutonomySettings(task.consultant_id);
       const decision = await generateExecutionPlan({
         id: task.id,
         consultant_id: task.consultant_id,
@@ -682,7 +683,9 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         result_data: task.result_data,
       }, { 
         skipGuardrails: skipGuardrails, 
-        roleId: task.ai_role || undefined 
+        roleId: task.ai_role || undefined,
+        autonomyModel: autonomySettings?.autonomy_model,
+        autonomyThinkingLevel: autonomySettings?.autonomy_thinking_level,
       });
       
       if (!decision.should_execute) {
@@ -912,7 +915,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
         contact_id: taskInfo.contact_id,
       });
       
-      const stepResult = await executeStep(taskInfo, step, allResults);
+      const stepAutonomySettings = await getAutonomySettings(task.consultant_id);
+      const stepResult = await executeStep(taskInfo, step, allResults, stepAutonomySettings?.autonomy_model, stepAutonomySettings?.autonomy_thinking_level);
       
       if (stepResult.success) {
         executionPlan[i] = { ...executionPlan[i], status: 'completed' };
