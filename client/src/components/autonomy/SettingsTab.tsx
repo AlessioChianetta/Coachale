@@ -31,7 +31,7 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { AutonomySettings, SystemStatus, AutonomousLogsResponse, PersonalizzaConfig, KbDocument, RoleStatus } from "./types";
-import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES } from "./constants";
+import { DAYS_OF_WEEK, TASK_CATEGORIES, AI_ROLE_PROFILES, AI_ROLE_ACCENT_COLORS, AI_ROLE_CAPABILITIES, AI_ROLE_EXECUTION_PIPELINES } from "./constants";
 import { getAutonomyLabel, getAutonomyBadgeColor, getCategoryBadge } from "./utils";
 import TelegramConfig from "./TelegramConfig";
 import TelegramChats from "./TelegramChats";
@@ -2972,6 +2972,40 @@ function SettingsTab({
                                     </p>
                                     <p className="text-sm text-muted-foreground leading-relaxed">{caps.workflow}</p>
                                   </div>
+
+                                  {AI_ROLE_EXECUTION_PIPELINES[role.id] && (() => {
+                                    const pipeline = AI_ROLE_EXECUTION_PIPELINES[role.id];
+                                    return (
+                                      <div className="rounded-2xl border border-border/40 bg-white dark:bg-gray-900/50 p-5 space-y-4">
+                                        <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                          <ListTodo className="h-3.5 w-3.5 text-muted-foreground" />
+                                          Piano di esecuzione
+                                        </p>
+                                        <div className="flex flex-wrap items-start gap-1">
+                                          {pipeline.steps.map((step, idx) => (
+                                            <React.Fragment key={step.id}>
+                                              <div className="flex flex-col items-center text-center" style={{ minWidth: '80px', maxWidth: '100px' }}>
+                                                <div className="w-10 h-10 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/50 flex items-center justify-center text-lg mb-1.5">
+                                                  {step.icon}
+                                                </div>
+                                                <p className="text-[11px] font-medium text-foreground leading-tight">{step.label}</p>
+                                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{step.description.length > 50 ? step.description.substring(0, 50) + '...' : step.description}</p>
+                                              </div>
+                                              {idx < pipeline.steps.length - 1 && (
+                                                <div className="flex items-center pt-3">
+                                                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+                                                </div>
+                                              )}
+                                            </React.Fragment>
+                                          ))}
+                                        </div>
+                                        <div className={cn("flex items-center gap-2 pt-2 border-t border-border/30")}>
+                                          <span className="text-base">{pipeline.directionIcon}</span>
+                                          <span className={cn("text-xs font-semibold", pipeline.directionColor)}>{pipeline.direction}</span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   <div className="space-y-5">
                                     <div>

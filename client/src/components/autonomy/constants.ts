@@ -223,6 +223,123 @@ export const AI_ROLE_ACCENT_COLORS: Record<string, { ring: string; badge: string
   gray: { ring: "ring-gray-400", badge: "bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300", border: "border-gray-300 dark:border-gray-700", text: "text-gray-600 dark:text-gray-400" },
 };
 
+export interface ExecutionPipelineStep {
+  id: string;
+  icon: string;
+  label: string;
+  description: string;
+}
+
+export interface ExecutionPipelineInfo {
+  steps: ExecutionPipelineStep[];
+  direction: string;
+  directionIcon: string;
+  directionColor: string;
+}
+
+export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> = {
+  alessia: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera storico consulenze, chiamate e interazioni del cliente" },
+      { id: "search_private_stores", icon: "🔎", label: "Ricerca documenti", description: "Cerca nei documenti privati del cliente (note, email, report)" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi AI", description: "Analizza i pattern di engagement e identifica bisogni" },
+      { id: "prepare_call", icon: "📝", label: "Preparazione script", description: "Crea i punti di discussione e lo script per la chiamata" },
+      { id: "voice_call", icon: "📞", label: "Chiamata vocale", description: "Esegue la chiamata telefonica con voce AI naturale via Twilio" },
+    ],
+    direction: "Contatta il CLIENTE",
+    directionIcon: "👤",
+    directionColor: "text-pink-600 dark:text-pink-400",
+  },
+  millie: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera storico email, journey e interazioni del cliente" },
+      { id: "search_private_stores", icon: "🔎", label: "Ricerca documenti", description: "Cerca nei documenti privati del cliente" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi engagement", description: "Analizza aperture, click e risposte alle email precedenti" },
+      { id: "generate_report", icon: "📄", label: "Composizione", description: "Genera il contenuto dell'email personalizzata con AI" },
+      { id: "send_email", icon: "📧", label: "Invio email", description: "Invia l'email via SMTP con eventuali allegati PDF" },
+    ],
+    direction: "Contatta il CLIENTE",
+    directionIcon: "👤",
+    directionColor: "text-purple-600 dark:text-purple-400",
+  },
+  stella: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera storico conversazioni WhatsApp del contatto" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi conversazioni", description: "Analizza il contesto e identifica il messaggio appropriato" },
+      { id: "send_whatsapp", icon: "💬", label: "Invio WhatsApp", description: "Invia messaggio WhatsApp via Twilio (template o testo libero)" },
+    ],
+    direction: "Contatta il CLIENTE",
+    directionIcon: "👤",
+    directionColor: "text-emerald-600 dark:text-emerald-400",
+  },
+  echo: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera i dettagli della consulenza (note, trascrizioni)" },
+      { id: "search_private_stores", icon: "🔎", label: "Ricerca documenti", description: "Cerca nei documenti privati del cliente" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi contenuti", description: "Analizza i punti trattati, decisioni e azioni concordate" },
+      { id: "generate_report", icon: "📄", label: "Generazione riepilogo", description: "Crea un riepilogo strutturato con punti chiave e prossimi step" },
+      { id: "send_email", icon: "📧", label: "Invio riepilogo", description: "Invia il riepilogo via email al cliente con PDF allegato" },
+    ],
+    direction: "Contatta il CLIENTE",
+    directionIcon: "👤",
+    directionColor: "text-orange-600 dark:text-orange-400",
+  },
+  nova: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Analizza il calendario editoriale e i contenuti recenti" },
+      { id: "web_search", icon: "🌐", label: "Ricerca trend", description: "Cerca trend e argomenti rilevanti nel settore sul web" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi e ideazione", description: "Genera idee per nuovi contenuti basati sui dati raccolti" },
+      { id: "generate_report", icon: "📝", label: "Generazione contenuto", description: "Crea il contenuto con testo, hashtag e suggerimenti visivi" },
+    ],
+    direction: "Nessun contatto diretto (solo contenuti interni)",
+    directionIcon: "🏠",
+    directionColor: "text-muted-foreground",
+  },
+  marco: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Legge roadmap, obiettivi, documenti KB e agenda" },
+      { id: "search_private_stores", icon: "🔎", label: "Ricerca documenti", description: "Cerca nei documenti strategici e nella Knowledge Base" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi strategica", description: "Valuta progressi, criticita e opportunita di crescita" },
+      { id: "generate_report", icon: "📄", label: "Preparazione coaching", description: "Prepara i punti di discussione e le sfide su cui spingerti" },
+      { id: "contact", icon: "📞💬📧", label: "Contatto diretto", description: "Ti chiama, manda WhatsApp o email in base all'urgenza" },
+    ],
+    direction: "Contatta TE (il consulente) — mai i clienti",
+    directionIcon: "🎯",
+    directionColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  iris: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Analisi email", description: "Analizza le email in arrivo e i ticket aperti" },
+      { id: "analyze_patterns", icon: "🧠", label: "Classificazione", description: "Classifica le email per priorita e tipo di risposta necessaria" },
+      { id: "send_email", icon: "✍️", label: "Risposta o escalation", description: "Prepara risposte automatiche o segnala email urgenti" },
+    ],
+    direction: "Contatta il CLIENTE (risposte email)",
+    directionIcon: "👤",
+    directionColor: "text-teal-600 dark:text-teal-400",
+  },
+  hunter: {
+    steps: [
+      { id: "lead_scraper_search", icon: "🔍", label: "Ricerca lead", description: "Cerca nuovi lead su Google Maps/Search in base al Sales Context" },
+      { id: "scrape", icon: "🌐", label: "Scraping siti", description: "Visita i siti web trovati per estrarre email, telefoni e info aziendali" },
+      { id: "qualify", icon: "🎯", label: "Qualifica AI", description: "Analizza ogni lead con AI e assegna un punteggio di compatibilita (0-100)" },
+      { id: "lead_qualify_and_assign", icon: "📋", label: "Assegnazione", description: "Crea task figli per Alessia (chiamata), Stella (WhatsApp) o Millie (email)" },
+    ],
+    direction: "Nessun contatto diretto — delega ad Alessia, Stella e Millie",
+    directionIcon: "🔀",
+    directionColor: "text-teal-600 dark:text-teal-400",
+  },
+  personalizza: {
+    steps: [
+      { id: "fetch_client_data", icon: "📊", label: "Raccolta dati", description: "Recupera i dati configurati nelle tue istruzioni" },
+      { id: "analyze_patterns", icon: "🧠", label: "Analisi AI", description: "Analizza secondo le regole personalizzate" },
+      { id: "action", icon: "⚡", label: "Azione configurata", description: "Esegue l'azione definita nelle tue istruzioni (email, report, etc.)" },
+    ],
+    direction: "Dipende dalla configurazione personalizzata",
+    directionIcon: "⚙️",
+    directionColor: "text-muted-foreground",
+  },
+};
+
 export const AI_ROLE_CAPABILITIES: Record<string, {
   canDo: Array<{ icon: string; text: string }>;
   cantDo: Array<{ icon: string; text: string }>;

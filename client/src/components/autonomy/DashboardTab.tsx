@@ -2189,38 +2189,74 @@ function DashboardTab({
                 </DialogHeader>
 
                 <div className="rounded-xl border border-border shadow-sm bg-card p-6 space-y-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      {(() => {
-                        const preview = getPlannedActionsPreview(task);
-                        const hasStructured = parseStructuredInstruction(task.ai_instruction || '');
-                        const isStructured = Object.keys(hasStructured).length > 0;
-                        return (
-                          <>
-                            <h2 className="text-xl font-bold text-foreground mb-2">
-                              {isStructured ? preview.humanTitle : 'Deep Research'}
-                            </h2>
+                  {(() => {
+                    const roleProfile = task.ai_role ? AI_ROLE_PROFILES[task.ai_role] : null;
+                    const preview = getPlannedActionsPreview(task);
+                    const roleColorMap: Record<string, string> = {
+                      alessia: "ring-pink-300 dark:ring-pink-700",
+                      millie: "ring-purple-300 dark:ring-purple-700",
+                      echo: "ring-orange-300 dark:ring-orange-700",
+                      nova: "ring-pink-300 dark:ring-pink-700",
+                      stella: "ring-emerald-300 dark:ring-emerald-700",
+                      iris: "ring-teal-300 dark:ring-teal-700",
+                      marco: "ring-indigo-300 dark:ring-indigo-700",
+                      hunter: "ring-teal-300 dark:ring-teal-700",
+                    };
+                    const ringColor = task.ai_role ? (roleColorMap[task.ai_role] || "ring-border") : "ring-border";
+                    return (
+                      <>
+                        {roleProfile && (
+                          <div className="flex items-center gap-4 pb-4 border-b border-border/50">
+                            <img
+                              src={roleProfile.avatar}
+                              alt={task.ai_role || ''}
+                              className={cn("h-14 w-14 rounded-full ring-3 shrink-0 object-cover", ringColor)}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <h2 className="text-xl font-bold text-foreground">
+                                {task.ai_role ? task.ai_role.charAt(0).toUpperCase() + task.ai_role.slice(1) : ''}
+                              </h2>
+                              <p className="text-sm text-muted-foreground">{roleProfile.role}</p>
+                            </div>
+                            {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+                                onClick={() => setCancelDialogTask(task)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Cancella Task
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-lg font-semibold text-foreground mb-1.5">
+                              {preview.humanTitle}
+                            </h3>
                             <p className="text-sm text-muted-foreground leading-[1.8]">
-                              {isStructured && hasStructured['REASONING']
-                                ? hasStructured['REASONING']
+                              {(task.ai_instruction || '').length > 200
+                                ? task.ai_instruction!.substring(0, 200) + '...'
                                 : task.ai_instruction}
                             </p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                    {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0 text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
-                        onClick={() => setCancelDialogTask(task)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Cancella Task
-                      </Button>
-                    )}
-                  </div>
+                          </div>
+                          {!roleProfile && ['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="shrink-0 text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30"
+                              onClick={() => setCancelDialogTask(task)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Cancella Task
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={cn(
