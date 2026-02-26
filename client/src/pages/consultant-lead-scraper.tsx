@@ -169,6 +169,7 @@ const LEAD_STATUSES = [
   { value: "chiuso_vinto", label: "Chiuso vinto", color: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800", borderColor: "border-l-emerald-500" },
   { value: "chiuso_perso", label: "Chiuso perso", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800", borderColor: "border-l-red-400" },
   { value: "non_interessato", label: "Non interessato", color: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700", borderColor: "border-l-slate-300" },
+  { value: "non_raggiungibile", label: "Non raggiungibile", color: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800", borderColor: "border-l-orange-400" },
 ];
 
 function getLeadStatusInfo(status: string | null) {
@@ -249,6 +250,11 @@ export default function ConsultantLeadScraper() {
   const [hunterTriggerResult, setHunterTriggerResult] = useState<{ success: boolean; tasks?: number; error?: string } | null>(null);
 
   const [sortBy, setSortBy] = useState<"default" | "score" | "rating" | "name">("default");
+
+  const [outreachChannelFilter, setOutreachChannelFilter] = useState<"tutti" | "voice" | "whatsapp" | "email">("tutti");
+  const [outreachStatusFilter, setOutreachStatusFilter] = useState<"tutti" | "waiting_approval" | "scheduled" | "completed" | "failed">("tutti");
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [batchApproving, setBatchApproving] = useState(false);
 
   const { data: searches = [], isLoading: searchesLoading } = useQuery<SearchRecord[]>({
     queryKey: ["/api/lead-scraper/searches"],
@@ -333,6 +339,7 @@ export default function ConsultantLeadScraper() {
     channels: Record<string, { used: number; limit: number; remaining: number; byStatus: Record<string, number>; tasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] }>;
     searches: { used: number; limit: number; remaining: number };
     recentActivity: { id: string; type: string; title: string; description: string; metadata: any; createdAt: string }[];
+    kpis: { callResponseRate: number; waDeliveryRate: number; emailDeliveryRate: number; leadsConvertedThisWeek: number; avgTimeToFirstContact: number };
   }
 
   const { data: hunterPipeline, refetch: refetchPipeline } = useQuery<HunterPipelineData | null>({
@@ -383,6 +390,7 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const [hunterConfigOpen, setHunterConfigOpen] = useState(false);
 
   const { data: autonomySettings, refetch: refetchAutonomy } = useQuery<any>({
@@ -411,10 +419,32 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const { data: emailAccounts = [] } = useQuery<{ id: string; name: string; email: string }[]>({
+    queryKey: ["/api/email-hub/accounts-for-outreach-ls"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/email-hub/accounts", { headers: getAuthHeaders() });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (Array.isArray(data) ? data : data.accounts || []).map((a: any) => ({
+          id: a.id,
+          name: a.display_name || a.displayName || a.email,
+          email: a.email || a.email_address || "",
+        }));
+      } catch { return []; }
+    },
+  });
+
   const outreachDefaults = {
     enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
-    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "",
+    cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "",
+    follow_up_sequence: [
+      { day: 0, channel: "voice" },
+      { day: 2, channel: "email" },
+      { day: 5, channel: "whatsapp" },
+      { day: 10, channel: "voice" },
+    ] as { day: number; channel: string }[],
   };
   const [localOutreachOverride, setLocalOutreachOverride] = useState<Record<string, any> | null>(null);
   const outreachConfig = { ...outreachDefaults, ...(autonomySettings?.outreach_config || {}), ...(localOutreachOverride || {}) };
@@ -1581,6 +1611,10 @@ export default function ConsultantLeadScraper() {
                     <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-green-500" />{hunterPipeline.stats.contacted} contattati</span>
                     <span className="text-gray-300 dark:text-gray-600">|</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3 text-amber-500" />{hunterPipeline.stats.qualifiedWaiting} in attesa</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3 text-violet-500" />{hunterPipeline.stats.contacted > 0 && hunterPipeline.stats.foundToday > 0 ? Math.round((hunterPipeline.stats.contacted / hunterPipeline.stats.foundToday) * 100) : 0}% conversione</span>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <span className="flex items-center gap-1"><ClipboardList className="h-3 w-3 text-indigo-500" />{(hunterPipeline.stats.foundToday + hunterPipeline.stats.scoredToday + hunterPipeline.stats.inOutreach + hunterPipeline.stats.contacted + hunterPipeline.stats.qualifiedWaiting) - (hunterPipeline.stats.notInterested ?? 0)} pipeline</span>
                     <span className="ml-auto text-[10px] text-gray-400">
                       Agg: {lastPipelineRefresh.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
                     </span>
@@ -1598,15 +1632,14 @@ export default function ConsultantLeadScraper() {
                     { step: 1, label: "Ricerca", sub: "Google Maps / Search", icon: Search, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", count: hunterPipeline?.stats.foundToday },
                     { step: 2, label: "Qualifica AI", sub: "Score compatibilità", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", count: hunterPipeline?.stats.scoredToday },
                     { step: 3, label: outreachConfig.require_approval ? "Approvazione" : "Auto", sub: outreachConfig.require_approval ? "Manuale" : "Full autonomo", icon: outreachConfig.require_approval ? Shield : Zap, color: outreachConfig.require_approval ? "text-violet-600" : "text-emerald-600", bg: outreachConfig.require_approval ? "bg-violet-50 dark:bg-violet-950/30" : "bg-emerald-50 dark:bg-emerald-950/30", border: outreachConfig.require_approval ? "border-violet-200 dark:border-violet-800" : "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.qualifiedWaiting },
-                    { step: 4, label: "Smistamento", sub: "Alessia · Stella · Millie", icon: Send, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", count: hunterPipeline?.stats.inOutreach },
-                    { step: 5, label: "Contatto", sub: "Call / WA / Email", icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.contacted },
+                    { step: 4, label: "Outreach", sub: "Call / WA / Email", icon: Send, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", count: (hunterPipeline?.stats.inOutreach ?? 0) + (hunterPipeline?.stats.contacted ?? 0) },
                   ].map((s, i, arr) => {
                     const SIcon = s.icon;
                     return (
                       <div key={s.step} className="flex items-center min-w-0">
-                        <div className={cn("flex flex-col items-center gap-1.5 px-2 sm:px-3 py-2 rounded-xl border min-w-[90px] sm:min-w-[110px]", s.bg, s.border)}>
-                          <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", s.bg)}>
-                            <SIcon className={cn("h-4 w-4", s.color)} />
+                        <div className={cn("flex flex-col items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-xl border min-w-[80px] sm:min-w-[100px]", s.bg, s.border)}>
+                          <div className={cn("h-7 w-7 rounded-full flex items-center justify-center", s.bg)}>
+                            <SIcon className={cn("h-3.5 w-3.5", s.color)} />
                           </div>
                           <span className={cn("text-[11px] sm:text-xs font-bold text-center leading-tight", s.color)}>{s.label}</span>
                           <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight">{s.sub}</span>
@@ -1623,6 +1656,17 @@ export default function ConsultantLeadScraper() {
                     );
                   })}
                 </div>
+                {hunterPipeline?.kpis && (
+                  <div className="mt-2.5 pt-2.5 border-t border-dotted border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><PhoneCall className="h-2.5 w-2.5 text-green-500" />{hunterPipeline.kpis.callResponseRate}% risposta</span>
+                      <span className="flex items-center gap-1"><MessageCircle className="h-2.5 w-2.5 text-emerald-500" />{hunterPipeline.kpis.waDeliveryRate}% delivery WA</span>
+                      <span className="flex items-center gap-1"><MailIcon className="h-2.5 w-2.5 text-blue-500" />{hunterPipeline.kpis.emailDeliveryRate}% delivery email</span>
+                      <span className="flex items-center gap-1"><Zap className="h-2.5 w-2.5 text-orange-500" />{hunterPipeline.kpis.leadsConvertedThisWeek} convertiti</span>
+                      <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-violet-500" />{hunterPipeline.kpis.avgTimeToFirstContact}h primo contatto</span>
+                    </div>
+                  </div>
+                )}
                 <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />Non interessato: {hunterPipeline?.stats.notInterested ?? 0}</span>
@@ -1633,179 +1677,347 @@ export default function ConsultantLeadScraper() {
               </CardContent>
             </Card>
 
-            {/* SEZIONE 2 — Smistamento canali (3 colonne) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                { key: "voice", name: "Alessia", role: "Chiamate", icon: PhoneCall, borderColor: "border-green-300 dark:border-green-700", headerBg: "bg-green-50 dark:bg-green-950/20", badgeColor: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400", avatar: "bg-gradient-to-br from-green-400 to-emerald-600" },
-                { key: "whatsapp", name: "Stella", role: "WhatsApp", icon: MessageCircle, borderColor: "border-emerald-300 dark:border-emerald-700", headerBg: "bg-emerald-50 dark:bg-emerald-950/20", badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400", avatar: "bg-gradient-to-br from-emerald-400 to-teal-600" },
-                { key: "email", name: "Millie", role: "Email", icon: MailIcon, borderColor: "border-blue-300 dark:border-blue-700", headerBg: "bg-blue-50 dark:bg-blue-950/20", badgeColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400", avatar: "bg-gradient-to-br from-blue-400 to-indigo-600" },
-              ].map((ch) => {
-                const channelData = hunterPipeline?.channels?.[ch.key];
-                const used = channelData?.used ?? 0;
-                const limit = channelData?.limit ?? 0;
-                const tasks = channelData?.tasks ?? [];
-                const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-                const Icon = ch.icon;
+            {/* SEZIONE 2 — Coda Outreach Unificata */}
+            {(() => {
+              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] = [];
+              if (hunterPipeline?.channels) {
+                Object.entries(hunterPipeline.channels).forEach(([, chData]) => {
+                  if (chData?.tasks) allTasks.push(...chData.tasks);
+                });
+              }
 
-                return (
-                  <Card key={ch.key} className={cn("rounded-xl border-2 shadow-sm overflow-hidden", ch.borderColor)}>
-                    <div className={cn("px-4 py-3 flex items-center gap-3", ch.headerBg)}>
-                      <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm", ch.avatar)}>
-                        {ch.name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold">{ch.name}</span>
-                          <Badge className={cn("text-[10px] px-1.5 h-4", ch.badgeColor)}>{ch.role}</Badge>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs font-medium text-muted-foreground">{used}/{limit} oggi</span>
-                          <Progress value={pct} className="h-1.5 flex-1" />
-                        </div>
-                      </div>
+              const waitingCount = allTasks.filter(t => t.status === "waiting_approval").length;
+
+              const filteredTasks = allTasks
+                .filter(t => outreachChannelFilter === "tutti" || t.channel === outreachChannelFilter)
+                .filter(t => {
+                  if (outreachStatusFilter === "tutti") return true;
+                  if (outreachStatusFilter === "waiting_approval") return t.status === "waiting_approval";
+                  if (outreachStatusFilter === "scheduled") return t.status === "scheduled" || t.status === "approved";
+                  if (outreachStatusFilter === "completed") return t.status === "completed";
+                  if (outreachStatusFilter === "failed") return t.status === "failed";
+                  return true;
+                })
+                .sort((a, b) => {
+                  const order: Record<string, number> = { waiting_approval: 0, scheduled: 1, approved: 1, in_progress: 2, completed: 3, failed: 4 };
+                  const oa = order[a.status] ?? 5;
+                  const ob = order[b.status] ?? 5;
+                  if (oa !== ob) return oa - ob;
+                  const da = a.scheduledAt || a.completedAt || a.createdAt || "";
+                  const db = b.scheduledAt || b.completedAt || b.createdAt || "";
+                  return db.localeCompare(da);
+                });
+
+              const visibleTasks = filteredTasks.slice(0, 25);
+
+              const channelIcon = (ch: string) => {
+                if (ch === "voice") return PhoneCall;
+                if (ch === "whatsapp") return MessageCircle;
+                return MailIcon;
+              };
+              const channelColor = (ch: string) => {
+                if (ch === "voice") return "text-green-600";
+                if (ch === "whatsapp") return "text-emerald-600";
+                return "text-blue-600";
+              };
+              const channelLabel = (ch: string) => {
+                if (ch === "voice") return "Chiamata";
+                if (ch === "whatsapp") return "WhatsApp";
+                return "Email";
+              };
+
+              const handleBatchApprove = async () => {
+                const toApprove = allTasks.filter(t => t.status === "waiting_approval");
+                if (toApprove.length === 0) return;
+                setBatchApproving(true);
+                for (const task of toApprove) {
+                  try {
+                    await approveTaskMutation.mutateAsync(task.id);
+                  } catch {}
+                  await new Promise(r => setTimeout(r, 100));
+                }
+                setBatchApproving(false);
+                refetchPipeline();
+              };
+
+              const statusMap: Record<string, { label: string; cls: string }> = {
+                waiting_approval: { label: "In attesa", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
+                scheduled: { label: "Schedulato", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" },
+                in_progress: { label: "In corso", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
+                approved: { label: "Approvato", cls: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400" },
+                completed: { label: "Completato", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" },
+                failed: { label: "Fallito", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
+              };
+
+              return (
+                <Card className="rounded-2xl border shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 flex items-center justify-between border-b bg-gray-50/50 dark:bg-gray-800/30">
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold">Coda Outreach</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 h-4">{allTasks.length}</Badge>
                     </div>
-                    <CardContent className="p-0">
-                      {tasks.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                          Nessun task in coda
-                        </div>
-                      ) : (
-                        <div className="max-h-[280px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-                          <AnimatePresence initial={false}>
-                            {tasks.slice(0, 8).map((task) => (
+                    {waitingCount > 0 && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={handleBatchApprove}
+                        disabled={batchApproving}
+                      >
+                        {batchApproving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                        Approva tutti ({waitingCount})
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="px-4 py-2 flex flex-wrap gap-1.5 border-b">
+                    <div className="flex items-center gap-1 mr-2">
+                      {(["tutti", "voice", "whatsapp", "email"] as const).map(ch => (
+                        <button
+                          key={ch}
+                          onClick={() => setOutreachChannelFilter(ch)}
+                          className={cn(
+                            "text-[11px] px-2 py-1 rounded-md font-medium transition-colors",
+                            outreachChannelFilter === ch
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                          )}
+                        >
+                          {ch === "tutti" ? "Tutti" : ch === "voice" ? "📞 Chiamate" : ch === "whatsapp" ? "💬 WhatsApp" : "📧 Email"}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 self-center" />
+                    <div className="flex items-center gap-1 ml-2">
+                      {(["tutti", "waiting_approval", "scheduled", "completed", "failed"] as const).map(st => (
+                        <button
+                          key={st}
+                          onClick={() => setOutreachStatusFilter(st)}
+                          className={cn(
+                            "text-[11px] px-2 py-1 rounded-md font-medium transition-colors",
+                            outreachStatusFilter === st
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                          )}
+                        >
+                          {st === "tutti" ? "Tutti" : st === "waiting_approval" ? "In attesa" : st === "scheduled" ? "Schedulati" : st === "completed" ? "Completati" : "Falliti"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <CardContent className="p-0">
+                    {visibleTasks.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                        Nessun task in coda
+                      </div>
+                    ) : (
+                      <div className="max-h-[450px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                        <AnimatePresence initial={false}>
+                          {visibleTasks.map((task) => {
+                            const ChIcon = channelIcon(task.channel);
+                            const chColor = channelColor(task.channel);
+                            const s = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
+                            const isExpanded = expandedTaskId === task.id;
+
+                            return (
                               <motion.div
                                 key={task.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, height: 0 }}
                                 transition={{ duration: 0.25 }}
-                                className="px-3 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/30"
                               >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
+                                <div
+                                  className={cn(
+                                    "px-3 py-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors",
+                                    isExpanded && "bg-gray-50/80 dark:bg-gray-800/50"
+                                  )}
+                                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <ChIcon className={cn("h-4 w-4 shrink-0", chColor)} />
                                       <span className="text-sm font-medium truncate">{task.leadName}</span>
                                       {task.leadScore != null && (
                                         <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">{task.leadScore}</Badge>
                                       )}
                                     </div>
-                                    {task.leadSector && (
-                                      <span className="text-[10px] text-muted-foreground">{task.leadSector}</span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    {(() => {
-                                      const statusMap: Record<string, { label: string; cls: string }> = {
-                                        waiting_approval: { label: "In attesa", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400" },
-                                        scheduled: { label: "Schedulato", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" },
-                                        in_progress: { label: "In corso", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400" },
-                                        approved: { label: "Approvato", cls: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400" },
-                                        completed: { label: "Completato", cls: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" },
-                                        failed: { label: "Fallito", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" },
-                                      };
-                                      const s = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
-                                      return <Badge className={cn("text-[9px] px-1.5 h-4", s.cls)}>{s.label}</Badge>;
-                                    })()}
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between mt-1">
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {task.scheduledAt ? timeAgo(task.scheduledAt) : task.completedAt ? timeAgo(task.completedAt) : task.createdAt ? timeAgo(task.createdAt) : ""}
-                                  </span>
-                                  {task.status === "waiting_approval" && (
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                                        onClick={() => approveTaskMutation.mutate(task.id)}
-                                        disabled={approveTaskMutation.isPending}
-                                      >
-                                        <Check className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                        onClick={() => rejectTaskMutation.mutate(task.id)}
-                                        disabled={rejectTaskMutation.isPending}
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </Button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {task.leadSector && (
+                                        <span className="text-[10px] text-muted-foreground hidden sm:inline">{task.leadSector}</span>
+                                      )}
+                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                        {task.scheduledAt ? timeAgo(task.scheduledAt) : task.completedAt ? timeAgo(task.completedAt) : task.createdAt ? timeAgo(task.createdAt) : ""}
+                                      </span>
+                                      <Badge className={cn("text-[9px] px-1.5 h-4", s.cls)}>{s.label}</Badge>
+                                      {task.status === "waiting_approval" && (
+                                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                          <Button
+                                            size="sm"
+                                            className="h-6 w-6 p-0 bg-emerald-500 hover:bg-emerald-600 text-white"
+                                            onClick={() => approveTaskMutation.mutate(task.id)}
+                                            disabled={approveTaskMutation.isPending}
+                                          >
+                                            <Check className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
+                                            onClick={() => rejectTaskMutation.mutate(task.id)}
+                                            disabled={rejectTaskMutation.isPending}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                  {task.status === "completed" && task.resultSummary && (
-                                    <span className="text-[10px] text-emerald-600 truncate max-w-[140px]">{task.resultSummary}</span>
+                                  </div>
+                                  {task.status === "completed" && task.resultSummary && !isExpanded && (
+                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 truncate mt-0.5 pl-6">{task.resultSummary}</p>
                                   )}
                                 </div>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
 
-            {/* SEZIONE 3 — Timeline attività in tempo reale */}
-            <Card className="rounded-2xl border shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                                {isExpanded && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="px-4 py-3 bg-gray-50 dark:bg-gray-800/40 border-t border-dashed border-gray-200 dark:border-gray-700"
+                                  >
+                                    <div className="space-y-2 text-xs">
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <span className="font-medium">Canale:</span>
+                                        <span>via {channelLabel(task.channel)}</span>
+                                      </div>
+                                      {task.leadSector && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                          <span className="font-medium">Settore:</span>
+                                          <span>{task.leadSector}</span>
+                                        </div>
+                                      )}
+                                      {task.leadScore != null && (
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                          <span className="font-medium">Score AI:</span>
+                                          {getScoreBar(task.leadScore)}
+                                        </div>
+                                      )}
+                                      {task.title && (
+                                        <div className="flex items-start gap-2 text-muted-foreground">
+                                          <span className="font-medium shrink-0">Task:</span>
+                                          <span className="break-words">{task.title}</span>
+                                        </div>
+                                      )}
+                                      {task.status === "completed" && task.resultSummary && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="font-medium text-emerald-600 dark:text-emerald-400 shrink-0">Risultato:</span>
+                                          <span className="text-emerald-700 dark:text-emerald-300 break-words">{task.resultSummary}</span>
+                                        </div>
+                                      )}
+                                      {task.status === "failed" && task.resultSummary && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="font-medium text-red-600 dark:text-red-400 shrink-0">Errore:</span>
+                                          <span className="text-red-700 dark:text-red-300 break-words">{task.resultSummary}</span>
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-1">
+                                        {task.createdAt && <span>Creato: {new Date(task.createdAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
+                                        {task.scheduledAt && <span>Schedulato: {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
+                                        {task.completedAt && <span>Completato: {new Date(task.completedAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                        </AnimatePresence>
+                        {filteredTasks.length > 25 && (
+                          <div className="px-4 py-2 text-center text-[10px] text-muted-foreground bg-gray-50/50 dark:bg-gray-800/20">
+                            Mostrati 25 di {filteredTasks.length} task
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {/* SEZIONE 3 — Timeline attività in tempo reale (collapsible) */}
+            <Card className="rounded-2xl border shadow-sm overflow-hidden">
+              <button
+                onClick={() => setTimelineOpen(!timelineOpen)}
+                className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+              >
+                <span className="text-sm font-semibold flex items-center gap-2">
                   <Activity className="h-4 w-4 text-teal-600" />
                   Timeline Attività
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(!hunterPipeline?.recentActivity || hunterPipeline.recentActivity.length === 0) ? (
-                  <div className="text-center py-6 text-xs text-muted-foreground">
-                    Nessuna attività recente
-                  </div>
-                ) : (
-                  <div className="relative max-h-[320px] overflow-y-auto pr-2">
-                    <div className="absolute left-[15px] top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
-                    <div className="space-y-0">
-                      <AnimatePresence initial={false}>
-                        {hunterPipeline.recentActivity.slice(0, 15).map((a) => {
-                          const iconMap: Record<string, { icon: any; color: string }> = {
-                            search: { icon: Search, color: "text-teal-500 bg-teal-50 dark:bg-teal-950/30" },
-                            qualify: { icon: Target, color: "text-amber-500 bg-amber-50 dark:bg-amber-950/30" },
-                            assign: { icon: Send, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
-                            call: { icon: PhoneCall, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
-                            whatsapp: { icon: MessageCircle, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" },
-                            email: { icon: MailIcon, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
-                            completed: { icon: CheckCircle, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
-                            error: { icon: XCircle, color: "text-red-500 bg-red-50 dark:bg-red-950/30" },
-                          };
-                          const match = iconMap[a.type] || iconMap.search;
-                          const AIcon = match.icon;
-                          return (
-                            <motion.div
-                              key={a.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="relative pl-9 py-2"
-                            >
-                              <div className={cn("absolute left-[9px] top-2.5 w-[13px] h-[13px] rounded-full flex items-center justify-center z-10", match.color)}>
-                                <AIcon className="h-2.5 w-2.5" />
-                              </div>
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium text-foreground">{a.title}</p>
-                                  {a.description && <p className="text-[10px] text-muted-foreground mt-0.5">{a.description}</p>}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">{timeAgo(a.createdAt)}</span>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
+                  {hunterPipeline?.recentActivity && hunterPipeline.recentActivity.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                      {hunterPipeline.recentActivity.length}
+                    </Badge>
+                  )}
+                </span>
+                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", timelineOpen && "rotate-180")} />
+              </button>
+              {timelineOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <CardContent className="pt-0 pb-3 border-t">
+                    {(!hunterPipeline?.recentActivity || hunterPipeline.recentActivity.length === 0) ? (
+                      <div className="text-center py-4 text-xs text-muted-foreground">
+                        Nessuna attività recente
+                      </div>
+                    ) : (
+                      <div className="relative max-h-[200px] overflow-y-auto pr-2 mt-2">
+                        <div className="absolute left-[13px] top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
+                        <div className="space-y-0">
+                          <AnimatePresence initial={false}>
+                            {hunterPipeline.recentActivity.slice(0, 8).map((a) => {
+                              const iconMap: Record<string, { icon: any; color: string }> = {
+                                search: { icon: Search, color: "text-teal-500 bg-teal-50 dark:bg-teal-950/30" },
+                                qualify: { icon: Target, color: "text-amber-500 bg-amber-50 dark:bg-amber-950/30" },
+                                assign: { icon: Send, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
+                                call: { icon: PhoneCall, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
+                                whatsapp: { icon: MessageCircle, color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" },
+                                email: { icon: MailIcon, color: "text-blue-500 bg-blue-50 dark:bg-blue-950/30" },
+                                completed: { icon: CheckCircle, color: "text-green-500 bg-green-50 dark:bg-green-950/30" },
+                                error: { icon: XCircle, color: "text-red-500 bg-red-50 dark:bg-red-950/30" },
+                              };
+                              const match = iconMap[a.type] || iconMap.search;
+                              const AIcon = match.icon;
+                              return (
+                                <motion.div
+                                  key={a.id}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="relative pl-8 py-1.5"
+                                >
+                                  <div className={cn("absolute left-[8px] top-2 w-[11px] h-[11px] rounded-full flex items-center justify-center z-10", match.color)}>
+                                    <AIcon className="h-2 w-2" />
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium text-foreground truncate min-w-0">{a.title}</p>
+                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">{timeAgo(a.createdAt)}</span>
+                                  </div>
+                                  {a.description && <p className="text-[10px] text-muted-foreground line-clamp-1">{a.description}</p>}
+                                </motion.div>
+                              );
+                            })}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </motion.div>
+              )}
             </Card>
 
             {/* SEZIONE 4 — Configurazione (collapsible) */}
@@ -1839,21 +2051,21 @@ export default function ConsultantLeadScraper() {
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max chiamate Alessia / giorno</span>
+                            <span>Max chiamate / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max WhatsApp Stella / giorno</span>
+                            <span>Max WhatsApp / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
                         </div>
                         <div>
                           <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max email Millie / giorno</span>
+                            <span>Max email / giorno</span>
                             <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={100} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
@@ -1875,25 +2087,25 @@ export default function ConsultantLeadScraper() {
                           </Label>
                           <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-2 block">Dipendente WhatsApp per outreach</Label>
-                          <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Seleziona dipendente WA" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
-                              {proactiveWaConfigs.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium mb-2 block">Template voce per outreach</Label>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
+                        <Users className="h-4 w-4 text-violet-500" />
+                        Dipendenti e Account per Outreach
+                      </Label>
+                      <p className="text-xs text-gray-400 mb-4">Hunter usa questi strumenti per contattare i lead tramite i canali configurati.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                            <PhoneCall className="h-3.5 w-3.5 text-green-600" />
+                            Template voce
+                          </Label>
                           <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full h-9 text-xs">
                               <SelectValue placeholder="Seleziona template voce" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1903,6 +2115,42 @@ export default function ConsultantLeadScraper() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                            Dipendente WhatsApp
+                          </Label>
+                          <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
+                            <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectValue placeholder="Seleziona dipendente WA" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
+                              {proactiveWaConfigs.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {proactiveWaConfigs.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                        </div>
+                        <div className="space-y-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                            <MailIcon className="h-3.5 w-3.5 text-blue-600" />
+                            Account email
+                          </Label>
+                          <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
+                            <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectValue placeholder="Seleziona account email" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nessuno (disabilita email outreach)</SelectItem>
+                              {emailAccounts.map((a) => (
+                                <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {emailAccounts.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun account email configurato</p>}
                         </div>
                       </div>
                     </div>
@@ -1929,6 +2177,82 @@ export default function ConsultantLeadScraper() {
                           );
                         })}
                       </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-teal-500" />
+                        Sequenza Follow-up
+                      </Label>
+                      <p className="text-xs text-gray-400 mb-4">Quando un lead non risponde, Hunter segue questa sequenza automaticamente. Dopo l'ultimo step, il lead viene marcato come non raggiungibile.</p>
+                      <div className="space-y-2">
+                        {(outreachConfig.follow_up_sequence || []).map((step: { day: number; channel: string }, idx: number) => (
+                          <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                            <span className="text-xs font-bold text-gray-400 w-5 shrink-0">{idx + 1}.</span>
+                            <Select
+                              value={step.channel}
+                              onValueChange={(v) => {
+                                const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                seq[idx] = { ...seq[idx], channel: v };
+                                updateOutreachConfig("follow_up_sequence", seq);
+                              }}
+                            >
+                              <SelectTrigger className="w-[140px] h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="voice">Chiamata</SelectItem>
+                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <span className="text-xs text-muted-foreground shrink-0">dopo</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={30}
+                              value={step.day}
+                              onChange={(e) => {
+                                const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                seq[idx] = { ...seq[idx], day: Math.max(0, Math.min(30, parseInt(e.target.value) || 0)) };
+                                updateOutreachConfig("follow_up_sequence", seq);
+                              }}
+                              className="w-[70px] h-8 text-xs text-center"
+                            />
+                            <span className="text-xs text-muted-foreground shrink-0">giorni</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              disabled={(outreachConfig.follow_up_sequence || []).length <= 1}
+                              onClick={() => {
+                                const seq = [...(outreachConfig.follow_up_sequence || [])];
+                                seq.splice(idx, 1);
+                                updateOutreachConfig("follow_up_sequence", seq);
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {(outreachConfig.follow_up_sequence || []).length < 6 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 text-xs h-8"
+                          onClick={() => {
+                            const seq = [...(outreachConfig.follow_up_sequence || [])];
+                            const lastDay = seq.length > 0 ? seq[seq.length - 1].day + 3 : 0;
+                            seq.push({ day: lastDay, channel: "email" });
+                            updateOutreachConfig("follow_up_sequence", seq);
+                          }}
+                        >
+                          + Aggiungi step
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </motion.div>

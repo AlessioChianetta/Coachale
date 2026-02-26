@@ -360,6 +360,62 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
       LIMIT 30
     `);
 
+    const kpiResult = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE type IN ('voice_call_answered', 'voice_call_completed')) as voice_answered,
+        COUNT(*) FILTER (WHERE type LIKE 'voice_call_%') as voice_total,
+        COUNT(*) FILTER (WHERE type = 'whatsapp_sent') as wa_sent,
+        COUNT(*) FILTER (WHERE type IN ('whatsapp_sent', 'whatsapp_failed')) as wa_total,
+        COUNT(*) FILTER (WHERE type = 'email_sent') as email_sent,
+        COUNT(*) FILTER (WHERE type IN ('email_sent', 'email_failed')) as email_total
+      FROM lead_scraper_activities
+      WHERE consultant_id = ${consultantId}
+        AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+    `);
+    const kpiRow = kpiResult.rows[0] as any || {};
+
+    const convertedResult = await db.execute(sql`
+      SELECT COUNT(*) as converted
+      FROM lead_scraper_results lr
+      JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+      WHERE ls.consultant_id = ${consultantId}
+        AND lr.lead_status IN ('in_trattativa', 'chiuso_vinto')
+        AND lr.updated_at >= CURRENT_DATE - INTERVAL '7 days'
+    `);
+    const convertedCount = parseInt((convertedResult.rows[0] as any)?.converted || '0');
+
+    const avgTimeResult = await db.execute(sql`
+      SELECT AVG(EXTRACT(EPOCH FROM (la.created_at - lr.created_at)) / 3600) as avg_hours
+      FROM lead_scraper_activities la
+      JOIN lead_scraper_results lr ON la.lead_id::text = lr.id::text
+      JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+      WHERE ls.consultant_id = ${consultantId}
+        AND la.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer', 'whatsapp_sent', 'email_sent')
+        AND la.created_at >= CURRENT_DATE - INTERVAL '7 days'
+        AND la.created_at = (
+          SELECT MIN(la2.created_at)
+          FROM lead_scraper_activities la2
+          WHERE la2.lead_id::text = lr.id::text
+            AND la2.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer', 'whatsapp_sent', 'email_sent')
+        )
+    `);
+    const avgTimeToFirstContact = parseFloat((avgTimeResult.rows[0] as any)?.avg_hours || '0');
+
+    const voiceTotal = parseInt(kpiRow.voice_total || '0');
+    const voiceAnswered = parseInt(kpiRow.voice_answered || '0');
+    const waTotal = parseInt(kpiRow.wa_total || '0');
+    const waSent = parseInt(kpiRow.wa_sent || '0');
+    const emailTotal = parseInt(kpiRow.email_total || '0');
+    const emailSent = parseInt(kpiRow.email_sent || '0');
+
+    const kpis = {
+      callResponseRate: voiceTotal > 0 ? Math.round((voiceAnswered / voiceTotal) * 100) : 0,
+      waDeliveryRate: waTotal > 0 ? Math.round((waSent / waTotal) * 100) : 0,
+      emailDeliveryRate: emailTotal > 0 ? Math.round((emailSent / emailTotal) * 100) : 0,
+      leadsConvertedThisWeek: convertedCount,
+      avgTimeToFirstContact: Math.round(avgTimeToFirstContact * 10) / 10,
+    };
+
     return res.json({
       stats: {
         foundToday: parseInt(statsRow.found_today || '0'),
@@ -406,6 +462,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
         metadata: a.metadata,
         createdAt: a.created_at,
       })),
+      kpis,
     });
   } catch (error: any) {
     console.error("[AI-AUTONOMY] Error fetching hunter pipeline:", error);

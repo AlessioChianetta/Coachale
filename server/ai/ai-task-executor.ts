@@ -315,32 +315,59 @@ async function updateLeadStatusAfterOutreach(
     if (newLeadStatus === 'contattato' || newLeadStatus === 'in_trattativa') {
       updateData.leadContactedAt = new Date();
     }
-    if (scheduleRetry) {
-      updateData.leadNextAction = `retry_${stepAction}`;
-      updateData.leadNextActionDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    }
-
     await db
       .update(leadScraperResults)
       .set(updateData)
       .where(eq(leadScraperResults.id, leadId));
+
+    let enrichedDescription: string;
+    const enrichedMetadata: Record<string, any> = {
+      taskId: task.id,
+      aiRole: task.ai_role,
+      channel: stepAction === 'voice_call' ? 'voice' : stepAction === 'send_whatsapp' ? 'whatsapp' : 'email',
+      resultStatus: result.status,
+      searchId: additionalContextData.search_id,
+      businessName: additionalContextData.business_name,
+      employee_name: result.employee_name || task.ai_role || 'N/A',
+    };
+
+    if (stepAction === 'voice_call') {
+      const transcript = result.transcript || result.call_summary || '';
+      enrichedDescription = transcript
+        ? `Trascrizione/Riepilogo chiamata:\n${transcript}`
+        : `Chiamata ${result.call_status || result.status || 'unknown'}. ${result.error ? `Errore: ${result.error}` : ''} ${result.call_id ? `Call ID: ${result.call_id}` : ''}`.trim();
+      enrichedMetadata.call_duration = result.call_duration || result.duration || null;
+      enrichedMetadata.call_outcome = result.call_status || result.call_outcome || activityOutcome;
+      if (result.call_id) enrichedMetadata.call_id = result.call_id;
+      if (result.template_used) enrichedMetadata.template_used = result.template_used;
+    } else if (stepAction === 'send_whatsapp') {
+      const messageContent = result.message_content || result.message_body || result.message_preview || '';
+      enrichedDescription = messageContent
+        ? `Messaggio WhatsApp inviato:\n${messageContent}`
+        : `WhatsApp ${result.status || 'unknown'}. ${result.error ? `Errore: ${result.error}` : ''}`.trim();
+      enrichedMetadata.template_name = result.template_name || result.template_used || null;
+      if (result.message_preview) enrichedMetadata.message_preview = result.message_preview;
+    } else {
+      const emailSubject = result.subject || result.email_subject || '';
+      const emailBody = result.body || result.body_html || result.email_body || '';
+      enrichedDescription = (emailSubject || emailBody)
+        ? `Subject: ${emailSubject}\n\n${emailBody}`
+        : `Email ${result.status || 'unknown'}. ${result.error ? `Errore: ${result.error}` : ''}`.trim();
+      enrichedMetadata.from = result.from || result.from_email || null;
+      enrichedMetadata.to = result.to || result.to_email || task.contact_phone || null;
+      if (emailSubject) enrichedMetadata.subject = emailSubject;
+      if (result.account_name) enrichedMetadata.account_name = result.account_name;
+    }
 
     await db.insert(leadScraperActivities).values({
       leadId,
       consultantId: task.consultant_id,
       type: activityType,
       title: activityTitle,
-      description: `Task ${task.id} (${task.ai_role || 'N/A'}): ${result.status || 'unknown'}. ${result.error ? `Errore: ${result.error}` : ''} ${result.message_preview ? `Msg: "${result.message_preview}"` : ''} ${result.call_id ? `Call ID: ${result.call_id}` : ''}`.trim(),
+      description: enrichedDescription,
       outcome: activityOutcome,
       completedAt: new Date(),
-      metadata: {
-        taskId: task.id,
-        aiRole: task.ai_role,
-        channel: stepAction === 'voice_call' ? 'voice' : stepAction === 'send_whatsapp' ? 'whatsapp' : 'email',
-        resultStatus: result.status,
-        searchId: additionalContextData.search_id,
-        businessName: additionalContextData.business_name,
-      },
+      metadata: enrichedMetadata,
     });
 
     console.log(`${LOG_PREFIX} [FEEDBACK-LOOP] Lead ${leadId} updated: status=${newLeadStatus}, activity=${activityType}${scheduleRetry ? ', retry scheduled' : ''}`);
@@ -363,8 +390,450 @@ async function updateLeadStatusAfterOutreach(
       task_id: task.id,
       contact_name: task.contact_name,
     });
+
+    if (scheduleRetry) {
+      try {
+        await scheduleFollowUpFromSequence(task, leadId, stepAction, additionalContextData);
+      } catch (followUpErr: any) {
+        console.warn(`${LOG_PREFIX} [FOLLOW-UP-SEQUENCE] Failed to schedule follow-up: ${followUpErr.message}`);
+      }
+    }
   } catch (updateErr: any) {
     console.error(`${LOG_PREFIX} [FEEDBACK-LOOP] DB update failed for lead ${leadId}: ${updateErr.message}`);
+  }
+}
+
+const DEFAULT_FOLLOW_UP_SEQUENCE = [
+  { day: 0, channel: "voice" },
+  { day: 2, channel: "email" },
+  { day: 5, channel: "whatsapp" },
+  { day: 10, channel: "voice" },
+];
+
+async function scheduleFollowUpFromSequence(
+  task: AITaskInfo,
+  leadId: string,
+  lastStepAction: string,
+  additionalContextData: Record<string, any>,
+): Promise<void> {
+  const settingsResult = await db.execute(sql`
+    SELECT outreach_config FROM ai_autonomy_settings
+    WHERE consultant_id::text = ${task.consultant_id}::text LIMIT 1
+  `);
+  const outreachCfg = (settingsResult.rows[0] as any)?.outreach_config || {};
+  const followUpSequence: { day: number; channel: string }[] =
+    Array.isArray(outreachCfg.follow_up_sequence) && outreachCfg.follow_up_sequence.length > 0
+      ? outreachCfg.follow_up_sequence
+      : DEFAULT_FOLLOW_UP_SEQUENCE;
+
+  const activitiesResult = await db.execute(sql`
+    SELECT COUNT(*)::int as count
+    FROM lead_scraper_activities
+    WHERE lead_id::text = ${leadId}::text
+      AND consultant_id = ${task.consultant_id}
+      AND type IN (
+        'voice_call_answered', 'voice_call_no_answer', 'voice_call_rejected', 'voice_call_failed',
+        'voice_call_attempted', 'voice_call_scheduled',
+        'whatsapp_sent', 'whatsapp_failed', 'whatsapp_skipped',
+        'email_sent', 'email_failed', 'email_skipped'
+      )
+  `);
+  const outreachAttempts = (activitiesResult.rows[0] as any)?.count || 0;
+
+  const nextStepIndex = Math.max(0, outreachAttempts - 1);
+  console.log(`${LOG_PREFIX} [FOLLOW-UP-SEQUENCE] Lead ${leadId}: ${outreachAttempts} total attempts, nextStepIndex=${nextStepIndex}/${followUpSequence.length}`);
+  const leadDisplayName = additionalContextData.business_name || task.contact_name || 'N/A';
+
+  if (nextStepIndex >= followUpSequence.length) {
+    console.log(`${LOG_PREFIX} [FOLLOW-UP-SEQUENCE] All ${followUpSequence.length} steps exhausted for lead ${leadId}, marking as non_raggiungibile`);
+
+    await db
+      .update(leadScraperResults)
+      .set({
+        leadStatus: 'non_raggiungibile',
+        leadNextAction: null,
+        leadNextActionDate: null,
+      })
+      .where(eq(leadScraperResults.id, leadId));
+
+    await db.insert(leadScraperActivities).values({
+      leadId,
+      consultantId: task.consultant_id,
+      type: 'sequence_exhausted',
+      title: 'Sequenza follow-up completata senza risposta',
+      description: `Tutti i ${followUpSequence.length} tentativi di contatto sono stati esauriti per ${leadDisplayName}. Lead marcato come non raggiungibile.`,
+      outcome: 'exhausted',
+      completedAt: new Date(),
+      metadata: {
+        taskId: task.id,
+        totalAttempts: outreachAttempts,
+        sequenceLength: followUpSequence.length,
+      },
+    });
+
+    await logActivity(task.consultant_id, {
+      event_type: 'follow_up_sequence_exhausted',
+      title: `🔚 Sequenza completata per ${leadDisplayName}`,
+      description: `Ho provato ${followUpSequence.length} volte a contattare ${leadDisplayName} senza successo. Lo marco come non raggiungibile.`,
+      icon: '🔚',
+      severity: 'warning',
+      task_id: task.id,
+      contact_name: task.contact_name,
+    });
+
+    return;
+  }
+
+  const nextStep = followUpSequence[nextStepIndex];
+  const delayMs = nextStep.day * 24 * 60 * 60 * 1000;
+  const scheduledAt = new Date(Date.now() + delayMs);
+
+  const channelToAction: Record<string, string> = {
+    voice: 'voice',
+    whatsapp: 'whatsapp',
+    email: 'email',
+  };
+  const preferredChannel = channelToAction[nextStep.channel] || 'voice';
+
+  const channelLabelMap: Record<string, string> = {
+    voice: 'chiamata',
+    whatsapp: 'WhatsApp',
+    email: 'email',
+  };
+  const nextChannelLabel = channelLabelMap[nextStep.channel] || nextStep.channel;
+
+  const followUpTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const followUpInstruction = `Follow-up #${nextStepIndex + 1} per ${leadDisplayName}. Tentativo precedente (${lastStepAction}) non ha avuto successo. Contattare via ${nextChannelLabel}.${additionalContextData.ai_summary ? `\nAnalisi: ${additionalContextData.ai_summary}` : ''}${additionalContextData.sector ? `\nSettore: ${additionalContextData.sector}` : ''}`;
+
+  await db.execute(sql`
+    INSERT INTO ai_scheduled_tasks (
+      id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+      scheduled_at, timezone, status, priority, parent_task_id,
+      task_category, ai_role, preferred_channel,
+      additional_context,
+      max_attempts, current_attempt, retry_delay_minutes,
+      created_at, updated_at
+    ) VALUES (
+      ${followUpTaskId}, ${task.consultant_id}, ${task.contact_phone},
+      ${task.contact_name || leadDisplayName}, 'ai_task', ${followUpInstruction},
+      ${scheduledAt},
+      ${task.timezone || 'Europe/Rome'}, 'scheduled', 2, ${task.id},
+      'prospecting', ${task.ai_role || 'hunter'}, ${preferredChannel},
+      ${JSON.stringify({
+        lead_id: leadId,
+        search_id: additionalContextData.search_id,
+        business_name: leadDisplayName,
+        sector: additionalContextData.sector || null,
+        ai_summary: additionalContextData.ai_summary || null,
+        ai_score: additionalContextData.ai_score || null,
+        follow_up_step: nextStepIndex,
+        follow_up_total: followUpSequence.length,
+        origin_task_id: task.id,
+      })},
+      1, 0, 5,
+      NOW(), NOW()
+    )
+  `);
+
+  await db
+    .update(leadScraperResults)
+    .set({
+      leadNextAction: `follow_up_${nextStep.channel}`,
+      leadNextActionDate: scheduledAt,
+    })
+    .where(eq(leadScraperResults.id, leadId));
+
+  console.log(`${LOG_PREFIX} [FOLLOW-UP-SEQUENCE] Scheduled step ${nextStepIndex + 1}/${followUpSequence.length} (${nextStep.channel}) for lead ${leadId} in ${nextStep.day} days`);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'follow_up_scheduled',
+    title: `🔁 Follow-up #${nextStepIndex + 1} per ${leadDisplayName}`,
+    description: `Programmo ${nextChannelLabel} tra ${nextStep.day === 0 ? 'poco' : `${nextStep.day} giorni`} (step ${nextStepIndex + 1}/${followUpSequence.length})`,
+    icon: '🔁',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+  });
+}
+
+async function analyzeCallTranscriptAndAct(
+  task: AITaskInfo,
+  result: Record<string, any>,
+): Promise<void> {
+  const callStatus = result.call_status || result.status;
+  if (callStatus !== 'answered' && callStatus !== 'completed') {
+    return;
+  }
+
+  const transcript = result.transcript || result.call_summary || '';
+  if (!transcript || transcript.length < 20) {
+    console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] No transcript available for analysis (length: ${transcript.length})`);
+    return;
+  }
+
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+
+  const leadId = additionalContextData.lead_id;
+  if (!leadId) {
+    console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] No lead_id found, skipping transcript analysis`);
+    return;
+  }
+
+  console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Analyzing transcript for lead ${leadId} (${transcript.length} chars)`);
+
+  try {
+    const classificationPrompt = `Analizza questa trascrizione di una chiamata commerciale e classifica l'esito.
+Rispondi SOLO con un JSON valido: { "classification": "...", "next_action": "...", "notes": "..." }
+
+Classificazioni possibili:
+- wants_info: Il lead ha chiesto informazioni, dettagli, prezzi o materiale informativo
+- wants_appointment: Il lead vuole fissare un appuntamento o incontro
+- interested_later: Il lead è interessato ma non ora, vuole essere ricontattato più avanti
+- not_interested: Il lead non è interessato e non vuole essere ricontattato
+- callback_later: Il lead ha chiesto di essere richiamato in un momento specifico
+- already_client: Il lead è già cliente o ha già il servizio
+
+Per next_action, descrivi brevemente cosa fare dopo (es: "Inviare email con catalogo", "Fissare appuntamento per giovedì", "Richiamare tra 3 ore", ecc.)
+Per notes, riassumi i punti salienti della conversazione.
+
+=== TRASCRIZIONE ===
+${transcript}`;
+
+    const apiKey = await getGeminiApiKeyForClassifier();
+    if (!apiKey) {
+      console.warn(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] No API key available, skipping analysis`);
+      return;
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const classificationResult = await trackedGenerateContent(ai, {
+      model: GEMINI_3_MODEL,
+      contents: [{ role: "user", parts: [{ text: classificationPrompt }] }],
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 1024,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    }, { consultantId: task.consultant_id, feature: 'hunter-transcript-analysis', keySource: 'classifier' });
+
+    const responseText = typeof classificationResult.text === 'function' ? classificationResult.text() : (classificationResult as any).text || '';
+    console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Classification response: ${responseText.substring(0, 200)}`);
+
+    let classification: { classification: string; next_action: string; notes: string } = {
+      classification: 'interested_later',
+      next_action: '',
+      notes: '',
+    };
+
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        classification = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr: any) {
+      console.warn(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Failed to parse classification JSON: ${parseErr.message}`);
+      return;
+    }
+
+    console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Classification: ${classification.classification}, next_action: ${classification.next_action}`);
+
+    await db.insert(leadScraperActivities).values({
+      leadId,
+      consultantId: task.consultant_id,
+      type: 'ai_transcript_analysis',
+      title: `Analisi trascrizione: ${classification.classification}`,
+      description: classification.notes || transcript.substring(0, 500),
+      outcome: classification.classification,
+      completedAt: new Date(),
+      metadata: {
+        ai_classification: classification.classification,
+        ai_next_action: classification.next_action,
+        ai_notes: classification.notes,
+        transcript_length: transcript.length,
+        source_task_id: task.id,
+        channel: 'voice',
+      },
+    });
+
+    let newLeadStatus: string;
+    let activityTitle: string;
+
+    switch (classification.classification) {
+      case 'wants_info': {
+        newLeadStatus = 'in_trattativa';
+        activityTitle = 'Lead vuole informazioni — preparo email';
+
+        const emailTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const emailInstruction = `[FOLLOW-UP POST-CHIAMATA] Il lead ${task.contact_name || 'Sconosciuto'} ha risposto alla chiamata e vuole informazioni.
+Note dalla chiamata: ${classification.notes}
+Azione richiesta: ${classification.next_action}
+
+Componi un'email professionale con le informazioni richieste dal lead. Sii specifico e rispondi ai punti emersi nella conversazione.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            contact_id, task_category, preferred_channel,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${emailTaskId}, ${task.consultant_id}, ${task.contact_phone},
+            ${task.contact_name}, 'follow_up', ${emailInstruction},
+            NOW() + interval '30 minutes', ${task.timezone || "Europe/Rome"}, 'scheduled', ${Math.max((task.priority || 1) + 1, 2)}, ${task.id},
+            ${task.contact_id}, 'prospecting', 'email',
+            ${JSON.stringify({ ...additionalContextData, origin_type: 'hunter_transcript_analysis', ai_classification: classification.classification })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Created email follow-up task ${emailTaskId} for wants_info`);
+        break;
+      }
+
+      case 'wants_appointment': {
+        newLeadStatus = 'in_trattativa';
+        activityTitle = 'Lead vuole appuntamento';
+
+        await db.insert(leadScraperActivities).values({
+          leadId,
+          consultantId: task.consultant_id,
+          type: 'appointment_requested',
+          title: `Appuntamento richiesto dal lead`,
+          description: `Il lead ha chiesto un appuntamento durante la chiamata. ${classification.next_action || ''}\nNote: ${classification.notes || ''}`,
+          outcome: 'appointment',
+          completedAt: new Date(),
+          metadata: {
+            source_task_id: task.id,
+            channel: 'voice',
+            ai_classification: classification.classification,
+            suggested_date: classification.next_action,
+          },
+        });
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Created appointment activity for lead ${leadId}`);
+        break;
+      }
+
+      case 'interested_later': {
+        newLeadStatus = 'in_trattativa';
+        activityTitle = 'Lead interessato — follow-up programmato';
+
+        const followUpTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const followUpInstruction = `[FOLLOW-UP] Il lead ${task.contact_name || 'Sconosciuto'} è interessato ma ha chiesto di essere ricontattato più avanti.
+Note dalla chiamata: ${classification.notes}
+Azione suggerita: ${classification.next_action}
+
+Ricontatta il lead con un messaggio cortese, ricordando la conversazione precedente e chiedendo se è un buon momento.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            contact_id, task_category,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${followUpTaskId}, ${task.consultant_id}, ${task.contact_phone},
+            ${task.contact_name}, 'follow_up', ${followUpInstruction},
+            NOW() + interval '3 days', ${task.timezone || "Europe/Rome"}, 'scheduled', ${task.priority || 1}, ${task.id},
+            ${task.contact_id}, 'prospecting',
+            ${JSON.stringify({ ...additionalContextData, origin_type: 'hunter_transcript_analysis', ai_classification: classification.classification })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Created follow-up task ${followUpTaskId} for interested_later (3 days)`);
+        break;
+      }
+
+      case 'not_interested': {
+        newLeadStatus = 'non_interessato';
+        activityTitle = 'Lead non interessato — nessun follow-up';
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Lead ${leadId} marked as not interested, no follow-up`);
+        break;
+      }
+
+      case 'callback_later': {
+        newLeadStatus = 'contattato';
+        activityTitle = 'Lead chiede richiamata — programmata tra 3 ore';
+
+        const callbackTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const callbackInstruction = `[RICHIAMATA] Il lead ${task.contact_name || 'Sconosciuto'} ha chiesto di essere richiamato.
+Note dalla chiamata precedente: ${classification.notes}
+Azione: ${classification.next_action}
+
+Richiama il lead come richiesto. Ricorda la conversazione precedente e procedi con l'obiettivo commerciale.`;
+
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, parent_task_id,
+            contact_id, task_category, preferred_channel,
+            additional_context,
+            max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${callbackTaskId}, ${task.consultant_id}, ${task.contact_phone},
+            ${task.contact_name}, 'follow_up', ${callbackInstruction},
+            NOW() + interval '3 hours', ${task.timezone || "Europe/Rome"}, 'scheduled', ${Math.max((task.priority || 1) + 1, 2)}, ${task.id},
+            ${task.contact_id}, 'prospecting', 'voice',
+            ${JSON.stringify({ ...additionalContextData, origin_type: 'hunter_transcript_analysis', ai_classification: classification.classification })},
+            3, 0, 5,
+            NOW(), NOW()
+          )
+        `);
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Created callback task ${callbackTaskId} for callback_later (3 hours)`);
+        break;
+      }
+
+      case 'already_client': {
+        newLeadStatus = 'già_cliente';
+        activityTitle = 'Lead è già cliente — nessun follow-up';
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Lead ${leadId} marked as already_client, no follow-up`);
+        break;
+      }
+
+      default: {
+        newLeadStatus = 'contattato';
+        activityTitle = `Classificazione: ${classification.classification}`;
+        console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Unknown classification: ${classification.classification}`);
+      }
+    }
+
+    const updateData: Record<string, any> = {
+      leadStatus: newLeadStatus,
+    };
+    if (newLeadStatus === 'in_trattativa' || newLeadStatus === 'contattato') {
+      updateData.leadContactedAt = new Date();
+    }
+    if (classification.next_action) {
+      updateData.leadNextAction = classification.next_action;
+    }
+
+    await db
+      .update(leadScraperResults)
+      .set(updateData)
+      .where(eq(leadScraperResults.id, leadId));
+
+    await logActivity(task.consultant_id, {
+      event_type: 'transcript_analysis_completed',
+      title: `🧠 ${activityTitle}`,
+      description: `Classificazione: ${classification.classification}. ${classification.notes || ''}\nProssima azione: ${classification.next_action || 'Nessuna'}`,
+      icon: '🧠',
+      severity: newLeadStatus === 'in_trattativa' ? 'success' : newLeadStatus === 'non_interessato' ? 'warning' : 'info',
+      task_id: task.id,
+      contact_name: task.contact_name,
+    });
+
+    console.log(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Completed: lead ${leadId} → ${newLeadStatus}, classification=${classification.classification}`);
+
+  } catch (err: any) {
+    console.error(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Failed to analyze transcript for lead ${leadId}: ${err.message}`);
   }
 }
 
@@ -500,6 +969,14 @@ export async function executeStep(
         await updateLeadStatusAfterOutreach(task, step.action, result);
       } catch (feedbackErr: any) {
         console.warn(`${LOG_PREFIX} [FEEDBACK-LOOP] Failed to update lead status: ${feedbackErr.message}`);
+      }
+
+      if (step.action === 'voice_call') {
+        try {
+          await analyzeCallTranscriptAndAct(task, result);
+        } catch (transcriptErr: any) {
+          console.warn(`${LOG_PREFIX} [TRANSCRIPT-ANALYSIS] Failed to analyze call transcript: ${transcriptErr.message}`);
+        }
       }
     }
 
@@ -2312,10 +2789,18 @@ async function handleSendEmail(
     return { status: "skipped", reason: "Nessun indirizzo email disponibile per il contatto né per il consulente" };
   }
 
+  let additionalCtx: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalCtx = JSON.parse(task.additional_context); } catch {}
+  }
+  const preferredEmailAccountId = additionalCtx.email_account_id || null;
+
   const smtpResult = await db.execute(sql`
-    SELECT smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+    SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
     FROM email_accounts
     WHERE consultant_id = ${task.consultant_id} AND smtp_host IS NOT NULL
+    ${preferredEmailAccountId ? sql`AND id = ${preferredEmailAccountId}` : sql``}
+    ORDER BY ${preferredEmailAccountId ? sql`CASE WHEN id = ${preferredEmailAccountId} THEN 0 ELSE 1 END` : sql`created_at`}
     LIMIT 1
   `);
 
@@ -2324,6 +2809,7 @@ async function handleSendEmail(
   }
 
   const smtpConfig = smtpResult.rows[0] as any;
+  const emailAccountId = smtpConfig.id;
 
   const emailSubject = _step.params?.subject || `Report: ${reportData.title || task.task_category}`;
   let emailBody = _step.params?.message_summary || "";
@@ -2417,6 +2903,28 @@ REGOLE IMPORTANTI:
     const sendResult = await transporter.sendMail(mailOptions);
     console.log(`${LOG_PREFIX} ✅ Email sent successfully via SMTP. MessageId: ${sendResult.messageId}, To: ${contactEmail}, Attachments: ${attachments.length}`);
 
+    try {
+      const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      await db.execute(sql`
+        INSERT INTO hub_emails (
+          id, account_id, consultant_id, message_id, subject, from_name, from_email,
+          to_recipients, body_html, body_text, snippet, direction, folder,
+          is_read, processing_status, sent_at, created_at, updated_at
+        ) VALUES (
+          ${hubEmailId}, ${emailAccountId}, ${task.consultant_id},
+          ${sendResult.messageId || hubEmailId},
+          ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
+          ${JSON.stringify([{ email: contactEmail, name: task.contact_name || '' }])}::jsonb,
+          ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+          'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+        )
+        ON CONFLICT (message_id) DO NOTHING
+      `);
+      console.log(`${LOG_PREFIX} Email tracked in hub_emails: ${hubEmailId}`);
+    } catch (hubErr: any) {
+      console.warn(`${LOG_PREFIX} Failed to track email in hub_emails: ${hubErr.message}`);
+    }
+
     await logActivity(task.consultant_id, {
       event_type: "email_sent",
       title: `Email inviata! Oggetto: "${emailSubject}"`,
@@ -2433,8 +2941,12 @@ REGOLE IMPORTANTI:
       message_id: sendResult.messageId,
       recipient: contactEmail,
       subject: emailSubject,
+      from_email: smtpConfig.email_address,
+      account_name: smtpConfig.display_name || smtpConfig.email_address,
       has_attachment: attachments.length > 0,
       attachment_count: attachments.length,
+      body: emailBody,
+      body_html: htmlBody,
     };
   } catch (error: any) {
     console.error(`${LOG_PREFIX} Email send failed:`, error.message);
@@ -2674,13 +3186,33 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
     }
   }
 
+  let waAgentInstructions = '';
+  if (task.whatsapp_config_id) {
+    try {
+      const waAgentResult = await db.execute(sql`
+        SELECT agent_name, agent_instructions, agent_instructions_enabled, ai_personality
+        FROM consultant_whatsapp_config
+        WHERE id::text = ${task.whatsapp_config_id}::text AND is_active = true LIMIT 1
+      `);
+      const waAgent = waAgentResult.rows[0] as any;
+      if (waAgent?.agent_instructions_enabled && waAgent?.agent_instructions) {
+        waAgentInstructions = `\n\n[ISTRUZIONI DIPENDENTE WA "${waAgent.agent_name || 'Agente WA'}"]:
+${waAgent.agent_instructions}
+Personalità: ${waAgent.ai_personality || 'professionale'}`;
+        console.log(`${LOG_PREFIX} [HUNTER→WA] Loaded WA agent instructions from "${waAgent.agent_name}" (${waAgent.agent_instructions.length} chars)`);
+      }
+    } catch (agentErr: any) {
+      console.warn(`${LOG_PREFIX} Failed to load WA agent instructions: ${agentErr.message}`);
+    }
+  }
+
   if (!messageText) {
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       const effectiveWaMsgModel = autonomyModel || resolvedModel;
       console.log(`${LOG_PREFIX} send_whatsapp body generation using ${providerName} (${effectiveWaMsgModel})`);
       const whatsappPrompt = `Scrivi un messaggio WhatsApp informativo e professionale per ${resolvedName || 'il cliente'}.
-${agentContextSection || ''}
+${agentContextSection || ''}${waAgentInstructions}
 
 ISTRUZIONE DEL TASK (cosa ti è stato chiesto di fare):
 ${task.ai_instruction}
@@ -3050,6 +3582,7 @@ async function handleBatchOutreach(
           lead_id: lead.leadId,
           search_id: resultData.searchId,
           voice_template_id: resultData.voiceTemplateId || null,
+          email_account_id: resultData.emailAccountId || null,
           business_name: leadName,
           sector: lead.category || null,
           ai_summary: lead.salesSummary || null,
@@ -3102,6 +3635,14 @@ async function handleBatchOutreach(
         await updateLeadStatusAfterOutreach(leadTask, channel === 'voice' ? 'voice_call' : channel === 'whatsapp' ? 'send_whatsapp' : 'send_email', stepResult);
       } catch (feedbackErr: any) {
         console.warn(`${LOG_PREFIX} [BATCH-OUTREACH] Failed to update lead status for "${leadName}": ${feedbackErr.message}`);
+      }
+
+      if (channel === 'voice') {
+        try {
+          await analyzeCallTranscriptAndAct(leadTask, stepResult);
+        } catch (transcriptErr: any) {
+          console.warn(`${LOG_PREFIX} [BATCH-OUTREACH] Failed to analyze transcript for "${leadName}": ${transcriptErr.message}`);
+        }
       }
 
     } catch (leadErr: any) {
@@ -3420,6 +3961,7 @@ async function handleLeadQualifyAndAssign(
   const channelPriority: string[] = outreachConfig.channel_priority ?? outreachConfig.channelPriority ?? ['voice', 'whatsapp', 'email'];
   const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
   const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
+  const emailAccountId = outreachConfig.email_account_id ?? outreachConfig.emailAccountId ?? null;
   const requireApproval = outreachConfig.require_approval !== false;
   const outreachTaskStatus = requireApproval ? 'waiting_approval' : 'scheduled';
 
@@ -3615,6 +4157,7 @@ async function handleLeadQualifyAndAssign(
       channel: batch.channel,
       voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
       whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
+      emailAccountId: batch.channel === 'email' ? emailAccountId : null,
       leads: batch.leads,
       assigned_by: 'hunter',
       self_managed: true,
