@@ -321,12 +321,13 @@ export const AI_ROLE_EXECUTION_PIPELINES: Record<string, ExecutionPipelineInfo> 
     steps: [
       { id: "lead_scraper_search", icon: "🔍", label: "Ricerca lead", description: "Cerca nuovi lead su Google Maps/Search in base al Sales Context" },
       { id: "scrape", icon: "🌐", label: "Scraping siti", description: "Visita i siti web trovati per estrarre email, telefoni e info aziendali" },
-      { id: "qualify", icon: "🎯", label: "Qualifica AI", description: "Analizza ogni lead con AI e assegna un punteggio di compatibilita (0-100)" },
-      { id: "lead_qualify_and_assign", icon: "📋", label: "Assegnazione", description: "Crea task figli per Alessia (chiamata), Stella (WhatsApp) o Millie (email)" },
+      { id: "qualify", icon: "🎯", label: "Qualifica AI", description: "Analizza ogni lead con AI, assegna score (0-100) e crea panoramica aziendale" },
+      { id: "lead_qualify_and_assign", icon: "🗓️", label: "Scheduling", description: "Hunter schedula direttamente chiamate, messaggi WhatsApp ed email a calendario" },
+      { id: "outreach", icon: "⚡", label: "Outreach diretto", description: "Hunter esegue il contatto in autonomia: chiama, scrive su WA, manda email" },
     ],
-    direction: "Nessun contatto diretto — delega ad Alessia, Stella e Millie",
-    directionIcon: "🔀",
-    directionColor: "text-teal-600 dark:text-teal-400",
+    direction: "Autonomia completa — Hunter gestisce tutto il ciclo da solo",
+    directionIcon: "⚡",
+    directionColor: "text-violet-600 dark:text-violet-400",
   },
   personalizza: {
     steps: [
@@ -465,18 +466,19 @@ export const AI_ROLE_CAPABILITIES: Record<string, {
     canDo: [
       { icon: "🔍", text: "Cerca automaticamente nuovi lead su Google Maps e Search" },
       { icon: "🌐", text: "Analizza i siti web dei lead trovati con scraping AI" },
-      { icon: "📊", text: "Valuta e qualifica i lead con score di compatibilità" },
-      { icon: "📞", text: "Assegna i lead migliori ad Alessia per chiamate vocali" },
-      { icon: "💬", text: "Assegna i lead a Stella per outreach WhatsApp via template" },
-      { icon: "📧", text: "Assegna i lead a Millie per email personalizzate" },
+      { icon: "📊", text: "Valuta e qualifica i lead con score di compatibilità e panoramica aziendale" },
+      { icon: "📞", text: "Schedula e avvia chiamate vocali ai lead qualificati" },
+      { icon: "💬", text: "Schedula e invia messaggi WhatsApp personalizzati ai lead" },
+      { icon: "📧", text: "Schedula e invia email personalizzate ai lead" },
+      { icon: "🗓️", text: "Gestisce il proprio calendario di outreach in autonomia" },
       { icon: "🧠", text: "Adatta la strategia in base ai risultati dei contatti precedenti" },
     ],
     cantDo: [
-      { icon: "📞", text: "Non contatta direttamente — delega ad Alessia, Stella e Millie" },
-      { icon: "💬", text: "Non invia messaggi WhatsApp direttamente" },
-      { icon: "📧", text: "Non invia email direttamente" },
+      { icon: "🤝", text: "Non gestisce lead già in trattativa — li lascia al consulente" },
+      { icon: "📋", text: "Non crea reportistica avanzata — focus su prospecting e primo contatto" },
+      { icon: "👥", text: "Non gestisce i clienti esistenti — si occupa solo di nuovi prospect" },
     ],
-    workflow: "Ogni ciclo → Analizza Sales Context → Cerca lead su Maps/Search → Scraping siti → Qualifica con AI → Assegna ai dipendenti per canale → Monitora risultati",
+    workflow: "Ogni ciclo → Analizza Sales Context → Cerca lead su Maps/Search → Scraping siti → Qualifica con AI + panoramica azienda → Schedula chiamate/messaggi/email a calendario → Esegue l'outreach in autonomia",
   },
   personalizza: {
     canDo: [

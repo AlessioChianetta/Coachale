@@ -3542,9 +3542,9 @@ async function handleLeadQualifyAndAssign(
   let batchTasksCreated = 0;
 
   const batches: { channel: string; role: string; leads: any[]; channelLabel: string }[] = [];
-  if (batchVoice.length > 0) batches.push({ channel: 'voice', role: 'alessia', leads: batchVoice, channelLabel: '📞 Chiamate' });
-  if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', role: 'stella', leads: batchWhatsapp, channelLabel: '💬 WhatsApp' });
-  if (batchEmail.length > 0) batches.push({ channel: 'email', role: 'millie', leads: batchEmail, channelLabel: '📧 Email' });
+  if (batchVoice.length > 0) batches.push({ channel: 'voice', role: 'hunter', leads: batchVoice, channelLabel: '📞 Chiamate' });
+  if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', role: 'hunter', leads: batchWhatsapp, channelLabel: '💬 WhatsApp' });
+  if (batchEmail.length > 0) batches.push({ channel: 'email', role: 'hunter', leads: batchEmail, channelLabel: '📧 Email' });
 
   for (const batch of batches) {
     const batchTaskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -3559,6 +3559,8 @@ async function handleLeadQualifyAndAssign(
       voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
       whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
       leads: batch.leads,
+      assigned_by: 'hunter',
+      self_managed: true,
     };
 
     try {
@@ -3602,9 +3604,9 @@ async function handleLeadQualifyAndAssign(
           leadId: lead.leadId,
           consultantId: task.consultant_id,
           type: 'outreach_assigned',
-          title: `Outreach assegnato: ${batch.channel} (campagna batch)`,
+          title: `Outreach schedulato da Hunter: ${batch.channel} (campagna batch)`,
           description: `Campagna "${searchQuery}" — ${batch.leads.length} lead. Score: ${lead.score || 'N/A'}/100`,
-          metadata: { taskId: batchTaskId, channel: batch.channel, score: lead.score, batchSize: batch.leads.length },
+          metadata: { taskId: batchTaskId, channel: batch.channel, score: lead.score, batchSize: batch.leads.length, assigned_by: 'hunter' },
         });
       }
 
@@ -3612,8 +3614,8 @@ async function handleLeadQualifyAndAssign(
 
       await logActivity(task.consultant_id, {
         event_type: 'lead_outreach_batch_created',
-        title: `🚀 Campagne outreach create per ${batch.leads.length} lead (${batch.channelLabel})`,
-        description: `${batch.role === 'alessia' ? 'Alessia' : batch.role === 'stella' ? 'Stella' : 'Millie'} si occuperà di contattare: ${leadNames}`,
+        title: `🚀 Hunter ha schedulato outreach per ${batch.leads.length} lead (${batch.channelLabel})`,
+        description: `Hunter gestirà direttamente il contatto con: ${leadNames}`,
         icon: '🚀',
         severity: 'info',
         task_id: task.id,

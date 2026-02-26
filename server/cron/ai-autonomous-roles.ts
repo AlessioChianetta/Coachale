@@ -2269,8 +2269,8 @@ Rispondi SOLO con JSON valido (senza markdown, senza backtick):
     displayName: "Hunter – Lead Prospector",
     avatar: "hunter",
     accentColor: "teal",
-    description: "Analizza il Sales Context del consulente per decidere autonomamente quali ricerche fare su Google Maps/Search, trova nuovi lead e li assegna ai dipendenti AI per il contatto (Alessia per chiamate, Stella/WA per WhatsApp, Millie per email).",
-    shortDescription: "Ricerca lead automatica e assegnazione outreach",
+    description: "Analizza il Sales Context del consulente per decidere autonomamente quali ricerche fare su Google Maps/Search, trova nuovi lead, li qualifica con AI e gestisce in autonomia l'intero outreach: schedula e avvia direttamente chiamate vocali, messaggi WhatsApp ed email senza delegare ad altri dipendenti.",
+    shortDescription: "Ricerca lead, qualifica e outreach autonomo completo",
     categories: ["prospecting", "outreach", "analysis"],
     preferredChannels: ["lead_scraper", "internal"],
     typicalPlan: ["lead_scraper_search", "lead_qualify_and_assign"],
@@ -2401,8 +2401,8 @@ ${JSON.stringify(conversionByQuery, null, 2)}` : 'Nessun dato di conversione dis
 ═══ ATTIVITÀ OUTREACH RECENTI (ultimi 7 giorni) ═══
 ${recentOutreachActivities.length > 0 ? JSON.stringify(recentOutreachActivities.slice(0, 15), null, 2) : 'Nessuna attività di outreach recente.'}
 
-═══ TASK RECENTI DI ALTRI DIPENDENTI (Alessia/Stella/Millie) ═══
-${otherRoleTasks.length > 0 ? JSON.stringify(otherRoleTasks.slice(0, 15), null, 2) : 'Nessun task recente da altri dipendenti'}
+═══ OUTREACH SCHEDULATO DA HUNTER (ultimi task) ═══
+${otherRoleTasks.length > 0 ? JSON.stringify(otherRoleTasks.slice(0, 15), null, 2) : 'Nessun outreach recente schedulato da Hunter'}
 
 ═══ DIPENDENTI WHATSAPP DISPONIBILI (proactive_setter) ═══
 ${whatsappConfigs.length > 0 ? JSON.stringify(whatsappConfigs, null, 2) : 'Nessun dipendente WhatsApp configurato per outreach proattivo'}
@@ -2428,14 +2428,15 @@ ${voiceTemplates.length > 0 ? JSON.stringify(voiceTemplates, null, 2) : 'Nessun 
 
 ${buildTaskMemorySection(recentAllTasks, 'hunter', permanentBlocks, recentReasoningByRole)}
 
-═══ PIPELINE HUNTER: 2 STEP END-TO-END ═══
+═══ PIPELINE HUNTER: 2 STEP END-TO-END (AUTONOMIA COMPLETA) ═══
 Ogni task che crei segue automaticamente una pipeline a 2 step:
   1. lead_scraper_search — Il sistema esegue la ricerca su Google Maps/Search e salva i risultati
-  2. lead_qualify_and_assign — Il sistema qualifica i lead trovati (AI score) e assegna quelli idonei ai dipendenti:
-     - Alessia (chiamate vocali) — se il lead ha telefono
-     - Stella/dipendente WhatsApp (WhatsApp) — se il lead ha telefono e c'è un dipendente WA configurato
-     - Millie (email) — se il lead ha email
-Tu devi SOLO creare il task di ricerca (step 1). Lo step 2 (qualifica + assegnazione) viene eseguito AUTOMATICAMENTE dal sistema dopo la ricerca.
+  2. lead_qualify_and_assign — Il sistema qualifica i lead trovati (AI score) e TU gestisci direttamente l'outreach:
+     - Chiami vocalmente il lead — se il lead ha telefono (scheduli la chiamata a calendario)
+     - Scrivi via WhatsApp al lead — se il lead ha telefono e c'è una configurazione WhatsApp attiva
+     - Invii email al lead — se il lead ha email
+Tu devi SOLO creare il task di ricerca (step 1). Lo step 2 (qualifica + scheduling outreach) viene eseguito AUTOMATICAMENTE dal sistema dopo la ricerca.
+NON deleghi ad altri dipendenti: sei TU, Hunter, che gestisce l'intero ciclo dal prospecting al primo contatto.
 
 ═══ REGOLE DI HUNTER ═══
 1. Suggerisci MASSIMO 3 task di tipo ricerca lead per ciclo.

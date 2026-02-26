@@ -3085,12 +3085,17 @@ function SettingsTab({
 
                                   {role.id === "hunter" && (() => {
                                     const hasSalesContext = !!(savedSalesContext?.servicesOffered);
-                                    const hasWaConfig = proactiveWaConfigs.length > 0 && !!outreachConfig.whatsapp_config_id;
                                     const hasOutreachEnabled = !!outreachConfig.enabled;
+                                    const hasAnyChannel = !!(
+                                      outreachConfig.voice_enabled ||
+                                      outreachConfig.whatsapp_enabled ||
+                                      outreachConfig.email_enabled ||
+                                      (outreachConfig.channel_priority && outreachConfig.channel_priority.length > 0)
+                                    );
                                     const checks = [
                                       { ok: hasSalesContext, label: "Sales Context compilato", fix: "Vai su Lead Scraper → Sales Agent", action: () => navigate("/consultant/lead-scraper") },
                                       { ok: hasOutreachEnabled, label: "Outreach attivato", fix: "Attivalo nella tab Canali", action: () => onTabChange("canali") },
-                                      { ok: hasWaConfig, label: "Dipendente WhatsApp configurato", fix: "Seleziona in tab Canali → Outreach", action: () => onTabChange("canali") },
+                                      { ok: hasAnyChannel, label: "Almeno un canale outreach configurato (voice / WhatsApp / email)", fix: "Configura in tab Canali → Outreach", action: () => onTabChange("canali") },
                                     ];
                                     const allOk = checks.every(c => c.ok);
                                     return (
