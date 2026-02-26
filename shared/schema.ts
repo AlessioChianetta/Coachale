@@ -3456,6 +3456,10 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   outboundBrandVoiceEnabled: boolean("outbound_brand_voice_enabled").default(false),
   outboundBrandVoiceAgentId: varchar("outbound_brand_voice_agent_id"), // WhatsApp agent for business context only
 
+  voiceThinkingBudgetGreeting: integer("voice_thinking_budget_greeting").default(0),
+  voiceThinkingBudgetConversation: integer("voice_thinking_budget_conversation").default(128),
+  voiceProtectFirstMessage: boolean("voice_protect_first_message").default(true),
+
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

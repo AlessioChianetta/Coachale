@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Info } from "lucide-react";
@@ -998,6 +999,9 @@ export default function ConsultantVoiceCallsPage() {
   const [inboundBrandVoiceAgentId, setInboundBrandVoiceAgentId] = useState<string | null>(null);
   const [outboundBrandVoiceEnabled, setOutboundBrandVoiceEnabled] = useState(false);
   const [outboundBrandVoiceAgentId, setOutboundBrandVoiceAgentId] = useState<string | null>(null);
+  const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
+  const [voiceThinkingBudgetConversation, setVoiceThinkingBudgetConversation] = useState(128);
+  const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
 
   const [outboundPhone, setOutboundPhone] = useState("");
   const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
@@ -1959,6 +1963,9 @@ export default function ConsultantVoiceCallsPage() {
       setInboundBrandVoiceAgentId(nonClientSettingsData.inboundBrandVoiceAgentId || null);
       setOutboundBrandVoiceEnabled(nonClientSettingsData.outboundBrandVoiceEnabled || false);
       setOutboundBrandVoiceAgentId(nonClientSettingsData.outboundBrandVoiceAgentId || null);
+      setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
+      setVoiceThinkingBudgetConversation(nonClientSettingsData.voice_thinking_budget_conversation ?? 128);
+      setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
       setHasChanges(false);
     }
   }, [nonClientSettingsData]);
@@ -1982,6 +1989,9 @@ export default function ConsultantVoiceCallsPage() {
           inboundBrandVoiceAgentId,
           outboundBrandVoiceEnabled,
           outboundBrandVoiceAgentId,
+          voiceThinkingBudgetGreeting,
+          voiceThinkingBudgetConversation,
+          voiceProtectFirstMessage,
         }),
       });
       if (!res.ok) {
@@ -3496,6 +3506,55 @@ export default function ConsultantVoiceCallsPage() {
                         </CardContent>
                       </Card>
                     </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Impostazioni AI Avanzate</CardTitle>
+                        <CardDescription>Controlla il comportamento dell'AI durante le chiamate vocali</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label>Thinking Budget - Saluto</Label>
+                            <span className="text-sm font-mono text-muted-foreground w-12 text-right">{voiceThinkingBudgetGreeting}</span>
+                          </div>
+                          <Slider
+                            value={[voiceThinkingBudgetGreeting]}
+                            onValueChange={([v]) => { setVoiceThinkingBudgetGreeting(v); setHasChanges(true); }}
+                            min={0}
+                            max={256}
+                            step={8}
+                          />
+                          <p className="text-xs text-muted-foreground">Token di ragionamento per il primo messaggio (saluto). 0 = risposta immediata senza pensiero.</p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label>Thinking Budget - Conversazione</Label>
+                            <span className="text-sm font-mono text-muted-foreground w-12 text-right">{voiceThinkingBudgetConversation}</span>
+                          </div>
+                          <Slider
+                            value={[voiceThinkingBudgetConversation]}
+                            onValueChange={([v]) => { setVoiceThinkingBudgetConversation(v); setHasChanges(true); }}
+                            min={0}
+                            max={256}
+                            step={8}
+                          />
+                          <p className="text-xs text-muted-foreground">Token di ragionamento per i messaggi successivi al saluto.</p>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Label>Proteggi Primo Messaggio</Label>
+                            <p className="text-xs text-muted-foreground">Impedisce all'utente di interrompere il saluto dell'AI (barge-in).</p>
+                          </div>
+                          <Switch
+                            checked={voiceProtectFirstMessage}
+                            onCheckedChange={(checked) => { setVoiceProtectFirstMessage(checked); setHasChanges(true); }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     <div className="flex justify-end">
                       <Button

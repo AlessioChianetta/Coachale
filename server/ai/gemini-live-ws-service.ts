@@ -28,6 +28,27 @@ import { tokenTracker } from './token-tracker';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
+const VOICE_CACHE_TTL = 5 * 60 * 1000;
+const _voiceNumbersCache = new Map<string, { data: any; ts: number }>();
+const _settingsCache = new Map<string, { data: any[]; ts: number }>();
+const _consultantInfoCache = new Map<string, { data: any; ts: number }>();
+
+function getCached<T>(cache: Map<string, { data: T; ts: number }>, key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.ts < VOICE_CACHE_TTL) return entry.data;
+  if (entry) cache.delete(key);
+  return null;
+}
+
+export function invalidateVoiceCache(consultantId: string) {
+  _settingsCache.delete(consultantId);
+  _consultantInfoCache.delete(consultantId);
+}
+
+export function invalidateVoiceNumberCache(phoneNumber: string) {
+  _voiceNumbersCache.delete(phoneNumber);
+}
+
 /**
  * Strip AI thinking/reasoning content from message text.
  * Gemini with thinking enabled produces text like:
@@ -1060,13 +1081,16 @@ async function getUserIdFromRequest(req: any): Promise<{
         // resolve the correct consultant from the scheduled_voice_calls record FIRST,
         // before voice_numbers lookup can override it with the wrong consultant.
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let _cachedScheduledCallRow: any = null;
         if (scheduledCallIdParam) {
           const scLookupStart = Date.now();
           try {
             const scResult = await db.execute(sql`
-              SELECT consultant_id, target_phone FROM scheduled_voice_calls 
+              SELECT consultant_id, target_phone, id, call_instruction, instruction_type, status
+              FROM scheduled_voice_calls 
               WHERE id = ${scheduledCallIdParam} LIMIT 1
             `);
+            if (scResult.rows.length > 0) _cachedScheduledCallRow = scResult.rows[0];
             console.log(`⏱️ [AUTH-DETAIL] scheduledCall consultant lookup: ${Date.now() - scLookupStart}ms`);
             
             if (scResult.rows.length > 0) {
@@ -1111,14 +1135,24 @@ async function getUserIdFromRequest(req: any): Promise<{
           resolvedCalledNumber = normalizedCalledNumber;
           const lookupStart = Date.now();
           
-          const numberRows = await db.execute(sql`
-            SELECT id, phone_number, display_name, consultant_id, ai_mode, 
-                   max_concurrent_calls, is_active, greeting_text
-            FROM voice_numbers 
-            WHERE phone_number = ${normalizedCalledNumber} AND is_active = true
-            LIMIT 1
-          `);
-          console.log(`⏱️ [AUTH-DETAIL] voice_numbers lookup: ${Date.now() - lookupStart}ms`);
+          const cachedNumber = getCached(_voiceNumbersCache, normalizedCalledNumber);
+          let numberRows: any;
+          if (cachedNumber) {
+            numberRows = { rows: [cachedNumber] };
+            console.log(`⏱️ [AUTH-DETAIL] voice_numbers CACHE HIT: ${Date.now() - lookupStart}ms`);
+          } else {
+            numberRows = await db.execute(sql`
+              SELECT id, phone_number, display_name, consultant_id, ai_mode, 
+                     max_concurrent_calls, is_active, greeting_text
+              FROM voice_numbers 
+              WHERE phone_number = ${normalizedCalledNumber} AND is_active = true
+              LIMIT 1
+            `);
+            if (numberRows.rows.length > 0) {
+              _voiceNumbersCache.set(normalizedCalledNumber, { data: numberRows.rows[0], ts: Date.now() });
+            }
+            console.log(`⏱️ [AUTH-DETAIL] voice_numbers lookup: ${Date.now() - lookupStart}ms`);
+          }
 
           if (numberRows.rows.length === 0) {
             console.error(`❌ [PHONE SERVICE] Called number ${normalizedCalledNumber} not found or inactive in voice_numbers → REJECTING CALL`);
@@ -1218,17 +1252,19 @@ async function getUserIdFromRequest(req: any): Promise<{
             .then(r => { console.log(`⏱️ [AUTH] voiceSettings query: ${Date.now() - parallelStart}ms`); return r; })
             .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Voice settings failed (${Date.now() - parallelStart}ms):`, err.message); return [] as any[]; }),
 
-          scheduledCallIdParam
-            ? db.execute(sql`
-                SELECT id, call_instruction, instruction_type, target_phone 
-                FROM scheduled_voice_calls 
-                WHERE id = ${scheduledCallIdParam}
-                  AND consultant_id = ${resolvedConsultantId}
-                  AND status = 'calling'
-                LIMIT 1
-              `).then(r => { console.log(`⏱️ [AUTH] scheduledCall query: ${Date.now() - parallelStart}ms`); return r; })
-              .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed (${Date.now() - parallelStart}ms):`, err.message); return { rows: [] }; })
-            : Promise.resolve(null)
+          (_cachedScheduledCallRow && _cachedScheduledCallRow.consultant_id === resolvedConsultantId && _cachedScheduledCallRow.status === 'calling')
+            ? Promise.resolve({ rows: [_cachedScheduledCallRow] }).then(r => { console.log(`⏱️ [AUTH] scheduledCall REUSED from early lookup: 0ms`); return r; })
+            : scheduledCallIdParam
+              ? db.execute(sql`
+                  SELECT id, call_instruction, instruction_type, target_phone 
+                  FROM scheduled_voice_calls 
+                  WHERE id = ${scheduledCallIdParam}
+                    AND consultant_id = ${resolvedConsultantId}
+                    AND status = 'calling'
+                  LIMIT 1
+                `).then(r => { console.log(`⏱️ [AUTH] scheduledCall query: ${Date.now() - parallelStart}ms`); return r; })
+                .catch(err => { console.warn(`⚠️ [PHONE SERVICE] Scheduled call lookup failed (${Date.now() - parallelStart}ms):`, err.message); return { rows: [] }; })
+              : Promise.resolve(null)
         ]);
         console.log(`⏱️ [AUTH-DETAIL] Parallel auth queries completed in ${Date.now() - parallelStart}ms (from authPhaseStart: +${Date.now() - authPhaseStart}ms)`);
 
@@ -1778,36 +1814,58 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     if (isPhoneCall && !userId && consultantId) {
       console.log(`⚡ [O4] EARLY-START: Launching non-client parallel queries immediately after auth`);
       
-      _earlyStartedConsultantInfoPromise = storage.getUser(consultantId).catch((err: any) => {
+      const _cachedConsultantInfo = getCached(_consultantInfoCache, consultantId);
+      if (_cachedConsultantInfo) {
+        _earlyStartedConsultantInfoPromise = Promise.resolve(_cachedConsultantInfo);
+        console.log(`⚡ [${connectionId}] [O4] ConsultantInfo CACHE HIT for ${consultantId}`);
+      } else {
+      _earlyStartedConsultantInfoPromise = storage.getUser(consultantId).then((user: any) => {
+        if (user) _consultantInfoCache.set(consultantId, { data: user, ts: Date.now() });
+        return user;
+      }).catch((err: any) => {
         console.warn(`⚠️ [${connectionId}] [O4] Could not fetch consultant info:`, err);
         return null;
       });
+      }
       
       console.log(`🔍 [ROUTING-DEBUG] Settings query: loading consultant_availability_settings for consultantId=${consultantId}`);
-      _earlyStartedSettingsPromise = db.select({
-        voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
-        outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
-        outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
-        outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
-        outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
-        outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
-        outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
-        inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
-        inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
-        inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
-        inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
-        inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
-        inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
-        nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
-        nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
-        nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
-      })
-      .from(consultantAvailabilitySettings)
-      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
-      .catch((err: any) => {
-        console.warn(`⚠️ [${connectionId}] [O4] Could not fetch non-client settings:`, err);
-        return [] as any[];
-      });
+      const _cachedSettings = getCached(_settingsCache, consultantId);
+      if (_cachedSettings) {
+        _earlyStartedSettingsPromise = Promise.resolve(_cachedSettings);
+        console.log(`⚡ [${connectionId}] [O4] Settings CACHE HIT for ${consultantId}`);
+      } else {
+        _earlyStartedSettingsPromise = db.select({
+          voiceDirectives: consultantAvailabilitySettings.voiceDirectives,
+          outboundPromptSource: consultantAvailabilitySettings.outboundPromptSource,
+          outboundTemplateId: consultantAvailabilitySettings.outboundTemplateId,
+          outboundAgentId: consultantAvailabilitySettings.outboundAgentId,
+          outboundManualPrompt: consultantAvailabilitySettings.outboundManualPrompt,
+          outboundBrandVoiceEnabled: consultantAvailabilitySettings.outboundBrandVoiceEnabled,
+          outboundBrandVoiceAgentId: consultantAvailabilitySettings.outboundBrandVoiceAgentId,
+          inboundPromptSource: consultantAvailabilitySettings.inboundPromptSource,
+          inboundTemplateId: consultantAvailabilitySettings.inboundTemplateId,
+          inboundAgentId: consultantAvailabilitySettings.inboundAgentId,
+          inboundManualPrompt: consultantAvailabilitySettings.inboundManualPrompt,
+          inboundBrandVoiceEnabled: consultantAvailabilitySettings.inboundBrandVoiceEnabled,
+          inboundBrandVoiceAgentId: consultantAvailabilitySettings.inboundBrandVoiceAgentId,
+          nonClientPromptSource: consultantAvailabilitySettings.nonClientPromptSource,
+          nonClientAgentId: consultantAvailabilitySettings.nonClientAgentId,
+          nonClientManualPrompt: consultantAvailabilitySettings.nonClientManualPrompt,
+          voiceThinkingBudgetGreeting: consultantAvailabilitySettings.voiceThinkingBudgetGreeting,
+          voiceThinkingBudgetConversation: consultantAvailabilitySettings.voiceThinkingBudgetConversation,
+          voiceProtectFirstMessage: consultantAvailabilitySettings.voiceProtectFirstMessage,
+        })
+        .from(consultantAvailabilitySettings)
+        .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+        .then((rows: any[]) => {
+          _settingsCache.set(consultantId, { data: rows, ts: Date.now() });
+          return rows;
+        })
+        .catch((err: any) => {
+          console.warn(`⚠️ [${connectionId}] [O4] Could not fetch non-client settings:`, err);
+          return [] as any[];
+        });
+      }
       
       if (phoneCallerId) {
         _earlyStartedPreviousConversationsPromise = db.execute(sql`
@@ -2782,6 +2840,11 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let userContext: any = null; // Declare here to be accessible throughout the function
       let conversationHistory: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}> = []; // For sales_agent/consultation_invite modes
       let agentBusinessContext: { businessName: string; whatWeDo: string; servicesOffered: string[]; targetClient: string; nonTargetClient: string } | undefined = undefined; // 🆕 Business context per feedback
+      let voiceThinkingBudgetGreeting = 0;
+      let voiceThinkingBudgetConversation = 128;
+      let voiceProtectFirstMessage = true;
+      let firstAiTurnComplete = false;
+
       let _ncLatency = {
         parallelQueriesStartTime: 0,
         consultantInfoResolvedTime: 0,
@@ -3394,6 +3457,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             outboundManualPrompt = settings.outboundManualPrompt || '';
             outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
+            voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
+            voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
+            voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
@@ -3716,6 +3782,9 @@ Una volta che hanno capito e confermato:
             inboundBrandVoiceAgentId = settings.inboundBrandVoiceAgentId || null;
             outboundBrandVoiceEnabled = settings.outboundBrandVoiceEnabled || false;
             outboundBrandVoiceAgentId = settings.outboundBrandVoiceAgentId || null;
+            voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
+            voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
+            voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             
             if (isOutbound) {
               const rawOutboundSource = settings.outboundPromptSource || settings.nonClientPromptSource || 'template';
@@ -5647,7 +5716,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 topK: 40,
                 maxOutputTokens: 8192,
                 thinkingConfig: {
-                  thinkingBudget: 128
+                  thinkingBudget: voiceThinkingBudgetGreeting
                 }
               },
               inputAudioTranscription: {},
@@ -6970,8 +7039,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             console.log(`🎯 Action: Stop audio playback immediately`);
             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
             
-            // Only send barge_in if AI was actually speaking - prevents false positives
-            if (isAiSpeaking) {
+            if (voiceProtectFirstMessage && !firstAiTurnComplete) {
+              console.log(`🛡️ [${connectionId}] BARGE-IN SUPPRESSED (protect first message active)`);
+            } else if (isAiSpeaking) {
               isAiSpeaking = false;
               console.log(`🔇 [${connectionId}] AI stopped speaking (serverContent.interrupted)`);
               
@@ -7026,19 +7096,21 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                 console.log(`🎯 VAD Config: MEDIUM sensitivity, 400ms prefix, 700ms silence`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 
-                // 🔒 Reset AI speaking state immediately
+                if (voiceProtectFirstMessage && !firstAiTurnComplete) {
+                  console.log(`🛡️ [${connectionId}] BARGE-IN (part) SUPPRESSED (protect first message active)`);
+                  continue;
+                }
+                
                 if (isAiSpeaking) {
                   isAiSpeaking = false;
                   console.log(`🔇 [${connectionId}] AI stopped speaking (user barge-in)`);
                 }
                 
-                // Invia messaggio al client per fermare audio immediato
                 clientWs.send(JSON.stringify({
                   type: 'barge_in_detected',
                   message: 'User interrupted - stop audio playback immediately'
                 }));
                 
-                // Skip processing this part - it was interrupted
                 continue;
               }
               
@@ -7594,8 +7666,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               console.log(`   → AI sta parlando? ${isAiSpeaking ? 'SÌ - INTERROMPO AUDIO!' : 'No'}`);
               console.log(`🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
               
-              // 🔥 BARGE-IN FIX: Se AI sta parlando, FERMA IMMEDIATAMENTE l'audio client-side
-              if (isAiSpeaking) {
+              if (voiceProtectFirstMessage && !firstAiTurnComplete) {
+                console.log(`🛡️ [${connectionId}] stop_audio SUPPRESSED (protect first message active)`);
+              } else if (isAiSpeaking) {
                 console.log(`🛑 [${connectionId}] BARGE-IN ATTIVATO - Invio stop_audio al client`);
                 clientWs.send(JSON.stringify({
                   type: 'stop_audio',
@@ -7603,7 +7676,6 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   message: 'User is speaking - stop AI audio immediately'
                 }));
                 
-                // Reset flag - l'AI è stato interrotto
                 isAiSpeaking = false;
               }
               
@@ -7660,9 +7732,14 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
             // 🔒 AI has finished speaking
             const wasAiSpeaking = isAiSpeaking;
             isAiSpeaking = false;
-            lastAiTurnCompleteTimestamp = Date.now(); // 🆕 FIX: Traccia quando l'AI ha completato il turno
+            lastAiTurnCompleteTimestamp = Date.now();
             if (wasAiSpeaking) {
               console.log(`🔇 [${connectionId}] AI finished speaking (turn complete)`);
+            }
+
+            if (!firstAiTurnComplete) {
+              firstAiTurnComplete = true;
+              console.log(`🎙️ [${connectionId}] First AI turn complete — upgrading thinkingBudget from ${voiceThinkingBudgetGreeting} to ${voiceThinkingBudgetConversation}`);
             }
             
             // 🔒 Check closing state machine

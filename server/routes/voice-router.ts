@@ -14,7 +14,7 @@ import { db } from "../db";
 import { sql, desc, eq, and, gte, lte, count } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { consultantAvailabilitySettings, users } from "@shared/schema";
-import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections } from "../ai/gemini-live-ws-service";
+import { getActiveVoiceCallsForConsultant, getActiveGeminiConnections, getActiveGeminiConnectionCount, forceCloseAllGeminiConnections, invalidateVoiceCache, invalidateVoiceNumberCache } from "../ai/gemini-live-ws-service";
 import { getTemplateOptions, getTemplateById, INBOUND_TEMPLATES, OUTBOUND_TEMPLATES } from '../voice/voice-templates';
 import { scheduleNextRecurrence } from '../cron/ai-task-scheduler';
 import { quickGenerate } from '../ai/provider-factory';
@@ -1025,7 +1025,12 @@ router.put("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "sup
       return res.status(404).json({ error: "Numero non trovato" });
     }
 
-    res.json({ number: result.rows[0] });
+    const updatedNumber = result.rows[0] as any;
+    if (updatedNumber.phone_number) {
+      invalidateVoiceNumberCache(updatedNumber.phone_number);
+    }
+
+    res.json({ number: updatedNumber });
   } catch (error) {
     console.error("[Voice] Error updating number:", error);
     res.status(500).json({ error: "Errore nell'aggiornamento del numero" });
@@ -1043,11 +1048,16 @@ router.delete("/numbers/:id", authenticateToken, requireAnyRole(["consultant", "
     const result = await db.execute(sql`
       DELETE FROM voice_numbers
       WHERE id = ${id} ${ownerCheck}
-      RETURNING id
+      RETURNING id, phone_number
     `);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Numero non trovato" });
+    }
+
+    const deletedNumber = result.rows[0] as any;
+    if (deletedNumber.phone_number) {
+      invalidateVoiceNumberCache(deletedNumber.phone_number);
     }
 
     res.json({ success: true, deleted_id: id });
@@ -1741,7 +1751,10 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         outbound_agent_id,
         outbound_manual_prompt,
         outbound_brand_voice_enabled,
-        outbound_brand_voice_agent_id
+        outbound_brand_voice_agent_id,
+        voice_thinking_budget_greeting,
+        voice_thinking_budget_conversation,
+        voice_protect_first_message
       FROM consultant_availability_settings 
       WHERE consultant_id = ${consultantId}
     `);
@@ -1910,7 +1923,10 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       outboundAgentId,
       outboundManualPrompt,
       outboundBrandVoiceEnabled,
-      outboundBrandVoiceAgentId
+      outboundBrandVoiceAgentId,
+      voiceThinkingBudgetGreeting,
+      voiceThinkingBudgetConversation,
+      voiceProtectFirstMessage
     } = req.body;
 
     // Validate inbound promptSource
@@ -1983,6 +1999,9 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           outbound_manual_prompt = ${outboundManualPrompt || null},
           outbound_brand_voice_enabled = ${outboundBrandVoiceEnabled || false},
           outbound_brand_voice_agent_id = ${outboundBrandVoiceAgentId || null},
+          voice_thinking_budget_greeting = ${voiceThinkingBudgetGreeting ?? 0},
+          voice_thinking_budget_conversation = ${voiceThinkingBudgetConversation ?? 128},
+          voice_protect_first_message = ${voiceProtectFirstMessage ?? true},
           non_client_prompt_source = ${legacyPromptSource || 'default'},
           non_client_agent_id = ${legacyAgentId || null},
           non_client_manual_prompt = ${legacyManualPrompt || null},
@@ -1997,6 +2016,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           inbound_brand_voice_enabled, inbound_brand_voice_agent_id,
           outbound_prompt_source, outbound_template_id, outbound_agent_id, outbound_manual_prompt,
           outbound_brand_voice_enabled, outbound_brand_voice_agent_id,
+          voice_thinking_budget_greeting, voice_thinking_budget_conversation, voice_protect_first_message,
           non_client_prompt_source, non_client_agent_id, non_client_manual_prompt,
           voice_id, appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
@@ -2007,6 +2027,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           ${inboundBrandVoiceEnabled || false}, ${inboundBrandVoiceAgentId || null},
           ${outboundPromptSource || 'template'}, ${outboundTemplateId || 'sales-orbitale'}, ${outboundAgentId || null}, ${outboundManualPrompt || null},
           ${outboundBrandVoiceEnabled || false}, ${outboundBrandVoiceAgentId || null},
+          ${voiceThinkingBudgetGreeting ?? 0}, ${voiceThinkingBudgetConversation ?? 128}, ${voiceProtectFirstMessage ?? true},
           ${legacyPromptSource || 'default'}, ${legacyAgentId || null}, ${legacyManualPrompt || null},
           'Achernar', 60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',
@@ -2015,6 +2036,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       `);
     }
 
+    invalidateVoiceCache(consultantId);
     console.log(`🎤 [Voice] Non-client settings updated for consultant ${consultantId}: inbound=${inboundPromptSource}, outbound=${outboundPromptSource}`);
     res.json({ success: true });
   } catch (error) {
