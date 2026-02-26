@@ -430,16 +430,24 @@ export async function executeStep(
 
     let taskModel = autonomyModelOverride;
     let taskThinkingLevel = autonomyThinkingLevelOverride;
-    if (!taskModel || !taskThinkingLevel) {
-      try {
-        const autonomySettingsForModel = await getAutonomySettings(task.consultant_id);
-        taskModel = taskModel || autonomySettingsForModel.autonomy_model;
-        taskThinkingLevel = taskThinkingLevel || autonomySettingsForModel.autonomy_thinking_level;
-      } catch { /* use defaults */ }
-    }
+    let taskTemperature: number | undefined;
+    try {
+      const autonomySettingsForModel = await getAutonomySettings(task.consultant_id);
+      taskModel = taskModel || autonomySettingsForModel.autonomy_model;
+      taskThinkingLevel = taskThinkingLevel || autonomySettingsForModel.autonomy_thinking_level;
+      if (task.ai_role && autonomySettingsForModel.role_temperatures) {
+        const roleTemps = typeof autonomySettingsForModel.role_temperatures === 'string'
+          ? JSON.parse(autonomySettingsForModel.role_temperatures)
+          : (autonomySettingsForModel.role_temperatures || {});
+        if (roleTemps[task.ai_role] !== undefined && roleTemps[task.ai_role] !== null) {
+          taskTemperature = Number(roleTemps[task.ai_role]);
+        }
+      }
+    } catch { /* use defaults */ }
     taskModel = taskModel || GEMINI_3_MODEL;
     taskThinkingLevel = taskThinkingLevel || 'low';
-    console.log(`${LOG_PREFIX} Using autonomy model=${taskModel}, thinkingLevel=${taskThinkingLevel} for step ${step.step}`);
+    if (taskTemperature === undefined || isNaN(taskTemperature)) taskTemperature = 0.3;
+    console.log(`${LOG_PREFIX} Using autonomy model=${taskModel}, thinkingLevel=${taskThinkingLevel}, temperature=${taskTemperature} for step ${step.step} (role: ${task.ai_role || 'none'})`);
 
     let result: Record<string, any>;
 
@@ -448,28 +456,28 @@ export async function executeStep(
         result = await handleFetchClientData(task, step, previousResults);
         break;
       case "search_private_stores":
-        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection, agentDocs, taskModel, taskThinkingLevel);
+        result = await handleSearchPrivateStores(task, step, previousResults, rolePersonality, agentContextSection, agentDocs, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "analyze_patterns":
-        result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
+        result = await handleAnalyzePatterns(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "generate_report":
-        result = await handleGenerateReport(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
+        result = await handleGenerateReport(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "prepare_call":
-        result = await handlePrepareCall(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel);
+        result = await handlePrepareCall(task, step, previousResults, rolePersonality, agentContextSection, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "voice_call":
         result = await handleVoiceCall(task, step, previousResults);
         break;
       case "send_email":
-        result = await handleSendEmail(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel);
+        result = await handleSendEmail(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "send_whatsapp":
-        result = await handleSendWhatsapp(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel);
+        result = await handleSendWhatsapp(task, step, previousResults, agentContextSection, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "web_search":
-        result = await handleWebSearch(task, step, previousResults, taskModel, taskThinkingLevel);
+        result = await handleWebSearch(task, step, previousResults, taskModel, taskThinkingLevel, taskTemperature);
         break;
       case "lead_scraper_search":
         result = await handleLeadScraperSearch(task, step, previousResults);
@@ -739,6 +747,7 @@ async function handleSearchPrivateStores(
   agentDocs?: AgentDocuments | null,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}, agent_file_search_docs=${agentDocs?.fileSearchDocTitles?.length || 0}`);
 
@@ -915,7 +924,7 @@ Riassumi le informazioni trovate in modo strutturato.`;
       model: searchModel,
       contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
       config: {
-        temperature: 0.3,
+        temperature: roleTemperature ?? 0.3,
         maxOutputTokens: 8192,
         tools: [fileSearchTool],
         thinkingConfig: { thinkingBudget: searchThinkingBudget },
@@ -947,6 +956,7 @@ async function handleAnalyzePatterns(
   agentContextSection?: string,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_analyze_patterns_started',
@@ -1027,7 +1037,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await client.generateContent({
       model: effectiveModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 16384, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+      generationConfig: { temperature: roleTemperature ?? 0.3, maxOutputTokens: 16384, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -1068,6 +1078,7 @@ async function handleGenerateReport(
   agentContextSection?: string,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_generate_report_started',
@@ -1248,7 +1259,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await client.generateContent({
       model: effectiveReportModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+      generationConfig: { temperature: roleTemperature ?? 0.3, maxOutputTokens: 65536, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -1293,6 +1304,7 @@ async function handlePrepareCall(
   agentContextSection?: string,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_prepare_call_started',
@@ -1439,7 +1451,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
     return await client.generateContent({
       model: effectiveCallModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+      generationConfig: { temperature: roleTemperature ?? 0.4, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
     });
   });
 
@@ -2262,6 +2274,7 @@ async function handleSendEmail(
   agentContextSection?: string,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_email_started',
@@ -2336,7 +2349,7 @@ REGOLE IMPORTANTI:
       const resp = await withRetry(() => client.generateContent({
         model: effectiveEmailModel,
         contents: [{ role: "user", parts: [{ text: emailPrompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+        generationConfig: { temperature: roleTemperature ?? 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
       emailBody = resp.response.text() || "";
     } catch (provErr: any) {
@@ -2453,6 +2466,7 @@ async function handleSendWhatsapp(
   agentContextSection?: string,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_whatsapp_started',
@@ -2609,7 +2623,7 @@ ${templateVariableCount === 1 ? '{"1": "valore"}' : templateVariableCount === 2 
       const resp = await withRetry(() => client.generateContent({
         model: effectiveWaModel,
         contents: [{ role: "user", parts: [{ text: variablePrompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+        generationConfig: { temperature: roleTemperature ?? 0.4, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
 
       const responseText = resp.response.text() || '';
@@ -2687,7 +2701,7 @@ REGOLE PER IL MESSAGGIO:
       const resp = await withRetry(() => client.generateContent({
         model: effectiveWaMsgModel,
         contents: [{ role: "user", parts: [{ text: whatsappPrompt }] }],
-        generationConfig: { temperature: 0.5, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+        generationConfig: { temperature: roleTemperature ?? 0.5, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       }));
       messageText = resp.response.text() || `Buongiorno ${task.contact_name || ''}, la contatto per aggiornarla.`;
     } catch (provErr: any) {
@@ -2814,6 +2828,7 @@ async function handleWebSearch(
   previousResults: Record<string, any>,
   autonomyModel?: string,
   autonomyThinkingLevel?: string,
+  roleTemperature?: number,
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_web_search_started',
@@ -2854,7 +2869,7 @@ ${step.description ? `Step description: ${step.description}` : ''}`;
         return await queryGenClient.generateContent({
           model: effectiveQueryModel,
           contents: [{ role: "user", parts: [{ text: queryGenPrompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 256, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+          generationConfig: { temperature: roleTemperature ?? 0.3, maxOutputTokens: 256, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
         });
       });
 
@@ -2905,7 +2920,7 @@ Fornisci una risposta strutturata e dettagliata con le informazioni trovate, cit
     return await client.generateContent({
       model: effectiveSearchModel,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
+      generationConfig: { temperature: roleTemperature ?? 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: getThinkingBudgetForLevel(autonomyThinkingLevel || 'low') } },
       tools: [{ googleSearch: {} }],
     });
   });

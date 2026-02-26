@@ -26,6 +26,7 @@ export interface AutonomySettings {
   outreach_config: OutreachConfig;
   autonomy_model: string;
   autonomy_thinking_level: string;
+  role_temperatures: Record<string, number>;
 }
 
 export interface OutreachConfig {

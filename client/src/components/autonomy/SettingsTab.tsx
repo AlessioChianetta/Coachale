@@ -26,7 +26,7 @@ import {
   ChevronLeft, ChevronRight,
   ArrowRight, Cog, ChevronDown, ChevronUp, BookOpen, ExternalLink,
   Eye, Sparkles, Timer, User, Lightbulb, Target, RefreshCw, AlertCircle,
-  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical
+  Plus, Trash2, FileText, Calendar, Flag, Database, Search, GripVertical, Thermometer
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -2171,6 +2171,128 @@ function SettingsTab({
           </div>
 
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500" />
+            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
+              <Brain className="h-5 w-5 text-purple-600" />
+              Modello AI e Temperatura
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Configura il modello, il livello di ragionamento e la temperatura per ogni dipendente AI
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Modello AI</Label>
+                <Select
+                  value={settings.autonomy_model || 'gemini-3-flash-preview'}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-3-flash-preview">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Gemini 3 Flash</span>
+                        <span className="text-xs text-gray-400">Veloce ed economico</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gemini-3.1-pro-preview">
+                      <div className="flex flex-col">
+                        <span className="font-medium">Gemini 3.1 Pro</span>
+                        <span className="text-xs text-gray-400">Ragionamento avanzato</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(settings.autonomy_model || 'gemini-3-flash-preview') === 'gemini-3-flash-preview'
+                    ? "Flash è più rapido e consuma meno token. Consigliato per operazioni ad alto volume."
+                    : "Pro 3.1 offre ragionamento superiore. Ideale per qualificazione lead e decisioni strategiche."}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Livello di Ragionamento</Label>
+                <Select
+                  value={settings.autonomy_thinking_level || 'low'}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low"><span className="font-medium">Basso</span></SelectItem>
+                    <SelectItem value="medium"><span className="font-medium">Medio</span></SelectItem>
+                    <SelectItem value="high"><span className="font-medium">Alto</span></SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {(settings.autonomy_thinking_level || 'low') === 'low'
+                    ? "Risposte rapide con ragionamento minimo. Più veloce e economico."
+                    : (settings.autonomy_thinking_level || 'low') === 'medium'
+                      ? "Buon equilibrio tra velocità e profondità di analisi."
+                      : "Ragionamento approfondito per ogni decisione. Più lento ma più accurato."}
+                </p>
+              </div>
+            </div>
+
+            <Separator className="mb-4" />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <Thermometer className="h-4 w-4" />
+                  Temperatura per Dipendente
+                </Label>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Default: 0.3 (se non configurata)
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Valori bassi (0.1-0.3) = risposte precise e prevedibili. Valori alti (0.6-0.9) = risposte più creative e naturali.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {systemStatus?.roles?.filter(r => r.enabled).map((role) => {
+                  const profile = AI_ROLE_PROFILES[role.id];
+                  const temp = (settings.role_temperatures || {})[role.id] ?? 0.3;
+                  return (
+                    <div key={role.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                      {profile?.avatar && (
+                        <img src={profile.avatar} alt={role.displayName} className="h-8 w-8 rounded-full object-cover shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold truncate">{role.displayName}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-1 shrink-0">{temp.toFixed(1)}</Badge>
+                        </div>
+                        <Slider
+                          value={[temp * 10]}
+                          min={1}
+                          max={10}
+                          step={1}
+                          onValueChange={([v]) => {
+                            const newTemp = v / 10;
+                            setSettings(prev => ({
+                              ...prev,
+                              role_temperatures: { ...(prev.role_temperatures || {}), [role.id]: newTemp },
+                            }));
+                          }}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {(!systemStatus?.roles || systemStatus.roles.filter(r => r.enabled).length === 0) && (
+                  <p className="text-xs text-muted-foreground col-span-2 text-center py-4">
+                    Nessun dipendente attivo. Attivali nel tab "Dipendenti AI" per configurare la temperatura.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
               <Brain className="h-5 w-5" />
               Istruzioni Personalizzate
@@ -2428,78 +2550,6 @@ function SettingsTab({
                   {settings.channels_enabled.lead_scraper !== false
                     ? "Usato da: Hunter (ricerca e qualificazione lead autonoma)" 
                     : "Se disabilitato: Hunter non potrà cercare e qualificare nuovi lead."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-violet-500" />
-            <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
-              <Brain className="h-5 w-5 text-purple-600" />
-              Modello AI per Autonomia
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Scegli il modello e il livello di ragionamento usato dai dipendenti AI durante le esecuzioni autonome
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Modello AI</Label>
-                <Select
-                  value={settings.autonomy_model || 'gemini-3-flash-preview'}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_model: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gemini-3-flash-preview">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Gemini 3 Flash</span>
-                        <span className="text-xs text-gray-400">Veloce ed economico — ideale per la maggior parte dei task</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="gemini-3.1-pro-preview">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Gemini 3.1 Pro</span>
-                        <span className="text-xs text-gray-400">Ragionamento avanzato — per analisi complesse e decisioni critiche</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {(settings.autonomy_model || 'gemini-3-flash-preview') === 'gemini-3-flash-preview'
-                    ? "Flash è più rapido e consuma meno token. Consigliato per operazioni ad alto volume."
-                    : "Pro 3.1 offre ragionamento superiore. Ideale per qualificazione lead e decisioni strategiche. Costo più elevato."}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Livello di Ragionamento</Label>
-                <Select
-                  value={settings.autonomy_thinking_level || 'low'}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, autonomy_thinking_level: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">
-                      <span className="font-medium">Basso</span>
-                    </SelectItem>
-                    <SelectItem value="medium">
-                      <span className="font-medium">Medio</span>
-                    </SelectItem>
-                    <SelectItem value="high">
-                      <span className="font-medium">Alto</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {(settings.autonomy_thinking_level || 'low') === 'low' 
-                    ? "Risposte rapide con ragionamento minimo. Più veloce e economico."
-                    : (settings.autonomy_thinking_level || 'low') === 'medium'
-                      ? "Buon equilibrio tra velocità e profondità di analisi."
-                      : "Ragionamento approfondito per ogni decisione. Più lento ma più accurato."}
                 </p>
               </div>
             </div>
