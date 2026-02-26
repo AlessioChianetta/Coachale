@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -89,6 +90,7 @@ import {
   MailIcon,
   Route,
   PenLine,
+  AlertTriangle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -452,7 +454,7 @@ export default function ConsultantLeadScraper() {
     enabled: false, require_approval: true, max_searches_per_day: 5, max_calls_per_day: 10, max_whatsapp_per_day: 15,
     max_emails_per_day: 20, score_threshold: 60, channel_priority: ["voice", "whatsapp", "email"],
     cooldown_hours: 48, whatsapp_config_id: "", voice_template_id: "", email_account_id: "",
-    call_instruction_template: "", whatsapp_template_id: "",
+    call_instruction_template: "", whatsapp_template_id: "", whatsapp_template_ids: [] as string[],
     cooldown_new_hours: 24, cooldown_contacted_days: 5, cooldown_negotiation_days: 7,
     max_attempts_per_lead: 3, first_contact_channel: "auto", high_score_channel: "voice",
     communication_style: "professionale", custom_instructions: "", email_signature: "", opening_hook: "",
@@ -494,33 +496,55 @@ export default function ConsultantLeadScraper() {
     { id: "sales-orbitale", name: "Sales Orbitale", description: "Per lead ad alto potenziale" },
   ];
 
-  const { data: approvedWaTemplates = [] } = useQuery<{ id: string; name: string; twilioContentSid: string; scenario: string | null; bodyText: string | null; useCase: string | null }[]>({
-    queryKey: ["/api/whatsapp/templates/approved-for-hunter"],
-    queryFn: async () => {
-      try {
-        const res = await fetch("/api/whatsapp/templates/approved", { headers: getAuthHeaders() });
-        if (!res.ok) return [];
-        return res.json();
-      } catch { return []; }
-    },
+  const { data: hunterWaTemplates = [], isLoading: hunterTemplatesLoading } = useQuery<{
+    id: string;
+    friendlyName: string;
+    bodyText: string;
+    approvalStatus: string;
+    useCase?: string;
+  }[]>({
+    queryKey: ["/api/weekly-checkin/templates"],
   });
 
-  const [selectedWaTemplateId, setSelectedWaTemplateId] = useState<string>("");
+  const [openHunterTemplateCategories, setOpenHunterTemplateCategories] = useState<Set<string>>(new Set());
 
-  const { data: waTemplateVariables = [] } = useQuery<{ position: number; variableKey: string; variableName: string; description: string }[]>({
-    queryKey: ["/api/whatsapp/custom-templates/variables", selectedWaTemplateId || outreachConfig.whatsapp_template_id],
-    queryFn: async () => {
-      const tplId = selectedWaTemplateId || outreachConfig.whatsapp_template_id;
-      if (!tplId) return [];
-      try {
-        const res = await fetch(`/api/whatsapp/custom-templates/${tplId}/variables`, { headers: getAuthHeaders() });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.data || [];
-      } catch { return []; }
-    },
-    enabled: !!(selectedWaTemplateId || outreachConfig.whatsapp_template_id),
-  });
+  const HUNTER_TEMPLATE_CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; icon: string }> = {
+    "Setter": { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", icon: "bg-blue-500" },
+    "Follow-up": { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-300", border: "border-orange-200 dark:border-orange-800", icon: "bg-orange-500" },
+    "Check-in": { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-800", icon: "bg-purple-500" },
+    "Notifica": { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800", icon: "bg-cyan-500" },
+    "Generale": { bg: "bg-gray-50 dark:bg-gray-900/20", text: "text-gray-700 dark:text-gray-300", border: "border-gray-200 dark:border-gray-800", icon: "bg-gray-500" },
+  };
+
+  const categorizeHunterTemplate = (template: { friendlyName: string; useCase?: string }): string => {
+    const name = (template.friendlyName || "").toLowerCase();
+    const useCase = (template.useCase || "").toLowerCase();
+    if (name.includes("setter") || useCase.includes("setter")) return "Setter";
+    if (name.includes("follow-up") || name.includes("followup") || useCase.includes("follow")) return "Follow-up";
+    if (name.includes("check") || useCase.includes("check")) return "Check-in";
+    if (name.includes("notifica") || name.includes("promemoria") || useCase.includes("notifica")) return "Notifica";
+    return "Generale";
+  };
+
+  const hunterTemplatesByCategory = useMemo(() => {
+    const grouped: Record<string, typeof hunterWaTemplates> = {};
+    hunterWaTemplates.forEach((template) => {
+      const category = categorizeHunterTemplate(template);
+      if (!grouped[category]) grouped[category] = [];
+      grouped[category].push(template);
+    });
+    return grouped;
+  }, [hunterWaTemplates]);
+
+  const hunterSelectedTemplateIds: string[] = outreachConfig.whatsapp_template_ids || [];
+
+  const handleHunterTemplateToggle = (templateId: string, isChecked: boolean) => {
+    const currentIds = hunterSelectedTemplateIds;
+    const newIds = isChecked
+      ? [...currentIds, templateId]
+      : currentIds.filter((id: string) => id !== templateId);
+    updateOutreachConfig("whatsapp_template_ids", newIds);
+  };
 
   const channelLabelsMap: Record<string, { label: string; color: string }> = {
     voice: { label: "Chiamate (Alessia)", color: "text-green-600" },
@@ -2540,51 +2564,122 @@ export default function ConsultantLeadScraper() {
                             </Select>
                             {proactiveWaConfigs.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] text-muted-foreground">Template WhatsApp</Label>
-                            <Select
-                              value={outreachConfig.whatsapp_template_id || "none"}
-                              onValueChange={(v) => {
-                                const val = v === "none" ? "" : v;
-                                updateOutreachConfig("whatsapp_template_id", val);
-                                setSelectedWaTemplateId(val);
-                              }}
-                            >
-                              <SelectTrigger className="w-full h-9 text-xs">
-                                <SelectValue placeholder="Seleziona template WA" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno (corpo generato da AI)</SelectItem>
-                                {approvedWaTemplates.map((t) => (
-                                  <SelectItem key={t.id} value={t.id}>{t.name}{t.useCase ? ` (${t.useCase})` : ""}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {approvedWaTemplates.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun template WA approvato trovato</p>}
-                            {(() => {
-                              const selId = selectedWaTemplateId || outreachConfig.whatsapp_template_id;
-                              const selTpl = selId ? approvedWaTemplates.find(t => t.id === selId) : null;
-                              if (!selTpl?.bodyText) return null;
-                              return (
-                                <div className="mt-1.5 p-2 rounded-md bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30">
-                                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 leading-relaxed whitespace-pre-wrap">{selTpl.bodyText}</p>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          {(outreachConfig.whatsapp_template_id || selectedWaTemplateId) && waTemplateVariables.length > 0 && (
-                            <div className="space-y-1 pt-1">
-                              <Label className="text-[10px] text-muted-foreground">Variabili template</Label>
-                              <div className="space-y-0.5">
-                                {waTemplateVariables.map((v) => (
-                                  <p key={v.position} className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                                    {`{{${v.position}}}`} = {v.variableName}
-                                    {v.description && <span className="text-gray-400 dark:text-gray-500 ml-1">({v.description})</span>}
-                                  </p>
-                                ))}
-                              </div>
+
+                          <div className="space-y-2 pt-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] text-muted-foreground">Template WhatsApp per Hunter</Label>
+                              {hunterSelectedTemplateIds.length > 0 && (
+                                <Badge className="bg-emerald-500 text-white text-[10px] px-2 py-0.5">
+                                  {hunterSelectedTemplateIds.length} selezionati
+                                </Badge>
+                              )}
                             </div>
-                          )}
+                            <p className="text-[10px] text-gray-400">
+                              Seleziona i template che Hunter userà per l'outreach WhatsApp. Senza template, i messaggi verranno generati dall'AI come testo libero.
+                            </p>
+
+                            {hunterTemplatesLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              </div>
+                            ) : hunterWaTemplates.length === 0 ? (
+                              <div className="text-center py-4 text-gray-500">
+                                <MessageCircle className="h-6 w-6 mx-auto mb-1.5 text-gray-300" />
+                                <p className="text-[10px]">Nessun template WhatsApp approvato trovato</p>
+                                <p className="text-[9px] text-gray-400 mt-0.5">
+                                  Configura i template nella sezione WhatsApp Templates
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                                {Object.entries(hunterTemplatesByCategory).map(([categoryName, categoryTemplates]) => {
+                                  const isOpen = openHunterTemplateCategories.has(categoryName);
+                                  const colors = HUNTER_TEMPLATE_CATEGORY_COLORS[categoryName] || HUNTER_TEMPLATE_CATEGORY_COLORS["Generale"];
+                                  const selectedInCategory = categoryTemplates.filter(t =>
+                                    hunterSelectedTemplateIds.includes(t.id)
+                                  ).length;
+
+                                  return (
+                                    <Collapsible
+                                      key={categoryName}
+                                      open={isOpen}
+                                      onOpenChange={(open) => {
+                                        setOpenHunterTemplateCategories(prev => {
+                                          const newSet = new Set(prev);
+                                          if (open) newSet.add(categoryName);
+                                          else newSet.delete(categoryName);
+                                          return newSet;
+                                        });
+                                      }}
+                                    >
+                                      <CollapsibleTrigger asChild>
+                                        <div className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${colors.bg} ${colors.border} border hover:opacity-90`}>
+                                          <div className="flex items-center gap-2">
+                                            <div className={`w-2.5 h-2.5 rounded-full ${colors.icon}`}></div>
+                                            <span className={`text-xs font-semibold ${colors.text}`}>{categoryName}</span>
+                                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${colors.bg} ${colors.text} ${colors.border}`}>
+                                              {categoryTemplates.length} template
+                                            </Badge>
+                                            {selectedInCategory > 0 && (
+                                              <Badge className="bg-emerald-500 text-white text-[9px] px-1.5 py-0">
+                                                {selectedInCategory} sel.
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <ChevronDown className={`h-3.5 w-3.5 ${colors.text} transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                                        </div>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="mt-1.5">
+                                        <div className="space-y-1.5 pl-1">
+                                          {categoryTemplates.map((template) => {
+                                            const isSelected = hunterSelectedTemplateIds.includes(template.id);
+                                            return (
+                                              <label
+                                                key={template.id}
+                                                className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                                                  isSelected
+                                                    ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm"
+                                                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-emerald-200 hover:bg-gray-50"
+                                                }`}
+                                              >
+                                                <Checkbox
+                                                  checked={isSelected}
+                                                  onCheckedChange={(checked) => handleHunterTemplateToggle(template.id, checked as boolean)}
+                                                  className="mt-0.5"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                                                      {template.friendlyName}
+                                                    </span>
+                                                    <Badge className="text-[9px] bg-green-100 text-green-700 border-green-300 px-1.5 py-0">
+                                                      Approvato
+                                                    </Badge>
+                                                  </div>
+                                                  <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 leading-relaxed line-clamp-2">
+                                                    {template.bodyText || "Template senza corpo visibile"}
+                                                  </p>
+                                                </div>
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {hunterSelectedTemplateIds.length === 0 && hunterWaTemplates.length > 0 && (
+                              <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                <p className="text-[9px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                                  <AlertTriangle className="h-3 w-3 shrink-0" />
+                                  Nessun template selezionato. I messaggi verranno generati dall'AI come testo libero (funziona solo con conversazioni attive nelle ultime 24h).
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                           <Label className="text-xs font-semibold flex items-center gap-1.5">
