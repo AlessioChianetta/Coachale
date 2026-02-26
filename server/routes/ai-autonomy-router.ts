@@ -380,7 +380,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
       JOIN lead_scraper_searches ls ON lr.search_id = ls.id
       WHERE ls.consultant_id = ${consultantId}
         AND lr.lead_status IN ('in_trattativa', 'chiuso_vinto')
-        AND lr.updated_at >= CURRENT_DATE - INTERVAL '7 days'
+        AND lr.created_at >= CURRENT_DATE - INTERVAL '7 days'
     `);
     const convertedCount = parseInt((convertedResult.rows[0] as any)?.converted || '0');
 
@@ -608,9 +608,11 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const { quickGenerate } = await import("../ai/provider-factory");
 
     const salesCtxResult = await db.execute(sql`
-      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      SELECT services_offered, target_audience, value_proposition, sales_approach,
+             competitive_advantages, ideal_client_profile, additional_context
+      FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
     `);
-    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+    const salesCtx = (salesCtxResult.rows[0] as any) || {};
 
     const leadsForAI = actionableLeads.slice(0, 30).map(l => ({
       id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
@@ -624,8 +626,8 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
       thinkingLevel: 'low',
       systemInstruction: [
         `Sei Hunter, il cervello commerciale. Analizza questi lead esistenti nel CRM e decidi per ciascuno l'azione migliore.`,
-        salesCtx.servicesOffered ? `SERVIZI: ${salesCtx.servicesOffered}` : '',
-        salesCtx.targetAudience ? `TARGET: ${salesCtx.targetAudience}` : '',
+        salesCtx.services_offered ? `SERVIZI: ${salesCtx.services_offered}` : '',
+        salesCtx.target_audience ? `TARGET: ${salesCtx.target_audience}` : '',
         `Canali disponibili: ${channelsEnabled.voice ? 'voice (chiamata)' : ''}${channelsEnabled.whatsapp ? ', whatsapp' : ''}${channelsEnabled.email ? ', email' : ''}`,
         `Rispondi SOLO con un JSON array. Per ogni lead: { "leadId": "uuid", "action": "call"|"whatsapp"|"email"|"skip", "reason": "motivo breve" }`,
         `Regole: se il lead ha solo email usa email, se ha solo telefono usa call o whatsapp. Preferisci la chiamata per lead ad alto score (>80). Usa "skip" solo se non ci sono dati di contatto.`,
@@ -818,9 +820,11 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
     }
 
     const salesCtxResult = await db.execute(sql`
-      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      SELECT services_offered, target_audience, value_proposition, sales_approach,
+             competitive_advantages, ideal_client_profile, additional_context
+      FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
     `);
-    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+    const salesCtx = (salesCtxResult.rows[0] as any) || {};
 
     const { quickGenerate } = await import("../ai/provider-factory");
 
@@ -843,10 +847,10 @@ router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consult
       thinkingLevel: 'medium',
       systemInstruction: [
         `Sei Hunter, il cervello commerciale del consulente. Analizza i lead e prepara un piano d'azione strategico.`,
-        salesCtx.servicesOffered ? `SERVIZI DEL CONSULENTE: ${salesCtx.servicesOffered}` : '',
-        salesCtx.targetAudience ? `TARGET IDEALE: ${salesCtx.targetAudience}` : '',
-        salesCtx.valueProposition ? `PROPOSTA DI VALORE: ${salesCtx.valueProposition}` : '',
-        salesCtx.salesApproach ? `APPROCCIO VENDITA: ${salesCtx.salesApproach}` : '',
+        salesCtx.services_offered ? `SERVIZI DEL CONSULENTE: ${salesCtx.services_offered}` : '',
+        salesCtx.target_audience ? `TARGET IDEALE: ${salesCtx.target_audience}` : '',
+        salesCtx.value_proposition ? `PROPOSTA DI VALORE: ${salesCtx.value_proposition}` : '',
+        salesCtx.sales_approach ? `APPROCCIO VENDITA: ${salesCtx.sales_approach}` : '',
         `Canali disponibili: ${availableChannels}`,
         `Rispondi SOLO con un JSON valido con questa struttura:`,
         `{`,
@@ -931,9 +935,11 @@ router.post("/hunter-plan/chat", authenticateToken, requireAnyRole(["consultant"
     const currentPlan = cached.plan;
 
     const salesCtxResult = await db.execute(sql`
-      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      SELECT services_offered, target_audience, value_proposition, sales_approach,
+             competitive_advantages, ideal_client_profile, additional_context
+      FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
     `);
-    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+    const salesCtx = (salesCtxResult.rows[0] as any) || {};
 
     const { quickGenerate } = await import("../ai/provider-factory");
 
@@ -955,7 +961,7 @@ router.post("/hunter-plan/chat", authenticateToken, requireAnyRole(["consultant"
         `Sei Hunter, il cervello commerciale. Il consulente sta discutendo un piano di outreach con te.`,
         `PIANO ATTUALE:\n${planSummary}`,
         `SUMMARY: ${currentPlan.summary}`,
-        salesCtx.servicesOffered ? `SERVIZI: ${salesCtx.servicesOffered}` : '',
+        salesCtx.services_offered ? `SERVIZI: ${salesCtx.services_offered}` : '',
         `Se il consulente chiede modifiche al piano, rispondi con JSON: { "reply": "testo conversazionale", "updatedPlan": { "leads": [...], "summary": "..." } }`,
         `Se il consulente fa domande o vuole discutere (senza modifiche), rispondi con: { "reply": "testo conversazionale" }`,
         `Nella lista leads dell'updatedPlan, ogni lead ha: leadId, action (call/whatsapp/email/skip), reason, priority, suggestedTiming, talkingPoints, included (true/false), businessName, score, category, phone, email, leadStatus.`,

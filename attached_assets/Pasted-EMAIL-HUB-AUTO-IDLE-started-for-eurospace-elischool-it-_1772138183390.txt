@@ -1,0 +1,73 @@
+EMAIL-HUB AUTO] IDLE started for eurospace@elischool.it
+✅ [TokenTracker] Flushed 1 entries to DB
+[AI-AUTONOMY] Error fetching hunter pipeline: error: column lr.updated_at does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:377:29) {
+  length: 172,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "lr.created_at".',
+  position: '242',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3723',
+  routine: 'errorMissingColumn'
+}
+8:36:15 PM [express] GET /api/ai-autonomy/hunter-pipeline 500 in 1165ms :: {"error":"Failed to fetch…
+[HUNTER-CRM] Analyzed 19 leads, 4 actionable (mode=execute)
+[HUNTER-CRM] Error analyzing CRM: error: column "sales_context" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:610:28) {
+  length: 113,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '15',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+8:36:19 PM [express] POST /api/ai-autonomy/hunter-analyze-crm 500 in 2753ms :: {"error":"Failed to a…
+8:36:19 PM [express] GET /api/lead-scraper/searches 304 in 340ms :: [{"id":"4a4868a8-e1c3-42a7-8290-…
+[AI-AUTONOMY] Error fetching hunter pipeline: error: column lr.updated_at does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/ai-autonomy-router.ts:377:29) {
+  length: 172,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "lr.created_at".',
+  position: '242',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3723',
+  routine: 'errorMissingColumn'
+}
+8:36:20 PM [express] GET /ap
