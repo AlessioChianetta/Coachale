@@ -120,6 +120,202 @@ export function getStepActionLabel(action: string): string {
   return labels[action] || action;
 }
 
+export interface PlannedActionStep {
+  icon: string;
+  title: string;
+  description: string;
+  detail?: string;
+}
+
+export interface PlannedActionsResult {
+  humanTitle: string;
+  steps: PlannedActionStep[];
+  params: Record<string, string>;
+}
+
+export function parseStructuredInstruction(instruction: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (!instruction) return params;
+  const lines = instruction.split(/[\n\r]+/);
+  for (const line of lines) {
+    const match = line.match(/^\s*(TIPO|QUERY|ENGINE|LOCATION|LIMIT|REASONING)\s*:\s*(.+)$/i);
+    if (match) {
+      params[match[1].toUpperCase()] = match[2].trim();
+    }
+  }
+  if (Object.keys(params).length === 0) {
+    const inlineMatch = instruction.match(/TIPO:\s*(\S+)/i);
+    if (inlineMatch) params['TIPO'] = inlineMatch[1];
+    const queryMatch = instruction.match(/QUERY:\s*([^A-Z]+?)(?=\s+(?:ENGINE|LOCATION|LIMIT|REASONING):|$)/i);
+    if (queryMatch) params['QUERY'] = queryMatch[1].trim();
+    const engineMatch = instruction.match(/ENGINE:\s*(\S+)/i);
+    if (engineMatch) params['ENGINE'] = engineMatch[1];
+    const locationMatch = instruction.match(/LOCATION:\s*([^A-Z]+?)(?=\s+(?:LIMIT|REASONING):|$)/i);
+    if (locationMatch) params['LOCATION'] = locationMatch[1].trim();
+    const limitMatch = instruction.match(/LIMIT:\s*(\d+)/i);
+    if (limitMatch) params['LIMIT'] = limitMatch[1];
+    const reasoningMatch = instruction.match(/REASONING:\s*(.+)$/i);
+    if (reasoningMatch) params['REASONING'] = reasoningMatch[1].trim();
+  }
+  return params;
+}
+
+export function getPlannedActionsPreview(task: AITask): PlannedActionsResult {
+  const instruction = task.ai_instruction || '';
+  const role = task.ai_role || '';
+  const channel = task.preferred_channel || '';
+  const category = task.task_category || '';
+  const parsed = parseStructuredInstruction(instruction);
+  const tipo = parsed['TIPO'] || '';
+
+  if (role === 'hunter' || tipo === 'lead_scraper_search') {
+    const engine = parsed['ENGINE'] || 'google';
+    const engineLabel = engine === 'maps' ? 'Google Maps' : engine === 'search' ? 'Google Search' : 'Google';
+    const query = parsed['QUERY'] || '';
+    const location = parsed['LOCATION'] || '';
+    const limit = parsed['LIMIT'] || '20';
+    const humanTitle = query
+      ? `Ricerca nuovi lead: "${query}"${location ? ` a ${location}` : ''}`
+      : 'Ricerca e qualifica nuovi lead';
+    return {
+      humanTitle,
+      steps: [
+        { icon: "🔍", title: "Ricerca lead", description: `Cerca "${query || 'target'}" su ${engineLabel}${location ? ` nella zona di ${location}` : ''}`, detail: `Max ${limit} risultati` },
+        { icon: "🌐", title: "Scraping siti web", description: "Visita i siti trovati per estrarre email, telefoni e informazioni aziendali" },
+        { icon: "🎯", title: "Qualifica AI", description: "Analizza ogni lead con AI e assegna un punteggio di qualità (0-100)" },
+        { icon: "📋", title: "Creazione task follow-up", description: "Crea automaticamente task di chiamata, WhatsApp o email per i lead migliori" },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'alessia' || channel === 'voice') {
+    const contactName = task.contact_name || 'il cliente';
+    return {
+      humanTitle: `Chiamata vocale a ${contactName}`,
+      steps: [
+        { icon: "📊", title: "Raccolta dati", description: `Recupera storico consulenze e interazioni con ${contactName}` },
+        { icon: "🔍", title: "Analisi storico", description: "Analizza pattern di engagement, ultimi argomenti trattati e bisogni emersi" },
+        { icon: "📝", title: "Preparazione script", description: "Prepara i punti di discussione e l'approccio migliore per la chiamata" },
+        { icon: "📞", title: "Chiamata vocale AI", description: `Alessia chiamerà ${contactName}${task.contact_phone ? ` al ${task.contact_phone}` : ''} con voce naturale` },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'millie' || (channel === 'email' && role !== 'iris' && role !== 'echo')) {
+    const contactName = task.contact_name || 'il cliente';
+    return {
+      humanTitle: `Email personalizzata a ${contactName}`,
+      steps: [
+        { icon: "📊", title: "Raccolta dati", description: `Recupera storico email e interazioni con ${contactName}` },
+        { icon: "📈", title: "Analisi engagement", description: "Controlla aperture, click e risposte alle email precedenti" },
+        { icon: "✍️", title: "Composizione email", description: "Scrive un'email personalizzata con tono e contenuto adatti al momento" },
+        { icon: "📧", title: "Invio email", description: `Invia l'email a ${contactName}` },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'stella' || channel === 'whatsapp') {
+    const contactName = task.contact_name || 'il cliente';
+    return {
+      humanTitle: `Messaggio WhatsApp a ${contactName}`,
+      steps: [
+        { icon: "📊", title: "Raccolta dati", description: `Recupera storico conversazioni WhatsApp con ${contactName}` },
+        { icon: "🔍", title: "Analisi conversazioni", description: "Analizza il contesto e identifica il messaggio più appropriato" },
+        { icon: "💬", title: "Invio WhatsApp", description: `Stella invierà un messaggio WhatsApp a ${contactName}${task.contact_phone ? ` (${task.contact_phone})` : ''}` },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'echo') {
+    const contactName = task.contact_name || 'il cliente';
+    return {
+      humanTitle: `Riepilogo consulenza per ${contactName}`,
+      steps: [
+        { icon: "📊", title: "Raccolta dati consulenza", description: `Recupera i dettagli della consulenza con ${contactName}` },
+        { icon: "🔍", title: "Analisi contenuti", description: "Analizza i punti trattati, decisioni prese e azioni concordate" },
+        { icon: "📝", title: "Generazione riepilogo", description: "Crea un riepilogo strutturato con punti chiave e prossimi step" },
+        { icon: "📧", title: "Invio riepilogo", description: `Invia il riepilogo via email a ${contactName}` },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'nova') {
+    return {
+      humanTitle: 'Creazione contenuto social',
+      steps: [
+        { icon: "📊", title: "Raccolta dati", description: "Analizza il calendario editoriale e i contenuti recenti" },
+        { icon: "🌐", title: "Ricerca trend", description: "Cerca trend e argomenti di interesse nel tuo settore" },
+        { icon: "🧠", title: "Analisi e ideazione", description: "Genera idee per nuovi contenuti basati sui trend e il tuo posizionamento" },
+        { icon: "📝", title: "Generazione contenuto", description: "Crea il contenuto con testo, hashtag e suggerimenti visivi" },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'marco') {
+    const contactLabel = 'te';
+    const channelLabel = channel === 'voice' ? 'una chiamata' : channel === 'email' ? "un'email" : channel === 'whatsapp' ? 'un messaggio WhatsApp' : 'un contatto';
+    return {
+      humanTitle: `Coaching session: ${channelLabel}`,
+      steps: [
+        { icon: "🎯", title: "Analisi obiettivi", description: "Legge la roadmap, gli obiettivi e i documenti di riferimento" },
+        { icon: "📊", title: "Verifica progressi", description: "Controlla l'agenda, i task completati e lo stato dei tuoi obiettivi" },
+        { icon: "🧠", title: "Preparazione coaching", description: "Prepara i punti di discussione e le sfide su cui spingerti" },
+        { icon: channel === 'voice' ? "📞" : channel === 'whatsapp' ? "💬" : "📧", title: `Contatto diretto`, description: `Marco ti contatterà con ${channelLabel} per la sessione di coaching` },
+      ],
+      params: parsed,
+    };
+  }
+
+  if (role === 'iris') {
+    return {
+      humanTitle: 'Gestione email in arrivo',
+      steps: [
+        { icon: "📥", title: "Analisi email", description: "Analizza le email in arrivo e i ticket aperti" },
+        { icon: "🏷️", title: "Classificazione", description: "Classifica le email per priorità e tipo di risposta necessaria" },
+        { icon: "✍️", title: "Risposta o escalation", description: "Prepara risposte automatiche o segnala le email che richiedono il tuo intervento" },
+      ],
+      params: parsed,
+    };
+  }
+
+  const contactName = task.contact_name || '';
+  let fallbackTitle = category === 'prospecting' ? 'Ricerca e qualifica lead' :
+    category === 'outreach' ? `Outreach${contactName ? ` a ${contactName}` : ''}` :
+    category === 'followup' ? `Follow-up${contactName ? ` con ${contactName}` : ''}` :
+    category === 'analysis' ? 'Analisi dati' :
+    category === 'report' ? 'Generazione report' :
+    category === 'reminder' ? `Promemoria${contactName ? ` per ${contactName}` : ''}` :
+    category === 'monitoring' ? 'Monitoraggio' :
+    category === 'preparation' ? 'Preparazione' :
+    'Elaborazione AI';
+
+  const fallbackSteps: PlannedActionStep[] = [];
+  if (channel === 'voice' || instruction.toLowerCase().includes('chiama')) {
+    fallbackSteps.push({ icon: "📊", title: "Raccolta dati", description: "Recupera informazioni rilevanti" });
+    fallbackSteps.push({ icon: "📞", title: "Chiamata vocale", description: `Chiamata AI${contactName ? ` a ${contactName}` : ''}` });
+  } else if (channel === 'email' || instruction.toLowerCase().includes('email')) {
+    fallbackSteps.push({ icon: "📊", title: "Raccolta dati", description: "Recupera informazioni rilevanti" });
+    fallbackSteps.push({ icon: "📧", title: "Invio email", description: `Email${contactName ? ` a ${contactName}` : ''}` });
+  } else if (channel === 'whatsapp' || instruction.toLowerCase().includes('whatsapp')) {
+    fallbackSteps.push({ icon: "📊", title: "Raccolta dati", description: "Recupera informazioni rilevanti" });
+    fallbackSteps.push({ icon: "💬", title: "Messaggio WhatsApp", description: `WhatsApp${contactName ? ` a ${contactName}` : ''}` });
+  } else {
+    fallbackSteps.push({ icon: "🧠", title: "Elaborazione AI", description: "L'AI analizzerà i dati ed eseguirà le azioni necessarie" });
+  }
+
+  return {
+    humanTitle: fallbackTitle,
+    steps: fallbackSteps,
+    params: parsed,
+  };
+}
+
 export function tryParseJSON(value: any): any {
   if (typeof value !== 'string') return value;
   let cleaned = value.trim();

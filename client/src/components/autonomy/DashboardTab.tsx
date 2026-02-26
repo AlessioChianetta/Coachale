@@ -34,7 +34,8 @@ import { TASK_LIBRARY, TASK_CATEGORIES, EMPTY_NEW_TASK, AI_ROLE_PROFILES } from 
 import {
   getTaskStatusBadge, getCategoryBadge, getPriorityIndicator,
   getActivityIcon, getRelativeTime, getStepActionLabel,
-  getRoleBadgeClass, generateTaskPDF, generateSummaryPDF, taskHasFormalDocument, tryParseJSON, renderFormattedText
+  getRoleBadgeClass, generateTaskPDF, generateSummaryPDF, taskHasFormalDocument, tryParseJSON, renderFormattedText,
+  getPlannedActionsPreview, parseStructuredInstruction
 } from "./utils";
 import DeepResearchResults from "./DeepResearchResults";
 
@@ -2190,10 +2191,23 @@ function DashboardTab({
                 <div className="rounded-xl border border-border shadow-sm bg-card p-6 space-y-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-xl font-bold text-foreground mb-2">Deep Research</h2>
-                      <p className="text-sm text-muted-foreground leading-[1.8]">
-                        {task.ai_instruction}
-                      </p>
+                      {(() => {
+                        const preview = getPlannedActionsPreview(task);
+                        const hasStructured = parseStructuredInstruction(task.ai_instruction || '');
+                        const isStructured = Object.keys(hasStructured).length > 0;
+                        return (
+                          <>
+                            <h2 className="text-xl font-bold text-foreground mb-2">
+                              {isStructured ? preview.humanTitle : 'Deep Research'}
+                            </h2>
+                            <p className="text-sm text-muted-foreground leading-[1.8]">
+                              {isStructured && hasStructured['REASONING']
+                                ? hasStructured['REASONING']
+                                : task.ai_instruction}
+                            </p>
+                          </>
+                        );
+                      })()}
                     </div>
                     {['scheduled', 'draft', 'waiting_approval', 'paused'].includes(task.status) && (
                       <Button
@@ -2301,6 +2315,55 @@ function DashboardTab({
                     </div>
                   )}
                 </div>
+
+                {['waiting_approval', 'scheduled', 'draft'].includes(task.status) && (() => {
+                  const actionsPreview = getPlannedActionsPreview(task);
+                  return (
+                    <div className="rounded-xl border border-sky-200 dark:border-sky-800 shadow-sm bg-gradient-to-br from-sky-50 to-cyan-50 dark:from-sky-950/30 dark:to-cyan-950/20 p-5 space-y-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center">
+                          <ListTodo className="h-4.5 w-4.5 text-sky-600 dark:text-sky-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-sky-800 dark:text-sky-200">Azioni Previste</h3>
+                          <p className="text-[11px] text-sky-600 dark:text-sky-400">Cosa farà questo task una volta approvato</p>
+                        </div>
+                      </div>
+                      <div className="space-y-0">
+                        {actionsPreview.steps.map((step, idx) => (
+                          <div key={idx} className="flex items-start gap-3 py-2.5">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] font-bold text-sky-500 dark:text-sky-400 w-4 text-right">{idx + 1}</span>
+                              <span className="text-base">{step.icon}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-sky-900 dark:text-sky-100">{step.title}</p>
+                              <p className="text-[12px] text-sky-700 dark:text-sky-300 leading-relaxed">{step.description}</p>
+                              {step.detail && (
+                                <span className="text-[11px] text-sky-500 dark:text-sky-400 mt-0.5 inline-block">{step.detail}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {Object.keys(actionsPreview.params).length > 0 && (
+                        <div className="rounded-lg bg-white/60 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/40 px-4 py-3">
+                          <p className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 mb-2 uppercase tracking-wider">Parametri</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            {Object.entries(actionsPreview.params)
+                              .filter(([key]) => key !== 'REASONING')
+                              .map(([key, value]) => (
+                              <div key={key} className="flex items-baseline gap-2">
+                                <span className="text-[11px] font-medium text-sky-500 dark:text-sky-400">{key}:</span>
+                                <span className="text-[12px] text-sky-800 dark:text-sky-200 truncate">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {(task.ai_reasoning || (task.execution_plan && task.execution_plan.length > 0) || sortedActivity.length > 0) && (
                   <div className="rounded-2xl border border-border/60 shadow-sm bg-card/80 backdrop-blur-sm p-6 space-y-5">
