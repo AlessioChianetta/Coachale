@@ -1755,7 +1755,10 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         voice_thinking_budget_greeting,
         voice_thinking_budget_conversation,
         voice_protect_first_message,
-        voice_deferred_prompt
+        voice_deferred_prompt,
+        voice_vad_start_sensitivity,
+        voice_vad_end_sensitivity,
+        voice_vad_silence_ms
       FROM consultant_availability_settings 
       WHERE consultant_id = ${consultantId}
     `);
@@ -1889,6 +1892,12 @@ ${brandVoice}`;
       outboundManualPrompt: settings?.outbound_manual_prompt || '',
       outboundBrandVoiceEnabled: settings?.outbound_brand_voice_enabled || false,
       outboundBrandVoiceAgentId: settings?.outbound_brand_voice_agent_id || null,
+      voice_thinking_budget_greeting: settings?.voice_thinking_budget_greeting ?? 0,
+      voice_protect_first_message: settings?.voice_protect_first_message ?? true,
+      voice_deferred_prompt: settings?.voice_deferred_prompt ?? false,
+      voice_vad_start_sensitivity: settings?.voice_vad_start_sensitivity || 'START_SENSITIVITY_MEDIUM',
+      voice_vad_end_sensitivity: settings?.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW',
+      voice_vad_silence_ms: settings?.voice_vad_silence_ms ?? 500,
       defaultVoiceDirectives: DEFAULT_VOICE_DIRECTIVES,
       defaultNonClientPrompt: DEFAULT_NON_CLIENT_PROMPT,
       availableInboundTemplates: getTemplateOptions('inbound'),
@@ -1928,7 +1937,10 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       voiceThinkingBudgetGreeting,
       voiceThinkingBudgetConversation,
       voiceProtectFirstMessage,
-      voiceDeferredPrompt
+      voiceDeferredPrompt,
+      voiceVadStartSensitivity,
+      voiceVadEndSensitivity,
+      voiceVadSilenceMs
     } = req.body;
 
     // Validate inbound promptSource
@@ -2005,6 +2017,9 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           voice_thinking_budget_conversation = ${voiceThinkingBudgetConversation ?? 128},
           voice_protect_first_message = ${voiceProtectFirstMessage ?? true},
           voice_deferred_prompt = ${voiceDeferredPrompt ?? false},
+          voice_vad_start_sensitivity = ${voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM'},
+          voice_vad_end_sensitivity = ${voiceVadEndSensitivity || 'END_SENSITIVITY_LOW'},
+          voice_vad_silence_ms = ${voiceVadSilenceMs ?? 500},
           non_client_prompt_source = ${legacyPromptSource || 'default'},
           non_client_agent_id = ${legacyAgentId || null},
           non_client_manual_prompt = ${legacyManualPrompt || null},
@@ -2020,6 +2035,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           outbound_prompt_source, outbound_template_id, outbound_agent_id, outbound_manual_prompt,
           outbound_brand_voice_enabled, outbound_brand_voice_agent_id,
           voice_thinking_budget_greeting, voice_thinking_budget_conversation, voice_protect_first_message, voice_deferred_prompt,
+          voice_vad_start_sensitivity, voice_vad_end_sensitivity, voice_vad_silence_ms,
           non_client_prompt_source, non_client_agent_id, non_client_manual_prompt,
           voice_id, appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
@@ -2031,6 +2047,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           ${outboundPromptSource || 'template'}, ${outboundTemplateId || 'sales-orbitale'}, ${outboundAgentId || null}, ${outboundManualPrompt || null},
           ${outboundBrandVoiceEnabled || false}, ${outboundBrandVoiceAgentId || null},
           ${voiceThinkingBudgetGreeting ?? 0}, ${voiceThinkingBudgetConversation ?? 128}, ${voiceProtectFirstMessage ?? true}, ${voiceDeferredPrompt ?? false},
+          ${voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM'}, ${voiceVadEndSensitivity || 'END_SENSITIVITY_LOW'}, ${voiceVadSilenceMs ?? 500},
           ${legacyPromptSource || 'default'}, ${legacyAgentId || null}, ${legacyManualPrompt || null},
           'Achernar', 60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',

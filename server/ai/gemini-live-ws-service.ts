@@ -1854,6 +1854,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           voiceThinkingBudgetGreeting: consultantAvailabilitySettings.voiceThinkingBudgetGreeting,
           voiceProtectFirstMessage: consultantAvailabilitySettings.voiceProtectFirstMessage,
           voiceDeferredPrompt: consultantAvailabilitySettings.voiceDeferredPrompt,
+          voiceVadStartSensitivity: consultantAvailabilitySettings.voiceVadStartSensitivity,
+          voiceVadEndSensitivity: consultantAvailabilitySettings.voiceVadEndSensitivity,
+          voiceVadSilenceMs: consultantAvailabilitySettings.voiceVadSilenceMs,
         })
         .from(consultantAvailabilitySettings)
         .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
@@ -2843,6 +2846,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let voiceThinkingBudget = 0;
       let voiceProtectFirstMessage = true;
       let voiceDeferredPrompt = false;
+      let voiceVadStartSensitivity = 'START_SENSITIVITY_MEDIUM';
+      let voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
+      let voiceVadSilenceMs = 500;
       let firstAiTurnComplete = false;
 
       let _ncLatency = {
@@ -3461,6 +3467,9 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
+            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM';
+            voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
+            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
             console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, thinkingBudget=${voiceThinkingBudget}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
@@ -3786,6 +3795,9 @@ Una volta che hanno capito e confermato:
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
+            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM';
+            voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
+            voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
             
             if (isOutbound) {
               const rawOutboundSource = settings.outboundPromptSource || settings.nonClientPromptSource || 'template';
@@ -5743,6 +5755,15 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   }
                 ]
               },
+              realtimeInputConfig: {
+                automaticActivityDetection: {
+                  disabled: false,
+                  startOfSpeechSensitivity: voiceVadStartSensitivity,
+                  endOfSpeechSensitivity: voiceVadEndSensitivity,
+                  prefixPaddingMs: 20,
+                  silenceDurationMs: voiceVadSilenceMs
+                }
+              },
               sessionResumption: { handle: validatedResumeHandle || null }
             }
           };
@@ -5780,10 +5801,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               realtime_input_config: {
                 automatic_activity_detection: {
                   disabled: false,
-                  start_of_speech_sensitivity: isPhoneCall ? 'START_SENSITIVITY_LOW' : 'START_SENSITIVITY_HIGH',
-                  end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',
+                  start_of_speech_sensitivity: voiceVadStartSensitivity,
+                  end_of_speech_sensitivity: voiceVadEndSensitivity,
                   prefix_padding_ms: 20,
-                  silence_duration_ms: isPhoneCall ? 500 : 700
+                  silence_duration_ms: voiceVadSilenceMs
                 }
               },
               proactivity: {
@@ -5797,14 +5818,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         console.log(`🎙️ [${connectionId}] Using voice: ${voiceName}`);
         console.log(`🧠 [${connectionId}] ThinkingBudget: ${voiceThinkingBudget} (applies to entire session)`);
         console.log(`🤖 [${connectionId}] Model: ${liveModelId} [${liveApiBackend}] - Language: ITALIAN ONLY`);
-        if (isPhoneCall) {
-          console.log(`📞 [${connectionId}] PHONE CALL VAD CONFIG:`);
-          console.log(`   → start_of_speech_sensitivity: START_SENSITIVITY_LOW (reduces false positives from breaths/noise)`);
-          console.log(`   → end_of_speech_sensitivity: END_SENSITIVITY_LOW (natural pauses allowed)`);
-          console.log(`   → prefix_padding_ms: 20 (minimal buffer)`);
-          console.log(`   → silence_duration_ms: 500 (wait for user to finish)`);
-          console.log(`   → proactiveAudio: ENABLED (ignores background conversations & echo)`);
-        }
+        console.log(`🎙️ [${connectionId}] VAD: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms`);
         if (validatedResumeHandle) {
           console.log(`🔄 [${connectionId}] RESUMING SESSION with handle: ${validatedResumeHandle.substring(0, 20)}...`);
         } else {
@@ -7137,7 +7151,7 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
                   console.log(`📏 Part size: ${partSize} bytes (base64 encoded audio)`);
                 }
                 console.log(`🎤 AI was speaking: ${isAiSpeaking ? 'YES' : 'NO'}`);
-                console.log(`🎯 VAD Config: MEDIUM sensitivity, 400ms prefix, 700ms silence`);
+                console.log(`🎯 VAD Config: start=${voiceVadStartSensitivity}, end=${voiceVadEndSensitivity}, silence=${voiceVadSilenceMs}ms`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 
                 if (voiceProtectFirstMessage && !firstAiTurnComplete) {

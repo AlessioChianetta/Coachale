@@ -1002,6 +1002,9 @@ export default function ConsultantVoiceCallsPage() {
   const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
   const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
   const [voiceDeferredPrompt, setVoiceDeferredPrompt] = useState(false);
+  const [voiceVadStartSensitivity, setVoiceVadStartSensitivity] = useState('START_SENSITIVITY_MEDIUM');
+  const [voiceVadEndSensitivity, setVoiceVadEndSensitivity] = useState('END_SENSITIVITY_LOW');
+  const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(500);
 
   const [outboundPhone, setOutboundPhone] = useState("");
   const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
@@ -1966,6 +1969,9 @@ export default function ConsultantVoiceCallsPage() {
       setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
       setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
       setVoiceDeferredPrompt(nonClientSettingsData.voice_deferred_prompt ?? false);
+      setVoiceVadStartSensitivity(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_MEDIUM');
+      setVoiceVadEndSensitivity(nonClientSettingsData.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW');
+      setVoiceVadSilenceMs(nonClientSettingsData.voice_vad_silence_ms ?? 500);
       setHasChanges(false);
     }
   }, [nonClientSettingsData]);
@@ -1992,6 +1998,9 @@ export default function ConsultantVoiceCallsPage() {
           voiceThinkingBudgetGreeting,
           voiceProtectFirstMessage,
           voiceDeferredPrompt,
+          voiceVadStartSensitivity,
+          voiceVadEndSensitivity,
+          voiceVadSilenceMs,
         }),
       });
       if (!res.ok) {
@@ -3531,7 +3540,7 @@ export default function ConsultantVoiceCallsPage() {
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <Label>Proteggi Primo Messaggio</Label>
-                            <p className="text-xs text-muted-foreground">Impedisce all'utente di interrompere il saluto dell'AI (barge-in).</p>
+                            <p className="text-xs text-muted-foreground">Impedisce alla persona di interrompere il primo saluto dell'AI. Dopo il saluto, l'interruzione funziona normalmente. Utile se rumori di fondo troncano il saluto.</p>
                           </div>
                           <Switch
                             checked={voiceProtectFirstMessage}
@@ -3542,12 +3551,61 @@ export default function ConsultantVoiceCallsPage() {
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <Label>Prompt Differito (Velocità)</Label>
-                            <p className="text-xs text-muted-foreground">Sposta il prompt di vendita fuori dal system instruction. L'AI saluta più velocemente e riceve il contesto completo dopo il saluto.</p>
+                            <p className="text-xs text-muted-foreground">L'AI saluta subito con le regole base, poi riceve lo script di vendita completo in background. Saluto più veloce ma le prime 1-2 frasi dopo il saluto potrebbero essere generiche.</p>
                           </div>
                           <Switch
                             checked={voiceDeferredPrompt}
                             onCheckedChange={(checked) => { setVoiceDeferredPrompt(checked); setHasChanges(true); }}
                           />
+                        </div>
+
+                        <div className="border-t pt-4 space-y-4">
+                          <h4 className="text-sm font-medium">Sensibilità Microfono (VAD)</h4>
+
+                          <div className="space-y-2">
+                            <Label>Rilevamento Inizio Parlato</Label>
+                            <Select value={voiceVadStartSensitivity} onValueChange={(v) => { setVoiceVadStartSensitivity(v); setHasChanges(true); }}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="START_SENSITIVITY_LOW">Bassa</SelectItem>
+                                <SelectItem value="START_SENSITIVITY_MEDIUM">Media</SelectItem>
+                                <SelectItem value="START_SENSITIVITY_HIGH">Alta</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">ALTA = cattura subito anche parole brevi (sì, no, ok) ma più falsi positivi da rumori. BASSA = ignora rumori ma può perdere parole brevi.</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Rilevamento Fine Parlato</Label>
+                            <Select value={voiceVadEndSensitivity} onValueChange={(v) => { setVoiceVadEndSensitivity(v); setHasChanges(true); }}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="END_SENSITIVITY_LOW">Bassa</SelectItem>
+                                <SelectItem value="END_SENSITIVITY_MEDIUM">Media</SelectItem>
+                                <SelectItem value="END_SENSITIVITY_HIGH">Alta</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">ALTA = risponde subito dopo ogni pausa. BASSA = aspetta pause naturali più lunghe prima di rispondere.</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label>Silenzio prima di risposta</Label>
+                              <span className="text-sm font-mono text-muted-foreground w-16 text-right">{voiceVadSilenceMs}ms</span>
+                            </div>
+                            <Slider
+                              value={[voiceVadSilenceMs]}
+                              onValueChange={([v]) => { setVoiceVadSilenceMs(v); setHasChanges(true); }}
+                              min={300}
+                              max={1000}
+                              step={50}
+                            />
+                            <p className="text-xs text-muted-foreground">Millisecondi di silenzio necessari prima che l'AI inizi a rispondere. Più basso = più reattiva ma rischia di interrompere.</p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

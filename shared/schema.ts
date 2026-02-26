@@ -3460,6 +3460,9 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceThinkingBudgetConversation: integer("voice_thinking_budget_conversation").default(128),
   voiceProtectFirstMessage: boolean("voice_protect_first_message").default(true),
   voiceDeferredPrompt: boolean("voice_deferred_prompt").default(false),
+  voiceVadStartSensitivity: varchar("voice_vad_start_sensitivity", { length: 30 }).default("START_SENSITIVITY_MEDIUM"),
+  voiceVadEndSensitivity: varchar("voice_vad_end_sensitivity", { length: 30 }).default("END_SENSITIVITY_LOW"),
+  voiceVadSilenceMs: integer("voice_vad_silence_ms").default(500),
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
