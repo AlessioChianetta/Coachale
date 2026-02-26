@@ -1854,6 +1854,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
           voiceThinkingBudgetGreeting: consultantAvailabilitySettings.voiceThinkingBudgetGreeting,
           voiceThinkingBudgetConversation: consultantAvailabilitySettings.voiceThinkingBudgetConversation,
           voiceProtectFirstMessage: consultantAvailabilitySettings.voiceProtectFirstMessage,
+          voiceDeferredPrompt: consultantAvailabilitySettings.voiceDeferredPrompt,
         })
         .from(consultantAvailabilitySettings)
         .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
@@ -2843,6 +2844,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let voiceThinkingBudgetGreeting = 0;
       let voiceThinkingBudgetConversation = 128;
       let voiceProtectFirstMessage = true;
+      let voiceDeferredPrompt = false;
       let firstAiTurnComplete = false;
 
       let _ncLatency = {
@@ -2865,6 +2867,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
         callDirection: '' as string,
         promptSource: '' as string,
         deferredCallHistory: '' as string,
+        deferredContentChunk: '' as string,
       };
       
       // 🆕 ARCHETYPE STATE PERSISTENCE - Mantiene lo stato dell'archetipo tra le chiamate al SalesManager
@@ -3460,7 +3463,8 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
-            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}`);
+            voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
+            console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
             console.log(`🔍 [ROUTING-DEBUG]   consultantId used for query: ${consultantId}`);
             console.log(`🔍 [ROUTING-DEBUG]   outboundPromptSource: ${outboundPromptSource}`);
@@ -3785,6 +3789,7 @@ Una volta che hanno capito e confermato:
             voiceThinkingBudgetGreeting = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceThinkingBudgetConversation = settings.voiceThinkingBudgetConversation ?? 128;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
+            voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
             
             if (isOutbound) {
               const rawOutboundSource = settings.outboundPromptSource || settings.nonClientPromptSource || 'template';
@@ -4454,14 +4459,28 @@ Quando si parla di prenotare un appuntamento:
           callerContactSection += '\n';
         }
         
-        // Combine: Voice Directives + Direction Context + Brand Voice + Detailed Profile + Caller Data + Current Time + Content Prompt + Previous Call Context
-        systemInstruction = `${finalVoiceDirectives}
+        if (voiceDeferredPrompt) {
+          systemInstruction = `${finalVoiceDirectives}
+
+${directionContext}
+${callerContactSection}
+📅 Data e ora attuale: ${italianTime} (fuso orario Italia)`;
+
+          const deferredParts: string[] = [];
+          if (nonClientBrandVoiceSection) deferredParts.push(nonClientBrandVoiceSection);
+          if (consultantDetailedProfileSection) deferredParts.push(consultantDetailedProfileSection);
+          if (contentPrompt) deferredParts.push(contentPrompt);
+          _ncLatency.deferredContentChunk = deferredParts.join('\n\n');
+          console.log(`🚀 [${connectionId}] DEFERRED PROMPT MODE: systemInstruction=${systemInstruction.length} chars (~${Math.round(systemInstruction.length / 4)} tokens), deferredContent=${_ncLatency.deferredContentChunk.length} chars`);
+        } else {
+          systemInstruction = `${finalVoiceDirectives}
 
 ${directionContext}
 ${nonClientBrandVoiceSection ? '\n' + nonClientBrandVoiceSection + '\n' : ''}${consultantDetailedProfileSection ? '\n' + consultantDetailedProfileSection + '\n' : ''}${callerContactSection}
 📅 Data e ora attuale: ${italianTime} (fuso orario Italia)
 
 ${contentPrompt}`;
+        }
 
         if (previousCallContext) {
           _ncLatency.deferredCallHistory = previousCallContext;
@@ -6252,6 +6271,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               greetingAlreadySent = true;
               console.log(`🚀 [${connectionId}] EARLY GREETING sent after call history injection (O2 optimization) - mode: ${mode}`);
               console.log(`⏱️ [LATENCY] Early greeting trigger: +${latencyTracker.greetingTriggerTime - latencyTracker.setupCompleteTime}ms from setupComplete, total: +${latencyTracker.greetingTriggerTime - latencyTracker.wsConnectionTime}ms`);
+
+              if (isPhoneCall && _ncLatency.deferredContentChunk) {
+                const contentChunk = {
+                  clientContent: {
+                    turns: [{
+                      role: 'user',
+                      parts: [{ text: _ncLatency.deferredContentChunk }]
+                    }],
+                    turnComplete: false
+                  }
+                };
+                geminiSession.send(JSON.stringify(contentChunk));
+                console.log(`🚀 [${connectionId}] DEFERRED CONTENT injected AFTER greeting trigger (${_ncLatency.deferredContentChunk.length} chars) — AI already generating greeting from minimal instruction`);
+              }
               
               clientWs.send(JSON.stringify({
                 type: 'ai_starting',
@@ -6259,6 +6292,20 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`}`;
               }));
             }
             
+            if (!greetingAlreadySent && isPhoneCall && _ncLatency.deferredContentChunk) {
+              const contentChunk = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: _ncLatency.deferredContentChunk }]
+                  }],
+                  turnComplete: false
+                }
+              };
+              geminiSession.send(JSON.stringify(contentChunk));
+              console.log(`🚀 [${connectionId}] DEFERRED CONTENT injected (non-early-greeting path) (${_ncLatency.deferredContentChunk.length} chars)`);
+            }
+
             if (pendingChunksSend) {
               console.log(`\n📤 [${connectionId}] Google AI Studio: setupComplete received, NOW sending deferred chunks...`);
               pendingChunksSend();

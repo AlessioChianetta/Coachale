@@ -1754,7 +1754,8 @@ router.get("/non-client-settings", authenticateToken, requireAnyRole(["consultan
         outbound_brand_voice_agent_id,
         voice_thinking_budget_greeting,
         voice_thinking_budget_conversation,
-        voice_protect_first_message
+        voice_protect_first_message,
+        voice_deferred_prompt
       FROM consultant_availability_settings 
       WHERE consultant_id = ${consultantId}
     `);
@@ -1926,7 +1927,8 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
       outboundBrandVoiceAgentId,
       voiceThinkingBudgetGreeting,
       voiceThinkingBudgetConversation,
-      voiceProtectFirstMessage
+      voiceProtectFirstMessage,
+      voiceDeferredPrompt
     } = req.body;
 
     // Validate inbound promptSource
@@ -2002,6 +2004,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           voice_thinking_budget_greeting = ${voiceThinkingBudgetGreeting ?? 0},
           voice_thinking_budget_conversation = ${voiceThinkingBudgetConversation ?? 128},
           voice_protect_first_message = ${voiceProtectFirstMessage ?? true},
+          voice_deferred_prompt = ${voiceDeferredPrompt ?? false},
           non_client_prompt_source = ${legacyPromptSource || 'default'},
           non_client_agent_id = ${legacyAgentId || null},
           non_client_manual_prompt = ${legacyManualPrompt || null},
@@ -2016,7 +2019,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           inbound_brand_voice_enabled, inbound_brand_voice_agent_id,
           outbound_prompt_source, outbound_template_id, outbound_agent_id, outbound_manual_prompt,
           outbound_brand_voice_enabled, outbound_brand_voice_agent_id,
-          voice_thinking_budget_greeting, voice_thinking_budget_conversation, voice_protect_first_message,
+          voice_thinking_budget_greeting, voice_thinking_budget_conversation, voice_protect_first_message, voice_deferred_prompt,
           non_client_prompt_source, non_client_agent_id, non_client_manual_prompt,
           voice_id, appointment_duration, buffer_before, buffer_after,
           morning_slot_start, morning_slot_end, afternoon_slot_start, afternoon_slot_end,
@@ -2027,7 +2030,7 @@ router.put("/non-client-settings", authenticateToken, requireAnyRole(["consultan
           ${inboundBrandVoiceEnabled || false}, ${inboundBrandVoiceAgentId || null},
           ${outboundPromptSource || 'template'}, ${outboundTemplateId || 'sales-orbitale'}, ${outboundAgentId || null}, ${outboundManualPrompt || null},
           ${outboundBrandVoiceEnabled || false}, ${outboundBrandVoiceAgentId || null},
-          ${voiceThinkingBudgetGreeting ?? 0}, ${voiceThinkingBudgetConversation ?? 128}, ${voiceProtectFirstMessage ?? true},
+          ${voiceThinkingBudgetGreeting ?? 0}, ${voiceThinkingBudgetConversation ?? 128}, ${voiceProtectFirstMessage ?? true}, ${voiceDeferredPrompt ?? false},
           ${legacyPromptSource || 'default'}, ${legacyAgentId || null}, ${legacyManualPrompt || null},
           'Achernar', 60, 15, 15,
           '09:00', '13:00', '14:00', '18:00',

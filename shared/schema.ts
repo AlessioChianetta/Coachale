@@ -3459,6 +3459,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   voiceThinkingBudgetGreeting: integer("voice_thinking_budget_greeting").default(0),
   voiceThinkingBudgetConversation: integer("voice_thinking_budget_conversation").default(128),
   voiceProtectFirstMessage: boolean("voice_protect_first_message").default(true),
+  voiceDeferredPrompt: boolean("voice_deferred_prompt").default(false),
 
   lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").default(sql`now()`),

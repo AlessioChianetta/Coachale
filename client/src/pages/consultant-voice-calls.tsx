@@ -1002,6 +1002,7 @@ export default function ConsultantVoiceCallsPage() {
   const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
   const [voiceThinkingBudgetConversation, setVoiceThinkingBudgetConversation] = useState(128);
   const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
+  const [voiceDeferredPrompt, setVoiceDeferredPrompt] = useState(false);
 
   const [outboundPhone, setOutboundPhone] = useState("");
   const [outboundAiMode, setOutboundAiMode] = useState("assistenza");
@@ -1966,6 +1967,7 @@ export default function ConsultantVoiceCallsPage() {
       setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
       setVoiceThinkingBudgetConversation(nonClientSettingsData.voice_thinking_budget_conversation ?? 128);
       setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
+      setVoiceDeferredPrompt(nonClientSettingsData.voice_deferred_prompt ?? false);
       setHasChanges(false);
     }
   }, [nonClientSettingsData]);
@@ -1992,6 +1994,7 @@ export default function ConsultantVoiceCallsPage() {
           voiceThinkingBudgetGreeting,
           voiceThinkingBudgetConversation,
           voiceProtectFirstMessage,
+          voiceDeferredPrompt,
         }),
       });
       if (!res.ok) {
@@ -3551,6 +3554,17 @@ export default function ConsultantVoiceCallsPage() {
                           <Switch
                             checked={voiceProtectFirstMessage}
                             onCheckedChange={(checked) => { setVoiceProtectFirstMessage(checked); setHasChanges(true); }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <Label>Prompt Differito (Velocità)</Label>
+                            <p className="text-xs text-muted-foreground">Sposta il prompt di vendita fuori dal system instruction. L'AI saluta più velocemente e riceve il contesto completo dopo il saluto.</p>
+                          </div>
+                          <Switch
+                            checked={voiceDeferredPrompt}
+                            onCheckedChange={(checked) => { setVoiceDeferredPrompt(checked); setHasChanges(true); }}
                           />
                         </div>
                       </CardContent>
