@@ -500,6 +500,53 @@ function DashboardTab({
     el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
   };
 
+  const isDraggingScroll = React.useRef(false);
+  const dragStartX = React.useRef(0);
+  const dragScrollLeft = React.useRef(0);
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    isDraggingScroll.current = true;
+    dragStartX.current = e.pageX - el.offsetLeft;
+    dragScrollLeft.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  }, []);
+
+  const handleMouseMove = React.useCallback((e: React.MouseEvent) => {
+    if (!isDraggingScroll.current) return;
+    const el = kanbanScrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - dragStartX.current) * 1.5;
+    el.scrollLeft = dragScrollLeft.current - walk;
+  }, []);
+
+  const resetDragState = React.useCallback(() => {
+    isDraggingScroll.current = false;
+    const el = kanbanScrollRef.current;
+    if (el) {
+      el.style.cursor = '';
+      el.style.userSelect = '';
+    }
+  }, []);
+
+  const handleMouseUp = React.useCallback(() => {
+    resetDragState();
+  }, [resetDragState]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    resetDragState();
+  }, [resetDragState]);
+
+  React.useEffect(() => {
+    const onDocMouseUp = () => resetDragState();
+    document.addEventListener('mouseup', onDocMouseUp);
+    return () => document.removeEventListener('mouseup', onDocMouseUp);
+  }, [resetDragState]);
+
   const handleOpenChatAboutTask = (task: AITask, question?: string) => {
     const roleId = task.ai_role || 'alessia';
     const prefix = question || 'Cosa hai fatto?';
@@ -1766,7 +1813,7 @@ function DashboardTab({
                   <ChevronRight className="h-5 w-5" />
                 </button>
               )}
-              <div ref={kanbanScrollRef} className="kanban-scroll pb-2 -mx-2 px-2">
+              <div ref={kanbanScrollRef} className="kanban-scroll pb-2 -mx-2 px-2 cursor-grab" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave}>
                 <div className="flex gap-5" style={{ minWidth: 'max-content' }}>
                   {orderedKanbanColumns.map(({ role, tasks: columnTasks }) => {
                   const profile = AI_ROLE_PROFILES[role];
@@ -1840,17 +1887,27 @@ function DashboardTab({
                             <p className="text-[10px]">Nessun task attivo</p>
                           </div>
                         ) : (
-                          columnTasks.map((task) => {
+                          [...columnTasks].sort((a, b) => {
+                            const statusOrder: Record<string, number> = { waiting_approval: 0, in_progress: 1, scheduled: 2, approved: 3, waiting_input: 4, paused: 5, failed: 6 };
+                            const aO = statusOrder[a.status] ?? 7;
+                            const bO = statusOrder[b.status] ?? 7;
+                            if (aO !== bO) return aO - bO;
+                            return a.priority - b.priority;
+                          }).map((task) => {
                             const plannedActions = detectPlannedActions(task);
                             const isWaitingApproval = task.status === 'waiting_approval';
-                            const priorityStripeColor = task.priority === 1 ? "bg-red-400" : task.priority === 2 ? "bg-amber-400" : task.priority === 3 ? "bg-blue-400" : "bg-muted-foreground/20";
+                            const isBatchCard = task.result_data?.batchOutreach === true;
+                            const batchLeads: any[] = isBatchCard ? (task.result_data?.leads || []) : [];
+                            const batchContacted = batchLeads.filter((l: any) => l.status === 'contacted' || l.status === 'completed').length;
+                            const priorityStripeColor = isWaitingApproval ? "bg-amber-400" : task.priority === 1 ? "bg-red-400" : task.priority === 2 ? "bg-amber-400" : task.priority === 3 ? "bg-blue-400" : "bg-muted-foreground/20";
                             return (
                               <motion.div
                                 key={task.id}
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className={cn(
-                                  "group/card relative rounded-lg border border-border/30 bg-card hover:border-border/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-150 cursor-pointer overflow-hidden",
+                                  "group/card relative rounded-lg border bg-card hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-all duration-150 cursor-pointer overflow-hidden",
+                                  isWaitingApproval ? "border-amber-300/60 dark:border-amber-700/40 bg-amber-50/30 dark:bg-amber-950/10 hover:border-amber-400/80" : "border-border/30 hover:border-border/60",
                                   mergeMode && selectedMergeIds.has(task.id) && "ring-2 ring-purple-400"
                                 )}
                                 onClick={() => {
@@ -1873,6 +1930,43 @@ function DashboardTab({
                                       <Checkbox checked={selectedMergeIds.has(task.id)} className="h-3.5 w-3.5" />
                                     </div>
                                   )}
+
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                                      task.status === 'waiting_approval' ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700" :
+                                      task.status === 'in_progress' ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700 animate-pulse" :
+                                      task.status === 'scheduled' ? "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-700" :
+                                      task.status === 'approved' ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700" :
+                                      task.status === 'failed' ? "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-400 dark:border-red-700" :
+                                      task.status === 'paused' ? "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-950/40 dark:text-slate-400 dark:border-slate-700" :
+                                      task.status === 'waiting_input' ? "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-700" :
+                                      "bg-muted text-muted-foreground border-border"
+                                    )}>
+                                      {task.status === 'waiting_approval' && <ThumbsUp className="h-2.5 w-2.5" />}
+                                      {task.status === 'in_progress' && <Activity className="h-2.5 w-2.5" />}
+                                      {task.status === 'scheduled' && <CalendarClock className="h-2.5 w-2.5" />}
+                                      {task.status === 'approved' && <CheckCircle className="h-2.5 w-2.5" />}
+                                      {task.status === 'failed' && <XCircle className="h-2.5 w-2.5" />}
+                                      {task.status === 'paused' && <Clock className="h-2.5 w-2.5" />}
+                                      {task.status === 'waiting_input' && <AlertCircle className="h-2.5 w-2.5" />}
+                                      {task.status === 'waiting_approval' ? 'Da approvare' :
+                                       task.status === 'in_progress' ? 'In esecuzione' :
+                                       task.status === 'scheduled' ? 'Programmato' :
+                                       task.status === 'approved' ? 'Approvato' :
+                                       task.status === 'failed' ? 'Fallito' :
+                                       task.status === 'paused' ? 'In pausa' :
+                                       task.status === 'waiting_input' ? 'Attesa input' :
+                                       task.status}
+                                    </span>
+                                    {isBatchCard && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-700 tabular-nums">
+                                        <Target className="h-2.5 w-2.5" />
+                                        {batchContacted}/{batchLeads.length} contattati
+                                      </span>
+                                    )}
+                                    {getPriorityIndicator(task.priority)}
+                                  </div>
 
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 min-w-0">
@@ -1929,8 +2023,7 @@ function DashboardTab({
                                         <>
                                           <Button
                                             size="sm"
-                                            variant="outline"
-                                            className="h-6 px-2.5 text-[10px] font-medium border-emerald-300/50 text-emerald-600 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:border-emerald-700/50 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors gap-1"
+                                            className="h-7 px-3 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm gap-1"
                                             onClick={async (e) => {
                                               e.stopPropagation();
                                               try {
@@ -1946,15 +2039,15 @@ function DashboardTab({
                                               }
                                             }}
                                           >
-                                            <CheckCircle className="h-2.5 w-2.5" /> Approva
+                                            <ThumbsUp className="h-3 w-3" /> Approva
                                           </Button>
                                           <Button
                                             size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/5"
+                                            variant="outline"
+                                            className="h-7 px-2.5 text-[11px] font-medium border-red-300/60 text-red-600 hover:bg-red-500 hover:text-white hover:border-red-500 dark:border-red-700/50 dark:text-red-400 gap-1"
                                             onClick={(e) => { e.stopPropagation(); setCancelDialogTask(task); }}
                                           >
-                                            <Ban className="h-2.5 w-2.5" />
+                                            <Ban className="h-3 w-3" /> Rifiuta
                                           </Button>
                                         </>
                                       ) : (

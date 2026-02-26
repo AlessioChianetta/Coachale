@@ -723,7 +723,7 @@ export async function generateExecutionPlan(task: {
 
     await logActivity(task.consultant_id, {
       event_type: "execution_plan_generated",
-      title: `Piano Hunter 2-step generato (ricerca + qualifica)`,
+      title: `Ho preparato il piano! Cerco i lead e poi li qualifico`,
       description: hunterPlan.reasoning,
       icon: "🎯",
       severity: "info",
@@ -774,7 +774,7 @@ export async function generateExecutionPlan(task: {
 
     await logActivity(task.consultant_id, {
       event_type: "execution_plan_generated",
-      title: `Piano campagna ${batchChannel} generato (${pendingLeads.length} lead)`,
+      title: `Ho preparato il piano! ${pendingLeads.length} lead da contattare via ${batchChannel}`,
       description: batchPlan.reasoning,
       icon: "📋",
       severity: "info",
@@ -817,8 +817,8 @@ export async function generateExecutionPlan(task: {
     console.log(`${LOG_PREFIX} Autonomous execution blocked: ${reason}`);
     await logActivity(task.consultant_id, {
       event_type: "autonomy_blocked",
-      title: "Esecuzione autonoma bloccata",
-      description: reason,
+      title: "Non posso procedere al momento",
+      description: `Mi piacerebbe agire ma c'è un vincolo: ${reason}`,
       icon: "🚫",
       severity: "warning",
       task_id: task.id,
@@ -1011,7 +1011,7 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 
     await logActivity(task.consultant_id, {
       event_type: "execution_plan_generated",
-      title: `Piano di esecuzione generato (${decision.execution_plan.length} step)`,
+      title: `Ho preparato il piano — ${decision.execution_plan.length} step da eseguire`,
       description: decision.reasoning,
       icon: "🧠",
       severity: "info",
@@ -1032,8 +1032,8 @@ Rispondi ESCLUSIVAMENTE con un JSON valido (senza markdown, senza backtick):
 
     await logActivity(task.consultant_id, {
       event_type: "execution_plan_error",
-      title: "Errore nella generazione del piano",
-      description: error.message,
+      title: "Non sono riuscito a preparare il piano...",
+      description: `Ho provato ma qualcosa è andato storto: ${error.message}`,
       icon: "❌",
       severity: "error",
       task_id: task.id,

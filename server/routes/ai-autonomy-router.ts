@@ -1202,7 +1202,7 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     }
     if (statusFilter && statusFilter !== 'all') {
       if (statusFilter === 'active') {
-        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved')`);
+        conditions.push(sql`status IN ('scheduled', 'in_progress', 'approved', 'waiting_approval')`);
       } else if (statusFilter === 'paused') {
         conditions.push(sql`status IN ('paused', 'draft', 'waiting_input')`);
       } else if (statusFilter === 'cancelled') {
@@ -1647,8 +1647,8 @@ router.post("/tasks/:taskId/resume", authenticateToken, requireAnyRole(["consult
 
     await logActivity(consultantId, {
       event_type: 'task_resumed',
-      title: 'Task ripreso con il tuo input',
-      description: `Feedback: "${consultant_feedback.substring(0, 200)}"`,
+      title: `Ricevuto! Riprendo da dove mi ero fermato`,
+      description: `Ho letto il tuo feedback e ora continuo con le nuove indicazioni`,
       icon: '▶️',
       severity: 'info',
       task_id: taskId,
@@ -1715,8 +1715,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
           await logActivity(task.consultant_id, {
             event_type: 'decision_made',
-            title: `Generazione piano per: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-            description: 'Decision Engine sta analizzando il contesto e creando un piano di esecuzione',
+            title: `Sto ragionando su come procedere...`,
+            description: `Analizzo il contesto e preparo il piano migliore per "${task.ai_instruction?.substring(0, 60) || 'questo task'}"`,
             icon: 'brain',
             severity: 'info',
             task_id: task.id,
@@ -1760,8 +1760,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
             await logActivity(task.consultant_id, {
               event_type: 'decision_made',
-              title: `Task non necessario: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-              description: decision.reasoning.substring(0, 300),
+              title: `Ho valutato e non serve procedere`,
+              description: `Ho analizzato la situazione: ${decision.reasoning.substring(0, 300)}`,
               icon: 'brain',
               severity: 'info',
               task_id: task.id,
@@ -1791,8 +1791,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
         await logActivity(task.consultant_id, {
           event_type: 'task_started',
-          title: `Task avviato (manuale): ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-          description: `${totalSteps} step da eseguire. Categoria: ${task.task_category}`,
+          title: `Ci sono! Inizio a lavorare`,
+          description: `Ho ${totalSteps} step da fare — mi metto subito all'opera`,
           icon: 'brain',
           severity: 'info',
           task_id: task.id,
@@ -1897,7 +1897,7 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
           console.log(`🧠 [AI-AUTONOMY] Executing step ${i + 1}/${totalSteps}: ${stepName}`);
 
           executionPlan[i] = { ...executionPlan[i], status: 'in_progress' };
-          const stepProgressMsg = `Eseguendo step ${i + 1}/${totalSteps}: ${step.description || stepName}`;
+          const stepProgressMsg = `Sto lavorando allo step ${i + 1}/${totalSteps}: ${step.description || stepName}`;
           await db.execute(sql`
             UPDATE ai_scheduled_tasks
             SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
@@ -1908,8 +1908,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
           await logActivity(taskInfo.consultant_id, {
             event_type: `step_${stepName}_started`,
-            title: `Eseguendo step ${i + 1}/${totalSteps}: ${stepName}`,
-            description: step.description || stepName,
+            title: `Passo allo step ${i + 1}/${totalSteps}: ${step.description || stepName}`,
+            description: `Ora mi occupo di: ${step.description || stepName}`,
             icon: "🔄",
             severity: "info",
             task_id: task.id,
@@ -1960,8 +1960,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
           await logActivity(task.consultant_id, {
             event_type: 'task_failed',
-            title: `Task fallito: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-            description: `Errore nello step "${failedStep}" (${completedSteps}/${totalSteps} completati)`,
+            title: `Non ci sono riuscito...`,
+            description: `Mi sono bloccato allo step "${failedStep}" — avevo completato ${completedSteps}/${totalSteps} step`,
             icon: 'alert',
             severity: 'error',
             task_id: task.id,
@@ -2017,8 +2017,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
           await logActivity(task.consultant_id, {
             event_type: 'task_completed',
-            title: `Task completato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-            description: `${totalSteps} step completati con successo`,
+            title: `Tutto fatto!`,
+            description: `Ho completato tutti i ${totalSteps} step con successo`,
             icon: 'check',
             severity: 'success',
             task_id: task.id,
@@ -2053,8 +2053,8 @@ router.post("/tasks/:id/execute", authenticateToken, requireAnyRole(["consultant
 
         await logActivity(task.consultant_id, {
           event_type: 'task_failed',
-          title: `Task fallito: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
-          description: `Errore: ${error.message}`,
+          title: `Non ci sono riuscito... c'è stato un errore`,
+          description: `Qualcosa è andato storto: ${error.message}`,
           icon: 'alert',
           severity: 'error',
           task_id: task.id,
@@ -2351,10 +2351,10 @@ router.post("/trigger-analysis", authenticateToken, requireAnyRole(["consultant"
     await logActivity(consultantId, {
       event_type: 'autonomous_analysis',
       severity: result.error ? 'error' : 'info',
-      title: result.error ? 'Analisi manuale fallita' : `Analisi manuale completata`,
+      title: result.error ? `Non sono riuscito a completare l'analisi...` : `Analisi completata!`,
       description: result.error
-        ? `Errore durante l'analisi manuale: ${result.error}`
-        : `Analisi manuale avviata. ${result.tasksGenerated} task generati.`,
+        ? `Ho avuto un problema: ${result.error}`
+        : `Ho analizzato la situazione e ho generato ${result.tasksGenerated} task da fare.`,
       event_data: { manual: true, tasks_generated: result.tasksGenerated, error: result.error || null },
     });
 
@@ -2395,10 +2395,10 @@ router.post("/trigger-role/:roleId", authenticateToken, requireAnyRole(["consult
     await logActivity(consultantId, {
       event_type: 'autonomous_analysis',
       severity: result.error ? 'error' : 'info',
-      title: result.error ? `${roleName}: avvio manuale fallito` : `${roleName}: avvio manuale completato`,
+      title: result.error ? `Ho avuto un problema con l'avvio...` : `Eccomi! Ho finito la mia analisi`,
       description: result.error
-        ? `Errore durante l'avvio manuale di ${roleName}: ${result.error}`
-        : `${roleName} avviato manualmente. ${result.tasksGenerated} task generati.`,
+        ? `Non sono riuscito a completare il lavoro: ${result.error}`
+        : `Ho analizzato tutto e ho generato ${result.tasksGenerated} task.`,
       event_data: { manual: true, role_id: roleId, tasks_generated: result.tasksGenerated, error: result.error || null },
     });
 
@@ -2491,8 +2491,10 @@ router.put("/roles/toggle", authenticateToken, requireAnyRole(["consultant", "su
 
     await logActivity(consultantId, {
       event_type: 'autonomous_analysis',
-      title: `Ruolo ${AI_ROLES[roleId].name} ${enabled ? 'attivato' : 'disattivato'}`,
-      description: `Il consulente ha ${enabled ? 'attivato' : 'disattivato'} il dipendente AI "${AI_ROLES[roleId].displayName}".`,
+      title: enabled ? `Sono pronto a lavorare!` : `Mi fermo, sono stato messo in pausa`,
+      description: enabled
+        ? `${AI_ROLES[roleId].displayName} è stato attivato e pronto a dare il massimo!`
+        : `${AI_ROLES[roleId].displayName} è stato messo in pausa. Quando vorrai, riattivami!`,
       icon: enabled ? '✅' : '⏸️',
       severity: 'info',
       ai_role: roleId,

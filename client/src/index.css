@@ -731,9 +731,14 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
   }
   .kanban-scroll::-webkit-scrollbar {
     display: none;
+  }
+  .kanban-scroll > div > div {
+    scroll-snap-align: start;
   }
 
   /* Wattpad-style smooth scrolling */

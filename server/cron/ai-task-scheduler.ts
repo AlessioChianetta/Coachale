@@ -633,8 +633,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       
       await logActivity(task.consultant_id, {
         event_type: 'task_paused',
-        title: `Task in pausa: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-        description: guardrailCheck.reason || 'Guardrails bloccanti',
+        title: `Devo fermarmi un attimo...`,
+        description: `Non posso procedere ora: ${guardrailCheck.reason || 'ci sono dei vincoli che me lo impediscono'}`,
         icon: 'alert',
         severity: 'warning',
         task_id: task.id,
@@ -653,8 +653,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       
       await logActivity(task.consultant_id, {
         event_type: 'decision_made',
-        title: `Generazione piano per: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-        description: 'Decision Engine sta analizzando il contesto e creando un piano di esecuzione',
+        title: `Sto ragionando su come procedere...`,
+        description: `Analizzo il contesto e preparo il piano migliore per "${task.ai_instruction?.substring(0, 60) || 'questo task'}"`,
         icon: 'brain',
         severity: 'info',
         task_id: task.id,
@@ -707,8 +707,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
           
           await logActivity(task.consultant_id, {
             event_type: 'task_error',
-            title: `Task fallito: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-            description: decision.reasoning.substring(0, 300),
+            title: `Non ci sono riuscito... c'è stato un errore`,
+            description: `Ho provato ma qualcosa è andato storto: ${decision.reasoning.substring(0, 300)}`,
             icon: '❌',
             severity: 'error',
             task_id: task.id,
@@ -742,8 +742,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
           
           await logActivity(task.consultant_id, {
             event_type: 'decision_made',
-            title: `Task non necessario: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-            description: decision.reasoning.substring(0, 300),
+            title: `Ho valutato e non serve procedere`,
+            description: `Ho analizzato la situazione: ${decision.reasoning.substring(0, 300)}`,
             icon: 'brain',
             severity: 'info',
             task_id: task.id,
@@ -774,8 +774,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
     
     await logActivity(task.consultant_id, {
       event_type: 'task_started',
-      title: `Task avviato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-      description: `${totalSteps} step da eseguire. Categoria: ${task.task_category}`,
+      title: `Ci sono! Inizio a lavorare`,
+      description: `Ho ${totalSteps} step da fare — mi metto subito all'opera`,
       icon: 'brain',
       severity: 'info',
       task_id: task.id,
@@ -892,7 +892,7 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       console.log(`🧠 [AI-SCHEDULER] Executing step ${i + 1}/${totalSteps}: ${stepName}`);
       
       executionPlan[i] = { ...executionPlan[i], status: 'in_progress' };
-      const stepProgressMsg = `Eseguendo step ${i + 1}/${totalSteps}: ${step.description || stepName}`;
+      const stepProgressMsg = `Sto lavorando allo step ${i + 1}/${totalSteps}: ${step.description || stepName}`;
       await db.execute(sql`
         UPDATE ai_scheduled_tasks 
         SET execution_plan = ${JSON.stringify(executionPlan)}::jsonb,
@@ -903,8 +903,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
 
       await logActivity(taskInfo.consultant_id, {
         event_type: `step_${stepName}_started`,
-        title: `Eseguendo step ${i + 1}/${totalSteps}: ${stepName}`,
-        description: step.description || stepName,
+        title: `Passo allo step ${i + 1}/${totalSteps}: ${step.description || stepName}`,
+        description: `Ora mi occupo di: ${step.description || stepName}`,
         icon: "🔄",
         severity: "info",
         task_id: task.id,
@@ -935,8 +935,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
           
           await logActivity(task.consultant_id, {
             event_type: 'task_waiting_input',
-            title: 'In attesa del tuo input',
-            description: `Step ${i + 1}/${totalSteps} (${stepName}) completato. Rivedi i risultati e fornisci indicazioni per continuare.`,
+            title: `Ho bisogno del tuo parere prima di andare avanti`,
+            description: `Ho completato lo step ${i + 1}/${totalSteps} (${stepName}). Dai un'occhiata ai risultati e dimmi come vuoi che proceda.`,
             icon: '⏸️',
             severity: 'warning',
             task_id: task.id,
@@ -991,8 +991,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       
       await logActivity(task.consultant_id, {
         event_type: 'task_failed',
-        title: `Task fallito: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-        description: `Errore nello step "${failedStep}" (${completedSteps}/${totalSteps} completati)`,
+        title: `Non ci sono riuscito...`,
+        description: `Mi sono bloccato allo step "${failedStep}" — avevo completato ${completedSteps}/${totalSteps} step`,
         icon: 'alert',
         severity: 'error',
         task_id: task.id,
@@ -1048,8 +1048,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
       
       await logActivity(task.consultant_id, {
         event_type: 'task_completed',
-        title: `Task completato: ${task.ai_instruction?.substring(0, 60) || 'Task AI'}`,
-        description: `${totalSteps} step completati con successo`,
+        title: `Tutto fatto!`,
+        description: `Ho completato tutti i ${totalSteps} step con successo`,
         icon: 'check',
         severity: 'success',
         task_id: task.id,
@@ -1085,8 +1085,8 @@ async function executeAutonomousTask(task: AIScheduledTask): Promise<void> {
     
     await logActivity(task.consultant_id, {
       event_type: 'task_failed',
-      title: `Task fallito: ${task.ai_instruction?.substring(0, 80) || 'Task AI'}`,
-      description: `Errore: ${error.message}`,
+      title: `Non ci sono riuscito... c'è stato un errore`,
+      description: `Qualcosa è andato storto: ${error.message}`,
       icon: 'alert',
       severity: 'error',
       task_id: task.id,
@@ -2225,8 +2225,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
   if (!dryRun) {
     await logActivity(consultantId, {
       event_type: 'autonomous_analysis',
-      title: `Analisi multi-ruolo avviata: ${activeRoles.length} dipendenti AI attivi`,
-      description: `Ruoli attivi: ${activeRoles.map(r => r.name).join(', ')}. ${clients.length} clienti totali (filtro per-ruolo).`,
+      title: `Siamo in ${activeRoles.length} e ci mettiamo al lavoro!`,
+      description: `Io e i colleghi (${activeRoles.map(r => r.name).join(', ')}) iniziamo ad analizzare ${clients.length} clienti`,
       icon: '🧠',
       severity: 'info',
       cycle_id: cycleId,
@@ -2333,8 +2333,8 @@ async function generateTasksForConsultant(consultantId: string, options?: { dryR
         } else {
           await logActivity(consultantId, {
             event_type: 'autonomous_analysis',
-            title: `${role.name}: canale disabilitato`,
-            description: `Il ruolo ${role.name} richiede il canale "${channelRequired}" che è disabilitato nelle impostazioni.`,
+            title: `Non posso lavorare — il mio canale è spento`,
+            description: `Avrei bisogno del canale "${channelRequired}" ma è disabilitato nelle impostazioni. Attivalo e ci penso io!`,
             icon: '⏭️',
             severity: 'info',
             ai_role: role.id,
@@ -2935,11 +2935,13 @@ Non utilizzare altri tipi di documento da quel store privato.
       if (!dryRun) {
         await logActivity(consultantId, {
           event_type: 'autonomous_analysis',
-          title: `${role.name}: ${parsed.tasks?.length || 0} task suggeriti`,
+          title: parsed.tasks && parsed.tasks.length > 0
+            ? `Ho analizzato tutto e ho ${parsed.tasks.length} cose da fare!`
+            : `Ho dato un'occhiata... per ora è tutto a posto`,
           description: parsed.overall_reasoning || 
             (parsed.tasks && parsed.tasks.length > 0
-              ? `${role.name} ha analizzato i dati e suggerito ${parsed.tasks.length} task.`
-              : `${role.name} ha analizzato i dati ma non ha identificato task necessari.`),
+              ? `Ho studiato i dati e suggerisco ${parsed.tasks.length} azioni da intraprendere.`
+              : `Ho controllato la situazione ma non ci sono interventi urgenti al momento.`),
           icon: '🤖',
           severity: 'info',
           ai_role: role.id,
@@ -3162,8 +3164,8 @@ Non utilizzare altri tipi di documento da quel store privato.
 
                 await logActivity(consultantId, {
                   event_type: 'autonomous_task_created',
-                  title: `[${role.name}] Follow-up aggregato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Aggiornamento'}`,
-                  description: `Aggiornamento aggregato al task ${followUpId}. L'istruzione originale resta invariata, il nuovo contesto è stato aggiunto.`,
+                  title: `Ho aggiornato un task esistente con nuove info`,
+                  description: `Ho aggiunto contesto aggiornato al task che avevo già creato. Le nuove informazioni arricchiscono quello che c'era prima.`,
                   icon: '🔄',
                   severity: 'info',
                   task_id: followUpId,
@@ -3239,8 +3241,8 @@ Non utilizzare altri tipi di documento da quel store privato.
 
                 await logActivity(consultantId, {
                   event_type: 'autonomous_task_created',
-                  title: `[${role.name}] Follow-up aggregato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Aggiornamento'}`,
-                  description: `Aggiornamento aggregato al task ${matchedExisting.id} (similarità automatica). L'istruzione originale resta, il nuovo contesto è stato aggiunto.`,
+                  title: `Ho trovato un task simile, aggiungo le nuove info`,
+                  description: `C'era già un task aperto per ${suggestedTask.contact_name || 'questo contatto'} — ho aggiunto il nuovo contesto invece di crearne un duplicato`,
                   icon: '🔄',
                   severity: 'info',
                   task_id: matchedExisting.id,
@@ -3292,8 +3294,8 @@ Non utilizzare altri tipi di documento da quel store privato.
 
             await logActivity(consultantId, {
               event_type: 'autonomous_task_created',
-              title: `[${role.name}] Task creato: ${suggestedTask.ai_instruction?.substring(0, 55) || 'Task AI'}`,
-              description: suggestedTask.reasoning || `Task generato da ${role.name}`,
+              title: `Ho creato un nuovo task per ${suggestedTask.contact_name || 'un contatto'}`,
+              description: suggestedTask.reasoning || `Ho valutato la situazione e credo sia importante occuparsi di questo`,
               icon: '🤖',
               severity: 'info',
               task_id: taskId,
@@ -3368,8 +3370,8 @@ Non utilizzare altri tipi di documento da quel store privato.
       } else {
         await logActivity(consultantId, {
           event_type: 'autonomous_analysis',
-          title: `${role.name}: errore durante l'analisi`,
-          description: error.message,
+          title: `Ho avuto un problema durante l'analisi...`,
+          description: `Non sono riuscito a completare il mio lavoro: ${error.message}`,
           icon: '❌',
           severity: 'error',
           ai_role: role.id,

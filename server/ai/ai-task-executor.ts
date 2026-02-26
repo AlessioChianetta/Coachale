@@ -189,11 +189,11 @@ export async function loadAgentDocuments(consultantId: string, agentId: string, 
       _agentDocsLoggedPerTask.add(cacheKey);
       await logActivity(consultantId, {
         event_type: "agent_documents_loaded",
-        title: `📚 ${agentId}: ${result.systemPromptDocs.length} doc in memoria, ${result.fileSearchDocTitles.length} doc in ricerca`,
+        title: `Ho ${result.systemPromptDocs.length} documenti caricati e ${result.fileSearchDocTitles.length} pronti per la ricerca`,
         description: [
-          ...result.systemPromptDocs.map(d => `📄 "${d.title}" (${d.source === 'system_prompt_document' ? 'Doc Sistema' : 'Knowledge Base'}) → System Prompt`),
-          ...result.fileSearchDocTitles.map(t => `🔍 "${t}" → File Search/RAG`),
-        ].join('\n') || 'Nessun documento assegnato',
+          ...result.systemPromptDocs.map(d => `📄 "${d.title}" — ce l'ho in memoria`),
+          ...result.fileSearchDocTitles.map(t => `🔍 "${t}" — posso cercarlo quando serve`),
+        ].join('\n') || 'Non ho documenti assegnati al momento',
         icon: "📚",
         severity: "info",
         task_id: taskId,
@@ -345,10 +345,19 @@ async function updateLeadStatusAfterOutreach(
 
     console.log(`${LOG_PREFIX} [FEEDBACK-LOOP] Lead ${leadId} updated: status=${newLeadStatus}, activity=${activityType}${scheduleRetry ? ', retry scheduled' : ''}`);
 
+    const leadDisplayName = additionalContextData.business_name || task.contact_name || 'N/A';
+    const channelLabel = stepAction === 'voice_call' ? 'chiamata' : stepAction === 'send_whatsapp' ? 'WhatsApp' : 'email';
+    const feedbackMsg = newLeadStatus === 'in_trattativa'
+      ? `${leadDisplayName} ha risposto, siamo in trattativa!`
+      : newLeadStatus === 'non_interessato'
+      ? `${leadDisplayName} non è interessato`
+      : newLeadStatus === 'contattato'
+      ? `${leadDisplayName} contattato via ${channelLabel}${scheduleRetry ? ', riproverò più avanti' : ''}`
+      : `Aggiornamento: ${leadDisplayName} → ${newLeadStatus}`;
     await logActivity(task.consultant_id, {
       event_type: 'outreach_feedback',
-      title: `Feedback outreach: ${activityTitle}`,
-      description: `Lead: ${additionalContextData.business_name || task.contact_name || 'N/A'}. Nuovo stato: ${newLeadStatus}. Canale: ${stepAction}.${scheduleRetry ? ' Retry programmato.' : ''}`,
+      title: `${newLeadStatus === 'in_trattativa' ? '🔥' : newLeadStatus === 'non_interessato' ? '🚫' : '📋'} Aggiornamento: ${leadDisplayName} → ${newLeadStatus === 'in_trattativa' ? 'in trattativa' : newLeadStatus === 'non_interessato' ? 'non interessato' : 'contattato'}`,
+      description: feedbackMsg,
       icon: newLeadStatus === 'in_trattativa' ? '🔥' : newLeadStatus === 'non_interessato' ? '🚫' : '📋',
       severity: newLeadStatus === 'in_trattativa' ? 'success' : newLeadStatus === 'non_interessato' ? 'warning' : 'info',
       task_id: task.id,
@@ -474,36 +483,52 @@ export async function executeStep(
     let enrichedDescription = step.description;
 
     if (step.action === 'fetch_client_data' && result) {
-      enrichedDescription = `Dati recuperati per ${result.contact?.first_name || 'N/A'} ${result.contact?.last_name || ''}. Task recenti: ${result.recent_tasks?.length || 0}`;
+      enrichedDescription = `Ho trovato le info su ${result.contact?.first_name || 'N/A'} ${result.contact?.last_name || ''}. Ho ${result.recent_tasks?.length || 0} task recenti da consultare`;
     } else if (step.action === 'search_private_stores' && result) {
-      enrichedDescription = `Trovati ${result.documents_found || 0} documenti in ${result.stores_searched || 0} archivi. ${result.findings_summary?.substring(0, 200) || ''}`;
+      enrichedDescription = `Ho trovato ${result.documents_found || 0} documenti in ${result.stores_searched || 0} archivi. ${result.findings_summary?.substring(0, 200) || ''}`;
     } else if (step.action === 'analyze_patterns' && result) {
-      enrichedDescription = `Analisi completata. Score: ${result.engagement_score || 'N/A'}/100. Rischio: ${result.risk_assessment?.level || 'N/A'}. ${result.insights?.length || 0} insight, ${result.recommendations?.length || 0} raccomandazioni. Approccio: ${result.suggested_approach?.substring(0, 150) || ''}`;
+      enrichedDescription = `Analisi fatta! Engagement: ${result.engagement_score || 'N/A'}/100, rischio: ${result.risk_assessment?.level || 'N/A'}. Ho ${result.insights?.length || 0} insight e ${result.recommendations?.length || 0} raccomandazioni. ${result.suggested_approach?.substring(0, 150) || ''}`;
     } else if (step.action === 'web_search' && result) {
-      enrichedDescription = `Ricerca web: "${result.search_query?.substring(0, 80) || 'N/A'}". ${result.sources?.length || 0} fonti trovate. ${result.findings?.substring(0, 200) || ''}`;
+      enrichedDescription = `Ho cercato "${result.search_query?.substring(0, 80) || 'N/A'}" e trovato ${result.sources?.length || 0} fonti utili. ${result.findings?.substring(0, 200) || ''}`;
     } else if (step.action === 'generate_report' && result) {
-      enrichedDescription = `Report: "${result.title || 'N/A'}". ${result.sections?.length || 0} sezioni, ${result.key_findings?.length || 0} risultati chiave, ${result.recommendations?.length || 0} raccomandazioni.`;
+      enrichedDescription = `Report pronto: "${result.title || 'N/A'}" — ${result.sections?.length || 0} sezioni, ${result.key_findings?.length || 0} risultati chiave, ${result.recommendations?.length || 0} raccomandazioni`;
     } else if (step.action === 'prepare_call' && result) {
-      enrichedDescription = `Chiamata preparata: ${result.talking_points?.length || 0} punti di discussione. Priorità: ${result.call_priority || 'N/A'}. Durata stimata: ${result.call_duration_estimate_minutes || 'N/A'} min.`;
+      enrichedDescription = `Script pronto! Ho preparato ${result.talking_points?.length || 0} punti di discussione. Priorità: ${result.call_priority || 'N/A'}, durata stimata: ${result.call_duration_estimate_minutes || 'N/A'} min`;
     } else if (step.action === 'voice_call' && result) {
-      enrichedDescription = `Chiamata programmata a ${result.target_phone || 'N/A'}. ID: ${result.call_id || 'N/A'}. Status: ${result.status || 'N/A'}.`;
+      enrichedDescription = `Chiamata programmata a ${result.target_phone || 'N/A'} — è tutto pronto!`;
     } else if (step.action === 'send_email' && result) {
-      enrichedDescription = `Email ${result.status === 'sent' ? 'inviata' : result.status === 'skipped' ? 'saltata' : 'fallita'} a ${result.recipient || task.contact_name || 'N/A'}. ${result.subject ? `Oggetto: "${result.subject}"` : ''} ${result.has_attachment ? 'Con PDF allegato.' : ''}`;
+      enrichedDescription = result.status === 'sent' ? `Email inviata a ${result.recipient || task.contact_name || 'N/A'}! ${result.subject ? `Oggetto: "${result.subject}"` : ''} ${result.has_attachment ? 'Con PDF allegato.' : ''}` : result.status === 'skipped' ? `Email saltata per ${result.recipient || task.contact_name || 'N/A'}: non c'erano le condizioni` : `Non sono riuscito/a a inviare l'email a ${result.recipient || task.contact_name || 'N/A'}`;
     } else if (step.action === 'send_whatsapp' && result) {
-      enrichedDescription = `WhatsApp ${result.status === 'sent' ? 'inviato' : result.status === 'skipped' ? 'saltato' : 'fallito'} a ${result.target_phone || task.contact_name || 'N/A'}. ${result.message_preview ? `"${result.message_preview}"` : ''}`;
+      enrichedDescription = result.status === 'sent' ? `WhatsApp inviato a ${result.target_phone || task.contact_name || 'N/A'}! ${result.message_preview ? `"${result.message_preview}"` : ''}` : result.status === 'skipped' ? `WhatsApp saltato per ${result.target_phone || task.contact_name || 'N/A'}: mancano le condizioni` : `Non sono riuscito/a a inviare su WhatsApp a ${result.target_phone || task.contact_name || 'N/A'}`;
     } else if (step.action === 'lead_scraper_search' && result) {
-      enrichedDescription = `Ricerca lead: "${result.query || 'N/A'}" (${result.search_engine || 'N/A'}) in "${result.location || 'N/A'}". ${result.results_count || 0} risultati trovati. Search ID: ${result.search_id || 'N/A'}. Enrichment: ${result.enrichment_stats ? `${result.enrichment_stats.enriched} arricchiti, ${result.enrichment_stats.cached} da cache` : 'N/A'}`;
+      enrichedDescription = `Ho cercato '${result.query || 'N/A'}' e trovato ${result.results_count || 0} aziende${result.enrichment_stats ? `. Ho analizzato ${result.enrichment_stats.enriched} siti web${result.enrichment_stats.cached > 0 ? `, ${result.enrichment_stats.cached} già in memoria` : ''}` : ''}`;
     } else if (step.action === 'lead_qualify_and_assign' && result) {
-      enrichedDescription = `Qualifica lead: ${result.total_leads || 0} analizzati, ${result.qualified_count || 0} qualificati (soglia: ${result.score_threshold || 60}). AI summaries: ${result.summaries_generated || 0} generati. Campagne batch create: ${result.batch_tasks_created || 0} (voice: ${result.voice_leads || 0}, whatsapp: ${result.whatsapp_leads || 0}, email: ${result.email_leads || 0}). Search ID: ${result.search_id || 'N/A'}`;
+      enrichedDescription = `Ho analizzato ${result.total_leads || 0} aziende: ${result.qualified_count || 0} sono in target (soglia: ${result.score_threshold || 60}). Ho creato ${result.batch_tasks_created || 0} campagne outreach${result.voice_leads ? ` (📞 ${result.voice_leads})` : ''}${result.whatsapp_leads ? ` (💬 ${result.whatsapp_leads})` : ''}${result.email_leads ? ` (📧 ${result.email_leads})` : ''}`;
     } else if (step.action === 'batch_outreach' && result) {
-      enrichedDescription = `Campagna ${result.channel || 'N/A'} completata: ${result.contacted || 0}/${result.total_leads || 0} contattati, ${result.failed || 0} falliti.${result.follow_up_created ? ` Follow-up creato per ${result.follow_up_count || 0} lead.` : ''}`;
+      enrichedDescription = `Campagna finita! ${result.contacted || 0}/${result.total_leads || 0} contattati via ${result.channel || 'N/A'}, ${result.failed || 0} non raggiunti${result.follow_up_created ? `. Programmo follow-up per ${result.follow_up_count || 0} lead` : ''}`;
     }
+
+    const stepActionLabels: Record<string, string> = {
+      'lead_scraper_search': '🔍 Ricerca lead',
+      'lead_qualify_and_assign': '🧠 Qualifica lead',
+      'batch_outreach': '📋 Campagna outreach',
+      'fetch_client_data': '📊 Dati cliente',
+      'search_private_stores': '🔍 Ricerca documenti',
+      'analyze_patterns': '📈 Analisi',
+      'generate_report': '📝 Report',
+      'prepare_call': '📞 Preparazione chiamata',
+      'voice_call': '📞 Chiamata',
+      'send_email': '📧 Email',
+      'send_whatsapp': '💬 WhatsApp',
+      'web_search': '🌐 Ricerca web',
+    };
+    const stepLabel = stepActionLabels[step.action] || step.action;
 
     await logActivity(task.consultant_id, {
       event_type: `step_${step.action}_completed`,
-      title: `Step ${step.step} completato: ${step.action}`,
+      title: `Fatto! ${stepLabel} completato`,
       description: enrichedDescription,
-      icon: "⚙️",
+      icon: "✅",
       severity: "info",
       task_id: task.id,
       contact_name: task.contact_name,
@@ -517,8 +542,8 @@ export async function executeStep(
 
     await logActivity(task.consultant_id, {
       event_type: `step_${step.action}_failed`,
-      title: `Step ${step.step} fallito: ${step.action}`,
-      description: error.message,
+      title: `❌ Non ci sono riuscito... (step ${step.step}: ${step.action})`,
+      description: `Errore: ${error.message}`,
       icon: "❌",
       severity: "error",
       task_id: task.id,
@@ -539,8 +564,8 @@ async function handleFetchClientData(
 
   await logActivity(task.consultant_id, {
     event_type: 'step_fetch_client_data_started',
-    title: `📊 Caricando dati di ${task.contact_name || 'contatto'}...`,
-    description: `Recupero profilo, storico consulenze, task recenti e conversazioni`,
+    title: `Sto recuperando le info su ${task.contact_name || 'questo contatto'}... vediamo lo storico`,
+    description: `Cerco profilo, consulenze passate, task recenti e conversazioni`,
     icon: '📊',
     severity: 'info',
     task_id: task.id,
@@ -702,8 +727,8 @@ async function handleSearchPrivateStores(
 
   await logActivity(task.consultant_id, {
     event_type: 'step_search_stores_started',
-    title: `🔎 Cercando nei documenti del consulente...`,
-    description: `Ricerca semantica in archivi privati e knowledge base${task.contact_name ? ` per ${task.contact_name}` : ''}`,
+    title: `Cerco nei tuoi documenti qualcosa su ${task.contact_name || 'questo contatto'}...`,
+    description: `Sfoglio archivi privati e knowledge base per trovare info utili`,
     icon: '🔎',
     severity: 'info',
     task_id: task.id,
@@ -731,8 +756,8 @@ async function handleSearchPrivateStores(
     
     await logActivity(task.consultant_id, {
       event_type: "step_search_agent_docs",
-      title: `🔍 Ricerca nei documenti assegnati: ${agentDocs.fileSearchDocTitles.join(', ')}`,
-      description: `File Search RAG in ${agentDocs.fileSearchStoreNames.length} archivi del consulente`,
+      title: `Trovati ${agentDocs.fileSearchDocTitles.length} documenti utili! Li sto consultando...`,
+      description: `Sto leggendo: ${agentDocs.fileSearchDocTitles.join(', ')}`,
       icon: "🔍",
       severity: "info",
       task_id: task.id,
@@ -797,10 +822,10 @@ async function handleSearchPrivateStores(
   }
 
   const storeProgressMessages = [
-    { message: "Cerco nelle consulenze passate...", icon: "📋" },
-    { message: "Analizzo esercizi del cliente...", icon: "📝" },
-    { message: "Consulto la knowledge base...", icon: "📚" },
-    { message: "Cerco nella libreria del consulente...", icon: "🗂️" },
+    { message: "Sfoglio le consulenze passate...", icon: "📋" },
+    { message: "Controllo gli esercizi del cliente...", icon: "📝" },
+    { message: "Do un'occhiata alla knowledge base...", icon: "📚" },
+    { message: "Cerco nella tua libreria...", icon: "🗂️" },
   ];
 
   for (const progress of storeProgressMessages.slice(0, Math.min(storeNames.length, storeProgressMessages.length))) {
@@ -903,8 +928,8 @@ async function handleAnalyzePatterns(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_analyze_patterns_started',
-    title: `🧠 Analizzando pattern di ${task.contact_name || 'contatto'}...`,
-    description: `Analisi comportamentale, esigenze, opportunità e rischi basata sui dati raccolti`,
+    title: `Analizzo ${task.contact_name || 'questo contatto'} in dettaglio... cerco pattern e opportunità`,
+    description: `Guardo comportamenti, esigenze, rischi e opportunità dai dati che ho raccolto`,
     icon: '🧠',
     severity: 'info',
     task_id: task.id,
@@ -1021,8 +1046,8 @@ async function handleGenerateReport(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_generate_report_started',
-    title: `📝 Generando report${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
-    description: `Creazione documento dettagliato con raccomandazioni e analisi approfondita`,
+    title: `Preparo il report${task.contact_name ? ` per ${task.contact_name}` : ''}... ci metto tutto quello che ho trovato`,
+    description: `Sto scrivendo un documento dettagliato con analisi e raccomandazioni`,
     icon: '📝',
     severity: 'info',
     task_id: task.id,
@@ -1243,8 +1268,8 @@ async function handlePrepareCall(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_prepare_call_started',
-    title: `📋 Preparando script chiamata${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
-    description: `Creazione punti di discussione, obiettivi e strategia di conversazione`,
+    title: `Sto preparando lo script per chiamare ${task.contact_name || 'il contatto'}...`,
+    description: `Definisco i punti chiave, gli obiettivi e la strategia per la conversazione`,
     icon: '📋',
     severity: 'info',
     task_id: task.id,
@@ -1542,8 +1567,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:
 
             await logActivity(task.consultant_id, {
               event_type: "voice_call_auto_scheduled",
-              title: `Chiamata auto-programmata per ${resolvedName || resolvedPhone}`,
-              description: `Programmata per ${targetDateTimeStr}. ID: ${scheduledCallId}`,
+              title: `Chiamata programmata per ${targetDateTimeStr}, ci siamo!`,
+              description: `Ho fissato la chiamata a ${resolvedName || resolvedPhone} — è tutto pronto`,
               icon: "📅",
               severity: "info",
               task_id: task.id,
@@ -1571,8 +1596,8 @@ async function handleVoiceCall(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_voice_call_started',
-    title: `📞 Preparando chiamata${task.contact_name ? ` a ${task.contact_name}` : ''}...`,
-    description: `Configurazione parametri chiamata e selezione numero di uscita`,
+    title: `Preparo la chiamata${task.contact_name ? ` a ${task.contact_name}` : ''}...`,
+    description: `Configuro tutto per la chiamata, un attimo e ci siamo`,
     icon: '📞',
     severity: 'info',
     task_id: task.id,
@@ -1794,8 +1819,8 @@ async function handleVoiceCall(
 
   await logActivity(task.consultant_id, {
     event_type: "voice_call_scheduled",
-    title: `Chiamata programmata per ${resolvedName || resolvedPhone}`,
-    description: `Programmata per ${scheduledDisplay}. ID chiamata: ${scheduledCallId}`,
+    title: `Tutto pronto, chiamata fissata per ${scheduledDisplay}`,
+    description: `Ho programmato la chiamata a ${resolvedName || resolvedPhone} — ci penso io`,
     icon: "📅",
     severity: "info",
     task_id: task.id,
@@ -2209,8 +2234,8 @@ async function handleSendEmail(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_email_started',
-    title: `📧 Componendo email${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
-    description: `Generazione contenuto email personalizzato e preparazione invio`,
+    title: `Sto scrivendo l'email${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
+    description: `Preparo il contenuto personalizzato e poi la invio`,
     icon: '📧',
     severity: 'info',
     task_id: task.id,
@@ -2349,8 +2374,8 @@ REGOLE IMPORTANTI:
 
     await logActivity(task.consultant_id, {
       event_type: "email_sent",
-      title: `Email inviata a ${task.contact_name || contactEmail}`,
-      description: `Oggetto: "${emailSubject}". ${attachments.length > 0 ? `${attachments.length} PDF allegat${attachments.length === 1 ? 'o' : 'i'}.` : 'Senza allegati.'}`,
+      title: `Email inviata! Oggetto: "${emailSubject}"`,
+      description: `Ho scritto e inviato a ${task.contact_name || contactEmail}. ${attachments.length > 0 ? `${attachments.length} PDF allegat${attachments.length === 1 ? 'o' : 'i'}.` : 'Senza allegati.'}`,
       icon: "📧",
       severity: "info",
       task_id: task.id,
@@ -2371,8 +2396,8 @@ REGOLE IMPORTANTI:
 
     await logActivity(task.consultant_id, {
       event_type: "email_failed",
-      title: `Email fallita per ${task.contact_name || contactEmail}`,
-      description: error.message,
+      title: `Non sono riuscito/a a inviare l'email a ${task.contact_name || contactEmail}...`,
+      description: `Ho provato ma c'è stato un problema: ${error.message}`,
       icon: "❌",
       severity: "error",
       task_id: task.id,
@@ -2397,8 +2422,8 @@ async function handleSendWhatsapp(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_send_whatsapp_started',
-    title: `💬 Preparando messaggio WhatsApp${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
-    description: `Selezione template e personalizzazione messaggio`,
+    title: `Scrivo a ${task.contact_name || 'il contatto'} su WhatsApp...`,
+    description: `Scelgo il template giusto e personalizzo il messaggio`,
     icon: '💬',
     severity: 'info',
     task_id: task.id,
@@ -2697,8 +2722,8 @@ REGOLE PER IL MESSAGGIO:
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_sent",
-      title: `WhatsApp inviato a ${resolvedName || resolvedPhone}`,
-      description: `Messaggio: "${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (template)' : ' (corpo libero)'}${hasReport ? ' | Documento inviato via email' : ''}`,
+      title: `Messaggio WhatsApp inviato a ${resolvedName || resolvedPhone}!`,
+      description: `"${messageText.substring(0, 100)}..."${selectedTemplateId ? ' (con template)' : ''}${hasReport ? ' — il documento lo troverà via email' : ''}`,
       icon: "💬",
       severity: "info",
       task_id: task.id,
@@ -2729,8 +2754,8 @@ REGOLE PER IL MESSAGGIO:
 
     await logActivity(task.consultant_id, {
       event_type: "whatsapp_failed",
-      title: `WhatsApp fallito per ${task.contact_name || task.contact_phone}`,
-      description: `${error.message}${error.code ? ` (codice: ${error.code})` : ''}`,
+      title: `Non riesco a raggiungere ${task.contact_name || task.contact_phone} su WhatsApp...`,
+      description: `Ho provato a inviare ma c'è stato un problema: ${error.message}${error.code ? ` (codice: ${error.code})` : ''}`,
       icon: "❌",
       severity: "error",
       task_id: task.id,
@@ -2754,8 +2779,8 @@ async function handleWebSearch(
 ): Promise<Record<string, any>> {
   await logActivity(task.consultant_id, {
     event_type: 'step_web_search_started',
-    title: `🌐 Ricerca web in corso...`,
-    description: `Cercando informazioni aggiornate${task.contact_name ? ` relative a ${task.contact_name}` : ''}`,
+    title: `Faccio una ricerca online... vediamo cosa trovo`,
+    description: `Cerco informazioni aggiornate${task.contact_name ? ` su ${task.contact_name}` : ''} sul web`,
     icon: '🌐',
     severity: 'info',
     task_id: task.id,
@@ -2922,8 +2947,8 @@ async function handleBatchOutreach(
 
   await logActivity(task.consultant_id, {
     event_type: 'batch_outreach_started',
-    title: `📋 Campagna avviata: ${pendingLeads.length} lead via ${channel}`,
-    description: `Inizio contatto sequenziale per "${searchQuery}"`,
+    title: `📋 Inizio la campagna... ${pendingLeads.length} lead da contattare via ${channel}`,
+    description: `Ho ${pendingLeads.length} lead da raggiungere per "${searchQuery}", parto subito!`,
     icon: '📋',
     severity: 'info',
     task_id: task.id,
@@ -2948,8 +2973,8 @@ async function handleBatchOutreach(
 
     await logActivity(task.consultant_id, {
       event_type: 'batch_outreach_lead_start',
-      title: `🔄 Contattando "${leadName}" (${leadIndex}/${totalPending})`,
-      description: `Score: ${lead.score || 'N/A'}/100 — ${channel === 'voice' ? 'Chiamata in corso...' : channel === 'whatsapp' ? 'Invio WhatsApp...' : 'Invio email...'}`,
+      title: `🔄 Passo a ${leadName}... (${leadIndex}/${totalPending})`,
+      description: `Score: ${lead.score || 'N/A'}/100 — ${channel === 'voice' ? 'Lo chiamo adesso...' : channel === 'whatsapp' ? 'Gli scrivo su WhatsApp...' : 'Gli mando un\'email...'}`,
       icon: '🔄',
       severity: 'info',
       task_id: task.id,
@@ -2996,8 +3021,8 @@ async function handleBatchOutreach(
         contacted++;
         await logActivity(task.consultant_id, {
           event_type: 'batch_outreach_lead_done',
-          title: `✅ "${leadName}" — ${channel === 'voice' ? 'chiamata avviata' : channel === 'whatsapp' ? 'WhatsApp inviato' : 'email inviata'}`,
-          description: `Score: ${lead.score || 'N/A'}/100. Progresso: ${contacted}/${totalPending} completati`,
+          title: `✅ Fatto! ${leadName} contattato`,
+          description: `Score: ${lead.score || 'N/A'}/100. Siamo a ${contacted}/${totalPending} completati`,
           icon: '✅',
           severity: 'info',
           task_id: task.id,
@@ -3007,8 +3032,8 @@ async function handleBatchOutreach(
         failed++;
         await logActivity(task.consultant_id, {
           event_type: 'batch_outreach_lead_failed',
-          title: `❌ "${leadName}" — ${leads[i].resultNote}`,
-          description: `Score: ${lead.score || 'N/A'}/100. Motivo: ${leads[i].resultNote}`,
+          title: `❌ ${leadName} non raggiunto, ${leads[i].resultNote}`,
+          description: `Score: ${lead.score || 'N/A'}/100. Non sono riuscito a contattarlo: ${leads[i].resultNote}`,
           icon: '❌',
           severity: 'warning',
           task_id: task.id,
@@ -3030,8 +3055,8 @@ async function handleBatchOutreach(
 
       await logActivity(task.consultant_id, {
         event_type: 'batch_outreach_lead_error',
-        title: `❌ "${leadName}" — Errore: ${leadErr.message.substring(0, 100)}`,
-        description: `Errore durante il contatto. Si prosegue con il prossimo lead.`,
+        title: `❌ ${leadName} non raggiunto, ${leadErr.message.substring(0, 100)}`,
+        description: `C'è stato un problema con ${leadName}, passo al prossimo lead.`,
         icon: '❌',
         severity: 'warning',
         task_id: task.id,
@@ -3062,8 +3087,8 @@ async function handleBatchOutreach(
 
   await logActivity(task.consultant_id, {
     event_type: 'batch_outreach_completed',
-    title: `🎯 Campagna completata: ${contacted}/${leads.length} contattati`,
-    description: `✅ ${contacted} contattati, ❌ ${failed} falliti, ⏭️ ${skipped} saltati${followUpLeads.length > 0 ? `. ${followUpLeads.length} da riprovare.` : ''}`,
+    title: `🎯 Campagna finita! ${contacted}/${leads.length} contattati`,
+    description: `Ho finito la campagna: ${contacted} contattati con successo, ${failed} non raggiunti, ${skipped} saltati${followUpLeads.length > 0 ? `. Riproverò ${followUpLeads.length} lead più avanti.` : ''}`,
     icon: '🎯',
     severity: contacted > 0 ? 'info' : 'warning',
     task_id: task.id,
@@ -3114,8 +3139,8 @@ async function handleBatchOutreach(
 
       await logActivity(task.consultant_id, {
         event_type: 'batch_outreach_followup_created',
-        title: `🔁 Follow-up programmato: ${followUpLeads.length} lead tra ${followUpDays} giorni`,
-        description: `Task follow-up creato per ricontattare i lead non raggiunti via ${channel}`,
+        title: `🔁 Programmo follow-up tra ${followUpDays} giorni per ${followUpLeads.length} lead`,
+        description: `Ho programmato un follow-up per ricontattare i lead che non sono riuscito a raggiungere via ${channel}`,
         icon: '🔁',
         severity: 'info',
         task_id: task.id,
@@ -3160,8 +3185,8 @@ async function handleLeadScraperSearch(
 
   await logActivity(task.consultant_id, {
     event_type: 'lead_scraper_search_started',
-    title: `🔍 Avvio ricerca: "${query}"`,
-    description: `Motore: ${searchEngine === 'google_maps' ? 'Google Maps' : 'Google Search'}, Location: ${location || 'non specificata'}, Limite: ${limit} risultati`,
+    title: `🔍 Cerco '${query}'... vediamo cosa esce`,
+    description: `Uso ${searchEngine === 'google_maps' ? 'Google Maps' : 'Google Search'}${location ? ` in zona ${location}` : ''}, cerco fino a ${limit} risultati`,
     icon: '🔍',
     severity: 'info',
     task_id: task.id,
@@ -3247,8 +3272,8 @@ async function handleLeadScraperSearch(
 
     await logActivity(task.consultant_id, {
       event_type: 'lead_scraper_results_found',
-      title: `📋 Trovati ${resultsCount} risultati`,
-      description: `Ricerca "${query}" in ${location || 'area non specificata'} ha trovato ${resultsCount} aziende`,
+      title: `📋 Trovate ${resultsCount} aziende!`,
+      description: `La ricerca '${query}'${location ? ` in ${location}` : ''} ha dato ${resultsCount} risultati, li analizzo subito`,
       icon: '📋',
       severity: 'info',
       task_id: task.id,
@@ -3258,8 +3283,8 @@ async function handleLeadScraperSearch(
     if (keys.firecrawlKey && resultsCount > 0) {
       await logActivity(task.consultant_id, {
         event_type: 'lead_scraper_enrichment_started',
-        title: `🌐 Arricchimento siti web in corso...`,
-        description: `Scrapando ${resultsCount} siti web per estrarre email, telefoni e info dettagliate`,
+        title: `🌐 Adesso analizzo i loro siti...`,
+        description: `Sto visitando ${resultsCount} siti web per raccogliere email, telefoni e info utili`,
         icon: '🌐',
         severity: 'info',
         task_id: task.id,
@@ -3279,8 +3304,8 @@ async function handleLeadScraperSearch(
 
       await logActivity(task.consultant_id, {
         event_type: 'lead_scraper_enrichment_completed',
-        title: `✅ Arricchimento completato`,
-        description: `${enrichmentStats.enriched} siti scrappati, ${enrichmentStats.cached} da cache, ${enrichmentStats.failed} falliti`,
+        title: `✅ Siti analizzati, ho raccolto tutte le info`,
+        description: `Ho analizzato ${enrichmentStats.enriched} siti web, ${enrichmentStats.cached} li avevo già in memoria, ${enrichmentStats.failed} non raggiungibili`,
         icon: '🌐',
         severity: 'info',
         task_id: task.id,
@@ -3289,8 +3314,8 @@ async function handleLeadScraperSearch(
 
     await logActivity(task.consultant_id, {
       event_type: 'lead_scraper_search_completed',
-      title: `Ricerca lead completata: "${query}"`,
-      description: `Motore: ${searchEngine}, Location: ${location || 'N/A'}, Risultati: ${resultsCount}, Arricchiti: ${enrichmentStats.enriched}, Cache: ${enrichmentStats.cached}`,
+      title: `🔍 Ricerca completata per '${query}'`,
+      description: `Ho trovato ${resultsCount} aziende${enrichmentStats.enriched > 0 ? `, analizzato ${enrichmentStats.enriched} siti web` : ''}${enrichmentStats.cached > 0 ? `, ${enrichmentStats.cached} già in memoria` : ''}. Tutto pronto!`,
       icon: '🔍',
       severity: 'info',
       task_id: task.id,
@@ -3343,8 +3368,8 @@ async function handleLeadQualifyAndAssign(
 
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_batch_started',
-    title: `🧠 Inizio analisi AI dei lead...`,
-    description: `Analizzo ogni azienda trovata per calcolare il punteggio di compatibilità (soglia: ${scoreThreshold}/100)`,
+    title: `🧠 Analizzo le aziende trovate... soglia: ${scoreThreshold}`,
+    description: `Guardo ogni azienda una per una per capire quali sono davvero in target (soglia: ${scoreThreshold}/100)`,
     icon: '🧠',
     severity: 'info',
     task_id: task.id,
@@ -3357,8 +3382,8 @@ async function handleLeadQualifyAndAssign(
       if (progress.status === 'analyzing') {
         await logActivity(task.consultant_id, {
           event_type: 'lead_qualify_analyzing',
-          title: `🔎 Analizzando "${progress.businessName}" (${progress.index}/${progress.total})`,
-          description: `Generazione report AI e calcolo score di compatibilità...`,
+          title: `🔎 Sto guardando ${progress.businessName}... (${progress.index}/${progress.total})`,
+          description: `Analizzo il profilo e calcolo quanto è in target...`,
           icon: '🔎',
           severity: 'info',
           task_id: task.id,
@@ -3368,10 +3393,10 @@ async function handleLeadQualifyAndAssign(
         const qualified = progress.score !== null && progress.score >= scoreThreshold;
         await logActivity(task.consultant_id, {
           event_type: 'lead_qualify_scored',
-          title: `${qualified ? '✅' : '⬜'} ${progress.businessName}: score ${scoreLabel}`,
+          title: `${qualified ? '✅' : '⬜'} ${progress.businessName}: score ${scoreLabel}${qualified ? ', ottimo match!' : ', non in target'}`,
           description: qualified
-            ? `Score sopra soglia (${scoreThreshold}) — lead qualificato per outreach`
-            : `Score sotto soglia (${scoreThreshold}) — lead non qualificato`,
+            ? `Score ${scoreLabel}, sopra la soglia di ${scoreThreshold} — lo aggiungo alla lista outreach!`
+            : `Score ${scoreLabel}, sotto la soglia di ${scoreThreshold} — non è il profilo giusto`,
           icon: qualified ? '✅' : '⬜',
           severity: 'info',
           task_id: task.id,
@@ -3400,8 +3425,8 @@ async function handleLeadQualifyAndAssign(
 
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_summary',
-    title: `📊 Qualifica completata: ${qualifiedLeads.length}/${allLeads.length} qualificati`,
-    description: `${summariesGenerated} analisi AI completate, ${summariesFailed} fallite. ${qualifiedLeads.length} lead superano la soglia di ${scoreThreshold}/100`,
+    title: `📊 Analisi fatta: ${qualifiedLeads.length}/${allLeads.length} sono buoni match!`,
+    description: `Ho analizzato ${summariesGenerated} aziende${summariesFailed > 0 ? ` (${summariesFailed} non riuscite)` : ''}. ${qualifiedLeads.length} superano la soglia di ${scoreThreshold}/100`,
     icon: '📊',
     severity: qualifiedLeads.length > 0 ? 'info' : 'warning',
     task_id: task.id,
@@ -3587,8 +3612,8 @@ async function handleLeadQualifyAndAssign(
 
       await logActivity(task.consultant_id, {
         event_type: 'lead_outreach_batch_created',
-        title: `🚀 Campagna ${batch.channelLabel} creata: ${batch.leads.length} lead`,
-        description: `${batch.role === 'alessia' ? 'Alessia' : batch.role === 'stella' ? 'Stella' : 'Millie'} lavorerà ${batch.leads.length} lead in sequenza: ${leadNames}`,
+        title: `🚀 Campagne outreach create per ${batch.leads.length} lead (${batch.channelLabel})`,
+        description: `${batch.role === 'alessia' ? 'Alessia' : batch.role === 'stella' ? 'Stella' : 'Millie'} si occuperà di contattare: ${leadNames}`,
         icon: '🚀',
         severity: 'info',
         task_id: task.id,

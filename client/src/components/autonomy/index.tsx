@@ -453,7 +453,7 @@ export default function ConsultantAIAutonomyPage() {
       const res = await fetch("/api/ai-autonomy/tasks?status=active&origin=autonomous&limit=20", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      return (data.tasks || []).filter((t: any) => t.status === 'scheduled');
+      return (data.tasks || []).filter((t: any) => t.status === 'scheduled' || t.status === 'waiting_approval');
     },
     enabled: activeTab === "dashboard",
     refetchInterval: 10000,
