@@ -470,6 +470,701 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
   }
 });
 
+const hunterPlansCache = new Map<string, { plan: any; createdAt: number; consultantId: string }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, entry] of hunterPlansCache) {
+    if (now - entry.createdAt > 30 * 60 * 1000) hunterPlansCache.delete(id);
+  }
+}, 5 * 60 * 1000);
+
+async function getActionableCrmLeads(consultantId: string, scoreThreshold: number) {
+  const leadsResult = await db.execute(sql`
+    SELECT
+      lr.id, lr.business_name, lr.phone, lr.email, lr.category, lr.website, lr.address,
+      lr.rating, lr.reviews_count, lr.ai_compatibility_score, lr.ai_sales_summary,
+      lr.lead_status, lr.outreach_task_id, lr.website_data, lr.created_at,
+      lr.lead_next_action, lr.lead_next_action_date,
+      (
+        SELECT MAX(la.created_at)
+        FROM lead_scraper_activities la
+        WHERE la.lead_id::text = lr.id::text
+          AND la.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer',
+                         'whatsapp_sent', 'whatsapp_failed', 'email_sent', 'email_failed',
+                         'outreach_assigned', 'crm_reanalysis')
+      ) as last_activity_at
+    FROM lead_scraper_results lr
+    JOIN lead_scraper_searches ls ON lr.search_id = ls.id
+    WHERE ls.consultant_id = ${consultantId}
+      AND lr.lead_status IN ('nuovo', 'contattato', 'in_outreach', 'in_trattativa')
+      AND lr.ai_compatibility_score IS NOT NULL
+      AND lr.ai_compatibility_score >= ${scoreThreshold}
+    ORDER BY lr.ai_compatibility_score DESC
+    LIMIT 200
+  `);
+
+  const now = new Date();
+  const actionableLeads: any[] = [];
+
+  for (const lead of leadsResult.rows as any[]) {
+    const daysSinceCreated = (now.getTime() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    const daysSinceActivity = lead.last_activity_at
+      ? (now.getTime() - new Date(lead.last_activity_at).getTime()) / (1000 * 60 * 60 * 24)
+      : null;
+
+    let hasActiveTask = false;
+    if (lead.outreach_task_id) {
+      const taskCheck = await db.execute(sql`
+        SELECT status FROM ai_scheduled_tasks
+        WHERE id = ${lead.outreach_task_id}
+          AND status IN ('scheduled', 'in_progress', 'waiting_approval', 'approved')
+        LIMIT 1
+      `);
+      hasActiveTask = taskCheck.rows.length > 0;
+    }
+
+    let actionable = false;
+    let reason = '';
+
+    if (lead.lead_status === 'nuovo' && daysSinceCreated > 1 && !hasActiveTask) {
+      actionable = true;
+      reason = `Lead nuovo con score ${lead.ai_compatibility_score}/100, creato ${Math.round(daysSinceCreated)} giorni fa, mai contattato`;
+    } else if (lead.lead_status === 'contattato' && daysSinceActivity !== null && daysSinceActivity > 5 && !hasActiveTask) {
+      actionable = true;
+      reason = `Lead contattato ${Math.round(daysSinceActivity)} giorni fa senza follow-up`;
+    } else if (lead.lead_status === 'in_trattativa' && daysSinceActivity !== null && daysSinceActivity > 7 && !hasActiveTask) {
+      actionable = true;
+      reason = `Lead in trattativa fermo da ${Math.round(daysSinceActivity)} giorni`;
+    } else if (lead.lead_status === 'in_outreach' && lead.outreach_task_id && !hasActiveTask) {
+      actionable = true;
+      reason = `Lead rimasto in outreach con task completato/fallito — da ricontattare`;
+    }
+
+    if (actionable) {
+      actionableLeads.push({
+        id: lead.id,
+        businessName: lead.business_name,
+        phone: lead.phone,
+        email: lead.email,
+        category: lead.category,
+        website: lead.website,
+        address: lead.address,
+        rating: lead.rating,
+        reviewsCount: lead.reviews_count,
+        score: lead.ai_compatibility_score,
+        salesSummary: lead.ai_sales_summary ? lead.ai_sales_summary.substring(0, 500) : null,
+        leadStatus: lead.lead_status,
+        daysSinceLastContact: daysSinceActivity !== null ? Math.round(daysSinceActivity) : null,
+        daysSinceCreated: Math.round(daysSinceCreated),
+        reason,
+      });
+    }
+  }
+
+  return { totalAnalyzed: leadsResult.rows.length, actionableLeads };
+}
+
+router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { mode = "execute" } = req.body || {};
+
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config, channels_enabled FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const settings = settingsResult.rows[0] as any;
+    if (!settings) return res.status(400).json({ error: "Impostazioni autonomia non trovate" });
+
+    const outreachConfig = settings.outreach_config || {};
+    const channelsEnabled = settings.channels_enabled || {};
+    const scoreThreshold = outreachConfig.score_threshold ?? 60;
+
+    const { totalAnalyzed, actionableLeads } = await getActionableCrmLeads(consultantId, scoreThreshold);
+
+    console.log(`[HUNTER-CRM] Analyzed ${totalAnalyzed} leads, ${actionableLeads.length} actionable (mode=${mode})`);
+
+    if (mode === "plan") {
+      return res.json({
+        success: true,
+        analyzed: totalAnalyzed,
+        actionable: actionableLeads.length,
+        leads: actionableLeads,
+      });
+    }
+
+    if (actionableLeads.length === 0) {
+      await logActivity(consultantId, {
+        event_type: 'hunter_crm_analysis',
+        severity: 'info',
+        title: `Ho analizzato il CRM: tutti i lead sono aggiornati`,
+        description: `Ho controllato ${leadsResult.rows.length} lead con score >= ${scoreThreshold}. Nessuno necessita di attenzione.`,
+      });
+      return res.json({ success: true, analyzed: leadsResult.rows.length, actionable: 0, tasks_created: 0, skipped: 0, leads: [] });
+    }
+
+    const { quickGenerate } = await import("../ai/provider-factory");
+
+    const salesCtxResult = await db.execute(sql`
+      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+
+    const leadsForAI = actionableLeads.slice(0, 30).map(l => ({
+      id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
+      category: l.category, phone: !!l.phone, email: !!l.email,
+      daysSinceLastContact: l.daysSinceLastContact, daysSinceCreated: l.daysSinceCreated, reason: l.reason,
+    }));
+
+    const aiResult = await quickGenerate({
+      consultantId,
+      feature: 'hunter-crm-analysis',
+      thinkingLevel: 'low',
+      systemInstruction: [
+        `Sei Hunter, il cervello commerciale. Analizza questi lead esistenti nel CRM e decidi per ciascuno l'azione migliore.`,
+        salesCtx.servicesOffered ? `SERVIZI: ${salesCtx.servicesOffered}` : '',
+        salesCtx.targetAudience ? `TARGET: ${salesCtx.targetAudience}` : '',
+        `Canali disponibili: ${channelsEnabled.voice ? 'voice (chiamata)' : ''}${channelsEnabled.whatsapp ? ', whatsapp' : ''}${channelsEnabled.email ? ', email' : ''}`,
+        `Rispondi SOLO con un JSON array. Per ogni lead: { "leadId": "uuid", "action": "call"|"whatsapp"|"email"|"skip", "reason": "motivo breve" }`,
+        `Regole: se il lead ha solo email usa email, se ha solo telefono usa call o whatsapp. Preferisci la chiamata per lead ad alto score (>80). Usa "skip" solo se non ci sono dati di contatto.`,
+      ].filter(Boolean).join('\n'),
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify(leadsForAI) }] }],
+    });
+
+    let aiDecisions: { leadId: string; action: string; reason: string }[] = [];
+    try {
+      const cleaned = aiResult.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      aiDecisions = JSON.parse(cleaned);
+    } catch {
+      console.error('[HUNTER-CRM] Failed to parse AI decisions, using fallback channel assignment');
+    }
+
+    const channelPriority: string[] = outreachConfig.channel_priority ?? ['voice', 'whatsapp', 'email'];
+    const whatsappConfigId = outreachConfig.whatsapp_config_id ?? null;
+    const voiceTemplateId = outreachConfig.voice_template_id ?? null;
+    const emailAccountId = outreachConfig.email_account_id ?? null;
+    const hunterMode = outreachConfig.hunter_mode ?? (outreachConfig.require_approval !== false ? 'approval' : 'autonomous');
+    const outreachTaskStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+
+    let whatsappConfigActive = false;
+    if (whatsappConfigId) {
+      try {
+        const waCheck = await db.execute(sql`SELECT id FROM consultant_whatsapp_config WHERE id = ${whatsappConfigId} AND is_active = true LIMIT 1`);
+        whatsappConfigActive = waCheck.rows.length > 0;
+      } catch {}
+    }
+
+    const remainingLimits = await getRemainingLimits(consultantId);
+
+    const batchVoice: any[] = [];
+    const batchWhatsapp: any[] = [];
+    const batchEmail: any[] = [];
+    let voiceCount = 0, waCount = 0, emailCount = 0, skipped = 0;
+
+    for (const lead of actionableLeads.slice(0, 30)) {
+      const aiDecision = aiDecisions.find(d => d.leadId === lead.id);
+      let channel: string | null = null;
+
+      if (aiDecision && aiDecision.action !== 'skip') {
+        const actionMap: Record<string, string> = { call: 'voice', whatsapp: 'whatsapp', email: 'email' };
+        const preferred = actionMap[aiDecision.action] || aiDecision.action;
+        if (preferred === 'voice' && lead.phone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceCount) channel = 'voice';
+        else if (preferred === 'whatsapp' && lead.phone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > waCount) channel = 'whatsapp';
+        else if (preferred === 'email' && lead.email && channelsEnabled.email && remainingLimits.email > emailCount) channel = 'email';
+      }
+
+      if (!channel) {
+        for (const ch of channelPriority) {
+          if (ch === 'voice' && lead.phone && channelsEnabled.voice && voiceTemplateId && remainingLimits.calls > voiceCount) { channel = 'voice'; break; }
+          if (ch === 'whatsapp' && lead.phone && channelsEnabled.whatsapp && whatsappConfigActive && remainingLimits.whatsapp > waCount) { channel = 'whatsapp'; break; }
+          if (ch === 'email' && lead.email && channelsEnabled.email && remainingLimits.email > emailCount) { channel = 'email'; break; }
+        }
+      }
+
+      if (!channel) { skipped++; continue; }
+
+      const entry = {
+        leadId: lead.id, businessName: lead.businessName, phone: lead.phone, email: lead.email,
+        score: lead.score, category: lead.category, website: lead.website, address: lead.address,
+        rating: lead.rating, reviewsCount: lead.reviewsCount,
+        salesSummary: lead.salesSummary, status: 'pending' as const, resultNote: null as string | null,
+        aiReason: aiDecision?.reason || lead.reason,
+      };
+
+      if (channel === 'voice') { batchVoice.push(entry); voiceCount++; }
+      else if (channel === 'whatsapp') { batchWhatsapp.push(entry); waCount++; }
+      else if (channel === 'email') { batchEmail.push(entry); emailCount++; }
+    }
+
+    const batches: { channel: string; leads: any[]; label: string }[] = [];
+    if (batchVoice.length > 0) batches.push({ channel: 'voice', leads: batchVoice, label: 'Chiamate' });
+    if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', leads: batchWhatsapp, label: 'WhatsApp' });
+    if (batchEmail.length > 0) batches.push({ channel: 'email', leads: batchEmail, label: 'Email' });
+
+    let tasksCreated = 0;
+    const details: { leadName: string; action: string; reason: string }[] = [];
+
+    for (const batch of batches) {
+      const batchTaskId = `crm_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const instruction = `Analisi CRM — ${batch.leads.length} lead da ricontattare via ${batch.channel}.\n\nLead:\n${batch.leads.map((l: any, i: number) => `${i+1}. ${l.businessName} (Score: ${l.score || 'N/A'}/100) — ${l.aiReason}`).join('\n')}`;
+
+      const batchResultData = {
+        batchOutreach: true, channel: batch.channel, source: 'crm_analysis',
+        voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
+        whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
+        emailAccountId: batch.channel === 'email' ? emailAccountId : null,
+        leads: batch.leads, assigned_by: 'hunter', self_managed: true,
+      };
+
+      try {
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
+            result_data, additional_context, max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
+            ${'Analisi CRM: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
+            'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
+            ${outreachTaskStatus}, 2, 'outreach', 'hunter', ${batch.channel},
+            ${JSON.stringify(batchResultData)}::jsonb,
+            ${JSON.stringify({ crm_analysis: true, batch_outreach: true })}::text,
+            1, 0, 5, NOW(), NOW()
+          )
+        `);
+        tasksCreated++;
+
+        for (const lead of batch.leads) {
+          await db.execute(sql`
+            UPDATE lead_scraper_results
+            SET lead_status = 'in_outreach', outreach_task_id = ${batchTaskId},
+                lead_next_action = ${`${batch.channel} outreach da analisi CRM`},
+                lead_next_action_date = NOW() + INTERVAL '5 minutes'
+            WHERE id = ${lead.leadId}
+          `);
+
+          await db.execute(sql`
+            INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
+            VALUES (
+              ${lead.leadId}, ${consultantId}, 'crm_reanalysis',
+              ${'Hunter ha rianalizzato: ' + lead.businessName},
+              ${lead.aiReason},
+              ${JSON.stringify({ taskId: batchTaskId, channel: batch.channel, score: lead.score, source: 'crm_analysis' })}::jsonb
+            )
+          `);
+
+          details.push({ leadName: lead.businessName, action: batch.channel, reason: lead.aiReason });
+        }
+      } catch (batchErr: any) {
+        console.error(`[HUNTER-CRM] Failed to create batch ${batch.channel} task: ${batchErr.message}`);
+      }
+    }
+
+    await logActivity(consultantId, {
+      event_type: 'hunter_crm_analysis',
+      severity: 'info',
+      title: `Ho analizzato ${leadsResult.rows.length} lead nel CRM: ${actionableLeads.length} meritano attenzione`,
+      description: `${tasksCreated} campagne create: ${voiceCount > 0 ? `${voiceCount} chiamate` : ''}${waCount > 0 ? ` ${waCount} WhatsApp` : ''}${emailCount > 0 ? ` ${emailCount} email` : ''}. ${skipped} saltati.`,
+    });
+
+    return res.json({
+      success: true,
+      analyzed: leadsResult.rows.length,
+      actionable: actionableLeads.length,
+      tasks_created: tasksCreated,
+      skipped,
+      leads: details,
+    });
+  } catch (error: any) {
+    console.error("[HUNTER-CRM] Error analyzing CRM:", error);
+    return res.status(500).json({ error: "Failed to analyze CRM" });
+  }
+});
+
+router.post("/hunter-plan/generate", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { source = "crm", leadIds } = req.body || {};
+
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config, channels_enabled FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const settings = settingsResult.rows[0] as any;
+    if (!settings) return res.status(400).json({ error: "Impostazioni non trovate" });
+
+    const outreachConfig = settings.outreach_config || {};
+    const channelsEnabled = settings.channels_enabled || {};
+    const scoreThreshold = outreachConfig.score_threshold ?? 60;
+
+    let leadsForPlan: any[] = [];
+
+    if (source === "crm") {
+      const { actionableLeads } = await getActionableCrmLeads(consultantId, scoreThreshold);
+      leadsForPlan = actionableLeads;
+    }
+
+    if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+      leadsForPlan = leadsForPlan.filter(l => leadIds.includes(l.id));
+    }
+
+    if (leadsForPlan.length === 0) {
+      return res.json({ success: true, planId: null, leads: [], summary: "Nessun lead azionabile trovato nel CRM.", totalActions: 0, channels: { voice: 0, whatsapp: 0, email: 0 } });
+    }
+
+    const salesCtxResult = await db.execute(sql`
+      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+
+    const { quickGenerate } = await import("../ai/provider-factory");
+
+    const leadsForPrompt = leadsForPlan.slice(0, 30).map(l => ({
+      id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
+      category: l.category, hasPhone: !!l.phone, hasEmail: !!l.email,
+      daysSinceLastContact: l.daysSinceLastContact, daysSinceCreated: l.daysSinceCreated,
+      reason: l.reason, summary: l.salesSummary,
+    }));
+
+    const availableChannels = [
+      channelsEnabled.voice ? 'call (chiamata telefonica)' : '',
+      channelsEnabled.whatsapp ? 'whatsapp' : '',
+      channelsEnabled.email ? 'email' : '',
+    ].filter(Boolean).join(', ');
+
+    const aiResult = await quickGenerate({
+      consultantId,
+      feature: 'hunter-plan-generate',
+      thinkingLevel: 'medium',
+      systemInstruction: [
+        `Sei Hunter, il cervello commerciale del consulente. Analizza i lead e prepara un piano d'azione strategico.`,
+        salesCtx.servicesOffered ? `SERVIZI DEL CONSULENTE: ${salesCtx.servicesOffered}` : '',
+        salesCtx.targetAudience ? `TARGET IDEALE: ${salesCtx.targetAudience}` : '',
+        salesCtx.valueProposition ? `PROPOSTA DI VALORE: ${salesCtx.valueProposition}` : '',
+        salesCtx.salesApproach ? `APPROCCIO VENDITA: ${salesCtx.salesApproach}` : '',
+        `Canali disponibili: ${availableChannels}`,
+        `Rispondi SOLO con un JSON valido con questa struttura:`,
+        `{`,
+        `  "leads": [{ "leadId": "uuid", "action": "call"|"whatsapp"|"email"|"skip", "reason": "perché questa azione", "priority": 1-5, "suggestedTiming": "mattina|pomeriggio|sera", "talkingPoints": ["punto1", "punto2"] }],`,
+        `  "summary": "strategia generale e suggerimenti in 2-3 frasi"`,
+        `}`,
+        `Regole: ordina per priorità (5=massima). Se un lead non ha telefono, non proporre call/whatsapp. Sii specifico nei talking points.`,
+      ].filter(Boolean).join('\n'),
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify(leadsForPrompt) }] }],
+    });
+
+    let planData: { leads: any[]; summary: string } = { leads: [], summary: '' };
+    try {
+      const cleaned = aiResult.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      planData = JSON.parse(cleaned);
+    } catch {
+      console.error('[HUNTER-PLAN] Failed to parse AI plan');
+      planData = {
+        leads: leadsForPlan.map(l => ({
+          leadId: l.id, action: l.phone ? 'call' : l.email ? 'email' : 'skip',
+          reason: l.reason, priority: 3, suggestedTiming: 'mattina', talkingPoints: [],
+        })),
+        summary: 'Piano generato con fallback automatico.',
+      };
+    }
+
+    const enrichedLeads = planData.leads.map(pl => {
+      const original = leadsForPlan.find(l => l.id === pl.leadId);
+      return {
+        ...pl,
+        businessName: original?.businessName || 'Lead',
+        score: original?.score || null,
+        category: original?.category || null,
+        phone: original?.phone || null,
+        email: original?.email || null,
+        leadStatus: original?.leadStatus || 'nuovo',
+        daysSinceLastContact: original?.daysSinceLastContact ?? null,
+        included: pl.action !== 'skip',
+      };
+    });
+
+    const planId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const channels = {
+      voice: enrichedLeads.filter(l => l.included && l.action === 'call').length,
+      whatsapp: enrichedLeads.filter(l => l.included && l.action === 'whatsapp').length,
+      email: enrichedLeads.filter(l => l.included && l.action === 'email').length,
+    };
+
+    hunterPlansCache.set(planId, {
+      plan: { planId, leads: enrichedLeads, summary: planData.summary, totalActions: channels.voice + channels.whatsapp + channels.email, channels, outreachConfig },
+      createdAt: Date.now(),
+      consultantId,
+    });
+
+    return res.json({
+      success: true,
+      planId,
+      leads: enrichedLeads,
+      summary: planData.summary,
+      totalActions: channels.voice + channels.whatsapp + channels.email,
+      channels,
+    });
+  } catch (error: any) {
+    console.error("[HUNTER-PLAN] Error generating plan:", error);
+    return res.status(500).json({ error: "Failed to generate plan" });
+  }
+});
+
+router.post("/hunter-plan/chat", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { planId, message, conversationHistory = [] } = req.body || {};
+    if (!planId || !message) return res.status(400).json({ error: "planId e message richiesti" });
+
+    const cached = hunterPlansCache.get(planId);
+    if (!cached || cached.consultantId !== consultantId) {
+      return res.status(404).json({ error: "Piano non trovato o scaduto" });
+    }
+
+    const currentPlan = cached.plan;
+
+    const salesCtxResult = await db.execute(sql`
+      SELECT sales_context FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const salesCtx = (salesCtxResult.rows[0] as any)?.sales_context || {};
+
+    const { quickGenerate } = await import("../ai/provider-factory");
+
+    const planSummary = currentPlan.leads.map((l: any) => `- ${l.businessName} (score ${l.score}): ${l.included ? l.action : 'ESCLUSO'} — ${l.reason}`).join('\n');
+
+    const contents = [
+      ...conversationHistory.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }],
+      })),
+      { role: 'user', parts: [{ text: message }] },
+    ];
+
+    const aiResult = await quickGenerate({
+      consultantId,
+      feature: 'hunter-plan-chat',
+      thinkingLevel: 'low',
+      systemInstruction: [
+        `Sei Hunter, il cervello commerciale. Il consulente sta discutendo un piano di outreach con te.`,
+        `PIANO ATTUALE:\n${planSummary}`,
+        `SUMMARY: ${currentPlan.summary}`,
+        salesCtx.servicesOffered ? `SERVIZI: ${salesCtx.servicesOffered}` : '',
+        `Se il consulente chiede modifiche al piano, rispondi con JSON: { "reply": "testo conversazionale", "updatedPlan": { "leads": [...], "summary": "..." } }`,
+        `Se il consulente fa domande o vuole discutere (senza modifiche), rispondi con: { "reply": "testo conversazionale" }`,
+        `Nella lista leads dell'updatedPlan, ogni lead ha: leadId, action (call/whatsapp/email/skip), reason, priority, suggestedTiming, talkingPoints, included (true/false), businessName, score, category, phone, email, leadStatus.`,
+        `Rispondi SEMPRE in italiano. Sii conciso e pratico.`,
+      ].filter(Boolean).join('\n'),
+      contents,
+    });
+
+    let reply = aiResult.text;
+    let updatedPlan: any = null;
+
+    try {
+      const cleaned = aiResult.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.reply) {
+        reply = parsed.reply;
+        if (parsed.updatedPlan) {
+          updatedPlan = parsed.updatedPlan;
+          const cachedLeadIds = new Set(currentPlan.leads.map((l: any) => l.leadId));
+          const validActions = new Set(['call', 'whatsapp', 'email', 'skip']);
+          const rawLeads = updatedPlan.leads || currentPlan.leads;
+          const validatedLeads = rawLeads
+            .filter((l: any) => cachedLeadIds.has(l.leadId))
+            .map((l: any) => {
+              const original = currentPlan.leads.find((o: any) => o.leadId === l.leadId);
+              return {
+                ...original,
+                ...l,
+                action: validActions.has(l.action) ? l.action : original?.action || 'skip',
+                businessName: original?.businessName || l.businessName,
+                phone: original?.phone || l.phone,
+                email: original?.email || l.email,
+                score: original?.score ?? l.score,
+                included: l.included !== undefined ? l.included : l.action !== 'skip',
+              };
+            });
+          const missingLeads = currentPlan.leads.filter(
+            (l: any) => !validatedLeads.some((v: any) => v.leadId === l.leadId)
+          );
+          const newLeads = [...validatedLeads, ...missingLeads];
+
+          const channels = {
+            voice: newLeads.filter((l: any) => l.included && l.action === 'call').length,
+            whatsapp: newLeads.filter((l: any) => l.included && l.action === 'whatsapp').length,
+            email: newLeads.filter((l: any) => l.included && l.action === 'email').length,
+          };
+
+          cached.plan = {
+            ...currentPlan,
+            leads: newLeads,
+            summary: updatedPlan.summary || currentPlan.summary,
+            totalActions: channels.voice + channels.whatsapp + channels.email,
+            channels,
+          };
+          hunterPlansCache.set(planId, cached);
+
+          updatedPlan = cached.plan;
+        }
+      }
+    } catch {
+      // AI returned plain text
+    }
+
+    return res.json({ reply, updatedPlan });
+  } catch (error: any) {
+    console.error("[HUNTER-PLAN-CHAT] Error:", error);
+    return res.status(500).json({ error: "Failed to process chat" });
+  }
+});
+
+router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { planId } = req.body || {};
+    if (!planId) return res.status(400).json({ error: "planId richiesto" });
+
+    const cached = hunterPlansCache.get(planId);
+    if (!cached || cached.consultantId !== consultantId) {
+      return res.status(404).json({ error: "Piano non trovato o scaduto" });
+    }
+
+    const plan = cached.plan;
+
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config, channels_enabled FROM ai_autonomy_settings
+      WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const freshSettings = settingsResult.rows[0] as any;
+    const outreachConfig = freshSettings?.outreach_config || plan.outreachConfig || {};
+    const channelsEnabled = freshSettings?.channels_enabled || {};
+    const hunterMode = outreachConfig.hunter_mode ?? (outreachConfig.require_approval !== false ? 'approval' : 'autonomous');
+    const taskStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+    const voiceTemplateId = outreachConfig.voice_template_id ?? null;
+    const whatsappConfigId = outreachConfig.whatsapp_config_id ?? null;
+    const emailAccountId = outreachConfig.email_account_id ?? null;
+    const includedLeads = plan.leads.filter((l: any) => {
+      if (!l.included || l.action === 'skip') return false;
+      const channel = l.action === 'call' ? 'voice' : l.action;
+      if (channelsEnabled[channel] === false) return false;
+      if (l.action === 'call' && !l.phone) return false;
+      if (l.action === 'whatsapp' && !l.phone) return false;
+      if (l.action === 'email' && !l.email) return false;
+      return true;
+    });
+
+    if (includedLeads.length === 0) {
+      hunterPlansCache.delete(planId);
+      return res.json({ success: true, tasks_created: 0, details: [] });
+    }
+
+    const actionMap: Record<string, string> = { call: 'voice', whatsapp: 'whatsapp', email: 'email' };
+    const batchVoice: any[] = [];
+    const batchWhatsapp: any[] = [];
+    const batchEmail: any[] = [];
+
+    for (const lead of includedLeads) {
+      const channel = actionMap[lead.action] || lead.action;
+      const entry = {
+        leadId: lead.leadId, businessName: lead.businessName, phone: lead.phone, email: lead.email,
+        score: lead.score, category: lead.category, salesSummary: null,
+        status: 'pending' as const, resultNote: null as string | null,
+        aiReason: lead.reason, talkingPoints: lead.talkingPoints || [],
+      };
+      if (channel === 'voice') batchVoice.push(entry);
+      else if (channel === 'whatsapp') batchWhatsapp.push(entry);
+      else if (channel === 'email') batchEmail.push(entry);
+    }
+
+    const batches: { channel: string; leads: any[] }[] = [];
+    if (batchVoice.length > 0) batches.push({ channel: 'voice', leads: batchVoice });
+    if (batchWhatsapp.length > 0) batches.push({ channel: 'whatsapp', leads: batchWhatsapp });
+    if (batchEmail.length > 0) batches.push({ channel: 'email', leads: batchEmail });
+
+    let tasksCreated = 0;
+    const details: { leadName: string; action: string; reason: string }[] = [];
+
+    for (const batch of batches) {
+      const batchTaskId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const instruction = `Piano Hunter approvato — ${batch.leads.length} lead via ${batch.channel}.\n\n${batch.leads.map((l: any, i: number) => `${i+1}. ${l.businessName} (Score: ${l.score || 'N/A'}) — ${l.aiReason}${l.talkingPoints?.length ? '\n   Talking points: ' + l.talkingPoints.join(', ') : ''}`).join('\n')}`;
+
+      const batchResultData = {
+        batchOutreach: true, channel: batch.channel, source: 'hunter_plan',
+        voiceTemplateId: batch.channel === 'voice' ? voiceTemplateId : null,
+        whatsappConfigId: batch.channel === 'whatsapp' ? whatsappConfigId : null,
+        emailAccountId: batch.channel === 'email' ? emailAccountId : null,
+        leads: batch.leads, assigned_by: 'hunter', self_managed: true,
+      };
+
+      try {
+        await db.execute(sql`
+          INSERT INTO ai_scheduled_tasks (
+            id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
+            scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
+            result_data, additional_context, max_attempts, current_attempt, retry_delay_minutes,
+            created_at, updated_at
+          ) VALUES (
+            ${batchTaskId}, ${consultantId}, ${batch.leads[0]?.phone || ''},
+            ${'Piano: ' + batch.leads.map((l: any) => l.businessName).join(', ').substring(0, 100)},
+            'ai_task', ${instruction}, NOW() + INTERVAL '5 minutes', 'Europe/Rome',
+            ${taskStatus}, 2, 'outreach', 'hunter', ${batch.channel},
+            ${JSON.stringify(batchResultData)}::jsonb,
+            ${JSON.stringify({ hunter_plan: true, plan_id: planId, batch_outreach: true })}::text,
+            1, 0, 5, NOW(), NOW()
+          )
+        `);
+        tasksCreated++;
+
+        for (const lead of batch.leads) {
+          await db.execute(sql`
+            UPDATE lead_scraper_results
+            SET lead_status = 'in_outreach', outreach_task_id = ${batchTaskId},
+                lead_next_action = ${`${batch.channel} outreach da piano Hunter`},
+                lead_next_action_date = NOW() + INTERVAL '5 minutes'
+            WHERE id = ${lead.leadId}
+          `);
+          await db.execute(sql`
+            INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
+            VALUES (
+              ${lead.leadId}, ${consultantId}, 'crm_reanalysis',
+              ${'Piano Hunter approvato: ' + lead.businessName},
+              ${lead.aiReason},
+              ${JSON.stringify({ taskId: batchTaskId, channel: batch.channel, score: lead.score, source: 'hunter_plan', planId })}::jsonb
+            )
+          `);
+          details.push({ leadName: lead.businessName, action: batch.channel, reason: lead.aiReason });
+        }
+      } catch (batchErr: any) {
+        console.error(`[HUNTER-PLAN-EXEC] Failed to create batch ${batch.channel} task: ${batchErr.message}`);
+      }
+    }
+
+    await logActivity(consultantId, {
+      event_type: 'hunter_plan_executed',
+      severity: 'info',
+      title: `Piano Hunter approvato ed eseguito: ${includedLeads.length} lead, ${tasksCreated} campagne`,
+      description: `${batchVoice.length > 0 ? `${batchVoice.length} chiamate ` : ''}${batchWhatsapp.length > 0 ? `${batchWhatsapp.length} WhatsApp ` : ''}${batchEmail.length > 0 ? `${batchEmail.length} email` : ''}`,
+    });
+
+    hunterPlansCache.delete(planId);
+
+    return res.json({ success: true, tasks_created: tasksCreated, details });
+  } catch (error: any) {
+    console.error("[HUNTER-PLAN-EXEC] Error:", error);
+    return res.status(500).json({ error: "Failed to execute plan" });
+  }
+});
+
 router.post("/tasks/:id/reject", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

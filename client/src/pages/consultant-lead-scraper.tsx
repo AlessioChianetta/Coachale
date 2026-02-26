@@ -249,6 +249,17 @@ export default function ConsultantLeadScraper() {
   const [triggeringHunter, setTriggeringHunter] = useState(false);
   const [hunterTriggerResult, setHunterTriggerResult] = useState<{ success: boolean; tasks?: number; error?: string } | null>(null);
 
+  const [analyzingCrm, setAnalyzingCrm] = useState(false);
+  const [crmAnalysisResult, setCrmAnalysisResult] = useState<{ success: boolean; analyzed?: number; actionable?: number; tasks_created?: number; skipped?: number; error?: string; noPlan?: boolean } | null>(null);
+
+  const [showPlanPanel, setShowPlanPanel] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<any>(null);
+  const [planChatMessages, setPlanChatMessages] = useState<ChatMessage[]>([]);
+  const [planChatInput, setPlanChatInput] = useState("");
+  const [planChatLoading, setPlanChatLoading] = useState(false);
+  const [planExecuting, setPlanExecuting] = useState(false);
+  const planChatEndRef = useRef<HTMLDivElement>(null);
+
   const [sortBy, setSortBy] = useState<"default" | "score" | "rating" | "name">("default");
 
   const [outreachChannelFilter, setOutreachChannelFilter] = useState<"tutti" | "voice" | "whatsapp" | "email">("tutti");
@@ -504,6 +515,103 @@ export default function ConsultantLeadScraper() {
       setHunterTriggerResult({ success: false, error: e.message });
     } finally {
       setTriggeringHunter(false);
+    }
+  };
+
+  const hunterMode: "autonomous" | "plan" | "approval" = outreachConfig.hunter_mode || (outreachConfig.require_approval !== false ? "approval" : "autonomous");
+
+  const handleAnalyzeCrm = async () => {
+    setAnalyzingCrm(true);
+    setCrmAnalysisResult(null);
+    try {
+      if (hunterMode === "plan") {
+        const res = await fetch("/api/ai-autonomy/hunter-plan/generate", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "crm" }),
+        });
+        const data = await res.json();
+        if (res.ok && data.planId) {
+          setCurrentPlan(data);
+          setPlanChatMessages([]);
+          setPlanChatInput("");
+          setShowPlanPanel(true);
+          setCrmAnalysisResult({ success: true, analyzed: data.totalActions, actionable: data.leads?.length || 0 });
+        } else if (res.ok && !data.planId) {
+          setCrmAnalysisResult({ success: true, analyzed: 0, actionable: 0, tasks_created: 0, noPlan: true });
+        } else {
+          setCrmAnalysisResult({ success: false, error: data.error || "Errore generazione piano" });
+        }
+      } else {
+        const res = await fetch("/api/ai-autonomy/hunter-analyze-crm", {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "execute" }),
+        });
+        const data = await res.json();
+        setCrmAnalysisResult({ success: res.ok, analyzed: data.analyzed, actionable: data.actionable, tasks_created: data.tasks_created, skipped: data.skipped, error: data.error });
+        refetchPipeline();
+        queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+      }
+    } catch (e: any) {
+      setCrmAnalysisResult({ success: false, error: e.message });
+    } finally {
+      setAnalyzingCrm(false);
+    }
+  };
+
+  const handlePlanChat = async () => {
+    if (!planChatInput.trim() || planChatLoading || !currentPlan?.planId) return;
+    const userMsg = planChatInput.trim();
+    setPlanChatInput("");
+    setPlanChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "user", content: userMsg }]);
+    setPlanChatLoading(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/hunter-plan/chat", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: currentPlan.planId,
+          message: userMsg,
+          conversationHistory: planChatMessages.map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await res.json();
+      setPlanChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: data.reply || "Nessuna risposta" }]);
+      if (data.updatedPlan) {
+        setCurrentPlan((prev: any) => ({ ...prev, ...data.updatedPlan }));
+      }
+    } catch {
+      setPlanChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: "Errore nella comunicazione. Riprova." }]);
+    } finally {
+      setPlanChatLoading(false);
+    }
+  };
+
+  const handleExecutePlan = async () => {
+    if (!currentPlan?.planId) return;
+    setPlanExecuting(true);
+    try {
+      const res = await fetch("/api/ai-autonomy/hunter-plan/execute", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: currentPlan.planId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Piano eseguito", description: `${data.tasks_created} campagne create` });
+        setShowPlanPanel(false);
+        setCurrentPlan(null);
+        setPlanChatMessages([]);
+        refetchPipeline();
+        queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+      } else {
+        toast({ title: "Errore", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Errore", description: "Impossibile eseguire il piano", variant: "destructive" });
+    } finally {
+      setPlanExecuting(false);
     }
   };
 
@@ -1548,7 +1656,7 @@ export default function ConsultantLeadScraper() {
                       onCheckedChange={(checked) => updateOutreachConfig("enabled", checked)}
                     />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       size="sm"
                       className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5 h-8"
@@ -1558,45 +1666,63 @@ export default function ConsultantLeadScraper() {
                       {triggeringHunter ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                       {triggeringHunter ? "In corso..." : "Avvia Hunter"}
                     </Button>
+                    <Button
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 h-8"
+                      onClick={handleAnalyzeCrm}
+                      disabled={analyzingCrm || !outreachConfig.enabled}
+                    >
+                      {analyzingCrm ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+                      {analyzingCrm ? "Analisi..." : "Analizza CRM"}
+                    </Button>
                     {hunterTriggerResult && (
                       <span className={cn("text-xs", hunterTriggerResult.success ? "text-emerald-600" : "text-red-500")}>
                         {hunterTriggerResult.success ? `${hunterTriggerResult.tasks} task` : (hunterTriggerResult.error || "Errore")}
+                      </span>
+                    )}
+                    {crmAnalysisResult && (
+                      <span className={cn("text-xs", crmAnalysisResult.success ? "text-indigo-600" : "text-red-500")}>
+                        {crmAnalysisResult.success
+                          ? (crmAnalysisResult.noPlan
+                            ? "Nessun lead azionabile trovato nel CRM"
+                            : crmAnalysisResult.tasks_created != null
+                            ? `${crmAnalysisResult.analyzed} analizzati — ${crmAnalysisResult.actionable} azionabili — ${crmAnalysisResult.tasks_created} task`
+                            : `${crmAnalysisResult.actionable} lead trovati`)
+                          : (crmAnalysisResult.error || "Errore")}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
-                  <div className="flex items-center gap-2 flex-1">
-                    <button
-                      onClick={() => updateOutreachConfig("require_approval", true)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                        outreachConfig.require_approval
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700"
-                          : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
-                      )}
-                    >
-                      <Shield className="h-3.5 w-3.5" />
-                      Approvazione Manuale
-                    </button>
-                    <button
-                      onClick={() => updateOutreachConfig("require_approval", false)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                        !outreachConfig.require_approval
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-700"
-                          : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
-                      )}
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      Full Autonomo
-                    </button>
+                  <div className="flex items-center gap-1 flex-1">
+                    {([
+                      { mode: "autonomous" as const, label: "Full Autonomo", icon: Zap, activeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-700" },
+                      { mode: "plan" as const, label: "Piano Interattivo", icon: MessageSquare, activeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 ring-1 ring-blue-300 dark:ring-blue-700" },
+                      { mode: "approval" as const, label: "Solo Approvazione", icon: Shield, activeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700" },
+                    ] as const).map(opt => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.mode}
+                          onClick={() => updateOutreachConfig("hunter_mode", opt.mode)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                            hunterMode === opt.mode
+                              ? opt.activeClass
+                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <span className="text-[10px] text-muted-foreground max-w-[180px] leading-tight">
-                    {outreachConfig.require_approval
-                      ? "I task attendono la tua approvazione prima di partire"
-                      : "I task partono automaticamente senza approvazione"}
+                  <span className="text-[10px] text-muted-foreground max-w-[200px] leading-tight">
+                    {hunterMode === "autonomous" && "I task partono automaticamente senza intervento"}
+                    {hunterMode === "plan" && "Hunter prepara un piano, tu lo rivedi e approvi"}
+                    {hunterMode === "approval" && "I task attendono la tua approvazione uno per uno"}
                   </span>
                 </div>
 
@@ -2261,6 +2387,225 @@ export default function ConsultantLeadScraper() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AnimatePresence>
+        {showPlanPanel && currentPlan && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-40"
+              onClick={() => setShowPlanPanel(false)}
+            />
+            <motion.div
+              initial={{ x: "100%", opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed inset-y-0 right-0 w-full sm:w-[560px] max-w-full z-50 flex flex-col bg-background shadow-2xl border-l"
+            >
+              <div className="flex items-center gap-3 px-4 py-3 border-b bg-gradient-to-r from-indigo-50 dark:from-indigo-950/30 to-transparent">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
+                  <Target className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate">Piano Hunter</h3>
+                  <p className="text-xs text-muted-foreground">{currentPlan.totalActions} azioni proposte</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                  {currentPlan.channels?.voice > 0 && <span className="flex items-center gap-0.5"><PhoneCall className="h-2.5 w-2.5 text-green-600" />{currentPlan.channels.voice}</span>}
+                  {currentPlan.channels?.whatsapp > 0 && <span className="flex items-center gap-0.5"><MessageCircle className="h-2.5 w-2.5 text-emerald-600" />{currentPlan.channels.whatsapp}</span>}
+                  {currentPlan.channels?.email > 0 && <span className="flex items-center gap-0.5"><MailIcon className="h-2.5 w-2.5 text-blue-600" />{currentPlan.channels.email}</span>}
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPlanPanel(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ maxHeight: "55%" }}>
+                  {currentPlan.summary && (
+                    <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                      <p className="font-semibold mb-1 flex items-center gap-1"><Sparkles className="h-3 w-3" />Strategia</p>
+                      {currentPlan.summary}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    {(currentPlan.leads || []).map((lead: any) => {
+                      const chIcon = lead.action === "call" ? PhoneCall : lead.action === "whatsapp" ? MessageCircle : MailIcon;
+                      const chColor = lead.action === "call" ? "text-green-600" : lead.action === "whatsapp" ? "text-emerald-600" : "text-blue-600";
+                      const ChIcon = chIcon;
+                      return (
+                        <div
+                          key={lead.leadId}
+                          className={cn(
+                            "flex items-center gap-2 p-2.5 rounded-lg border transition-all",
+                            lead.included !== false
+                              ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                              : "bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 opacity-50"
+                          )}
+                        >
+                          <button
+                            className={cn("w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                              lead.included !== false
+                                ? "border-indigo-500 bg-indigo-500 text-white"
+                                : "border-gray-300 dark:border-gray-600"
+                            )}
+                            onClick={() => {
+                              const updated = (currentPlan.leads || []).map((l: any) =>
+                                l.leadId === lead.leadId ? { ...l, included: l.included === false ? true : false } : l
+                              );
+                              const channels = {
+                                voice: updated.filter((l: any) => l.included !== false && l.action === 'call').length,
+                                whatsapp: updated.filter((l: any) => l.included !== false && l.action === 'whatsapp').length,
+                                email: updated.filter((l: any) => l.included !== false && l.action === 'email').length,
+                              };
+                              setCurrentPlan((prev: any) => ({
+                                ...prev,
+                                leads: updated,
+                                totalActions: channels.voice + channels.whatsapp + channels.email,
+                                channels,
+                              }));
+                            }}
+                          >
+                            {lead.included !== false && <Check className="h-3 w-3" />}
+                          </button>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium text-xs truncate">{lead.businessName}</span>
+                              {lead.score && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">{lead.score}</Badge>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">{lead.reason}</p>
+                            {lead.talkingPoints && lead.talkingPoints.length > 0 && (
+                              <p className="text-[9px] text-muted-foreground/70 truncate mt-0.5">
+                                {lead.talkingPoints.join(" · ")}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Select
+                              value={lead.action}
+                              onValueChange={(val) => {
+                                const updated = (currentPlan.leads || []).map((l: any) =>
+                                  l.leadId === lead.leadId ? { ...l, action: val } : l
+                                );
+                                const channels = {
+                                  voice: updated.filter((l: any) => l.included !== false && l.action === 'call').length,
+                                  whatsapp: updated.filter((l: any) => l.included !== false && l.action === 'whatsapp').length,
+                                  email: updated.filter((l: any) => l.included !== false && l.action === 'email').length,
+                                };
+                                setCurrentPlan((prev: any) => ({
+                                  ...prev,
+                                  leads: updated,
+                                  totalActions: channels.voice + channels.whatsapp + channels.email,
+                                  channels,
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="h-6 w-[90px] text-[10px] border-gray-200 dark:border-gray-700">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="call"><span className="flex items-center gap-1"><PhoneCall className="h-3 w-3 text-green-600" />Chiamata</span></SelectItem>
+                                <SelectItem value="whatsapp"><span className="flex items-center gap-1"><MessageCircle className="h-3 w-3 text-emerald-600" />WhatsApp</span></SelectItem>
+                                <SelectItem value="email"><span className="flex items-center gap-1"><MailIcon className="h-3 w-3 text-blue-600" />Email</span></SelectItem>
+                                <SelectItem value="skip"><span className="flex items-center gap-1"><X className="h-3 w-3 text-gray-400" />Salta</span></SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <ChIcon className={cn("h-3.5 w-3.5 shrink-0", chColor)} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t flex-1 flex flex-col" style={{ maxHeight: "45%" }}>
+                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                    {planChatMessages.length === 0 ? (
+                      <div className="text-center py-4">
+                        <p className="text-xs text-muted-foreground">Chatta con Hunter per modificare il piano</p>
+                        <div className="flex flex-col gap-1.5 mt-3 max-w-[280px] mx-auto">
+                          {[
+                            "Togli i lead con score sotto 70",
+                            "Usa solo email per tutti",
+                            "Concentrati sul settore recruiting",
+                          ].map((s, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setPlanChatInput(s)}
+                              className="text-left text-[10px] px-2.5 py-1.5 rounded-md border border-dashed hover:border-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 transition-colors text-muted-foreground"
+                            >
+                              <Sparkles className="h-2.5 w-2.5 inline-block mr-1 opacity-50" />{s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      planChatMessages.map((msg) => (
+                        <Message
+                          key={msg.id}
+                          message={msg}
+                          assistantName="Hunter"
+                          assistantSubtitle="Piano Interattivo"
+                        />
+                      ))
+                    )}
+                    {planChatLoading && <ThinkingBubble isThinking={true} />}
+                    <div ref={planChatEndRef} />
+                  </div>
+
+                  <div className="p-3 border-t">
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={planChatInput}
+                        onChange={(e) => setPlanChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePlanChat(); }
+                        }}
+                        placeholder="Modifica il piano..."
+                        disabled={planChatLoading}
+                        className="resize-none min-h-[36px] max-h-[80px] text-xs flex-1"
+                        rows={1}
+                      />
+                      <Button size="sm" className="h-9 w-9 p-0 shrink-0" onClick={handlePlanChat} disabled={!planChatInput.trim() || planChatLoading}>
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 border-t flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/30">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => { setShowPlanPanel(false); setCurrentPlan(null); setPlanChatMessages([]); }}
+                >
+                  Annulla
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4"
+                  onClick={handleExecutePlan}
+                  disabled={planExecuting || (currentPlan.totalActions || 0) === 0}
+                >
+                  {planExecuting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  {planExecuting ? "Esecuzione..." : `Approva ed Esegui (${currentPlan.totalActions || 0})`}
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <button
         onClick={() => setShowChat(true)}

@@ -3962,8 +3962,8 @@ async function handleLeadQualifyAndAssign(
   const whatsappConfigId = outreachConfig.whatsapp_config_id ?? outreachConfig.whatsappConfigId ?? null;
   const voiceTemplateId = outreachConfig.voice_template_id ?? outreachConfig.voiceTemplateId ?? null;
   const emailAccountId = outreachConfig.email_account_id ?? outreachConfig.emailAccountId ?? null;
-  const requireApproval = outreachConfig.require_approval !== false;
-  const outreachTaskStatus = requireApproval ? 'waiting_approval' : 'scheduled';
+  const hunterMode = outreachConfig.hunter_mode ?? (outreachConfig.require_approval !== false ? 'approval' : 'autonomous');
+  const outreachTaskStatus = hunterMode === 'autonomous' ? 'scheduled' : 'waiting_approval';
 
   await logActivity(task.consultant_id, {
     event_type: 'lead_qualify_batch_started',
