@@ -106,7 +106,7 @@ export interface TaskContext {
 const DEFAULT_AUTONOMY_SETTINGS: AutonomySettings = {
   autonomy_level: 1,
   default_mode: "manual",
-  allowed_task_categories: ["outreach", "reminder", "followup"],
+  allowed_task_categories: ["outreach", "reminder", "followup", "prospecting"],
   always_approve_actions: ["send_email", "make_call", "modify_data"],
   working_hours_start: "08:00",
   working_hours_end: "20:00",

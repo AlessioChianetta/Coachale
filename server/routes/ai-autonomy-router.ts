@@ -70,7 +70,7 @@ router.get("/settings", authenticateToken, requireAnyRole(["consultant", "super_
         consultant_id: consultantId,
         autonomy_level: 1,
         default_mode: "manual",
-        allowed_task_categories: ["outreach", "reminder", "followup"],
+        allowed_task_categories: ["outreach", "reminder", "followup", "prospecting"],
         always_approve_actions: ["send_email", "make_call", "modify_data"],
         working_hours_start: "08:00",
         working_hours_end: "20:00",
@@ -109,7 +109,7 @@ router.put("/settings", authenticateToken, requireAnyRole(["consultant", "super_
     const body = req.body;
     const autonomyLevel = body.autonomy_level ?? 1;
     const defaultMode = body.default_mode ?? 'manual';
-    const allowedCategories = JSON.stringify(body.allowed_task_categories ?? ["outreach", "reminder", "followup"]);
+    const allowedCategories = JSON.stringify(body.allowed_task_categories ?? ["outreach", "reminder", "followup", "prospecting"]);
     const alwaysApprove = JSON.stringify(body.always_approve_actions ?? ["send_email", "make_call", "modify_data"]);
     const hoursStart = body.working_hours_start ?? '08:00';
     const hoursEnd = body.working_hours_end ?? '20:00';
