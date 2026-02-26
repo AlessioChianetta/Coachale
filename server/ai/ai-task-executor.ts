@@ -532,6 +532,17 @@ async function handleFetchClientData(
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Fetching client data for contact_id=${task.contact_id}, phone=${task.contact_phone}`);
 
+  await logActivity(task.consultant_id, {
+    event_type: 'step_fetch_client_data_started',
+    title: `📊 Caricando dati di ${task.contact_name || 'contatto'}...`,
+    description: `Recupero profilo, storico consulenze, task recenti e conversazioni`,
+    icon: '📊',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   let contactData: Record<string, any> | null = null;
 
   if (task.contact_id) {
@@ -683,6 +694,17 @@ async function handleSearchPrivateStores(
   agentDocs?: AgentDocuments | null,
 ): Promise<Record<string, any>> {
   console.log(`${LOG_PREFIX} Searching private stores for consultant=${task.consultant_id}, contact=${task.contact_id || 'N/A'}, agent_file_search_docs=${agentDocs?.fileSearchDocTitles?.length || 0}`);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'step_search_stores_started',
+    title: `🔎 Cercando nei documenti del consulente...`,
+    description: `Ricerca semantica in archivi privati e knowledge base${task.contact_name ? ` per ${task.contact_name}` : ''}`,
+    icon: '🔎',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
 
   let storeNames: string[] = [];
 
@@ -874,6 +896,17 @@ async function handleAnalyzePatterns(
   rolePersonality?: string | null,
   agentContextSection?: string,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_analyze_patterns_started',
+    title: `🧠 Analizzando pattern di ${task.contact_name || 'contatto'}...`,
+    description: `Analisi comportamentale, esigenze, opportunità e rischi basata sui dati raccolti`,
+    icon: '🧠',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const clientData = previousResults.fetch_client_data || previousResults;
 
   const privateStoreData = previousResults.search_private_stores;
@@ -981,6 +1014,17 @@ async function handleGenerateReport(
   rolePersonality?: string | null,
   agentContextSection?: string,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_generate_report_started',
+    title: `📝 Generando report${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
+    description: `Creazione documento dettagliato con raccomandazioni e analisi approfondita`,
+    icon: '📝',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const analysisData = previousResults.analyze_patterns || previousResults;
   const clientData = previousResults.fetch_client_data || {};
 
@@ -1192,6 +1236,17 @@ async function handlePrepareCall(
   rolePersonality?: string | null,
   agentContextSection?: string,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_prepare_call_started',
+    title: `📋 Preparando script chiamata${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
+    description: `Creazione punti di discussione, obiettivi e strategia di conversazione`,
+    icon: '📋',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const analysisData = previousResults.analyze_patterns || {};
   const reportData = previousResults.generate_report || {};
   const clientData = previousResults.fetch_client_data || {};
@@ -1509,6 +1564,17 @@ async function handleVoiceCall(
   _step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_voice_call_started',
+    title: `📞 Preparando chiamata${task.contact_name ? ` a ${task.contact_name}` : ''}...`,
+    description: `Configurazione parametri chiamata e selezione numero di uscita`,
+    icon: '📞',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const callPrep = previousResults.prepare_call || {};
 
   let resolvedPhone = task.contact_phone;
@@ -2136,6 +2202,17 @@ async function handleSendEmail(
   previousResults: Record<string, any>,
   agentContextSection?: string,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_send_email_started',
+    title: `📧 Componendo email${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
+    description: `Generazione contenuto email personalizzato e preparazione invio`,
+    icon: '📧',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const clientData = previousResults.fetch_client_data || {};
   const reportData = previousResults.generate_report || {};
   const analysisData = previousResults.analyze_patterns || {};
@@ -2313,6 +2390,17 @@ async function handleSendWhatsapp(
   previousResults: Record<string, any>,
   agentContextSection?: string,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_send_whatsapp_started',
+    title: `💬 Preparando messaggio WhatsApp${task.contact_name ? ` per ${task.contact_name}` : ''}...`,
+    description: `Selezione template e personalizzazione messaggio`,
+    icon: '💬',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   const reportData = previousResults.generate_report || {};
 
   let resolvedPhone = task.contact_phone;
@@ -2659,6 +2747,17 @@ async function handleWebSearch(
   step: ExecutionStep,
   previousResults: Record<string, any>,
 ): Promise<Record<string, any>> {
+  await logActivity(task.consultant_id, {
+    event_type: 'step_web_search_started',
+    title: `🌐 Ricerca web in corso...`,
+    description: `Cercando informazioni aggiornate${task.contact_name ? ` relative a ${task.contact_name}` : ''}`,
+    icon: '🌐',
+    severity: 'info',
+    task_id: task.id,
+    contact_name: task.contact_name,
+    contact_id: task.contact_id,
+  });
+
   let searchQuery = step.params?.search_topic || step.params?.search_query || "";
   const analysisData = previousResults.analyze_patterns || {};
   const clientData = previousResults.fetch_client_data || {};
@@ -2804,6 +2903,15 @@ async function handleLeadScraperSearch(
 
   console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] query="${query}", location="${location}", engine=${searchEngine}, limit=${limit}`);
 
+  await logActivity(task.consultant_id, {
+    event_type: 'lead_scraper_search_started',
+    title: `🔍 Avvio ricerca: "${query}"`,
+    description: `Motore: ${searchEngine === 'google_maps' ? 'Google Maps' : 'Google Search'}, Location: ${location || 'non specificata'}, Limite: ${limit} risultati`,
+    icon: '🔍',
+    severity: 'info',
+    task_id: task.id,
+  });
+
   const keys = await getLeadScraperKeys();
   if (!keys.serpApiKey) {
     throw new Error('SERPAPI_KEY non configurata. Impossibile eseguire la ricerca lead.');
@@ -2882,8 +2990,26 @@ async function handleLeadScraperSearch(
 
     console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Inserted ${resultsCount} results for search ${searchId}`);
 
+    await logActivity(task.consultant_id, {
+      event_type: 'lead_scraper_results_found',
+      title: `📋 Trovati ${resultsCount} risultati`,
+      description: `Ricerca "${query}" in ${location || 'area non specificata'} ha trovato ${resultsCount} aziende`,
+      icon: '📋',
+      severity: 'info',
+      task_id: task.id,
+    });
+
     let enrichmentStats = { enriched: 0, failed: 0, cached: 0 };
     if (keys.firecrawlKey && resultsCount > 0) {
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_scraper_enrichment_started',
+        title: `🌐 Arricchimento siti web in corso...`,
+        description: `Scrapando ${resultsCount} siti web per estrarre email, telefoni e info dettagliate`,
+        icon: '🌐',
+        severity: 'info',
+        task_id: task.id,
+      });
+
       try {
         enrichmentStats = await enrichSearchResults(searchId, keys.firecrawlKey);
         console.log(`${LOG_PREFIX} [LEAD-SCRAPER-SEARCH] Enrichment complete: ${enrichmentStats.enriched} scraped, ${enrichmentStats.cached} cached, ${enrichmentStats.failed} failed`);
@@ -2895,6 +3021,15 @@ async function handleLeadScraperSearch(
         .update(leadScraperSearches)
         .set({ status: 'completed' })
         .where(eq(leadScraperSearches.id, searchId));
+
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_scraper_enrichment_completed',
+        title: `✅ Arricchimento completato`,
+        description: `${enrichmentStats.enriched} siti scrappati, ${enrichmentStats.cached} da cache, ${enrichmentStats.failed} falliti`,
+        icon: '🌐',
+        severity: 'info',
+        task_id: task.id,
+      });
     }
 
     await logActivity(task.consultant_id, {
@@ -2951,10 +3086,43 @@ async function handleLeadQualifyAndAssign(
   const requireApproval = outreachConfig.require_approval !== false;
   const outreachTaskStatus = requireApproval ? 'waiting_approval' : 'scheduled';
 
+  await logActivity(task.consultant_id, {
+    event_type: 'lead_qualify_batch_started',
+    title: `🧠 Inizio analisi AI dei lead...`,
+    description: `Analizzo ogni azienda trovata per calcolare il punteggio di compatibilità (soglia: ${scoreThreshold}/100)`,
+    icon: '🧠',
+    severity: 'info',
+    task_id: task.id,
+  });
+
   let summariesGenerated = 0;
   let summariesFailed = 0;
   try {
-    const batchResult = await generateBatchSalesSummaries(searchId, task.consultant_id);
+    const batchResult = await generateBatchSalesSummaries(searchId, task.consultant_id, async (progress) => {
+      if (progress.status === 'analyzing') {
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_analyzing',
+          title: `🔎 Analizzando "${progress.businessName}" (${progress.index}/${progress.total})`,
+          description: `Generazione report AI e calcolo score di compatibilità...`,
+          icon: '🔎',
+          severity: 'info',
+          task_id: task.id,
+        });
+      } else if (progress.status === 'done') {
+        const scoreLabel = progress.score !== null ? `${progress.score}/100` : 'non estratto';
+        const qualified = progress.score !== null && progress.score >= scoreThreshold;
+        await logActivity(task.consultant_id, {
+          event_type: 'lead_qualify_scored',
+          title: `${qualified ? '✅' : '⬜'} ${progress.businessName}: score ${scoreLabel}`,
+          description: qualified
+            ? `Score sopra soglia (${scoreThreshold}) — lead qualificato per outreach`
+            : `Score sotto soglia (${scoreThreshold}) — lead non qualificato`,
+          icon: qualified ? '✅' : '⬜',
+          severity: 'info',
+          task_id: task.id,
+        });
+      }
+    });
     summariesGenerated = batchResult.generated;
     summariesFailed = batchResult.failed;
     console.log(`${LOG_PREFIX} [LEAD-QUALIFY] AI summaries: ${summariesGenerated} generated, ${summariesFailed} failed`);
@@ -2974,6 +3142,15 @@ async function handleLeadQualifyAndAssign(
   });
 
   console.log(`${LOG_PREFIX} [LEAD-QUALIFY] ${allLeads.length} total leads, ${qualifiedLeads.length} qualified (score >= ${scoreThreshold})`);
+
+  await logActivity(task.consultant_id, {
+    event_type: 'lead_qualify_summary',
+    title: `📊 Qualifica completata: ${qualifiedLeads.length}/${allLeads.length} qualificati`,
+    description: `${summariesGenerated} analisi AI completate, ${summariesFailed} fallite. ${qualifiedLeads.length} lead superano la soglia di ${scoreThreshold}/100`,
+    icon: '📊',
+    severity: qualifiedLeads.length > 0 ? 'info' : 'warning',
+    task_id: task.id,
+  });
 
   let whatsappConfigActive = false;
   if (whatsappConfigId) {
@@ -3163,6 +3340,17 @@ async function handleLeadQualifyAndAssign(
       });
 
       console.log(`${LOG_PREFIX} [LEAD-QUALIFY] Created ${channelAssigned} task for "${leadName}" (score: ${lead.aiCompatibilityScore}, delay: ${delayMinutes}min)`);
+
+      const channelLabel = channelAssigned === 'voice' ? '📞 Alessia (chiamata)' : channelAssigned === 'whatsapp' ? '💬 Stella (WhatsApp)' : '📧 Millie (email)';
+      await logActivity(task.consultant_id, {
+        event_type: 'lead_outreach_task_created',
+        title: `🚀 Task outreach creato per "${leadName}"`,
+        description: `Canale: ${channelLabel}, Score: ${lead.aiCompatibilityScore || 'N/A'}/100, Programmato tra ${delayMinutes} min`,
+        icon: '🚀',
+        severity: 'info',
+        task_id: task.id,
+        contact_name: leadName,
+      });
     } catch (taskErr: any) {
       console.error(`${LOG_PREFIX} [LEAD-QUALIFY] Failed to create task for "${leadName}": ${taskErr.message}`);
     }

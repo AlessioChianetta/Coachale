@@ -503,9 +503,23 @@ REGOLE:
     const responseText = aiResult.text || "";
 
     let score: number | null = null;
-    const scoreMatch = responseText.match(/\*\*SCORE:\s*(\d{1,3})\*\*/);
-    if (scoreMatch) {
-      score = Math.min(100, Math.max(1, parseInt(scoreMatch[1])));
+    const scorePatterns = [
+      /\*\*SCORE:\s*(\d{1,3})\s*(?:\/\s*100)?\s*\*\*/i,
+      /\*\*\s*SCORE\s*:\s*(\d{1,3})\s*(?:\/\s*100)?\s*\*\*/i,
+      /#+\s*SCORE\s*:\s*(\d{1,3})/i,
+      /SCORE\s*:\s*(\d{1,3})\s*(?:\/\s*100)?/i,
+      /\bscore\s*[:=]\s*(\d{1,3})\b/i,
+    ];
+    for (const pattern of scorePatterns) {
+      const match = responseText.match(pattern);
+      if (match) {
+        score = Math.min(100, Math.max(1, parseInt(match[1])));
+        break;
+      }
+    }
+
+    if (score === null) {
+      console.warn(`[LEAD-SCRAPER] Score extraction FAILED for ${result.businessName}. First 300 chars: ${responseText.substring(0, 300).replace(/\n/g, ' ')}`);
     }
 
     const [updated] = await db
@@ -526,7 +540,11 @@ REGOLE:
   }
 }
 
-export async function generateBatchSalesSummaries(searchId: string, consultantId: string): Promise<{ generated: number; failed: number }> {
+export async function generateBatchSalesSummaries(
+  searchId: string,
+  consultantId: string,
+  onProgress?: (info: { index: number; total: number; businessName: string; score: number | null; status: 'analyzing' | 'done' | 'failed' }) => void,
+): Promise<{ generated: number; failed: number }> {
   const results = await db
     .select()
     .from(leadScraperResults)
@@ -541,13 +559,23 @@ export async function generateBatchSalesSummaries(searchId: string, consultantId
   let generated = 0;
   let failed = 0;
 
-  for (const result of results) {
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
     try {
-      await generateSalesSummary(result.id, consultantId);
+      if (onProgress) {
+        onProgress({ index: i + 1, total: results.length, businessName: result.businessName || 'Sconosciuto', score: null, status: 'analyzing' });
+      }
+      const updated = await generateSalesSummary(result.id, consultantId);
       generated++;
+      if (onProgress) {
+        onProgress({ index: i + 1, total: results.length, businessName: result.businessName || 'Sconosciuto', score: updated?.aiCompatibilityScore ?? null, status: 'done' });
+      }
     } catch (error: any) {
       console.error(`[LEAD-SCRAPER] Batch summary failed for ${result.businessName}:`, error.message);
       failed++;
+      if (onProgress) {
+        onProgress({ index: i + 1, total: results.length, businessName: result.businessName || 'Sconosciuto', score: null, status: 'failed' });
+      }
     }
   }
 
