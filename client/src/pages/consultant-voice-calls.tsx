@@ -1002,7 +1002,7 @@ export default function ConsultantVoiceCallsPage() {
   const [voiceThinkingBudgetGreeting, setVoiceThinkingBudgetGreeting] = useState(0);
   const [voiceProtectFirstMessage, setVoiceProtectFirstMessage] = useState(true);
   const [voiceDeferredPrompt, setVoiceDeferredPrompt] = useState(false);
-  const [voiceVadStartSensitivity, setVoiceVadStartSensitivity] = useState('START_SENSITIVITY_MEDIUM');
+  const [voiceVadStartSensitivity, setVoiceVadStartSensitivity] = useState('START_SENSITIVITY_HIGH');
   const [voiceVadEndSensitivity, setVoiceVadEndSensitivity] = useState('END_SENSITIVITY_LOW');
   const [voiceVadSilenceMs, setVoiceVadSilenceMs] = useState(500);
 
@@ -1969,7 +1969,7 @@ export default function ConsultantVoiceCallsPage() {
       setVoiceThinkingBudgetGreeting(nonClientSettingsData.voice_thinking_budget_greeting ?? 0);
       setVoiceProtectFirstMessage(nonClientSettingsData.voice_protect_first_message ?? true);
       setVoiceDeferredPrompt(nonClientSettingsData.voice_deferred_prompt ?? false);
-      setVoiceVadStartSensitivity(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_MEDIUM');
+      setVoiceVadStartSensitivity(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_HIGH');
       setVoiceVadEndSensitivity(nonClientSettingsData.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW');
       setVoiceVadSilenceMs(nonClientSettingsData.voice_vad_silence_ms ?? 500);
       setHasChanges(false);
@@ -3522,6 +3522,36 @@ export default function ConsultantVoiceCallsPage() {
                         <CardDescription>Controlla il comportamento dell'AI durante le chiamate vocali</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-6">
+                        {nonClientSettingsData && (
+                          <div className={`rounded-lg border p-3 ${hasChanges ? 'border-amber-500/50 bg-amber-500/5' : 'border-border bg-muted/30'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">Configurazione Attiva</span>
+                              {hasChanges && (
+                                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">modifiche non salvate</span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="inline-flex items-center rounded-md bg-background px-2 py-0.5 text-xs border">
+                                Thinking: {nonClientSettingsData.voice_thinking_budget_greeting ?? 0}
+                              </span>
+                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs border ${nonClientSettingsData.voice_protect_first_message !== false ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30' : 'bg-background'}`}>
+                                Proteggi Saluto: {nonClientSettingsData.voice_protect_first_message !== false ? 'ON' : 'OFF'}
+                              </span>
+                              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs border ${nonClientSettingsData.voice_deferred_prompt ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30' : 'bg-background'}`}>
+                                Prompt Differito: {nonClientSettingsData.voice_deferred_prompt ? 'ON' : 'OFF'}
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-background px-2 py-0.5 text-xs border">
+                                VAD Inizio: {(nonClientSettingsData.voice_vad_start_sensitivity || 'START_SENSITIVITY_HIGH').includes('HIGH') ? 'Alta' : 'Bassa'}
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-background px-2 py-0.5 text-xs border">
+                                VAD Fine: {(nonClientSettingsData.voice_vad_end_sensitivity || 'END_SENSITIVITY_LOW').includes('HIGH') ? 'Alta' : 'Bassa'}
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-background px-2 py-0.5 text-xs border">
+                                Silenzio: {nonClientSettingsData.voice_vad_silence_ms ?? 500}ms
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label>Thinking Budget</Label>
@@ -3570,7 +3600,6 @@ export default function ConsultantVoiceCallsPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="START_SENSITIVITY_LOW">Bassa</SelectItem>
-                                <SelectItem value="START_SENSITIVITY_MEDIUM">Media</SelectItem>
                                 <SelectItem value="START_SENSITIVITY_HIGH">Alta</SelectItem>
                               </SelectContent>
                             </Select>
@@ -3585,7 +3614,6 @@ export default function ConsultantVoiceCallsPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="END_SENSITIVITY_LOW">Bassa</SelectItem>
-                                <SelectItem value="END_SENSITIVITY_MEDIUM">Media</SelectItem>
                                 <SelectItem value="END_SENSITIVITY_HIGH">Alta</SelectItem>
                               </SelectContent>
                             </Select>

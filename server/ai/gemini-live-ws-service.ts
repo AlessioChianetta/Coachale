@@ -2846,7 +2846,7 @@ export function setupGeminiLiveWSService(): WebSocketServer {
       let voiceThinkingBudget = 0;
       let voiceProtectFirstMessage = true;
       let voiceDeferredPrompt = false;
-      let voiceVadStartSensitivity = 'START_SENSITIVITY_MEDIUM';
+      let voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
       let voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
       let voiceVadSilenceMs = 500;
       let firstAiTurnComplete = false;
@@ -3467,8 +3467,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
-            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM';
+            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_HIGH';
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
+            if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
+            if (!['END_SENSITIVITY_LOW', 'END_SENSITIVITY_HIGH'].includes(voiceVadEndSensitivity)) voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
             voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
             console.log(`📞 [${connectionId}] OUTBOUND settings loaded - source=${outboundPromptSource}, template=${outboundTemplateId}, brandVoice=${outboundBrandVoiceEnabled}, deferredPrompt=${voiceDeferredPrompt}, thinkingBudget=${voiceThinkingBudget}`);
             console.log(`🔍 [ROUTING-DEBUG] ━━━ OUTBOUND SETTINGS (non-client path) ━━━`);
@@ -3795,8 +3797,10 @@ Una volta che hanno capito e confermato:
             voiceThinkingBudget = settings.voiceThinkingBudgetGreeting ?? 0;
             voiceProtectFirstMessage = settings.voiceProtectFirstMessage ?? true;
             voiceDeferredPrompt = settings.voiceDeferredPrompt ?? false;
-            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_MEDIUM';
+            voiceVadStartSensitivity = settings.voiceVadStartSensitivity || 'START_SENSITIVITY_HIGH';
             voiceVadEndSensitivity = settings.voiceVadEndSensitivity || 'END_SENSITIVITY_LOW';
+            if (!['START_SENSITIVITY_LOW', 'START_SENSITIVITY_HIGH'].includes(voiceVadStartSensitivity)) voiceVadStartSensitivity = 'START_SENSITIVITY_HIGH';
+            if (!['END_SENSITIVITY_LOW', 'END_SENSITIVITY_HIGH'].includes(voiceVadEndSensitivity)) voiceVadEndSensitivity = 'END_SENSITIVITY_LOW';
             voiceVadSilenceMs = settings.voiceVadSilenceMs ?? 500;
             
             if (isOutbound) {
@@ -9108,6 +9112,13 @@ ${compactFeedback}
         }
         
         isSessionActive = false;
+        
+        if (isPhoneCall && !goAwayReceived && clientWs.readyState === WebSocket.OPEN) {
+          console.log(`📞 [${connectionId}] Closing phone WebSocket (Gemini session ended)`);
+          try {
+            clientWs.close(1000, 'Gemini session ended');
+          } catch (e) {}
+        }
       });
 
       console.log(`✅ [${connectionId}] Gemini Live session created successfully`);
