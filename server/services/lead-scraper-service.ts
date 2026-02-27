@@ -461,33 +461,49 @@ Produci il resoconto in questo FORMATO ESATTO:
 **SCORE: [numero da 1 a 100]**
 
 ## Chi sono
-[Breve sintesi dell'azienda: cosa fanno, dimensione, settore]
+[Breve sintesi dell'azienda: cosa fanno, dimensione stimata, settore. Max 3-4 righe.]
 
 ## Cosa fanno
-[Servizi/prodotti principali dell'azienda target]
+[Servizi/prodotti principali dell'azienda target. Elenco puntato con bullet points.]
 
 ## Punti di forza dell'azienda
-[Cosa fanno bene, reputazione, presenza online]
+[Cosa fanno bene, reputazione, presenza online. Elenco puntato.]
+
+## Segnali chiave
+[Segnali concreti dal sito/recensioni/social che indicano propensione all'acquisto. Es: "Stanno già usando tool X", "Hanno pubblicato annunci per Y", "Il CEO parla di Z su LinkedIn". Ogni segnale su un bullet point separato.]
 
 ## Bisogni potenziali
-[Dove il consulente potrebbe aiutarli in base ai servizi che offre. Sii specifico e concreto]
+[Per ogni bisogno: collega esplicitamente al servizio/prodotto specifico del consulente che lo risolve. Formato per ogni punto:
+- **Bisogno:** [descrizione concreta] → **Soluzione:** [nome servizio/prodotto del consulente e come lo risolve]]
+
+## Obiezioni probabili
+[Le 2-3 obiezioni più probabili che il prospect potrebbe sollevare, con la risposta consigliata per ciascuna. Formato:
+- **"Obiezione"** → Risposta: [come gestirla]]
+
+## Urgenza
+[Perché dovrebbero agire ORA e non tra 6 mesi. Leva temporale concreta: stagionalità, trend di mercato, competitor che si muovono, costo dell'inazione.]
 
 ## Strategia di approccio
-[Come contattarli, quale canale usare, quando, con quale tono]
+[Come contattarli, quale canale usare, quando, con quale tono. Max 3-4 righe.]
 
 ## Contatto migliore
-[Quale email/telefono usare e perché]
+[Quale persona contattare (nome e ruolo se trovati), quale email/telefono usare e perché.]
 
 ## Apertura conversazione suggerita
-[Una frase d'apertura personalizzata e professionale per il primo contatto]
+Genera 3 varianti:
+- **WhatsApp:** [Messaggio breve, diretto, max 2-3 frasi. Tono conversazionale.]
+- **Email:** [Oggetto email + prime 2 righe del corpo. Tono professionale.]
+- **Voce:** [Frase di apertura per chiamata telefonica, presentazione + aggancio in 15 secondi.]
 
 REGOLE:
 - Lo SCORE deve riflettere quanto questa azienda è un buon prospect PER IL CONSULENTE in base ai suoi servizi specifici
 - Score alto (70-100): bisogno evidente dei servizi del consulente, buon budget presunto, facile accesso
 - Score medio (40-69): potenziale interesse ma non certo, bisogna investigare
 - Score basso (1-39): poco match con i servizi del consulente
-- Sii pratico e actionable, non generico
-- Scrivi in italiano`;
+- Sii pratico e actionable, MAI generico. Ogni punto deve contenere dettagli specifici sull'azienda target
+- Scrivi in italiano
+- Max 800 parole totali. Preferisci bullet points a paragrafi lunghi
+- NON inventare informazioni: se un dato non è disponibile, omettilo`;
 
   const userPrompt = `Analizza questa azienda target:\n\n${companyDataBlock}`;
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -731,8 +733,22 @@ export default function ConsultantLeadDetail() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
-                    {lead.aiSalesSummary.replace(/\*\*SCORE:\s*\d+\*\*\n?/, "")}
+                  <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed max-h-[400px] overflow-y-auto pr-1">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h2: ({ children }) => <h3 className="text-sm font-bold text-gray-900 dark:text-white mt-4 mb-1.5 first:mt-0">{children}</h3>,
+                        h3: ({ children }) => <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mt-3 mb-1">{children}</h4>,
+                        p: ({ children }) => <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc list-outside ml-4 mb-2 space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-outside ml-4 mb-2 space-y-1">{children}</ol>,
+                        li: ({ children }) => <li className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{children}</li>,
+                        strong: ({ children }) => <strong className="font-semibold text-gray-800 dark:text-gray-200">{children}</strong>,
+                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">{children}</a>,
+                      }}
+                    >
+                      {lead.aiSalesSummary.replace(/\*\*SCORE:\s*\d+(?:\/\d+)?\s*\*\*\n?/, "")}
+                    </ReactMarkdown>
                   </div>
                   {lead.aiSalesSummaryGeneratedAt && (
                     <p className="text-[10px] text-violet-400 mt-2">

@@ -2484,6 +2484,16 @@ export default function ConsultantLeadScraper() {
                                           });
                                         };
                                         const chBorderLeft = task.channel === 'voice' ? 'border-l-orange-400' : task.channel === 'whatsapp' ? 'border-l-emerald-500' : 'border-l-blue-500';
+                                        const stripConsultantContext = (text: string) => {
+                                          const marker = '━━━ CONSULENTE ━━━';
+                                          const idx = text.indexOf(marker);
+                                          if (idx >= 0) {
+                                            const leadPart = text.substring(0, idx).trim();
+                                            return leadPart || '';
+                                          }
+                                          return text;
+                                        };
+                                        const leadOnlyInstruction = task.aiInstruction ? stripConsultantContext(task.aiInstruction) : '';
                                         const hasDetail = task.channel === 'whatsapp' ? !!(task.waTemplateFilled || task.waPreviewMessage || task.aiInstruction || task.waTemplateName) : task.channel === 'voice' ? !!(task.voiceTemplateName || task.callInstruction || task.aiInstruction) : !!(task.aiInstruction);
 
                                         return (
@@ -2577,17 +2587,17 @@ export default function ConsultantLeadScraper() {
                                                         </div>
                                                       </div>
                                                     )}
-                                                    {!task.waTemplateName && task.aiInstruction && (
+                                                    {!task.waTemplateName && leadOnlyInstruction && (
                                                       <div>
                                                         <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio WhatsApp:</p>
                                                         <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
-                                                          {task.aiInstruction}
+                                                          {leadOnlyInstruction}
                                                         </div>
                                                       </div>
                                                     )}
-                                                    {task.waTemplateName && task.aiInstruction && (
+                                                    {task.waTemplateName && leadOnlyInstruction && (
                                                       <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
-                                                        {task.aiInstruction}
+                                                        {leadOnlyInstruction}
                                                       </div>
                                                     )}
                                                   </div>
@@ -2608,19 +2618,19 @@ export default function ConsultantLeadScraper() {
                                                         </div>
                                                       </div>
                                                     )}
-                                                    {task.aiInstruction && (
+                                                    {leadOnlyInstruction && (
                                                       <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
-                                                        {task.aiInstruction}
+                                                        {leadOnlyInstruction}
                                                       </div>
                                                     )}
                                                   </div>
                                                 )}
 
-                                                {task.channel === 'email' && task.aiInstruction && (
+                                                {task.channel === 'email' && leadOnlyInstruction && (
                                                   <div>
                                                     <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
                                                     <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
-                                                      {task.aiInstruction}
+                                                      {leadOnlyInstruction}
                                                     </div>
                                                   </div>
                                                 )}
