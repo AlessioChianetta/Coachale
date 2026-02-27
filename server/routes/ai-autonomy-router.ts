@@ -800,16 +800,17 @@ async function resolveTemplateVariables(
         `${JSON.stringify(Object.fromEntries(stillNeeded.map(v => [v, "valore generato"])))}`,
       ].join('\n');
 
-      const result = await quickGenerate(prompt, {
+      const aiResult = await quickGenerate({
         consultantId: consultantId || 'system',
         feature: 'hunter-template-vars',
-        maxTokens: 150,
-        temperature: 0.4,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 150, temperature: 0.4, responseMimeType: 'application/json' },
       });
 
-      if (result) {
+      const resultText = aiResult?.text;
+      if (resultText) {
         try {
-          const jsonMatch = result.match(/\{[\s\S]*\}/);
+          const jsonMatch = resultText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
             for (const v of stillNeeded) {
@@ -825,13 +826,13 @@ async function resolveTemplateVariables(
         } catch (parseErr: any) {
           const singleVar = stillNeeded.length === 1 ? stillNeeded[0] : null;
           if (singleVar) {
-            const cleaned = result.replace(/^["'{}\s]|["'}\s]$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
+            const cleaned = resultText.replace(/^["'{}\s]|["'}\s]$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
             if (cleaned.length > 2 && cleaned.length < 120) {
               resolved[singleVar] = cleaned;
               sources[singleVar] = 'dynamic_ai';
             }
           }
-          console.warn(`[HUNTER] AI vars JSON parse failed for "${lead.businessName}": ${parseErr.message}, raw: "${result.substring(0, 100)}"`);
+          console.warn(`[HUNTER] AI vars JSON parse failed for "${lead.businessName}": ${parseErr.message}, raw: "${resultText.substring(0, 100)}"`);
         }
       }
     } catch (err: any) {
