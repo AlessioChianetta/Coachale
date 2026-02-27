@@ -315,6 +315,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           voiceTemplateName: ctx.voice_template_name || null,
           callInstruction: ctx.call_instruction || null,
           waTemplateName: ctx.wa_template_name || null,
+          waPreviewMessage: ctx.wa_preview_message || null,
         });
       }
     }
@@ -355,6 +356,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           voiceTemplateName: ctx.voice_template_name || null,
           callInstruction: ctx.call_instruction || null,
           waTemplateName: ctx.wa_template_name || null,
+          waPreviewMessage: ctx.wa_preview_message || null,
         });
       }
     }
@@ -499,7 +501,8 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
         WHERE la.lead_id::text = lr.id::text
           AND la.type IN ('voice_call_answered', 'voice_call_completed', 'voice_call_no_answer',
                          'whatsapp_sent', 'whatsapp_failed', 'email_sent', 'email_failed',
-                         'outreach_assigned', 'crm_reanalysis')
+                         'outreach_assigned', 'crm_reanalysis',
+                         'chiamata', 'whatsapp_inviato', 'email_inviata')
       ) as last_activity_at
     FROM lead_scraper_results lr
     JOIN lead_scraper_searches ls ON lr.search_id = ls.id
@@ -681,7 +684,7 @@ async function generateOutreachContent(
   talkingPoints?: string[],
   outreachConfig?: any,
   waTemplates?: WaTemplateForOutreach[]
-): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; emailSubject?: string; emailBody?: string; leadId: string }> {
+): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
 
   const leadContext = buildLeadContext(lead, consultantName, salesCtx, talkingPoints, outreachConfig);
 
@@ -697,11 +700,47 @@ async function generateOutreachContent(
 
   if (channel === 'whatsapp' && waTemplates && waTemplates.length > 0) {
     console.log(`[HUNTER] WhatsApp: building lead context for ${lead.businessName} (${waTemplates.length} templates available, executor will choose)`);
+
+    let waPreviewMessage = '';
+    try {
+      const { quickGenerate } = await import("../ai/provider-factory");
+      const commStyle = outreachConfig?.communication_style || 'professionale';
+      const styleMap: Record<string, string> = {
+        formale: 'Tono FORMALE: usa il Lei, linguaggio istituzionale, zero emoji.',
+        professionale: 'Tono PROFESSIONALE: cordiale ma competente, usa il Lei ma senza essere freddo.',
+        informale: 'Tono INFORMALE: usa il tu, linguaggio colloquiale ma rispettoso.',
+        amichevole: 'Tono AMICHEVOLE: come un collega che scrive a un altro. Usa il tu, breve, diretto.',
+      };
+      const styleInstruction = styleMap[commStyle] || styleMap.professionale;
+
+      const previewResult = await quickGenerate({
+        consultantId,
+        feature: 'hunter-wa-template-preview',
+        thinkingLevel: 'low',
+        systemInstruction: [
+          `Sei Hunter, il copywriter commerciale di ${consultantName}. Genera un breve messaggio WhatsApp personalizzato (3-4 frasi) per questo lead.`,
+          `Questo messaggio sarà usato come anteprima e come contesto per il riempimento variabili di un template WhatsApp.`,
+          styleInstruction,
+          outreachConfig?.custom_instructions ? `ISTRUZIONI PERSONALIZZATE: ${outreachConfig.custom_instructions}` : '',
+          outreachConfig?.opening_hook ? `APPROCCIO DI APERTURA: ${outreachConfig.opening_hook}` : '',
+          `Rispondi SOLO con il testo del messaggio, senza JSON, senza virgolette. Max 3-4 frasi brevi e personalizzate.`,
+          `Il messaggio deve dimostrare che conosci l'attività del lead e proporre un valore concreto.`,
+        ].filter(Boolean).join('\n'),
+        contents: [{ role: 'user', parts: [{ text: leadContext }] }],
+      });
+      waPreviewMessage = previewResult.text?.trim() || '';
+      console.log(`[HUNTER] WA template preview generated for ${lead.businessName}: ${waPreviewMessage.substring(0, 80)}...`);
+    } catch (err: any) {
+      console.error(`[HUNTER] Failed to generate WA preview for ${lead.businessName}: ${err.message}`);
+      waPreviewMessage = `Messaggio personalizzato per ${lead.businessName || 'il lead'} — ${consultantName}`;
+    }
+
     return {
       channel,
       leadId: lead.id || lead.leadId,
       whatsappContext: leadContext,
       useWaTemplate: true,
+      wa_preview_message: waPreviewMessage,
     };
   }
 
@@ -913,7 +952,7 @@ async function scheduleIndividualOutreach(
   } else if (channel === 'whatsapp') {
     const isTemplateMode = content.useWaTemplate === true;
     const waInstruction = isTemplateMode ? (content.whatsappContext || '') : (content.whatsappMessage || '');
-    contentPreview = isTemplateMode ? `${leadName} — Template WA` : waInstruction.substring(0, 120);
+    contentPreview = isTemplateMode ? (content.wa_preview_message ? content.wa_preview_message.substring(0, 120) : `${leadName} — Template WA`) : waInstruction.substring(0, 120);
 
     const additionalContext = JSON.stringify({
       lead_id: lead.id || lead.leadId,
@@ -926,6 +965,7 @@ async function scheduleIndividualOutreach(
       sales_summary: lead.salesSummary || null,
       source: 'crm_analysis',
       use_wa_template: isTemplateMode,
+      wa_preview_message: isTemplateMode ? (content.wa_preview_message || null) : null,
     });
 
     await db.execute(sql`
@@ -1014,20 +1054,49 @@ async function scheduleIndividualOutreach(
     `);
   }
 
+  const leadId = lead.id || lead.leadId;
   await db.execute(sql`
     UPDATE lead_scraper_results
     SET lead_status = 'in_outreach', outreach_task_id = ${taskId},
         lead_next_action = ${`${channel} outreach individuale`},
-        lead_next_action_date = ${scheduledAtIso}
-    WHERE id = ${lead.id || lead.leadId}
+        lead_next_action_date = ${scheduledAtIso},
+        contacted_channels = CASE
+          WHEN ${channel} = ANY(COALESCE(contacted_channels, '{}'))
+          THEN contacted_channels
+          ELSE array_append(COALESCE(contacted_channels, '{}'), ${channel})
+        END
+    WHERE id = ${leadId}
   `);
+
+  const activityTypeMap: Record<string, string> = {
+    voice: 'chiamata',
+    whatsapp: 'whatsapp_inviato',
+    email: 'email_inviata',
+  };
+  const activityTitleMap: Record<string, string> = {
+    voice: 'Hunter — Chiamata programmata',
+    whatsapp: 'Hunter — WhatsApp programmato',
+    email: 'Hunter — Email programmata',
+  };
+  const activityType = activityTypeMap[channel] || 'crm_reanalysis';
+  const activityTitle = (activityTitleMap[channel] || 'Hunter → ' + channel) + ': ' + leadName;
+
+  let activityDescription = 'Outreach personalizzato';
+  if (channel === 'voice') {
+    const templateName = config.voiceTemplateName || 'Predefinito';
+    activityDescription = `Template voce: ${templateName}` + (content.callScript ? ` — ${content.callScript.substring(0, 150)}` : '');
+  } else if (channel === 'whatsapp') {
+    activityDescription = content.whatsappMessage?.substring(0, 200) || content.whatsappContext?.substring(0, 200) || 'Messaggio WhatsApp programmato';
+  } else if (channel === 'email') {
+    activityDescription = content.emailSubject ? `Oggetto: ${content.emailSubject}` : 'Email programmata';
+  }
 
   await db.execute(sql`
     INSERT INTO lead_scraper_activities (lead_id, consultant_id, type, title, description, metadata)
     VALUES (
-      ${lead.id || lead.leadId}, ${consultantId}, 'crm_reanalysis',
-      ${'Hunter → ' + channel + ': ' + leadName},
-      ${content.callScript?.substring(0, 200) || content.whatsappMessage?.substring(0, 200) || content.emailSubject || 'Outreach personalizzato'},
+      ${lead.id || lead.leadId}, ${consultantId}, ${activityType},
+      ${activityTitle},
+      ${activityDescription},
       ${JSON.stringify({ taskId, channel, score: lead.score, source: 'crm_analysis', scheduledAt: scheduledAtIso })}::jsonb
     )
   `);

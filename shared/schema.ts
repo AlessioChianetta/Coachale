@@ -10716,6 +10716,7 @@ export const leadScraperResults = pgTable("lead_scraper_results", {
   aiCompatibilityScore: integer("ai_compatibility_score"),
   aiSalesSummaryGeneratedAt: timestamp("ai_sales_summary_generated_at"),
   outreachTaskId: varchar("outreach_task_id", { length: 100 }),
+  contactedChannels: text("contacted_channels").array().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 

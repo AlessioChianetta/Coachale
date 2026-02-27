@@ -126,6 +126,7 @@ interface SearchResult {
   aiCompatibilityScore: number | null;
   aiSalesSummaryGeneratedAt: string | null;
   outreachTaskId: string | null;
+  contactedChannels: string[] | null;
   createdAt: string;
 }
 
@@ -245,6 +246,7 @@ export default function ConsultantLeadScraper() {
   const [crmFilterStatus, setCrmFilterStatus] = useState("tutti");
   const [crmSearch, setCrmSearch] = useState("");
   const [crmSourceFilter, setCrmSourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
+  const [crmChannelView, setCrmChannelView] = useState<"tutti" | "nuovi" | "con_telefono" | "con_email" | "wa" | "voice" | "email" | "multi">("tutti");
   const [historySourceFilter, setHistorySourceFilter] = useState<"tutti" | "google_maps" | "google_search">("tutti");
   const [historyPopoverOpen, setHistoryPopoverOpen] = useState(false);
 
@@ -846,6 +848,23 @@ export default function ConsultantLeadScraper() {
 
   const hunterSearches = useMemo(() => searches.filter(s => s.originRole === "hunter"), [searches]);
   const hunterLeadsCount = useMemo(() => allResults.filter(r => r.outreachTaskId).length, [allResults]);
+
+  const filteredCrmResults = useMemo(() => {
+    if (crmChannelView === "tutti") return allResults;
+    return allResults.filter(r => {
+      const ch = r.contactedChannels || [];
+      switch (crmChannelView) {
+        case "nuovi": return ch.length === 0;
+        case "con_telefono": return !!r.phone;
+        case "con_email": return !!r.email;
+        case "wa": return ch.includes("whatsapp");
+        case "voice": return ch.includes("voice");
+        case "email": return ch.includes("email");
+        case "multi": return ch.length >= 2;
+        default: return true;
+      }
+    });
+  }, [allResults, crmChannelView]);
 
   const filteredSearches = useMemo(() => {
     if (historySourceFilter === "tutti") return searches;
@@ -1617,12 +1636,43 @@ export default function ConsultantLeadScraper() {
                 ))}
               </div>
 
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                {([
+                  { key: "tutti", label: "Tutti", icon: null },
+                  { key: "nuovi", label: "Nuovi", icon: null },
+                  { key: "con_telefono", label: "Con Telefono", icon: PhoneCall },
+                  { key: "con_email", label: "Con Email", icon: MailIcon },
+                  { key: "wa", label: "Contattati WA", icon: MessageCircle },
+                  { key: "voice", label: "Contattati Voce", icon: PhoneCall },
+                  { key: "email", label: "Contattati Email", icon: MailIcon },
+                  { key: "multi", label: "Multi-canale", icon: Crosshair },
+                ] as const).map((v) => {
+                  const VIcon = v.icon;
+                  const isActive = crmChannelView === v.key;
+                  return (
+                    <button
+                      key={v.key}
+                      onClick={() => setCrmChannelView(isActive && v.key !== "tutti" ? "tutti" : v.key)}
+                      className={cn(
+                        "flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium border transition-all whitespace-nowrap",
+                        isActive
+                          ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700 shadow-sm"
+                          : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700"
+                      )}
+                    >
+                      {VIcon && <VIcon className={cn("h-3 w-3", isActive ? "text-violet-600 dark:text-violet-400" : "")} />}
+                      {v.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <CardTitle className="flex items-center gap-2">
                       <ClipboardList className="h-5 w-5 text-violet-500" />CRM Lead
-                      <span className="text-sm font-normal text-muted-foreground">({allResults.length})</span>
+                      <span className="text-sm font-normal text-muted-foreground">({filteredCrmResults.length}{crmChannelView !== "tutti" ? ` / ${allResults.length}` : ""})</span>
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
                       <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
@@ -1657,8 +1707,8 @@ export default function ConsultantLeadScraper() {
                           </Button>
                         )}
                       </div>
-                      {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti") && (
-                        <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); }} className="text-xs h-8 text-gray-500 hover:text-gray-700">
+                      {(crmFilterStatus !== "tutti" || crmSourceFilter !== "tutti" || crmChannelView !== "tutti") && (
+                        <Button variant="ghost" size="sm" onClick={() => { setCrmFilterStatus("tutti"); setCrmSourceFilter("tutti"); setCrmChannelView("tutti"); }} className="text-xs h-8 text-gray-500 hover:text-gray-700">
                           <X className="h-3 w-3 mr-1" />Rimuovi filtri
                         </Button>
                       )}
@@ -1666,7 +1716,7 @@ export default function ConsultantLeadScraper() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {allResults.length === 0 ? (
+                  {filteredCrmResults.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
                       <p>Nessun lead trovato</p>
@@ -1678,6 +1728,7 @@ export default function ConsultantLeadScraper() {
                           <TableRow className="bg-gray-50 dark:bg-gray-800/50">
                             <TableHead className="font-semibold">Nome</TableHead>
                             <TableHead className="text-center font-semibold w-[70px]">Fonte</TableHead>
+                            <TableHead className="text-center font-semibold w-[80px]">Canali</TableHead>
                             <TableHead className="font-semibold">Email</TableHead>
                             <TableHead className="font-semibold">Telefono</TableHead>
                             <TableHead className="text-center font-semibold">Score</TableHead>
@@ -1688,7 +1739,7 @@ export default function ConsultantLeadScraper() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {allResults.map((r) => {
+                          {filteredCrmResults.map((r) => {
                             const statusInfo = getLeadStatusInfo(r.leadStatus);
                             return (
                               <TableRow
@@ -1720,6 +1771,17 @@ export default function ConsultantLeadScraper() {
                                     </Badge>
                                   )}
                                 </TableCell>
+                                <TableCell className="text-center">
+                                  {(r.contactedChannels && r.contactedChannels.length > 0) ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      {r.contactedChannels.includes("voice") && <PhoneCall className="h-3 w-3 text-green-500" />}
+                                      {r.contactedChannels.includes("whatsapp") && <MessageCircle className="h-3 w-3 text-emerald-500" />}
+                                      {r.contactedChannels.includes("email") && <MailIcon className="h-3 w-3 text-blue-500" />}
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.email || "-"}</TableCell>
                                 <TableCell className="text-sm text-gray-600 dark:text-gray-400">{r.phone || "-"}</TableCell>
                                 <TableCell className="text-center">{getScoreBar(r.aiCompatibilityScore)}</TableCell>
@@ -1741,8 +1803,8 @@ export default function ConsultantLeadScraper() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30"
-                                    title="Analizza con Hunter"
+                                    className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                    title="Avvia Hunter su questo lead"
                                     onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
                                   >
                                     <Crosshair className="h-3.5 w-3.5" />
@@ -1994,7 +2056,7 @@ export default function ConsultantLeadScraper() {
 
             {/* SEZIONE 2 — Coda Outreach Unificata */}
             {(() => {
-              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null }[] = [];
+              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null }[] = [];
               if (hunterPipeline?.channels) {
                 Object.entries(hunterPipeline.channels).forEach(([, chData]) => {
                   if (chData?.tasks) allTasks.push(...chData.tasks);
@@ -2023,8 +2085,6 @@ export default function ConsultantLeadScraper() {
                   return db.localeCompare(da);
                 });
 
-              const visibleTasks = filteredTasks.slice(0, 25);
-
               const channelIcon = (ch: string) => {
                 if (ch === "voice") return PhoneCall;
                 if (ch === "whatsapp") return MessageCircle;
@@ -2035,11 +2095,30 @@ export default function ConsultantLeadScraper() {
                 if (ch === "whatsapp") return "text-emerald-600";
                 return "text-blue-600";
               };
+              const channelBg = (ch: string) => {
+                if (ch === "voice") return "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800";
+                if (ch === "whatsapp") return "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800";
+                return "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800";
+              };
               const channelLabel = (ch: string) => {
                 if (ch === "voice") return "Chiamata";
                 if (ch === "whatsapp") return "WhatsApp";
                 return "Email";
               };
+
+              type LeadGroup = { leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; tasks: typeof filteredTasks };
+              const groupedByLead: LeadGroup[] = [];
+              const leadMap = new Map<string, LeadGroup>();
+              for (const t of filteredTasks) {
+                const key = t.leadId || t.leadName;
+                if (!leadMap.has(key)) {
+                  const grp: LeadGroup = { leadName: t.leadName, leadScore: t.leadScore, leadSector: t.leadSector, leadId: t.leadId, tasks: [] };
+                  leadMap.set(key, grp);
+                  groupedByLead.push(grp);
+                }
+                leadMap.get(key)!.tasks.push(t);
+              }
+              const visibleGroups = groupedByLead.slice(0, 25);
 
               const handleBatchApprove = async () => {
                 const toApprove = allTasks.filter(t => t.status === "waiting_approval");
@@ -2122,22 +2201,27 @@ export default function ConsultantLeadScraper() {
                   </div>
 
                   <CardContent className="p-0">
-                    {visibleTasks.length === 0 ? (
+                    {visibleGroups.length === 0 ? (
                       <div className="px-4 py-8 text-center text-xs text-muted-foreground">
                         Nessun task in coda
                       </div>
                     ) : (
-                      <div className="max-h-[450px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                      <div className="max-h-[500px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
                         <AnimatePresence initial={false}>
-                          {visibleTasks.map((task) => {
-                            const ChIcon = channelIcon(task.channel);
-                            const chColor = channelColor(task.channel);
-                            const s = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
-                            const isExpanded = expandedTaskId === task.id;
+                          {visibleGroups.map((group) => {
+                            const isGroupExpanded = expandedTaskId === (group.leadId || group.leadName);
+                            const groupWaitingCount = group.tasks.filter(t => t.status === "waiting_approval").length;
+                            const groupChannels = [...new Set(group.tasks.map(t => t.channel))];
+                            const worstStatus = group.tasks.reduce((worst, t) => {
+                              const order: Record<string, number> = { waiting_approval: 0, scheduled: 1, approved: 1, in_progress: 2, completed: 3, failed: 4 };
+                              return (order[t.status] ?? 5) < (order[worst] ?? 5) ? t.status : worst;
+                            }, group.tasks[0].status);
+                            const ws = statusMap[worstStatus] || { label: worstStatus, cls: "bg-gray-100 text-gray-600" };
+                            const firstTask = group.tasks[0];
 
                             return (
                               <motion.div
-                                key={task.id}
+                                key={group.leadId || group.leadName}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, height: 0 }}
@@ -2146,41 +2230,63 @@ export default function ConsultantLeadScraper() {
                                 <div
                                   className={cn(
                                     "px-3 py-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors",
-                                    isExpanded && "bg-gray-50/80 dark:bg-gray-800/50"
+                                    isGroupExpanded && "bg-gray-50/80 dark:bg-gray-800/50"
                                   )}
-                                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                                  onClick={() => setExpandedTaskId(isGroupExpanded ? null : (group.leadId || group.leadName))}
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <ChIcon className={cn("h-4 w-4 shrink-0", chColor)} />
-                                      <span className="text-sm font-medium truncate">{task.leadName}</span>
-                                      {task.leadScore != null && (
-                                        <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">{task.leadScore}</Badge>
+                                      <div className="flex items-center gap-0.5 shrink-0">
+                                        {groupChannels.map(ch => {
+                                          const ChI = channelIcon(ch);
+                                          return <ChI key={ch} className={cn("h-3.5 w-3.5", channelColor(ch))} />;
+                                        })}
+                                      </div>
+                                      <span className="text-sm font-medium truncate">{group.leadName}</span>
+                                      {group.leadScore != null && (
+                                        <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">{group.leadScore}</Badge>
+                                      )}
+                                      {group.tasks.length > 1 && (
+                                        <Badge variant="secondary" className="text-[9px] px-1 h-4 shrink-0">{group.tasks.length} canali</Badge>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                      {task.leadSector && (
-                                        <span className="text-[10px] text-muted-foreground hidden sm:inline">{task.leadSector}</span>
+                                      {group.leadSector && (
+                                        <span className="text-[10px] text-muted-foreground hidden sm:inline">{group.leadSector}</span>
                                       )}
                                       <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                        {task.scheduledAt ? timeAgo(task.scheduledAt) : task.completedAt ? timeAgo(task.completedAt) : task.createdAt ? timeAgo(task.createdAt) : ""}
+                                        {firstTask.scheduledAt ? timeAgo(firstTask.scheduledAt) : firstTask.createdAt ? timeAgo(firstTask.createdAt) : ""}
                                       </span>
-                                      <Badge className={cn("text-[9px] px-1.5 h-4", s.cls)}>{s.label}</Badge>
-                                      {task.status === "waiting_approval" && (
+                                      <Badge className={cn("text-[9px] px-1.5 h-4", ws.cls)}>{ws.label}</Badge>
+                                      {groupWaitingCount > 0 && (
                                         <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                           <Button
                                             size="sm"
                                             className="h-6 w-6 p-0 bg-emerald-500 hover:bg-emerald-600 text-white"
-                                            onClick={() => approveTaskMutation.mutate(task.id)}
+                                            onClick={async () => {
+                                              for (const t of group.tasks.filter(tt => tt.status === "waiting_approval")) {
+                                                try { await approveTaskMutation.mutateAsync(t.id); } catch {}
+                                                await new Promise(r => setTimeout(r, 100));
+                                              }
+                                              refetchPipeline();
+                                            }}
                                             disabled={approveTaskMutation.isPending}
+                                            title="Approva tutti i canali"
                                           >
                                             <Check className="h-3 w-3" />
                                           </Button>
                                           <Button
                                             size="sm"
                                             className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
-                                            onClick={() => rejectTaskMutation.mutate(task.id)}
+                                            onClick={async () => {
+                                              for (const t of group.tasks.filter(tt => tt.status === "waiting_approval")) {
+                                                try { await rejectTaskMutation.mutateAsync(t.id); } catch {}
+                                                await new Promise(r => setTimeout(r, 100));
+                                              }
+                                              refetchPipeline();
+                                            }}
                                             disabled={rejectTaskMutation.isPending}
+                                            title="Rifiuta tutti i canali"
                                           >
                                             <X className="h-3 w-3" />
                                           </Button>
@@ -2188,91 +2294,75 @@ export default function ConsultantLeadScraper() {
                                       )}
                                     </div>
                                   </div>
-                                  {task.status === "completed" && task.resultSummary && !isExpanded && (
-                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 truncate mt-0.5 pl-6">{task.resultSummary}</p>
-                                  )}
                                 </div>
 
-                                {isExpanded && (
+                                {isGroupExpanded && (
                                   <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: "auto" }}
                                     exit={{ opacity: 0, height: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className="px-4 py-3 bg-gray-50 dark:bg-gray-800/40 border-t border-dashed border-gray-200 dark:border-gray-700"
+                                    className="border-t border-dashed border-gray-200 dark:border-gray-700"
                                   >
-                                    <div className="space-y-2 text-xs">
-                                      <div className="flex items-center gap-2 text-muted-foreground">
-                                        <span className="font-medium">Canale:</span>
-                                        <span>via {channelLabel(task.channel)}</span>
+                                    {group.leadSector && (
+                                      <div className="px-4 pt-2 pb-1 flex items-center gap-3 text-xs text-muted-foreground">
+                                        {group.leadSector && <span>Settore: <strong>{group.leadSector}</strong></span>}
+                                        {group.leadScore != null && <span>Score: {getScoreBar(group.leadScore)}</span>}
                                       </div>
-                                      {task.leadSector && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                          <span className="font-medium">Settore:</span>
-                                          <span>{task.leadSector}</span>
-                                        </div>
-                                      )}
-                                      {task.leadScore != null && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                          <span className="font-medium">Score AI:</span>
-                                          {getScoreBar(task.leadScore)}
-                                        </div>
-                                      )}
-                                      {task.channel === 'voice' && task.voiceTemplateName && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                          <PhoneCall className="h-3 w-3 text-green-600 shrink-0" />
-                                          <span className="font-medium">Template voce:</span>
-                                          <span>{task.voiceTemplateName}</span>
-                                        </div>
-                                      )}
-                                      {task.channel === 'voice' && task.callInstruction && (
-                                        <div className="space-y-1">
-                                          <span className="font-medium text-muted-foreground">Istruzione chiamata:</span>
-                                          <div className="rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-2 text-xs text-green-800 dark:text-green-300 whitespace-pre-wrap">
-                                            {task.callInstruction}
+                                    )}
+                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                      {group.tasks.map(task => {
+                                        const ChIcon = channelIcon(task.channel);
+                                        const chCol = channelColor(task.channel);
+                                        const ts = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
+                                        const displayMessage = task.channel === 'whatsapp' && (task as any).waPreviewMessage
+                                          ? (task as any).waPreviewMessage
+                                          : task.aiInstruction;
+                                        return (
+                                          <div key={task.id} className={cn("px-4 py-2.5", channelBg(task.channel).split(' ')[0], "bg-opacity-30")}>
+                                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                                              <div className="flex items-center gap-2">
+                                                <ChIcon className={cn("h-3.5 w-3.5", chCol)} />
+                                                <span className="text-xs font-semibold">{channelLabel(task.channel)}</span>
+                                                <Badge className={cn("text-[9px] px-1.5 h-4", ts.cls)}>{ts.label}</Badge>
+                                              </div>
+                                              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                {task.scheduledAt && (
+                                                  <span className="text-[10px] text-muted-foreground">
+                                                    {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                  </span>
+                                                )}
+                                                {task.status === "waiting_approval" && (
+                                                  <div className="flex items-center gap-1">
+                                                    <Button size="sm" className="h-5 w-5 p-0 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => approveTaskMutation.mutate(task.id)} disabled={approveTaskMutation.isPending}>
+                                                      <Check className="h-2.5 w-2.5" />
+                                                    </Button>
+                                                    <Button size="sm" className="h-5 w-5 p-0 bg-red-500 hover:bg-red-600 text-white" onClick={() => rejectTaskMutation.mutate(task.id)} disabled={rejectTaskMutation.isPending}>
+                                                      <X className="h-2.5 w-2.5" />
+                                                    </Button>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                            {task.channel === 'voice' && task.voiceTemplateName && (
+                                              <p className="text-[11px] text-muted-foreground mb-1">Template: {task.voiceTemplateName}</p>
+                                            )}
+                                            {displayMessage && (
+                                              <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[120px] overflow-y-auto", channelBg(task.channel))}>
+                                                {task.channel === 'voice'
+                                                  ? displayMessage.split('\n').slice(0, 6).join('\n') + (displayMessage.split('\n').length > 6 ? '\n...' : '')
+                                                  : displayMessage}
+                                              </div>
+                                            )}
+                                            {task.status === "completed" && task.resultSummary && (
+                                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">{task.resultSummary}</p>
+                                            )}
+                                            {task.status === "failed" && task.resultSummary && (
+                                              <p className="text-[10px] text-red-600 dark:text-red-400 mt-1">{task.resultSummary}</p>
+                                            )}
                                           </div>
-                                        </div>
-                                      )}
-                                      {task.channel === 'whatsapp' && task.waTemplateName && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
-                                          <MessageCircle className="h-3 w-3 text-emerald-600 shrink-0" />
-                                          <span className="font-medium">Template WA:</span>
-                                          <span>{task.waTemplateName}</span>
-                                        </div>
-                                      )}
-                                      {task.aiInstruction && (
-                                        <div className="space-y-1">
-                                          <span className="font-medium text-muted-foreground">
-                                            {task.channel === 'voice' ? 'Script chiamata:' : task.channel === 'whatsapp' ? 'Messaggio WA:' : 'Email:'}
-                                          </span>
-                                          <div className="max-h-[160px] overflow-y-auto rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-2.5 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                            {task.aiInstruction}
-                                          </div>
-                                        </div>
-                                      )}
-                                      {!task.aiInstruction && task.title && (
-                                        <div className="flex items-start gap-2 text-muted-foreground">
-                                          <span className="font-medium shrink-0">Task:</span>
-                                          <span className="break-words">{task.title}</span>
-                                        </div>
-                                      )}
-                                      {task.status === "completed" && task.resultSummary && (
-                                        <div className="flex items-start gap-2">
-                                          <span className="font-medium text-emerald-600 dark:text-emerald-400 shrink-0">Risultato:</span>
-                                          <span className="text-emerald-700 dark:text-emerald-300 break-words">{task.resultSummary}</span>
-                                        </div>
-                                      )}
-                                      {task.status === "failed" && task.resultSummary && (
-                                        <div className="flex items-start gap-2">
-                                          <span className="font-medium text-red-600 dark:text-red-400 shrink-0">Errore:</span>
-                                          <span className="text-red-700 dark:text-red-300 break-words">{task.resultSummary}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-1">
-                                        {task.createdAt && <span>Creato: {new Date(task.createdAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
-                                        {task.scheduledAt && <span>Schedulato: {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
-                                        {task.completedAt && <span>Completato: {new Date(task.completedAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>}
-                                      </div>
+                                        );
+                                      })}
                                     </div>
                                   </motion.div>
                                 )}
@@ -2280,9 +2370,9 @@ export default function ConsultantLeadScraper() {
                             );
                           })}
                         </AnimatePresence>
-                        {filteredTasks.length > 25 && (
+                        {groupedByLead.length > 25 && (
                           <div className="px-4 py-2 text-center text-[10px] text-muted-foreground bg-gray-50/50 dark:bg-gray-800/20">
-                            Mostrati 25 di {filteredTasks.length} task
+                            Mostrati 25 di {groupedByLead.length} lead
                           </div>
                         )}
                       </div>

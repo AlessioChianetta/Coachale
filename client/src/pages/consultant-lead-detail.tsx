@@ -61,6 +61,8 @@ import {
   Activity,
   XCircle,
   AlertCircle,
+  Crosshair,
+  MessageCircle,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +122,7 @@ const LEAD_STATUSES = [
 const ACTIVITY_TYPES = [
   { value: "nota", label: "Nota", icon: FileText, color: "text-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
   { value: "chiamata", label: "Chiamata", icon: PhoneCall, color: "text-green-500", bgColor: "bg-green-50 dark:bg-green-950/20" },
+  { value: "whatsapp_inviato", label: "WhatsApp", icon: MessageCircle, color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/20" },
   { value: "email_inviata", label: "Email inviata", icon: Mail, color: "text-cyan-500", bgColor: "bg-cyan-50 dark:bg-cyan-950/20" },
   { value: "discovery", label: "Discovery", icon: Presentation, color: "text-violet-500", bgColor: "bg-violet-50 dark:bg-violet-950/20" },
   { value: "demo", label: "Demo", icon: BarChart3, color: "text-amber-500", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
@@ -195,6 +198,13 @@ export default function ConsultantLeadDetail() {
   const [newScheduledAt, setNewScheduledAt] = useState("");
   const [newCompletedAt, setNewCompletedAt] = useState("");
 
+  const [hunterDialog, setHunterDialog] = useState<{
+    open: boolean;
+    channels: { voice: boolean; whatsapp: boolean; email: boolean };
+    voiceTargetPhone: string;
+    loading: boolean;
+  }>({ open: false, channels: { voice: false, whatsapp: false, email: false }, voiceTargetPhone: "", loading: false });
+
   const { data: lead, isLoading } = useQuery<LeadResult>({
     queryKey: ["/api/lead-scraper/results", leadId],
     queryFn: async () => {
@@ -208,6 +218,7 @@ export default function ConsultantLeadDetail() {
   const activityFilterType = activeActivityTab === "timeline" ? "all"
     : activeActivityTab === "note" ? "nota"
     : activeActivityTab === "chiamate" ? "chiamata"
+    : activeActivityTab === "outreach" ? undefined
     : activeActivityTab === "disco_demo" ? undefined
     : activeActivityTab === "opportunita" ? undefined
     : "all";
@@ -227,6 +238,9 @@ export default function ConsultantLeadDetail() {
   });
 
   const filteredActivities = useMemo(() => {
+    if (activeActivityTab === "outreach") {
+      return activities.filter(a => a.type === "chiamata" || a.type === "whatsapp_inviato" || a.type === "email_inviata");
+    }
     if (activeActivityTab === "disco_demo") {
       return activities.filter(a => a.type === "discovery" || a.type === "demo" || a.type === "appuntamento");
     }
@@ -413,6 +427,60 @@ export default function ConsultantLeadDetail() {
     });
   };
 
+  const openHunterDialog = () => {
+    setHunterDialog({
+      open: true,
+      channels: {
+        voice: !!lead?.phone,
+        whatsapp: !!lead?.phone,
+        email: !!lead?.email,
+      },
+      voiceTargetPhone: lead?.phone || "",
+      loading: false,
+    });
+  };
+
+  const handleHunterSubmit = async () => {
+    const ch = hunterDialog.channels;
+    const selectedChannels: string[] = [];
+    if (ch.voice) selectedChannels.push("voice");
+    if (ch.whatsapp) selectedChannels.push("whatsapp");
+    if (ch.email) selectedChannels.push("email");
+    if (selectedChannels.length === 0) {
+      toast({ title: "Seleziona almeno un canale", variant: "destructive" });
+      return;
+    }
+    setHunterDialog(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch("/api/ai-autonomy/hunter-single-lead", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId,
+          channels: selectedChannels,
+          voiceTargetPhone: ch.voice ? (hunterDialog.voiceTargetPhone || lead?.phone || "") : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const created = data.results?.filter((r: any) => r.status !== "error").length || 0;
+        const channelNames = data.results
+          ?.filter((r: any) => r.status !== "error")
+          .map((r: any) => r.channel === "voice" ? "Chiamata" : r.channel === "whatsapp" ? "WhatsApp" : "Email")
+          .join(", ");
+        toast({ title: `${created} task creati`, description: `Canali: ${channelNames}. Vai alla Coda Outreach per approvare.` });
+        queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/leads", leadId, "activities"] });
+        setHunterDialog(prev => ({ ...prev, open: false }));
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nella creazione dei task", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Errore", description: e.message || "Errore di connessione", variant: "destructive" });
+    } finally {
+      setHunterDialog(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   const activityStats = useMemo(() => {
     const counts: Record<string, number> = {};
     ACTIVITY_TYPES.forEach(t => { counts[t.value] = 0; });
@@ -491,18 +559,29 @@ export default function ConsultantLeadDetail() {
             </div>
           </div>
 
-          {score !== null && score !== undefined && (
-            <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl border ${scoreBgColor}`}>
-              <Target className={`h-5 w-5 ${scoreColor}`} />
-              <div className="text-center">
-                <p className={`text-3xl font-black ${scoreColor}`}>{score}</p>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Score</p>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={openHunterDialog}
+              className="bg-violet-600 hover:bg-violet-700 text-white shadow-md"
+              title="Avvia Hunter per contattare questo lead su più canali"
+            >
+              <Crosshair className="h-4 w-4 mr-2" />
+              Avvia Hunter
+            </Button>
+
+            {score !== null && score !== undefined && (
+              <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl border ${scoreBgColor}`}>
+                <Target className={`h-5 w-5 ${scoreColor}`} />
+                <div className="text-center">
+                  <p className={`text-3xl font-black ${scoreColor}`}>{score}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Score</p>
+                </div>
+                <div className="w-16 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
+                </div>
               </div>
-              <div className="w-16 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${score}%` }} />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -695,6 +774,7 @@ export default function ConsultantLeadDetail() {
               <TabsList className="w-full flex justify-start gap-0.5 bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl overflow-x-auto">
                 {[
                   { value: "timeline", label: "Timeline", icon: Activity },
+                  { value: "outreach", label: "Outreach", icon: Crosshair },
                   { value: "note", label: "Note", icon: FileText },
                   { value: "chiamate", label: "Chiamate", icon: PhoneCall },
                   { value: "disco_demo", label: "Disco & Demo", icon: Presentation },
@@ -714,7 +794,7 @@ export default function ConsultantLeadDetail() {
                     <CardContent className="py-12 text-center">
                       <Activity className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
                       <p className="text-sm font-medium text-muted-foreground mb-1">
-                        {activeActivityTab === "timeline" ? "Nessuna attivita registrata" : `Nessuna ${activeActivityTab === "note" ? "nota" : activeActivityTab === "chiamate" ? "chiamata" : "attivita"} registrata`}
+                        {activeActivityTab === "timeline" ? "Nessuna attivita registrata" : `Nessuna ${activeActivityTab === "note" ? "nota" : activeActivityTab === "chiamate" ? "chiamata" : activeActivityTab === "outreach" ? "attivita outreach" : "attivita"} registrata`}
                       </p>
                       <p className="text-xs text-muted-foreground mb-4">Registra la prima attivita per questo lead</p>
                       <Button size="sm" variant="outline" onClick={() => { resetActivityForm(); setNewType(activeActivityTab === "note" ? "nota" : activeActivityTab === "chiamate" ? "chiamata" : "nota"); setEditingActivity(null); setShowNewActivity(true); }}>
@@ -892,6 +972,106 @@ export default function ConsultantLeadDetail() {
             <Button onClick={handleSaveActivity} disabled={createActivityMutation.isPending || updateActivityMutation.isPending} className="bg-violet-600 hover:bg-violet-700 text-white">
               {(createActivityMutation.isPending || updateActivityMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               {editingActivity ? "Aggiorna" : "Registra"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={hunterDialog.open} onOpenChange={(open) => setHunterDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crosshair className="h-5 w-5 text-violet-500" />
+              Avvia Hunter — {lead?.businessName || "Lead"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Seleziona canali di contatto</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHunterDialog(prev => ({ ...prev, channels: { ...prev.channels, voice: !prev.channels.voice } }))}
+                  disabled={!lead?.phone}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    hunterDialog.channels.voice
+                      ? "border-green-500 bg-green-50 dark:bg-green-950/20 shadow-sm"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300",
+                    !lead?.phone && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <PhoneCall className={cn("h-6 w-6", hunterDialog.channels.voice ? "text-green-600" : "text-gray-400")} />
+                  <span className={cn("text-xs font-medium", hunterDialog.channels.voice ? "text-green-700 dark:text-green-400" : "text-gray-500")}>Chiamata</span>
+                  {!lead?.phone && <span className="text-[10px] text-red-400">No telefono</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHunterDialog(prev => ({ ...prev, channels: { ...prev.channels, whatsapp: !prev.channels.whatsapp } }))}
+                  disabled={!lead?.phone}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    hunterDialog.channels.whatsapp
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 shadow-sm"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300",
+                    !lead?.phone && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <MessageCircle className={cn("h-6 w-6", hunterDialog.channels.whatsapp ? "text-emerald-600" : "text-gray-400")} />
+                  <span className={cn("text-xs font-medium", hunterDialog.channels.whatsapp ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500")}>WhatsApp</span>
+                  {!lead?.phone && <span className="text-[10px] text-red-400">No telefono</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHunterDialog(prev => ({ ...prev, channels: { ...prev.channels, email: !prev.channels.email } }))}
+                  disabled={!lead?.email}
+                  className={cn(
+                    "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                    hunterDialog.channels.email
+                      ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/20 shadow-sm"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300",
+                    !lead?.email && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  <Mail className={cn("h-6 w-6", hunterDialog.channels.email ? "text-cyan-600" : "text-gray-400")} />
+                  <span className={cn("text-xs font-medium", hunterDialog.channels.email ? "text-cyan-700 dark:text-cyan-400" : "text-gray-500")}>Email</span>
+                  {!lead?.email && <span className="text-[10px] text-red-400">No email</span>}
+                </button>
+              </div>
+            </div>
+
+            {hunterDialog.channels.voice && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Numero per la chiamata</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    value={hunterDialog.voiceTargetPhone}
+                    onChange={(e) => setHunterDialog(prev => ({ ...prev, voiceTargetPhone: e.target.value }))}
+                    placeholder="Numero di telefono"
+                    className="pl-9 h-10"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="bg-violet-50 dark:bg-violet-950/20 rounded-lg p-3 border border-violet-200 dark:border-violet-800">
+              <p className="text-xs text-violet-700 dark:text-violet-300">
+                I task verranno creati in stato "in attesa di approvazione". Potrai approvarli dalla Coda Outreach.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHunterDialog(prev => ({ ...prev, open: false }))} disabled={hunterDialog.loading}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleHunterSubmit}
+              disabled={hunterDialog.loading || ![hunterDialog.channels.voice, hunterDialog.channels.whatsapp, hunterDialog.channels.email].some(Boolean)}
+              className="bg-violet-600 hover:bg-violet-700 text-white"
+            >
+              {hunterDialog.loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Crosshair className="h-4 w-4 mr-2" />}
+              Avvia Hunter
             </Button>
           </DialogFooter>
         </DialogContent>
