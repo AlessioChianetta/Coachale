@@ -387,6 +387,42 @@ export default function ConsultantLeadScraper() {
     if (hunterPipeline) setLastPipelineRefresh(new Date());
   }, [hunterPipeline]);
 
+  const { data: hunterActionsData, refetch: refetchHunterActions } = useQuery<{ actions: any[]; total: number } | null>({
+    queryKey: ["/api/ai-autonomy/hunter/actions"],
+    queryFn: async () => {
+      try {
+        const res = await fetch("/api/ai-autonomy/hunter/actions?limit=50", { headers: getAuthHeaders() });
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    },
+    enabled: activeTab === "hunter",
+    refetchInterval: activeTab === "hunter" ? 30000 : false,
+  });
+
+  const [directHunterFilter, setDirectHunterFilter] = useState<"tutti" | "voice" | "whatsapp" | "email">("tutti");
+  const [directHunterStatusFilter, setDirectHunterStatusFilter] = useState<"tutti" | "scheduled" | "sent" | "failed">("tutti");
+  const [triggeringDirect, setTriggeringDirect] = useState(false);
+  const [directTriggerResult, setDirectTriggerResult] = useState<{ success: boolean; reason?: string } | null>(null);
+
+  const handleTriggerDirect = async () => {
+    setTriggeringDirect(true);
+    setDirectTriggerResult(null);
+    try {
+      const res = await fetch("/api/ai-autonomy/hunter/trigger-direct", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      setDirectTriggerResult(data);
+      refetchHunterActions();
+    } catch (e: any) {
+      setDirectTriggerResult({ success: false, reason: e.message });
+    } finally {
+      setTriggeringDirect(false);
+    }
+  };
+
   const approveTaskMutation = useMutation({
     mutationFn: async (taskId: string) => {
       const res = await fetch(`/api/ai-autonomy/tasks/${taskId}/approve`, {
@@ -605,7 +641,7 @@ export default function ConsultantLeadScraper() {
     }
   };
 
-  const hunterMode: "autonomous" | "plan" | "approval" = outreachConfig.hunter_mode || (outreachConfig.require_approval !== false ? "approval" : "autonomous");
+  const hunterMode: "autonomous" | "plan" | "approval" | "direct" = outreachConfig.hunter_mode || (outreachConfig.require_approval !== false ? "approval" : "autonomous");
 
   const handleAnalyzeCrm = async () => {
     setAnalyzingCrm(true);
@@ -1949,6 +1985,7 @@ export default function ConsultantLeadScraper() {
                 <div className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
                   <div className="flex items-center gap-1 flex-1">
                     {([
+                      { mode: "direct" as const, label: "Diretto", icon: Crosshair, activeClass: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 ring-1 ring-teal-300 dark:ring-teal-700" },
                       { mode: "autonomous" as const, label: "Full Autonomo", icon: Zap, activeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-700" },
                       { mode: "plan" as const, label: "Piano Interattivo", icon: MessageSquare, activeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 ring-1 ring-blue-300 dark:ring-blue-700" },
                       { mode: "approval" as const, label: "Solo Approvazione", icon: Shield, activeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700" },
@@ -1972,6 +2009,7 @@ export default function ConsultantLeadScraper() {
                     })}
                   </div>
                   <span className="text-[10px] text-muted-foreground max-w-[200px] leading-tight">
+                    {hunterMode === "direct" && "Hunter trova 1 lead e agisce subito, niente code"}
                     {hunterMode === "autonomous" && "I task partono automaticamente senza intervento"}
                     {hunterMode === "plan" && "Hunter prepara un piano, tu lo rivedi e approvi"}
                     {hunterMode === "approval" && "I task attendono la tua approvazione uno per uno"}
@@ -2001,6 +2039,123 @@ export default function ConsultantLeadScraper() {
               </CardContent>
             </Card>
 
+            {hunterMode === "direct" ? (
+              <Card className="rounded-2xl border shadow-sm overflow-hidden border-teal-200 dark:border-teal-800">
+                <CardContent className="py-4 px-3 sm:px-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-teal-600" />
+                      <span className="text-sm font-semibold">Outbox Hunter Diretto</span>
+                      {hunterActionsData?.total != null && hunterActionsData.total > 0 && (
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-700">
+                          {hunterActionsData.total}
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleTriggerDirect}
+                      disabled={triggeringDirect}
+                      className="h-7 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400 dark:hover:bg-teal-900/30"
+                    >
+                      {triggeringDirect ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Crosshair className="h-3.5 w-3.5 mr-1" />}
+                      Avvia ora
+                    </Button>
+                  </div>
+
+                  {directTriggerResult && (
+                    <div className={cn("text-xs p-2 rounded-lg mb-3", directTriggerResult.success ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400")}>
+                      {directTriggerResult.success ? "Azione completata con successo" : `Errore: ${directTriggerResult.reason || "sconosciuto"}`}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 mb-3">
+                    {(["tutti", "voice", "whatsapp", "email"] as const).map(ch => (
+                      <button
+                        key={ch}
+                        onClick={() => setDirectHunterFilter(ch)}
+                        className={cn("px-2 py-1 rounded text-[10px] font-medium transition-all", directHunterFilter === ch ? "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300" : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700")}
+                      >
+                        {ch === "tutti" ? "Tutti" : ch === "voice" ? "📞 Chiamate" : ch === "whatsapp" ? "💬 WhatsApp" : "📧 Email"}
+                      </button>
+                    ))}
+                    <span className="text-gray-200 dark:text-gray-700">|</span>
+                    {(["tutti", "scheduled", "sent", "failed"] as const).map(st => (
+                      <button
+                        key={st}
+                        onClick={() => setDirectHunterStatusFilter(st)}
+                        className={cn("px-2 py-1 rounded text-[10px] font-medium transition-all", directHunterStatusFilter === st ? "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200" : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700")}
+                      >
+                        {st === "tutti" ? "Tutti" : st === "scheduled" ? "Schedulati" : st === "sent" ? "Inviati" : "Falliti"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {(() => {
+                    const actions = (hunterActionsData?.actions || []).filter(a => {
+                      if (directHunterFilter !== "tutti" && a.channel !== directHunterFilter) return false;
+                      if (directHunterStatusFilter !== "tutti" && a.status !== directHunterStatusFilter) return false;
+                      return true;
+                    });
+
+                    if (actions.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center gap-2 py-8 text-center">
+                          <Crosshair className="h-8 w-8 text-teal-300 dark:text-teal-700" />
+                          <p className="text-sm text-muted-foreground">Nessuna azione ancora</p>
+                          <p className="text-xs text-muted-foreground/70">Hunter parte ogni 30 minuti automaticamente</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
+                        {actions.map((action: any) => {
+                          const channelIcon = action.channel === "voice" ? "📞" : action.channel === "whatsapp" ? "💬" : "📧";
+                          const statusColor = action.status === "sent" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : action.status === "scheduled" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+                          const timeAgo = action.created_at ? (() => {
+                            const diff = Date.now() - new Date(action.created_at).getTime();
+                            const mins = Math.floor(diff / 60000);
+                            if (mins < 60) return `${mins}m fa`;
+                            const hrs = Math.floor(mins / 60);
+                            if (hrs < 24) return `${hrs}h fa`;
+                            return `${Math.floor(hrs / 24)}g fa`;
+                          })() : "";
+
+                          return (
+                            <div key={action.id} className="flex items-start gap-2 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
+                              <span className="text-base mt-0.5 shrink-0">{channelIcon}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="text-xs font-semibold truncate">{action.lead_name || "Lead sconosciuto"}</span>
+                                  <Badge variant="outline" className={cn("text-[9px] h-3.5 px-1", statusColor)}>{action.status}</Badge>
+                                  <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{timeAgo}</span>
+                                </div>
+                                {action.message_preview && (
+                                  <p className="text-[11px] text-muted-foreground leading-snug truncate">{action.message_preview.slice(0, 80)}{action.message_preview.length > 80 ? "…" : ""}</p>
+                                )}
+                                {action.scheduled_at && new Date(action.scheduled_at) > new Date() && (
+                                  <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                                    📅 {action.channel === "voice" ? "per" : "schedulato alle"} {new Date(action.scheduled_at).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                  </p>
+                                )}
+                                {action.proactive_lead_id && (
+                                  <a href="/consultant/proactive-leads" className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline mt-0.5 inline-block">
+                                    Vedi in Lead Proattivi →
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            ) : (
+            <>
             {/* DIAGRAMMA DI FLUSSO — Pipeline Hunter */}
             <Card className="rounded-2xl border shadow-sm overflow-hidden">
               <CardContent className="py-4 px-3 sm:px-5">
@@ -2479,6 +2634,8 @@ export default function ConsultantLeadScraper() {
                 </Card>
               );
             })()}
+            </>
+            )}
 
             {/* SEZIONE 3 — Timeline attività in tempo reale (collapsible) */}
             <Card className="rounded-2xl border shadow-sm overflow-hidden">

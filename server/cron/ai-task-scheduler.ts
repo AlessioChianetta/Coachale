@@ -1537,6 +1537,13 @@ async function runAutonomousTaskGeneration(): Promise<void> {
       } catch (error: any) {
         console.error(`❌ [AUTONOMOUS-GEN] Error for consultant ${consultant_id}:`, error.message);
       }
+
+      try {
+        const { runDirectHunterForConsultant } = await import('../ai/hunter-direct-executor');
+        await runDirectHunterForConsultant(consultant_id);
+      } catch (hunterErr: any) {
+        console.error(`❌ [HUNTER-DIRECT] Error for ${consultant_id}:`, hunterErr.message);
+      }
     }
 
     console.log(`🧠 [AUTONOMOUS-GEN] Completed. Total tasks generated: ${totalGenerated}`);

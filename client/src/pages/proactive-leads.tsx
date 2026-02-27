@@ -67,6 +67,7 @@ import {
   ChevronUp,
   MessageCircle,
   CheckCircle2,
+  Crosshair,
   Clock,
   XCircle,
   Sparkles,
@@ -1701,6 +1702,12 @@ export default function ProactiveLeadsPage() {
                                         <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
                                           <CheckCircle2 className="h-3 w-3" />
                                           Risposta
+                                        </span>
+                                      )}
+                                      {(lead as any).source === "hunter" && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 px-1.5 py-0.5 rounded-full">
+                                          <Crosshair className="h-2.5 w-2.5" />
+                                          Hunter
                                         </span>
                                       )}
                                     </div>

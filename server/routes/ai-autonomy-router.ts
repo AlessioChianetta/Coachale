@@ -216,6 +216,61 @@ router.patch("/outreach-config", authenticateToken, requireAnyRole(["consultant"
   }
 });
 
+router.get("/hunter/actions", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const channel = (req.query.channel as string) || "all";
+    const status = (req.query.status as string) || "all";
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+    let channelFilter = sql``;
+    if (channel !== "all") channelFilter = sql` AND channel = ${channel}`;
+
+    let statusFilter = sql``;
+    if (status !== "all") statusFilter = sql` AND status = ${status}`;
+
+    const [actionsResult, countResult] = await Promise.all([
+      db.execute(sql`
+        SELECT * FROM hunter_actions
+        WHERE consultant_id = ${consultantId}
+        ${channelFilter} ${statusFilter}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `),
+      db.execute(sql`
+        SELECT COUNT(*)::int as total FROM hunter_actions
+        WHERE consultant_id = ${consultantId}
+        ${channelFilter} ${statusFilter}
+      `),
+    ]);
+
+    res.json({
+      actions: actionsResult.rows,
+      total: (countResult.rows[0] as any)?.total || 0,
+    });
+  } catch (error: any) {
+    console.error("❌ [HUNTER-ACTIONS] Error:", error.message);
+    res.status(500).json({ error: "Failed to fetch hunter actions" });
+  }
+});
+
+router.post("/hunter/trigger-direct", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { runDirectHunterForConsultant } = await import("../ai/hunter-direct-executor");
+    const result = await runDirectHunterForConsultant(consultantId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("❌ [HUNTER-TRIGGER-DIRECT] Error:", error.message);
+    res.status(500).json({ success: false, reason: error.message });
+  }
+});
+
 router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
   try {
     const consultantId = (req as AuthRequest).user?.id;

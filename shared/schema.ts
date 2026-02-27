@@ -3807,7 +3807,7 @@ export const campaignAnalytics = pgTable("campaign_analytics", {
 export const proactiveLeads = pgTable("proactive_leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
 
   // Campaign Association (NEW)
   campaignId: varchar("campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
@@ -3896,7 +3896,7 @@ export const proactiveLeads = pgTable("proactive_leads", {
   email: text("email"),
   
   // Source tracking - distingue la provenienza del lead
-  source: text("source").$type<"manual" | "import" | "referral" | "optin" | "webhook" | "whatsapp">().default("manual"),
+  source: text("source").$type<"manual" | "import" | "referral" | "optin" | "webhook" | "whatsapp" | "hunter">().default("manual"),
   
   // Email di Benvenuto
   welcomeEmailEnabled: boolean("welcome_email_enabled").default(true),
@@ -10759,3 +10759,22 @@ export const leadScraperActivities = pgTable("lead_scraper_activities", {
 
 export type LeadScraperActivity = typeof leadScraperActivities.$inferSelect;
 export type InsertLeadScraperActivity = typeof leadScraperActivities.$inferInsert;
+
+export const hunterActions = pgTable("hunter_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").notNull(),
+  leadId: varchar("lead_id"),
+  proactiveLeadId: varchar("proactive_lead_id"),
+  leadName: varchar("lead_name"),
+  leadPhone: varchar("lead_phone"),
+  leadEmail: varchar("lead_email"),
+  channel: varchar("channel").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  messagePreview: text("message_preview"),
+  scheduledAt: timestamp("scheduled_at"),
+  executedAt: timestamp("executed_at"),
+  resultNote: text("result_note"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type HunterAction = typeof hunterActions.$inferSelect;
