@@ -1982,38 +1982,75 @@ export default function ConsultantLeadScraper() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
-                  <div className="flex items-center gap-1 flex-1">
-                    {([
-                      { mode: "direct" as const, label: "Diretto", icon: Crosshair, activeClass: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 ring-1 ring-teal-300 dark:ring-teal-700" },
-                      { mode: "autonomous" as const, label: "Full Autonomo", icon: Zap, activeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-700" },
-                      { mode: "plan" as const, label: "Piano Interattivo", icon: MessageSquare, activeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 ring-1 ring-blue-300 dark:ring-blue-700" },
-                      { mode: "approval" as const, label: "Solo Approvazione", icon: Shield, activeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-700" },
-                    ] as const).map(opt => {
-                      const Icon = opt.icon;
-                      return (
-                        <button
-                          key={opt.mode}
-                          onClick={() => updateOutreachConfig("hunter_mode", opt.mode)}
-                          className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
-                            hunterMode === opt.mode
-                              ? opt.activeClass
-                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {opt.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground max-w-[200px] leading-tight">
-                    {hunterMode === "direct" && "Hunter trova 1 lead e agisce subito, niente code"}
-                    {hunterMode === "autonomous" && "I task partono automaticamente senza intervento"}
-                    {hunterMode === "plan" && "Hunter prepara un piano, tu lo rivedi e approvi"}
-                    {hunterMode === "approval" && "I task attendono la tua approvazione uno per uno"}
-                  </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {([
+                    {
+                      mode: "direct" as const,
+                      label: "Diretto",
+                      desc: "Ogni 30 min trova 1 lead e lo contatta subito (chiamata, WhatsApp o email). Zero attesa, zero code.",
+                      icon: Crosshair,
+                      activeBorder: "border-teal-400 dark:border-teal-600",
+                      activeBg: "bg-teal-50/80 dark:bg-teal-950/30",
+                      activeText: "text-teal-700 dark:text-teal-300",
+                      activeDescText: "text-teal-600/80 dark:text-teal-400/70",
+                      dot: "bg-teal-500",
+                    },
+                    {
+                      mode: "autonomous" as const,
+                      label: "Automatico Batch",
+                      desc: "Analizza tutti i lead del CRM e schedula in blocco chiamate, WhatsApp e email. Tu non devi fare nulla.",
+                      icon: Zap,
+                      activeBorder: "border-emerald-400 dark:border-emerald-600",
+                      activeBg: "bg-emerald-50/80 dark:bg-emerald-950/30",
+                      activeText: "text-emerald-700 dark:text-emerald-300",
+                      activeDescText: "text-emerald-600/80 dark:text-emerald-400/70",
+                      dot: "bg-emerald-500",
+                    },
+                    {
+                      mode: "plan" as const,
+                      label: "Piano + Chat",
+                      desc: "Hunter prepara un piano dettagliato, te lo mostra in chat e tu lo rivedi prima di avviare i contatti.",
+                      icon: MessageSquare,
+                      activeBorder: "border-blue-400 dark:border-blue-600",
+                      activeBg: "bg-blue-50/80 dark:bg-blue-950/30",
+                      activeText: "text-blue-700 dark:text-blue-300",
+                      activeDescText: "text-blue-600/80 dark:text-blue-400/70",
+                      dot: "bg-blue-500",
+                    },
+                    {
+                      mode: "approval" as const,
+                      label: "Approvazione Manuale",
+                      desc: "Hunter prepara i task ma non parte nessun contatto finché non approvi tu ogni singolo messaggio o chiamata.",
+                      icon: Shield,
+                      activeBorder: "border-amber-400 dark:border-amber-600",
+                      activeBg: "bg-amber-50/80 dark:bg-amber-950/30",
+                      activeText: "text-amber-700 dark:text-amber-300",
+                      activeDescText: "text-amber-600/80 dark:text-amber-400/70",
+                      dot: "bg-amber-500",
+                    },
+                  ] as const).map(opt => {
+                    const Icon = opt.icon;
+                    const isActive = hunterMode === opt.mode;
+                    return (
+                      <button
+                        key={opt.mode}
+                        onClick={() => updateOutreachConfig("hunter_mode", opt.mode)}
+                        className={cn(
+                          "flex flex-col items-start gap-1.5 p-2.5 rounded-xl border-2 text-left transition-all",
+                          isActive
+                            ? cn(opt.activeBorder, opt.activeBg)
+                            : "border-transparent bg-gray-50/50 dark:bg-gray-800/30 hover:border-gray-300 dark:hover:border-gray-600"
+                        )}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Icon className={cn("h-3.5 w-3.5", isActive ? opt.activeText : "text-muted-foreground")} />
+                          <span className={cn("text-xs font-semibold", isActive ? opt.activeText : "text-muted-foreground")}>{opt.label}</span>
+                          {isActive && <span className={cn("w-1.5 h-1.5 rounded-full ml-auto", opt.dot)} />}
+                        </div>
+                        <span className={cn("text-[10px] leading-snug", isActive ? opt.activeDescText : "text-muted-foreground/60")}>{opt.desc}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {hunterPipeline && (
