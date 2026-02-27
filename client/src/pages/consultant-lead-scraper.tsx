@@ -2193,60 +2193,6 @@ export default function ConsultantLeadScraper() {
               </Card>
             ) : (
             <>
-            {/* DIAGRAMMA DI FLUSSO — Pipeline Hunter */}
-            <Card className="rounded-2xl border shadow-sm overflow-hidden">
-              <CardContent className="py-4 px-3 sm:px-5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pipeline Outreach</p>
-                <div className="flex items-stretch gap-0 overflow-x-auto pb-1">
-                  {[
-                    { step: 1, label: "Ricerca", sub: "Google Maps / Search", icon: Search, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", count: hunterPipeline?.stats.foundToday },
-                    { step: 2, label: "Qualifica AI", sub: "Score compatibilità", icon: Target, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", count: hunterPipeline?.stats.scoredToday },
-                    { step: 3, label: outreachConfig.require_approval ? "Approvazione" : "Auto", sub: outreachConfig.require_approval ? "Manuale" : "Full autonomo", icon: outreachConfig.require_approval ? Shield : Zap, color: outreachConfig.require_approval ? "text-violet-600" : "text-emerald-600", bg: outreachConfig.require_approval ? "bg-violet-50 dark:bg-violet-950/30" : "bg-emerald-50 dark:bg-emerald-950/30", border: outreachConfig.require_approval ? "border-violet-200 dark:border-violet-800" : "border-emerald-200 dark:border-emerald-800", count: hunterPipeline?.stats.qualifiedWaiting },
-                    { step: 4, label: "Outreach", sub: "Call / WA / Email", icon: Send, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", count: (hunterPipeline?.stats.inOutreach ?? 0) + (hunterPipeline?.stats.contacted ?? 0) },
-                  ].map((s, i, arr) => {
-                    const SIcon = s.icon;
-                    return (
-                      <div key={s.step} className="flex items-center min-w-0">
-                        <div className={cn("flex flex-col items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-xl border min-w-[80px] sm:min-w-[100px]", s.bg, s.border)}>
-                          <div className={cn("h-7 w-7 rounded-full flex items-center justify-center", s.bg)}>
-                            <SIcon className={cn("h-3.5 w-3.5", s.color)} />
-                          </div>
-                          <span className={cn("text-[11px] sm:text-xs font-bold text-center leading-tight", s.color)}>{s.label}</span>
-                          <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight">{s.sub}</span>
-                          {s.count != null && (
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 mt-0.5">{s.count}</Badge>
-                          )}
-                        </div>
-                        {i < arr.length - 1 && (
-                          <div className="flex items-center px-0.5 sm:px-1 shrink-0">
-                            <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {hunterPipeline?.kpis && (
-                  <div className="mt-2.5 pt-2.5 border-t border-dotted border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><PhoneCall className="h-2.5 w-2.5 text-green-500" />{hunterPipeline.kpis.callResponseRate}% risposta</span>
-                      <span className="flex items-center gap-1"><MessageCircle className="h-2.5 w-2.5 text-emerald-500" />{hunterPipeline.kpis.waDeliveryRate}% delivery WA</span>
-                      <span className="flex items-center gap-1"><MailIcon className="h-2.5 w-2.5 text-blue-500" />{hunterPipeline.kpis.emailDeliveryRate}% delivery email</span>
-                      <span className="flex items-center gap-1"><Zap className="h-2.5 w-2.5 text-orange-500" />{hunterPipeline.kpis.leadsConvertedThisWeek} convertiti</span>
-                      <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5 text-violet-500" />{hunterPipeline.kpis.avgTimeToFirstContact}h primo contatto</span>
-                    </div>
-                  </div>
-                )}
-                <div className="mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />Non interessato: {hunterPipeline?.stats.notInterested ?? 0}</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />In trattativa: {hunterPipeline?.stats.inNegotiation ?? 0}</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />Ricerche oggi: {hunterPipeline?.searches?.used ?? 0}/{hunterPipeline?.searches?.limit ?? 0}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* SEZIONE 2 — Coda Outreach Unificata */}
             {(() => {
               const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null; waTemplateFilled?: string | null; waTemplateBody?: string | null; waTemplateSid?: string | null }[] = [];
