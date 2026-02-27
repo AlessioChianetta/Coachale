@@ -2882,7 +2882,8 @@ router.get("/tasks", authenticateToken, requireAnyRole(["consultant", "super_adm
     const originFilter = req.query.origin as string | undefined;
     const roleFilter = req.query.ai_role as string | undefined;
 
-    let conditions = [sql`consultant_id = ${consultantId}`, sql`task_type = 'ai_task'`];
+    const includeHunter = req.query.include_hunter === 'true';
+    let conditions = [sql`consultant_id = ${consultantId}`, includeHunter ? sql`task_type IN ('ai_task', 'single_whatsapp', 'single_call')` : sql`task_type = 'ai_task'`];
     if (!statusFilter || statusFilter === 'all') {
       conditions.push(sql`status != 'cancelled'`);
     }

@@ -82,7 +82,7 @@ export default function WhatsAppCalendar() {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/ai-autonomy/tasks?limit=100&status=all`, {
+        const res = await fetch(`/api/ai-autonomy/tasks?limit=100&status=all&include_hunter=true`, {
           headers: getAuthHeaders(),
         });
         if (!res.ok) throw new Error("Errore nel caricamento");
@@ -248,7 +248,10 @@ export default function WhatsAppCalendar() {
                       style={{ maxHeight: cellTasks.length > 2 ? "96px" : undefined, overflowY: cellTasks.length > 2 ? "auto" : undefined }}
                     >
                       {cellTasks.map((task) => {
-                        const colors = getColors(task.status);
+                        const isHunter = task.ai_role === 'hunter';
+                        const colors = isHunter
+                          ? { bg: "bg-teal-50 dark:bg-teal-950/30", text: "text-teal-700 dark:text-teal-400", border: "border-teal-200 dark:border-teal-800", badge: "bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300" }
+                          : getColors(task.status);
                         return (
                           <Popover key={task.id}>
                             <PopoverTrigger asChild>
@@ -259,11 +262,12 @@ export default function WhatsAppCalendar() {
                                   colors.border
                                 )}
                               >
+                                {isHunter && <span className="text-[9px] shrink-0">🎯</span>}
                                 <span className={cn("font-semibold truncate shrink-0 max-w-[50%]", colors.text)}>
                                   {task.contact_name || task.contact_phone || "—"}
                                 </span>
                                 {task.ai_role && (
-                                  <span className="text-[9px] text-muted-foreground capitalize shrink-0">
+                                  <span className={cn("text-[9px] capitalize shrink-0", isHunter ? "text-teal-500 font-medium" : "text-muted-foreground")}>
                                     {task.ai_role}
                                   </span>
                                 )}
