@@ -1472,7 +1472,7 @@ export default function ConsultantVoiceCallsPage() {
       };
       
       return {
-        aiTasks: expandRecurringTasks(tasksData.tasks || []),
+        aiTasks: expandRecurringTasks((tasksData.tasks || []).filter((t: any) => !t.preferred_channel || t.preferred_channel === 'voice' || t.task_type === 'single_call')),
         // Mostra SOLO le chiamate programmate che NON sono associate a una AI task
         // Le chiamate con source_task_id sono già rappresentate dalle aiTasks
         scheduledCalls: (scheduledData.calls || []).filter((c: any) => {
@@ -1580,7 +1580,7 @@ export default function ConsultantVoiceCallsPage() {
     
     // Include AI Tasks that are pending/scheduled as scheduled calls
     const aiTasksAsCalls: (ScheduledVoiceCall & { isAITask?: boolean })[] = (aiTasksData?.tasks || [])
-      .filter(task => ['scheduled', 'retry_pending', 'in_progress'].includes(task.status))
+      .filter(task => ['scheduled', 'retry_pending', 'in_progress'].includes(task.status) && (!task.preferred_channel || task.preferred_channel === 'voice' || task.task_type === 'single_call'))
       .map(task => ({
         id: task.id,
         consultant_id: task.consultant_id,
@@ -4463,7 +4463,7 @@ export default function ConsultantVoiceCallsPage() {
                         .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && ['pending', 'retry_scheduled'].includes(c.status) && matchesContactFilter(c))
                         .map((c: any) => ({ ...c, _src: 'scheduled' }));
                       const upcomingAiTasks = (calendarData?.aiTasks || [])
-                        .filter((t: any) => t.scheduled_at && new Date(t.scheduled_at) > now && ['scheduled', 'waiting_approval'].includes(t.status) && matchesContactFilter(t))
+                        .filter((t: any) => t.scheduled_at && new Date(t.scheduled_at) > now && ['scheduled', 'waiting_approval'].includes(t.status) && matchesContactFilter(t) && (!t.preferred_channel || t.preferred_channel === 'voice' || t.task_type === 'single_call'))
                         .map((t: any) => ({ 
                           ...t, 
                           target_phone: t.contact_phone, 
@@ -6232,6 +6232,7 @@ export default function ConsultantVoiceCallsPage() {
                                     const getTypeStyles = () => {
                                       switch (eventType) {
                                         case 'call': return { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', icon: <Phone className="h-4 w-4 text-blue-500" /> };
+                                        case 'aiTask': return { bg: evt.ai_role === 'hunter' ? 'bg-teal-50 dark:bg-teal-900/20' : 'bg-violet-50 dark:bg-violet-900/20', border: evt.ai_role === 'hunter' ? 'border-teal-200 dark:border-teal-800' : 'border-violet-200 dark:border-violet-800', icon: <Phone className={`h-4 w-4 ${evt.ai_role === 'hunter' ? 'text-teal-500' : 'text-violet-500'}`} /> };
                                         case 'history': return { bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800', icon: <PhoneIncoming className="h-4 w-4 text-emerald-500" /> };
                                         default: return { bg: 'bg-gray-50 dark:bg-gray-900/20', border: 'border-gray-200 dark:border-gray-800', icon: <Phone className="h-4 w-4 text-gray-500" /> };
                                       }
@@ -6257,7 +6258,7 @@ export default function ConsultantVoiceCallsPage() {
                                               {evt.contact_name || evt.contact_phone || evt.target_phone || evt.caller_id || 'Sconosciuto'}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                              {format(eventDate, 'HH:mm')} - {eventType === 'call' ? 'Programmata' : 'Storico'}
+                                              {format(eventDate, 'HH:mm')} - {eventType === 'call' ? 'Programmata' : eventType === 'aiTask' ? (evt.ai_role === 'hunter' ? 'Hunter' : 'AI Task') : 'Storico'}
                                               {evt.duration_seconds ? ` (${Math.floor(evt.duration_seconds / 60)}m)` : ''}
                                             </p>
                                           </div>
