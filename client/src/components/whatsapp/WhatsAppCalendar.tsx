@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, User, MessageSquare, Sparkles, Building2, Tag, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
@@ -283,6 +283,23 @@ export default function WhatsAppCalendar() {
                                   const waTemplateFilled = ctx.wa_template_filled || null;
                                   const waTemplateVars = ctx.wa_template_variables || null;
 
+                                  const businessName = (ctx.business_name || '').trim() || null;
+                                  const sector = (ctx.sector || '').trim() || null;
+                                  const rawScore = ctx.lead_score;
+                                  const leadScore = typeof rawScore === 'number' ? rawScore : (typeof rawScore === 'string' && rawScore.trim() !== '' && !isNaN(Number(rawScore)) ? Number(rawScore) : null);
+                                  const hasLeadContext = Boolean(businessName || sector || leadScore !== null);
+
+                                  const stripConsultantCtx = (text: string) => {
+                                    const marker = '━━━ CONSULENTE ━━━';
+                                    const idx = text.indexOf(marker);
+                                    if (idx >= 0) {
+                                      const part = text.substring(0, idx).trim();
+                                      return part || '';
+                                    }
+                                    return text;
+                                  };
+                                  const leadInstruction = task.ai_instruction ? stripConsultantCtx(task.ai_instruction) : '';
+
                                   return (
                                     <>
                                       <div className="flex items-start justify-between gap-2">
@@ -296,6 +313,47 @@ export default function WhatsAppCalendar() {
                                           {STATUS_LABELS[task.status] || task.status}
                                         </Badge>
                                       </div>
+
+                                      {hasLeadContext && (
+                                        <div className="p-2.5 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200/50 dark:border-indigo-800/30 space-y-1.5">
+                                          <p className="text-[10px] uppercase font-semibold text-indigo-700 dark:text-indigo-400">Contesto Lead</p>
+                                          <div className="space-y-1">
+                                            {businessName && (
+                                              <div className="flex items-center gap-1.5">
+                                                <Building2 className="h-3 w-3 text-indigo-500 shrink-0" />
+                                                <span className="text-xs font-medium text-foreground">{businessName}</span>
+                                              </div>
+                                            )}
+                                            {sector && (
+                                              <div className="flex items-center gap-1.5">
+                                                <Tag className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                <span className="text-xs text-foreground/80">{sector}</span>
+                                              </div>
+                                            )}
+                                            {leadScore !== null && (
+                                              <div className="flex items-center gap-1.5">
+                                                <TrendingUp className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                <span className="text-xs text-foreground/80">Score:</span>
+                                                <Badge className={cn("text-[10px] px-1.5 py-0",
+                                                  leadScore >= 7 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                                    : leadScore >= 4 ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+                                                    : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                                                )} variant="secondary">{leadScore}/10</Badge>
+                                              </div>
+                                            )}
+                                          </div>
+                                          {leadInstruction && (
+                                            <details className="mt-1">
+                                              <summary className="text-[10px] text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline flex items-center gap-1">
+                                                Analisi completa
+                                              </summary>
+                                              <div className="mt-1.5 text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto p-2 rounded bg-white/50 dark:bg-gray-900/50 border border-indigo-100 dark:border-indigo-900/30">
+                                                {leadInstruction}
+                                              </div>
+                                            </details>
+                                          )}
+                                        </div>
+                                      )}
 
                                       {waTemplateName && (
                                         <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 space-y-1.5">
