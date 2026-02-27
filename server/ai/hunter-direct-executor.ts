@@ -190,7 +190,7 @@ Rispondi SOLO con il JSON, senza markdown.`;
             created_at, updated_at
           ) VALUES (
             ${taskId}, ${consultantId}, ${lead.phone}, ${lead.business_name},
-            'ai_task', ${waMessage},
+            'single_whatsapp', ${waMessage},
             NOW() + (${offsetMinutes} * interval '1 minute'),
             'Europe/Rome', 'scheduled', 2, 'outreach', 'hunter',
             'whatsapp', ${whatsappConfigId},

@@ -1241,7 +1241,7 @@ async function scheduleIndividualOutreach(
         created_at, updated_at
       ) VALUES (
         ${taskId}, ${consultantId}, ${lead.phone || ''}, ${leadName},
-        'ai_task', ${waInstruction},
+        'single_whatsapp', ${waInstruction},
         ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'whatsapp',
         ${config.whatsappConfigId},
         ${additionalContext}::text,

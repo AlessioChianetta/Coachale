@@ -275,6 +275,12 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
       return;
     }
 
+    if (task.task_type === 'single_whatsapp') {
+      console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=single_whatsapp → direct WA send (no Decision Engine)`);
+      await executeSingleWhatsApp(updatedTask);
+      return;
+    }
+
     console.log(`🤖 [AI-SCHEDULER] STEP 3b: task_type=${task.task_type} → calling initiateVoiceCall`);
     const callSuccess = await initiateVoiceCall(updatedTask);
     
@@ -286,6 +292,93 @@ async function executeTask(task: AIScheduledTask): Promise<void> {
   } catch (error: any) {
     console.error(`❌ [AI-SCHEDULER] STEP 3 ERROR: ${error.message}`);
     await handleFailure(updatedTask, error.message);
+  }
+}
+
+async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
+  const LOG = '📱 [SINGLE-WA]';
+  let additionalContextData: Record<string, any> = {};
+  if (task.additional_context) {
+    try { additionalContextData = JSON.parse(task.additional_context); } catch {}
+  }
+
+  const resolvedPhone = task.contact_phone || '';
+  const resolvedName = task.contact_name || additionalContextData.business_name || 'Cliente';
+  const messageText = task.ai_instruction || `Buongiorno ${resolvedName}, la contatto per aggiornarla.`;
+
+  if (!resolvedPhone) {
+    console.error(`${LOG} No phone number for task ${task.id}, marking failed`);
+    await handleFailure(task, 'Numero di telefono mancante');
+    return;
+  }
+
+  console.log(`${LOG} Sending WA to ${resolvedPhone} (${resolvedName})`);
+  console.log(`${LOG} Message (${messageText.length} chars): "${messageText.substring(0, 150)}..."`);
+  console.log(`${LOG} Template mode: ${additionalContextData.use_wa_template ? 'YES' : 'NO'}`);
+
+  try {
+    const { sendWhatsAppMessage } = await import('../whatsapp/twilio-client');
+    const agentOpts = task.whatsapp_config_id ? { agentConfigId: task.whatsapp_config_id } : {};
+
+    let messageSid: string;
+
+    if (additionalContextData.use_wa_template && additionalContextData.wa_template_sid) {
+      const contentVariables: Record<string, string> = {};
+      if (additionalContextData.wa_template_variables) {
+        const vars = additionalContextData.wa_template_variables;
+        for (const [k, v] of Object.entries(vars)) {
+          contentVariables[k] = String(v);
+        }
+      }
+      if (!contentVariables['1']) contentVariables['1'] = resolvedName;
+
+      console.log(`${LOG} Sending via template ${additionalContextData.wa_template_sid}`);
+      messageSid = await sendWhatsAppMessage(
+        task.consultant_id,
+        resolvedPhone,
+        additionalContextData.wa_preview_message || messageText,
+        undefined,
+        { ...agentOpts, contentSid: additionalContextData.wa_template_sid, contentVariables },
+      );
+    } else {
+      console.log(`${LOG} Sending free-text message`);
+      messageSid = await sendWhatsAppMessage(
+        task.consultant_id,
+        resolvedPhone,
+        messageText,
+        undefined,
+        agentOpts,
+      );
+    }
+
+    console.log(`${LOG} ✅ Sent! SID: ${messageSid}`);
+
+    await db.execute(sql`
+      UPDATE ai_scheduled_tasks
+      SET status = 'completed', result_data = ${JSON.stringify({ messageSid, channel: 'whatsapp', sentAt: new Date().toISOString() })}::jsonb, updated_at = NOW()
+      WHERE id = ${task.id}
+    `);
+
+    await logActivity(task.consultant_id, {
+      event_type: 'whatsapp_sent',
+      title: `Messaggio WhatsApp inviato a ${resolvedName}`,
+      description: `"${messageText.substring(0, 100)}..."`,
+      icon: '💬',
+      severity: 'info',
+      task_id: task.id,
+    });
+
+    const leadId = additionalContextData.lead_id;
+    if (leadId) {
+      await db.execute(sql`
+        UPDATE lead_scraper_results
+        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days', updated_at = NOW()
+        WHERE id = ${leadId}
+      `);
+    }
+  } catch (err: any) {
+    console.error(`${LOG} ✗ Send failed: ${err.message}`);
+    await handleFailure(task, err.message);
   }
 }
 
