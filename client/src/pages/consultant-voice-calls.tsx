@@ -6273,10 +6273,10 @@ export default function ConsultantVoiceCallsPage() {
 
                             {/* Event Details Dialog */}
                             <Dialog open={showEventDetails} onOpenChange={setShowEventDetails}>
-                              <DialogContent className="sm:max-w-lg">
+                              <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
                                 {selectedEvent && (
                                   <>
-                                    <DialogHeader>
+                                    <DialogHeader className="shrink-0">
                                       <div className="flex items-center gap-3">
                                         {(() => {
                                           const TypeIcon = selectedEvent.type === 'history' ? PhoneIncoming : Phone;
@@ -6308,7 +6308,7 @@ export default function ConsultantVoiceCallsPage() {
                                       </div>
                                     </DialogHeader>
                                     
-                                    <div className="space-y-4 py-4">
+                                    <div className="space-y-4 py-4 overflow-y-auto flex-1 min-h-0">
                                       {/* Data e ora */}
                                       <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                                         <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -6412,9 +6412,9 @@ export default function ConsultantVoiceCallsPage() {
                                       {(selectedEvent.data.ai_instruction || selectedEvent.data.call_instruction) && (
                                         <div className="p-3 bg-muted/50 rounded-lg">
                                           <p className="text-xs font-medium text-muted-foreground mb-1">Istruzioni AI</p>
-                                          <p className="text-sm">
+                                          <div className="text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
                                             {selectedEvent.data.ai_instruction || selectedEvent.data.call_instruction}
-                                          </p>
+                                          </div>
                                         </div>
                                       )}
                                       
@@ -6452,7 +6452,7 @@ export default function ConsultantVoiceCallsPage() {
                                       const canModify = !isHistory && selectedEvent?.type === 'call';
                                       
                                       return (
-                                        <div className="flex justify-between gap-2 pt-2">
+                                        <div className="flex justify-between gap-2 pt-2 shrink-0 border-t mt-2">
                                           {canModify && (
                                             <Button 
                                               variant="outline" 
