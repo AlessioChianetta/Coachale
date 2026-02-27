@@ -226,28 +226,64 @@ router.get("/hunter/actions", authenticateToken, requireAnyRole(["consultant", "
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
     let channelFilter = sql``;
-    if (channel !== "all") channelFilter = sql` AND channel = ${channel}`;
+    if (channel === "voice") channelFilter = sql` AND (t.preferred_channel = 'voice' OR t.task_type = 'single_call')`;
+    else if (channel === "whatsapp") channelFilter = sql` AND (t.preferred_channel = 'whatsapp' OR t.task_type = 'single_whatsapp')`;
+    else if (channel === "email") channelFilter = sql` AND t.preferred_channel = 'email'`;
 
     let statusFilter = sql``;
-    if (status !== "all") statusFilter = sql` AND status = ${status}`;
+    if (status === "scheduled") statusFilter = sql` AND t.status IN ('scheduled', 'waiting_approval')`;
+    else if (status === "sent") statusFilter = sql` AND t.status = 'completed'`;
+    else if (status === "failed") statusFilter = sql` AND t.status = 'failed'`;
 
     const [actionsResult, countResult] = await Promise.all([
       db.execute(sql`
-        SELECT * FROM hunter_actions
-        WHERE consultant_id = ${consultantId}
-        ${channelFilter} ${statusFilter}
-        ORDER BY created_at DESC
+        SELECT
+          t.id,
+          CASE
+            WHEN t.task_type = 'single_call' OR t.preferred_channel = 'voice' THEN 'voice'
+            WHEN t.task_type = 'single_whatsapp' OR t.preferred_channel = 'whatsapp' THEN 'whatsapp'
+            WHEN t.preferred_channel = 'email' THEN 'email'
+            ELSE t.preferred_channel
+          END as channel,
+          CASE
+            WHEN t.status = 'completed' THEN 'sent'
+            WHEN t.status = 'waiting_approval' THEN 'waiting_approval'
+            ELSE t.status
+          END as status,
+          t.contact_name as lead_name,
+          t.contact_phone as lead_phone,
+          t.ai_instruction as message_preview,
+          t.created_at,
+          t.scheduled_at,
+          t.completed_at as executed_at,
+          t.result_summary as result_note,
+          t.additional_context
+        FROM ai_scheduled_tasks t
+        WHERE t.consultant_id = ${consultantId}
+          AND t.ai_role = 'hunter'
+          ${channelFilter} ${statusFilter}
+        ORDER BY t.created_at DESC
         LIMIT ${limit}
       `),
       db.execute(sql`
-        SELECT COUNT(*)::int as total FROM hunter_actions
-        WHERE consultant_id = ${consultantId}
-        ${channelFilter} ${statusFilter}
+        SELECT COUNT(*)::int as total FROM ai_scheduled_tasks t
+        WHERE t.consultant_id = ${consultantId}
+          AND t.ai_role = 'hunter'
+          ${channelFilter} ${statusFilter}
       `),
     ]);
 
+    const actions = actionsResult.rows.map((row: any) => {
+      let leadEmail = null;
+      try {
+        const ctx = typeof row.additional_context === 'string' ? JSON.parse(row.additional_context) : row.additional_context;
+        leadEmail = ctx?.lead_email || null;
+      } catch {}
+      return { ...row, lead_email: leadEmail };
+    });
+
     res.json({
-      actions: actionsResult.rows,
+      actions,
       total: (countResult.rows[0] as any)?.total || 0,
     });
   } catch (error: any) {

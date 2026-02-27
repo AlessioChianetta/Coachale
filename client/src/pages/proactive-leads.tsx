@@ -1573,8 +1573,12 @@ export default function ProactiveLeadsPage() {
                           const channelColor = action.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30"
                             : action.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30"
                             : "text-orange-600 bg-orange-100 dark:bg-orange-900/30";
-                          const statusColor = action.status === "sent" || action.status === "scheduled"
+                          const statusColor = action.status === "sent"
                             ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : action.status === "scheduled"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            : action.status === "waiting_approval"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                             : action.status === "failed"
                             ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                             : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
@@ -1599,6 +1603,7 @@ export default function ProactiveLeadsPage() {
                                   <Badge className={`text-[10px] px-1.5 py-0 ${statusColor}`}>
                                     {action.status === "scheduled" ? "Schedulato"
                                       : action.status === "sent" ? "Inviato"
+                                      : action.status === "waiting_approval" ? "Da Approvare"
                                       : action.status === "failed" ? "Fallito"
                                       : action.status}
                                   </Badge>
