@@ -6092,6 +6092,79 @@ REGOLE ANTI-ALLUCINAZIONE:
 
   aiResponse = aiResponse.replace(/\[\[APPROVA:[^\]]+\]\]/gi, '').replace(/\[\[ESEGUI:[^\]]+\]\]/gi, '').replace(/\[\[COMPLETATO:[^\]]+\]\]/gi, '').trim();
 
+  // ── CREATE TASK: server-side execution (works on ALL channels) ──────────────
+  // On Telegram (source='telegram' or isOpenMode), auto-execute create_task actions.
+  // On web, the [ACTIONS] block is left intact for client-side button rendering.
+  const isTelegramContext = options?.source === 'telegram' || isOpenMode;
+  const actionsBlockMatch = aiResponse.match(/\[ACTIONS\]([\s\S]*?)\[\/ACTIONS\]/i);
+  if (actionsBlockMatch) {
+    try {
+      const rawJson = actionsBlockMatch[1].trim();
+      const actions: any[] = JSON.parse(rawJson);
+      const createTaskActions = actions.filter((a: any) => a.type === 'create_task');
+
+      if (createTaskActions.length > 0) {
+        const createdTitles: string[] = [];
+        const failedTitles: string[] = [];
+
+        for (const action of createTaskActions) {
+          const { clientId: taskClientId, title, description, priority, category, dueDate } = action.data || {};
+          if (!title) continue;
+          try {
+            if (taskClientId) {
+              // Client task: find or create a consultation, then insert
+              const consultResult = await db.execute(sql`
+                SELECT id FROM consultations
+                WHERE client_id = ${taskClientId} AND consultant_id = ${consultantId}
+                ORDER BY scheduled_at DESC LIMIT 1
+              `);
+              let consultationId = (consultResult.rows[0] as any)?.id;
+              if (!consultationId) {
+                const newConsult = await db.execute(sql`
+                  INSERT INTO consultations (client_id, consultant_id, scheduled_at, duration, status, notes)
+                  VALUES (${taskClientId}, ${consultantId}, NOW(), 0, 'completed', 'Consulenza generale per gestione task')
+                  RETURNING id
+                `);
+                consultationId = (newConsult.rows[0] as any)?.id;
+              }
+              await db.execute(sql`
+                INSERT INTO consultation_tasks (consultation_id, client_id, title, description, due_date, priority, category, source)
+                VALUES (${consultationId}, ${taskClientId}, ${title}, ${description || null}, ${dueDate ? new Date(dueDate) : null}, ${priority || 'medium'}, ${category || 'reminder'}, 'manual')
+              `);
+              console.log(`✅ [CREATE-TASK] Client task created: "${title}" for client ${taskClientId}`);
+            } else {
+              // Personal consultant task
+              await db.execute(sql`
+                INSERT INTO consultant_personal_tasks (consultant_id, title, description, due_date, priority, category)
+                VALUES (${consultantId}, ${title}, ${description || null}, ${dueDate ? new Date(dueDate) : null}, ${priority || 'medium'}, ${category || 'other'})
+              `);
+              console.log(`✅ [CREATE-TASK] Personal task created: "${title}" for consultant ${consultantId}`);
+            }
+            createdTitles.push(title);
+          } catch (taskErr: any) {
+            console.error(`❌ [CREATE-TASK] Error creating task "${title}":`, taskErr.message);
+            failedTitles.push(title);
+          }
+        }
+
+        if (isTelegramContext) {
+          // On Telegram: strip [ACTIONS] block and append text confirmation
+          aiResponse = aiResponse.replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/i, '').trim();
+          if (createdTitles.length > 0) {
+            aiResponse += `\n\n✅ Task creati:\n${createdTitles.map(t => `• ${t}`).join('\n')}`;
+          }
+          if (failedTitles.length > 0) {
+            aiResponse += `\n\n❌ Errore nella creazione di:\n${failedTitles.map(t => `• ${t}`).join('\n')}`;
+          }
+        }
+        // On web: [ACTIONS] block is left intact → client renders buttons
+      }
+    } catch (parseErr: any) {
+      console.warn('[CREATE-TASK] Failed to parse [ACTIONS] block:', parseErr.message);
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   if (options?.isOpenMode && options?.telegramChatId) {
     await db.execute(sql`
       INSERT INTO telegram_open_mode_messages (consultant_id, ai_role, telegram_chat_id, sender_type, message)
