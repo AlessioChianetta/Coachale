@@ -3169,7 +3169,7 @@ Non limitarti a stato attuale/ideale. Attingi da:
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[1600px] mx-auto">
           {/* Navigation Tabs */}
           <NavigationTabs
             tabs={[
