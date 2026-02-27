@@ -2284,53 +2284,59 @@ export default function ConsultantLeadScraper() {
 
               return (
                 <Card className="rounded-2xl border shadow-sm overflow-hidden">
-                  <div className="px-4 py-3 flex items-center justify-between border-b bg-gray-50/50 dark:bg-gray-800/30">
-                    <div className="flex items-center gap-2">
-                      <Send className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-semibold">Coda Outreach</span>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 h-4">{allTasks.length}</Badge>
+                  <div className="px-5 py-4 flex items-center justify-between border-b bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                        <Send className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Coda Outreach</h3>
+                        <p className="text-xs text-muted-foreground">{allTasks.length} task totali{waitingCount > 0 ? ` — ${waitingCount} da approvare` : ""}</p>
+                      </div>
                     </div>
                     {waitingCount > 0 && (
                       <Button
                         size="sm"
-                        className="h-7 text-xs px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="h-9 text-sm px-4 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                         onClick={handleBatchApprove}
                         disabled={batchApproving}
                       >
-                        {batchApproving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                        {batchApproving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                         Approva tutti ({waitingCount})
                       </Button>
                     )}
                   </div>
 
-                  <div className="px-4 py-2 flex flex-wrap gap-1.5 border-b">
-                    <div className="flex items-center gap-1 mr-2">
+                  <div className="px-5 py-3 flex flex-wrap items-center gap-4 border-b bg-white dark:bg-gray-900/50">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground mr-1">Canale:</span>
                       {(["tutti", "voice", "whatsapp", "email"] as const).map(ch => (
                         <button
                           key={ch}
                           onClick={() => setOutreachChannelFilter(ch)}
                           className={cn(
-                            "text-[11px] px-2 py-1 rounded-md font-medium transition-colors",
+                            "text-xs px-3 py-1.5 rounded-lg font-medium transition-all",
                             outreachChannelFilter === ch
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                           )}
                         >
-                          {ch === "tutti" ? "Tutti" : ch === "voice" ? "📞 Chiamate" : ch === "whatsapp" ? "💬 WhatsApp" : "📧 Email"}
+                          {ch === "tutti" ? "Tutti" : ch === "voice" ? "Chiamate" : ch === "whatsapp" ? "WhatsApp" : "Email"}
                         </button>
                       ))}
                     </div>
-                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 self-center" />
-                    <div className="flex items-center gap-1 ml-2">
+                    <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground mr-1">Stato:</span>
                       {(["tutti", "waiting_approval", "scheduled", "completed", "failed"] as const).map(st => (
                         <button
                           key={st}
                           onClick={() => setOutreachStatusFilter(st)}
                           className={cn(
-                            "text-[11px] px-2 py-1 rounded-md font-medium transition-colors",
+                            "text-xs px-3 py-1.5 rounded-lg font-medium transition-all",
                             outreachStatusFilter === st
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                              : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-700"
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
                           )}
                         >
                           {st === "tutti" ? "Tutti" : st === "waiting_approval" ? "In attesa" : st === "scheduled" ? "Schedulati" : st === "completed" ? "Completati" : "Falliti"}
@@ -2341,11 +2347,13 @@ export default function ConsultantLeadScraper() {
 
                   <CardContent className="p-0">
                     {visibleGroups.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-                        Nessun task in coda
+                      <div className="px-6 py-12 text-center">
+                        <Send className="h-8 w-8 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                        <p className="text-sm text-muted-foreground">Nessun task in coda</p>
+                        <p className="text-xs text-gray-400 mt-1">I task di outreach appariranno qui</p>
                       </div>
                     ) : (
-                      <div className="max-h-[500px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                      <div className="max-h-[600px] overflow-y-auto">
                         <AnimatePresence initial={false}>
                           {visibleGroups.map((group) => {
                             const isGroupExpanded = expandedTaskId === (group.leadId || group.leadName);
@@ -2361,47 +2369,57 @@ export default function ConsultantLeadScraper() {
                             return (
                               <motion.div
                                 key={group.leadId || group.leadName}
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.25 }}
+                                transition={{ duration: 0.2 }}
+                                className="border-b border-gray-100 dark:border-gray-800 last:border-b-0"
                               >
                                 <div
                                   className={cn(
-                                    "px-3 py-2.5 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors",
-                                    isGroupExpanded && "bg-gray-50/80 dark:bg-gray-800/50"
+                                    "px-5 py-4 cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors",
+                                    isGroupExpanded && "bg-blue-50/40 dark:bg-blue-950/20"
                                   )}
                                   onClick={() => setExpandedTaskId(isGroupExpanded ? null : (group.leadId || group.leadName))}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <div className="flex items-center gap-0.5 shrink-0">
-                                        {groupChannels.map(ch => {
-                                          const ChI = channelIcon(ch);
-                                          return <ChI key={ch} className={cn("h-3.5 w-3.5", channelColor(ch))} />;
-                                        })}
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center shrink-0">
+                                        <span className="text-sm font-bold text-gray-600 dark:text-gray-300">{(group.leadName || "?").charAt(0).toUpperCase()}</span>
                                       </div>
-                                      <span className="text-sm font-medium truncate">{group.leadName}</span>
-                                      {group.leadScore != null && (
-                                        <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">{group.leadScore}</Badge>
-                                      )}
-                                      {group.tasks.length > 1 && (
-                                        <Badge variant="secondary" className="text-[9px] px-1 h-4 shrink-0">{group.tasks.length} canali</Badge>
-                                      )}
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{group.leadName}</span>
+                                          {group.leadScore != null && (
+                                            <Badge variant="outline" className="text-[11px] px-2 h-5 shrink-0 font-semibold">{group.leadScore}/100</Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          {group.leadSector && <span className="text-xs text-muted-foreground">{group.leadSector}</span>}
+                                          <div className="flex items-center gap-1">
+                                            {groupChannels.map(ch => {
+                                              const ChI = channelIcon(ch);
+                                              return <ChI key={ch} className={cn("h-3.5 w-3.5", channelColor(ch))} />;
+                                            })}
+                                          </div>
+                                          <span className="text-xs text-muted-foreground">
+                                            {group.tasks.length} {group.tasks.length === 1 ? "canale" : "canali"}
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      {group.leadSector && (
-                                        <span className="text-[10px] text-muted-foreground hidden sm:inline">{group.leadSector}</span>
-                                      )}
-                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                        {firstTask.scheduledAt ? timeAgo(firstTask.scheduledAt) : firstTask.createdAt ? timeAgo(firstTask.createdAt) : ""}
-                                      </span>
-                                      <Badge className={cn("text-[9px] px-1.5 h-4", ws.cls)}>{ws.label}</Badge>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <div className="text-right hidden sm:block">
+                                        <span className="text-xs text-muted-foreground block">
+                                          {firstTask.scheduledAt ? timeAgo(firstTask.scheduledAt) : firstTask.createdAt ? timeAgo(firstTask.createdAt) : ""}
+                                        </span>
+                                      </div>
+                                      <Badge className={cn("text-xs px-2.5 py-0.5", ws.cls)}>{ws.label}</Badge>
                                       {groupWaitingCount > 0 && (
-                                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                                           <Button
                                             size="sm"
-                                            className="h-6 w-6 p-0 bg-emerald-500 hover:bg-emerald-600 text-white"
+                                            className="h-8 w-8 p-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm"
                                             onClick={async () => {
                                               for (const t of group.tasks.filter(tt => tt.status === "waiting_approval")) {
                                                 try { await approveTaskMutation.mutateAsync(t.id); } catch {}
@@ -2412,11 +2430,11 @@ export default function ConsultantLeadScraper() {
                                             disabled={approveTaskMutation.isPending}
                                             title="Approva tutti i canali"
                                           >
-                                            <Check className="h-3 w-3" />
+                                            <Check className="h-4 w-4" />
                                           </Button>
                                           <Button
                                             size="sm"
-                                            className="h-6 w-6 p-0 bg-red-500 hover:bg-red-600 text-white"
+                                            className="h-8 w-8 p-0 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm"
                                             onClick={async () => {
                                               for (const t of group.tasks.filter(tt => tt.status === "waiting_approval")) {
                                                 try { await rejectTaskMutation.mutateAsync(t.id); } catch {}
@@ -2427,10 +2445,11 @@ export default function ConsultantLeadScraper() {
                                             disabled={rejectTaskMutation.isPending}
                                             title="Rifiuta tutti i canali"
                                           >
-                                            <X className="h-3 w-3" />
+                                            <X className="h-4 w-4" />
                                           </Button>
                                         </div>
                                       )}
+                                      <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", isGroupExpanded && "rotate-180")} />
                                     </div>
                                   </div>
                                 </div>
@@ -2441,15 +2460,15 @@ export default function ConsultantLeadScraper() {
                                     animate={{ opacity: 1, height: "auto" }}
                                     exit={{ opacity: 0, height: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className="border-t border-dashed border-gray-200 dark:border-gray-700"
+                                    className="bg-gray-50/50 dark:bg-gray-900/30"
                                   >
                                     {group.leadSector && (
-                                      <div className="px-4 pt-2 pb-1 flex items-center gap-3 text-xs text-muted-foreground">
-                                        {group.leadSector && <span>Settore: <strong>{group.leadSector}</strong></span>}
+                                      <div className="px-5 pt-3 pb-2 flex items-center gap-4 text-sm text-muted-foreground border-t border-gray-100 dark:border-gray-800">
+                                        {group.leadSector && <span>Settore: <strong className="text-foreground">{group.leadSector}</strong></span>}
                                         {group.leadScore != null && <span>Score: {getScoreBar(group.leadScore)}</span>}
                                       </div>
                                     )}
-                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                    <div className="px-5 pb-4 pt-1 space-y-3">
                                       {group.tasks.map(task => {
                                         const ChIcon = channelIcon(task.channel);
                                         const chCol = channelColor(task.channel);
@@ -2464,27 +2483,32 @@ export default function ConsultantLeadScraper() {
                                             return next;
                                           });
                                         };
+                                        const chBorderLeft = task.channel === 'voice' ? 'border-l-green-500' : task.channel === 'whatsapp' ? 'border-l-emerald-500' : 'border-l-blue-500';
                                         return (
-                                          <div key={task.id} className={cn("px-4 py-2.5", channelBg(task.channel).split(' ')[0], "bg-opacity-30")}>
-                                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                                              <div className="flex items-center gap-2">
-                                                <ChIcon className={cn("h-3.5 w-3.5", chCol)} />
-                                                <span className="text-xs font-semibold">{channelLabel(task.channel)}</span>
-                                                <Badge className={cn("text-[9px] px-1.5 h-4", ts.cls)}>{ts.label}</Badge>
+                                          <div key={task.id} className={cn("rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden border-l-[3px]", chBorderLeft)}>
+                                            <div className="px-4 py-3 flex items-center justify-between">
+                                              <div className="flex items-center gap-3">
+                                                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", channelBg(task.channel))}>
+                                                  <ChIcon className={cn("h-4 w-4", chCol)} />
+                                                </div>
+                                                <div>
+                                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{channelLabel(task.channel)}</span>
+                                                  {task.scheduledAt && (
+                                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                                      {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })}
+                                                    </p>
+                                                  )}
+                                                </div>
                                               </div>
                                               <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                                {task.scheduledAt && (
-                                                  <span className="text-[10px] text-muted-foreground">
-                                                    {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                                  </span>
-                                                )}
+                                                <Badge className={cn("text-xs px-2.5 py-0.5", ts.cls)}>{ts.label}</Badge>
                                                 {task.status === "waiting_approval" && (
-                                                  <div className="flex items-center gap-1">
-                                                    <Button size="sm" className="h-5 w-5 p-0 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => approveTaskMutation.mutate(task.id)} disabled={approveTaskMutation.isPending}>
-                                                      <Check className="h-2.5 w-2.5" />
+                                                  <div className="flex items-center gap-1.5">
+                                                    <Button size="sm" className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs rounded-lg" onClick={() => approveTaskMutation.mutate(task.id)} disabled={approveTaskMutation.isPending}>
+                                                      <Check className="h-3.5 w-3.5 mr-1" /> Approva
                                                     </Button>
-                                                    <Button size="sm" className="h-5 w-5 p-0 bg-red-500 hover:bg-red-600 text-white" onClick={() => rejectTaskMutation.mutate(task.id)} disabled={rejectTaskMutation.isPending}>
-                                                      <X className="h-2.5 w-2.5" />
+                                                    <Button size="sm" variant="outline" className="h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 text-xs rounded-lg" onClick={() => rejectTaskMutation.mutate(task.id)} disabled={rejectTaskMutation.isPending}>
+                                                      <X className="h-3.5 w-3.5 mr-1" /> Rifiuta
                                                     </Button>
                                                   </div>
                                                 )}
@@ -2492,49 +2516,46 @@ export default function ConsultantLeadScraper() {
                                             </div>
 
                                             {task.channel === 'whatsapp' && (
-                                              <div className="space-y-1.5">
+                                              <div className="px-4 pb-3 space-y-2">
                                                 {task.waTemplateName && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Badge variant="outline" className="text-[9px] px-1.5 h-4 border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-0.5">
-                                                      <FileText className="h-2.5 w-2.5" />Template: {task.waTemplateName}
+                                                  <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="text-xs px-2 py-0.5 border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-1">
+                                                      <FileText className="h-3 w-3" />Template: {task.waTemplateName}
                                                     </Badge>
                                                   </div>
                                                 )}
                                                 {task.waTemplateFilled && (
                                                   <div>
-                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio esatto che verrà inviato:</p>
-                                                    <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[140px] overflow-y-auto", channelBg(task.channel))}>
+                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio che riceverà il contatto:</p>
+                                                    <div className={cn("rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50")}>
                                                       {task.waTemplateFilled}
                                                     </div>
                                                   </div>
                                                 )}
                                                 {!task.waTemplateFilled && task.waTemplateName && task.waPreviewMessage && (
                                                   <div>
-                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio personalizzato:</p>
-                                                    <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[140px] overflow-y-auto", channelBg(task.channel))}>
+                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Anteprima messaggio:</p>
+                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
                                                       {task.waPreviewMessage}
                                                     </div>
                                                   </div>
                                                 )}
                                                 {!task.waTemplateName && task.aiInstruction && (
                                                   <div>
-                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio WA:</p>
-                                                    <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[140px] overflow-y-auto", channelBg(task.channel))}>
+                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio WhatsApp:</p>
+                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
                                                       {task.aiInstruction}
                                                     </div>
                                                   </div>
                                                 )}
                                                 {task.waTemplateName && task.aiInstruction && (
                                                   <div>
-                                                    <button
-                                                      onClick={toggleContext}
-                                                      className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                                    >
-                                                      <ChevronDown className={cn("h-3 w-3 transition-transform", isContextExpanded && "rotate-180")} />
-                                                      {isContextExpanded ? "Nascondi contesto iniettato" : "Mostra contesto iniettato"}
+                                                    <button onClick={toggleContext} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
+                                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isContextExpanded && "rotate-180")} />
+                                                      {isContextExpanded ? "Nascondi contesto" : "Mostra contesto lead"}
                                                     </button>
                                                     {isContextExpanded && (
-                                                      <div className="mt-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-[11px] whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
+                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto text-muted-foreground">
                                                         {task.aiInstruction}
                                                       </div>
                                                     )}
@@ -2544,33 +2565,28 @@ export default function ConsultantLeadScraper() {
                                             )}
 
                                             {task.channel === 'voice' && (
-                                              <div className="space-y-1.5">
+                                              <div className="px-4 pb-3 space-y-2">
                                                 {task.voiceTemplateName && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Badge variant="outline" className="text-[9px] px-1.5 h-4 border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 gap-0.5">
-                                                      <PhoneCall className="h-2.5 w-2.5" />Template: {task.voiceTemplateName}
-                                                    </Badge>
-                                                  </div>
+                                                  <Badge variant="outline" className="text-xs px-2 py-0.5 border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 gap-1">
+                                                    <PhoneCall className="h-3 w-3" />Template: {task.voiceTemplateName}
+                                                  </Badge>
                                                 )}
                                                 {task.callInstruction && (
                                                   <div>
-                                                    <p className="text-[10px] font-medium text-green-700 dark:text-green-400 mb-0.5">Istruzioni chiamata:</p>
-                                                    <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[100px] overflow-y-auto", channelBg(task.channel))}>
+                                                    <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1.5">Istruzioni per la chiamata:</p>
+                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[150px] overflow-y-auto bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800/50">
                                                       {task.callInstruction}
                                                     </div>
                                                   </div>
                                                 )}
                                                 {task.aiInstruction && (
                                                   <div>
-                                                    <button
-                                                      onClick={toggleContext}
-                                                      className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                                    >
-                                                      <ChevronDown className={cn("h-3 w-3 transition-transform", isContextExpanded && "rotate-180")} />
-                                                      {isContextExpanded ? "Nascondi contesto lead" : "Mostra contesto lead"}
+                                                    <button onClick={toggleContext} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
+                                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isContextExpanded && "rotate-180")} />
+                                                      {isContextExpanded ? "Nascondi contesto" : "Mostra contesto lead"}
                                                     </button>
                                                     {isContextExpanded && (
-                                                      <div className="mt-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 text-[11px] whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto text-muted-foreground">
+                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto text-muted-foreground">
                                                         {task.aiInstruction}
                                                       </div>
                                                     )}
@@ -2580,21 +2596,23 @@ export default function ConsultantLeadScraper() {
                                             )}
 
                                             {task.channel === 'email' && task.aiInstruction && (
-                                              <div className="space-y-1.5">
-                                                <div>
-                                                  <p className="text-[10px] font-medium text-blue-700 dark:text-blue-400 mb-0.5">Email:</p>
-                                                  <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto", channelBg(task.channel))}>
-                                                    {task.aiInstruction}
-                                                  </div>
+                                              <div className="px-4 pb-3">
+                                                <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
+                                                <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
+                                                  {task.aiInstruction}
                                                 </div>
                                               </div>
                                             )}
 
                                             {task.status === "completed" && task.resultSummary && (
-                                              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1.5">{task.resultSummary}</p>
+                                              <div className="px-4 pb-3">
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/50">{task.resultSummary}</p>
+                                              </div>
                                             )}
                                             {task.status === "failed" && task.resultSummary && (
-                                              <p className="text-[10px] text-red-600 dark:text-red-400 mt-1.5">{task.resultSummary}</p>
+                                              <div className="px-4 pb-3">
+                                                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-800/50">{task.resultSummary}</p>
+                                              </div>
                                             )}
                                           </div>
                                         );
@@ -2607,7 +2625,7 @@ export default function ConsultantLeadScraper() {
                           })}
                         </AnimatePresence>
                         {groupedByLead.length > 25 && (
-                          <div className="px-4 py-2 text-center text-[10px] text-muted-foreground bg-gray-50/50 dark:bg-gray-800/20">
+                          <div className="px-5 py-3 text-center text-xs text-muted-foreground bg-gray-50 dark:bg-gray-800/30 border-t">
                             Mostrati 25 di {groupedByLead.length} lead
                           </div>
                         )}
@@ -2699,13 +2717,18 @@ export default function ConsultantLeadScraper() {
             <Card className="rounded-2xl border shadow-sm overflow-hidden">
               <button
                 onClick={() => setHunterConfigOpen(!hunterConfigOpen)}
-                className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
               >
-                <span className="text-sm font-semibold flex items-center gap-2">
-                  <Cog className="h-4 w-4 text-gray-500" />
-                  Configurazione avanzata
-                </span>
-                <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", hunterConfigOpen && "rotate-180")} />
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                    <Cog className="h-4.5 w-4.5 text-gray-500 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">Configurazione Hunter</h3>
+                    <p className="text-xs text-muted-foreground">Limiti, canali, stile e account</p>
+                  </div>
+                </div>
+                <ChevronDown className={cn("h-5 w-5 text-gray-400 transition-transform", hunterConfigOpen && "rotate-180")} />
               </button>
               {hunterConfigOpen && (
                 <motion.div
@@ -2714,61 +2737,60 @@ export default function ConsultantLeadScraper() {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <CardContent className="pt-0 pb-5 space-y-6 border-t">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max lead per analisi CRM</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_leads_per_batch || 15}</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.max_leads_per_batch || 15]} min={5} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_leads_per_batch", v)} />
-                          <p className="text-xs text-gray-400 mt-1">Quanti lead contattare per ogni analisi CRM</p>
+                  <CardContent className="pt-0 pb-6 space-y-8 border-t">
+                    <div className="pt-5">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                          <Target className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
                         </div>
                         <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max ricerche Hunter / giorno</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_searches_per_day}</Badge>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Limiti giornalieri</h4>
+                          <p className="text-xs text-muted-foreground">Quanti contatti per canale al giorno</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Lead per analisi CRM</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_leads_per_batch || 15}</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.max_leads_per_batch || 15]} min={5} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("max_leads_per_batch", v)} />
+                        </div>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Ricerche Hunter / giorno</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_searches_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_searches_per_day]} min={1} max={20} step={1} onValueChange={([v]) => updateOutreachConfig("max_searches_per_day", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max chiamate / giorno</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_calls_per_day}</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-green-50/50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><PhoneCall className="h-3.5 w-3.5 text-green-600" />Chiamate / giorno</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_calls_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_calls_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_calls_per_day", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max WhatsApp / giorno</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_whatsapp_per_day}</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" />WhatsApp / giorno</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_whatsapp_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_whatsapp_per_day]} min={1} max={50} step={1} onValueChange={([v]) => updateOutreachConfig("max_whatsapp_per_day", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Max email / giorno</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_emails_per_day}</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><MailIcon className="h-3.5 w-3.5 text-blue-600" />Email / giorno</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_emails_per_day}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_emails_per_day]} min={1} max={100} step={1} onValueChange={([v]) => updateOutreachConfig("max_emails_per_day", v)} />
                         </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Soglia score AI minimo</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.score_threshold}/100</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><Target className="h-3.5 w-3.5 text-amber-600" />Score minimo AI</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.score_threshold}/100</Badge>
                           </Label>
                           <Slider value={[outreachConfig.score_threshold]} min={30} max={90} step={5} onValueChange={([v]) => updateOutreachConfig("score_threshold", v)} />
-                          <p className="text-xs text-gray-400 mt-1">Solo lead con score &ge; {outreachConfig.score_threshold} verranno contattati</p>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Cooldown tra contatti (ore)</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_hours}h</Badge>
-                          </Label>
-                          <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
+                          <p className="text-xs text-muted-foreground">Solo lead con score superiore verranno contattati</p>
                         </div>
                       </div>
                     </div>
@@ -2776,37 +2798,48 @@ export default function ConsultantLeadScraper() {
                     <Separator />
 
                     <div>
-                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-orange-500" />
-                        Qualificazione Lead
-                      </Label>
-                      <p className="text-xs text-gray-400 mb-4">Configura i tempi di attesa e il numero massimo di tentativi per contattare i lead.</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                          <Filter className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                        </div>
                         <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Ore minime prima di contattare un lead nuovo</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_new_hours || 24}h</Badge>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Tempi e tentativi</h4>
+                          <p className="text-xs text-muted-foreground">Cooldown tra contatti e limiti tentativi</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Cooldown tra contatti</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_hours}h</Badge>
+                          </Label>
+                          <Slider value={[outreachConfig.cooldown_hours]} min={12} max={168} step={12} onValueChange={([v]) => updateOutreachConfig("cooldown_hours", v)} />
+                        </div>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Attesa lead nuovo</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_new_hours || 24}h</Badge>
                           </Label>
                           <Slider value={[outreachConfig.cooldown_new_hours || 24]} min={1} max={72} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_new_hours", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Giorni prima di ricontattare un lead contattato</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_contacted_days || 5}g</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Ricontattare lead contattato</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_contacted_days || 5}g</Badge>
                           </Label>
                           <Slider value={[outreachConfig.cooldown_contacted_days || 5]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_contacted_days", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
-                            <span>Giorni prima di ricontattare un lead in trattativa</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.cooldown_negotiation_days || 7}g</Badge>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
+                            <span>Ricontattare lead in trattativa</span>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.cooldown_negotiation_days || 7}g</Badge>
                           </Label>
                           <Slider value={[outreachConfig.cooldown_negotiation_days || 7]} min={1} max={30} step={1} onValueChange={([v]) => updateOutreachConfig("cooldown_negotiation_days", v)} />
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium flex items-center justify-between mb-2">
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium flex items-center justify-between">
                             <span>Max tentativi per lead</span>
-                            <Badge variant="outline" className="text-xs">{outreachConfig.max_attempts_per_lead || 3}</Badge>
+                            <Badge variant="outline" className="text-xs font-bold">{outreachConfig.max_attempts_per_lead || 3}</Badge>
                           </Label>
                           <Slider value={[outreachConfig.max_attempts_per_lead || 3]} min={1} max={10} step={1} onValueChange={([v]) => updateOutreachConfig("max_attempts_per_lead", v)} />
                         </div>
@@ -2816,16 +2849,20 @@ export default function ConsultantLeadScraper() {
                     <Separator />
 
                     <div>
-                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
-                        <Route className="h-4 w-4 text-blue-500" />
-                        Strategia Canale
-                      </Label>
-                      <p className="text-xs text-gray-400 mb-4">Definisci quale canale usare per il primo contatto e per i lead ad alto score.</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Canale primo contatto</Label>
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                          <Route className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Strategia canale</h4>
+                          <p className="text-xs text-muted-foreground">Quale canale usare per primo e per i lead migliori</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Canale primo contatto</Label>
                           <Select value={outreachConfig.first_contact_channel || "auto"} onValueChange={(v) => updateOutreachConfig("first_contact_channel", v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
+                            <SelectTrigger className="w-full h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -2835,12 +2872,12 @@ export default function ConsultantLeadScraper() {
                               <SelectItem value="email">Email</SelectItem>
                             </SelectContent>
                           </Select>
-                          <p className="text-[10px] text-gray-400">Canale da usare per il primo contatto con lead nuovi</p>
+                          <p className="text-xs text-muted-foreground">Per il primo contatto con lead nuovi</p>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Canale preferito per lead ad alto score (&gt;80)</Label>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Canale per lead ad alto score (&gt;80)</Label>
                           <Select value={outreachConfig.high_score_channel || "voice"} onValueChange={(v) => updateOutreachConfig("high_score_channel", v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
+                            <SelectTrigger className="w-full h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -2849,7 +2886,7 @@ export default function ConsultantLeadScraper() {
                               <SelectItem value="email">Email</SelectItem>
                             </SelectContent>
                           </Select>
-                          <p className="text-[10px] text-gray-400">Per lead con score AI &gt; 80, Hunter preferirà questo canale</p>
+                          <p className="text-xs text-muted-foreground">Hunter preferirà questo canale per i lead migliori</p>
                         </div>
                       </div>
                     </div>
@@ -2857,16 +2894,20 @@ export default function ConsultantLeadScraper() {
                     <Separator />
 
                     <div>
-                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
-                        <PenLine className="h-4 w-4 text-purple-500" />
-                        Stile Comunicazione
-                      </Label>
-                      <p className="text-xs text-gray-400 mb-4">Personalizza il tono, lo stile e la firma dei messaggi generati da Hunter.</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Stile di comunicazione</Label>
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                          <PenLine className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Stile comunicazione</h4>
+                          <p className="text-xs text-muted-foreground">Tono, stile e firma dei messaggi</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Stile di comunicazione</Label>
                           <Select value={outreachConfig.communication_style || "professionale"} onValueChange={(v) => updateOutreachConfig("communication_style", v)}>
-                            <SelectTrigger className="w-full h-9 text-xs">
+                            <SelectTrigger className="w-full h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -2877,32 +2918,32 @@ export default function ConsultantLeadScraper() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Opening hook</Label>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Opening hook</Label>
                           <Input
                             value={outreachConfig.opening_hook || ""}
                             onChange={(e) => updateOutreachConfig("opening_hook", e.target.value)}
                             placeholder="Es: Ho notato che la vostra azienda..."
-                            className="h-9 text-xs"
+                            className="h-10 text-sm"
                           />
-                          <p className="text-[10px] text-gray-400">Frase di apertura personalizzata per i messaggi</p>
+                          <p className="text-xs text-muted-foreground">Frase di apertura personalizzata</p>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Istruzioni personalizzate</Label>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Istruzioni personalizzate</Label>
                           <Textarea
                             value={outreachConfig.custom_instructions || ""}
                             onChange={(e) => updateOutreachConfig("custom_instructions", e.target.value)}
                             placeholder="Es: Non usare 'sinergia', menziona il Sistema Orbitale, sii diretto..."
-                            className="text-xs min-h-[80px] resize-y"
+                            className="text-sm min-h-[90px] resize-y"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Firma email</Label>
+                        <div className="space-y-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                          <Label className="text-sm font-medium">Firma email</Label>
                           <Textarea
                             value={outreachConfig.email_signature || ""}
                             onChange={(e) => updateOutreachConfig("email_signature", e.target.value)}
                             placeholder={"Nome Cognome\nTitolo | Azienda\nTel: +39...\nwww.sito.it"}
-                            className="text-xs min-h-[80px] resize-y"
+                            className="text-sm min-h-[90px] resize-y"
                           />
                         </div>
                       </div>
@@ -2911,21 +2952,25 @@ export default function ConsultantLeadScraper() {
                     <Separator />
 
                     <div>
-                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
-                        <Users className="h-4 w-4 text-violet-500" />
-                        Dipendenti e Account per Outreach
-                      </Label>
-                      <p className="text-xs text-gray-400 mb-4">Hunter usa questi strumenti per contattare i lead tramite i canali configurati.</p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-semibold flex items-center gap-1.5">
-                            <PhoneCall className="h-3.5 w-3.5 text-green-600" />
-                            Configurazione Chiamate
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                          <Users className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Account e dipendenti</h4>
+                          <p className="text-xs text-muted-foreground">Strumenti che Hunter usa per contattare i lead</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div className="space-y-3 p-4 rounded-xl border border-green-200 dark:border-green-800/50 bg-green-50/30 dark:bg-green-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <PhoneCall className="h-4 w-4 text-green-600" />
+                            Chiamate
                           </Label>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] text-muted-foreground">Template outbound</Label>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Template outbound</Label>
                             <Select value={outreachConfig.voice_template_id || "none"} onValueChange={(v) => updateOutreachConfig("voice_template_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectTrigger className="w-full h-10 text-sm">
                                 <SelectValue placeholder="Seleziona template voce" />
                               </SelectTrigger>
                               <SelectContent>
@@ -2936,49 +2981,49 @@ export default function ConsultantLeadScraper() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] text-muted-foreground">Istruzione chiamata</Label>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Istruzione chiamata</Label>
                             <Textarea
                               value={outreachConfig.call_instruction_template || ""}
                               onChange={(e) => updateOutreachConfig("call_instruction_template", e.target.value)}
-                              placeholder="Es: Presentarsi come partner tecnologico, scoprire se usano già AI..."
-                              className="text-xs min-h-[60px] resize-y"
+                              placeholder="Es: Presentarsi come partner tecnologico..."
+                              className="text-sm min-h-[70px] resize-y"
                               rows={3}
                             />
                           </div>
                         </div>
-                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-semibold flex items-center gap-1.5">
-                            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
-                            Configurazione WhatsApp
+                        <div className="space-y-3 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4 text-emerald-600" />
+                            WhatsApp
                           </Label>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] text-muted-foreground">Dipendente WhatsApp</Label>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Dipendente WhatsApp</Label>
                             <Select value={outreachConfig.whatsapp_config_id || "none"} onValueChange={(v) => updateOutreachConfig("whatsapp_config_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectTrigger className="w-full h-10 text-sm">
                                 <SelectValue placeholder="Seleziona dipendente WA" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">Nessuno (disabilita WA outreach)</SelectItem>
+                                <SelectItem value="none">Nessuno (disabilita WA)</SelectItem>
                                 {proactiveWaConfigs.map((c) => (
                                   <SelectItem key={c.id} value={c.id}>{c.name} ({c.phoneNumber})</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            {proactiveWaConfigs.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
+                            {proactiveWaConfigs.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun dipendente WA proattivo trovato</p>}
                           </div>
 
-                          <div className="space-y-2 pt-1">
+                          <div className="space-y-2 pt-2">
                             <div className="flex items-center justify-between">
-                              <Label className="text-[10px] text-muted-foreground">Template WhatsApp per Hunter</Label>
+                              <Label className="text-xs text-muted-foreground font-medium">Template WhatsApp</Label>
                               {hunterSelectedTemplateIds.length > 0 && (
-                                <Badge className="bg-emerald-500 text-white text-[10px] px-2 py-0.5">
+                                <Badge className="bg-emerald-500 text-white text-xs px-2.5 py-0.5">
                                   {hunterSelectedTemplateIds.length} selezionati
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-[10px] text-gray-400">
-                              Seleziona i template che Hunter userà per l'outreach WhatsApp. Senza template, i messaggi verranno generati dall'AI come testo libero.
+                            <p className="text-xs text-muted-foreground">
+                              Template che Hunter userà per l'outreach WhatsApp.
                             </p>
 
                             {hunterTemplatesLoading ? (
@@ -3090,41 +3135,41 @@ export default function ConsultantLeadScraper() {
                             )}
 
                             {hunterSelectedTemplateIds.length === 0 && hunterWaTemplates.length > 0 && (
-                              <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                                <p className="text-[9px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                                  <AlertTriangle className="h-3 w-3 shrink-0" />
-                                  Nessun template selezionato. I messaggi verranno generati dall'AI come testo libero (funziona solo con conversazioni attive nelle ultime 24h).
+                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                                  Nessun template selezionato. WhatsApp outreach disabilitato.
                                 </p>
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="space-y-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                          <Label className="text-xs font-semibold flex items-center gap-1.5">
-                            <MailIcon className="h-3.5 w-3.5 text-blue-600" />
-                            Account email
+                        <div className="space-y-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-950/10">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            <MailIcon className="h-4 w-4 text-blue-600" />
+                            Email
                           </Label>
-                          <div className="space-y-1.5">
-                            <Label className="text-[10px] text-muted-foreground">Account di invio</Label>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Account di invio</Label>
                             <Select value={outreachConfig.email_account_id || "none"} onValueChange={(v) => updateOutreachConfig("email_account_id", v === "none" ? "" : v)}>
-                              <SelectTrigger className="w-full h-9 text-xs">
+                              <SelectTrigger className="w-full h-10 text-sm">
                                 <SelectValue placeholder="Seleziona account email" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">Nessuno (disabilita email outreach)</SelectItem>
+                                <SelectItem value="none">Nessuno (disabilita email)</SelectItem>
                                 {emailAccounts.map((a) => (
                                   <SelectItem key={a.id} value={a.id}>{a.name} ({a.email})</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            {emailAccounts.length === 0 && <p className="text-[10px] text-amber-600 mt-1">Nessun account email configurato</p>}
+                            {emailAccounts.length === 0 && <p className="text-xs text-amber-600 mt-1">Nessun account email configurato</p>}
                           </div>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium mb-2 block">Priorità canali di contatto</Label>
-                      <p className="text-xs text-gray-400 mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
+                      <Label className="text-sm font-bold mb-2 block text-gray-900 dark:text-white">Priorità canali di contatto</Label>
+                      <p className="text-xs text-muted-foreground mb-3">Hunter proverà i canali in questo ordine per ogni lead.</p>
                       <div className="space-y-2">
                         {outreachConfig.channel_priority.map((ch: string, idx: number) => {
                           const info = channelLabelsMap[ch];
@@ -3150,15 +3195,19 @@ export default function ConsultantLeadScraper() {
                     <Separator />
 
                     <div>
-                      <Label className="text-sm font-semibold mb-1 flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4 text-teal-500" />
-                        Sequenza Follow-up
-                      </Label>
-                      <p className="text-xs text-gray-400 mb-4">Quando un lead non risponde, Hunter segue questa sequenza automaticamente. Dopo l'ultimo step, il lead viene marcato come non raggiungibile.</p>
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="h-7 w-7 rounded-lg bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                          <RefreshCw className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Sequenza follow-up</h4>
+                          <p className="text-xs text-muted-foreground">Se il lead non risponde, Hunter segue questa sequenza</p>
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         {(outreachConfig.follow_up_sequence || []).map((step: { day: number; channel: string }, idx: number) => (
-                          <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
-                            <span className="text-xs font-bold text-gray-400 w-5 shrink-0">{idx + 1}.</span>
+                          <div key={idx} className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40">
+                            <span className="text-sm font-bold text-gray-400 w-6 shrink-0">{idx + 1}.</span>
                             <Select
                               value={step.channel}
                               onValueChange={(v) => {
@@ -3167,7 +3216,7 @@ export default function ConsultantLeadScraper() {
                                 updateOutreachConfig("follow_up_sequence", seq);
                               }}
                             >
-                              <SelectTrigger className="w-[140px] h-8 text-xs">
+                              <SelectTrigger className="w-[150px] h-10 text-sm">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -3176,7 +3225,7 @@ export default function ConsultantLeadScraper() {
                                 <SelectItem value="email">Email</SelectItem>
                               </SelectContent>
                             </Select>
-                            <span className="text-xs text-muted-foreground shrink-0">dopo</span>
+                            <span className="text-sm text-muted-foreground shrink-0">dopo</span>
                             <Input
                               type="number"
                               min={0}
@@ -3187,13 +3236,13 @@ export default function ConsultantLeadScraper() {
                                 seq[idx] = { ...seq[idx], day: Math.max(0, Math.min(30, parseInt(e.target.value) || 0)) };
                                 updateOutreachConfig("follow_up_sequence", seq);
                               }}
-                              className="w-[70px] h-8 text-xs text-center"
+                              className="w-[80px] h-10 text-sm text-center"
                             />
-                            <span className="text-xs text-muted-foreground shrink-0">giorni</span>
+                            <span className="text-sm text-muted-foreground shrink-0">giorni</span>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 w-7 p-0 ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              className="h-8 w-8 p-0 ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                               disabled={(outreachConfig.follow_up_sequence || []).length <= 1}
                               onClick={() => {
                                 const seq = [...(outreachConfig.follow_up_sequence || [])];
@@ -3201,7 +3250,7 @@ export default function ConsultantLeadScraper() {
                                 updateOutreachConfig("follow_up_sequence", seq);
                               }}
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
@@ -3210,7 +3259,7 @@ export default function ConsultantLeadScraper() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="mt-3 text-xs h-8"
+                          className="mt-3 text-sm h-9 px-4"
                           onClick={() => {
                             const seq = [...(outreachConfig.follow_up_sequence || [])];
                             const lastDay = seq.length > 0 ? seq[seq.length - 1].day + 3 : 0;
