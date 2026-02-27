@@ -441,10 +441,11 @@ export default function ConsultantLeadScraper() {
         const res = await fetch("/api/email-hub/accounts", { headers: getAuthHeaders() });
         if (!res.ok) return [];
         const data = await res.json();
-        return (Array.isArray(data) ? data : data.accounts || []).map((a: any) => ({
+        const list = Array.isArray(data) ? data : (data.data || data.accounts || []);
+        return list.map((a: any) => ({
           id: a.id,
-          name: a.display_name || a.displayName || a.email,
-          email: a.email || a.email_address || "",
+          name: a.display_name || a.displayName || a.email_address || a.emailAddress || a.email || "",
+          email: a.email_address || a.emailAddress || a.email || "",
         }));
       } catch { return []; }
     },
