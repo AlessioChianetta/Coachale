@@ -2057,7 +2057,7 @@ export default function ConsultantLeadScraper() {
 
             {/* SEZIONE 2 — Coda Outreach Unificata */}
             {(() => {
-              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null }[] = [];
+              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null; waTemplateFilled?: string | null; waTemplateBody?: string | null; waTemplateSid?: string | null }[] = [];
               if (hunterPipeline?.channels) {
                 Object.entries(hunterPipeline.channels).forEach(([, chData]) => {
                   if (chData?.tasks) allTasks.push(...chData.tasks);
@@ -2362,9 +2362,17 @@ export default function ConsultantLeadScraper() {
                                                     </Badge>
                                                   </div>
                                                 )}
-                                                {task.waTemplateName && task.waPreviewMessage && (
+                                                {task.waTemplateFilled && (
                                                   <div>
-                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio personalizzato (variabili sostituite):</p>
+                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio esatto che verrà inviato:</p>
+                                                    <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[140px] overflow-y-auto", channelBg(task.channel))}>
+                                                      {task.waTemplateFilled}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {!task.waTemplateFilled && task.waTemplateName && task.waPreviewMessage && (
+                                                  <div>
+                                                    <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">Messaggio personalizzato:</p>
                                                     <div className={cn("rounded-md border p-2 text-xs whitespace-pre-wrap leading-relaxed max-h-[140px] overflow-y-auto", channelBg(task.channel))}>
                                                       {task.waPreviewMessage}
                                                     </div>

@@ -316,6 +316,9 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           callInstruction: ctx.call_instruction || null,
           waTemplateName: ctx.wa_template_name || null,
           waPreviewMessage: ctx.wa_preview_message || null,
+          waTemplateFilled: ctx.wa_template_filled || null,
+          waTemplateBody: ctx.wa_template_body || null,
+          waTemplateSid: ctx.wa_template_sid || null,
         });
       }
     }
@@ -357,6 +360,9 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           callInstruction: ctx.call_instruction || null,
           waTemplateName: ctx.wa_template_name || null,
           waPreviewMessage: ctx.wa_preview_message || null,
+          waTemplateFilled: ctx.wa_template_filled || null,
+          waTemplateBody: ctx.wa_template_body || null,
+          waTemplateSid: ctx.wa_template_sid || null,
         });
       }
     }
@@ -684,7 +690,7 @@ async function generateOutreachContent(
   talkingPoints?: string[],
   outreachConfig?: any,
   waTemplates?: WaTemplateForOutreach[]
-): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
+): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
 
   const leadContext = buildLeadContext(lead, consultantName, salesCtx, talkingPoints, outreachConfig);
 
@@ -699,48 +705,102 @@ async function generateOutreachContent(
   }
 
   if (channel === 'whatsapp' && waTemplates && waTemplates.length > 0) {
-    console.log(`[HUNTER] WhatsApp: building lead context for ${lead.businessName} (${waTemplates.length} templates available, executor will choose)`);
+    const selectedTemplate = waTemplates[Math.floor(Math.random() * waTemplates.length)];
+    console.log(`[HUNTER] WhatsApp: template "${selectedTemplate.name}" selected for ${lead.businessName} (body: ${selectedTemplate.bodyText.substring(0, 60)}...)`);
 
-    let waPreviewMessage = '';
-    try {
-      const { quickGenerate } = await import("../ai/provider-factory");
-      const commStyle = outreachConfig?.communication_style || 'professionale';
-      const styleMap: Record<string, string> = {
-        formale: 'Tono FORMALE: usa il Lei, linguaggio istituzionale, zero emoji.',
-        professionale: 'Tono PROFESSIONALE: cordiale ma competente, usa il Lei ma senza essere freddo.',
-        informale: 'Tono INFORMALE: usa il tu, linguaggio colloquiale ma rispettoso.',
-        amichevole: 'Tono AMICHEVOLE: come un collega che scrive a un altro. Usa il tu, breve, diretto.',
-      };
-      const styleInstruction = styleMap[commStyle] || styleMap.professionale;
+    const templateVariableCount = (selectedTemplate.bodyText.match(/\{\{\d+\}\}/g) || []).length;
+    const leadContactName = lead.contactName || lead.businessName || 'Cliente';
 
-      const previewResult = await quickGenerate({
-        consultantId,
-        feature: 'hunter-wa-template-preview',
-        thinkingLevel: 'low',
-        systemInstruction: [
-          `Sei Hunter, il copywriter commerciale di ${consultantName}. Genera un breve messaggio WhatsApp personalizzato (3-4 frasi) per questo lead.`,
-          `Questo messaggio sarà usato come anteprima e come contesto per il riempimento variabili di un template WhatsApp.`,
-          styleInstruction,
-          outreachConfig?.custom_instructions ? `ISTRUZIONI PERSONALIZZATE: ${outreachConfig.custom_instructions}` : '',
-          outreachConfig?.opening_hook ? `APPROCCIO DI APERTURA: ${outreachConfig.opening_hook}` : '',
-          `Rispondi SOLO con il testo del messaggio, senza JSON, senza virgolette. Max 3-4 frasi brevi e personalizzate.`,
-          `Il messaggio deve dimostrare che conosci l'attività del lead e proporre un valore concreto.`,
-        ].filter(Boolean).join('\n'),
-        contents: [{ role: 'user', parts: [{ text: leadContext }] }],
-      });
-      waPreviewMessage = previewResult.text?.trim() || '';
-      console.log(`[HUNTER] WA template preview generated for ${lead.businessName}: ${waPreviewMessage.substring(0, 80)}...`);
-    } catch (err: any) {
-      console.error(`[HUNTER] Failed to generate WA preview for ${lead.businessName}: ${err.message}`);
-      waPreviewMessage = `Messaggio personalizzato per ${lead.businessName || 'il lead'} — ${consultantName}`;
+    let templateVariables: Record<string, string> = { '1': leadContactName };
+    let templateFilled = selectedTemplate.bodyText.replace('{{1}}', leadContactName);
+
+    if (templateVariableCount > 1) {
+      try {
+        const { quickGenerate } = await import("../ai/provider-factory");
+        const commStyle = outreachConfig?.communication_style || 'professionale';
+        const styleMap: Record<string, string> = {
+          formale: 'Tono FORMALE: usa il Lei, linguaggio istituzionale, zero emoji.',
+          professionale: 'Tono PROFESSIONALE: cordiale ma competente, usa il Lei ma senza essere freddo.',
+          informale: 'Tono INFORMALE: usa il tu, linguaggio colloquiale ma rispettoso.',
+          amichevole: 'Tono AMICHEVOLE: come un collega che scrive a un altro. Usa il tu, breve, diretto.',
+        };
+        const styleInstruction = styleMap[commStyle] || styleMap.professionale;
+
+        const variablePrompt = `Devi generare i valori per le variabili di un template WhatsApp da inviare a un lead.
+
+Template: "${selectedTemplate.bodyText}"
+Numero variabili: ${templateVariableCount}
+
+Contesto lead:
+${leadContext}
+
+REGOLE:
+- La variabile {{1}} è SEMPRE il nome del destinatario: "${leadContactName}" (già impostata, NON includerla)
+- Genera SOLO le variabili da {{2}} a {{${templateVariableCount}}}
+- Ogni variabile deve essere BREVE (massimo 1-2 frasi)
+- NON usare newline (\\n) nei valori
+- ${styleInstruction}
+${outreachConfig?.custom_instructions ? `- ISTRUZIONI PERSONALIZZATE: ${outreachConfig.custom_instructions}` : ''}
+${outreachConfig?.opening_hook ? `- APPROCCIO DI APERTURA: ${outreachConfig.opening_hook}` : ''}
+- Sii specifico sul lead: menziona la loro attività, settore, o qualcosa di concreto dal contesto
+- Il messaggio deve dimostrare che conosci l'attività del lead e proporre un valore concreto
+
+Rispondi SOLO con un JSON valido nel formato:
+{${Array.from({length: templateVariableCount - 1}, (_, i) => `"${i+2}": "valore"`).join(', ')}}`;
+
+        const resp = await quickGenerate({
+          consultantId,
+          feature: 'hunter-wa-template-variables',
+          thinkingLevel: 'low',
+          systemInstruction: `Sei Hunter, il copywriter commerciale. Genera i valori delle variabili per un template WhatsApp. Rispondi SOLO con JSON valido.`,
+          contents: [{ role: 'user', parts: [{ text: variablePrompt }] }],
+        });
+
+        const responseText = resp.text?.trim() || '';
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          for (let i = 2; i <= templateVariableCount; i++) {
+            const val = parsed[String(i)] || parsed[i];
+            if (val) {
+              templateVariables[String(i)] = String(val).replace(/[\n\r\t]/g, ' ').trim();
+            } else {
+              templateVariables[String(i)] = `contatto per una proposta commerciale`;
+            }
+          }
+          console.log(`[HUNTER] WA template variables generated for ${lead.businessName}: ${JSON.stringify(templateVariables)}`);
+        } else {
+          console.warn(`[HUNTER] No JSON in Gemini response for WA variables, using fallback`);
+          for (let i = 2; i <= templateVariableCount; i++) {
+            templateVariables[String(i)] = `contatto per una proposta commerciale per ${lead.businessName || 'la vostra attività'}`;
+          }
+        }
+      } catch (err: any) {
+        console.error(`[HUNTER] Failed to generate WA template variables for ${lead.businessName}: ${err.message}`);
+        for (let i = 2; i <= templateVariableCount; i++) {
+          templateVariables[String(i)] = `contatto per una proposta commerciale per ${lead.businessName || 'la vostra attività'}`;
+        }
+      }
     }
+
+    templateFilled = selectedTemplate.bodyText;
+    for (const [key, val] of Object.entries(templateVariables)) {
+      templateFilled = templateFilled.replace(`{{${key}}}`, val);
+    }
+
+    console.log(`[HUNTER] WA template filled for ${lead.businessName}: ${templateFilled.substring(0, 120)}...`);
 
     return {
       channel,
       leadId: lead.id || lead.leadId,
       whatsappContext: leadContext,
       useWaTemplate: true,
-      wa_preview_message: waPreviewMessage,
+      wa_preview_message: templateFilled,
+      wa_template_name: selectedTemplate.name,
+      wa_template_sid: selectedTemplate.sid,
+      wa_template_body: selectedTemplate.bodyText,
+      wa_template_variables: templateVariables,
+      wa_template_filled: templateFilled,
     };
   }
 
@@ -966,6 +1026,11 @@ async function scheduleIndividualOutreach(
       source: 'crm_analysis',
       use_wa_template: isTemplateMode,
       wa_preview_message: isTemplateMode ? (content.wa_preview_message || null) : null,
+      wa_template_name: isTemplateMode ? (content.wa_template_name || null) : null,
+      wa_template_sid: isTemplateMode ? (content.wa_template_sid || null) : null,
+      wa_template_body: isTemplateMode ? (content.wa_template_body || null) : null,
+      wa_template_variables: isTemplateMode ? (content.wa_template_variables || null) : null,
+      wa_template_filled: isTemplateMode ? (content.wa_template_filled || null) : null,
     });
 
     await db.execute(sql`

@@ -3086,8 +3086,26 @@ async function handleSendWhatsapp(
   let messageText = _step.params?.message_summary || "";
 
   let contentVariables: Record<string, string> | undefined;
+  let usedPreGeneratedVars = false;
 
-  if (selectedTemplateId && templateVariableCount > 0) {
+  if (task.additional_context) {
+    try {
+      const ctxData = JSON.parse(task.additional_context);
+      if (ctxData.wa_template_variables && typeof ctxData.wa_template_variables === 'object') {
+        contentVariables = ctxData.wa_template_variables as Record<string, string>;
+        usedPreGeneratedVars = true;
+
+        if (ctxData.wa_template_sid) {
+          selectedTemplateId = ctxData.wa_template_sid;
+          console.log(`✅ ${LOG_PREFIX} [TEMPLATE VARS] Usando variabili PRE-GENERATE + SID pre-salvato: ${selectedTemplateId} | vars: ${JSON.stringify(contentVariables)}`);
+        } else {
+          console.log(`✅ ${LOG_PREFIX} [TEMPLATE VARS] Usando variabili PRE-GENERATE (no SID): ${JSON.stringify(contentVariables)}`);
+        }
+      }
+    } catch {}
+  }
+
+  if (selectedTemplateId && templateVariableCount > 0 && !usedPreGeneratedVars) {
     try {
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       const effectiveWaModel = autonomyModel || resolvedModel;
