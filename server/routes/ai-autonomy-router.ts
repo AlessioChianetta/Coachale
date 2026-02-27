@@ -2175,10 +2175,11 @@ router.put("/personalizza-config", authenticateToken, requireAnyRole(["consultan
     }
 
     await db.execute(sql`
-      UPDATE ai_autonomy_settings 
-      SET personalizza_config = ${JSON.stringify(config)}::jsonb,
+      INSERT INTO ai_autonomy_settings (consultant_id, personalizza_config)
+      VALUES (${consultantId}::uuid, ${JSON.stringify(config)}::jsonb)
+      ON CONFLICT (consultant_id) DO UPDATE
+      SET personalizza_config = EXCLUDED.personalizza_config,
           updated_at = NOW()
-      WHERE consultant_id::text = ${consultantId}::text
     `);
 
     return res.json({ success: true, message: "Configurazione salvata" });
@@ -2228,10 +2229,11 @@ router.put("/marco-context", authenticateToken, requireAnyRole(["consultant", "s
     }
 
     await db.execute(sql`
-      UPDATE ai_autonomy_settings 
-      SET marco_context = ${JSON.stringify(context)}::jsonb,
+      INSERT INTO ai_autonomy_settings (consultant_id, marco_context)
+      VALUES (${consultantId}::uuid, ${JSON.stringify(context)}::jsonb)
+      ON CONFLICT (consultant_id) DO UPDATE
+      SET marco_context = EXCLUDED.marco_context,
           updated_at = NOW()
-      WHERE consultant_id::text = ${consultantId}::text
     `);
 
     if (Array.isArray(context.linkedKbDocumentIds)) {
@@ -2372,13 +2374,20 @@ router.put("/agent-context/:agentId", authenticateToken, requireAnyRole(["consul
     existingContexts[agentId] = context;
 
     await db.execute(sql`
-      UPDATE ai_autonomy_settings 
-      SET agent_contexts = ${JSON.stringify(existingContexts)}::jsonb,
-          consultant_phone = ${consultantPhone || null},
-          consultant_email = ${consultantEmail || null},
-          consultant_whatsapp = ${consultantWhatsapp || null},
+      INSERT INTO ai_autonomy_settings (consultant_id, agent_contexts, consultant_phone, consultant_email, consultant_whatsapp)
+      VALUES (
+        ${consultantId}::uuid,
+        ${JSON.stringify(existingContexts)}::jsonb,
+        ${consultantPhone || null},
+        ${consultantEmail || null},
+        ${consultantWhatsapp || null}
+      )
+      ON CONFLICT (consultant_id) DO UPDATE
+      SET agent_contexts = EXCLUDED.agent_contexts,
+          consultant_phone = EXCLUDED.consultant_phone,
+          consultant_email = EXCLUDED.consultant_email,
+          consultant_whatsapp = EXCLUDED.consultant_whatsapp,
           updated_at = NOW()
-      WHERE consultant_id::text = ${consultantId}::text
     `);
 
     if (Array.isArray(context.linkedKbDocumentIds)) {
@@ -4105,10 +4114,11 @@ router.put("/roles/toggle", authenticateToken, requireAnyRole(["consultant", "su
     currentRoles[roleId] = enabled;
 
     await db.execute(sql`
-      UPDATE ai_autonomy_settings
-      SET enabled_roles = ${JSON.stringify(currentRoles)}::jsonb,
+      INSERT INTO ai_autonomy_settings (consultant_id, enabled_roles)
+      VALUES (${consultantId}::uuid, ${JSON.stringify(currentRoles)}::jsonb)
+      ON CONFLICT (consultant_id) DO UPDATE
+      SET enabled_roles = EXCLUDED.enabled_roles,
           updated_at = NOW()
-      WHERE consultant_id = ${consultantId}
     `);
 
     await logActivity(consultantId, {
@@ -4154,10 +4164,11 @@ router.put("/roles/bulk-toggle", authenticateToken, requireAnyRole(["consultant"
     }
 
     await db.execute(sql`
-      UPDATE ai_autonomy_settings
-      SET enabled_roles = ${JSON.stringify(validatedRoles)}::jsonb,
+      INSERT INTO ai_autonomy_settings (consultant_id, enabled_roles)
+      VALUES (${consultantId}::uuid, ${JSON.stringify(validatedRoles)}::jsonb)
+      ON CONFLICT (consultant_id) DO UPDATE
+      SET enabled_roles = EXCLUDED.enabled_roles,
           updated_at = NOW()
-      WHERE consultant_id = ${consultantId}
     `);
 
     return res.json({ success: true, enabled_roles: validatedRoles });
