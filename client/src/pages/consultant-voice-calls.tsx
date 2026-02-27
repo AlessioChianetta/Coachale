@@ -4459,8 +4459,20 @@ export default function ConsultantVoiceCallsPage() {
                         return name.includes(search) || phone.includes(search);
                       };
                       
-                      const upcomingCalls = (calendarData?.scheduledCalls || [])
+                      const upcomingScheduled = (calendarData?.scheduledCalls || [])
                         .filter((c: any) => c.scheduled_at && new Date(c.scheduled_at) > now && ['pending', 'retry_scheduled'].includes(c.status) && matchesContactFilter(c))
+                        .map((c: any) => ({ ...c, _src: 'scheduled' }));
+                      const upcomingAiTasks = (calendarData?.aiTasks || [])
+                        .filter((t: any) => t.scheduled_at && new Date(t.scheduled_at) > now && ['scheduled', 'waiting_approval'].includes(t.status) && matchesContactFilter(t))
+                        .map((t: any) => ({ 
+                          ...t, 
+                          target_phone: t.contact_phone, 
+                          call_instruction: t.ai_instruction,
+                          ai_mode: t.ai_role === 'hunter' ? 'outreach' : 'ai_task',
+                          isAITask: true,
+                          _src: 'aiTask' 
+                        }));
+                      const upcomingCalls = [...upcomingScheduled, ...upcomingAiTasks]
                         .sort((a: any, b: any) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
                         .slice(0, 5);
                       
@@ -4485,16 +4497,25 @@ export default function ConsultantVoiceCallsPage() {
                                       setSelectedEvent({ type: 'call', data: call });
                                       setShowEventDetails(true);
                                     }}
-                                    className="flex-shrink-0 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+                                    className={`flex-shrink-0 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
+                                      call._src === 'aiTask' && call.ai_role === 'hunter'
+                                        ? 'bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800'
+                                        : call._src === 'aiTask'
+                                        ? 'bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800'
+                                        : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+                                    }`}
                                   >
                                     <div className="flex items-center gap-2 mb-1">
-                                      <Phone className="h-4 w-4 text-blue-500" />
+                                      <Phone className={`h-4 w-4 ${call._src === 'aiTask' && call.ai_role === 'hunter' ? 'text-teal-500' : call._src === 'aiTask' ? 'text-violet-500' : 'text-blue-500'}`} />
                                       <span className="text-xs font-medium">
                                         {format(callDate, 'EEE d', { locale: it })}
                                       </span>
+                                      {call._src === 'aiTask' && call.ai_role === 'hunter' && (
+                                        <span className="text-[9px] bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 px-1 py-0.5 rounded">Hunter</span>
+                                      )}
                                     </div>
                                     <p className="text-sm font-semibold truncate max-w-[120px]">
-                                      {call.target_phone}
+                                      {call.contact_name || call.target_phone}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                       {format(callDate, 'HH:mm')}
@@ -4608,6 +4629,12 @@ export default function ConsultantVoiceCallsPage() {
                                     matchesContactFilter(c)
                                   ) || []);
                                   
+                                  const dayAiTasks = (calendarData?.aiTasks?.filter((t: any) =>
+                                    t.scheduled_at &&
+                                    isSameDay(new Date(t.scheduled_at), day) &&
+                                    matchesContactFilter(t)
+                                  ) || []);
+                                  
                                   // STORICO chiamate: 
                                   // - Con toggle attivo: mostra TUTTO lo storico
                                   // - Senza toggle: mostra solo chiamate con istruzioni AI
@@ -4638,6 +4665,14 @@ export default function ConsultantVoiceCallsPage() {
                                       time: new Date(c.scheduled_at).getHours() + new Date(c.scheduled_at).getMinutes() / 60,
                                       priority: ['in_progress', 'ringing', 'active'].includes(c.voice_call_status || c.status) ? 1 : 
                                                 ['pending', 'retry_scheduled'].includes(c.voice_call_status || c.status) ? 2 : 3
+                                    })),
+                                    ...dayAiTasks.map((t: any) => ({
+                                      ...t,
+                                      eventType: 'aiTask' as const,
+                                      time: new Date(t.scheduled_at).getHours() + new Date(t.scheduled_at).getMinutes() / 60,
+                                      priority: t.status === 'in_progress' ? 1 :
+                                                ['scheduled', 'waiting_approval'].includes(t.status) ? 2 :
+                                                t.status === 'completed' ? 3 : 4
                                     })),
                                     ...dayHistory.map((c: any) => ({ 
                                       ...c, 
@@ -4851,6 +4886,65 @@ export default function ConsultantVoiceCallsPage() {
                                               </div>
                                               <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
                                                 {format(callDate, 'HH:mm')}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+
+                                      {/* AI Tasks (Hunter, single_call, etc.) */}
+                                      {dayAiTasks.map((task: any) => {
+                                        const taskDate = new Date(task.scheduled_at);
+                                        const taskHour = taskDate.getHours() + taskDate.getMinutes() / 60;
+                                        const top = (taskHour - START_HOUR) * HOUR_HEIGHT;
+                                        if (taskHour < START_HOUR || taskHour > END_HOUR) return null;
+                                        const pos = eventPositions.get(task.id) || { left: 0, width: 100, isHidden: false };
+                                        if (pos.isHidden) return null;
+                                        const isNarrow = pos.width < 50;
+                                        
+                                        const isHunter = task.ai_role === 'hunter';
+                                        const getAiTaskStyles = () => {
+                                          if (task.status === 'in_progress') return { color: 'bg-amber-500 hover:bg-amber-600 border-amber-700', extra: 'ring-2 ring-amber-300 shadow-lg z-25' };
+                                          if (task.status === 'completed') return { color: 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700', extra: 'opacity-80' };
+                                          if (task.status === 'failed') return { color: 'bg-red-400 hover:bg-red-500 border-red-600', extra: 'opacity-70' };
+                                          if (task.status === 'waiting_approval') return { color: 'bg-orange-400 hover:bg-orange-500 border-orange-600', extra: '' };
+                                          if (isHunter) return { color: 'bg-teal-500 hover:bg-teal-600 border-teal-700', extra: '' };
+                                          return { color: 'bg-violet-500 hover:bg-violet-600 border-violet-700', extra: '' };
+                                        };
+                                        const taskStyles = getAiTaskStyles();
+                                        
+                                        return (
+                                          <div
+                                            key={`aitask-${task.id}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedEvent({ type: 'call', data: { 
+                                                ...task, 
+                                                target_phone: task.contact_phone,
+                                                scheduled_at: task.scheduled_at,
+                                                status: task.status,
+                                                call_instruction: task.ai_instruction,
+                                                ai_mode: task.ai_role === 'hunter' ? 'outreach' : 'ai_task',
+                                                isAITask: true
+                                              }});
+                                              setShowEventDetails(true);
+                                            }}
+                                            className={`absolute ${taskStyles.color} ${taskStyles.extra} text-white rounded-md shadow-sm overflow-hidden z-10 cursor-pointer transition-all hover:shadow-lg hover:z-30 border-l-[3px]`}
+                                            style={{ 
+                                              top: top, 
+                                              height: EVENT_HEIGHT,
+                                              left: `calc(${pos.left}% + 2px)`,
+                                              width: `calc(${pos.width}% - 4px)`,
+                                              minWidth: '50px'
+                                            }}
+                                            title={`${isHunter ? '🎯 Hunter: ' : '🤖 AI: '}${task.contact_name || task.contact_phone} - ${format(taskDate, 'HH:mm')} - ${task.status}`}
+                                          >
+                                            <div className="px-1.5 py-0.5 h-full flex flex-col justify-center">
+                                              <div className={`font-medium truncate leading-tight ${isNarrow ? 'text-[9px]' : 'text-[11px]'}`}>
+                                                {isHunter ? '🎯 ' : ''}{task.contact_name || task.contact_phone}
+                                              </div>
+                                              <div className={`text-white/80 truncate ${isNarrow ? 'text-[8px]' : 'text-[10px]'}`}>
+                                                {format(taskDate, 'HH:mm')}
                                               </div>
                                             </div>
                                           </div>
