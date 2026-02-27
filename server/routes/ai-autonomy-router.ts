@@ -274,12 +274,27 @@ router.get("/hunter/actions", authenticateToken, requireAnyRole(["consultant", "
     ]);
 
     const actions = actionsResult.rows.map((row: any) => {
-      let leadEmail = null;
+      let ctx: any = {};
       try {
-        const ctx = typeof row.additional_context === 'string' ? JSON.parse(row.additional_context) : row.additional_context;
-        leadEmail = ctx?.lead_email || null;
+        ctx = typeof row.additional_context === 'string' ? JSON.parse(row.additional_context) : (row.additional_context || {});
       } catch {}
-      return { ...row, lead_email: leadEmail };
+      return {
+        ...row,
+        additional_context: undefined,
+        lead_email: ctx.lead_email || null,
+        lead_id: ctx.lead_id || null,
+        business_name: ctx.business_name || row.lead_name || null,
+        ai_score: ctx.ai_score || null,
+        sector: ctx.sector || null,
+        website: ctx.website || null,
+        address: ctx.address || null,
+        ai_reason: ctx.ai_reason || null,
+        sales_summary: ctx.sales_summary || null,
+        source: ctx.source || null,
+        voice_template_name: ctx.voice_template_name || null,
+        email_account_id: ctx.email_account_id || null,
+        wa_template_name: ctx.wa_template_name || null,
+      };
     });
 
     res.json({

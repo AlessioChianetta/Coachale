@@ -78,6 +78,13 @@ import {
   RefreshCw,
   Mail,
   Eye,
+  Globe,
+  MapPin,
+  Building2,
+  Star,
+  ExternalLink,
+  ChevronRight,
+  ArrowUpRight,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -320,6 +327,7 @@ export default function ProactiveLeadsPage() {
   const [pageView, setPageView] = useState<"leads" | "hunter">("leads");
   const [hunterChannelFilter, setHunterChannelFilter] = useState("all");
   const [hunterStatusFilter, setHunterStatusFilter] = useState("all");
+  const [selectedHunterAction, setSelectedHunterAction] = useState<any>(null);
 
   // Fetch hunter actions
   const { data: hunterActionsData, isLoading: hunterLoading, refetch: refetchHunterActions } = useQuery({
@@ -1521,7 +1529,71 @@ export default function ProactiveLeadsPage() {
                   </div>
                 </div>
 
-                {/* Hunter Actions List */}
+                {/* Hunter Stats Cards */}
+                {hunterActions.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg shadow-md">
+                            <Crosshair className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Totale</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{hunterActionsData?.total || hunterActions.length}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                            <Clock className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Schedulati</p>
+                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                              {hunterActions.filter((a: any) => a.status === "scheduled" || a.status === "waiting_approval").length}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-md">
+                            <CheckCircle2 className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Inviati</p>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                              {hunterActions.filter((a: any) => a.status === "sent").length}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-md bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-md">
+                            <XCircle className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Falliti</p>
+                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                              {hunterActions.filter((a: any) => a.status === "failed").length}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Hunter Actions Lead Cards */}
                 {hunterLoading ? (
                   <div className="flex justify-center items-center p-12">
                     <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
@@ -1554,85 +1626,348 @@ export default function ProactiveLeadsPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="shadow-xl border-0">
-                    <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-t-lg">
-                      <CardTitle className="flex items-center gap-2">
-                        <Send className="h-5 w-5 text-teal-600" />
-                        Azioni Hunter
-                        <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 ml-2">
-                          {hunterActionsData?.total || hunterActions.length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="max-h-[600px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-                        {hunterActions.map((action: any) => {
-                          const channelIcon = action.channel === "voice" ? Phone
-                            : action.channel === "whatsapp" ? MessageCircle
-                            : Mail;
-                          const channelColor = action.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30"
-                            : action.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30"
-                            : "text-orange-600 bg-orange-100 dark:bg-orange-900/30";
-                          const statusColor = action.status === "sent"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : action.status === "scheduled"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                            : action.status === "waiting_approval"
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                            : action.status === "failed"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
-                          const ChannelIcon = channelIcon;
-                          const actionTime = action.created_at
-                            ? format(new Date(action.created_at), "dd MMM HH:mm", { locale: it })
-                            : "";
-                          const scheduledTime = action.scheduled_at
-                            ? format(new Date(action.scheduled_at), "dd MMM HH:mm", { locale: it })
-                            : null;
+                  <div className="space-y-3">
+                    {hunterActions.map((action: any) => {
+                      const channelIcon = action.channel === "voice" ? Phone
+                        : action.channel === "whatsapp" ? MessageCircle
+                        : Mail;
+                      const channelLabel = action.channel === "voice" ? "Chiamata"
+                        : action.channel === "whatsapp" ? "WhatsApp"
+                        : "Email";
+                      const channelColor = action.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400"
+                        : action.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+                        : "text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400";
+                      const statusColor = action.status === "sent"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : action.status === "scheduled"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        : action.status === "waiting_approval"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        : action.status === "failed"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+                      const statusLabel = action.status === "scheduled" ? "Schedulato"
+                        : action.status === "sent" ? "Inviato"
+                        : action.status === "waiting_approval" ? "Da Approvare"
+                        : action.status === "failed" ? "Fallito"
+                        : action.status;
+                      const ChannelIcon = channelIcon;
+                      const actionTime = action.created_at
+                        ? format(new Date(action.created_at), "dd MMM yyyy, HH:mm", { locale: it })
+                        : "";
+                      const scheduledTime = action.scheduled_at
+                        ? format(new Date(action.scheduled_at), "dd MMM yyyy, HH:mm", { locale: it })
+                        : null;
 
-                          return (
-                            <div key={action.id} className="flex items-start gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
-                              <div className={`p-2 rounded-lg flex-shrink-0 ${channelColor}`}>
-                                <ChannelIcon className="h-4 w-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium text-sm text-gray-900 dark:text-white">
-                                    {action.lead_name || "Lead"}
-                                  </span>
-                                  <Badge className={`text-[10px] px-1.5 py-0 ${statusColor}`}>
-                                    {action.status === "scheduled" ? "Schedulato"
-                                      : action.status === "sent" ? "Inviato"
-                                      : action.status === "waiting_approval" ? "Da Approvare"
-                                      : action.status === "failed" ? "Fallito"
-                                      : action.status}
-                                  </Badge>
-                                  <span className="text-[11px] text-gray-400">{actionTime}</span>
+                      return (
+                        <Card
+                          key={action.id}
+                          className="border-0 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                          onClick={() => setSelectedHunterAction(action)}
+                        >
+                          <CardContent className="p-0">
+                            <div className="flex items-stretch">
+                              <div className={`w-1.5 rounded-l-lg flex-shrink-0 ${
+                                action.channel === "voice" ? "bg-blue-500" :
+                                action.channel === "whatsapp" ? "bg-green-500" :
+                                "bg-orange-500"
+                              }`} />
+                              <div className="flex-1 p-4 sm:p-5">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`p-2.5 rounded-xl flex-shrink-0 ${channelColor}`}>
+                                      <ChannelIcon className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="font-semibold text-base text-gray-900 dark:text-white truncate">
+                                          {action.lead_name || action.business_name || "Lead"}
+                                        </h3>
+                                        <Badge className={`text-[10px] px-2 py-0.5 ${statusColor}`}>
+                                          {statusLabel}
+                                        </Badge>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                          <ChannelIcon className="h-3 w-3" />
+                                          {channelLabel}
+                                        </span>
+                                        {action.sector && (
+                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                            <Building2 className="h-3 w-3" />
+                                            {action.sector}
+                                          </span>
+                                        )}
+                                        {action.ai_score && (
+                                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                            <Star className="h-3 w-3 fill-current" />
+                                            {action.ai_score}/10
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="text-right hidden sm:block">
+                                      {scheduledTime && (
+                                        <p className="text-xs font-medium text-teal-600 dark:text-teal-400 flex items-center gap-1 justify-end">
+                                          <Calendar className="h-3 w-3" />
+                                          {scheduledTime}
+                                        </p>
+                                      )}
+                                      <p className="text-[11px] text-gray-400 mt-0.5">{actionTime}</p>
+                                    </div>
+                                    <ChevronRight className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-teal-500 transition-colors" />
+                                  </div>
                                 </div>
+
+                                <div className="mt-3 flex items-center gap-3 flex-wrap text-xs">
+                                  {action.lead_phone && (
+                                    <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+                                      <Phone className="h-3 w-3" />
+                                      {action.lead_phone}
+                                    </span>
+                                  )}
+                                  {action.lead_email && (
+                                    <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+                                      <Mail className="h-3 w-3" />
+                                      {action.lead_email}
+                                    </span>
+                                  )}
+                                  {action.website && (
+                                    <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+                                      <Globe className="h-3 w-3" />
+                                      {action.website.replace(/^https?:\/\//, '').substring(0, 30)}
+                                    </span>
+                                  )}
+                                  <span className="sm:hidden text-[11px] text-gray-400">{actionTime}</span>
+                                </div>
+
                                 {action.message_preview && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                                    {action.message_preview.substring(0, 120)}
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2 bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg">
+                                    {action.message_preview.substring(0, 200)}
                                   </p>
                                 )}
-                                {scheduledTime && action.channel !== "email" && (
-                                  <p className="text-[11px] text-teal-600 dark:text-teal-400 mt-1 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {action.channel === "voice" ? `Chiamata per ${scheduledTime}` : `Schedulato alle ${scheduledTime}`}
-                                  </p>
-                                )}
+
                                 {action.result_note && (
-                                  <p className="text-[11px] text-gray-400 mt-1 italic">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic flex items-center gap-1">
+                                    <FileText className="h-3 w-3" />
                                     {action.result_note}
                                   </p>
                                 )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 )}
+
+                {/* Hunter Action Detail Dialog */}
+                <Dialog open={!!selectedHunterAction} onOpenChange={(open) => !open && setSelectedHunterAction(null)}>
+                  <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          selectedHunterAction?.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30" :
+                          selectedHunterAction?.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30" :
+                          "text-orange-600 bg-orange-100 dark:bg-orange-900/30"
+                        }`}>
+                          {selectedHunterAction?.channel === "voice" ? <Phone className="h-5 w-5" /> :
+                           selectedHunterAction?.channel === "whatsapp" ? <MessageCircle className="h-5 w-5" /> :
+                           <Mail className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <span className="text-lg">{selectedHunterAction?.lead_name || selectedHunterAction?.business_name || "Lead"}</span>
+                          <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                            {selectedHunterAction?.channel === "voice" ? "Chiamata" :
+                             selectedHunterAction?.channel === "whatsapp" ? "WhatsApp" : "Email"} Hunter
+                          </p>
+                        </div>
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="overflow-y-auto flex-1 space-y-5 pr-1">
+                      {selectedHunterAction && (
+                        <>
+                          {/* Status & Timing */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Stato</p>
+                              <Badge className={`text-xs px-2 py-1 ${
+                                selectedHunterAction.status === "sent" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                                selectedHunterAction.status === "scheduled" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                                selectedHunterAction.status === "waiting_approval" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                                selectedHunterAction.status === "failed" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                "bg-gray-100 text-gray-700"
+                              }`}>
+                                {selectedHunterAction.status === "scheduled" ? "Schedulato" :
+                                 selectedHunterAction.status === "sent" ? "Inviato" :
+                                 selectedHunterAction.status === "waiting_approval" ? "Da Approvare" :
+                                 selectedHunterAction.status === "failed" ? "Fallito" :
+                                 selectedHunterAction.status}
+                              </Badge>
+                            </div>
+                            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Programmato</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {selectedHunterAction.scheduled_at
+                                  ? format(new Date(selectedHunterAction.scheduled_at), "dd MMM yyyy, HH:mm", { locale: it })
+                                  : "—"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Lead Info */}
+                          <div className="space-y-3">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              <User className="h-4 w-4 text-teal-500" />
+                              Dati Lead
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {selectedHunterAction.lead_name && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Azienda</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterAction.lead_name}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.lead_phone && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Telefono</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white font-mono">{selectedHunterAction.lead_phone}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.lead_email && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Email</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterAction.lead_email}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.sector && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Settore</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterAction.sector}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.website && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Globe className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Sito web</p>
+                                    <a
+                                      href={selectedHunterAction.website.startsWith("http") ? selectedHunterAction.website : `https://${selectedHunterAction.website}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {selectedHunterAction.website.replace(/^https?:\/\//, '')}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.address && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Indirizzo</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterAction.address}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedHunterAction.ai_score && (
+                                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                                  <Star className="h-4 w-4 text-amber-500 fill-amber-500 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-[11px] text-gray-400">Punteggio AI</p>
+                                    <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{selectedHunterAction.ai_score}/10</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* AI Reason */}
+                          {selectedHunterAction.ai_reason && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-purple-500" />
+                                Motivazione AI
+                              </h4>
+                              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                                <p className="text-sm text-purple-800 dark:text-purple-200">{selectedHunterAction.ai_reason}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Sales Summary */}
+                          {selectedHunterAction.sales_summary && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Target className="h-4 w-4 text-teal-500" />
+                                Riepilogo Commerciale
+                              </h4>
+                              <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
+                                <p className="text-sm text-teal-800 dark:text-teal-200">{selectedHunterAction.sales_summary}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Message Content */}
+                          {selectedHunterAction.message_preview && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Send className="h-4 w-4 text-teal-500" />
+                                {selectedHunterAction.channel === "email" ? "Contenuto Email" :
+                                 selectedHunterAction.channel === "voice" ? "Istruzioni Chiamata" :
+                                 "Messaggio WhatsApp"}
+                              </h4>
+                              <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedHunterAction.message_preview}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Result Note */}
+                          {selectedHunterAction.result_note && (
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                Risultato
+                              </h4>
+                              <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{selectedHunterAction.result_note}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Timestamps */}
+                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-between text-xs text-gray-400">
+                              <span>Creato: {selectedHunterAction.created_at ? format(new Date(selectedHunterAction.created_at), "dd MMM yyyy, HH:mm", { locale: it }) : "—"}</span>
+                              {selectedHunterAction.executed_at && (
+                                <span>Eseguito: {format(new Date(selectedHunterAction.executed_at), "dd MMM yyyy, HH:mm", { locale: it })}</span>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </>
             ) : (
             <>
