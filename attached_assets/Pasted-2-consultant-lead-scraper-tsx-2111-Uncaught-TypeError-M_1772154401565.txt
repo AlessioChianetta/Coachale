@@ -1,0 +1,29 @@
+2
+consultant-lead-scraper.tsx:2111 Uncaught TypeError: Map is not a constructor
+    at consultant-lead-scraper.tsx:2111:31
+    at ConsultantLeadScraper (consultant-lead-scraper.tsx:2383:13)
+injected.js:37 The above error occurred in the <ConsultantLeadScraper> component:
+
+    at ConsultantLeadScraper (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/pages/consultant-lead-scraper.tsx:168:21)
+    at AuthGuard (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/components/auth-guard.tsx:21:37)
+    at Route (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:226:16)
+    at Switch (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=acfd96f4:283:17)
+    at Suspense
+    at Router (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/App.tsx?v=ES20qkcV7mrQuF65oKQz0:341:35)
+    at Provider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…unner/workspace/node_modules/.vite/deps/chunk-BM33635L.js?v=acfd96f4:38:15)
+    at TooltipProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=acfd96f4:160:5)
+    at TourProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at BrandProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/contexts/BrandContext.tsx:29:33)
+    at AlessiaSessionProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/contexts/AlessiaSessionContext.tsx:33:42)
+    at AutonomyNotificationProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/contexts/AutonomyNotificationContext.tsx:33:48)
+    at QueryClientProvider (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=acfd96f4:3096:3)
+    at V (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:44:25)
+    at J (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=acfd96f4:42:18)
+    at App (https://7ca9c1ee-aedd-42b0-98bb-cbe15d70e23b-00-1jdxvrsweljtc.riker.replit.dev/src/App.tsx?v=ES20qkcV7mrQuF65oKQz0:2155:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+chunk-RPCDYKBN.js?v=acfd96f4:19413 Uncaught TypeError: Map is not a constructor
+    at consultant-lead-scraper.tsx:2111:31
+    at ConsultantLeadScraper (consultant-lead-scraper.tsx:2383:13)

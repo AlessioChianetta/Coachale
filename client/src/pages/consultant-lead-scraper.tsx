@@ -65,7 +65,7 @@ import {
   TrendingUp,
   Users,
   FileText,
-  Map,
+  Map as MapIcon,
   Sparkles,
   Target,
   MessageSquare,
@@ -1213,7 +1213,7 @@ export default function ConsultantLeadScraper() {
                             : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
                         )}
                       >
-                        <Map className="h-3.5 w-3.5" />Maps
+                        <MapIcon className="h-3.5 w-3.5" />Maps
                       </button>
                       <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
                       <button
@@ -1302,7 +1302,7 @@ export default function ConsultantLeadScraper() {
                                   )}
                                 >
                                   {v === "tutti" && "Tutti"}
-                                  {v === "google_maps" && <><Map className="h-2.5 w-2.5 text-rose-500" />Maps</>}
+                                  {v === "google_maps" && <><MapIcon className="h-2.5 w-2.5 text-rose-500" />Maps</>}
                                   {v === "google_search" && <><Globe className="h-2.5 w-2.5 text-blue-500" />Search</>}
                                 </button>
                               ))}
@@ -1341,7 +1341,7 @@ export default function ConsultantLeadScraper() {
                                             </Badge>
                                           ) : (
                                             <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 shrink-0 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
-                                              <Map className="h-2.5 w-2.5" />Maps
+                                              <MapIcon className="h-2.5 w-2.5" />Maps
                                             </Badge>
                                           )}
                                           <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{s.query}</p>
@@ -1405,7 +1405,7 @@ export default function ConsultantLeadScraper() {
                                       setSearchEngine(kw.engine === "maps" ? "google_maps" : "google_search");
                                     }}
                                   >
-                                    {kw.engine === "maps" ? <Map className="h-2.5 w-2.5 text-rose-500" /> : <Globe className="h-2.5 w-2.5 text-blue-500" />}
+                                    {kw.engine === "maps" ? <MapIcon className="h-2.5 w-2.5 text-rose-500" /> : <Globe className="h-2.5 w-2.5 text-blue-500" />}
                                     <span className="truncate max-w-[120px]">{kw.keyword}</span>
                                   </button>
                                 </TooltipTrigger>
@@ -1688,7 +1688,7 @@ export default function ConsultantLeadScraper() {
                             )}
                           >
                             {v === "tutti" && "Tutti"}
-                            {v === "google_maps" && <><Map className="h-3 w-3 text-rose-500" />Maps</>}
+                            {v === "google_maps" && <><MapIcon className="h-3 w-3 text-rose-500" />Maps</>}
                             {v === "google_search" && <><Globe className="h-3 w-3 text-blue-500" />Search</>}
                           </button>
                         ))}
@@ -1767,7 +1767,7 @@ export default function ConsultantLeadScraper() {
                                     </Badge>
                                   ) : (
                                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30 gap-0.5">
-                                      <Map className="h-2.5 w-2.5" />Maps
+                                      <MapIcon className="h-2.5 w-2.5" />Maps
                                     </Badge>
                                   )}
                                 </TableCell>
