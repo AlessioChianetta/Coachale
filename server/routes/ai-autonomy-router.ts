@@ -612,6 +612,10 @@ interface WaTemplateForOutreach {
   variables: { position: number; variableKey: string; variableName: string }[];
 }
 
+function titleCaseName(name: string): string {
+  return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
 async function loadSelectedWaTemplates(consultantId: string, templateSids: string[]): Promise<WaTemplateForOutreach[]> {
   if (!templateSids || templateSids.length === 0) return [];
   try {
@@ -711,7 +715,7 @@ async function generateOutreachContent(
 
     const leadContactName = lead.contactName || lead.businessName || 'Cliente';
     const resolvedBusinessName = consultantBusinessName || consultantName;
-    const resolvedUncino = outreachConfig?.opening_hook || lead.category || 'i nostri servizi';
+    const resolvedUncino = outreachConfig?.opening_hook || 'la tua attività';
 
     const namedVarMap: Record<string, string> = {
       nome_lead: leadContactName,
@@ -1172,7 +1176,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const waConfigRow = waConfigResult.rows[0] as any;
-    const consultantName = waConfigRow?.consultant_display_name || (cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente');
+    const consultantName = waConfigRow?.consultant_display_name || (cRow ? titleCaseName([cRow.first_name, cRow.last_name].filter(Boolean).join(' ')) || 'Consulente' : 'Consulente');
     const consultantBusinessName = waConfigRow?.business_name || null;
 
     const leadsForAI = actionableLeads.slice(0, maxLeads).map(l => ({
@@ -1381,7 +1385,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const waConfigRow2 = waConfigResult2.rows[0] as any;
-    const consultantName = waConfigRow2?.consultant_display_name || (cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente');
+    const consultantName = waConfigRow2?.consultant_display_name || (cRow ? titleCaseName([cRow.first_name, cRow.last_name].filter(Boolean).join(' ')) || 'Consulente' : 'Consulente');
     const consultantBusinessName = waConfigRow2?.business_name || null;
 
     let resolvedVoiceTemplateName: string | null = null;
@@ -1757,7 +1761,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const waConfigRow3 = waConfigResult3.rows[0] as any;
-    const consultantName = waConfigRow3?.consultant_display_name || (cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente');
+    const consultantName = waConfigRow3?.consultant_display_name || (cRow ? titleCaseName([cRow.first_name, cRow.last_name].filter(Boolean).join(' ')) || 'Consulente' : 'Consulente');
     const consultantBusinessName = waConfigRow3?.business_name || null;
 
     const results: any[] = [];
