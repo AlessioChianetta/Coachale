@@ -294,6 +294,12 @@ router.get("/hunter/actions", authenticateToken, requireAnyRole(["consultant", "
         voice_template_name: ctx.voice_template_name || null,
         email_account_id: ctx.email_account_id || null,
         wa_template_name: ctx.wa_template_name || null,
+        wa_template_sid: ctx.wa_template_sid || null,
+        wa_template_body: ctx.wa_template_body || null,
+        wa_template_filled: ctx.wa_template_filled || null,
+        wa_template_variables: ctx.wa_template_variables || null,
+        use_wa_template: ctx.use_wa_template || false,
+        whatsapp_config_id: row.whatsapp_config_id || null,
       };
     });
 
@@ -1009,6 +1015,11 @@ async function generateOutreachContent(
       callContext: leadContext,
       useTemplate: true,
     };
+  }
+
+  if (channel === 'whatsapp' && (!waTemplates || waTemplates.length === 0)) {
+    console.log(`[HUNTER] WhatsApp BLOCKED for "${lead.businessName}": no approved templates configured. Free-text WhatsApp is not allowed (risk of ban).`);
+    throw new Error(`SKIP_CHANNEL:whatsapp:Nessun template WhatsApp approvato configurato. Configura almeno un template nelle impostazioni Hunter.`);
   }
 
   if (channel === 'whatsapp' && waTemplates && waTemplates.length > 0) {

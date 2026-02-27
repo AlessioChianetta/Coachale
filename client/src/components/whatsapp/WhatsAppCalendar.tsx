@@ -275,78 +275,113 @@ export default function WhatsAppCalendar() {
                             </PopoverTrigger>
                             <PopoverContent className="w-80 p-0 max-h-[70vh] flex flex-col" align="start">
                               <div className="p-4 space-y-3 overflow-y-auto min-h-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <MessageSquare className="h-4 w-4 text-emerald-500 shrink-0" />
-                                    <span className="font-semibold text-sm truncate">
-                                      {task.contact_name || "Contatto"}
-                                    </span>
-                                  </div>
-                                  <Badge className={cn("text-[10px] shrink-0", colors.badge)} variant="secondary">
-                                    {STATUS_LABELS[task.status] || task.status}
-                                  </Badge>
-                                </div>
+                                {(() => {
+                                  let ctx: any = {};
+                                  try { ctx = typeof task.additional_context === 'string' ? JSON.parse(task.additional_context) : (task.additional_context || {}); } catch {}
+                                  const waTemplateName = ctx.wa_template_name || null;
+                                  const waTemplateSid = ctx.wa_template_sid || null;
+                                  const waTemplateFilled = ctx.wa_template_filled || null;
+                                  const waTemplateVars = ctx.wa_template_variables || null;
 
-                                <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
-                                  {task.ai_instruction}
-                                </div>
+                                  return (
+                                    <>
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <MessageSquare className="h-4 w-4 text-emerald-500 shrink-0" />
+                                          <span className="font-semibold text-sm truncate">
+                                            {task.contact_name || "Contatto"}
+                                          </span>
+                                        </div>
+                                        <Badge className={cn("text-[10px] shrink-0", colors.badge)} variant="secondary">
+                                          {STATUS_LABELS[task.status] || task.status}
+                                        </Badge>
+                                      </div>
 
-                                {task.scheduling_reason && (
-                                  <div className="p-2.5 rounded-lg bg-muted/50 border border-border/50">
-                                    <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">Motivo pianificazione</p>
-                                    <p className="text-xs text-foreground/80">{task.scheduling_reason}</p>
-                                  </div>
-                                )}
+                                      {waTemplateName && (
+                                        <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 space-y-1.5">
+                                          <div className="flex items-center gap-2">
+                                            <p className="text-[10px] uppercase font-semibold text-emerald-700 dark:text-emerald-400">Template</p>
+                                            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-1.5 py-0.5 rounded">{waTemplateName}</span>
+                                          </div>
+                                          {waTemplateSid && (
+                                            <p className="text-[10px] text-muted-foreground font-mono">SID: {waTemplateSid}</p>
+                                          )}
+                                          {waTemplateVars && Object.keys(waTemplateVars).length > 0 && (
+                                            <div className="space-y-0.5">
+                                              <p className="text-[10px] text-muted-foreground font-medium">Variabili Twilio:</p>
+                                              <div className="flex flex-wrap gap-1">
+                                                {Object.entries(waTemplateVars).map(([pos, val]) => (
+                                                  <span key={pos} className="font-mono bg-white dark:bg-gray-800 text-foreground/80 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200 dark:border-emerald-800/50">
+                                                    {`{{${pos}}}`} = {String(val)}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
 
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  {task.ai_role && (
-                                    <div className="flex items-center gap-1.5">
-                                      <Sparkles className="h-3 w-3 text-purple-500" />
-                                      <span className="text-muted-foreground">Agente:</span>
-                                      <span className="font-medium capitalize">{task.ai_role}</span>
-                                    </div>
-                                  )}
-                                  {task.contact_phone && (
-                                    <div className="flex items-center gap-1.5">
-                                      <User className="h-3 w-3 text-blue-500" />
-                                      <span className="text-muted-foreground truncate">{task.contact_phone}</span>
-                                    </div>
-                                  )}
-                                  {task.scheduled_at && (
-                                    <div className="flex items-center gap-1.5">
-                                      <Clock className="h-3 w-3 text-amber-500" />
-                                      <span className="text-muted-foreground">
-                                        {new Date(task.scheduled_at).toLocaleString("it-IT", {
-                                          day: "2-digit",
-                                          month: "2-digit",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {task.scheduled_by && (
-                                    <div className="flex items-center gap-1.5">
-                                      <User className="h-3 w-3 text-indigo-500" />
-                                      <span className="text-muted-foreground">Da:</span>
-                                      <span className="font-medium">{task.scheduled_by}</span>
-                                    </div>
-                                  )}
-                                </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">
+                                          {waTemplateFilled ? "Messaggio finale che leggerà il contatto" : "Contenuto messaggio"}
+                                        </p>
+                                        <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto p-2 rounded-md bg-muted/30 border border-border/30">
+                                          {waTemplateFilled || task.ai_instruction}
+                                        </div>
+                                      </div>
 
-                                {task.additional_context && (
-                                  <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
-                                    <p className="text-[10px] uppercase font-medium text-amber-700 dark:text-amber-400 mb-1">Contesto aggiuntivo</p>
-                                    <div className="text-xs text-foreground/80 whitespace-pre-wrap max-h-32 overflow-y-auto">{task.additional_context}</div>
-                                  </div>
-                                )}
+                                      {task.scheduling_reason && (
+                                        <div className="p-2.5 rounded-lg bg-muted/50 border border-border/50">
+                                          <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">Motivo pianificazione</p>
+                                          <p className="text-xs text-foreground/80">{task.scheduling_reason}</p>
+                                        </div>
+                                      )}
 
-                                {task.ai_reasoning && (
-                                  <div className="pt-2 border-t border-border/50">
-                                    <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">Ragionamento AI</p>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">{task.ai_reasoning}</p>
-                                  </div>
-                                )}
+                                      <div className="grid grid-cols-2 gap-2 text-xs">
+                                        {task.ai_role && (
+                                          <div className="flex items-center gap-1.5">
+                                            <Sparkles className="h-3 w-3 text-purple-500" />
+                                            <span className="text-muted-foreground">Agente:</span>
+                                            <span className="font-medium capitalize">{task.ai_role}</span>
+                                          </div>
+                                        )}
+                                        {task.contact_phone && (
+                                          <div className="flex items-center gap-1.5">
+                                            <User className="h-3 w-3 text-blue-500" />
+                                            <span className="text-muted-foreground truncate">{task.contact_phone}</span>
+                                          </div>
+                                        )}
+                                        {task.scheduled_at && (
+                                          <div className="flex items-center gap-1.5">
+                                            <Clock className="h-3 w-3 text-amber-500" />
+                                            <span className="text-muted-foreground">
+                                              {new Date(task.scheduled_at).toLocaleString("it-IT", {
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                              })}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {task.scheduled_by && (
+                                          <div className="flex items-center gap-1.5">
+                                            <User className="h-3 w-3 text-indigo-500" />
+                                            <span className="text-muted-foreground">Da:</span>
+                                            <span className="font-medium">{task.scheduled_by}</span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {task.ai_reasoning && (
+                                        <div className="pt-2 border-t border-border/50">
+                                          <p className="text-[10px] uppercase font-medium text-muted-foreground mb-1">Ragionamento AI</p>
+                                          <p className="text-xs text-muted-foreground leading-relaxed">{task.ai_reasoning}</p>
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </PopoverContent>
                           </Popover>

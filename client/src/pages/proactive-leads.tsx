@@ -1753,8 +1753,11 @@ export default function ProactiveLeadsPage() {
                                             <MessageCircle className="h-3.5 w-3.5" />
                                           </div>
                                         </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-xs">
-                                          WhatsApp — {lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "sent" ? "Inviato" : lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "scheduled" ? "Schedulato" : lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "waiting_approval" ? "Da Approvare" : "Fallito"}
+                                        <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                          <p>WhatsApp — {lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "sent" ? "Inviato" : lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "scheduled" ? "Schedulato" : lead.actions.find((a: any) => a.channel === "whatsapp")?.status === "waiting_approval" ? "Da Approvare" : "Fallito"}</p>
+                                          {lead.actions.find((a: any) => a.channel === "whatsapp")?.wa_template_name && (
+                                            <p className="mt-0.5 text-emerald-600 dark:text-emerald-400">Template: {lead.actions.find((a: any) => a.channel === "whatsapp")?.wa_template_name}</p>
+                                          )}
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
@@ -1945,10 +1948,44 @@ export default function ProactiveLeadsPage() {
                                         )}
                                       </div>
                                     </div>
-                                    {action.message_preview && (
-                                      <div className="mt-2.5 rounded-md bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 max-h-40 overflow-y-auto">
-                                        <div className="px-3 py-2 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-sm prose-ul:my-1 prose-li:my-0.5 text-gray-700 dark:text-gray-300">
-                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{action.message_preview}</ReactMarkdown>
+                                    {action.channel === "whatsapp" && action.wa_template_name && (
+                                      <div className="mt-2 space-y-1.5">
+                                        <div className="flex items-center gap-2 text-[11px]">
+                                          <span className="text-gray-400">Template:</span>
+                                          <span className="font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">{action.wa_template_name}</span>
+                                          {action.wa_template_sid && (
+                                            <span className="text-gray-300 dark:text-gray-600 font-mono text-[10px]">{action.wa_template_sid}</span>
+                                          )}
+                                        </div>
+                                        {action.wa_template_variables && Object.keys(action.wa_template_variables).length > 0 && (
+                                          <div className="flex items-start gap-2 text-[11px]">
+                                            <span className="text-gray-400 whitespace-nowrap mt-0.5">Variabili Twilio:</span>
+                                            <div className="flex flex-wrap gap-1">
+                                              {Object.entries(action.wa_template_variables).map(([pos, val]) => (
+                                                <span key={pos} className="font-mono bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                                                  {`{{${pos}}}`} = {String(val)}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {action.whatsapp_config_id && (
+                                          <div className="flex items-center gap-2 text-[11px]">
+                                            <span className="text-gray-400">Dipendente WA:</span>
+                                            <span className="font-mono text-gray-600 dark:text-gray-400 text-[10px]">{action.whatsapp_config_id}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {(action.wa_template_filled || action.message_preview) && (
+                                      <div className="mt-2">
+                                        <p className="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-wider">
+                                          {action.channel === "whatsapp" && action.wa_template_filled ? "Messaggio finale che leggerà il contatto" : action.channel === "voice" ? "Istruzioni chiamata" : "Contenuto"}
+                                        </p>
+                                        <div className="rounded-md bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 max-h-40 overflow-y-auto">
+                                          <div className="px-3 py-2 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-sm prose-ul:my-1 prose-li:my-0.5 text-gray-700 dark:text-gray-300">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{action.wa_template_filled || action.message_preview}</ReactMarkdown>
+                                          </div>
                                         </div>
                                       </div>
                                     )}

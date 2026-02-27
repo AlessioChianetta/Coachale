@@ -61,7 +61,14 @@ export async function runDirectHunterForConsultant(consultantId: string): Promis
     let selectedChannel: string | null = null;
     for (const ch of channelPriority) {
       if (ch === "voice" && lead.phone) { selectedChannel = "voice"; break; }
-      if (ch === "whatsapp" && lead.phone && whatsappConfigId) { selectedChannel = "whatsapp"; break; }
+      if (ch === "whatsapp" && lead.phone && whatsappConfigId) {
+        const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
+        if (waTemplateSids.length === 0) {
+          console.log(`${LOG_PREFIX} WhatsApp skipped: no approved templates configured (free-text not allowed)`);
+          continue;
+        }
+        selectedChannel = "whatsapp"; break;
+      }
       if (ch === "email" && lead.email && emailAccountId) { selectedChannel = "email"; break; }
     }
 
@@ -176,9 +183,79 @@ Rispondi SOLO con il JSON, senza markdown.`;
         console.log(`${LOG_PREFIX} Voice call scheduled: ${scheduledCallId} at ${callInfo?.display_time}`);
 
       } else if (selectedChannel === "whatsapp") {
-        const waMessage = aiDecision.message || `Buongiorno, sono ${consultantName}. Vorrei presentarvi i miei servizi.`;
+        const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
+        let templateResult: any = null;
+        let waTemplateName = "";
+        let waTemplateSid = "";
+        let waTemplateBody = "";
+        let waTemplateFilled = "";
+        let waTemplateVariables: Record<string, string> = {};
+        let waMessage = "";
+
+        if (waTemplateSids.length > 0) {
+          const tplResult = await db.execute(sql`
+            SELECT t.template_name, v.twilio_content_sid, v.body_text, v.id as version_id
+            FROM whatsapp_custom_templates t
+            INNER JOIN whatsapp_template_versions v ON v.template_id = t.id AND v.is_active = true
+            WHERE t.consultant_id = ${consultantId}
+              AND v.twilio_content_sid IN ${sql`(${sql.join(waTemplateSids.map(s => sql`${s}`), sql`, `)})`}
+              AND v.twilio_content_sid IS NOT NULL AND v.twilio_content_sid != ''
+            LIMIT 10
+          `);
+
+          if (tplResult.rows.length > 0) {
+            const selected = tplResult.rows[Math.floor(Math.random() * tplResult.rows.length)] as any;
+            waTemplateName = selected.template_name;
+            waTemplateSid = selected.twilio_content_sid;
+            waTemplateBody = selected.body_text || '';
+
+            const varsResult = await db.execute(sql`
+              SELECT tv.position, vc.variable_key, vc.variable_name
+              FROM whatsapp_template_variables tv
+              INNER JOIN whatsapp_variable_catalog vc ON vc.id = tv.variable_catalog_id
+              WHERE tv.template_version_id = ${selected.version_id}
+              ORDER BY tv.position
+            `);
+
+            waTemplateFilled = waTemplateBody;
+            for (const v of varsResult.rows as any[]) {
+              let val = '';
+              if (v.variable_key === 'nome_lead') val = lead.business_name || '';
+              else if (v.variable_key === 'mio_nome') val = consultantName;
+              else if (v.variable_key === 'azienda') val = lead.business_name || '';
+              else if (v.variable_key === 'settore') val = lead.category || '';
+              else val = lead.business_name || consultantName;
+
+              waTemplateVariables[String(v.position)] = val;
+              waTemplateFilled = waTemplateFilled.replace(new RegExp(`\\{\\{${v.position}\\}\\}`, 'g'), val);
+              waTemplateFilled = waTemplateFilled.replace(new RegExp(`\\{${v.variable_key}\\}`, 'g'), val);
+            }
+
+            waMessage = waTemplateFilled;
+            console.log(`${LOG_PREFIX} WA template "${waTemplateName}" (sid=${waTemplateSid}) filled for ${lead.business_name}: "${waTemplateFilled.substring(0, 150)}..." | Twilio vars: ${JSON.stringify(waTemplateVariables)}`);
+          }
+        }
+
+        if (!waMessage) {
+          console.log(`${LOG_PREFIX} WhatsApp BLOCKED: no templates available for ${lead.business_name}`);
+          throw new Error("No WhatsApp template available");
+        }
 
         const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const additionalCtx = JSON.stringify({
+          hunter_direct: true,
+          lead_score: lead.score,
+          lead_id: lead.id,
+          business_name: lead.business_name,
+          sector: lead.category,
+          use_wa_template: true,
+          wa_template_name: waTemplateName,
+          wa_template_sid: waTemplateSid,
+          wa_template_body: waTemplateBody,
+          wa_template_filled: waTemplateFilled,
+          wa_template_variables: waTemplateVariables,
+        });
+
         await db.execute(sql`
           INSERT INTO ai_scheduled_tasks (
             id, consultant_id, contact_phone, contact_name,
@@ -194,7 +271,7 @@ Rispondi SOLO con il JSON, senza markdown.`;
             NOW() + (${offsetMinutes} * interval '1 minute'),
             'Europe/Rome', 'scheduled', 2, 'outreach', 'hunter',
             'whatsapp', ${whatsappConfigId},
-            ${JSON.stringify({ hunter_direct: true, lead_score: lead.score, lead_id: lead.id })}::text,
+            ${additionalCtx}::text,
             1, 0, 5,
             NOW(), NOW()
           )
@@ -208,10 +285,10 @@ Rispondi SOLO con il JSON, senza markdown.`;
         const taskInfo = timeResult.rows[0] as any;
 
         actionStatus = "scheduled";
-        messagePreview = waMessage;
+        messagePreview = `Template: ${waTemplateName}\n${waTemplateFilled}`;
         scheduledAt = taskInfo?.scheduled_at || new Date();
-        resultNote = `WhatsApp schedulato per ${taskInfo?.display_time || "N/A"} (task: ${taskId})`;
-        console.log(`${LOG_PREFIX} WhatsApp scheduled: ${taskId} at ${taskInfo?.display_time}`);
+        resultNote = `WhatsApp schedulato per ${taskInfo?.display_time || "N/A"} — Template: ${waTemplateName} (task: ${taskId})`;
+        console.log(`${LOG_PREFIX} WhatsApp scheduled: ${taskId} at ${taskInfo?.display_time} — Template: ${waTemplateName}`);
 
       } else if (selectedChannel === "email") {
         const emailSubject = aiDecision.subject || `Collaborazione con ${lead.business_name}`;
