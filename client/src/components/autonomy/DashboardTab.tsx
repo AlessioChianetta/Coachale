@@ -1357,10 +1357,6 @@ function DashboardTab({
             <span className="font-bold text-foreground tabular-nums">{tasksStats.total}</span> totali
           </div>
           <span className="text-border">|</span>
-          <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-            <Activity className="h-3 w-3" />
-            <span className="font-semibold tabular-nums">{tasksStats.in_progress}</span> attivi
-          </div>
           <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
             <ThumbsUp className="h-3 w-3" />
             <span className="font-semibold tabular-nums">{tasksStats.waiting_approval}</span> approvazione
