@@ -1373,6 +1373,19 @@ async function scheduleIndividualOutreach(
     )
   `);
   console.log(`[HUNTER] Step 5/6: Logged activity in lead_scraper_activities`);
+
+  const hunterActionStatus = taskStatus === 'scheduled' ? 'scheduled' : 'waiting_approval';
+  await db.execute(sql`
+    INSERT INTO hunter_actions (
+      consultant_id, lead_id, lead_name, lead_phone, lead_email,
+      channel, status, message_preview, scheduled_at, result_note
+    ) VALUES (
+      ${consultantId}, ${lead.id || lead.leadId}, ${leadName},
+      ${lead.phone || null}, ${lead.email || null},
+      ${channel}, ${hunterActionStatus}, ${contentPreview?.substring(0, 500) || null},
+      ${scheduledAtIso}, ${mode === 'approval' ? 'In attesa di approvazione' : null}
+    )
+  `);
   console.log(`[HUNTER] Step 6/6: Done — ${channel} for "${leadName}" → ${taskStatus} at ${scheduledAtIso}`);
 
   return { taskId, channel, leadName, status: taskStatus, scheduledAt: scheduledAtIso, contentPreview };
