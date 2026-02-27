@@ -5949,27 +5949,29 @@ REGOLE ANTI-ALLUCINAZIONE:
         const { FileSearchService } = await import("../ai/file-search-service");
         const fileSearchService = new FileSearchService();
         
-        const globalStoreResult = await db.execute(sql`
-          SELECT s.google_store_name
-          FROM file_search_stores s
-          WHERE s.owner_id = ${consultantId} AND s.owner_type = 'consultant'
-            AND s.display_name = 'Store Globale Consulenze Clienti'
-            AND s.is_active = true
-          LIMIT 1
+        const consultantUserResult = await db.execute(sql`
+          SELECT consultant_id FROM users WHERE id = ${consultantId} LIMIT 1
         `);
-        
-        let storeNames: string[] = [];
-        
-        if (globalStoreResult.rows.length > 0) {
-          storeNames = [(globalStoreResult.rows[0] as any).google_store_name];
-          console.log(`🌐 [MARCO-CHAT] Using Global Consultation Store (1 slot)`);
-        } else {
-          console.log(`⚠️ [MARCO-CHAT] Store Globale Consulenze Clienti not found — File Search disabled`);
+        const parentConsultantId = (consultantUserResult.rows[0] as any)?.consultant_id || undefined;
+
+        const { storeNames, breakdown } = await fileSearchService.getStoreBreakdownForGeneration(
+          consultantId,
+          'consultant',
+          parentConsultantId
+        );
+        const totalDocs = breakdown.reduce((sum: number, s: any) => sum + s.totalDocs, 0);
+
+        console.log(`🔍 [MARCO-CHAT] File Search: ${breakdown.length} store trovati (${totalDocs} doc totali)`);
+        for (const s of breakdown) {
+          console.log(`🔍 [MARCO-CHAT]   - [${(s as any).ownerType}] ${s.storeDisplayName}: ${s.totalDocs} doc`);
         }
-        
-        if (storeNames.length > 0) {
+        if (totalDocs === 0) {
+          console.log(`⚠️ [MARCO-CHAT] Nessun documento indicizzato — File Search disabilitato`);
+        }
+
+        if (storeNames.length > 0 && totalDocs > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool(storeNames);
-          console.log(`🔍 [MARCO-CHAT] File Search enabled with ${storeNames.length} store(s)`);
+          console.log(`✅ [MARCO-CHAT] File Search attivo con ${storeNames.length} store`);
         }
       } catch (fsErr: any) {
         console.warn(`[MARCO-CHAT] File Search setup failed:`, fsErr.message);

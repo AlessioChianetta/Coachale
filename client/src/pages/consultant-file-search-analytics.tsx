@@ -4579,9 +4579,9 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Select
-                              value={settings?.scheduledSyncHour?.toString() ?? "3"}
+                              value={settings?.scheduledSyncHour?.toString() ?? "2"}
                               onValueChange={(value) => handleToggle('scheduledSyncHour', parseInt(value))}
-                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? false)}
+                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? true)}
                             >
                               <SelectTrigger className="w-[80px] bg-white">
                                 <SelectValue placeholder="Ora" />
@@ -4598,7 +4598,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <Select
                               value={settings?.scheduledSyncMinute?.toString() ?? "0"}
                               onValueChange={(value) => handleToggle('scheduledSyncMinute', parseInt(value))}
-                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? false)}
+                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? true)}
                             >
                               <SelectTrigger className="w-[80px] bg-white">
                                 <SelectValue placeholder="Min" />
@@ -4612,7 +4612,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                               </SelectContent>
                             </Select>
                             <Switch
-                              checked={settings?.scheduledSyncEnabled ?? false}
+                              checked={settings?.scheduledSyncEnabled ?? true}
                               onCheckedChange={(checked) => handleToggle('scheduledSyncEnabled', checked)}
                               disabled={updateSettingsMutation.isPending}
                             />
@@ -4669,7 +4669,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente gli esercizi</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncExercises ?? false}
+                            checked={settings?.autoSyncExercises ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncExercises', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4681,7 +4681,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente le consultazioni</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncConsultations ?? false}
+                            checked={settings?.autoSyncConsultations ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncConsultations', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4693,7 +4693,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente le lezioni</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncUniversity ?? false}
+                            checked={settings?.autoSyncUniversity ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncUniversity', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4705,7 +4705,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente le risposte degli esercizi dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncExerciseResponses ?? false}
+                            checked={settings?.autoSyncExerciseResponses ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncExerciseResponses', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4717,7 +4717,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente la knowledge base dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncClientKnowledge ?? false}
+                            checked={settings?.autoSyncClientKnowledge ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncClientKnowledge', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4729,7 +4729,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i dati finanziari dei clienti (Percorso Capitale)</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncFinancial ?? false}
+                            checked={settings?.autoSyncFinancial ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncFinancial', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4741,7 +4741,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente la knowledge base degli agenti WhatsApp</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncWhatsappAgents ?? false}
+                            checked={settings?.autoSyncWhatsappAgents ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncWhatsappAgents', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4756,7 +4756,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncEmailAccounts ?? false}
+                            checked={settings?.autoSyncEmailAccounts ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncEmailAccounts', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4771,7 +4771,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncSystemPromptDocs ?? false}
+                            checked={settings?.autoSyncSystemPromptDocs ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncSystemPromptDocs', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4786,7 +4786,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncGlobalConsultation ?? false}
+                            checked={settings?.autoSyncGlobalConsultation ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncGlobalConsultation', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4805,7 +4805,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente gli obiettivi dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncGoals ?? false}
+                            checked={settings?.autoSyncGoals ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncGoals', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4817,7 +4817,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i task dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncTasks ?? false}
+                            checked={settings?.autoSyncTasks ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncTasks', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4829,7 +4829,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente le riflessioni giornaliere dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncDailyReflections ?? false}
+                            checked={settings?.autoSyncDailyReflections ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncDailyReflections', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4848,7 +4848,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente lo storico dei progressi dei clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncClientProgress ?? false}
+                            checked={settings?.autoSyncClientProgress ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncClientProgress', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4860,7 +4860,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i progressi nella libreria</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncLibraryProgress ?? false}
+                            checked={settings?.autoSyncLibraryProgress ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncLibraryProgress', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4872,7 +4872,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i progressi dell'email journey</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncEmailJourney ?? false}
+                            checked={settings?.autoSyncEmailJourney ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncEmailJourney', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4891,7 +4891,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente gli esercizi assegnati ai clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncAssignedExercises ?? false}
+                            checked={settings?.autoSyncAssignedExercises ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncAssignedExercises', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4903,7 +4903,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i documenti libreria assegnati ai clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncAssignedLibrary ?? false}
+                            checked={settings?.autoSyncAssignedLibrary ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncAssignedLibrary', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4915,7 +4915,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente le lezioni university assegnate ai clienti</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncAssignedUniversity ?? false}
+                            checked={settings?.autoSyncAssignedUniversity ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncAssignedUniversity', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4927,7 +4927,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             <p className="text-sm text-gray-500">Sincronizza automaticamente i Google Docs collegati agli esercizi</p>
                           </div>
                           <Switch
-                            checked={settings?.autoSyncExerciseExternalDocs ?? false}
+                            checked={settings?.autoSyncExerciseExternalDocs ?? true}
                             onCheckedChange={(checked) => handleToggle('autoSyncExerciseExternalDocs', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
@@ -4953,7 +4953,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </p>
                           </div>
                           <Switch
-                            checked={settings?.operationalSyncEnabled ?? false}
+                            checked={settings?.operationalSyncEnabled ?? true}
                             onCheckedChange={(checked) => handleToggle('operationalSyncEnabled', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
