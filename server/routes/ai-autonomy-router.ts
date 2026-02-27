@@ -596,6 +596,57 @@ async function getActionableCrmLeads(consultantId: string, scoreThreshold: numbe
   return { totalAnalyzed: leadsResult.rows.length, actionableLeads, skipReasons };
 }
 
+interface WaTemplateForOutreach {
+  sid: string;
+  name: string;
+  bodyText: string;
+  variables: { position: number; variableKey: string; variableName: string }[];
+}
+
+async function loadSelectedWaTemplates(consultantId: string, templateSids: string[]): Promise<WaTemplateForOutreach[]> {
+  if (!templateSids || templateSids.length === 0) return [];
+  try {
+    const result = await db.execute(sql`
+      SELECT t.template_name, v.twilio_content_sid, v.body_text, v.id as version_id
+      FROM whatsapp_custom_templates t
+      INNER JOIN whatsapp_template_versions v ON v.template_id = t.id AND v.is_active = true
+      WHERE t.consultant_id = ${consultantId}
+        AND v.twilio_content_sid = ANY(${templateSids}::text[])
+        AND v.twilio_content_sid IS NOT NULL AND v.twilio_content_sid != ''
+    `);
+
+    const templates: WaTemplateForOutreach[] = [];
+    for (const row of result.rows as any[]) {
+      let variables: { position: number; variableKey: string; variableName: string }[] = [];
+      try {
+        const varsResult = await db.execute(sql`
+          SELECT tv.position, vc.variable_key, vc.variable_name
+          FROM whatsapp_template_variables tv
+          INNER JOIN whatsapp_variable_catalog vc ON vc.id = tv.variable_catalog_id
+          WHERE tv.template_version_id = ${row.version_id}
+          ORDER BY tv.position
+        `);
+        variables = (varsResult.rows as any[]).map(v => ({
+          position: v.position,
+          variableKey: v.variable_key,
+          variableName: v.variable_name,
+        }));
+      } catch {}
+      templates.push({
+        sid: row.twilio_content_sid,
+        name: row.template_name,
+        bodyText: row.body_text || '',
+        variables,
+      });
+    }
+    console.log(`[HUNTER] Loaded ${templates.length} WA templates for outreach`);
+    return templates;
+  } catch (err: any) {
+    console.error('[HUNTER] Failed to load WA templates:', err.message);
+    return [];
+  }
+}
+
 async function generateOutreachContent(
   consultantId: string,
   lead: any,
@@ -603,8 +654,9 @@ async function generateOutreachContent(
   salesCtx: any,
   consultantName: string,
   talkingPoints?: string[],
-  outreachConfig?: any
-): Promise<{ channel: string; callScript?: string; whatsappMessage?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
+  outreachConfig?: any,
+  waTemplates?: WaTemplateForOutreach[]
+): Promise<{ channel: string; callScript?: string; whatsappMessage?: string; emailSubject?: string; emailBody?: string; leadId: string; templateSid?: string; templateName?: string; templateVariables?: Record<string, string> }> {
   const { quickGenerate } = await import("../ai/provider-factory");
 
   const commStyle = outreachConfig?.communication_style || 'professionale';
@@ -659,16 +711,46 @@ async function generateOutreachContent(
       callInstructionTemplate ? `CONTESTO AGGIUNTIVO PER LA CHIAMATA: ${callInstructionTemplate}` : '',
       `IMPORTANTE: Lo script deve sembrare naturale, NON un template generico. Personalizza ogni frase per QUESTO specifico lead.`,
     ].filter(Boolean).join('\n'),
-    whatsapp: [
-      `Genera un messaggio WhatsApp per ${lead.businessName}.`,
-      `Rispondi SOLO con un JSON: { "whatsappMessage": "testo del messaggio" }`,
-      `Il messaggio deve essere:`,
-      `- Breve (max 3-4 frasi)`,
-      `- Con un hook personalizzato che dimostri che HAI STUDIATO l'attività del lead`,
-      `- CTA: proposta di breve chiamata o incontro`,
-      `- NON generico, NON sembrare un bot. Scrivi come scriverebbe una persona vera.`,
-      `NON usare emoji eccessivi, max 1-2.`,
-    ].join('\n'),
+    whatsapp: (() => {
+      if (waTemplates && waTemplates.length > 0) {
+        const templateList = waTemplates.map((t, i) => {
+          const varsDesc = t.variables.length > 0
+            ? `Variabili: ${t.variables.map(v => `{{${v.position}}} = ${v.variableName} (chiave: ${v.variableKey})`).join(', ')}`
+            : 'Nessuna variabile';
+          return `TEMPLATE ${i + 1}: "${t.name}" (SID: ${t.sid})\nCorpo: ${t.bodyText}\n${varsDesc}`;
+        }).join('\n\n');
+        return [
+          `Devi inviare un messaggio WhatsApp a ${lead.businessName} usando uno dei template approvati.`,
+          `TEMPLATE DISPONIBILI:\n${templateList}`,
+          `ISTRUZIONI:`,
+          `1. Scegli il template PIU' ADATTO a questo lead (primo contatto, follow-up, ecc.)`,
+          `2. Compila le variabili con valori personalizzati per il lead`,
+          `3. Rispondi SOLO con un JSON:`,
+          `{`,
+          `  "whatsappMessage": "il testo completo del template con le variabili sostituite",`,
+          `  "templateSid": "HX... (il SID del template scelto)",`,
+          `  "templateName": "nome del template scelto",`,
+          `  "templateVariables": { "1": "valore per {{1}}", "2": "valore per {{2}}", ... }`,
+          `}`,
+          `REGOLE:`,
+          `- Le variabili devono essere PERSONALIZZATE per questo lead specifico`,
+          `- Il nome del lead va capitalizzato correttamente`,
+          `- Il nome del consulente è: ${consultantName}`,
+          `- Se serve il nome dell'azienda del consulente, usa quello dai servizi offerti`,
+          `- "whatsappMessage" deve contenere il corpo con le variabili GIA' sostituite (per preview)`,
+        ].join('\n');
+      }
+      return [
+        `Genera un messaggio WhatsApp per ${lead.businessName}.`,
+        `Rispondi SOLO con un JSON: { "whatsappMessage": "testo del messaggio" }`,
+        `Il messaggio deve essere:`,
+        `- Breve (max 3-4 frasi)`,
+        `- Con un hook personalizzato che dimostri che HAI STUDIATO l'attività del lead`,
+        `- CTA: proposta di breve chiamata o incontro`,
+        `- NON generico, NON sembrare un bot. Scrivi come scriverebbe una persona vera.`,
+        `NON usare emoji eccessivi, max 1-2.`,
+      ].join('\n');
+    })(),
     email: [
       `Genera un'email per ${lead.businessName}.`,
       `Rispondi SOLO con un JSON: { "emailSubject": "oggetto email", "emailBody": "corpo email in testo semplice" }`,
@@ -701,6 +783,15 @@ async function generateOutreachContent(
     const parsed = JSON.parse(cleaned);
     if (channel === 'email' && emailSignature && parsed.emailBody && !parsed.emailBody.includes(emailSignature.split('\n')[0])) {
       parsed.emailBody = parsed.emailBody.trimEnd() + '\n\n' + emailSignature;
+    }
+    if (channel === 'whatsapp' && parsed.templateSid && waTemplates && waTemplates.length > 0) {
+      const validSids = waTemplates.map(t => t.sid);
+      if (!validSids.includes(parsed.templateSid)) {
+        console.warn(`[HUNTER] AI returned invalid templateSid ${parsed.templateSid}, clearing template info`);
+        delete parsed.templateSid;
+        delete parsed.templateName;
+        delete parsed.templateVariables;
+      }
     }
     return { channel, leadId: lead.id || lead.leadId, ...parsed };
   } catch {
@@ -822,7 +913,7 @@ async function scheduleIndividualOutreach(
         'ai_task', ${waMessage},
         ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'whatsapp',
         ${config.whatsappConfigId},
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', wa_template_name: config.whatsappTemplateName || null })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', wa_template_name: config.whatsappTemplateName || null, wa_template_sid: content.templateSid || null, wa_template_used: content.templateName || null, wa_template_variables: content.templateVariables || null })}::text,
         1, 0, 5, NOW(), NOW()
       )
     `);
@@ -1085,12 +1176,15 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
       } catch {}
     }
 
+    const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
+    const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
+
     const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', whatsappTemplateName: resolvedWaTemplateName, voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
 
     for (let i = 0; i < leadsWithChannels.length; i++) {
       const { lead, channel } = leadsWithChannels[i];
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         console.log(`[HUNTER-CRM] ✓ ${result.leadName} → ${channel} (${result.status})`);
@@ -1442,6 +1536,9 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
       } catch {}
     }
 
+    const waTemplateSids2: string[] = outreachConfig.whatsapp_template_ids || [];
+    const loadedWaTemplates2 = await loadSelectedWaTemplates(consultantId, waTemplateSids2);
+
     const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', whatsappTemplateName: resolvedWaTemplateName2, voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2 };
 
     const [salesCtxResult, consultantResult] = await Promise.all([
@@ -1471,7 +1568,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
       };
 
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints, outreachConfig);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints, outreachConfig, loadedWaTemplates2);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         if (channel === 'voice') voiceCount++;
