@@ -1,0 +1,49 @@
+10:51:49 PM [express] GET /api/ai-autonomy/tasks 304 in 1155ms :: {"tasks":[{"id":"hunt_em_1772232498…
+🔌 [GEMINI TRACKER] ACTIVE GEMINI STREAMS: 0
+🔒 [CronLock] Acquired lock for "ai-task-scheduler" (instance: 6faa1746)
+🤖 [AI-SCHEDULER] ══════ STEP 1: Starting task processing cycle ══════
+🤖 [AI-SCHEDULER] STEP 1: No approved tasks to move
+🤖 [AI-SCHEDULER] ══════ STEP 2: Found 1 tasks to process ══════
+   📋 Task 1: id=hunt_wh_1772232491044_6lelx, task_type=single_whatsapp, ai_role=hunter, status=scheduled, result_data={"skip_guardrails":true,"manually_approved":true}
+🤖 [AI-SCHEDULER] ══════ STEP 3: executeTask ══════
+   📋 id=hunt_wh_1772232491044_6lelx, task_type=single_whatsapp, ai_role=hunter, attempt=1/1
+   📋 contact=+393519272875, result_data={"skip_guardrails":true,"manually_approved":true}
+🤖 [AI-SCHEDULER] STEP 3a: Setting status to in_progress...
+🤖 [AI-SCHEDULER] STEP 3b: task_type=single_whatsapp → direct WA send (no Decision Engine)
+📱 [SINGLE-WA] Sending WA to +393519272875 (Ricercamy Srl)
+📱 [SINGLE-WA] Message (7089 chars): "━━━ CONTESTO LEAD (da CRM Hunter) ━━━
+Nome attività: Ricercamy Srl
+Settore: Recruiter
+Score compatibilità: 88/100
+Sito web: https://www.ricercamy.com/..."
+📱 [SINGLE-WA] Template mode: YES
+📱 [SINGLE-WA] Sending via template HX80576b2aa9a553a2581e370bfbe8e366
+✅ Using explicitly specified agent: Assistenza Clienti (a6669609-a50b-4875-9144-1850b9762985)
+📱 Using From number: whatsapp:+393500220129 (Agent: Assistenza Clienti)
+📤 Sending WhatsApp message with template: HX80576b2aa9a553a2581e370bfbe8e366
+
+📤 ──────────────────────────────────────────────────────
+📤 [TWILIO] Preparazione payload template WhatsApp
+📤 [TWILIO]   From: whatsapp:+393500220129
+📤 [TWILIO]   To: whatsapp:+393519272875
+📤 [TWILIO]   ContentSid: HX80576b2aa9a553a2581e370bfbe8e366
+📤 [TWILIO]   ContentVariables: {"1":"Ricercamy Srl","2":"Alessio Chianetta","3":"Orbitale","4":"l'innovazione nel recruiting"}
+📤 [TWILIO] Payload finale: {
+  "from": "whatsapp:+393500220129",
+  "to": "whatsapp:+393519272875",
+  "contentSid": "HX80576b2aa9a553a2581e370bfbe8e366",
+  "contentVariables": "{\"1\":\"Ricercamy Srl\",\"2\":\"Alessio Chianetta\",\"3\":\"Orbitale\",\"4\":\"l'innovazione nel recruiting\"}"
+}
+📤 [TWILIO] Invio a Twilio API...
+✅ [TWILIO] Risposta Twilio ricevuta!
+   📋 SID: MMab7c933e132fe94384c0c57aa5367771
+   📊 Status: queued
+   ⚠️ ErrorCode: NESSUNO
+   ⚠️ ErrorMessage: NESSUNO
+📤 ──────────────────────────────────────────────────────
+
+📱 [SINGLE-WA] ✅ Sent! SID: MMab7c933e132fe94384c0c57aa5367771
+📱 [SINGLE-WA] ✗ Send failed: column "updated_at" of relation "lead_scraper_results" does not exist
+❌ [AI-SCHEDULER] Task hunt_wh_1772232491044_6lelx failed after 1 attempts
+🤖 [AI-SCHEDULER] Processed 1 tasks (1 succeeded, 0 failed)
+🔓 [CronLo

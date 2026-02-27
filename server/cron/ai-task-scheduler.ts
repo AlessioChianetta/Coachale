@@ -372,7 +372,7 @@ async function executeSingleWhatsApp(task: AIScheduledTask): Promise<void> {
     if (leadId) {
       await db.execute(sql`
         UPDATE lead_scraper_results
-        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days', updated_at = NOW()
+        SET lead_status = 'in_outreach', lead_next_action_date = NOW() + INTERVAL '7 days'
         WHERE id = ${leadId}
       `);
     }
