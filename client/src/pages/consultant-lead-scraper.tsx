@@ -2922,6 +2922,21 @@ export default function ConsultantLeadScraper() {
                                                   <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-1 leading-relaxed line-clamp-2">
                                                     {template.bodyText || "Template senza corpo visibile"}
                                                   </p>
+                                                  {isSelected && (template.bodyText || '').includes('{uncino}') && (
+                                                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                                                      <Input
+                                                        value={(outreachConfig.template_hooks || {})[template.id] || ''}
+                                                        onChange={(e) => {
+                                                          const hooks = { ...(outreachConfig.template_hooks || {}), [template.id]: e.target.value };
+                                                          if (!e.target.value) delete hooks[template.id];
+                                                          updateOutreachConfig("template_hooks", hooks);
+                                                        }}
+                                                        placeholder="Es: aiutiamo chi ha clienti ricorrenti a scalare con l'AI"
+                                                        className="h-7 text-[10px]"
+                                                      />
+                                                      <p className="text-[9px] text-gray-400 mt-0.5">Opening hook per questo template. Se vuoto, Hunter genera un uncino personalizzato per ogni lead.</p>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </label>
                                             );

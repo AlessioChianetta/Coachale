@@ -685,6 +685,200 @@ function buildLeadContext(lead: any, consultantName: string, salesCtx: any, talk
   return lines;
 }
 
+const DETERMINISTIC_VARS: Record<string, (lead: any, consultantName: string, consultantBusinessName?: string) => string> = {
+  nome_lead: (lead) => lead.contactName || lead.businessName || 'Cliente',
+  cognome_lead: (lead) => lead.lastName || '',
+  nome_consulente: (_lead, consultantName) => consultantName,
+  nome_azienda: (_lead, consultantName, consultantBusinessName) => consultantBusinessName || consultantName,
+};
+
+const AI_GENERABLE_VARS = new Set(['uncino', 'stato_ideale', 'desideri', 'obiettivi']);
+
+function extractTemplateVariables(bodyText: string): string[] {
+  const vars: string[] = [];
+  const regex = /\{([a-z_]+)\}/g;
+  let match;
+  while ((match = regex.exec(bodyText)) !== null) {
+    if (!vars.includes(match[1])) vars.push(match[1]);
+  }
+  return vars;
+}
+
+async function resolveTemplateVariables(
+  templateBodyText: string,
+  lead: any,
+  consultantName: string,
+  consultantBusinessName?: string,
+  outreachConfig?: any,
+  templateSid?: string
+): Promise<{ resolved: Record<string, string>; sources: Record<string, string> }> {
+  const neededVars = extractTemplateVariables(templateBodyText);
+  const resolved: Record<string, string> = {};
+  const sources: Record<string, string> = {};
+
+  for (const varKey of neededVars) {
+    const deterministicFn = DETERMINISTIC_VARS[varKey];
+    if (deterministicFn) {
+      resolved[varKey] = deterministicFn(lead, consultantName, consultantBusinessName);
+      sources[varKey] = 'deterministic';
+    }
+  }
+
+  const dynamicVars = neededVars.filter(v => !resolved[v] && AI_GENERABLE_VARS.has(v));
+
+  if (dynamicVars.length === 0) {
+    console.log(`[HUNTER] Template vars for "${lead.businessName}": all deterministic — ${JSON.stringify(resolved)}`);
+    return { resolved, sources };
+  }
+
+  if (dynamicVars.includes('uncino')) {
+    const templateHook = templateSid && outreachConfig?.template_hooks?.[templateSid];
+    if (templateHook) {
+      resolved['uncino'] = templateHook;
+      sources['uncino'] = 'template_hook';
+      const remaining = dynamicVars.filter(v => v !== 'uncino');
+      if (remaining.length === 0) {
+        console.log(`[HUNTER] Template vars for "${lead.businessName}": uncino from template_hook, rest deterministic — ${JSON.stringify(resolved)}`);
+        return { resolved, sources };
+      }
+    } else if (outreachConfig?.opening_hook) {
+      resolved['uncino'] = outreachConfig.opening_hook;
+      sources['uncino'] = 'config_hook';
+      const remaining = dynamicVars.filter(v => v !== 'uncino');
+      if (remaining.length === 0) {
+        console.log(`[HUNTER] Template vars for "${lead.businessName}": uncino from config, rest deterministic — ${JSON.stringify(resolved)}`);
+        return { resolved, sources };
+      }
+    }
+  }
+
+  const stillNeeded = dynamicVars.filter(v => !resolved[v]);
+
+  if (stillNeeded.length > 0 && lead.salesSummary && lead.salesSummary.length > 50) {
+    try {
+      const { quickGenerate } = await import("../ai/provider-factory");
+
+      const prefilledPreview = templateBodyText.replace(/\{([a-z_]+)\}/g, (match, key) => {
+        return resolved[key] ? resolved[key] : match;
+      });
+
+      const varInstructions = stillNeeded.map(v => {
+        switch (v) {
+          case 'uncino': return `- {uncino}: una frase breve (max 8-10 parole) specifica per questa azienda, che si inserisca naturalmente nel contesto del template. Deve descrivere cosa fa l'azienda o cosa la rende interessante.`;
+          case 'stato_ideale': return `- {stato_ideale}: una frase breve (max 8 parole) che descriva lo stato ideale/obiettivo che il lead potrebbe voler raggiungere, basato sulla sua attività.`;
+          case 'desideri': return `- {desideri}: una frase breve (max 8 parole) sui probabili desideri/bisogni professionali del lead.`;
+          case 'obiettivi': return `- {obiettivi}: una frase breve (max 8 parole) sugli obiettivi probabili del lead nel suo settore.`;
+          default: return `- {${v}}: genera un valore appropriato per il contesto.`;
+        }
+      }).join('\n');
+
+      const prompt = [
+        `Sei un copywriter esperto. Devi generare i valori delle variabili per un messaggio WhatsApp di outreach commerciale.`,
+        ``,
+        `TEMPLATE MESSAGGIO (con variabili già risolte e da risolvere):`,
+        `"${prefilledPreview}"`,
+        ``,
+        `AZIENDA TARGET: "${lead.businessName}"`,
+        `Settore: ${lead.category || 'N/D'}`,
+        `Sito web: ${lead.website || 'N/D'}`,
+        ``,
+        `ANALISI DELL'AZIENDA:`,
+        `${lead.salesSummary.substring(0, 600)}`,
+        ``,
+        `VARIABILI DA GENERARE:`,
+        varInstructions,
+        ``,
+        `REGOLE:`,
+        `- Leggi il template e capisci il contesto grammaticale di OGNI variabile`,
+        `- Ogni valore deve inserirsi NATURALMENTE nella frase del template`,
+        `- NON usare virgolette, NON ripetere il nome dell'azienda, NON usare punti finali`,
+        `- Sii specifico e contestuale, basati sull'analisi dell'azienda`,
+        `- Italiano professionale e naturale`,
+        ``,
+        `Rispondi SOLO in formato JSON con le chiavi richieste, es:`,
+        `${JSON.stringify(Object.fromEntries(stillNeeded.map(v => [v, "valore generato"])))}`,
+      ].join('\n');
+
+      const result = await quickGenerate(prompt, {
+        consultantId: 'system',
+        feature: 'hunter-template-vars',
+        maxTokens: 150,
+        temperature: 0.4,
+      });
+
+      if (result) {
+        try {
+          const jsonMatch = result.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            for (const v of stillNeeded) {
+              if (parsed[v]) {
+                const cleaned = String(parsed[v]).replace(/^["']|["']$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
+                if (cleaned.length > 2 && cleaned.length < 120) {
+                  resolved[v] = cleaned;
+                  sources[v] = 'dynamic_ai';
+                }
+              }
+            }
+          }
+        } catch (parseErr: any) {
+          const singleVar = stillNeeded.length === 1 ? stillNeeded[0] : null;
+          if (singleVar) {
+            const cleaned = result.replace(/^["'{}\s]|["'}\s]$/g, '').replace(/\.$/, '').replace(/\n/g, ' ').trim();
+            if (cleaned.length > 2 && cleaned.length < 120) {
+              resolved[singleVar] = cleaned;
+              sources[singleVar] = 'dynamic_ai';
+            }
+          }
+          console.warn(`[HUNTER] AI vars JSON parse failed for "${lead.businessName}": ${parseErr.message}, raw: "${result.substring(0, 100)}"`);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[HUNTER] AI template vars generation failed for "${lead.businessName}": ${err.message}`);
+    }
+  }
+
+  for (const v of dynamicVars) {
+    if (!resolved[v]) {
+      if (v === 'uncino') {
+        if (lead.category) {
+          const cat = lead.category.toLowerCase();
+          const articleMap: Record<string, string> = {
+            'recruiter': "l'innovazione nel recruiting", 'recruitment': "l'innovazione nel recruiting",
+            'marketing': "le strategie di marketing digitale", 'consulting': "la consulenza strategica",
+            'technology': "l'innovazione tecnologica", 'finance': "la gestione finanziaria",
+            'real estate': "il settore immobiliare", 'education': "il mondo della formazione",
+            'healthcare': "il settore sanitario", 'food': "il settore food & beverage",
+            'retail': "il mondo del retail",
+          };
+          resolved[v] = articleMap[cat] || `il settore ${lead.category.toLowerCase()}`;
+          sources[v] = articleMap[cat] ? 'category_mapped' : 'category_generic';
+        } else {
+          resolved[v] = 'la crescita della tua attività';
+          sources[v] = 'fallback';
+        }
+      } else if (v === 'stato_ideale') {
+        resolved[v] = 'i tuoi obiettivi professionali';
+        sources[v] = 'fallback';
+      } else if (v === 'desideri') {
+        resolved[v] = 'migliorare i risultati';
+        sources[v] = 'fallback';
+      } else if (v === 'obiettivi') {
+        resolved[v] = 'far crescere la tua attività';
+        sources[v] = 'fallback';
+      } else {
+        resolved[v] = '';
+        sources[v] = 'empty_fallback';
+      }
+    }
+  }
+
+  const sourcesSummary = Object.entries(sources).map(([k, s]) => `${k}=${s}`).join(', ');
+  console.log(`[HUNTER] Template vars for "${lead.businessName}": [${sourcesSummary}]`);
+  console.log(`[HUNTER] Resolved values: ${JSON.stringify(resolved)}`);
+  return { resolved, sources };
+}
+
 async function generateOutreachContent(
   consultantId: string,
   lead: any,
@@ -711,34 +905,32 @@ async function generateOutreachContent(
 
   if (channel === 'whatsapp' && waTemplates && waTemplates.length > 0) {
     const selectedTemplate = waTemplates[Math.floor(Math.random() * waTemplates.length)];
-    console.log(`[HUNTER] WhatsApp: template "${selectedTemplate.name}" selected for ${lead.businessName} (body: "${selectedTemplate.bodyText.substring(0, 80)}...")`);
+    console.log(`[HUNTER] WhatsApp: template "${selectedTemplate.name}" selected for ${lead.businessName} (body: "${selectedTemplate.bodyText.substring(0, 120)}...")`);
 
-    const leadContactName = lead.contactName || lead.businessName || 'Cliente';
-    const resolvedBusinessName = consultantBusinessName || consultantName;
-    const resolvedUncino = outreachConfig?.opening_hook || 'la tua attività';
-
-    const namedVarMap: Record<string, string> = {
-      nome_lead: leadContactName,
-      nome_consulente: consultantName,
-      nome_azienda: resolvedBusinessName,
-      uncino: resolvedUncino,
-    };
+    const { resolved: varMap, sources: varSources } = await resolveTemplateVariables(
+      selectedTemplate.bodyText,
+      lead,
+      consultantName,
+      consultantBusinessName,
+      outreachConfig,
+      selectedTemplate.sid
+    );
 
     let templateFilled = selectedTemplate.bodyText;
-    for (const [key, val] of Object.entries(namedVarMap)) {
+    for (const [key, val] of Object.entries(varMap)) {
       templateFilled = templateFilled.replace(new RegExp(`\\{${key}\\}`, 'g'), val);
     }
 
     const templateVariables: Record<string, string> = {};
     if (selectedTemplate.variables && selectedTemplate.variables.length > 0) {
       for (const v of selectedTemplate.variables) {
-        const resolvedValue = namedVarMap[v.variableKey] || '';
+        const resolvedValue = varMap[v.variableKey] || '';
         templateVariables[String(v.position)] = resolvedValue;
         templateFilled = templateFilled.replace(new RegExp(`\\{\\{${v.position}\\}\\}`, 'g'), resolvedValue);
       }
     }
 
-    console.log(`[HUNTER] WA template filled for ${lead.businessName}: "${templateFilled.substring(0, 120)}..." | Twilio vars: ${JSON.stringify(templateVariables)}`);
+    console.log(`[HUNTER] WA template filled for "${lead.businessName}": "${templateFilled.substring(0, 200)}..." | Twilio vars: ${JSON.stringify(templateVariables)} | Sources: ${JSON.stringify(varSources)}`);
 
     return {
       channel,
