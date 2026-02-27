@@ -689,7 +689,8 @@ async function generateOutreachContent(
   consultantName: string,
   talkingPoints?: string[],
   outreachConfig?: any,
-  waTemplates?: WaTemplateForOutreach[]
+  waTemplates?: WaTemplateForOutreach[],
+  consultantBusinessName?: string
 ): Promise<{ channel: string; callScript?: string; callContext?: string; useTemplate?: boolean; whatsappMessage?: string; whatsappContext?: string; useWaTemplate?: boolean; wa_preview_message?: string; wa_template_name?: string; wa_template_sid?: string; wa_template_body?: string; wa_template_variables?: Record<string, string>; wa_template_filled?: string; emailSubject?: string; emailBody?: string; leadId: string }> {
 
   const leadContext = buildLeadContext(lead, consultantName, salesCtx, talkingPoints, outreachConfig);
@@ -706,89 +707,33 @@ async function generateOutreachContent(
 
   if (channel === 'whatsapp' && waTemplates && waTemplates.length > 0) {
     const selectedTemplate = waTemplates[Math.floor(Math.random() * waTemplates.length)];
-    console.log(`[HUNTER] WhatsApp: template "${selectedTemplate.name}" selected for ${lead.businessName} (body: ${selectedTemplate.bodyText.substring(0, 60)}...)`);
+    console.log(`[HUNTER] WhatsApp: template "${selectedTemplate.name}" selected for ${lead.businessName} (body: "${selectedTemplate.bodyText.substring(0, 80)}...")`);
 
-    const templateVariableCount = (selectedTemplate.bodyText.match(/\{\{\d+\}\}/g) || []).length;
     const leadContactName = lead.contactName || lead.businessName || 'Cliente';
+    const resolvedBusinessName = consultantBusinessName || consultantName;
+    const resolvedUncino = outreachConfig?.opening_hook || '';
 
-    let templateVariables: Record<string, string> = { '1': leadContactName };
-    let templateFilled = selectedTemplate.bodyText.replace('{{1}}', leadContactName);
+    const namedVarMap: Record<string, string> = {
+      nome_lead: leadContactName,
+      nome_consulente: consultantName,
+      nome_azienda: resolvedBusinessName,
+      uncino: resolvedUncino,
+    };
 
-    if (templateVariableCount > 1) {
-      try {
-        const { quickGenerate } = await import("../ai/provider-factory");
-        const commStyle = outreachConfig?.communication_style || 'professionale';
-        const styleMap: Record<string, string> = {
-          formale: 'Tono FORMALE: usa il Lei, linguaggio istituzionale, zero emoji.',
-          professionale: 'Tono PROFESSIONALE: cordiale ma competente, usa il Lei ma senza essere freddo.',
-          informale: 'Tono INFORMALE: usa il tu, linguaggio colloquiale ma rispettoso.',
-          amichevole: 'Tono AMICHEVOLE: come un collega che scrive a un altro. Usa il tu, breve, diretto.',
-        };
-        const styleInstruction = styleMap[commStyle] || styleMap.professionale;
+    let templateFilled = selectedTemplate.bodyText;
+    for (const [key, val] of Object.entries(namedVarMap)) {
+      templateFilled = templateFilled.replace(new RegExp(`\\{${key}\\}`, 'g'), val);
+    }
 
-        const variablePrompt = `Devi generare i valori per le variabili di un template WhatsApp da inviare a un lead.
-
-Template: "${selectedTemplate.bodyText}"
-Numero variabili: ${templateVariableCount}
-
-Contesto lead:
-${leadContext}
-
-REGOLE:
-- La variabile {{1}} è SEMPRE il nome del destinatario: "${leadContactName}" (già impostata, NON includerla)
-- Genera SOLO le variabili da {{2}} a {{${templateVariableCount}}}
-- Ogni variabile deve essere BREVE (massimo 1-2 frasi)
-- NON usare newline (\\n) nei valori
-- ${styleInstruction}
-${outreachConfig?.custom_instructions ? `- ISTRUZIONI PERSONALIZZATE: ${outreachConfig.custom_instructions}` : ''}
-${outreachConfig?.opening_hook ? `- APPROCCIO DI APERTURA: ${outreachConfig.opening_hook}` : ''}
-- Sii specifico sul lead: menziona la loro attività, settore, o qualcosa di concreto dal contesto
-- Il messaggio deve dimostrare che conosci l'attività del lead e proporre un valore concreto
-
-Rispondi SOLO con un JSON valido nel formato:
-{${Array.from({length: templateVariableCount - 1}, (_, i) => `"${i+2}": "valore"`).join(', ')}}`;
-
-        const resp = await quickGenerate({
-          consultantId,
-          feature: 'hunter-wa-template-variables',
-          thinkingLevel: 'low',
-          systemInstruction: `Sei Hunter, il copywriter commerciale. Genera i valori delle variabili per un template WhatsApp. Rispondi SOLO con JSON valido.`,
-          contents: [{ role: 'user', parts: [{ text: variablePrompt }] }],
-        });
-
-        const responseText = resp.text?.trim() || '';
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          for (let i = 2; i <= templateVariableCount; i++) {
-            const val = parsed[String(i)] || parsed[i];
-            if (val) {
-              templateVariables[String(i)] = String(val).replace(/[\n\r\t]/g, ' ').trim();
-            } else {
-              templateVariables[String(i)] = `contatto per una proposta commerciale`;
-            }
-          }
-          console.log(`[HUNTER] WA template variables generated for ${lead.businessName}: ${JSON.stringify(templateVariables)}`);
-        } else {
-          console.warn(`[HUNTER] No JSON in Gemini response for WA variables, using fallback`);
-          for (let i = 2; i <= templateVariableCount; i++) {
-            templateVariables[String(i)] = `contatto per una proposta commerciale per ${lead.businessName || 'la vostra attività'}`;
-          }
-        }
-      } catch (err: any) {
-        console.error(`[HUNTER] Failed to generate WA template variables for ${lead.businessName}: ${err.message}`);
-        for (let i = 2; i <= templateVariableCount; i++) {
-          templateVariables[String(i)] = `contatto per una proposta commerciale per ${lead.businessName || 'la vostra attività'}`;
-        }
+    const templateVariables: Record<string, string> = {};
+    if (selectedTemplate.variables && selectedTemplate.variables.length > 0) {
+      for (const v of selectedTemplate.variables) {
+        const resolvedValue = namedVarMap[v.variableKey] || '';
+        templateVariables[String(v.position)] = resolvedValue;
       }
     }
 
-    templateFilled = selectedTemplate.bodyText;
-    for (const [key, val] of Object.entries(templateVariables)) {
-      templateFilled = templateFilled.replace(`{{${key}}}`, val);
-    }
-
-    console.log(`[HUNTER] WA template filled for ${lead.businessName}: ${templateFilled.substring(0, 120)}...`);
+    console.log(`[HUNTER] WA template filled for ${lead.businessName}: "${templateFilled.substring(0, 120)}..." | Twilio vars: ${JSON.stringify(templateVariables)}`);
 
     return {
       channel,
@@ -1214,17 +1159,19 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
 
     const { quickGenerate } = await import("../ai/provider-factory");
 
-    const [salesCtxResult, consultantResult] = await Promise.all([
+    const [salesCtxResult, consultantResult, waConfigResult] = await Promise.all([
       db.execute(sql`
         SELECT services_offered, target_audience, value_proposition, sales_approach,
                competitive_advantages, ideal_client_profile, additional_context
         FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
       `),
       db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT business_name FROM consultant_whatsapp_config WHERE consultant_id = ${consultantId} AND is_active = true LIMIT 1`),
     ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
+    const consultantBusinessName = (waConfigResult.rows[0] as any)?.business_name || null;
 
     const leadsForAI = actionableLeads.slice(0, maxLeads).map(l => ({
       id: l.id, name: l.businessName, score: l.score, status: l.leadStatus,
@@ -1335,7 +1282,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     for (let i = 0; i < leadsWithChannels.length; i++) {
       const { lead, channel } = leadsWithChannels[i];
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates, consultantBusinessName);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         console.log(`[HUNTER-CRM] ✓ ${result.leadName} → ${channel} (${result.status})`);
@@ -1421,17 +1368,19 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     const emailAccountId = outreachConfig.email_account_id || null;
     const callInstructionTemplate = outreachConfig.call_instruction_template || null;
 
-    const [salesCtxResult, consultantResult] = await Promise.all([
+    const [salesCtxResult, consultantResult, waConfigResult2] = await Promise.all([
       db.execute(sql`
         SELECT services_offered, target_audience, value_proposition, sales_approach,
                competitive_advantages, ideal_client_profile, additional_context
         FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
       `),
       db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT business_name FROM consultant_whatsapp_config WHERE consultant_id = ${consultantId} AND is_active = true LIMIT 1`),
     ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
+    const consultantBusinessName = (waConfigResult2.rows[0] as any)?.business_name || null;
 
     let resolvedVoiceTemplateName: string | null = null;
     if (voiceTemplateId) {
@@ -1454,7 +1403,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     for (let i = 0; i < validChannels.length; i++) {
       const channel = validChannels[i];
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates, consultantBusinessName);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, 'approval', i);
 
         if (channel === 'voice' && voiceTargetPhone && result.taskId) {
@@ -1797,17 +1746,19 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
 
     const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2 };
 
-    const [salesCtxResult, consultantResult] = await Promise.all([
+    const [salesCtxResult, consultantResult, waConfigResult3] = await Promise.all([
       db.execute(sql`
         SELECT services_offered, target_audience, value_proposition, sales_approach,
                competitive_advantages, ideal_client_profile, additional_context
         FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
       `),
       db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
+      db.execute(sql`SELECT business_name FROM consultant_whatsapp_config WHERE consultant_id = ${consultantId} AND is_active = true LIMIT 1`),
     ]);
     const salesCtx = (salesCtxResult.rows[0] as any) || {};
     const cRow = consultantResult.rows[0] as any;
     const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
+    const consultantBusinessName = (waConfigResult3.rows[0] as any)?.business_name || null;
 
     const results: any[] = [];
     let voiceCount = 0, waCount = 0, emailCount = 0;
@@ -1841,7 +1792,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
       }
 
       try {
-        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints, outreachConfig, loadedWaTemplates2);
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, planLead.talkingPoints, outreachConfig, loadedWaTemplates2, consultantBusinessName);
         const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, outreachMode as 'autonomous' | 'approval', i);
         results.push(result);
         if (channel === 'voice') voiceCount++;
