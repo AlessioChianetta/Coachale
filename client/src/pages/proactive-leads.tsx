@@ -94,6 +94,8 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import it from "date-fns/locale/it";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useCampaigns } from "@/hooks/useCampaigns";
 
 interface LeadInfo {
@@ -1798,160 +1800,173 @@ export default function ProactiveLeadsPage() {
 
                 {/* Hunter Lead Detail Dialog */}
                 <Dialog open={!!selectedHunterLead} onOpenChange={(open) => !open && setSelectedHunterLead(null)}>
-                  <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-teal-100 to-cyan-100 dark:from-teal-900/40 dark:to-cyan-900/40">
-                          <Building2 className="h-6 w-6 text-teal-600 dark:text-teal-400" />
+                  <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
+                    <DialogDescription className="sr-only">Dettaglio lead Hunter</DialogDescription>
+                    <div className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 p-5 border-b border-gray-200 dark:border-gray-800 rounded-t-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-md">
+                            <Building2 className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{selectedHunterLead?.lead_name}</h2>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {selectedHunterLead?.sector && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{selectedHunterLead.sector}</span>
+                              )}
+                              {selectedHunterLead?.sector && selectedHunterLead?.ai_score && <span className="text-gray-300 dark:text-gray-600">·</span>}
+                              {selectedHunterLead?.ai_score && (
+                                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                  <Star className="h-3 w-3 fill-current" />
+                                  {selectedHunterLead.ai_score}/10
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-lg">{selectedHunterLead?.lead_name}</span>
-                          <p className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                            {selectedHunterLead?.actions?.length || 0} canali attivi
-                          </p>
+                        <div className="flex items-center gap-1.5">
+                          {selectedHunterLead?.actions?.some((a: any) => a.channel === "voice") && (
+                            <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30">
+                              <Phone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                          )}
+                          {selectedHunterLead?.actions?.some((a: any) => a.channel === "whatsapp") && (
+                            <div className="p-1.5 rounded-md bg-green-100 dark:bg-green-900/30">
+                              <MessageCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                            </div>
+                          )}
+                          {selectedHunterLead?.actions?.some((a: any) => a.channel === "email") && (
+                            <div className="p-1.5 rounded-md bg-orange-100 dark:bg-orange-900/30">
+                              <Mail className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                            </div>
+                          )}
                         </div>
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="overflow-y-auto flex-1 space-y-5 pr-1">
+                      </div>
+                      {(selectedHunterLead?.lead_phone || selectedHunterLead?.lead_email || selectedHunterLead?.website) && (
+                        <div className="flex items-center gap-3 mt-3 flex-wrap">
+                          {selectedHunterLead?.lead_phone && (
+                            <a href={`tel:${selectedHunterLead.lead_phone}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:border-teal-300 dark:hover:border-teal-600 transition-colors">
+                              <Phone className="h-3 w-3 text-gray-400" />
+                              <span className="font-mono">{selectedHunterLead.lead_phone}</span>
+                            </a>
+                          )}
+                          {selectedHunterLead?.lead_email && (
+                            <a href={`mailto:${selectedHunterLead.lead_email}`} className="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:border-teal-300 dark:hover:border-teal-600 transition-colors">
+                              <Mail className="h-3 w-3 text-gray-400" />
+                              {selectedHunterLead.lead_email}
+                            </a>
+                          )}
+                          {selectedHunterLead?.website && (
+                            <a href={selectedHunterLead.website.startsWith("http") ? selectedHunterLead.website : `https://${selectedHunterLead.website}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors" onClick={(e) => e.stopPropagation()}>
+                              <Globe className="h-3 w-3" />
+                              {selectedHunterLead.website.replace(/^https?:\/\//, '').replace(/\/$/, '').substring(0, 30)}
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                          {selectedHunterLead?.address && (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700">
+                              <MapPin className="h-3 w-3" />
+                              {selectedHunterLead.address}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="overflow-y-auto flex-1 p-5 space-y-4">
                       {selectedHunterLead && (
                         <>
-                          {/* Lead Info Grid */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {selectedHunterLead.lead_phone && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Telefono</p>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white font-mono">{selectedHunterLead.lead_phone}</p>
+                          {(selectedHunterLead.ai_reason || selectedHunterLead.sales_summary) && (
+                            <div className="space-y-3">
+                              {selectedHunterLead.ai_reason && (
+                                <div className="rounded-lg border border-purple-200 dark:border-purple-800/60 overflow-hidden">
+                                  <div className="px-3 py-1.5 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-200 dark:border-purple-800/60">
+                                    <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                                      <Sparkles className="h-3 w-3" />
+                                      Motivazione AI
+                                    </p>
+                                  </div>
+                                  <div className="px-3 py-2.5 bg-white dark:bg-gray-900/50 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-purple-700 dark:prose-strong:text-purple-300">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedHunterLead.ai_reason}</ReactMarkdown>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {selectedHunterLead.lead_email && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Email</p>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{selectedHunterLead.lead_email}</p>
+                              )}
+                              {selectedHunterLead.sales_summary && (
+                                <div className="rounded-lg border border-teal-200 dark:border-teal-800/60 overflow-hidden">
+                                  <div className="px-3 py-1.5 bg-teal-50 dark:bg-teal-900/30 border-b border-teal-200 dark:border-teal-800/60">
+                                    <p className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
+                                      <Target className="h-3 w-3" />
+                                      Riepilogo Commerciale
+                                    </p>
+                                  </div>
+                                  <div className="px-3 py-2.5 bg-white dark:bg-gray-900/50 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-teal-700 dark:prose-strong:text-teal-300">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedHunterLead.sales_summary}</ReactMarkdown>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                            {selectedHunterLead.sector && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                <Building2 className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Settore</p>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterLead.sector}</p>
-                                </div>
-                              </div>
-                            )}
-                            {selectedHunterLead.website && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                <Globe className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Sito web</p>
-                                  <a href={selectedHunterLead.website.startsWith("http") ? selectedHunterLead.website : `https://${selectedHunterLead.website}`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                    {selectedHunterLead.website.replace(/^https?:\/\//, '').substring(0, 30)}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </div>
-                              </div>
-                            )}
-                            {selectedHunterLead.address && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                                <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Indirizzo</p>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedHunterLead.address}</p>
-                                </div>
-                              </div>
-                            )}
-                            {selectedHunterLead.ai_score && (
-                              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20">
-                                <Star className="h-4 w-4 text-amber-500 fill-amber-500 flex-shrink-0" />
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Punteggio AI</p>
-                                  <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{selectedHunterLead.ai_score}/10</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* AI Reason */}
-                          {selectedHunterLead.ai_reason && (
-                            <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                              <p className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                                <Sparkles className="h-3 w-3" />
-                                Motivazione AI
-                              </p>
-                              <p className="text-sm text-purple-800 dark:text-purple-200">{selectedHunterLead.ai_reason}</p>
+                              )}
                             </div>
                           )}
 
-                          {/* Sales Summary */}
-                          {selectedHunterLead.sales_summary && (
-                            <div className="p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
-                              <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                                <Target className="h-3 w-3" />
-                                Riepilogo Commerciale
-                              </p>
-                              <p className="text-sm text-teal-800 dark:text-teal-200">{selectedHunterLead.sales_summary}</p>
-                            </div>
-                          )}
-
-                          {/* Channel Actions */}
-                          <div className="space-y-3">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                              <Send className="h-4 w-4 text-teal-500" />
-                              Azioni per Canale
-                            </h4>
+                          <div className="space-y-2.5">
+                            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                              <Send className="h-3 w-3" />
+                              Azioni per Canale ({selectedHunterLead.actions.length})
+                            </p>
                             {selectedHunterLead.actions.map((action: any) => {
                               const chIcon = action.channel === "voice" ? Phone : action.channel === "whatsapp" ? MessageCircle : Mail;
                               const chLabel = action.channel === "voice" ? "Chiamata" : action.channel === "whatsapp" ? "WhatsApp" : "Email";
-                              const chBorder = action.channel === "voice" ? "border-l-blue-500" : action.channel === "whatsapp" ? "border-l-green-500" : "border-l-orange-500";
-                              const chBg = action.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30" : action.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30" : "text-orange-600 bg-orange-100 dark:bg-orange-900/30";
+                              const chAccent = action.channel === "voice" ? "blue" : action.channel === "whatsapp" ? "green" : "orange";
+                              const chBorderColor = action.channel === "voice" ? "border-l-blue-500" : action.channel === "whatsapp" ? "border-l-green-500" : "border-l-orange-500";
+                              const chIconBg = action.channel === "voice" ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400" : action.channel === "whatsapp" ? "text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400" : "text-orange-600 bg-orange-50 dark:bg-orange-900/30 dark:text-orange-400";
                               const stColor = action.status === "sent" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                 : action.status === "scheduled" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                                 : action.status === "waiting_approval" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                                 : action.status === "failed" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                 : "bg-gray-100 text-gray-700";
-                              const stLabel = action.status === "scheduled" ? "Schedulato" : action.status === "sent" ? "Inviato" : action.status === "waiting_approval" ? "Da Approvare" : action.status === "failed" ? "Fallito" : action.status;
+                              const stLabel = action.status === "scheduled" ? "Schedulato" : action.status === "sent" ? "Inviato" : action.status === "waiting_approval" ? "Da Approvare" : action.status === "failed" ? "Fallito" : action.status === "completed" ? "Completato" : action.status;
                               const ChIcon = chIcon;
 
                               return (
-                                <div key={action.id} className={`border-l-4 ${chBorder} rounded-lg bg-white dark:bg-gray-900 shadow-sm overflow-hidden`}>
-                                  <div className="p-3">
-                                    <div className="flex items-center justify-between mb-2">
+                                <div key={action.id} className={`border-l-[3px] ${chBorderColor} rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 overflow-hidden`}>
+                                  <div className="px-3.5 py-2.5">
+                                    <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
-                                        <div className={`p-1.5 rounded-md ${chBg}`}>
+                                        <div className={`p-1.5 rounded-md ${chIconBg}`}>
                                           <ChIcon className="h-3.5 w-3.5" />
                                         </div>
-                                        <span className="font-medium text-sm text-gray-900 dark:text-white">{chLabel}</span>
-                                        <Badge className={`text-[10px] px-1.5 py-0 ${stColor}`}>{stLabel}</Badge>
+                                        <span className="font-semibold text-sm text-gray-900 dark:text-white">{chLabel}</span>
+                                        <Badge className={`text-[10px] px-1.5 py-0 ${stColor} border-0`}>{stLabel}</Badge>
                                       </div>
-                                      <div className="text-right text-[11px] text-gray-400">
+                                      <div className="flex items-center gap-2 text-[11px] text-gray-400">
                                         {action.scheduled_at && (
-                                          <p className="flex items-center gap-1 justify-end text-teal-600 dark:text-teal-400 font-medium">
+                                          <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 font-medium">
                                             <Calendar className="h-3 w-3" />
-                                            {format(new Date(action.scheduled_at), "dd MMM yyyy, HH:mm", { locale: it })}
-                                          </p>
+                                            {format(new Date(action.scheduled_at), "dd MMM, HH:mm", { locale: it })}
+                                          </span>
                                         )}
                                       </div>
                                     </div>
                                     {action.message_preview && (
-                                      <div className="mt-2 p-2.5 rounded-md bg-gray-50 dark:bg-gray-800/50 max-h-32 overflow-y-auto">
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{action.message_preview}</p>
+                                      <div className="mt-2.5 rounded-md bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 max-h-40 overflow-y-auto">
+                                        <div className="px-3 py-2 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-2 prose-headings:mb-1 prose-headings:text-sm prose-ul:my-1 prose-li:my-0.5 text-gray-700 dark:text-gray-300">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{action.message_preview}</ReactMarkdown>
+                                        </div>
                                       </div>
                                     )}
                                     {action.result_note && (
-                                      <p className="mt-2 text-[11px] text-gray-500 italic flex items-center gap-1">
-                                        <FileText className="h-3 w-3" />
-                                        {action.result_note}
-                                      </p>
+                                      <div className="mt-2 flex items-start gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                        <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                        <span className="italic">{action.result_note}</span>
+                                      </div>
                                     )}
-                                    <p className="mt-2 text-[10px] text-gray-400">
-                                      Creato: {action.created_at ? format(new Date(action.created_at), "dd MMM yyyy, HH:mm", { locale: it }) : "—"}
-                                      {action.executed_at && ` · Eseguito: ${format(new Date(action.executed_at), "dd MMM yyyy, HH:mm", { locale: it })}`}
-                                    </p>
+                                    <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-400">
+                                      <span>Creato {action.created_at ? format(new Date(action.created_at), "dd MMM yyyy, HH:mm", { locale: it }) : "—"}</span>
+                                      {action.executed_at && (
+                                        <>
+                                          <span className="text-gray-300 dark:text-gray-600">·</span>
+                                          <span>Eseguito {format(new Date(action.executed_at), "dd MMM yyyy, HH:mm", { locale: it })}</span>
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );
