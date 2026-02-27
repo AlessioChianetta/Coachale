@@ -1151,11 +1151,13 @@ async function scheduleIndividualOutreach(
   mode: 'autonomous' | 'approval',
   slotIndex: number
 ): Promise<{ taskId: string; channel: string; leadName: string; status: string; scheduledAt: string; contentPreview: string }> {
+  const leadName = lead.businessName || lead.business_name || 'Lead';
+  const taskStatus = mode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+  console.log(`[HUNTER] Step 1/6: Finding slot for ${channel} → "${leadName}" (mode=${mode})`);
   const scheduledAt = await findNextAvailableSlot(consultantId, channel, slotIndex, config.timezone);
   const scheduledAtIso = scheduledAt.toISOString();
   const taskId = `hunt_${channel.substring(0, 2)}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const leadName = lead.businessName || lead.business_name || 'Lead';
-  const taskStatus = mode === 'autonomous' ? 'scheduled' : 'waiting_approval';
+  console.log(`[HUNTER] Step 1/6: Slot found → ${scheduledAtIso} (taskId=${taskId}, status=${taskStatus})`);
   let contentPreview = '';
 
   if (channel === 'voice') {
@@ -1178,6 +1180,7 @@ async function scheduleIndividualOutreach(
         2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, NOW(), NOW()
       )
     `);
+    console.log(`[HUNTER] Step 2/6: Created scheduled_voice_calls (id=${scheduledCallId}, status=${voiceStatus}, phone=${lead.phone || 'N/A'})`);
 
     const additionalContext = JSON.stringify({
       lead_id: lead.id || lead.leadId,
@@ -1209,6 +1212,7 @@ async function scheduleIndividualOutreach(
         3, 0, 5, ${config.voiceTemplateId || null}, NOW(), NOW()
       )
     `);
+    console.log(`[HUNTER] Step 3/6: Created ai_scheduled_task (id=${taskId}, type=single_call, status=${taskStatus})`);
   } else if (channel === 'whatsapp') {
     const isTemplateMode = content.useWaTemplate === true;
     const waInstruction = isTemplateMode ? (content.whatsappContext || '') : (content.whatsappMessage || '');
@@ -1248,6 +1252,7 @@ async function scheduleIndividualOutreach(
         1, 0, 5, NOW(), NOW()
       )
     `);
+    console.log(`[HUNTER] Step 3/6: Created ai_scheduled_task (id=${taskId}, type=single_whatsapp, status=${taskStatus})`);
   } else if (channel === 'email') {
     const emailSubject = content.emailSubject || `Proposta per ${leadName}`;
     const emailBody = content.emailBody || '';
@@ -1313,10 +1318,11 @@ async function scheduleIndividualOutreach(
         ${scheduledAtIso}, ${config.timezone},
         ${emailTaskStatus},
         2, 'prospecting', 'hunter', 'email',
-        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId })}::text,
+        ${JSON.stringify({ lead_id: lead.id || lead.leadId, business_name: leadName, ai_score: lead.score, sector: lead.category, source: 'crm_analysis', email_account_id: config.emailAccountId, lead_email: lead.email || '' })}::text,
         1, 0, 5, NOW(), NOW()
       )
     `);
+    console.log(`[HUNTER] Step 3/6: Created ai_scheduled_task (id=${taskId}, type=ai_task/email, status=${emailTaskStatus}, emailSent=${emailSent})`);
   }
 
   const leadId = lead.id || lead.leadId;
@@ -1332,6 +1338,7 @@ async function scheduleIndividualOutreach(
         END
     WHERE id = ${leadId}
   `);
+  console.log(`[HUNTER] Step 4/6: Updated lead_scraper_results → in_outreach (leadId=${leadId})`);
 
   const activityTypeMap: Record<string, string> = {
     voice: 'chiamata',
@@ -1365,6 +1372,8 @@ async function scheduleIndividualOutreach(
       ${JSON.stringify({ taskId, channel, score: lead.score, source: 'crm_analysis', scheduledAt: scheduledAtIso })}::jsonb
     )
   `);
+  console.log(`[HUNTER] Step 5/6: Logged activity in lead_scraper_activities`);
+  console.log(`[HUNTER] Step 6/6: Done — ${channel} for "${leadName}" → ${taskStatus} at ${scheduledAtIso}`);
 
   return { taskId, channel, leadName, status: taskStatus, scheduledAt: scheduledAtIso, contentPreview };
 }
@@ -4251,10 +4260,129 @@ router.patch("/tasks/:id/approve", authenticateToken, requireAnyRole(["consultan
       WHERE id = ${id}
         AND consultant_id = ${consultantId}
         AND status = 'waiting_approval'
+      RETURNING id, task_type, ai_role, preferred_channel, contact_name, contact_phone, ai_instruction, additional_context, scheduled_at
     `);
 
     if ((result.rowCount ?? 0) === 0) {
       return res.status(400).json({ error: "Task non trovato o non in attesa di approvazione" });
+    }
+
+    const approvedTask = result.rows[0] as any;
+
+    if (approvedTask.ai_role === 'hunter') {
+      console.log(`[HUNTER-APPROVE] Step 1/3: Task ${id} approved (type=${approvedTask.task_type}, channel=${approvedTask.preferred_channel}, contact=${approvedTask.contact_name})`);
+
+      if (approvedTask.task_type === 'single_call') {
+        const voiceResult = await db.execute(sql`
+          UPDATE scheduled_voice_calls
+          SET status = 'scheduled', updated_at = NOW()
+          WHERE source_task_id = ${id} AND status = 'pending'
+          RETURNING id
+        `);
+        const activatedCount = voiceResult.rowCount ?? 0;
+        console.log(`[HUNTER-APPROVE] Step 2/3: Voice call activated (${activatedCount} entries updated, source_task_id=${id})`);
+        console.log(`[HUNTER-APPROVE] Step 3/3: Done — voice call for "${approvedTask.contact_name}" now visible in /consultant/voice-calls`);
+      }
+
+      if (approvedTask.task_type === 'single_whatsapp') {
+        await db.execute(sql`
+          UPDATE ai_scheduled_tasks
+          SET scheduled_at = NOW(), updated_at = NOW()
+          WHERE id = ${id}
+        `);
+        console.log(`[HUNTER-APPROVE] Step 2/3: WhatsApp scheduled_at set to NOW for immediate cron pickup (task=${id})`);
+        console.log(`[HUNTER-APPROVE] Step 3/3: Done — WA message for "${approvedTask.contact_name}" will be sent on next scheduler cycle (~1min)`);
+      }
+
+      if (approvedTask.preferred_channel === 'email' && approvedTask.ai_role === 'hunter') {
+        console.log(`[HUNTER-APPROVE] Step 2/3: Attempting immediate email send for "${approvedTask.contact_name}"...`);
+        let additionalContextData: Record<string, any> = {};
+        try { additionalContextData = JSON.parse(approvedTask.additional_context || '{}'); } catch {}
+        const emailAccountId = additionalContextData.email_account_id;
+
+        if (emailAccountId) {
+          try {
+            const smtpResult = await db.execute(sql`
+              SELECT id, smtp_host, smtp_port, smtp_user, smtp_password, email_address, display_name
+              FROM email_accounts
+              WHERE id = ${emailAccountId} AND consultant_id = ${consultantId} AND smtp_host IS NOT NULL
+              LIMIT 1
+            `);
+            const smtpConfig = smtpResult.rows[0] as any;
+            const leadEmail = additionalContextData.lead_email || '';
+
+            if (smtpConfig && leadEmail) {
+              const instructionText = approvedTask.ai_instruction || '';
+              const subjectMatch = instructionText.match(/^Oggetto:\s*(.+?)(?:\n|$)/);
+              const emailSubject = subjectMatch ? subjectMatch[1].trim() : `Proposta per ${approvedTask.contact_name}`;
+              const emailBody = subjectMatch ? instructionText.replace(/^Oggetto:\s*.+?\n\n?/, '').trim() : instructionText;
+
+              const nodemailer = await import('nodemailer');
+              const transporter = nodemailer.createTransport({
+                host: smtpConfig.smtp_host,
+                port: smtpConfig.smtp_port || 587,
+                secure: (smtpConfig.smtp_port || 587) === 465,
+                auth: { user: smtpConfig.smtp_user, pass: smtpConfig.smtp_password },
+                tls: { rejectUnauthorized: false },
+              });
+
+              const htmlBody = emailBody.replace(/\n/g, '<br>');
+              const fromField = smtpConfig.display_name ? `"${smtpConfig.display_name}" <${smtpConfig.email_address}>` : smtpConfig.email_address;
+              const sendResult = await transporter.sendMail({ from: fromField, to: leadEmail, subject: emailSubject, html: htmlBody });
+
+              const hubEmailId = `hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+              await db.execute(sql`
+                INSERT INTO hub_emails (
+                  id, account_id, consultant_id, message_id, subject, from_name, from_email,
+                  to_recipients, body_html, body_text, snippet, direction, folder,
+                  is_read, processing_status, sent_at, created_at, updated_at
+                ) VALUES (
+                  ${hubEmailId}, ${emailAccountId}, ${consultantId},
+                  ${sendResult.messageId || hubEmailId},
+                  ${emailSubject}, ${smtpConfig.display_name || ''}, ${smtpConfig.email_address},
+                  ${JSON.stringify([{ email: leadEmail, name: approvedTask.contact_name }])}::jsonb,
+                  ${htmlBody}, ${emailBody}, ${emailBody.substring(0, 200)},
+                  'outbound', 'sent', true, 'sent', NOW(), NOW(), NOW()
+                )
+                ON CONFLICT (message_id) DO NOTHING
+              `);
+
+              await db.execute(sql`
+                UPDATE ai_scheduled_tasks
+                SET status = 'completed', completed_at = NOW(), updated_at = NOW(),
+                    result_summary = ${'Email inviata a ' + leadEmail}
+                WHERE id = ${id}
+              `);
+
+              console.log(`[HUNTER-APPROVE] Step 3/3: Done — Email sent to ${leadEmail} (subject="${emailSubject}"), task marked completed`);
+            } else {
+              console.log(`[HUNTER-APPROVE] Step 3/3: Cannot send email — missing SMTP config or lead email (smtpConfig=${!!smtpConfig}, leadEmail="${leadEmail}")`);
+              await db.execute(sql`
+                UPDATE ai_scheduled_tasks
+                SET status = 'failed', updated_at = NOW(),
+                    result_summary = ${'Impossibile inviare: SMTP o email destinatario mancante'}
+                WHERE id = ${id}
+              `);
+            }
+          } catch (emailErr: any) {
+            console.error(`[HUNTER-APPROVE] Step 3/3: Email send FAILED: ${emailErr.message}`);
+            await db.execute(sql`
+              UPDATE ai_scheduled_tasks
+              SET status = 'failed', updated_at = NOW(),
+                  result_summary = ${'Invio email fallito: ' + emailErr.message.substring(0, 200)}
+              WHERE id = ${id}
+            `).catch(() => {});
+          }
+        } else {
+          console.log(`[HUNTER-APPROVE] Step 3/3: No email_account_id in additional_context, skipping immediate send`);
+          await db.execute(sql`
+            UPDATE ai_scheduled_tasks
+            SET status = 'failed', updated_at = NOW(),
+                result_summary = 'Nessun account email configurato'
+            WHERE id = ${id}
+          `);
+        }
+      }
     }
 
     return res.json({ success: true });
