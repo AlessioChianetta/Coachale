@@ -611,7 +611,7 @@ async function loadSelectedWaTemplates(consultantId: string, templateSids: strin
       FROM whatsapp_custom_templates t
       INNER JOIN whatsapp_template_versions v ON v.template_id = t.id AND v.is_active = true
       WHERE t.consultant_id = ${consultantId}
-        AND v.twilio_content_sid = ANY(${templateSids}::text[])
+        AND v.twilio_content_sid IN ${sql`(${sql.join(templateSids.map(s => sql`${s}`), sql`, `)})`}
         AND v.twilio_content_sid IS NOT NULL AND v.twilio_content_sid != ''
     `);
 
@@ -870,13 +870,13 @@ async function scheduleIndividualOutreach(
       INSERT INTO scheduled_voice_calls (
         id, consultant_id, target_phone, scheduled_at, status, ai_mode,
         custom_prompt, call_instruction, instruction_type, attempts, max_attempts,
-        priority, source_task_id, attempts_log, use_default_template, voice_template_id, created_at, updated_at
+        priority, source_task_id, attempts_log, use_default_template, created_at, updated_at
       ) VALUES (
         ${scheduledCallId}, ${consultantId}, ${lead.phone || ''},
         ${scheduledAtIso}, ${voiceStatus}, 'outreach',
         ${null}, ${callContext},
         'task', 0, 3,
-        2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, ${config.voiceTemplateId}, NOW(), NOW()
+        2, ${taskId}, '[]'::jsonb, ${!config.voiceTemplateId}, NOW(), NOW()
       )
     `);
 
@@ -900,14 +900,14 @@ async function scheduleIndividualOutreach(
         id, consultant_id, contact_phone, contact_name, task_type, ai_instruction,
         scheduled_at, timezone, status, priority, task_category, ai_role, preferred_channel,
         voice_call_id, additional_context, max_attempts, current_attempt, retry_delay_minutes,
-        created_at, updated_at
+        voice_template_id, created_at, updated_at
       ) VALUES (
         ${taskId}, ${consultantId}, ${lead.phone || ''}, ${leadName},
         'single_call', ${callContext},
         ${scheduledAtIso}, ${config.timezone}, ${taskStatus}, 2, 'prospecting', 'hunter', 'voice',
         ${scheduledCallId},
         ${additionalContext}::text,
-        3, 0, 5, NOW(), NOW()
+        3, 0, 5, ${config.voiceTemplateId || null}, NOW(), NOW()
       )
     `);
   } else if (channel === 'whatsapp') {
@@ -1238,6 +1238,120 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
   } catch (error: any) {
     console.error("[HUNTER-CRM] Error analyzing CRM:", error);
     return res.status(500).json({ error: "Failed to analyze CRM" });
+  }
+});
+
+router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: Request, res: Response) => {
+  try {
+    const consultantId = (req as AuthRequest).user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Non autenticato" });
+
+    const { leadId, channels, voiceTargetPhone } = req.body;
+    if (!leadId || !channels || !Array.isArray(channels) || channels.length === 0) {
+      return res.status(400).json({ error: "leadId e channels[] sono obbligatori" });
+    }
+
+    const validChannels = channels.filter((c: string) => ['voice', 'whatsapp', 'email'].includes(c));
+    if (validChannels.length === 0) {
+      return res.status(400).json({ error: "Nessun canale valido (voice, whatsapp, email)" });
+    }
+
+    const leadResult = await db.execute(sql`
+      SELECT id, business_name, category, phone, email, website, address,
+             ai_compatibility_score, ai_sales_summary, rating, reviews_count
+      FROM lead_scraper_results WHERE id = ${leadId} LIMIT 1
+    `);
+    if (leadResult.rows.length === 0) {
+      return res.status(404).json({ error: "Lead non trovato" });
+    }
+    const dbLead = leadResult.rows[0] as any;
+    const lead = {
+      id: dbLead.id, leadId: dbLead.id,
+      businessName: dbLead.business_name, phone: dbLead.phone,
+      email: dbLead.email, website: dbLead.website,
+      address: dbLead.address, category: dbLead.category,
+      score: dbLead.ai_compatibility_score,
+      salesSummary: dbLead.ai_sales_summary,
+      rating: dbLead.rating, reviewsCount: dbLead.reviews_count,
+    };
+
+    const settingsResult = await db.execute(sql`
+      SELECT outreach_config, whatsapp_template_ids FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+    `);
+    const settings = settingsResult.rows[0] as any;
+    const outreachConfig = settings?.outreach_config || {};
+    const waTemplateSidsFromCol: string[] = settings?.whatsapp_template_ids || [];
+
+    const voiceTemplateId = outreachConfig.voice_template_id || null;
+    const whatsappConfigId = outreachConfig.whatsapp_config_id || null;
+    const emailAccountId = outreachConfig.email_account_id || null;
+    const callInstructionTemplate = outreachConfig.call_instruction_template || null;
+
+    const [salesCtxResult, consultantResult] = await Promise.all([
+      db.execute(sql`
+        SELECT services_offered, target_audience, value_proposition, sales_approach,
+               competitive_advantages, ideal_client_profile, additional_context
+        FROM lead_scraper_sales_context WHERE consultant_id = ${consultantId} LIMIT 1
+      `),
+      db.execute(sql`SELECT first_name, last_name FROM users WHERE id = ${consultantId} LIMIT 1`),
+    ]);
+    const salesCtx = (salesCtxResult.rows[0] as any) || {};
+    const cRow = consultantResult.rows[0] as any;
+    const consultantName = cRow ? [cRow.first_name, cRow.last_name].filter(Boolean).join(' ') || 'Consulente' : 'Consulente';
+
+    let resolvedVoiceTemplateName: string | null = null;
+    if (voiceTemplateId) {
+      try {
+        const { getTemplateById } = await import("../voice/voice-templates");
+        const tmpl = getTemplateById(voiceTemplateId);
+        if (tmpl) resolvedVoiceTemplateName = tmpl.name;
+      } catch {}
+    }
+
+    const allWaTemplateSids: string[] = [
+      ...(outreachConfig.whatsapp_template_ids || []),
+      ...waTemplateSidsFromCol,
+    ].filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
+    const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, allWaTemplateSids);
+
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
+
+    const results: any[] = [];
+    for (let i = 0; i < validChannels.length; i++) {
+      const channel = validChannels[i];
+      try {
+        const content = await generateOutreachContent(consultantId, lead, channel, salesCtx, consultantName, undefined, outreachConfig, loadedWaTemplates);
+        const result = await scheduleIndividualOutreach(consultantId, lead, channel, content, scheduleConfig, 'approval', i);
+
+        if (channel === 'voice' && voiceTargetPhone && result.taskId) {
+          const voiceCallIdResult = await db.execute(sql`
+            SELECT voice_call_id FROM ai_scheduled_tasks WHERE id = ${result.taskId} LIMIT 1
+          `);
+          const voiceCallId = (voiceCallIdResult.rows[0] as any)?.voice_call_id;
+          if (voiceCallId) {
+            await db.execute(sql`
+              UPDATE scheduled_voice_calls SET target_phone = ${voiceTargetPhone} WHERE id = ${voiceCallId}
+            `);
+          }
+        }
+
+        results.push(result);
+        console.log(`[HUNTER-SINGLE] ✓ ${result.leadName} → ${channel} (${result.status})`);
+      } catch (err: any) {
+        console.error(`[HUNTER-SINGLE] ✗ Failed ${lead.businessName} → ${channel}: ${err.message}`);
+        results.push({ taskId: null, channel, leadName: lead.businessName, status: 'error', scheduledAt: null, contentPreview: err.message });
+      }
+
+      if (i < validChannels.length - 1) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    console.log(`[HUNTER-SINGLE] Completed: ${results.filter(r => r.status !== 'error').length}/${validChannels.length} tasks created for ${lead.businessName}`);
+    return res.json({ success: true, results, leadName: lead.businessName });
+  } catch (error: any) {
+    console.error("[HUNTER-SINGLE] Error:", error);
+    return res.status(500).json({ error: "Errore nel processamento del lead" });
   }
 });
 

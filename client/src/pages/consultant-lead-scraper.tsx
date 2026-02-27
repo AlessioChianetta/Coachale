@@ -92,6 +92,7 @@ import {
   PenLine,
   AlertTriangle,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { getAuthHeaders } from "@/lib/auth";
@@ -270,6 +271,14 @@ export default function ConsultantLeadScraper() {
   const [outreachStatusFilter, setOutreachStatusFilter] = useState<"tutti" | "waiting_approval" | "scheduled" | "completed" | "failed">("tutti");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [batchApproving, setBatchApproving] = useState(false);
+
+  const [hunterSingleLeadDialog, setHunterSingleLeadDialog] = useState<{
+    open: boolean;
+    lead: SearchResult | null;
+    channels: { voice: boolean; whatsapp: boolean; email: boolean };
+    voiceTargetPhone: string;
+    loading: boolean;
+  }>({ open: false, lead: null, channels: { voice: true, whatsapp: true, email: true }, voiceTargetPhone: '', loading: false });
 
   const { data: searches = [], isLoading: searchesLoading } = useQuery<SearchRecord[]>({
     queryKey: ["/api/lead-scraper/searches"],
@@ -667,6 +676,59 @@ export default function ConsultantLeadScraper() {
       toast({ title: "Errore", description: e.message || "Errore di connessione", variant: "destructive" });
     } finally {
       setAnalyzingCrm(false);
+    }
+  };
+
+  const openHunterSingleLead = (lead: SearchResult) => {
+    setHunterSingleLeadDialog({
+      open: true,
+      lead,
+      channels: {
+        voice: !!lead.phone,
+        whatsapp: !!lead.phone,
+        email: !!lead.email,
+      },
+      voiceTargetPhone: lead.phone || '',
+      loading: false,
+    });
+  };
+
+  const handleHunterSingleLead = async () => {
+    const d = hunterSingleLeadDialog;
+    if (!d.lead) return;
+    const selectedChannels: string[] = [];
+    if (d.channels.voice) selectedChannels.push('voice');
+    if (d.channels.whatsapp) selectedChannels.push('whatsapp');
+    if (d.channels.email) selectedChannels.push('email');
+    if (selectedChannels.length === 0) {
+      toast({ title: "Seleziona almeno un canale", variant: "destructive" });
+      return;
+    }
+    setHunterSingleLeadDialog(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch("/api/ai-autonomy/hunter-single-lead", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: d.lead.id,
+          channels: selectedChannels,
+          voiceTargetPhone: d.channels.voice ? (d.voiceTargetPhone || d.lead.phone || '') : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const created = data.results?.filter((r: any) => r.status !== 'error').length || 0;
+        const channelNames = data.results?.filter((r: any) => r.status !== 'error').map((r: any) => r.channel === 'voice' ? 'Chiamata' : r.channel === 'whatsapp' ? 'WhatsApp' : 'Email').join(', ');
+        toast({ title: `${created} task creati per ${data.leadName}`, description: `Canali: ${channelNames}. Vai alla Coda Outreach per approvare.` });
+        refetchPipeline();
+        setHunterSingleLeadDialog(prev => ({ ...prev, open: false }));
+      } else {
+        toast({ title: "Errore", description: data.error || "Errore nella creazione dei task", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Errore", description: e.message || "Errore di connessione", variant: "destructive" });
+    } finally {
+      setHunterSingleLeadDialog(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -1622,6 +1684,7 @@ export default function ConsultantLeadScraper() {
                             <TableHead className="text-center font-semibold">Stato</TableHead>
                             <TableHead className="font-semibold">Prossima azione</TableHead>
                             <TableHead className="text-right font-semibold">Valore</TableHead>
+                            <TableHead className="text-right font-semibold w-[60px]"></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1673,6 +1736,17 @@ export default function ConsultantLeadScraper() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {r.leadValue ? <span className="font-semibold text-emerald-600 dark:text-emerald-400">{r.leadValue.toLocaleString("it-IT")} EUR</span> : "\u2014"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                                    title="Analizza con Hunter"
+                                    onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
+                                  >
+                                    <Crosshair className="h-3.5 w-3.5" />
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             );
@@ -3173,6 +3247,124 @@ export default function ConsultantLeadScraper() {
           </>
         )}
       </AnimatePresence>
+
+      <Dialog open={hunterSingleLeadDialog.open} onOpenChange={(open) => setHunterSingleLeadDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crosshair className="h-5 w-5 text-teal-600" />
+              Analizza con Hunter
+            </DialogTitle>
+          </DialogHeader>
+          {hunterSingleLeadDialog.lead && (() => {
+            const lead = hunterSingleLeadDialog.lead;
+            const ch = hunterSingleLeadDialog.channels;
+            const selectedCount = [ch.voice, ch.whatsapp, ch.email].filter(Boolean).length;
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{lead.businessName}</p>
+                    {lead.category && <p className="text-xs text-muted-foreground">{lead.category}</p>}
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      {lead.phone && <span className="flex items-center gap-0.5"><Phone className="h-3 w-3" />{lead.phone}</span>}
+                      {lead.email && <span className="flex items-center gap-0.5"><Mail className="h-3 w-3" />{lead.email}</span>}
+                    </div>
+                  </div>
+                  {lead.aiCompatibilityScore != null && (
+                    <div className="text-center shrink-0">
+                      <div className={cn("text-lg font-bold", lead.aiCompatibilityScore >= 80 ? "text-emerald-600" : lead.aiCompatibilityScore >= 60 ? "text-amber-600" : "text-gray-500")}>{lead.aiCompatibilityScore}</div>
+                      <div className="text-[9px] text-muted-foreground">Score</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Canali di outreach</p>
+                  <label className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <Checkbox
+                      checked={ch.voice}
+                      onCheckedChange={(v) => setHunterSingleLeadDialog(prev => ({ ...prev, channels: { ...prev.channels, voice: !!v } }))}
+                    />
+                    <PhoneCall className="h-4 w-4 text-green-600" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Chiamata vocale</p>
+                      <p className="text-[10px] text-muted-foreground">Alessia chiama con il template predefinito + contesto lead</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <Checkbox
+                      checked={ch.whatsapp}
+                      onCheckedChange={(v) => setHunterSingleLeadDialog(prev => ({ ...prev, channels: { ...prev.channels, whatsapp: !!v } }))}
+                      disabled={!lead.phone}
+                    />
+                    <MessageCircle className={cn("h-4 w-4", lead.phone ? "text-emerald-600" : "text-gray-300")} />
+                    <div className="flex-1">
+                      <p className={cn("text-sm font-medium", !lead.phone && "text-muted-foreground")}>WhatsApp</p>
+                      <p className="text-[10px] text-muted-foreground">{lead.phone ? "Template WA + contesto lead personalizzato" : "Nessun numero di telefono disponibile"}</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <Checkbox
+                      checked={ch.email}
+                      onCheckedChange={(v) => setHunterSingleLeadDialog(prev => ({ ...prev, channels: { ...prev.channels, email: !!v } }))}
+                      disabled={!lead.email}
+                    />
+                    <MailIcon className={cn("h-4 w-4", lead.email ? "text-blue-600" : "text-gray-300")} />
+                    <div className="flex-1">
+                      <p className={cn("text-sm font-medium", !lead.email && "text-muted-foreground")}>Email</p>
+                      <p className="text-[10px] text-muted-foreground">{lead.email ? "Email personalizzata generata dall'AI" : "Nessuna email disponibile"}</p>
+                    </div>
+                  </label>
+                </div>
+
+                {ch.voice && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Numero per la chiamata</Label>
+                    <Input
+                      value={hunterSingleLeadDialog.voiceTargetPhone}
+                      onChange={(e) => setHunterSingleLeadDialog(prev => ({ ...prev, voiceTargetPhone: e.target.value }))}
+                      placeholder="Es: +393519272875 o 1004"
+                      className="h-8 text-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Puoi inserire un numero diverso da quello del lead (es. interno SIP)</p>
+                  </div>
+                )}
+
+                {!outreachConfig.enabled && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400">Hunter non e abilitato. I task verranno comunque creati in attesa di approvazione.</p>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <Info className="h-4 w-4 text-blue-600 shrink-0" />
+                  <p className="text-xs text-blue-700 dark:text-blue-400">
+                    {selectedCount > 0
+                      ? `Hunter creerà ${selectedCount} task in modalità Solo Approvazione. Potrai approvarli dalla Coda Outreach.`
+                      : "Seleziona almeno un canale per procedere."
+                    }
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setHunterSingleLeadDialog(prev => ({ ...prev, open: false }))} disabled={hunterSingleLeadDialog.loading}>
+              Annulla
+            </Button>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5"
+              onClick={handleHunterSingleLead}
+              disabled={hunterSingleLeadDialog.loading || ![hunterSingleLeadDialog.channels.voice, hunterSingleLeadDialog.channels.whatsapp, hunterSingleLeadDialog.channels.email].some(Boolean)}
+            >
+              {hunterSingleLeadDialog.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+              {hunterSingleLeadDialog.loading ? "Creazione task..." : "Avvia Hunter su questo lead"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
