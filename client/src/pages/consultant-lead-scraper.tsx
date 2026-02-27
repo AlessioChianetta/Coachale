@@ -596,7 +596,7 @@ export default function ConsultantLeadScraper() {
   };
 
   const channelLabelsMap: Record<string, { label: string; color: string }> = {
-    voice: { label: "Chiamate (Alessia)", color: "text-green-600" },
+    voice: { label: "Chiamate (Alessia)", color: "text-orange-600" },
     whatsapp: { label: "WhatsApp (Stella)", color: "text-emerald-600" },
     email: { label: "Email (Millie)", color: "text-blue-600" },
   };
@@ -2230,12 +2230,12 @@ export default function ConsultantLeadScraper() {
                 return MailIcon;
               };
               const channelColor = (ch: string) => {
-                if (ch === "voice") return "text-green-600";
+                if (ch === "voice") return "text-orange-600";
                 if (ch === "whatsapp") return "text-emerald-600";
                 return "text-blue-600";
               };
               const channelBg = (ch: string) => {
-                if (ch === "voice") return "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800";
+                if (ch === "voice") return "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800";
                 if (ch === "whatsapp") return "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800";
                 return "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800";
               };
@@ -2468,13 +2468,13 @@ export default function ConsultantLeadScraper() {
                                         {group.leadScore != null && <span>Score: {getScoreBar(group.leadScore)}</span>}
                                       </div>
                                     )}
-                                    <div className="px-5 pb-4 pt-1 space-y-3">
+                                    <div className="border-t border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
                                       {group.tasks.map(task => {
                                         const ChIcon = channelIcon(task.channel);
                                         const chCol = channelColor(task.channel);
                                         const ts = statusMap[task.status] || { label: task.status, cls: "bg-gray-100 text-gray-600" };
-                                        const isContextExpanded = expandedContextIds.has(task.id);
-                                        const toggleContext = (e: React.MouseEvent) => {
+                                        const isTaskDetailOpen = expandedContextIds.has(task.id);
+                                        const toggleTaskDetail = (e: React.MouseEvent) => {
                                           e.stopPropagation();
                                           setExpandedContextIds(prev => {
                                             const next = new Set(prev);
@@ -2483,136 +2483,155 @@ export default function ConsultantLeadScraper() {
                                             return next;
                                           });
                                         };
-                                        const chBorderLeft = task.channel === 'voice' ? 'border-l-green-500' : task.channel === 'whatsapp' ? 'border-l-emerald-500' : 'border-l-blue-500';
+                                        const chBorderLeft = task.channel === 'voice' ? 'border-l-orange-400' : task.channel === 'whatsapp' ? 'border-l-emerald-500' : 'border-l-blue-500';
+                                        const hasDetail = task.channel === 'whatsapp' ? !!(task.waTemplateFilled || task.waPreviewMessage || task.aiInstruction || task.waTemplateName) : task.channel === 'voice' ? !!(task.voiceTemplateName || task.callInstruction || task.aiInstruction) : !!(task.aiInstruction);
+
                                         return (
-                                          <div key={task.id} className={cn("rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden border-l-[3px]", chBorderLeft)}>
-                                            <div className="px-4 py-3 flex items-center justify-between">
-                                              <div className="flex items-center gap-3">
-                                                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", channelBg(task.channel))}>
-                                                  <ChIcon className={cn("h-4 w-4", chCol)} />
+                                          <div key={task.id} className={cn("border-l-[3px]", chBorderLeft)}>
+                                            <div
+                                              className={cn(
+                                                "px-5 py-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/60 dark:hover:bg-gray-800/30 transition-colors",
+                                                isTaskDetailOpen && "bg-white/80 dark:bg-gray-800/20"
+                                              )}
+                                              onClick={toggleTaskDetail}
+                                            >
+                                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0", channelBg(task.channel))}>
+                                                  <ChIcon className={cn("h-3.5 w-3.5", chCol)} />
                                                 </div>
-                                                <div>
-                                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{channelLabel(task.channel)}</span>
-                                                  {task.scheduledAt && (
-                                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                                      {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })}
-                                                    </p>
-                                                  )}
-                                                </div>
+                                                <span className="text-sm font-semibold text-gray-900 dark:text-white">{channelLabel(task.channel)}</span>
+                                                {task.scheduledAt && (
+                                                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                                                    {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })}
+                                                  </span>
+                                                )}
+                                                {task.channel === 'voice' && task.voiceTemplateName && (
+                                                  <span className="text-xs text-muted-foreground truncate hidden md:inline">{task.voiceTemplateName}</span>
+                                                )}
+                                                {task.channel === 'whatsapp' && task.waTemplateName && (
+                                                  <span className="text-xs text-muted-foreground truncate hidden md:inline">{task.waTemplateName}</span>
+                                                )}
                                               </div>
-                                              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                                <Badge className={cn("text-xs px-2.5 py-0.5", ts.cls)}>{ts.label}</Badge>
+                                              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                                <Badge className={cn("text-xs px-2 py-0.5", ts.cls)}>{ts.label}</Badge>
                                                 {task.status === "waiting_approval" && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <Button size="sm" className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs rounded-lg" onClick={() => approveTaskMutation.mutate(task.id)} disabled={approveTaskMutation.isPending}>
-                                                      <Check className="h-3.5 w-3.5 mr-1" /> Approva
+                                                  <div className="flex items-center gap-1">
+                                                    <Button size="sm" className="h-7 px-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs rounded-lg" onClick={() => approveTaskMutation.mutate(task.id)} disabled={approveTaskMutation.isPending}>
+                                                      <Check className="h-3 w-3 mr-0.5" /> Approva
                                                     </Button>
-                                                    <Button size="sm" variant="outline" className="h-8 px-3 text-red-600 border-red-200 hover:bg-red-50 text-xs rounded-lg" onClick={() => rejectTaskMutation.mutate(task.id)} disabled={rejectTaskMutation.isPending}>
-                                                      <X className="h-3.5 w-3.5 mr-1" /> Rifiuta
+                                                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-red-600 border-red-200 hover:bg-red-50 text-xs rounded-lg" onClick={() => rejectTaskMutation.mutate(task.id)} disabled={rejectTaskMutation.isPending}>
+                                                      <X className="h-3 w-3" />
                                                     </Button>
                                                   </div>
+                                                )}
+                                                {hasDetail && (
+                                                  <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isTaskDetailOpen && "rotate-180")} />
                                                 )}
                                               </div>
                                             </div>
 
-                                            {task.channel === 'whatsapp' && (
-                                              <div className="px-4 pb-3 space-y-2">
-                                                {task.waTemplateName && (
-                                                  <div className="flex items-center gap-2">
-                                                    <Badge variant="outline" className="text-xs px-2 py-0.5 border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-1">
-                                                      <FileText className="h-3 w-3" />Template: {task.waTemplateName}
-                                                    </Badge>
+                                            {task.status === "completed" && task.resultSummary && !isTaskDetailOpen && (
+                                              <div className="px-5 pb-2 -mt-1">
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate">{task.resultSummary}</p>
+                                              </div>
+                                            )}
+                                            {task.status === "failed" && task.resultSummary && !isTaskDetailOpen && (
+                                              <div className="px-5 pb-2 -mt-1">
+                                                <p className="text-xs text-red-600 dark:text-red-400 truncate">{task.resultSummary}</p>
+                                              </div>
+                                            )}
+
+                                            {isTaskDetailOpen && (
+                                              <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                transition={{ duration: 0.15 }}
+                                                className="px-5 pb-4 space-y-2"
+                                              >
+                                                {task.scheduledAt && (
+                                                  <p className="text-xs text-muted-foreground sm:hidden">
+                                                    {new Date(task.scheduledAt).toLocaleString("it-IT", { day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })}
+                                                  </p>
+                                                )}
+
+                                                {task.channel === 'whatsapp' && (
+                                                  <div className="space-y-2">
+                                                    {task.waTemplateName && (
+                                                      <Badge variant="outline" className="text-xs px-2 py-0.5 border-emerald-300 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 gap-1">
+                                                        <FileText className="h-3 w-3" />Template: {task.waTemplateName}
+                                                      </Badge>
+                                                    )}
+                                                    {task.waTemplateFilled && (
+                                                      <div>
+                                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio che riceverà il contatto:</p>
+                                                        <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+                                                          {task.waTemplateFilled}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                    {!task.waTemplateFilled && task.waTemplateName && task.waPreviewMessage && (
+                                                      <div>
+                                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Anteprima messaggio:</p>
+                                                        <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+                                                          {task.waPreviewMessage}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                    {!task.waTemplateName && task.aiInstruction && (
+                                                      <div>
+                                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio WhatsApp:</p>
+                                                        <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+                                                          {task.aiInstruction}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                    {task.waTemplateName && task.aiInstruction && (
+                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
+                                                        {task.aiInstruction}
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 )}
-                                                {task.waTemplateFilled && (
-                                                  <div>
-                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio che riceverà il contatto:</p>
-                                                    <div className={cn("rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50")}>
-                                                      {task.waTemplateFilled}
-                                                    </div>
+
+                                                {task.channel === 'voice' && (
+                                                  <div className="space-y-2">
+                                                    {task.voiceTemplateName && (
+                                                      <Badge variant="outline" className="text-xs px-2 py-0.5 border-orange-300 text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 gap-1">
+                                                        <PhoneCall className="h-3 w-3" />Template: {task.voiceTemplateName}
+                                                      </Badge>
+                                                    )}
+                                                    {task.callInstruction && (
+                                                      <div>
+                                                        <p className="text-xs font-medium text-orange-700 dark:text-orange-400 mb-1.5">Istruzioni per la chiamata:</p>
+                                                        <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[150px] overflow-y-auto bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/50">
+                                                          {task.callInstruction}
+                                                        </div>
+                                                      </div>
+                                                    )}
+                                                    {task.aiInstruction && (
+                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto text-muted-foreground">
+                                                        {task.aiInstruction}
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 )}
-                                                {!task.waTemplateFilled && task.waTemplateName && task.waPreviewMessage && (
+
+                                                {task.channel === 'email' && task.aiInstruction && (
                                                   <div>
-                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Anteprima messaggio:</p>
-                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
-                                                      {task.waPreviewMessage}
-                                                    </div>
-                                                  </div>
-                                                )}
-                                                {!task.waTemplateName && task.aiInstruction && (
-                                                  <div>
-                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1.5">Messaggio WhatsApp:</p>
-                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[180px] overflow-y-auto bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
+                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
                                                       {task.aiInstruction}
                                                     </div>
                                                   </div>
                                                 )}
-                                                {task.waTemplateName && task.aiInstruction && (
-                                                  <div>
-                                                    <button onClick={toggleContext} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
-                                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isContextExpanded && "rotate-180")} />
-                                                      {isContextExpanded ? "Nascondi contesto" : "Mostra contesto lead"}
-                                                    </button>
-                                                    {isContextExpanded && (
-                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto text-muted-foreground">
-                                                        {task.aiInstruction}
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
 
-                                            {task.channel === 'voice' && (
-                                              <div className="px-4 pb-3 space-y-2">
-                                                {task.voiceTemplateName && (
-                                                  <Badge variant="outline" className="text-xs px-2 py-0.5 border-green-300 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 gap-1">
-                                                    <PhoneCall className="h-3 w-3" />Template: {task.voiceTemplateName}
-                                                  </Badge>
+                                                {task.status === "completed" && task.resultSummary && (
+                                                  <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/50">{task.resultSummary}</p>
                                                 )}
-                                                {task.callInstruction && (
-                                                  <div>
-                                                    <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1.5">Istruzioni per la chiamata:</p>
-                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[150px] overflow-y-auto bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800/50">
-                                                      {task.callInstruction}
-                                                    </div>
-                                                  </div>
+                                                {task.status === "failed" && task.resultSummary && (
+                                                  <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-800/50">{task.resultSummary}</p>
                                                 )}
-                                                {task.aiInstruction && (
-                                                  <div>
-                                                    <button onClick={toggleContext} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1">
-                                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isContextExpanded && "rotate-180")} />
-                                                      {isContextExpanded ? "Nascondi contesto" : "Mostra contesto lead"}
-                                                    </button>
-                                                    {isContextExpanded && (
-                                                      <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs whitespace-pre-wrap leading-relaxed max-h-[250px] overflow-y-auto text-muted-foreground">
-                                                        {task.aiInstruction}
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
-
-                                            {task.channel === 'email' && task.aiInstruction && (
-                                              <div className="px-4 pb-3">
-                                                <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
-                                                <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
-                                                  {task.aiInstruction}
-                                                </div>
-                                              </div>
-                                            )}
-
-                                            {task.status === "completed" && task.resultSummary && (
-                                              <div className="px-4 pb-3">
-                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/50">{task.resultSummary}</p>
-                                              </div>
-                                            )}
-                                            {task.status === "failed" && task.resultSummary && (
-                                              <div className="px-4 pb-3">
-                                                <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg px-3 py-2 border border-red-200 dark:border-red-800/50">{task.resultSummary}</p>
-                                              </div>
+                                              </motion.div>
                                             )}
                                           </div>
                                         );
