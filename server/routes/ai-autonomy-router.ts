@@ -730,6 +730,7 @@ async function generateOutreachContent(
       for (const v of selectedTemplate.variables) {
         const resolvedValue = namedVarMap[v.variableKey] || '';
         templateVariables[String(v.position)] = resolvedValue;
+        templateFilled = templateFilled.replace(new RegExp(`\\{\\{${v.position}\\}\\}`, 'g'), resolvedValue);
       }
     }
 
@@ -1358,11 +1359,10 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     };
 
     const settingsResult = await db.execute(sql`
-      SELECT outreach_config, whatsapp_template_ids FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
+      SELECT outreach_config FROM ai_autonomy_settings WHERE consultant_id = ${consultantId} LIMIT 1
     `);
     const settings = settingsResult.rows[0] as any;
     const outreachConfig = settings?.outreach_config || {};
-    const waTemplateSidsFromCol: string[] = settings?.whatsapp_template_ids || [];
 
     const voiceTemplateId = outreachConfig.voice_template_id || null;
     const whatsappConfigId = outreachConfig.whatsapp_config_id || null;
@@ -1393,11 +1393,8 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
       } catch {}
     }
 
-    const allWaTemplateSids: string[] = [
-      ...(outreachConfig.whatsapp_template_ids || []),
-      ...waTemplateSidsFromCol,
-    ].filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
-    const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, allWaTemplateSids);
+    const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
+    const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
     const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
 
