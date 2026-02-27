@@ -273,8 +273,8 @@ export default function WhatsAppCalendar() {
                                 )}
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0" align="start">
-                              <div className="p-4 space-y-3">
+                            <PopoverContent className="w-80 p-0 max-h-[70vh] flex flex-col" align="start">
+                              <div className="p-4 space-y-3 overflow-y-auto min-h-0">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <MessageSquare className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -287,9 +287,9 @@ export default function WhatsAppCalendar() {
                                   </Badge>
                                 </div>
 
-                                <p className="text-sm text-foreground leading-relaxed">
+                                <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
                                   {task.ai_instruction}
-                                </p>
+                                </div>
 
                                 {task.scheduling_reason && (
                                   <div className="p-2.5 rounded-lg bg-muted/50 border border-border/50">
@@ -337,7 +337,7 @@ export default function WhatsAppCalendar() {
                                 {task.additional_context && (
                                   <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
                                     <p className="text-[10px] uppercase font-medium text-amber-700 dark:text-amber-400 mb-1">Contesto aggiuntivo</p>
-                                    <p className="text-xs text-foreground/80">{task.additional_context}</p>
+                                    <div className="text-xs text-foreground/80 whitespace-pre-wrap max-h-32 overflow-y-auto">{task.additional_context}</div>
                                   </div>
                                 )}
 
