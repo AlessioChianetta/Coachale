@@ -316,6 +316,59 @@ export default function ProactiveLeadsPage() {
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
+  // Hunter tab state
+  const [pageView, setPageView] = useState<"leads" | "hunter">("leads");
+  const [hunterChannelFilter, setHunterChannelFilter] = useState("all");
+  const [hunterStatusFilter, setHunterStatusFilter] = useState("all");
+
+  // Fetch hunter actions
+  const { data: hunterActionsData, isLoading: hunterLoading, refetch: refetchHunterActions } = useQuery({
+    queryKey: ["/api/ai-autonomy/hunter/actions", hunterChannelFilter, hunterStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (hunterChannelFilter !== "all") params.set("channel", hunterChannelFilter);
+      if (hunterStatusFilter !== "all") params.set("status", hunterStatusFilter);
+      params.set("limit", "100");
+      const response = await fetch(`/api/ai-autonomy/hunter/actions?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { actions: [], total: 0 };
+      return response.json();
+    },
+    enabled: pageView === "hunter",
+    refetchInterval: pageView === "hunter" ? 30000 : false,
+  });
+
+  const hunterActions = hunterActionsData?.actions || [];
+
+  // Trigger direct hunter mutation
+  const triggerDirectMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/ai-autonomy/hunter/trigger-direct", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Errore");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ predicate: (q) => (q.queryKey[0] as string)?.includes("/hunter/actions") });
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      toast({
+        title: data.action ? "Hunter ha agito!" : "Nessun lead trovato",
+        description: data.action
+          ? `${data.action.lead_name} → ${data.action.channel}`
+          : data.reason || "Nessun lead eligibile al momento",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Fetch all leads
   const { data: leadsData, isLoading: leadsLoading, refetch: refetchLeads, isFetching: isRefetchingLeads } = useQuery({
     queryKey: ["/api/proactive-leads"],
@@ -1351,6 +1404,233 @@ export default function ProactiveLeadsPage() {
               ]}
             />
 
+            {/* Page View Switcher */}
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+              <button
+                onClick={() => setPageView("leads")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  pageView === "leads"
+                    ? "bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                Lead Proattivi
+              </button>
+              <button
+                onClick={() => setPageView("hunter")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  pageView === "hunter"
+                    ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                }`}
+              >
+                <Crosshair className="h-4 w-4" />
+                Outbox Hunter
+                {hunterActions.length > 0 && (
+                  <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 text-[10px] px-1.5 py-0 min-w-[20px] h-5">
+                    {hunterActionsData?.total || hunterActions.length}
+                  </Badge>
+                )}
+              </button>
+            </div>
+
+            {pageView === "hunter" ? (
+              <>
+                {/* Hunter Outbox Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-gradient-to-r from-teal-600/10 to-cyan-600/10 dark:from-teal-600/20 dark:to-cyan-600/20">
+                  <div>
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg shadow-lg">
+                        <Crosshair className="h-7 w-7 text-white" />
+                      </div>
+                      <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                        Outbox Hunter
+                      </span>
+                    </h1>
+                    <p className="mt-2 text-gray-600 dark:text-gray-400">
+                      Tutte le azioni eseguite da Hunter: chiamate, WhatsApp e email inviate ai lead
+                    </p>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button
+                      onClick={() => refetchHunterActions()}
+                      variant="outline"
+                      className="flex-1 sm:flex-none"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Aggiorna
+                    </Button>
+                    <Button
+                      onClick={() => triggerDirectMutation.mutate()}
+                      className="bg-teal-600 hover:bg-teal-700 text-white flex-1 sm:flex-none"
+                      disabled={triggerDirectMutation.isPending}
+                    >
+                      {triggerDirectMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Zap className="h-4 w-4 mr-2" />
+                      )}
+                      Avvia Ora
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Hunter Filters */}
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    {[
+                      { value: "all", label: "Tutti" },
+                      { value: "voice", label: "Chiamate", icon: Phone },
+                      { value: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+                      { value: "email", label: "Email", icon: Mail },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setHunterChannelFilter(opt.value)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          hunterChannelFilter === opt.value
+                            ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
+                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                        }`}
+                      >
+                        {opt.icon && <opt.icon className="h-3.5 w-3.5" />}
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    {[
+                      { value: "all", label: "Tutti" },
+                      { value: "scheduled", label: "Schedulati" },
+                      { value: "sent", label: "Inviati" },
+                      { value: "failed", label: "Falliti" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setHunterStatusFilter(opt.value)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          hunterStatusFilter === opt.value
+                            ? "bg-white dark:bg-gray-700 text-teal-700 dark:text-teal-400 shadow-sm"
+                            : "text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hunter Actions List */}
+                {hunterLoading ? (
+                  <div className="flex justify-center items-center p-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+                  </div>
+                ) : hunterActions.length === 0 ? (
+                  <Card className="border-dashed border-teal-200 dark:border-teal-800">
+                    <CardContent className="flex flex-col items-center justify-center p-12">
+                      <div className="p-4 bg-teal-100 dark:bg-teal-900/30 rounded-full mb-4">
+                        <Crosshair className="h-12 w-12 text-teal-500" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                        Nessuna azione ancora
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-center mb-6 max-w-md">
+                        Hunter parte ogni 30 minuti automaticamente quando il modo Diretto è attivo.
+                        Puoi anche avviarlo manualmente con il bottone "Avvia Ora".
+                      </p>
+                      <Button
+                        onClick={() => triggerDirectMutation.mutate()}
+                        className="bg-teal-600 hover:bg-teal-700 text-white"
+                        disabled={triggerDirectMutation.isPending}
+                      >
+                        {triggerDirectMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4 mr-2" />
+                        )}
+                        Avvia Hunter Ora
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="shadow-xl border-0">
+                    <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 rounded-t-lg">
+                      <CardTitle className="flex items-center gap-2">
+                        <Send className="h-5 w-5 text-teal-600" />
+                        Azioni Hunter
+                        <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400 ml-2">
+                          {hunterActionsData?.total || hunterActions.length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="max-h-[600px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                        {hunterActions.map((action: any) => {
+                          const channelIcon = action.channel === "voice" ? Phone
+                            : action.channel === "whatsapp" ? MessageCircle
+                            : Mail;
+                          const channelColor = action.channel === "voice" ? "text-blue-600 bg-blue-100 dark:bg-blue-900/30"
+                            : action.channel === "whatsapp" ? "text-green-600 bg-green-100 dark:bg-green-900/30"
+                            : "text-orange-600 bg-orange-100 dark:bg-orange-900/30";
+                          const statusColor = action.status === "sent" || action.status === "scheduled"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : action.status === "failed"
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+                          const ChannelIcon = channelIcon;
+                          const actionTime = action.created_at
+                            ? format(new Date(action.created_at), "dd MMM HH:mm", { locale: it })
+                            : "";
+                          const scheduledTime = action.scheduled_at
+                            ? format(new Date(action.scheduled_at), "dd MMM HH:mm", { locale: it })
+                            : null;
+
+                          return (
+                            <div key={action.id} className="flex items-start gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+                              <div className={`p-2 rounded-lg flex-shrink-0 ${channelColor}`}>
+                                <ChannelIcon className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-sm text-gray-900 dark:text-white">
+                                    {action.lead_name || "Lead"}
+                                  </span>
+                                  <Badge className={`text-[10px] px-1.5 py-0 ${statusColor}`}>
+                                    {action.status === "scheduled" ? "Schedulato"
+                                      : action.status === "sent" ? "Inviato"
+                                      : action.status === "failed" ? "Fallito"
+                                      : action.status}
+                                  </Badge>
+                                  <span className="text-[11px] text-gray-400">{actionTime}</span>
+                                </div>
+                                {action.message_preview && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                    {action.message_preview.substring(0, 120)}
+                                  </p>
+                                )}
+                                {scheduledTime && action.channel !== "email" && (
+                                  <p className="text-[11px] text-teal-600 dark:text-teal-400 mt-1 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {action.channel === "voice" ? `Chiamata per ${scheduledTime}` : `Schedulato alle ${scheduledTime}`}
+                                  </p>
+                                )}
+                                {action.result_note && (
+                                  <p className="text-[11px] text-gray-400 mt-1 italic">
+                                    {action.result_note}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : (
+            <>
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-blue-600/20 dark:to-purple-600/20">
               <div>
@@ -1896,6 +2176,8 @@ export default function ProactiveLeadsPage() {
                   )}
                 </CardContent>
               </Card>
+            )}
+            </>
             )}
           </div>
         </div>
