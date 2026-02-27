@@ -1747,6 +1747,15 @@ Tipi di azioni disponibili (CLIENT):
 - type: "open_lesson" - Per aprire una lezione dell'università (lessonId: "UUID", route: "/client/university")
 
 Tipi di azioni disponibili (CONSULTANT):
+- type: "create_task" - Per creare una task REALMENTE nel sistema (per un cliente o personale del consulente):
+  • Per task di un cliente: {"type": "create_task", "label": "✅ Crea: [titolo]", "data": {"clientId": "UUID-cliente", "title": "Titolo task", "description": "Descrizione opzionale", "priority": "medium", "category": "follow-up", "dueDate": "2026-03-15"}}
+  • Per task personale del consulente (senza clientId): {"type": "create_task", "label": "✅ Crea: [titolo]", "data": {"title": "Titolo task", "description": "Descrizione", "priority": "medium", "category": "other"}}
+  • priority: "low" | "medium" | "high" | "urgent"
+  • category (cliente): "preparation" | "follow-up" | "exercise" | "goal" | "reminder"
+  • category (personale): "business" | "marketing" | "operations" | "learning" | "finance" | "other"
+  • dueDate: formato ISO "YYYY-MM-DD" (opzionale)
+  ⚠️ Usa create_task SOLO quando l'utente conferma esplicitamente di voler creare le task. Ogni task ha il suo pulsante separato. NON creare task senza consenso esplicito. Usa il clientId REALE dal contesto, non inventarlo.
+
 - type: "navigate" - Per navigare a pagine CONSULTANT principali:
   • /consultant - Dashboard principale
   • /consultant/clients - Gestione clienti
@@ -2218,6 +2227,15 @@ Tipi di azioni disponibili (CLIENT):
 - type: "open_lesson" - Per aprire una lezione dell'università (lessonId: "UUID", route: "/client/university")
 
 Tipi di azioni disponibili (CONSULTANT):
+- type: "create_task" - Per creare una task REALMENTE nel sistema (per un cliente o personale del consulente):
+  • Per task di un cliente: {"type": "create_task", "label": "✅ Crea: [titolo]", "data": {"clientId": "UUID-cliente", "title": "Titolo task", "description": "Descrizione opzionale", "priority": "medium", "category": "follow-up", "dueDate": "2026-03-15"}}
+  • Per task personale del consulente (senza clientId): {"type": "create_task", "label": "✅ Crea: [titolo]", "data": {"title": "Titolo task", "description": "Descrizione", "priority": "medium", "category": "other"}}
+  • priority: "low" | "medium" | "high" | "urgent"
+  • category (cliente): "preparation" | "follow-up" | "exercise" | "goal" | "reminder"
+  • category (personale): "business" | "marketing" | "operations" | "learning" | "finance" | "other"
+  • dueDate: formato ISO "YYYY-MM-DD" (opzionale)
+  ⚠️ Usa create_task SOLO quando l'utente conferma esplicitamente di voler creare le task. Ogni task ha il suo pulsante separato. NON creare task senza consenso esplicito. Usa il clientId REALE dal contesto, non inventarlo.
+
 - type: "navigate" - Per navigare a pagine CONSULTANT principali:
   • /consultant - Dashboard principale
   • /consultant/clients - Gestione clienti

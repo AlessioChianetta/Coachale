@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { getAuthHeaders } from "@/lib/auth";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { CodeExecutionBlock } from "./CodeExecutionBlock";
 import ReactMarkdown from "react-markdown";
@@ -185,8 +186,39 @@ const MARKDOWN_COMPONENTS: Components = {
 
 export function Message({ message, onActionClick, assistantName, assistantSubtitle, assistantAvatarSrc, assistantAvatarFallbackIcon, compact }: MessageProps) {
   const [, setLocation] = useLocation();
+  const [taskStates, setTaskStates] = useState<Record<number, 'idle' | 'loading' | 'success' | 'error'>>({});
 
-  const handleAction = (action: { type: string; label: string; data?: any }) => {
+  const handleCreateTask = async (action: { type: string; label: string; data?: any }, index: number) => {
+    setTaskStates(prev => ({ ...prev, [index]: 'loading' }));
+    try {
+      const { clientId, title, description, priority, category, dueDate } = action.data || {};
+      const endpoint = clientId ? '/api/consultation-tasks' : '/api/consultant-personal-tasks';
+      const body: any = { title, description, priority: priority || 'medium', category: category || (clientId ? 'follow-up' : 'other') };
+      if (clientId) body.clientId = clientId;
+      if (dueDate) body.dueDate = dueDate;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Errore ${res.status}`);
+      }
+      setTaskStates(prev => ({ ...prev, [index]: 'success' }));
+    } catch (e: any) {
+      console.error('[create_task] Error:', e.message);
+      setTaskStates(prev => ({ ...prev, [index]: 'error' }));
+    }
+  };
+
+  const handleAction = (action: { type: string; label: string; data?: any }, index?: number) => {
+    if (action.type === 'create_task') {
+      handleCreateTask(action, index ?? 0);
+      return;
+    }
     switch (action.type) {
       case "navigate":
         if (action.data?.route) {
@@ -515,17 +547,36 @@ export function Message({ message, onActionClick, assistantName, assistantSubtit
 
         {message.suggestedActions && message.suggestedActions.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2.5 max-w-3xl">
-            {message.suggestedActions.map((action, index) => (
-              <Button
-                key={`${message.id}-action-${index}`}
-                variant="outline"
-                size="sm"
-                onClick={() => handleAction(action)}
-                className="text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-500 rounded-xl transition-all shadow-sm hover:shadow-md font-medium hover:scale-105 whitespace-normal text-left break-words"
-              >
-                {action.label}
-              </Button>
-            ))}
+            {message.suggestedActions.map((action, index) => {
+              const taskState = action.type === 'create_task' ? (taskStates[index] || 'idle') : null;
+              const isLoading = taskState === 'loading';
+              const isSuccess = taskState === 'success';
+              const isError = taskState === 'error';
+
+              const label = isLoading ? '⏳ Creazione...'
+                : isSuccess ? `✅ ${action.data?.title || 'Task creato!'}`
+                : isError ? `❌ Errore — riprova`
+                : action.label;
+
+              const className = isSuccess
+                ? "text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-green-50 border-green-400 text-green-700 rounded-xl shadow-sm font-medium whitespace-normal text-left break-words cursor-default"
+                : isError
+                ? "text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-red-50 border-red-400 text-red-700 rounded-xl shadow-sm font-medium whitespace-normal text-left break-words"
+                : "text-sm h-auto min-h-[2.5rem] py-2 px-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/40 dark:hover:to-indigo-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:border-blue-400 dark:hover:border-blue-500 rounded-xl transition-all shadow-sm hover:shadow-md font-medium hover:scale-105 whitespace-normal text-left break-words";
+
+              return (
+                <Button
+                  key={`${message.id}-action-${index}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => !isSuccess && !isLoading && handleAction(action, index)}
+                  disabled={isLoading}
+                  className={className}
+                >
+                  {label}
+                </Button>
+              );
+            })}
           </div>
         )}
       </div>
