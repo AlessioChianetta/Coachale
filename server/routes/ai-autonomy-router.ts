@@ -710,7 +710,8 @@ async function resolveTemplateVariables(
   consultantName: string,
   consultantBusinessName?: string,
   outreachConfig?: any,
-  templateSid?: string
+  templateSid?: string,
+  consultantId?: string
 ): Promise<{ resolved: Record<string, string>; sources: Record<string, string> }> {
   const neededVars = extractTemplateVariables(templateBodyText);
   const resolved: Record<string, string> = {};
@@ -800,7 +801,7 @@ async function resolveTemplateVariables(
       ].join('\n');
 
       const result = await quickGenerate(prompt, {
-        consultantId: 'system',
+        consultantId: consultantId || 'system',
         feature: 'hunter-template-vars',
         maxTokens: 150,
         temperature: 0.4,
@@ -913,7 +914,8 @@ async function generateOutreachContent(
       consultantName,
       consultantBusinessName,
       outreachConfig,
-      selectedTemplate.sid
+      selectedTemplate.sid,
+      consultantId
     );
 
     let templateFilled = selectedTemplate.bodyText;
