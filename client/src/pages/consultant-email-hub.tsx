@@ -269,6 +269,7 @@ function classifyAccountType(account: EmailAccount): AccountType {
 }
 
 const ITEMS_PER_PAGE = 25;
+const SERVER_PAGE_SIZE = 200;
 
 export default function ConsultantEmailHub() {
   const isMobile = useIsMobile();
@@ -384,9 +385,13 @@ export default function ConsultantEmailHub() {
     };
   }, [queryClient, toast]);
 
+  const serverPage = Math.floor((currentPage - 1) * ITEMS_PER_PAGE / SERVER_PAGE_SIZE);
+  const serverOffset = serverPage * SERVER_PAGE_SIZE;
+
   const buildInboxQueryParams = () => {
     const params = new URLSearchParams();
-    params.set("limit", "200");
+    params.set("limit", String(SERVER_PAGE_SIZE));
+    params.set("offset", String(serverOffset));
     if (inboxFilter.accountId) params.set("accountId", inboxFilter.accountId);
     if (inboxFilter.readStatus === "unread") params.set("unread", "true");
     if (inboxFilter.readStatus === "read") params.set("read", "true");
@@ -409,7 +414,7 @@ export default function ConsultantEmailHub() {
   };
 
   const { data: inboxData, isLoading: isLoadingInbox, refetch: refetchInbox } = useQuery({
-    queryKey: ["/api/email-hub/inbox", inboxFilter, selectedFolder],
+    queryKey: ["/api/email-hub/inbox", inboxFilter, selectedFolder, serverOffset],
     queryFn: async () => {
       const queryString = buildInboxQueryParams();
       const response = await fetch(`/api/email-hub/inbox?${queryString}`, {
@@ -418,6 +423,7 @@ export default function ConsultantEmailHub() {
       if (!response.ok) throw new Error("Failed to fetch inbox");
       return response.json();
     },
+    placeholderData: (prev: any) => prev,
   });
 
   const emails: Email[] = inboxData?.data || [];
@@ -561,10 +567,11 @@ export default function ConsultantEmailHub() {
     return result;
   }, [emails, searchQuery, inboxFilter.emailType]);
 
-  const totalPages = Math.ceil(filteredEmails.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(inboxTotalCount / ITEMS_PER_PAGE);
+  const localOffset = ((currentPage - 1) * ITEMS_PER_PAGE) - serverOffset;
   const paginatedEmails = filteredEmails.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    Math.max(0, localOffset),
+    localOffset + ITEMS_PER_PAGE
   );
 
   const createAccountMutation = useMutation({
@@ -1907,7 +1914,7 @@ export default function ConsultantEmailHub() {
           </Select>
           
           <div className="ml-auto flex items-center gap-1 text-xs text-slate-500">
-            <span>{filteredEmails.length > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredEmails.length)}` : "0"} di {filteredEmails.length}{inboxTotalCount > filteredEmails.length ? ` (${inboxTotalCount} totali)` : ""}</span>
+            <span>{inboxTotalCount > 0 ? `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, inboxTotalCount)}` : "0"} di {inboxTotalCount}</span>
             <Button
               variant="ghost"
               size="icon"
