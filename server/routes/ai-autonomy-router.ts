@@ -1639,7 +1639,7 @@ router.post("/hunter-analyze-crm", authenticateToken, requireAnyRole(["consultan
     const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
     for (let i = 0; i < leadsWithChannels.length; i++) {
       const { lead, channel } = leadsWithChannels[i];
@@ -1757,7 +1757,7 @@ router.post("/hunter-single-lead", authenticateToken, requireAnyRole(["consultan
     const waTemplateSids: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates = await loadSelectedWaTemplates(consultantId, waTemplateSids);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName, callInstructionTemplate, outreachConfig };
 
     const results: any[] = [];
     for (let i = 0; i < validChannels.length; i++) {
@@ -2104,7 +2104,7 @@ router.post("/hunter-plan/execute", authenticateToken, requireAnyRole(["consulta
     const waTemplateSids2: string[] = outreachConfig.whatsapp_template_ids || [];
     const loadedWaTemplates2 = await loadSelectedWaTemplates(consultantId, waTemplateSids2);
 
-    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2 };
+    const scheduleConfig = { voiceTemplateId, whatsappConfigId, emailAccountId, timezone: 'Europe/Rome', voiceTemplateName: resolvedVoiceTemplateName2, callInstructionTemplate: callInstructionTemplate2, outreachConfig };
 
     const [salesCtxResult, consultantResult, waConfigResult3] = await Promise.all([
       db.execute(sql`
