@@ -2089,9 +2089,9 @@ export default function ConsultantVoiceCallsPage() {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} role="consultant" />
-      <div className={`flex-1 flex flex-col ${isMobile ? "w-full" : "ml-0"}`}>
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          <div className="w-full space-y-4">
+      <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? "w-full" : "ml-0"}`}>
+        <main className="flex-1 p-4 lg:p-6 overflow-auto min-w-0">
+          <div className="w-full min-w-0 space-y-4">
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-cyan-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl min-w-0">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
               <div className="absolute top-0 right-0 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl" />
@@ -2163,53 +2163,53 @@ export default function ConsultantVoiceCallsPage() {
               </div>
             </div>
 
-            <Tabs defaultValue="calls" className="space-y-6">
+            <Tabs defaultValue="calls" className="space-y-6 min-w-0">
               <TabsList className="w-full h-auto p-1.5 bg-muted/50 backdrop-blur-sm border rounded-xl shadow-sm flex-wrap justify-start gap-1">
                 <TabsTrigger 
                   value="calls" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-violet-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <Phone className="h-4 w-4" />
                   <span className="hidden sm:inline">Storico</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="outbound" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <PhoneOutgoing className="h-4 w-4" />
                   <span className="hidden sm:inline">Chiama Ora</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="ai-tasks" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <ClipboardList className="h-4 w-4" />
                   <span className="hidden sm:inline">Calendario AI</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="non-client" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <MessageSquare className="h-4 w-4" />
                   <span className="hidden sm:inline">Template</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="vps" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Configurazione</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="voice-guide" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <BookOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Guida Voce</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="conversazioni" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-teal-700 transition-all duration-200"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-teal-700 transition-all duration-200 text-xs sm:text-sm"
                 >
                   <MessagesSquare className="h-4 w-4" />
                   <span className="hidden sm:inline">Conversazioni</span>
