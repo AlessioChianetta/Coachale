@@ -2264,7 +2264,7 @@ export default function ConsultantLeadScraper() {
             <>
             {/* SEZIONE 2 — Coda Outreach Unificata */}
             {(() => {
-              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null; waTemplateFilled?: string | null; waTemplateBody?: string | null; waTemplateSid?: string | null }[] = [];
+              const allTasks: { id: string; title: string; status: string; channel: string; aiRole: string; scheduledAt: string | null; createdAt: string | null; completedAt: string | null; resultSummary: string | null; aiInstruction: string | null; waPreviewMessage?: string | null; leadName: string; leadScore: number | null; leadSector: string | null; leadId: string | null; voiceTemplateName?: string | null; callInstruction?: string | null; waTemplateName?: string | null; waTemplateFilled?: string | null; waTemplateBody?: string | null; waTemplateSid?: string | null; emailTemplateName?: string | null }[] = [];
               if (hunterPipeline?.channels) {
                 Object.entries(hunterPipeline.channels).forEach(([, chData]) => {
                   if (chData?.tasks) allTasks.push(...chData.tasks);
@@ -2612,6 +2612,9 @@ export default function ConsultantLeadScraper() {
                                                 {task.channel === 'whatsapp' && task.waTemplateName && (
                                                   <span className="text-xs text-muted-foreground truncate hidden md:inline">{task.waTemplateName}</span>
                                                 )}
+                                                {task.channel === 'email' && task.emailTemplateName && (
+                                                  <span className="text-xs text-muted-foreground truncate hidden md:inline">{task.emailTemplateName}</span>
+                                                )}
                                               </div>
                                               <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                                                 <Badge className={cn("text-xs px-2 py-0.5", ts.cls)}>{ts.label}</Badge>
@@ -2717,12 +2720,21 @@ export default function ConsultantLeadScraper() {
                                                   </div>
                                                 )}
 
-                                                {task.channel === 'email' && leadOnlyInstruction && (
-                                                  <div>
-                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
-                                                    <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
-                                                      {leadOnlyInstruction}
-                                                    </div>
+                                                {task.channel === 'email' && (
+                                                  <div className="space-y-2">
+                                                    {task.emailTemplateName && (
+                                                      <Badge variant="outline" className="text-xs px-2 py-0.5 border-blue-300 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 gap-1">
+                                                        <FileText className="h-3 w-3" />Template: {task.emailTemplateName}
+                                                      </Badge>
+                                                    )}
+                                                    {leadOnlyInstruction && (
+                                                      <div>
+                                                        <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">Contenuto email:</p>
+                                                        <div className="rounded-lg border p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/50">
+                                                          {leadOnlyInstruction}
+                                                        </div>
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 )}
 

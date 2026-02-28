@@ -257,6 +257,68 @@ NON usare MAI: sinergia, all'avanguardia, innovativo, leader di settore, soluzio
 - Mai tutto maiuscolo, mai punti esclamativi, mai emoji
 - Mai parole trigger spam: gratis, offerta, sconto, promozione, guadagna, urgente`;
 
+export interface TemplateSelectionContext {
+  scenario?: string;
+  stepNumber?: number;
+  hasWebsiteData?: boolean;
+  hasSpecificDetail?: boolean;
+  hasSocialLinks?: boolean;
+  sector?: string;
+  scrapeData?: any;
+  isReEngagement?: boolean;
+}
+
+export function selectBestTemplate(context: TemplateSelectionContext): EmailTemplate {
+  const { stepNumber = 0, hasWebsiteData, hasSpecificDetail, sector, scrapeData, isReEngagement } = context;
+
+  if (isReEngagement) {
+    return EMAIL_TEMPLATES.find(t => t.id === "template_10")!;
+  }
+
+  if (stepNumber >= 3) {
+    return EMAIL_TEMPLATES.find(t => t.id === "template_3")!;
+  }
+
+  if (stepNumber === 2) {
+    return EMAIL_TEMPLATES.find(t => t.id === "template_2")!;
+  }
+
+  if (stepNumber === 1) {
+    if (hasWebsiteData && hasSpecificDetail) {
+      return EMAIL_TEMPLATES.find(t => t.id === "template_9")!;
+    }
+
+    if (scrapeData) {
+      const scrapeStr = typeof scrapeData === 'string' ? scrapeData : JSON.stringify(scrapeData);
+      const hasServices = /servizi|services|prodotti|products|offriamo|offerta/i.test(scrapeStr);
+      const hasEvent = /evento|inaugurazione|apertura|lancio|nuovo|ristrutturazione|opening|launch/i.test(scrapeStr);
+
+      if (hasEvent) {
+        return EMAIL_TEMPLATES.find(t => t.id === "template_4")!;
+      }
+      if (hasServices && hasWebsiteData) {
+        return EMAIL_TEMPLATES.find(t => t.id === "template_7")!;
+      }
+    }
+
+    if (sector) {
+      const knownPainSectors = ['ristorante', 'ristoranti', 'bar', 'hotel', 'albergo', 'ecommerce', 'e-commerce', 'negozio', 'retail', 'palestra', 'gym', 'studio medico', 'dentista', 'avvocato', 'commercialista'];
+      const sectorLower = sector.toLowerCase();
+      if (knownPainSectors.some(s => sectorLower.includes(s))) {
+        return EMAIL_TEMPLATES.find(t => t.id === "template_6")!;
+      }
+    }
+
+    if (hasWebsiteData) {
+      return EMAIL_TEMPLATES.find(t => t.id === "template_9")!;
+    }
+
+    return EMAIL_TEMPLATES.find(t => t.id === "template_1")!;
+  }
+
+  return EMAIL_TEMPLATES.find(t => t.id === "template_1")!;
+}
+
 export function selectTemplateForScenario(scenario: string): EmailTemplate {
   const scenarioMap: Record<string, string> = {
     "first_contact": "template_1",

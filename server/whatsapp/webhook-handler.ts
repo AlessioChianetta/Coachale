@@ -307,6 +307,31 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
     );
   }
 
+  if (proactiveMatch.isProactiveLead && proactiveMatch.proactiveLeadId) {
+    try {
+      const { logLeadActivity, updateLeadStatusOnReply, findLeadIdFromProactiveLead } = await import("../utils/lead-activity-logger");
+      const scraperLeadId = await findLeadIdFromProactiveLead(proactiveMatch.proactiveLeadId);
+      if (scraperLeadId) {
+        await logLeadActivity(
+          scraperLeadId,
+          config.consultantId,
+          'whatsapp_ricevuto',
+          `WhatsApp ricevuto da ${phoneNumber}`,
+          (messageText || 'Messaggio ricevuto').substring(0, 500),
+          {
+            from: phoneNumber,
+            proactiveLeadId: proactiveMatch.proactiveLeadId,
+            conversationId: conversation?.id,
+          }
+        );
+        await updateLeadStatusOnReply(scraperLeadId, 'whatsapp');
+        console.log(`✅ [LEAD-TIMELINE] WhatsApp ricevuto logged for lead ${scraperLeadId}`);
+      }
+    } catch (logErr: any) {
+      console.warn(`⚠️ [LEAD-TIMELINE] Failed to log WA reply: ${logErr.message}`);
+    }
+  }
+
   // FASE 1.1: Cancellazione immediata messaggi schedulati quando lead risponde
   if (conversation) {
     const cancelledMessages = await db

@@ -2,7 +2,7 @@ import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { logActivity } from "../cron/ai-task-scheduler";
 import { getGeminiApiKeyForClassifier, GEMINI_3_MODEL, trackedGenerateContent } from "./provider-factory";
-import { selectTemplateForScenario, GOLDEN_RULES, type EmailTemplate } from "./email-templates-library";
+import { selectBestTemplate, GOLDEN_RULES, type EmailTemplate } from "./email-templates-library";
 
 const LOG_PREFIX = "🎯 [HUNTER-DIRECT]";
 
@@ -97,20 +97,36 @@ export async function runDirectHunterForConsultant(consultantId: string): Promis
     const { GoogleGenAI } = await import("@google/genai");
     const genAI = new GoogleGenAI({ apiKey });
 
-    const emailTemplate: EmailTemplate = selectTemplateForScenario("first_contact");
+    const websiteData = lead.website_data || lead.websiteData || null;
+    const hasWebsiteData = !!websiteData;
+    const websiteStr = hasWebsiteData ? (typeof websiteData === 'string' ? websiteData : JSON.stringify(websiteData)) : '';
+    const hasSpecificDetail = hasWebsiteData && /servizi|chi siamo|about|team|portfolio|clienti|recensioni/i.test(websiteStr);
+
+    const emailTemplate: EmailTemplate = selectBestTemplate({
+      stepNumber: 1,
+      hasWebsiteData,
+      hasSpecificDetail,
+      sector: lead.category || undefined,
+      scrapeData: websiteData,
+    });
+
+    console.log(`${LOG_PREFIX} Selected email template: ${emailTemplate.name} (${emailTemplate.id})`);
+
+    const websiteContext = hasWebsiteData ? `\nDATI DAL SITO WEB:\n${websiteStr.substring(0, 800)}` : '';
 
     const channelPrompt = selectedChannel === "voice"
       ? `Genera un'istruzione per una chiamata commerciale (max 3 frasi): cosa dire, obiettivo della chiamata, tono da usare. Rispondi in JSON: { "call_instruction": "...", "scheduled_offset_minutes": 60 } dove scheduled_offset_minutes è tra 30 e 480.`
       : selectedChannel === "whatsapp"
       ? `Genera un messaggio WhatsApp breve e professionale (max 2-3 frasi) per un primo contatto commerciale. Non usare formattazione markdown. Rispondi in JSON: { "message": "...", "scheduled_offset_minutes": 15 } dove scheduled_offset_minutes è tra 5 e 60.`
       : `Genera un'email professionale con oggetto e corpo per un primo contatto commerciale.
-Usa come RIFERIMENTO STRUTTURALE il seguente template persuasivo (adattalo al lead specifico, NON copiarlo letteralmente):
 
---- TEMPLATE DI RIFERIMENTO: "${emailTemplate.name}" ---
+SEGUI ESATTAMENTE la struttura del seguente template. Sostituisci TUTTI i placeholder con dati reali del lead. Puoi adattare singole frasi al contesto ma MANTIENI la struttura, il tono e la leva psicologica del template.
+
+--- TEMPLATE DA SEGUIRE: "${emailTemplate.name}" ---
 SCENARIO: ${emailTemplate.whenToUse}
 LEVA PSICOLOGICA: ${emailTemplate.psychologicalLever}
-OGGETTO DI ESEMPIO: ${emailTemplate.subject}
-CORPO DI ESEMPIO:
+OGGETTO: ${emailTemplate.subject}
+CORPO:
 ${emailTemplate.body}
 --- FINE TEMPLATE ---
 
@@ -128,6 +144,7 @@ SITO WEB: ${lead.website || "N/A"}
 INDIRIZZO: ${lead.address || "N/A"}
 ANALISI AI: ${lead.ai_sales_summary ? lead.ai_sales_summary.substring(0, 500) : "Non disponibile"}
 SCORE: ${lead.score}/100
+RATING: ${lead.rating || "N/A"}/5${websiteContext}
 
 ${channelPrompt}
 
@@ -469,19 +486,28 @@ Rispondi SOLO con il JSON, senza markdown.`;
     }
 
     try {
+      const activityTypeMap: Record<string, string> = {
+        'voice': 'chiamata',
+        'whatsapp': 'whatsapp_inviato',
+        'email': 'email_inviata',
+      };
+      const standardActivityType = activityTypeMap[selectedChannel] || 'email_inviata';
+
       await db.execute(sql`
         INSERT INTO lead_scraper_activities (
           lead_id, consultant_id, type, title, description,
           metadata, created_at, updated_at
         ) VALUES (
-          ${lead.id}::uuid, ${consultantId}, 'hunter_direct_outreach',
+          ${lead.id}::uuid, ${consultantId}, ${standardActivityType},
           ${"Hunter Diretto: " + selectedChannel + " a " + lead.business_name},
-          ${resultNote},
+          ${resultNote || messagePreview?.substring(0, 500) || ''},
           ${JSON.stringify({
+            source: 'hunter_direct',
             channel: selectedChannel,
             status: actionStatus,
             score: lead.score,
             proactive_lead_id: proactiveLeadId,
+            template_name: selectedChannel === 'email' ? emailTemplate.name : undefined,
           })}::jsonb,
           NOW(), NOW()
         )

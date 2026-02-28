@@ -206,6 +206,38 @@ export async function processCallFeedback(data: CallFeedbackData): Promise<void>
       }
     }
 
+    try {
+      const { logLeadActivity, updateLeadStatusOnReply, findLeadIdByPhone } = await import("../utils/lead-activity-logger");
+      const targetPhone = data.callerInfo?.phone || data.callerInfo?.phoneNumber || null;
+      if (targetPhone) {
+        const scraperLeadId = await findLeadIdByPhone(targetPhone, data.consultantId);
+        if (scraperLeadId) {
+          const callSummary = analysis?.summary || `Chiamata completata (${data.duration}s)`;
+          const isPositive = analysis?.sentiment === 'positive' || analysis?.objectiveAchieved;
+          await logLeadActivity(
+            scraperLeadId,
+            data.consultantId,
+            'chiamata_completata',
+            `Chiamata completata con ${data.clientId ? 'lead' : 'contatto'}`,
+            `${callSummary}\n\nDurata: ${data.duration}s\nSentiment: ${analysis?.sentiment || 'N/A'}`,
+            {
+              callId: data.callId,
+              duration: data.duration,
+              sentiment: analysis?.sentiment,
+              followUpNeeded: analysis?.followUpNeeded,
+              objectiveAchieved: analysis?.objectiveAchieved,
+            }
+          );
+          if (isPositive) {
+            await updateLeadStatusOnReply(scraperLeadId, 'voice');
+          }
+          console.log(`✅ [ALESSIA-FEEDBACK] Lead timeline updated for ${scraperLeadId}`);
+        }
+      }
+    } catch (leadLogErr: any) {
+      console.warn(`⚠️ [ALESSIA-FEEDBACK] Failed to log lead activity: ${leadLogErr.message}`);
+    }
+
   } catch (error: any) {
     console.error(`❌ [ALESSIA-FEEDBACK] Error processing feedback for call ${data.callId}:`, error.message);
   }

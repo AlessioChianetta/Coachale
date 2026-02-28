@@ -1850,6 +1850,33 @@ export async function classifyAndGenerateDraft(
     console.log(`📧   Settore:        ${contactContext.data.category || "N/A"}`);
     console.log(`📧   Score AI:       ${contactContext.data.ai_compatibility_score || "N/A"}/100`);
     console.log(`📧   Stato lead:     ${contactContext.data.lead_status || "N/A"}`);
+
+    try {
+      const { logLeadActivity, updateLeadStatusOnReply } = await import("../../utils/lead-activity-logger");
+      const leadId = contactContext.data.id;
+      const consultantId = contactContext.data.consultant_id || email.accountId;
+      if (leadId && consultantId) {
+        const bodyPreview = (email.bodyText || email.bodyHtml || "").substring(0, 500);
+        await logLeadActivity(
+          leadId,
+          consultantId,
+          'email_ricevuta',
+          `Email ricevuta da ${contactContext.data.business_name || email.fromEmail}`,
+          `Subject: ${email.subject || "(vuoto)"}\n\n${bodyPreview}`,
+          {
+            from: email.fromEmail,
+            fromName: email.fromName,
+            subject: email.subject,
+            emailId: emailId,
+            accountId: email.accountId,
+          }
+        );
+        await updateLeadStatusOnReply(leadId, 'email');
+        console.log(`📧   Timeline:       ✅ Attività email_ricevuta aggiunta per lead ${leadId}`);
+      }
+    } catch (logErr: any) {
+      console.warn(`📧   Timeline:       ❌ Errore logging: ${logErr.message}`);
+    }
   }
   if (contactContext.source === "client" && contactContext.data) {
     console.log(`📧   User ID:        ${contactContext.data.userId}`);

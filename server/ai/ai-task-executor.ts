@@ -11,6 +11,7 @@ import { searchGoogleMaps, searchGoogleWeb, enrichSearchResults, generateBatchSa
 import { leadScraperSearches, leadScraperResults, leadScraperActivities, superadminLeadScraperConfig } from "../../shared/schema";
 import { checkDailyLimits, checkLeadCooldown, getRemainingLimits } from "../services/outreach-rate-limiter";
 import { decrypt } from "../encryption";
+import { selectBestTemplate, GOLDEN_RULES, type EmailTemplate } from "./email-templates-library";
 
 const LOG_PREFIX = "⚙️ [TASK-EXECUTOR]";
 const _agentDocsLoggedPerTask = new Set<string>();
@@ -231,76 +232,90 @@ async function updateLeadStatusAfterOutreach(
   let activityOutcome: string;
   let scheduleRetry = false;
 
+  let detailedType: string;
+
   if (stepAction === 'voice_call') {
     if (result.status === 'scheduled' || result.call_id) {
       const callStatus = result.call_status || result.status;
       if (callStatus === 'completed' || callStatus === 'answered') {
         newLeadStatus = 'in_trattativa';
-        activityType = 'voice_call_answered';
+        activityType = 'chiamata';
+        detailedType = 'voice_call_answered';
         activityTitle = 'Chiamata completata con risposta';
         activityOutcome = 'answered';
       } else if (callStatus === 'no_answer' || callStatus === 'failed' || callStatus === 'busy') {
         newLeadStatus = 'contattato';
-        activityType = 'voice_call_no_answer';
+        activityType = 'chiamata';
+        detailedType = 'voice_call_no_answer';
         activityTitle = 'Chiamata senza risposta';
         activityOutcome = 'no_answer';
         scheduleRetry = true;
       } else if (callStatus === 'rejected' || callStatus === 'not_interested') {
         newLeadStatus = 'non_interessato';
-        activityType = 'voice_call_rejected';
+        activityType = 'chiamata';
+        detailedType = 'voice_call_rejected';
         activityTitle = 'Lead non interessato (chiamata)';
         activityOutcome = 'not_interested';
       } else {
         newLeadStatus = 'contattato';
-        activityType = 'voice_call_scheduled';
+        activityType = 'chiamata';
+        detailedType = 'voice_call_scheduled';
         activityTitle = 'Chiamata programmata';
         activityOutcome = 'scheduled';
       }
     } else if (result.success === false || result.error) {
       newLeadStatus = 'contattato';
-      activityType = 'voice_call_failed';
+      activityType = 'chiamata';
+      detailedType = 'voice_call_failed';
       activityTitle = 'Chiamata fallita';
       activityOutcome = 'failed';
       scheduleRetry = true;
     } else {
       newLeadStatus = 'contattato';
-      activityType = 'voice_call_attempted';
+      activityType = 'chiamata';
+      detailedType = 'voice_call_attempted';
       activityTitle = 'Tentativo di chiamata';
       activityOutcome = 'attempted';
     }
   } else if (stepAction === 'send_whatsapp') {
     if (result.status === 'sent') {
       newLeadStatus = 'contattato';
-      activityType = 'whatsapp_sent';
+      activityType = 'whatsapp_inviato';
+      detailedType = 'whatsapp_sent';
       activityTitle = 'WhatsApp inviato con successo';
       activityOutcome = 'sent';
     } else if (result.status === 'failed') {
       newLeadStatus = 'in_outreach';
-      activityType = 'whatsapp_failed';
+      activityType = 'whatsapp_inviato';
+      detailedType = 'whatsapp_failed';
       activityTitle = 'WhatsApp invio fallito';
       activityOutcome = 'failed';
       scheduleRetry = true;
     } else {
       newLeadStatus = 'in_outreach';
-      activityType = 'whatsapp_skipped';
+      activityType = 'whatsapp_inviato';
+      detailedType = 'whatsapp_skipped';
       activityTitle = 'WhatsApp saltato';
       activityOutcome = 'skipped';
     }
   } else if (stepAction === 'send_email') {
     if (result.status === 'sent') {
       newLeadStatus = 'contattato';
-      activityType = 'email_sent';
+      activityType = 'email_inviata';
+      detailedType = 'email_sent';
       activityTitle = 'Email inviata con successo';
       activityOutcome = 'sent';
     } else if (result.status === 'failed') {
       newLeadStatus = 'in_outreach';
-      activityType = 'email_failed';
+      activityType = 'email_inviata';
+      detailedType = 'email_failed';
       activityTitle = 'Email invio fallita';
       activityOutcome = 'failed';
       scheduleRetry = true;
     } else {
       newLeadStatus = 'in_outreach';
-      activityType = 'email_skipped';
+      activityType = 'email_inviata';
+      detailedType = 'email_skipped';
       activityTitle = 'Email saltata';
       activityOutcome = 'skipped';
     }
@@ -325,6 +340,7 @@ async function updateLeadStatusAfterOutreach(
       taskId: task.id,
       aiRole: task.ai_role,
       channel: stepAction === 'voice_call' ? 'voice' : stepAction === 'send_whatsapp' ? 'whatsapp' : 'email',
+      detailedType,
       resultStatus: result.status,
       searchId: additionalContextData.search_id,
       businessName: additionalContextData.business_name,
@@ -2816,6 +2832,40 @@ async function handleSendEmail(
 
   if (!emailBody) {
     try {
+      let emailStepNumber = 1;
+      let emailTemplateSection = '';
+      const isProspecting = task.task_category === 'prospecting' || !!additionalCtx.lead_id;
+
+      if (isProspecting && additionalCtx.lead_id) {
+        try {
+          const prevEmailCount = await db.execute(sql`
+            SELECT COUNT(*) as cnt FROM lead_scraper_activities
+            WHERE lead_id = ${additionalCtx.lead_id}::uuid
+              AND type IN ('email_inviata', 'email_sent')
+          `);
+          emailStepNumber = parseInt((prevEmailCount.rows[0] as any)?.cnt || '0') + 1;
+        } catch {}
+
+        const followUpTemplate = selectBestTemplate({
+          stepNumber: emailStepNumber,
+          hasWebsiteData: !!additionalCtx.website_data,
+          sector: additionalCtx.sector || undefined,
+        });
+
+        emailTemplateSection = `\n\nSEGUI ESATTAMENTE la struttura del seguente template. Sostituisci TUTTI i placeholder con dati reali. Puoi adattare singole frasi al contesto ma MANTIENI la struttura, il tono e la leva psicologica.
+
+--- TEMPLATE DA SEGUIRE: "${followUpTemplate.name}" ---
+SCENARIO: ${followUpTemplate.whenToUse}
+LEVA PSICOLOGICA: ${followUpTemplate.psychologicalLever}
+CORPO:
+${followUpTemplate.body}
+--- FINE TEMPLATE ---
+
+${GOLDEN_RULES}`;
+
+        console.log(`${LOG_PREFIX} Email follow-up step ${emailStepNumber}, using template: ${followUpTemplate.name}`);
+      }
+
       const { client, model: resolvedModel, providerName } = await resolveProviderForTask(task.consultant_id, task.ai_role);
       const effectiveEmailModel = autonomyModel || resolvedModel;
       console.log(`${LOG_PREFIX} send_email body generation using ${providerName} (${effectiveEmailModel})`);
@@ -2824,7 +2874,7 @@ ${agentContextSection || ''}
 Contesto: ${task.ai_instruction}
 ${task.additional_context ? `\nIstruzioni aggiuntive e contesto, segui attentamente o tieni a memoria:\n${task.additional_context}` : ''}${buildFollowUpSection(previousResults)}
 ${reportData.title ? `Report allegato: "${reportData.title}"` : ''}
-${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}
+${reportData.summary ? `Riepilogo: ${reportData.summary.substring(0, 200)}` : ''}${emailTemplateSection}
 
 REGOLE IMPORTANTI:
 1. Scrivi l'INTERA email completa: saluto iniziale, corpo, e chiusura. Il tono deve essere COERENTE dall'inizio alla fine.

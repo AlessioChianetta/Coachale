@@ -457,6 +457,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           waTemplateFilled: ctx.wa_template_filled || null,
           waTemplateBody: ctx.wa_template_body || null,
           waTemplateSid: ctx.wa_template_sid || null,
+          emailTemplateName: ctx.email_template_name || null,
         });
       }
     }
@@ -501,6 +502,7 @@ router.get("/hunter-pipeline", authenticateToken, requireAnyRole(["consultant", 
           waTemplateFilled: ctx.wa_template_filled || null,
           waTemplateBody: ctx.wa_template_body || null,
           waTemplateSid: ctx.wa_template_sid || null,
+          emailTemplateName: ctx.email_template_name || null,
         });
       }
     }

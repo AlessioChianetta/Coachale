@@ -33,6 +33,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  MailOpen,
   Globe,
   Star,
   Copy,
@@ -51,6 +52,7 @@ import {
   ChevronUp,
   Plus,
   PhoneCall,
+  PhoneIncoming,
   FileText,
   Presentation,
   Handshake,
@@ -124,8 +126,12 @@ const LEAD_STATUSES = [
 const ACTIVITY_TYPES = [
   { value: "nota", label: "Nota", icon: FileText, color: "text-blue-500", bgColor: "bg-blue-50 dark:bg-blue-950/20" },
   { value: "chiamata", label: "Chiamata", icon: PhoneCall, color: "text-green-500", bgColor: "bg-green-50 dark:bg-green-950/20" },
-  { value: "whatsapp_inviato", label: "WhatsApp", icon: MessageCircle, color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/20" },
+  { value: "chiamata_completata", label: "Chiamata completata", icon: PhoneIncoming, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
+  { value: "chiamata_ricevuta", label: "Chiamata ricevuta", icon: PhoneIncoming, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
+  { value: "whatsapp_inviato", label: "WhatsApp inviato", icon: MessageCircle, color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/20" },
+  { value: "whatsapp_ricevuto", label: "WhatsApp ricevuto", icon: MessageCircle, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "email_inviata", label: "Email inviata", icon: Mail, color: "text-cyan-500", bgColor: "bg-cyan-50 dark:bg-cyan-950/20" },
+  { value: "email_ricevuta", label: "Email ricevuta", icon: MailOpen, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950/20" },
   { value: "discovery", label: "Discovery", icon: Presentation, color: "text-violet-500", bgColor: "bg-violet-50 dark:bg-violet-950/20" },
   { value: "demo", label: "Demo", icon: BarChart3, color: "text-amber-500", bgColor: "bg-amber-50 dark:bg-amber-950/20" },
   { value: "appuntamento", label: "Appuntamento", icon: CalendarDays, color: "text-rose-500", bgColor: "bg-rose-50 dark:bg-rose-950/20" },
@@ -146,8 +152,17 @@ function getLeadStatusInfo(status: string | null) {
   return LEAD_STATUSES.find(s => s.value === (status || "nuovo")) || LEAD_STATUSES[0];
 }
 
+const INCOMING_TYPES = new Set(['email_ricevuta', 'whatsapp_ricevuto', 'chiamata_completata', 'chiamata_ricevuta']);
+const OUTGOING_TYPES = new Set(['chiamata', 'whatsapp_inviato', 'email_inviata']);
+
 function getActivityType(type: string) {
-  return ACTIVITY_TYPES.find(t => t.value === type) || ACTIVITY_TYPES[0];
+  return ACTIVITY_TYPES.find(t => t.value === type) || { value: type, label: type, icon: Activity, color: "text-gray-500", bgColor: "bg-gray-50 dark:bg-gray-950/20" };
+}
+
+function getDirectionBadge(type: string): { label: string; color: string } | null {
+  if (INCOMING_TYPES.has(type)) return { label: "↓ Ricevuto", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+  if (OUTGOING_TYPES.has(type)) return { label: "↑ Inviato", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
+  return null;
 }
 
 function getOutcomeInfo(outcome: string | null) {
@@ -246,7 +261,11 @@ export default function ConsultantLeadDetail() {
 
   const filteredActivities = useMemo(() => {
     if (activeActivityTab === "outreach") {
-      return activities.filter(a => a.type === "chiamata" || a.type === "whatsapp_inviato" || a.type === "email_inviata");
+      const outreachTypes = new Set([
+        "chiamata", "whatsapp_inviato", "email_inviata",
+        "email_ricevuta", "whatsapp_ricevuto", "chiamata_completata", "chiamata_ricevuta",
+      ]);
+      return activities.filter(a => outreachTypes.has(a.type));
     }
     if (activeActivityTab === "disco_demo") {
       return activities.filter(a => a.type === "discovery" || a.type === "demo" || a.type === "appuntamento");
@@ -908,6 +927,10 @@ export default function ConsultantLeadDetail() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", at.bgColor, at.color, "border-current/20")}>{at.label}</Badge>
+                                    {(() => {
+                                      const dir = getDirectionBadge(activity.type);
+                                      return dir ? <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", dir.color)}>{dir.label}</Badge> : null;
+                                    })()}
                                     {outcomeInfo && (
                                       <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", outcomeInfo.color)}>{outcomeInfo.label}</Badge>
                                     )}
