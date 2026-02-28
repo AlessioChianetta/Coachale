@@ -1172,33 +1172,41 @@ export default function ConsultantLeadScraper() {
   return (
     <PageLayout role="consultant">
       <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 bg-violet-600 rounded-xl shadow-sm">
-            <MapPin className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Lead Scraper</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Trova, analizza e gestisci i tuoi lead con AI Sales Agent</p>
-          </div>
-        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-950 via-purple-950 to-fuchsia-950 p-4 sm:p-6 lg:p-8 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-500/10 via-transparent to-transparent" />
+          <div className="absolute top-0 right-0 w-72 h-72 bg-purple-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-fuchsia-500/5 rounded-full blur-3xl" />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Ricerche", value: stats.totalSearches, icon: Search, iconColor: "text-rose-500", numColor: "text-rose-600 dark:text-rose-400", bgGrad: "from-rose-50 to-white dark:from-rose-950/10 dark:to-gray-900", ringColor: "ring-rose-100 dark:ring-rose-900/20" },
-            { label: "Lead Totali", value: stats.totalLeads, icon: Building2, iconColor: "text-violet-500", numColor: "text-violet-600 dark:text-violet-400", bgGrad: "from-violet-50 to-white dark:from-violet-950/10 dark:to-gray-900", ringColor: "ring-violet-100 dark:ring-violet-900/20" },
-            { label: "Email", value: stats.emailCount, icon: Mail, iconColor: "text-blue-500", numColor: "text-blue-600 dark:text-blue-400", bgGrad: "from-blue-50 to-white dark:from-blue-950/10 dark:to-gray-900", ringColor: "ring-blue-100 dark:ring-blue-900/20" },
-            { label: "Telefoni", value: stats.phoneCount, icon: Phone, iconColor: "text-emerald-500", numColor: "text-emerald-600 dark:text-emerald-400", bgGrad: "from-emerald-50 to-white dark:from-emerald-950/10 dark:to-gray-900", ringColor: "ring-emerald-100 dark:ring-emerald-900/20" },
-          ].map((stat, i) => (
-            <div key={i} className={`relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br ${stat.bgGrad} border border-gray-100 dark:border-gray-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ring-1 ${stat.ringColor} hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between">
-                <div className={`p-2 rounded-xl bg-white/80 dark:bg-gray-800/80 shadow-sm`}>
-                  <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
-                </div>
+          <div className="relative z-10 space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                <MapPin className="h-7 w-7 text-white" />
               </div>
-              <p className={`text-[32px] md:text-[36px] font-black tracking-tighter leading-none mt-3 mb-1 ${stat.numColor}`}>{stat.value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{stat.label}</p>
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Lead Scraper</h1>
+                <p className="text-purple-200/70 text-sm mt-0.5">
+                  Trova, analizza e gestisci i tuoi lead con AI Sales Agent
+                </p>
+              </div>
             </div>
-          ))}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "Ricerche", value: stats.totalSearches, icon: Search, iconColor: "text-rose-300" },
+                { label: "Lead Totali", value: stats.totalLeads, icon: Building2, iconColor: "text-violet-300" },
+                { label: "Email", value: stats.emailCount, icon: Mail, iconColor: "text-blue-300" },
+                { label: "Telefoni", value: stats.phoneCount, icon: Phone, iconColor: "text-emerald-300" },
+              ].map((stat, i) => (
+                <div key={i} className="rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 p-4 hover:bg-white/15 transition-colors">
+                  <div className="flex items-center gap-2 mb-2">
+                    <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{stat.label}</span>
+                  </div>
+                  <p className="text-[28px] md:text-[32px] font-black tracking-tighter leading-none text-white">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {hunterStatus && (
