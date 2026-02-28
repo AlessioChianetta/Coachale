@@ -1254,7 +1254,7 @@ function SettingsTab({
     >
       <Tabs value={activeTab} onValueChange={onTabChange}>
         <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5 overflow-x-auto no-scrollbar">
-          <TabsList className="flex w-full sm:grid sm:grid-cols-8 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
+          <TabsList className="flex w-full sm:grid sm:grid-cols-6 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
             <TabsTrigger
               value="dipendenti"
               className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
@@ -1275,13 +1275,6 @@ function SettingsTab({
             >
               <Zap className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Autonomia & Modalità</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="orari"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
-            >
-              <Clock className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Orari & Limiti</span>
             </TabsTrigger>
             <TabsTrigger
               value="canali"
@@ -1308,13 +1301,6 @@ function SettingsTab({
             >
               <ListTodo className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Task</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="data-catalog"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
-            >
-              <Database className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Dati</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1979,10 +1965,7 @@ function SettingsTab({
               rows={4}
             />
           </div>
-        </TabsContent>
 
-        {/* Tab 3 - Orari & Limiti */}
-        <TabsContent value="orari" className="mt-5 space-y-5">
           <div className="relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md transition-all duration-300 overflow-hidden">
             <div className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white mb-1">
               <Clock className="h-5 w-5" />
@@ -3702,9 +3685,6 @@ function SettingsTab({
           {dashboardContent}
         </TabsContent>
 
-        <TabsContent value="data-catalog" className="mt-5 space-y-5">
-          {dataCatalogContent}
-        </TabsContent>
       </Tabs>
 
       <div className="flex justify-end pt-4 border-t border-border mt-6">

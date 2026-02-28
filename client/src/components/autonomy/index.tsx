@@ -28,7 +28,7 @@ export default function ConsultantAIAutonomyPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dipendenti");
-  const isSettingsTab = ["panoramica", "autonomia", "orari", "canali", "dipendenti"].includes(activeTab);
+  const isSettingsTab = ["panoramica", "autonomia", "canali", "dipendenti"].includes(activeTab);
   const [settings, setSettings] = useState<AutonomySettings>(DEFAULT_SETTINGS);
   const [chatOpenRoleId, setChatOpenRoleId] = useState<string | null>(null);
   const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
