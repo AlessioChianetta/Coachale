@@ -1170,8 +1170,8 @@ export default function ConsultantEmailHub() {
         </Button>
       </div>
       
-      <div className="flex-1 overflow-hidden relative">
-        <ScrollArea className="h-full">
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        <ScrollArea className="absolute inset-0">
         <div className="px-2 pb-4">
           <div className="flex items-center gap-1">
             <button
