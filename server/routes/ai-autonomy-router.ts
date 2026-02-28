@@ -1200,11 +1200,13 @@ async function findNextAvailableSlot(
   if (day === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
   else if (day === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
 
-  if (channel === 'voice') {
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const windowStart = new Date(candidate.getTime() - slotDuration * 60000);
-      const windowEnd = new Date(candidate.getTime() + slotDuration * 60000);
-      try {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const windowStart = new Date(candidate.getTime() - slotDuration * 60000);
+    const windowEnd = new Date(candidate.getTime() + slotDuration * 60000);
+    let hasConflict = false;
+
+    try {
+      if (channel === 'voice') {
         const conflict = await db.execute(sql`
           SELECT id FROM scheduled_voice_calls
           WHERE consultant_id = ${consultantId}
@@ -1212,17 +1214,33 @@ async function findNextAvailableSlot(
             AND scheduled_at BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}
           LIMIT 1
         `);
-        if (conflict.rows.length === 0) break;
-      } catch { break; }
-      candidate = new Date(candidate.getTime() + slotDuration * 60000);
-      const newHour = candidate.getHours();
-      if (newHour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
-      const newDay = candidate.getDay();
-      if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
-      else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
-    }
+        hasConflict = conflict.rows.length > 0;
+      }
+
+      if (!hasConflict) {
+        const taskConflict = await db.execute(sql`
+          SELECT id FROM ai_scheduled_tasks
+          WHERE consultant_id = ${consultantId}
+            AND preferred_channel = ${channel}
+            AND status IN ('scheduled', 'waiting_approval', 'in_progress')
+            AND scheduled_at BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}
+          LIMIT 1
+        `);
+        hasConflict = taskConflict.rows.length > 0;
+      }
+    } catch { break; }
+
+    if (!hasConflict) break;
+
+    candidate = new Date(candidate.getTime() + slotDuration * 60000);
+    const newHour = candidate.getHours();
+    if (newHour >= endHour) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
+    const newDay = candidate.getDay();
+    if (newDay === 0) { candidate.setDate(candidate.getDate() + 1); candidate.setHours(startHour, 0, 0, 0); }
+    else if (newDay === 6) { candidate.setDate(candidate.getDate() + 2); candidate.setHours(startHour, 0, 0, 0); }
   }
 
+  console.log(`[SLOT-FINDER] ${channel} → slot found: ${candidate.toISOString()} (offsetIndex=${offsetIndex})`);
   return candidate;
 }
 
