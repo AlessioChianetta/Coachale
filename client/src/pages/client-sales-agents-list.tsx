@@ -63,7 +63,7 @@ interface SalesAgent {
   _conversationCount?: number;
 }
 
-export default function ClientSalesAgentsList() {
+export default function ClientSalesAgentsList({ embedded = false }: { embedded?: boolean }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -213,32 +213,9 @@ export default function ClientSalesAgentsList() {
     },
   });
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
-      <div className="flex h-screen">
-        <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
-
-        <div className="flex-1 overflow-y-auto bg-transparent">
-          {/* Header with menu button */}
-          <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 md:px-8 py-3 flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(true)}
-                className="hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Bot className="h-6 w-6 text-blue-600" />
-                Sales Agents AI
-              </h1>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="p-4 sm:p-8">
+  const mainContent = (
+    <>
+          <div className={embedded ? "" : "p-4 sm:p-8"}>
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -712,6 +689,37 @@ export default function ClientSalesAgentsList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+          </div>
+    </>
+  );
+
+  if (embedded) {
+    return mainContent;
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
+      <div className="flex h-screen">
+        <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
+        <div className="flex-1 overflow-y-auto bg-transparent">
+          <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 md:px-8 py-3 flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Bot className="h-6 w-6 text-blue-600" />
+                Sales Agents AI
+              </h1>
+            </div>
+          </div>
+          <div className="p-4 sm:p-8">
+            {mainContent}
           </div>
         </div>
       </div>

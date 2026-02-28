@@ -19,6 +19,18 @@ interface NormalModeWrapperProps {
   setSidebarOpen: (open: boolean) => void;
 }
 
+interface EmbeddedWrapperProps {
+  children: React.ReactNode;
+}
+
+function EmbeddedWrapper({ children }: EmbeddedWrapperProps) {
+  return (
+    <div className="w-full h-full">
+      {children}
+    </div>
+  );
+}
+
 function NormalModeWrapper({ children, sidebarOpen, setSidebarOpen }: NormalModeWrapperProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
@@ -52,7 +64,7 @@ function NormalModeWrapper({ children, sidebarOpen, setSidebarOpen }: NormalMode
   );
 }
 
-export default function LiveConsultation() {
+export default function LiveConsultation({ embedded = false }: { embedded?: boolean }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const user = getAuthUser();
@@ -362,38 +374,44 @@ export default function LiveConsultation() {
   // Normal mode: richiede selezione tipo sessione
   // Se non è stato selezionato un tipo di sessione, mostra il selettore
   if (!sessionType) {
+    const selectorContent = (
+      <SessionTypeSelector
+        onSelectType={handleSelectSessionType}
+        onBack={() => setLocation('/client/ai-assistant')}
+        voiceName={voiceName}
+        setVoiceName={setVoiceName}
+        useFullPrompt={useFullPrompt}
+        setUseFullPrompt={setUseFullPrompt}
+        layoutMode={layoutMode}
+        setLayoutMode={setLayoutMode}
+      />
+    );
+    if (embedded) return <EmbeddedWrapper>{selectorContent}</EmbeddedWrapper>;
     return (
       <NormalModeWrapper sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
-        <SessionTypeSelector
-          onSelectType={handleSelectSessionType}
-          onBack={() => setLocation('/client/ai-assistant')}
-          voiceName={voiceName}
-          setVoiceName={setVoiceName}
-          useFullPrompt={useFullPrompt}
-          setUseFullPrompt={setUseFullPrompt}
-          layoutMode={layoutMode}
-          setLayoutMode={setLayoutMode}
-        />
+        {selectorContent}
       </NormalModeWrapper>
     );
   }
 
   // Se è stato selezionato custom ma non ancora avviata la sessione, mostra l'editor
   if (sessionType === 'custom' && !customPrompt) {
+    const editorContent = (
+      <CustomPromptEditor
+        onBack={() => setSessionType(null)}
+        onStartSession={handleStartCustomSession}
+      />
+    );
+    if (embedded) return <EmbeddedWrapper>{editorContent}</EmbeddedWrapper>;
     return (
       <NormalModeWrapper sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
-        <CustomPromptEditor
-          onBack={() => setSessionType(null)}
-          onStartSession={handleStartCustomSession}
-        />
+        {editorContent}
       </NormalModeWrapper>
     );
   }
 
-  // Altrimenti mostra la schermata Live Mode
   const config = getSessionConfig();
 
-  // Debug logging per verificare la configurazione
   console.log('📊 [SESSION CONFIG]', {
     sessionType: config.sessionType,
     consultationId: consultationId,
@@ -401,37 +419,8 @@ export default function LiveConsultation() {
     mode: config.mode,
   });
 
-  // Phone call layout è fullscreen, senza wrapper
-  if (layoutMode === 'phone_call') {
-    return (
-      <>
-        <LiveModeScreen
-          key={`${sessionType}-${consultationId || 'normal'}`}
-          mode={config.mode}
-          consultantType={config.consultantType || undefined}
-          customPrompt={customPrompt || undefined}
-          useFullPrompt={useFullPrompt}
-          voiceName={voiceName}
-          sessionType={config.sessionType}
-          isTestMode={isTestMode}
-          consultationId={consultationId || undefined}
-          layoutMode={layoutMode}
-          onClose={handleCloseSession}
-          onConversationSaved={handleConversationSaved}
-        />
-        {/* Hide FloatingButton during live session */}
-        <style>{`
-          .floating-ai-button {
-            display: none !important;
-          }
-        `}</style>
-      </>
-    );
-  }
-
-  // Immersive layout ha il wrapper normale
-  return (
-    <NormalModeWrapper sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+  const liveModeContent = (
+    <>
       <LiveModeScreen
         key={`${sessionType}-${consultationId || 'normal'}`}
         mode={config.mode}
@@ -446,12 +435,23 @@ export default function LiveConsultation() {
         onClose={handleCloseSession}
         onConversationSaved={handleConversationSaved}
       />
-      {/* Hide FloatingButton during live session */}
       <style>{`
         .floating-ai-button {
           display: none !important;
         }
       `}</style>
+    </>
+  );
+
+  if (embedded) return <EmbeddedWrapper>{liveModeContent}</EmbeddedWrapper>;
+
+  if (layoutMode === 'phone_call') {
+    return liveModeContent;
+  }
+
+  return (
+    <NormalModeWrapper sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+      {liveModeContent}
     </NormalModeWrapper>
   );
 }

@@ -130,7 +130,7 @@ const scriptTypeColors: Record<SalesScript['scriptType'], string> = {
 };
 
 // Main Component
-export default function ClientScriptManager() {
+export default function ClientScriptManager({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -738,14 +738,16 @@ export default function ClientScriptManager() {
   };
 
   return (
-    <div className="flex h-screen bg-muted/20">
-      <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className={embedded ? "flex flex-col h-full overflow-hidden" : "flex h-screen bg-muted/20"}>
+      {!embedded && <Sidebar role={sidebarRole as "client" | "consultant"} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b px-4 py-2 bg-background z-10">
             <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" /> Script Manager
-              </h1>
+              {!embedded && (
+                <h1 className="text-lg font-semibold flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" /> Script Manager
+                </h1>
+              )}
               <Button 
                 variant={showBuilder ? "secondary" : "default"} 
                 size="sm"

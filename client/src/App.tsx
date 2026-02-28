@@ -122,6 +122,7 @@ const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
 const RealtimeTest = lazy(() => import("@/pages/realtime-test"));
 const ThemePreview = lazy(() => import("@/pages/theme-preview"));
+const SalesHub = lazy(() => import("@/pages/sales-hub"));
 const ClientSalesAgentsList = lazy(() => import("@/pages/client-sales-agents-list"));
 const ClientSalesAgentConfig = lazy(() => import("@/pages/client-sales-agent-config"));
 const ClientHumanSellersList = lazy(() => import("@/pages/client-human-sellers-list"));
@@ -549,7 +550,7 @@ function Router() {
 
           <Route path="/consultant/sales-agents">
             <AuthGuard requiredRole={["client", "consultant"]}>
-              <ClientSalesAgentsList />
+              <SalesHub />
             </AuthGuard>
           </Route>
 
@@ -894,7 +895,7 @@ function Router() {
 
           <Route path="/client/sales-agents">
             <AuthGuard requiredRole="client" blockTiers={["bronze", "silver"]}>
-              <ClientSalesAgentsList />
+              <SalesHub />
             </AuthGuard>
           </Route>
 
