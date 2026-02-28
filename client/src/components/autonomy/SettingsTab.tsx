@@ -1257,35 +1257,35 @@ function SettingsTab({
           <TabsList className="flex w-full sm:grid sm:grid-cols-6 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
             <TabsTrigger
               value="dipendenti"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Bot className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Dipendenti AI</span>
             </TabsTrigger>
             <TabsTrigger
               value="panoramica"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Activity className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Panoramica</span>
             </TabsTrigger>
             <TabsTrigger
               value="autonomia"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Zap className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Autonomia & Modalità</span>
             </TabsTrigger>
             <TabsTrigger
               value="canali"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <ListTodo className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Canali & Categorie</span>
             </TabsTrigger>
             <TabsTrigger
               value="activity"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <Activity className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Feed</span>
@@ -1297,7 +1297,7 @@ function SettingsTab({
             </TabsTrigger>
             <TabsTrigger
               value="dashboard"
-              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md data-[state=inactive]:hover:bg-muted/60 transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md hover:bg-slate-100 dark:hover:bg-slate-800 data-[state=active]:hover:bg-foreground transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
             >
               <ListTodo className="h-4 w-4 flex-shrink-0" />
               <span className="hidden sm:inline">Task</span>
