@@ -4,7 +4,7 @@ import { z } from "zod";
 import { storage } from "../../storage";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'your-secret-key';
 
 /**
  * GET /public/invite/:token
