@@ -1,0 +1,124 @@
+Objective
+Trasformare l'Email Hub in un sistema di email marketing completo e intelligente, dove "Millie Email Writer" lavora come una vera dipendente:
+
+Contesto completo per le risposte AI — Millie deve conoscere tutto sul contatto: lead CRM, conversazioni WhatsApp precedenti, trascrizioni chiamate, email precedenti
+Filtro email non-rispondibili — riconoscere automaticamente email che NON richiedono risposta (test SMTP, conferme automatiche, newsletter, bounce, OTP)
+Sequenza follow-up automatica — se il lead non risponde all'email di Hunter, Millie schedula automaticamente i follow-up (Template 2 dopo 3gg, Template 3 dopo 7gg)
+Template persuasivi integrati — i 10 template del documento vengono caricati nel sistema come riferimento per la generazione AI
+Analisi dello stato attuale
+Cosa c'è già
+Email Hub con IMAP IDLE per ricezione in tempo reale
+AI classification (intent, urgency, sentiment) via Gemini
+Generazione bozze AI con Knowledge Base (RAG)
+Auto-send basato su confidence threshold
+Thread tracking via messageId/inReplyTo
+Matching sender → client (tabella users per role: 'client')
+Hunter invia email e le registra in hub_emails
+Cosa manca (problemi identificati)
+Zero contesto lead/CRM — email-ai-service.ts NON cerca il sender in lead_scraper_results o proactive_leads. Millie risponde senza sapere chi è il lead.
+Zero contesto cross-canale — Nessun recupero di WhatsApp history o trascrizioni chiamate. Millie non sa se hai già parlato con quel contatto su altri canali.
+Nessun filtro "non rispondere" — Email tipo "Test SMTP riuscito", conferme automatiche, newsletter, bounce vengono classificate come normali e Millie genera risposte inutili (come il caso che hai segnalato).
+Nessuna sequenza follow-up strutturata — Hunter manda la prima email ma non c'è logica automatica per follow-up 2 e 3 se il lead non risponde.
+Template persuasivi non integrati — I 10 template esistono come documento ma non sono accessibili al sistema AI.
+Tasks
+T001: Filtro "No-Reply" intelligente per email non-rispondibili
+Blocked By: []
+Details:
+File: server/services/email-hub/email-ai-service.ts
+Aggiungere una funzione shouldSkipAutoResponse(email) che viene chiamata PRIMA della classificazione AI
+Pattern da riconoscere e ignorare (processingStatus → "ignored"):
+Test SMTP: subject contiene "test connessione", "test smtp", "smtp test", "test email"
+Conferme automatiche: from contiene "noreply@", "no-reply@", "mailer-daemon", "postmaster"
+Newsletter/Marketing: headers List-Unsubscribe, Precedence: bulk, from contiene "newsletter@", "marketing@"
+Bounce/Delivery: subject contiene "delivery failed", "undeliverable", "mail delivery", "delivery status"
+Auto-reply/OOO: headers Auto-Submitted: auto-replied, subject contiene "fuori ufficio", "out of office", "automatic reply"
+Proprie email in uscita: direction === 'outbound'
+Se riconosciuta, setta processingStatus = 'ignored' e NON genera bozza
+Log chiaro: [EMAIL-FILTER] Skipping auto-response for email "${subject}" - reason: ${reason}
+Acceptance: Email di test SMTP, newsletter, bounce, auto-reply NON generano più risposte AI
+T002: Arricchimento contesto con dati Lead/CRM
+Blocked By: []
+Details:
+File: server/services/email-hub/email-ai-service.ts
+Creare funzione buildContactContext(fromEmail, consultantId) che cerca in ordine:
+lead_scraper_results → match su email → restituisce: businessName, sector, score, salesSummary, status, website
+proactive_leads → match su email → restituisce: nome, telefono, note, fonte
+users (role='client') → match su email → restituisce: nome, cognome, livello, data registrazione
+Il contesto trovato viene iniettato nel prompt di buildDraftPrompt:
+CONTESTO CONTATTO:
+- Nome attività: {businessName}
+- Settore: {sector}
+- Score compatibilità: {score}/100
+- Stato: {status}
+- Note: {salesSummary}
+Se non trova nulla, aggiunge: "Contatto sconosciuto - nessun dato CRM disponibile"
+Acceptance: Aprendo un'email da un lead noto e generando bozza AI, la risposta dimostra conoscenza del lead
+T003: Contesto cross-canale (WhatsApp + Chiamate)
+Blocked By: [T002]
+Details:
+File: server/services/email-hub/email-ai-service.ts
+Estendere buildContactContext per cercare anche:
+WhatsApp: cerca in whatsapp_conversations per phone match (dal lead/client trovato in T002), poi ultime 5 messages da whatsapp_messages
+Chiamate vocali: cerca in voice_calls o tabella chiamate per phone match, recupera ultime trascrizioni/riassunti
+Email precedenti: cerca in hub_emails tutte le email inviate/ricevute da quello stesso indirizzo (thread completo)
+Iniettare nel prompt sezione dedicata:
+STORICO COMUNICAZIONI CON QUESTO CONTATTO:
+- WhatsApp (ultimi 5 msg): [messaggi]
+- Ultima chiamata: [data] - Riassunto: [summary]
+- Email precedenti: [lista subject + data]
+Acceptance: La bozza AI fa riferimento a conversazioni precedenti su altri canali quando disponibili
+T004: Integrazione template persuasivi nel sistema AI
+Blocked By: []
+Details:
+File: server/services/email-hub/email-ai-service.ts e/o server/cron/ai-autonomous-roles.ts
+Creare un modulo server/ai/email-templates-library.ts che espone i 10 template come oggetti strutturati:
+interface EmailTemplate {
+  id: string;
+  name: string;
+  scenario: string;
+  whenToUse: string;
+  subject: string;
+  body: string;
+  psychologicalLever: string;
+}
+I template vengono caricati dal contenuto di docs/hunter-email-templates.md (hardcoded come costanti)
+Nella generazione email di Hunter (ai-autonomy-router.ts e hunter-direct-executor.ts), iniettare nel prompt:
+USA COME RIFERIMENTO QUESTO TEMPLATE (adattalo al lead specifico):
+[template selezionato in base allo scenario]
+Logica selezione template:
+Primo contatto → Template 1
+Follow-up 1 (3-5gg) → Template 2
+Follow-up 2 (7-10gg) → Template 3
+Lead con evento recente → Template 4
+Lead con caso studio disponibile → Template 5
+Default fallback → Template 6 (pain point)
+Acceptance: Le email generate da Hunter seguono la struttura dei template persuasivi
+T005: Sistema follow-up automatico per email senza risposta
+Blocked By: [T001, T004]
+Details:
+File: server/cron/ai-task-scheduler.ts e server/routes/ai-autonomy-router.ts
+Creare funzione checkEmailFollowUps() che viene chiamata nel cron cycle:
+Cerca in hub_emails le email outbound di Hunter (direction='outbound', da task con ai_role='hunter')
+Per ogni email outbound, controlla se esiste un reply inbound (via inReplyTo o match email address + threadId)
+Se nessuna risposta dopo 3 giorni → crea task ai_scheduled_tasks con template follow-up (Template 2)
+Se nessuna risposta dopo 7 giorni (e follow-up 1 già inviato) → crea task con Template 3 (break-up)
+Se risposta ricevuta → aggiorna lead status a "responded", NON inviare follow-up
+Max 3 tentativi totali per lead (1 primo contatto + 2 follow-up)
+Aggiungere colonna follow_up_count a ai_scheduled_tasks o tracciare via follow_up_of
+Anti-duplicazione: non creare follow-up se ne esiste già uno schedulato per lo stesso lead
+Acceptance: Dopo 3 giorni senza risposta, compare automaticamente un follow-up schedulato nell'Outbox Hunter
+T006: Miglioramento classificazione email e dashboard stato
+Blocked By: [T001, T002]
+Details:
+File: server/services/email-hub/email-ai-service.ts + client/src/pages/consultant-email-hub.tsx
+Backend: Migliorare classifyEmail per includere nuove categorie:
+"hunter_reply" — risposta a un'email inviata da Hunter (match via inReplyTo su email outbound Hunter)
+"system_notification" — conferme, test, bounce
+"client_inquiry" — domanda da cliente esistente
+"lead_inquiry" — domanda da lead nel CRM
+Frontend: Nella lista email, mostrare badge colorati per tipo:
+"Risposta Lead" (verde) per hunter_reply
+"Sistema" (grigio) per system_notification + auto-hide
+"Cliente" (blu) per client_inquiry
+"Lead CRM" (viola) per lead_inquiry
+Accettazione: Le email sono visivamente categorizzate e quelle di sistema sono chiaramente distinguibili
