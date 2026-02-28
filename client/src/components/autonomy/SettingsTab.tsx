@@ -1253,45 +1253,71 @@ function SettingsTab({
       className="space-y-6"
     >
       <Tabs value={activeTab} onValueChange={onTabChange}>
-        <TabsList className="flex flex-wrap w-full h-auto bg-gray-100 dark:bg-gray-800/50 rounded-xl p-1.5 gap-1">
-          <TabsTrigger value="dipendenti" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Bot className="h-4 w-4" />
-            <span className="hidden sm:inline">Dipendenti AI</span>
-          </TabsTrigger>
-          <TabsTrigger value="panoramica" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Panoramica</span>
-          </TabsTrigger>
-          <TabsTrigger value="autonomia" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Zap className="h-4 w-4" />
-            <span className="hidden sm:inline">Autonomia & Modalità</span>
-          </TabsTrigger>
-          <TabsTrigger value="orari" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Clock className="h-4 w-4" />
-            <span className="hidden sm:inline">Orari & Limiti</span>
-          </TabsTrigger>
-          <TabsTrigger value="canali" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <ListTodo className="h-4 w-4" />
-            <span className="hidden sm:inline">Canali & Categorie</span>
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">Feed</span>
-            {unreadCount > 0 && (
-              <Badge className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0 min-w-[18px] h-[18px] rounded-full">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <ListTodo className="h-4 w-4" />
-            <span className="hidden sm:inline">Task</span>
-          </TabsTrigger>
-          <TabsTrigger value="data-catalog" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 px-3">
-            <Database className="h-4 w-4" />
-            <span className="hidden sm:inline">Dati</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-1.5 overflow-x-auto no-scrollbar">
+          <TabsList className="flex w-full sm:grid sm:grid-cols-8 gap-1 bg-transparent h-auto p-0 min-w-max sm:min-w-0">
+            <TabsTrigger
+              value="dipendenti"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Bot className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Dipendenti AI</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="panoramica"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Activity className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Panoramica</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="autonomia"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Zap className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Autonomia & Modalità</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="orari"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Orari & Limiti</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="canali"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <ListTodo className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Canali & Categorie</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="activity"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Activity className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Feed</span>
+              {unreadCount > 0 && (
+                <Badge className="ml-0.5 bg-red-500 text-white text-[10px] px-1.5 py-0 min-w-[18px] h-[18px] rounded-full">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="dashboard"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <ListTodo className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Task</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="data-catalog"
+              className="flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-md transition-all flex items-center justify-center gap-1.5 min-w-[44px]"
+            >
+              <Database className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Dati</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1 - Panoramica */}
         <TabsContent value="panoramica" className="mt-5 space-y-5">
