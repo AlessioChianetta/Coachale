@@ -186,12 +186,13 @@ function getLeadStatusInfo(status: string | null) {
 function getScoreBar(score: number | null) {
   if (score === null || score === undefined) return null;
   const color = score >= 70 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-500";
+  const ringColor = score >= 70 ? "ring-emerald-200 dark:ring-emerald-800" : score >= 40 ? "ring-amber-200 dark:ring-amber-800" : "ring-red-200 dark:ring-red-800";
   const textColor = score >= 70 ? "text-emerald-700 dark:text-emerald-400" : score >= 40 ? "text-amber-700 dark:text-amber-400" : "text-red-700 dark:text-red-400";
   return (
-    <div className="flex items-center gap-1.5 min-w-[60px]">
-      <span className={`text-xs font-bold ${textColor}`}>{score}</span>
-      <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+    <div className="flex flex-col items-center gap-1 min-w-[48px]">
+      <span className={`text-xs font-black ${textColor}`}>{score}</span>
+      <div className={`w-full h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ring-1 ${ringColor}`}>
+        <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${score}%` }} />
       </div>
     </div>
   );
@@ -1714,11 +1715,14 @@ export default function ConsultantLeadScraper() {
                 })}
               </div>
 
-              <Card className="rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <Card className="rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <CardTitle className="flex items-center gap-2">
-                      <ClipboardList className="h-5 w-5 text-violet-500" />CRM Lead
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                        <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      CRM Lead
                       <span className="text-sm font-normal text-muted-foreground">({filteredCrmResults.length}{crmChannelView !== "tutti" ? ` / ${allResults.length}` : ""})</span>
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1851,19 +1855,19 @@ export default function ConsultantLeadScraper() {
                                     </span>
                                   ) : "\u2014"}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  {r.leadValue ? <span className="font-semibold text-emerald-600 dark:text-emerald-400">{r.leadValue.toLocaleString("it-IT")} EUR</span> : "\u2014"}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
-                                    title="Avvia Hunter su questo lead"
-                                    onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
-                                  >
-                                    <Crosshair className="h-3.5 w-3.5" />
-                                  </Button>
+                                <TableCell className="text-right py-4">
+                                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                    {r.leadValue ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mr-2">{r.leadValue.toLocaleString("it-IT")}€</span> : null}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 rounded-lg text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/30"
+                                      title="Avvia Hunter su questo lead"
+                                      onClick={(e) => { e.stopPropagation(); openHunterSingleLead(r); }}
+                                    >
+                                      <Crosshair className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             );
@@ -3787,10 +3791,11 @@ export default function ConsultantLeadScraper() {
 
       <button
         onClick={() => setShowChat(true)}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center"
+        className="group fixed bottom-6 right-6 z-40 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center gap-2 px-4"
       >
-        <Bot className="h-6 w-6" />
-        <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
+        <Bot className="h-5 w-5" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-300 text-sm font-medium whitespace-nowrap">AI Agent</span>
+        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
       </button>
 
       <AnimatePresence>
