@@ -92,6 +92,10 @@ import {
   PenLine,
   AlertTriangle,
   Archive,
+  Plus,
+  UserPlus,
+  Building,
+  Hash,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -277,6 +281,13 @@ export default function ConsultantLeadScraper() {
   const [expandedContextIds, setExpandedContextIds] = useState<Set<string>>(new Set());
   const [batchApproving, setBatchApproving] = useState(false);
   const [outreachHistoryOpen, setOutreachHistoryOpen] = useState(false);
+
+  const emptyManualLead = {
+    businessName: "", phone: "", email: "", website: "", address: "",
+    category: "", leadStatus: "nuovo", leadNotes: "", leadValue: "",
+    leadNextAction: "", leadNextActionDate: "", rating: "", source: "manual",
+  };
+  const [manualLead, setManualLead] = useState(emptyManualLead);
 
   const [hunterSingleLeadDialog, setHunterSingleLeadDialog] = useState<{
     open: boolean;
@@ -997,6 +1008,31 @@ export default function ConsultantLeadScraper() {
     },
   });
 
+  const createManualLeadMutation = useMutation({
+    mutationFn: async (data: typeof emptyManualLead) => {
+      const res = await fetch("/api/lead-scraper/manual-lead", {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Errore nella creazione del lead");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/all-results"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-scraper/searches"] });
+      setManualLead(emptyManualLead);
+      toast({ title: "Lead creato", description: `"${data.lead?.businessName}" aggiunto al CRM` });
+      setActiveTab("crm");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    },
+  });
+
   const generateBatchSummariesMutation = useMutation({
     mutationFn: async (searchId: string) => {
       const res = await fetch(`/api/lead-scraper/searches/${searchId}/generate-summaries`, {
@@ -1234,6 +1270,9 @@ export default function ConsultantLeadScraper() {
             <TabsTrigger value="hunter" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-teal-700 data-[state=active]:dark:text-teal-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
               <Crosshair className="h-3.5 w-3.5" />Hunter
               {hunterStatus?.isEnabled && <span className="ml-1 w-2 h-2 rounded-full bg-teal-500 animate-pulse" />}
+            </TabsTrigger>
+            <TabsTrigger value="nuovo_lead" className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 data-[state=active]:bg-white data-[state=active]:dark:bg-gray-800 data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400 data-[state=active]:shadow-sm data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:dark:hover:text-gray-300 data-[state=inactive]:hover:bg-white/50 data-[state=inactive]:dark:hover:bg-gray-800/30">
+              <Plus className="h-3.5 w-3.5" />Nuovo Lead
             </TabsTrigger>
           </TabsList>
 
@@ -3565,6 +3604,160 @@ export default function ConsultantLeadScraper() {
                   </CardContent>
                 </motion.div>
               )}
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="nuovo_lead" className="mt-4">
+            <Card className="rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                    <UserPlus className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Aggiungi Lead Manuale</CardTitle>
+                    <CardDescription>Inserisci un contatto manualmente nel CRM</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={(e) => { e.preventDefault(); createManualLeadMutation.mutate(manualLead); }} className="space-y-6">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building className="h-4 w-4 text-violet-500" />
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Informazioni Azienda</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-name" className="text-xs font-medium text-gray-600 dark:text-gray-400">Nome Azienda *</Label>
+                        <Input id="ml-name" placeholder="es. Studio Rossi Consulting" value={manualLead.businessName} onChange={(e) => setManualLead(p => ({ ...p, businessName: e.target.value }))} className="h-10 rounded-xl" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-category" className="text-xs font-medium text-gray-600 dark:text-gray-400">Categoria / Settore</Label>
+                        <Input id="ml-category" placeholder="es. Consulenza fiscale, Ristorante, E-commerce" value={manualLead.category} onChange={(e) => setManualLead(p => ({ ...p, category: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-address" className="text-xs font-medium text-gray-600 dark:text-gray-400">Indirizzo</Label>
+                        <Input id="ml-address" placeholder="es. Via Roma 42, Milano" value={manualLead.address} onChange={(e) => setManualLead(p => ({ ...p, address: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-website" className="text-xs font-medium text-gray-600 dark:text-gray-400">Sito Web</Label>
+                        <Input id="ml-website" placeholder="es. https://www.esempio.it" value={manualLead.website} onChange={(e) => setManualLead(p => ({ ...p, website: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Phone className="h-4 w-4 text-emerald-500" />
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Contatti</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-phone" className="text-xs font-medium text-gray-600 dark:text-gray-400">Telefono</Label>
+                        <Input id="ml-phone" placeholder="es. +39 02 1234567" value={manualLead.phone} onChange={(e) => setManualLead(p => ({ ...p, phone: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-email" className="text-xs font-medium text-gray-600 dark:text-gray-400">Email</Label>
+                        <Input id="ml-email" type="email" placeholder="es. info@azienda.it" value={manualLead.email} onChange={(e) => setManualLead(p => ({ ...p, email: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Target className="h-4 w-4 text-amber-500" />
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Stato & Pipeline</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-status" className="text-xs font-medium text-gray-600 dark:text-gray-400">Stato Lead</Label>
+                        <Select value={manualLead.leadStatus} onValueChange={(v) => setManualLead(p => ({ ...p, leadStatus: v }))}>
+                          <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {LEAD_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-value" className="text-xs font-medium text-gray-600 dark:text-gray-400">Valore Stimato (EUR)</Label>
+                        <Input id="ml-value" type="number" placeholder="es. 5000" value={manualLead.leadValue} onChange={(e) => setManualLead(p => ({ ...p, leadValue: e.target.value }))} className="h-10 rounded-xl" min="0" step="100" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-rating" className="text-xs font-medium text-gray-600 dark:text-gray-400">Rating (1-5)</Label>
+                        <Input id="ml-rating" type="number" placeholder="es. 4.5" value={manualLead.rating} onChange={(e) => setManualLead(p => ({ ...p, rating: e.target.value }))} className="h-10 rounded-xl" min="1" max="5" step="0.1" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-source" className="text-xs font-medium text-gray-600 dark:text-gray-400">Fonte del Lead</Label>
+                        <Select value={manualLead.source} onValueChange={(v) => setManualLead(p => ({ ...p, source: v }))}>
+                          <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Inserimento manuale</SelectItem>
+                            <SelectItem value="referral">Referral / Passaparola</SelectItem>
+                            <SelectItem value="social">Social Media</SelectItem>
+                            <SelectItem value="website">Dal mio sito web</SelectItem>
+                            <SelectItem value="evento">Evento / Fiera</SelectItem>
+                            <SelectItem value="cold_call">Cold Call</SelectItem>
+                            <SelectItem value="altro">Altro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-next-action" className="text-xs font-medium text-gray-600 dark:text-gray-400">Prossima Azione</Label>
+                        <Input id="ml-next-action" placeholder="es. Chiamare per appuntamento" value={manualLead.leadNextAction} onChange={(e) => setManualLead(p => ({ ...p, leadNextAction: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ml-next-date" className="text-xs font-medium text-gray-600 dark:text-gray-400">Data Prossima Azione</Label>
+                        <Input id="ml-next-date" type="date" value={manualLead.leadNextActionDate} onChange={(e) => setManualLead(p => ({ ...p, leadNextActionDate: e.target.value }))} className="h-10 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Note</h3>
+                    </div>
+                    <Textarea
+                      placeholder="Note aggiuntive sul lead: come lo hai conosciuto, dettagli sulla conversazione, interessi specifici..."
+                      value={manualLead.leadNotes}
+                      onChange={(e) => setManualLead(p => ({ ...p, leadNotes: e.target.value }))}
+                      className="min-h-[100px] rounded-xl resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setManualLead(emptyManualLead)}
+                      className="text-gray-500 hover:text-gray-700"
+                      disabled={createManualLeadMutation.isPending}
+                    >
+                      <X className="h-4 w-4 mr-1.5" />Svuota campi
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 h-10 rounded-xl shadow-sm"
+                      disabled={!manualLead.businessName.trim() || createManualLeadMutation.isPending}
+                    >
+                      {createManualLeadMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Salvataggio...</>
+                      ) : (
+                        <><Plus className="h-4 w-4 mr-1.5" />Aggiungi al CRM</>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
             </Card>
           </TabsContent>
         </Tabs>

@@ -697,4 +697,85 @@ router.delete("/activities/:activityId", authenticateToken, requireAnyRole(["con
   }
 });
 
+router.post("/manual-lead", authenticateToken, requireAnyRole(["consultant", "super_admin"]), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user?.id;
+    if (!consultantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const {
+      businessName, phone, email, website, address, category,
+      leadStatus, leadNotes, leadValue, leadNextAction, leadNextActionDate,
+      rating, source
+    } = req.body;
+
+    if (!businessName || businessName.trim().length === 0) {
+      return res.status(400).json({ error: "Il nome azienda è obbligatorio" });
+    }
+
+    const parsedRating = rating ? parseFloat(rating) : null;
+    if (parsedRating !== null && (isNaN(parsedRating) || parsedRating < 0 || parsedRating > 5)) {
+      return res.status(400).json({ error: "Rating deve essere tra 0 e 5" });
+    }
+    const parsedValue = leadValue ? parseFloat(leadValue) : null;
+    if (parsedValue !== null && (isNaN(parsedValue) || parsedValue < 0)) {
+      return res.status(400).json({ error: "Valore deve essere un numero positivo" });
+    }
+
+    let manualSearchResult = await db.execute(sql`
+      SELECT id FROM lead_scraper_searches
+      WHERE consultant_id = ${consultantId} AND query = '__manual_leads__'
+      LIMIT 1
+    `);
+
+    let searchId: string;
+    if (manualSearchResult.rows.length > 0) {
+      searchId = (manualSearchResult.rows[0] as any).id;
+    } else {
+      const [newSearch] = await db
+        .insert(leadScraperSearches)
+        .values({
+          consultantId: consultantId,
+          query: "__manual_leads__",
+          location: "",
+          status: "completed",
+          metadata: { type: "manual_collection" },
+        })
+        .returning();
+      searchId = newSearch.id;
+    }
+
+    const [lead] = await db
+      .insert(leadScraperResults)
+      .values({
+        searchId,
+        businessName: businessName.trim(),
+        phone: phone?.trim() || null,
+        email: email?.trim() || null,
+        website: website?.trim() || null,
+        address: address?.trim() || null,
+        category: category?.trim() || null,
+        rating: parsedRating,
+        source: source || "manual",
+        scrapeStatus: "no_website",
+        leadStatus: leadStatus || "nuovo",
+        leadNotes: leadNotes?.trim() || null,
+        leadValue: parsedValue,
+        leadNextAction: leadNextAction?.trim() || null,
+        leadNextActionDate: leadNextActionDate ? new Date(leadNextActionDate) : null,
+      })
+      .returning();
+
+    await db.execute(sql`
+      UPDATE lead_scraper_searches
+      SET results_count = COALESCE(results_count, 0) + 1
+      WHERE id = ${searchId}
+    `);
+
+    res.json({ success: true, lead });
+  } catch (error: any) {
+    console.error("[LEAD-SCRAPER] Error creating manual lead:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
